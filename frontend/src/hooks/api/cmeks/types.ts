@@ -197,7 +197,6 @@ export enum SigningAlgorithm {
   ECDSA_SHA_384 = "ECDSA_SHA_384",
   ECDSA_SHA_512 = "ECDSA_SHA_512",
 
-  // Ed25519 (PureEdDSA): signing algorithm equals key algorithm
   ED25519 = "ED25519",
 
   // ML-DSA (post-quantum) — signing algorithm equals key algorithm

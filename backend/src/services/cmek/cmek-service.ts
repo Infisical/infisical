@@ -6,9 +6,8 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionCmekActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import {
   AsymmetricKeyAlgorithm,
-  isEd25519KeyAlgorithm,
+  getSigningAlgorithmsForKeyAlgorithm,
   isPqcKeyAlgorithm,
-  SigningAlgorithm,
   signingService
 } from "@app/lib/crypto/sign";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -23,7 +22,6 @@ import {
   TCmekGenerateMacDTO,
   TCmekGetPrivateKeyDTO,
   TCmekGetPublicKeyDTO,
-  TCmekKeyEncryptionAlgorithm,
   TCmekListSigningAlgorithmsDTO,
   TCmekSignDTO,
   TCmekVerifyDTO,
@@ -302,30 +300,12 @@ export const cmekServiceFactory = ({
       throw new BadRequestError({ message: `Key with ID '${keyId}' is not intended for signing` });
     }
 
-    const encryptionAlgorithm = key.encryptionAlgorithm as TCmekKeyEncryptionAlgorithm;
-
-    if (isPqcKeyAlgorithm(encryptionAlgorithm as string) || isEd25519KeyAlgorithm(encryptionAlgorithm as string)) {
-      return { signingAlgorithms: [encryptionAlgorithm as unknown as SigningAlgorithm], projectId: key.projectId };
+    const signingAlgorithms = getSigningAlgorithmsForKeyAlgorithm(key.encryptionAlgorithm as AsymmetricKeyAlgorithm);
+    if (signingAlgorithms.length === 0) {
+      throw new BadRequestError({ message: `Unsupported encryption algorithm: ${key.encryptionAlgorithm}` });
     }
 
-    const algos = [
-      {
-        keyAlgorithm: "rsa",
-        signingAlgorithms: Object.values(SigningAlgorithm).filter((a) => a.toLowerCase().startsWith("rsa"))
-      },
-      {
-        keyAlgorithm: "ecc",
-        signingAlgorithms: Object.values(SigningAlgorithm).filter((a) => a.toLowerCase().startsWith("ecdsa"))
-      }
-    ];
-
-    const selectedAlgorithm = algos.find((algo) => encryptionAlgorithm.toLowerCase().startsWith(algo.keyAlgorithm));
-
-    if (!selectedAlgorithm) {
-      throw new BadRequestError({ message: `Unsupported encryption algorithm: ${encryptionAlgorithm}` });
-    }
-
-    return { signingAlgorithms: selectedAlgorithm.signingAlgorithms, projectId: key.projectId };
+    return { signingAlgorithms, projectId: key.projectId };
   };
 
   const getPublicKey = async ({ keyId }: TCmekGetPublicKeyDTO, actor: OrgServiceActor) => {

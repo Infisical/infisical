@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 
-import { signingService } from "./signing";
+import { getSigningAlgorithmsForKeyAlgorithm, signingService } from "./signing";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "./types";
 
 const data = Buffer.from("payload to sign");
@@ -109,4 +109,17 @@ describe("signingService rejects ED25519 on other key types", () => {
       );
     }
   );
+});
+
+describe("getSigningAlgorithmsForKeyAlgorithm", () => {
+  it("maps each key family to its signing algorithms", () => {
+    expect(getSigningAlgorithmsForKeyAlgorithm(AsymmetricKeyAlgorithm.ED25519)).toEqual([SigningAlgorithm.ED25519]);
+    expect(getSigningAlgorithmsForKeyAlgorithm(AsymmetricKeyAlgorithm.ML_DSA_65)).toEqual([SigningAlgorithm.ML_DSA_65]);
+    expect(getSigningAlgorithmsForKeyAlgorithm(AsymmetricKeyAlgorithm.RSA_4096)).toEqual(
+      Object.values(SigningAlgorithm).filter((a) => a.startsWith("RSASSA"))
+    );
+    expect(getSigningAlgorithmsForKeyAlgorithm(AsymmetricKeyAlgorithm.ECC_NIST_P384)).toEqual(
+      Object.values(SigningAlgorithm).filter((a) => a.startsWith("ECDSA"))
+    );
+  });
 });

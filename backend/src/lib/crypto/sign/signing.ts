@@ -14,6 +14,18 @@ import { AsymmetricKeyAlgorithm, SigningAlgorithm, TAsymmetricSignVerifyFns } fr
 export const isPqcKeyAlgorithm = (algo: string): boolean => algo.startsWith("ML_DSA");
 export const isEd25519KeyAlgorithm = (algo: string): boolean => algo === AsymmetricKeyAlgorithm.ED25519;
 
+const RSA_SIGNING_ALGORITHMS = Object.values(SigningAlgorithm).filter((a) => a.startsWith("RSASSA"));
+const ECDSA_SIGNING_ALGORITHMS = Object.values(SigningAlgorithm).filter((a) => a.startsWith("ECDSA"));
+
+export const getSigningAlgorithmsForKeyAlgorithm = (keyAlgorithm: AsymmetricKeyAlgorithm): SigningAlgorithm[] => {
+  if (keyAlgorithm.startsWith("RSA")) return RSA_SIGNING_ALGORITHMS;
+  if (keyAlgorithm.startsWith("ECC")) return ECDSA_SIGNING_ALGORITHMS;
+  if (isEd25519KeyAlgorithm(keyAlgorithm) || isPqcKeyAlgorithm(keyAlgorithm)) {
+    return [keyAlgorithm as unknown as SigningAlgorithm];
+  }
+  return [];
+};
+
 const execFileAsync = promisify(execFile);
 
 interface SigningParams {
@@ -114,37 +126,19 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
   };
 
   const $validateAlgorithmWithKeyType = (signingAlgorithm: SigningAlgorithm) => {
-    const isRsaKey = algorithm.startsWith("RSA");
-    const isEccKey = algorithm.startsWith("ECC");
-    const isEd25519Key = isEd25519KeyAlgorithm(algorithm);
-    const isPqcKey = isPqcKeyAlgorithm(algorithm);
-
-    const isRsaAlgorithm = signingAlgorithm.startsWith("RSASSA");
-    const isEccAlgorithm = signingAlgorithm.startsWith("ECDSA");
-    const isPqcAlgorithm = isPqcKeyAlgorithm(signingAlgorithm);
-
-    if (isRsaKey && !isRsaAlgorithm) {
-      throw new BadRequestError({ message: `KMS RSA key cannot be used with ${signingAlgorithm}` });
-    }
-
-    if (isEccKey && !isEccAlgorithm) {
-      throw new BadRequestError({ message: `KMS ECC key cannot be used with ${signingAlgorithm}` });
-    }
-
-    if (isEd25519Key && signingAlgorithm !== SigningAlgorithm.ED25519) {
+    if (!getSigningAlgorithmsForKeyAlgorithm(algorithm).includes(signingAlgorithm)) {
       throw new BadRequestError({
-        message: `KMS ED25519 key can only be used with ${SigningAlgorithm.ED25519} signing algorithm`
+        message: `KMS ${algorithm} key cannot be used with ${signingAlgorithm} signing algorithm`
       });
     }
-
-    if (isPqcKey) {
-      if (!isPqcAlgorithm || (signingAlgorithm as string) !== (algorithm as string)) {
-        throw new BadRequestError({
-          message: `KMS ${algorithm} key can only be used with ${algorithm} signing algorithm`
-        });
-      }
-    }
   };
+
+  const $parsePrivateKey = (privateKey: Buffer) =>
+    crypto.nativeCrypto.createPrivateKey({
+      key: privateKey,
+      format: "pem",
+      type: "pkcs8"
+    });
 
   const $signRsaDigest = async (
     digest: Buffer,
@@ -419,12 +413,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       if (isDigest) {
         throw new BadRequestError({ message: "ED25519 does not support digested input" });
       }
-      const ed25519PrivateKey = crypto.nativeCrypto.createPrivateKey({
-        key: privateKey,
-        format: "pem",
-        type: "pkcs8"
-      });
-      return crypto.nativeCrypto.sign(null, data, ed25519PrivateKey);
+      return crypto.nativeCrypto.sign(null, data, $parsePrivateKey(privateKey));
     }
 
     const { hashAlgorithm, padding, saltLength } = $getSigningParams(signingAlgorithm);
@@ -448,11 +437,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       return signature;
     }
 
-    const privateKeyObject = crypto.nativeCrypto.createPrivateKey({
-      key: privateKey,
-      format: "pem",
-      type: "pkcs8"
-    });
+    const privateKeyObject = $parsePrivateKey(privateKey);
 
     // For RSA signatures
     if (signingAlgorithm.startsWith("RSA")) {
@@ -494,21 +479,20 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       return opensslVerify(publicKey, signature, data);
     }
 
-    if (isEd25519KeyAlgorithm(algorithm)) {
-      $validateAlgorithmWithKeyType(signingAlgorithm);
-      if (isDigest) {
-        throw new BadRequestError({ message: "ED25519 does not support digested input" });
-      }
-      const ed25519PublicKey = crypto.nativeCrypto.createPublicKey({
-        key: publicKey,
-        format: "der",
-        type: "spki"
-      });
-      return crypto.nativeCrypto.verify(null, data, ed25519PublicKey, signature);
-    }
-
     try {
       $validateAlgorithmWithKeyType(signingAlgorithm);
+
+      if (isEd25519KeyAlgorithm(algorithm)) {
+        if (isDigest) {
+          throw new BadRequestError({ message: "ED25519 does not support digested input" });
+        }
+        const ed25519PublicKey = crypto.nativeCrypto.createPublicKey({
+          key: publicKey,
+          format: "der",
+          type: "spki"
+        });
+        return crypto.nativeCrypto.verify(null, data, ed25519PublicKey, signature);
+      }
 
       const { hashAlgorithm, padding, saltLength } = $getSigningParams(signingAlgorithm);
 
@@ -648,13 +632,7 @@ export const signingService = (algorithm: AsymmetricKeyAlgorithm): TAsymmetricSi
       return opensslDerivePublicKey(privateKey);
     }
 
-    const privateKeyObj = crypto.nativeCrypto.createPrivateKey({
-      key: privateKey,
-      format: "pem",
-      type: "pkcs8"
-    });
-
-    const publicKey = crypto.nativeCrypto.createPublicKey(privateKeyObj).export({
+    const publicKey = crypto.nativeCrypto.createPublicKey($parsePrivateKey(privateKey)).export({
       type: "spki",
       format: "der"
     });
