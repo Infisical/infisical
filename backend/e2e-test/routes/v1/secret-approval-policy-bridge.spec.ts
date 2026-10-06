@@ -83,6 +83,7 @@ describe("Secret approval policy bridge routing", () => {
   const legacyIds: string[] = [];
   const bridgeIds: string[] = [];
   const requestIds: string[] = [];
+  const createdEnvIds: string[] = [];
   let envId: string;
 
   beforeAll(async () => {
@@ -96,6 +97,7 @@ describe("Secret approval policy bridge routing", () => {
     await db(TableName.ApprovalRequests).whereIn("id", requestIds).del();
     await db(TableName.SecretApprovalPolicy).whereIn("id", legacyIds).del();
     await db(TableName.ApprovalPolicies).whereIn("id", bridgeIds).del();
+    await db(TableName.Environment).whereIn("id", createdEnvIds).del();
   });
 
   test("a legacy policy stays on the legacy tables through update and is soft-deleted on delete", async () => {
@@ -278,5 +280,56 @@ describe("Secret approval policy bridge routing", () => {
     expect(listRes.json().approvals.map((policy: { id: string }) => policy.id)).toEqual(
       expect.arrayContaining([legacyId, bridgeId])
     );
+  });
+
+  test("an environment used by a policy on the global approval system cannot be deleted", async () => {
+    const guardedSlug = "sap-bridge-env-delete";
+    const envRes = await testServer.inject({
+      method: "POST",
+      url: `/api/v1/workspace/${projectId}/environments`,
+      headers: authHeaders(),
+      body: { name: "SAP bridge env delete", slug: guardedSlug }
+    });
+    expect(envRes.statusCode).toBe(200);
+    const guardedEnvId = envRes.json().environment.id as string;
+    createdEnvIds.push(guardedEnvId);
+
+    const policyRes = await testServer.inject({
+      method: "POST",
+      url: "/api/v2/secret-approvals",
+      headers: authHeaders(),
+      body: { projectId, environment: guardedSlug, secretPath: "/", approvers, approvals: 1, name: "env-delete-guard" }
+    });
+    expect(policyRes.statusCode).toBe(200);
+    const bridgeId = policyRes.json().approval.id as string;
+    bridgeIds.push(bridgeId);
+    expect(await bridgeRow(bridgeId)).toMatchObject({ type: ApprovalPolicyType.SecretChange });
+
+    const deleteEnv = (hardDelete: boolean) =>
+      testServer.inject({
+        method: "DELETE",
+        url: `/api/v1/workspace/${projectId}/environments/${guardedEnvId}?hardDelete=${hardDelete}`,
+        headers: authHeaders()
+      });
+
+    const softDeleteRes = await deleteEnv(false);
+    expect(softDeleteRes.statusCode).toBe(400);
+    expect(softDeleteRes.json().message).toBe("Environment is in use by a secret approval policy");
+
+    const hardDeleteRes = await deleteEnv(true);
+    expect(hardDeleteRes.statusCode).toBe(400);
+    expect(hardDeleteRes.json().message).toBe("Environment is in use by a secret approval policy");
+
+    expect(await getDb()(TableName.Environment).where({ id: guardedEnvId }).first()).toMatchObject({
+      deleteAfter: null
+    });
+    expect(await bridgeEnvRows(bridgeId)).toMatchObject([{ envId: guardedEnvId }]);
+
+    const deletePolicyRes = await deletePolicy(bridgeId);
+    expect(deletePolicyRes.statusCode).toBe(200);
+
+    const deleteEnvRes = await deleteEnv(true);
+    expect(deleteEnvRes.statusCode).toBe(200);
+    expect(deleteEnvRes.json().environment.id).toBe(guardedEnvId);
   });
 });
