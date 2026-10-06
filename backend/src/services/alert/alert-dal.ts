@@ -3,11 +3,18 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TAlerts } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 import { AlertTriggerType } from "./alert-types";
 
 export type TAlertDALFactory = ReturnType<typeof alertDALFactory>;
+
+export type TAlertChannelSummary = {
+  id: string;
+  name: string;
+  resourceId: string | null;
+  channels: { id: string; name: string; channelType: string; enabled: boolean }[];
+};
 
 export const alertDALFactory = (db: TDbClient) => {
   const alertOrm = ormify(db, TableName.Alert);
@@ -221,8 +228,65 @@ export const alertDALFactory = (db: TDbClient) => {
     }
   };
 
+  // For a service that owns alerts on its own resource and needs to know whether one exists and what
+  // channels it has, without decrypting channel configs. Reads the primary: the caller decides between
+  // create and update on the result, and a replica that has not seen the alert yet sends it into the
+  // create path and the unique index.
+  const findChannelSummariesForResources = async (
+    { resourceType, resourceIds }: { resourceType: string; resourceIds: string[] },
+    tx?: Knex
+  ): Promise<TAlertChannelSummary[]> => {
+    if (resourceIds.length === 0) return [];
+    try {
+      const rows = await (tx || db)(TableName.Alert)
+        .where(`${TableName.Alert}.resourceType`, resourceType)
+        .whereIn(`${TableName.Alert}.resourceId`, resourceIds)
+        .leftJoin(
+          TableName.AlertChannelMembership,
+          `${TableName.Alert}.id`,
+          `${TableName.AlertChannelMembership}.alertId`
+        )
+        .leftJoin(
+          TableName.AlertChannel,
+          `${TableName.AlertChannelMembership}.channelId`,
+          `${TableName.AlertChannel}.id`
+        )
+        .select(
+          db.ref("id").withSchema(TableName.Alert),
+          db.ref("name").withSchema(TableName.Alert),
+          db.ref("resourceId").withSchema(TableName.Alert),
+          db.ref("id").withSchema(TableName.AlertChannel).as("channelId"),
+          db.ref("name").withSchema(TableName.AlertChannel).as("channelName"),
+          db.ref("channelType").withSchema(TableName.AlertChannel),
+          db.ref("enabled").withSchema(TableName.AlertChannel).as("channelEnabled")
+        )
+        .orderBy(`${TableName.AlertChannel}.createdAt`, "asc");
+
+      return sqlNestRelationships({
+        data: rows,
+        key: "id",
+        parentMapper: ({ id, name, resourceId }) => ({ id, name, resourceId: resourceId ?? null }),
+        childrenMapper: [
+          {
+            key: "channelId",
+            label: "channels" as const,
+            mapper: ({ channelId, channelName, channelType, channelEnabled }) => ({
+              id: channelId,
+              name: channelName,
+              channelType,
+              enabled: channelEnabled
+            })
+          }
+        ]
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindChannelSummariesForResources" });
+    }
+  };
+
   return {
     ...alertOrm,
+    findChannelSummariesForResources,
     findRecipientsForResources,
     findEnabledByResourceType,
     findEnabledForEvent,

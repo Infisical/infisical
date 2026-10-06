@@ -470,40 +470,8 @@ export const alertServiceFactory = ({
     tx?: Knex
   ): Promise<number> => $reapAlerts({ resourceType, resourceId }, tx);
 
-  const findAlertsForResources = async (
-    { resourceType, resourceIds }: { resourceType: string; resourceIds: string[] },
-    tx?: Knex
-  ): Promise<TAlertResponse[]> => {
-    if (resourceIds.length === 0) return [];
-
-    const alerts = await alertDAL.find({ resourceType, $in: { resourceId: resourceIds } }, { tx });
-    if (alerts.length === 0) return [];
-
-    const channels = await alertChannelDAL.findByAlertIds(
-      alerts.map((alert) => alert.id),
-      tx
-    );
-    const channelsByAlert = new Map<string, TAlertChannels[]>();
-    channels.forEach((channel) => {
-      channelsByAlert.set(channel.alertId, [...(channelsByAlert.get(channel.alertId) ?? []), channel]);
-    });
-
-    const cipherByScope = new Map<string, Awaited<ReturnType<typeof getAlertChannelCipher>>>();
-    const responses: TAlertResponse[] = [];
-    for (const alert of alerts) {
-      const scopeKey = `${alert.orgId}:${alert.projectId ?? ""}`;
-      let cipher = cipherByScope.get(scopeKey);
-      if (!cipher) {
-        // eslint-disable-next-line no-await-in-loop -- one cipher per scope, and resource ids usually share one
-        cipher = await getAlertChannelCipher(kmsService, { orgId: alert.orgId, projectId: alert.projectId }, tx);
-        cipherByScope.set(scopeKey, cipher);
-      }
-      // eslint-disable-next-line no-await-in-loop -- reuses tx when given, so reads must be serial
-      const details = await alertChannelService.getDetailsForChannels(channelsByAlert.get(alert.id) ?? [], cipher, tx);
-      responses.push($assembleResponse(alert, details));
-    }
-    return responses;
-  };
+  const findAlertChannelSummariesForResources = (input: { resourceType: string; resourceIds: string[] }, tx?: Knex) =>
+    alertDAL.findChannelSummariesForResources(input, tx);
 
   const deleteAlertsForDeletedResources = async (
     { resourceType, resourceIds }: { resourceType: string; resourceIds: string[] },
@@ -546,7 +514,7 @@ export const alertServiceFactory = ({
     deleteAlert,
     deleteAlertsForResource,
     deleteAlertsForDeletedResource,
-    findAlertsForResources,
+    findAlertChannelSummariesForResources,
     deleteAlertsForDeletedResources,
     repointAlertsForResource,
     findRecipientsForResources,

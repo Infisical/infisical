@@ -5,6 +5,7 @@ import { updateAlert } from "../../testUtils/alerts";
 import { createIsolatedOrgAndProject } from "../../testUtils/fixtures";
 import { createFolder, deleteFolder } from "../../testUtils/folders";
 import {
+  deleteSecretReminder,
   getSecretReminder,
   listSecretReminderAlerts,
   reapOrphanedReminderAlerts,
@@ -68,6 +69,17 @@ describe("Secret reminders delivered through alerts", () => {
   };
 
   const reminderAlerts = (secretId: string) => listSecretReminderAlerts({ projectId, secretId, authToken });
+
+  // The alert API cannot show a reaped alert's channels (every read goes through the alert), so the
+  // rows that must go with it are checked directly.
+  const expectAlertFullyRemoved = async (alert: { id: string; channels: { id: string }[] }) => {
+    const channelIds = alert.channels.map((channel) => channel.id);
+    expect(channelIds.length).toBeGreaterThan(0);
+    expect(await testDb("alerts").where({ id: alert.id })).toHaveLength(0);
+    expect(await testDb("alert_channel_memberships").where({ alertId: alert.id })).toHaveLength(0);
+    expect(await testDb("alert_channels").whereIn("id", channelIds)).toHaveLength(0);
+    expect(await testDb("alert_channel_recipients").whereIn("channelId", channelIds)).toHaveLength(0);
+  };
 
   const nextReminderDate = async (secretId: string) => {
     const reminder = await getSecretReminder({ secretId, authToken });
@@ -223,7 +235,19 @@ describe("Secret reminders delivered through alerts", () => {
 
     await reapOrphanedReminderAlerts();
 
-    expect(await testDb("alerts").where({ id: alert.id })).toHaveLength(0);
+    await expectAlertFullyRemoved(alert);
+  });
+
+  test("deleting a reminder removes its alert, channels and recipients", async () => {
+    const secretId = await createSecret("DELETE_ME");
+    await setSecretReminder({ secretId, authToken, repeatDays: 30, recipients: [member.userId] });
+    const [alert] = await reminderAlerts(secretId);
+
+    await deleteSecretReminder({ secretId, authToken });
+
+    expect(await getSecretReminder({ secretId, authToken })).toBeNull();
+    expect(await reminderAlerts(secretId)).toEqual([]);
+    await expectAlertFullyRemoved(alert);
   });
 
   // Rows from before the migration have no API that creates them, so these tests seed the reminder

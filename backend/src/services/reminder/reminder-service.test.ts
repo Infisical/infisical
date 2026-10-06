@@ -204,7 +204,6 @@ type TStoredAlert = {
     name: string;
     channelType: string;
     enabled: boolean;
-    recipients: { principalType: string; principalId: string }[];
   }>;
 };
 
@@ -228,7 +227,6 @@ const buildWriteService = (opts: { existingAlert?: TStoredAlert; projectUserIds?
         secretIds.map((secretId) => ({ id: `rem-${secretId}`, secretId, recipients: ["stale-user"] }))
     },
     eventEmitter: { emit: async () => {} },
-    projectDAL: { findById: async () => ({ id: "proj-1", orgId: "org-1" }) },
     secretV2BridgeDAL: {
       findOneWithTags: async () => ({
         id: "secret-1",
@@ -248,7 +246,7 @@ const buildWriteService = (opts: { existingAlert?: TStoredAlert; projectUserIds?
     alertService: {
       filterRecipientsInScope: async (_scope: unknown, recipients: { principalType: string; principalId: string }[]) =>
         opts.projectUserIds ? recipients.filter((r) => opts.projectUserIds!.includes(r.principalId)) : recipients,
-      findAlertsForResources: async () => (opts.existingAlert ? [opts.existingAlert] : []),
+      findAlertChannelSummariesForResources: async () => (opts.existingAlert ? [opts.existingAlert] : []),
       createAlert: async (input: unknown) => {
         calls.push("alert:create");
         created.push(input);
@@ -382,8 +380,8 @@ describe("reminder alert sync", () => {
         name: "Reminder for OLD_NAME",
         resourceId: "secret-1",
         channels: [
-          { id: "ch-email", name: "Team email", channelType: "email", enabled: true, recipients: [] },
-          { id: "ch-hook", name: "Webhook", channelType: "webhook", enabled: false, recipients: [] }
+          { id: "ch-email", name: "Team email", channelType: "email", enabled: true },
+          { id: "ch-hook", name: "Webhook", channelType: "webhook", enabled: false }
         ]
       }
     });

@@ -16,7 +16,6 @@ import { TAlertServiceFactory } from "../alert/alert-service";
 import { AlertPrincipalType, MAX_RECIPIENTS_PER_CHANNEL } from "../alert/alert-types";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TReminderDALFactory } from "./reminder-dal";
@@ -37,13 +36,12 @@ type TReminderServiceFactoryDep = {
     TAlertServiceFactory,
     | "createAlert"
     | "updateAlert"
-    | "findAlertsForResources"
+    | "findAlertChannelSummariesForResources"
     | "findRecipientsForResources"
     | "deleteAlertsForDeletedResources"
     | "repointAlertsForResource"
     | "filterRecipientsInScope"
   >;
-  projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId" | "findOneWithTags">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
@@ -53,7 +51,6 @@ export const reminderServiceFactory = ({
   reminderDAL,
   eventEmitter,
   alertService,
-  projectDAL,
   permissionService,
   secretV2BridgeDAL,
   folderDAL
@@ -101,10 +98,7 @@ export const reminderServiceFactory = ({
     channels?: TAlertChannelInput[];
     actor: TGenericPermission;
   }) => {
-    const project = await projectDAL.findById(projectId);
-    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-
-    const [existing] = await alertService.findAlertsForResources({
+    const [existing] = await alertService.findAlertChannelSummariesForResources({
       resourceType: SECRET_REMINDER_RESOURCE_TYPE,
       resourceIds: [secretId]
     });
@@ -139,7 +133,7 @@ export const reminderServiceFactory = ({
     // Reminder recipients were never pruned when someone left the project, so drop them rather than fail.
     const requested = [...new Set(recipients ?? [])];
     const inScope = await alertService.filterRecipientsInScope(
-      { orgId: project.orgId, projectId },
+      { orgId: actor.actorOrgId, projectId },
       requested.map((principalId) => ({ principalType: AlertPrincipalType.USER, principalId }))
     );
     // Falling back to the whole project here would send the secret's key, path and note to people nobody
@@ -381,6 +375,9 @@ export const reminderServiceFactory = ({
     }
   };
 
+  // Deleting a reminder or its secret reaps the alert inline. This covers secrets removed by cascade
+  // (folder, environment or project deletion), which no reminder code sees and which nothing cascades
+  // to because alerts.resourceId has no foreign key.
   const reapOrphanedReminderAlerts: TReminderServiceFactory["reapOrphanedReminderAlerts"] = async () => {
     for (let batch = 0; batch < MAX_ORPHAN_REAP_BATCHES; batch += 1) {
       // eslint-disable-next-line no-await-in-loop -- each batch is its own short transaction

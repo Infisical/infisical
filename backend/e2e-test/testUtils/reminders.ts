@@ -54,6 +54,18 @@ export const getSecretReminder = (dto: { secretId: string; authToken: string }) 
     }
   );
 
+export const deleteSecretReminder = (dto: { secretId: string; authToken: string }) =>
+  request(
+    {
+      method: "DELETE",
+      url: `/api/v1/reminders/secrets/${dto.secretId}`,
+      headers: { authorization: `Bearer ${dto.authToken}` }
+    },
+    (res) => {
+      expect(res.statusCode).toBe(200);
+    }
+  );
+
 export const listSecretReminderAlerts = (dto: { projectId: string; secretId: string; authToken: string }) =>
   listAlerts({
     resourceType: SECRET_REMINDER_RESOURCE_TYPE,

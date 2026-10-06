@@ -25,8 +25,6 @@ import {
 } from "../alert-types";
 import { TReminderSecret, TSecretReminderAlertDALFactory } from "./secret-reminder-alert-dal";
 
-export { SECRET_REMINDER_DUE_EVENT, SECRET_REMINDER_RESOURCE_TYPE };
-
 const SecretReminderConditionSchema = z.object({}).nullish();
 
 export type TSecretReminderTarget = TReminderSecret & {

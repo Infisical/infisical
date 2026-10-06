@@ -1,15 +1,15 @@
 import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
-import { emitSecretReminderDue } from "@app/services/reminder/reminder-events";
+import {
+  emitSecretReminderDue,
+  SECRET_REMINDER_DUE_EVENT,
+  SECRET_REMINDER_RESOURCE_TYPE
+} from "@app/services/reminder/reminder-events";
 
 import { AlertPermissionAction, TAlertContext } from "../alert-types";
 import { TReminderSecret } from "./secret-reminder-alert-dal";
-import {
-  SECRET_REMINDER_DUE_EVENT,
-  SECRET_REMINDER_RESOURCE_TYPE,
-  secretReminderAlertProviderFactory
-} from "./secret-reminder-alert-provider";
+import { secretReminderAlertProviderFactory } from "./secret-reminder-alert-provider";
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({ SITE_URL: "https://app.infisical.com" })

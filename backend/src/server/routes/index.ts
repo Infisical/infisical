@@ -1543,7 +1543,6 @@ export const registerRoutes = async (
     reminderDAL,
     eventEmitter: eventOutboxService,
     alertService,
-    projectDAL,
     permissionService,
     secretV2BridgeDAL,
     folderDAL
