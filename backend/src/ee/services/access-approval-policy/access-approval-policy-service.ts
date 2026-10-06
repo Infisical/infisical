@@ -13,8 +13,8 @@ import {
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
-import { secretAccessApprovalPolicyExists } from "@app/services/secret-access-approval-policy-bridge/secret-access-approval-policy-bridge-fns";
-import { TSecretAccessApprovalPolicyBridgeServiceFactory } from "@app/services/secret-access-approval-policy-bridge/secret-access-approval-policy-bridge-service";
+import { secretAccessApprovalGlobalPolicyExists } from "@app/services/secret-access-approval-global-policy-bridge/secret-access-approval-global-policy-bridge-fns";
+import { TSecretAccessApprovalGlobalPolicyBridgeServiceFactory } from "@app/services/secret-access-approval-global-policy-bridge/secret-access-approval-global-policy-bridge-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAccessApprovalRequestDALFactory } from "../access-approval-request/access-approval-request-dal";
@@ -56,8 +56,8 @@ type TAccessApprovalPolicyServiceFactoryDep = {
     TApprovalPolicySecretEnvironmentDALFactory,
     "findPolicyByEnvIdsAndSecretPath"
   >;
-  secretAccessApprovalPolicyBridge: Pick<
-    TSecretAccessApprovalPolicyBridgeServiceFactory,
+  secretAccessApprovalGlobalPolicyBridge: Pick<
+    TSecretAccessApprovalGlobalPolicyBridgeServiceFactory,
     | "updateAccessApprovalPolicy"
     | "deleteAccessApprovalPolicy"
     | "getAccessApprovalPolicyById"
@@ -81,7 +81,7 @@ export const accessApprovalPolicyServiceFactory = ({
   accessApprovalRequestReviewerDAL,
   approvalPolicyDAL,
   approvalPolicySecretEnvironmentDAL,
-  secretAccessApprovalPolicyBridge
+  secretAccessApprovalGlobalPolicyBridge
 }: TAccessApprovalPolicyServiceFactoryDep): TAccessApprovalPolicyServiceFactory => {
   const $usesGlobalApprovalBridge = async (policyId: string) => {
     const globalPolicy = await approvalPolicyDAL.findOne({ id: policyId, type: ApprovalPolicyType.SecretAccess });
@@ -89,10 +89,10 @@ export const accessApprovalPolicyServiceFactory = ({
   };
 
   const $listGlobalApprovalPolicies = (projectId: string) =>
-    secretAccessApprovalPolicyBridge.listAccessApprovalPolicies({ projectId });
+    secretAccessApprovalGlobalPolicyBridge.listAccessApprovalPolicies({ projectId });
 
   const $countGlobalApprovalPolicies = (projectId: string, envId: string) =>
-    secretAccessApprovalPolicyBridge.countAccessApprovalPolicies({ projectId, envId });
+    secretAccessApprovalGlobalPolicyBridge.countAccessApprovalPolicies({ projectId, envId });
 
   const $policyExists = async ({
     envId,
@@ -110,7 +110,7 @@ export const accessApprovalPolicyServiceFactory = ({
       throw new BadRequestError({ message: "Must provide either envId or envIds" });
     }
 
-    const conflictingEnvId = await secretAccessApprovalPolicyExists(
+    const conflictingEnvId = await secretAccessApprovalGlobalPolicyExists(
       { envIds: resolvedEnvIds, secretPath, excludePolicyId: policyId },
       { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL }
     );
@@ -383,7 +383,7 @@ export const accessApprovalPolicyServiceFactory = ({
     requestExpirationTime
   }: TUpdateAccessApprovalPolicy) => {
     if (await $usesGlobalApprovalBridge(policyId)) {
-      return secretAccessApprovalPolicyBridge.updateAccessApprovalPolicy({
+      return secretAccessApprovalGlobalPolicyBridge.updateAccessApprovalPolicy({
         policyId,
         approvers,
         bypassers,
@@ -659,7 +659,7 @@ export const accessApprovalPolicyServiceFactory = ({
     actorOrgId
   }: TDeleteAccessApprovalPolicy) => {
     if (await $usesGlobalApprovalBridge(policyId)) {
-      return secretAccessApprovalPolicyBridge.deleteAccessApprovalPolicy({
+      return secretAccessApprovalGlobalPolicyBridge.deleteAccessApprovalPolicy({
         policyId,
         actor,
         actorId,
@@ -760,7 +760,7 @@ export const accessApprovalPolicyServiceFactory = ({
     policyId
   }) => {
     if (await $usesGlobalApprovalBridge(policyId)) {
-      return secretAccessApprovalPolicyBridge.getAccessApprovalPolicyById({
+      return secretAccessApprovalGlobalPolicyBridge.getAccessApprovalPolicyById({
         policyId,
         actor,
         actorId,

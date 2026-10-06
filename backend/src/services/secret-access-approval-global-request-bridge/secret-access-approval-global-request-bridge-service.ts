@@ -40,21 +40,21 @@ import {
   notifySecretAccessBypass,
   notifySecretAccessStepApprovers,
   toLegacyAccessApprovalRequest
-} from "./secret-access-approval-request-bridge-fns";
+} from "./secret-access-approval-global-request-bridge-fns";
 import {
-  TCountSecretAccessApprovalRequestsDTO,
-  TCreateSecretAccessApprovalRequestDTO,
-  TListSecretAccessApprovalRequestsDTO,
-  TReviewSecretAccessApprovalRequestDTO,
-  TRevokeSecretAccessApprovalRequestDTO,
-  TSecretAccessApprovalRequestBridgeServiceFactoryDep
-} from "./secret-access-approval-request-bridge-types";
+  TCountSecretAccessApprovalGlobalRequestsDTO,
+  TCreateSecretAccessApprovalGlobalRequestDTO,
+  TListSecretAccessApprovalGlobalRequestsDTO,
+  TReviewSecretAccessApprovalGlobalRequestDTO,
+  TRevokeSecretAccessApprovalGlobalRequestDTO,
+  TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep
+} from "./secret-access-approval-global-request-bridge-types";
 
-export type TSecretAccessApprovalRequestBridgeServiceFactory = ReturnType<
-  typeof secretAccessApprovalRequestBridgeServiceFactory
+export type TSecretAccessApprovalGlobalRequestBridgeServiceFactory = ReturnType<
+  typeof secretAccessApprovalGlobalRequestBridgeServiceFactory
 >;
 
-export const secretAccessApprovalRequestBridgeServiceFactory = ({
+export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
   projectDAL,
   permissionService,
   userDAL,
@@ -65,8 +65,8 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
   approvalRequestApprovalsDAL,
   approvalRequestGrantsDAL,
   additionalPrivilegeDAL,
-  secretAccessApprovalPolicyBridgeDAL,
-  secretAccessApprovalRequestBridgeDAL,
+  secretAccessApprovalGlobalPolicyBridgeDAL,
+  secretAccessApprovalGlobalRequestBridgeDAL,
   smtpService,
   notificationService,
   kmsService,
@@ -74,23 +74,23 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
   microsoftTeamsService,
   projectMicrosoftTeamsConfigDAL,
   queueService,
-  secretAccessApprovalResource
-}: TSecretAccessApprovalRequestBridgeServiceFactoryDep) => {
+  secretAccessApprovalGlobalResource
+}: TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep) => {
   const $findPolicyById = async (policyId: string, message: string) => {
-    const [policy] = await secretAccessApprovalPolicyBridgeDAL.findSecretAccessPolicies({ policyId });
+    const [policy] = await secretAccessApprovalGlobalPolicyBridgeDAL.findSecretAccessPolicies({ policyId });
     if (!policy) throw new NotFoundError({ message });
     return policy;
   };
 
   const $findRequestById = async (requestId: string) => {
-    const request = await secretAccessApprovalRequestBridgeDAL.findSecretAccessRequestById(requestId);
+    const request = await secretAccessApprovalGlobalRequestBridgeDAL.findSecretAccessRequestById(requestId);
     if (!request) throw new NotFoundError({ message: `Access request with ID '${requestId}' not found` });
     return request;
   };
 
   const $findRequestByIdFromPrimary = async (requestId: string) => {
     const request = await approvalRequestDAL.transaction((tx) =>
-      secretAccessApprovalRequestBridgeDAL.findSecretAccessRequestById(requestId, tx)
+      secretAccessApprovalGlobalRequestBridgeDAL.findSecretAccessRequestById(requestId, tx)
     );
     if (!request) throw new NotFoundError({ message: `Access request with ID '${requestId}' not found` });
     return request;
@@ -102,25 +102,25 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
   };
 
   const $loadRequestRows = async (filter: { projectId: string; policyId?: string; requesterId?: string }) => {
-    const requests = await secretAccessApprovalRequestBridgeDAL.findSecretAccessRequests(filter);
+    const requests = await secretAccessApprovalGlobalRequestBridgeDAL.findSecretAccessRequests(filter);
     if (!requests.length) return [];
 
     const requestIds = requests.map((request) => request.id);
     const [policies, grants, approvals] = await Promise.all([
-      secretAccessApprovalPolicyBridgeDAL.findSecretAccessPolicies({ projectId: filter.projectId }),
-      secretAccessApprovalRequestBridgeDAL.findGrantsByRequestIds(requestIds),
-      secretAccessApprovalRequestBridgeDAL.findApprovalsByRequestIds(requestIds)
+      secretAccessApprovalGlobalPolicyBridgeDAL.findSecretAccessPolicies({ projectId: filter.projectId }),
+      secretAccessApprovalGlobalRequestBridgeDAL.findGrantsByRequestIds(requestIds),
+      secretAccessApprovalGlobalRequestBridgeDAL.findApprovalsByRequestIds(requestIds)
     ]);
 
     const [privileges, groupMembers] = await Promise.all([
-      secretAccessApprovalRequestBridgeDAL.findPrivilegesByGrantIds(grants.map((grant) => grant.id)),
-      secretAccessApprovalRequestBridgeDAL.findGroupMembers(collectSecretAccessPolicyGroupIds(policies))
+      secretAccessApprovalGlobalRequestBridgeDAL.findPrivilegesByGrantIds(grants.map((grant) => grant.id)),
+      secretAccessApprovalGlobalRequestBridgeDAL.findGroupMembers(collectSecretAccessPolicyGroupIds(policies))
     ]);
 
     const userIds = collectSecretAccessRequestUserIds({ requests, policies, grants, approvals, groupMembers });
     const [users, orgMemberships] = await Promise.all([
-      secretAccessApprovalRequestBridgeDAL.findUsersByIds(userIds),
-      secretAccessApprovalRequestBridgeDAL.findOrgMembershipActivity(requests[0].organizationId, userIds)
+      secretAccessApprovalGlobalRequestBridgeDAL.findUsersByIds(userIds),
+      secretAccessApprovalGlobalRequestBridgeDAL.findOrgMembershipActivity(requests[0].organizationId, userIds)
     ]);
 
     return composeSecretAccessRequestRows({
@@ -135,7 +135,7 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
     });
   };
 
-  const listAccessApprovalRequests = async ({ projectId }: TListSecretAccessApprovalRequestsDTO) => {
+  const listAccessApprovalRequests = async ({ projectId }: TListSecretAccessApprovalGlobalRequestsDTO) => {
     const rows = await $loadRequestRows({ projectId });
 
     return rows.flatMap((row) => {
@@ -173,7 +173,7 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
     projectId,
     policyId,
     requesterId
-  }: TCountSecretAccessApprovalRequestsDTO) => {
+  }: TCountSecretAccessApprovalGlobalRequestsDTO) => {
     const rows = await $loadRequestRows({ projectId, policyId, requesterId });
     const now = new Date();
 
@@ -290,7 +290,7 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
     isTemporary,
     temporaryRange,
     note
-  }: TCreateSecretAccessApprovalRequestDTO) => {
+  }: TCreateSecretAccessApprovalGlobalRequestDTO) => {
     const requestData: TSecretAccessRequestData = {
       permissions,
       isTemporary,
@@ -301,7 +301,7 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
       throw new BadRequestError({ message: "A temporary range is required for temporary requests" });
     }
 
-    const constraintValidation = secretAccessApprovalResource.validateConstraints(policy, requestData);
+    const constraintValidation = secretAccessApprovalGlobalResource.validateConstraints(policy, requestData);
     if (!constraintValidation.valid) {
       throw new BadRequestError({ message: constraintValidation.errors?.join("; ") ?? "Policy constraints not met" });
     }
@@ -316,7 +316,7 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
       throw new BadRequestError({ message: `Policy '${policy.name}' has no approvers configured` });
     }
 
-    const activeGrant = await secretAccessApprovalResource.canAccess(projectId, requestedByUserId, {
+    const activeGrant = await secretAccessApprovalGlobalResource.canAccess(projectId, requestedByUserId, {
       envId,
       secretPath,
       permissions,
@@ -326,7 +326,7 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
       throw new BadRequestError({ message: "You already have an active privilege with the same criteria" });
     }
 
-    const pendingRequests = await secretAccessApprovalRequestBridgeDAL.findPendingRequests({
+    const pendingRequests = await secretAccessApprovalGlobalRequestBridgeDAL.findPendingRequests({
       policyId: policy.id,
       requesterId: requestedByUserId
     });
@@ -408,7 +408,7 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
     actorId,
     actorOrgId,
     actorAuthMethod
-  }: TReviewSecretAccessApprovalRequestDTO) => {
+  }: TReviewSecretAccessApprovalGlobalRequestDTO) => {
     const request = await $findRequestById(requestId);
     if (!request.policyId) {
       throw new BadRequestError({ message: "The policy associated with this access request has been deleted." });
@@ -523,7 +523,7 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
       const isEligible =
         actor === ActorType.USER &&
         isSelfReview &&
-        (await secretAccessApprovalResource.isBreakGlassEligible({
+        (await secretAccessApprovalGlobalResource.isBreakGlassEligible({
           policy,
           bypassers: policy.bypassers,
           actor: { id: actorId },
@@ -577,7 +577,7 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
           ));
 
         const approved = await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Approved }, tx);
-        await secretAccessApprovalResource.postApprovalTxRoutine(approved as TApprovalRequest, tx, {
+        await secretAccessApprovalGlobalResource.postApprovalTxRoutine(approved as TApprovalRequest, tx, {
           bypassReason: trimmedBypassReason
         });
 
@@ -697,7 +697,7 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
       }
 
       await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Approved }, tx);
-      await secretAccessApprovalResource.postApprovalTxRoutine(locked as TApprovalRequest, tx);
+      await secretAccessApprovalGlobalResource.postApprovalTxRoutine(locked as TApprovalRequest, tx);
 
       return { approval: createdApproval, nextStep: null };
     });
@@ -751,7 +751,7 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
     actorId,
     actorOrgId,
     actorAuthMethod
-  }: TRevokeSecretAccessApprovalRequestDTO) => {
+  }: TRevokeSecretAccessApprovalGlobalRequestDTO) => {
     const request = await $findRequestById(requestId);
     if (!request.requesterId) {
       throw new NotFoundError({ message: "The user who created this access request no longer exists" });
@@ -777,7 +777,7 @@ export const secretAccessApprovalRequestBridgeServiceFactory = ({
     const canGrantPrivilegesLegacy = permission.can(ProjectPermissionMemberActions.GrantPrivileges, memberSubject);
 
     const [policy] = request.policyId
-      ? await secretAccessApprovalPolicyBridgeDAL.findSecretAccessPolicies({ policyId: request.policyId })
+      ? await secretAccessApprovalGlobalPolicyBridgeDAL.findSecretAccessPolicies({ policyId: request.policyId })
       : [];
 
     let isApprover = false;

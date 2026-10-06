@@ -8,7 +8,7 @@ import { TApprovalPolicySecretEnvironmentDALFactory } from "@app/services/approv
 import { ApprovalRequestGrantStatus, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalRequestGrantsDALFactory } from "@app/services/approval-policy/approval-request-dal";
 
-type TSecretAccessApprovalPolicyExistsDep = {
+type TSecretAccessApprovalGlobalPolicyExistsDep = {
   accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath">;
   approvalPolicySecretEnvironmentDAL: Pick<
     TApprovalPolicySecretEnvironmentDALFactory,
@@ -16,9 +16,9 @@ type TSecretAccessApprovalPolicyExistsDep = {
   >;
 };
 
-export const secretAccessApprovalPolicyExists = async (
+export const secretAccessApprovalGlobalPolicyExists = async (
   { envIds, secretPath, excludePolicyId }: { envIds: string[]; secretPath: string; excludePolicyId?: string },
-  { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL }: TSecretAccessApprovalPolicyExistsDep,
+  { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL }: TSecretAccessApprovalGlobalPolicyExistsDep,
   tx?: Knex
 ) => {
   const legacyPolicy = await accessApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath(

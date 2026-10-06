@@ -18,11 +18,11 @@ import { resolveStepApproverUserIds } from "@app/services/approval-policy/approv
 import { getSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-fns";
 import { TSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
 import { NotificationType } from "@app/services/notification/notification-types";
-import { TSecretAccessApprovalPolicyBridgeDALFactory } from "@app/services/secret-access-approval-policy-bridge/secret-access-approval-policy-bridge-dal";
+import { TSecretAccessApprovalGlobalPolicyBridgeDALFactory } from "@app/services/secret-access-approval-global-policy-bridge/secret-access-approval-global-policy-bridge-dal";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 
-import { TSecretAccessApprovalRequestBridgeDALFactory } from "./secret-access-approval-request-bridge-dal";
-import { TSecretAccessApprovalRequestBridgeServiceFactoryDep } from "./secret-access-approval-request-bridge-types";
+import { TSecretAccessApprovalGlobalRequestBridgeDALFactory } from "./secret-access-approval-global-request-bridge-dal";
+import { TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep } from "./secret-access-approval-global-request-bridge-types";
 
 export type TSecretAccessRequestRow = TApprovalRequests & {
   grant: TApprovalRequestGrants | null;
@@ -107,7 +107,7 @@ export const toLegacyAccessApprovalRequest = (
 };
 
 type TNotifySecretAccessStepApproversDep = Pick<
-  TSecretAccessApprovalRequestBridgeServiceFactoryDep,
+  TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep,
   | "userDAL"
   | "userGroupMembershipDAL"
   | "projectDAL"
@@ -227,7 +227,7 @@ export const notifySecretAccessStepApprovers = async (
 };
 
 type TNotifySecretAccessBypassDep = Pick<
-  TSecretAccessApprovalRequestBridgeServiceFactoryDep,
+  TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep,
   "userDAL" | "userGroupMembershipDAL" | "notificationService" | "smtpService"
 >;
 
@@ -301,10 +301,10 @@ export const notifySecretAccessBypass = async (
 };
 
 type TSecretAccessPolicyRow = Awaited<
-  ReturnType<TSecretAccessApprovalPolicyBridgeDALFactory["findSecretAccessPolicies"]>
+  ReturnType<TSecretAccessApprovalGlobalPolicyBridgeDALFactory["findSecretAccessPolicies"]>
 >[number];
 type TApprovalWithRequestId = Awaited<
-  ReturnType<TSecretAccessApprovalRequestBridgeDALFactory["findApprovalsByRequestIds"]>
+  ReturnType<TSecretAccessApprovalGlobalRequestBridgeDALFactory["findApprovalsByRequestIds"]>
 >[number];
 
 export type TSecretAccessRequestListInput = {

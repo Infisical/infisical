@@ -17,9 +17,11 @@ const parseConstraints = (constraints: unknown) => {
   return { allowedSelfApprovals: true, requestExpirationTime: null, maxTimePeriod: null };
 };
 
-export type TSecretAccessApprovalPolicyBridgeDALFactory = ReturnType<typeof secretAccessApprovalPolicyBridgeDALFactory>;
+export type TSecretAccessApprovalGlobalPolicyBridgeDALFactory = ReturnType<
+  typeof secretAccessApprovalGlobalPolicyBridgeDALFactory
+>;
 
-export const secretAccessApprovalPolicyBridgeDALFactory = (db: TDbClient) => {
+export const secretAccessApprovalGlobalPolicyBridgeDALFactory = (db: TDbClient) => {
   const findSecretAccessPolicies = async (
     {
       policyId,

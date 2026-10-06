@@ -18,20 +18,20 @@ import { ActorType } from "@app/services/auth/auth-type";
 import {
   buildSecretAccessPolicySteps,
   revokeActiveSecretAccessGrants,
-  secretAccessApprovalPolicyExists
-} from "./secret-access-approval-policy-bridge-fns";
+  secretAccessApprovalGlobalPolicyExists
+} from "./secret-access-approval-global-policy-bridge-fns";
 import {
-  TCountSecretAccessApprovalPoliciesDTO,
-  TCreateSecretAccessApprovalPolicyDTO,
-  TDeleteSecretAccessApprovalPolicyDTO,
-  TGetSecretAccessApprovalPolicyByIdDTO,
-  TListSecretAccessApprovalPoliciesDTO,
-  TSecretAccessApprovalPolicyBridgeServiceFactoryDep,
-  TUpdateSecretAccessApprovalPolicyDTO
-} from "./secret-access-approval-policy-bridge-types";
+  TCountSecretAccessApprovalGlobalPoliciesDTO,
+  TCreateSecretAccessApprovalGlobalPolicyDTO,
+  TDeleteSecretAccessApprovalGlobalPolicyDTO,
+  TGetSecretAccessApprovalGlobalPolicyByIdDTO,
+  TListSecretAccessApprovalGlobalPoliciesDTO,
+  TSecretAccessApprovalGlobalPolicyBridgeServiceFactoryDep,
+  TUpdateSecretAccessApprovalGlobalPolicyDTO
+} from "./secret-access-approval-global-policy-bridge-types";
 
-export type TSecretAccessApprovalPolicyBridgeServiceFactory = ReturnType<
-  typeof secretAccessApprovalPolicyBridgeServiceFactory
+export type TSecretAccessApprovalGlobalPolicyBridgeServiceFactory = ReturnType<
+  typeof secretAccessApprovalGlobalPolicyBridgeServiceFactory
 >;
 
 type TApproverInput = TCreateAccessApprovalPolicy["approvers"];
@@ -42,7 +42,7 @@ type TPolicyStep = {
   approvers: { type: ApproverType; id: string }[];
 };
 
-export const secretAccessApprovalPolicyBridgeServiceFactory = ({
+export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
   projectDAL,
   permissionService,
   projectEnvDAL,
@@ -54,13 +54,13 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
   approvalPolicyStepApproversDAL,
   approvalPolicyBypassersDAL,
   approvalPolicySecretEnvironmentDAL,
-  secretAccessApprovalPolicyBridgeDAL,
+  secretAccessApprovalGlobalPolicyBridgeDAL,
   approvalRequestDAL,
   approvalRequestStepsDAL,
   approvalRequestStepEligibleApproversDAL,
   approvalRequestGrantsDAL,
   additionalPrivilegeDAL
-}: TSecretAccessApprovalPolicyBridgeServiceFactoryDep) => {
+}: TSecretAccessApprovalGlobalPolicyBridgeServiceFactoryDep) => {
   const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });
 
   const $splitApprovers = (approvers: TApproverInput) => ({
@@ -253,7 +253,7 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     projectId
-  }: Pick<TUpdateSecretAccessApprovalPolicyDTO, "actor" | "actorId" | "actorAuthMethod" | "actorOrgId"> & {
+  }: Pick<TUpdateSecretAccessApprovalGlobalPolicyDTO, "actor" | "actorId" | "actorAuthMethod" | "actorOrgId"> & {
     projectId: string;
   }) => {
     const { permission } = await permissionService.getProjectPermission({
@@ -289,7 +289,10 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
   };
 
   const $findPolicyById = async (policyId: string, organizationId: string, message: string) => {
-    const [policy] = await secretAccessApprovalPolicyBridgeDAL.findSecretAccessPolicies({ policyId, organizationId });
+    const [policy] = await secretAccessApprovalGlobalPolicyBridgeDAL.findSecretAccessPolicies({
+      policyId,
+      organizationId
+    });
     if (!policy) throw new NotFoundError({ message });
     return policy;
   };
@@ -304,7 +307,7 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
   ) => {
     if (!envs.length) return;
 
-    const conflictingEnvId = await secretAccessApprovalPolicyExists(
+    const conflictingEnvId = await secretAccessApprovalGlobalPolicyExists(
       { envIds: envs.map((env) => env.id), secretPath, excludePolicyId },
       { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL },
       tx
@@ -337,7 +340,7 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
     approvalsRequired,
     maxTimePeriod,
     requestExpirationTime
-  }: TCreateSecretAccessApprovalPolicyDTO) => {
+  }: TCreateSecretAccessApprovalGlobalPolicyDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
@@ -440,7 +443,7 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
     environments,
     maxTimePeriod,
     requestExpirationTime
-  }: TUpdateSecretAccessApprovalPolicyDTO) => {
+  }: TUpdateSecretAccessApprovalGlobalPolicyDTO) => {
     const policy = await $findPolicyById(
       policyId,
       actorOrgId,
@@ -512,7 +515,7 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
         await $resetPendingRequestSteps({ policyId: policy.id, steps }, tx);
       }
 
-      const [updatedPolicy] = await secretAccessApprovalPolicyBridgeDAL.findSecretAccessPolicies(
+      const [updatedPolicy] = await secretAccessApprovalGlobalPolicyBridgeDAL.findSecretAccessPolicies(
         { policyId: policy.id },
         tx
       );
@@ -526,7 +529,7 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId
-  }: TDeleteSecretAccessApprovalPolicyDTO) => {
+  }: TDeleteSecretAccessApprovalGlobalPolicyDTO) => {
     const policy = await $findPolicyById(
       policyId,
       actorOrgId,
@@ -574,7 +577,7 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId
-  }: TGetSecretAccessApprovalPolicyByIdDTO) => {
+  }: TGetSecretAccessApprovalGlobalPolicyByIdDTO) => {
     const policy = await $findPolicyById(
       policyId,
       actorOrgId,
@@ -593,11 +596,11 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
     return policy;
   };
 
-  const listAccessApprovalPolicies = ({ projectId }: TListSecretAccessApprovalPoliciesDTO) =>
-    secretAccessApprovalPolicyBridgeDAL.findSecretAccessPolicies({ projectId });
+  const listAccessApprovalPolicies = ({ projectId }: TListSecretAccessApprovalGlobalPoliciesDTO) =>
+    secretAccessApprovalGlobalPolicyBridgeDAL.findSecretAccessPolicies({ projectId });
 
-  const countAccessApprovalPolicies = async ({ projectId, envId }: TCountSecretAccessApprovalPoliciesDTO) => {
-    const policies = await secretAccessApprovalPolicyBridgeDAL.findSecretAccessPolicies({ projectId, envId });
+  const countAccessApprovalPolicies = async ({ projectId, envId }: TCountSecretAccessApprovalGlobalPoliciesDTO) => {
+    const policies = await secretAccessApprovalGlobalPolicyBridgeDAL.findSecretAccessPolicies({ projectId, envId });
     return policies.length;
   };
 

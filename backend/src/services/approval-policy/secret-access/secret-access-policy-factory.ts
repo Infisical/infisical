@@ -16,19 +16,19 @@ import {
 import { SecretAccessPolicyRequestDataSchema } from "./secret-access-policy-schemas";
 import { TSecretAccessPolicy, TSecretAccessPolicyInputs, TSecretAccessRequestData } from "./secret-access-policy-types";
 
-type TSecretAccessApprovalResourceDep = {
+type TSecretAccessApprovalGlobalResourceDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findSecretAccessPolicyByEnvIdAndSecretPath">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "find" | "create">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create">;
 };
 
-export type TSecretAccessApprovalResource = ReturnType<typeof secretAccessApprovalResourceFactory>;
+export type TSecretAccessApprovalGlobalResource = ReturnType<typeof secretAccessApprovalGlobalResourceFactory>;
 
-export const secretAccessApprovalResourceFactory = ({
+export const secretAccessApprovalGlobalResourceFactory = ({
   approvalPolicyDAL,
   approvalRequestGrantsDAL,
   additionalPrivilegeDAL
-}: TSecretAccessApprovalResourceDep) =>
+}: TSecretAccessApprovalGlobalResourceDep) =>
   ({
     matchPolicy: async (projectId, inputs) => {
       const policy = await approvalPolicyDAL.findSecretAccessPolicyByEnvIdAndSecretPath({

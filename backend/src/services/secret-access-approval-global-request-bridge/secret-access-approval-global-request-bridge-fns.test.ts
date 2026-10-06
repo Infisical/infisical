@@ -16,7 +16,7 @@ import {
   isPolicySubjectMatch,
   toLegacyAccessApprovalRequest,
   TSecretAccessRequestListInput
-} from "./secret-access-approval-request-bridge-fns";
+} from "./secret-access-approval-global-request-bridge-fns";
 
 type TRequest = TSecretAccessRequestListInput["requests"][number];
 type TPolicy = TSecretAccessRequestListInput["policies"][number];

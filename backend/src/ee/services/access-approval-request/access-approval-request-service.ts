@@ -16,7 +16,7 @@ import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integr
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import { TSecretAccessApprovalResource } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
+import { TSecretAccessApprovalGlobalResource } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
 import {
   TSecretAccessPolicy,
   TSecretAccessPolicyInputs
@@ -27,7 +27,7 @@ import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/mic
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
-import { TSecretAccessApprovalRequestBridgeServiceFactory } from "@app/services/secret-access-approval-request-bridge/secret-access-approval-request-bridge-service";
+import { TSecretAccessApprovalGlobalRequestBridgeServiceFactory } from "@app/services/secret-access-approval-global-request-bridge/secret-access-approval-global-request-bridge-service";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -76,9 +76,9 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "getCount"
   >;
   accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findOne" | "find" | "findLastValidPolicy">;
-  secretAccessApprovalResource: Pick<TSecretAccessApprovalResource, "matchPolicy">;
-  secretAccessApprovalRequestBridge: Pick<
-    TSecretAccessApprovalRequestBridgeServiceFactory,
+  secretAccessApprovalGlobalResource: Pick<TSecretAccessApprovalGlobalResource, "matchPolicy">;
+  secretAccessApprovalGlobalRequestBridge: Pick<
+    TSecretAccessApprovalGlobalRequestBridgeServiceFactory,
     | "createAccessApprovalRequest"
     | "listAccessApprovalRequests"
     | "countAccessApprovalRequests"
@@ -120,8 +120,8 @@ export const accessApprovalRequestServiceFactory = ({
   accessApprovalRequestReviewerDAL,
   accessApprovalPolicyDAL,
   accessApprovalPolicyApproverDAL,
-  secretAccessApprovalResource,
-  secretAccessApprovalRequestBridge,
+  secretAccessApprovalGlobalResource,
+  secretAccessApprovalGlobalRequestBridge,
   additionalPrivilegeDAL,
   smtpService,
   userDAL,
@@ -250,7 +250,7 @@ export const accessApprovalRequestServiceFactory = ({
   }: TSecretAccessPolicyInputs & { projectId: string }): Promise<TApprovalPolicyRouting> => {
     const [legacyPolicy, globalPolicy] = await Promise.all([
       accessApprovalPolicyDAL.findLastValidPolicy({ envId: inputs.envId, secretPath: inputs.secretPath }),
-      secretAccessApprovalResource.matchPolicy(projectId, inputs)
+      secretAccessApprovalGlobalResource.matchPolicy(projectId, inputs)
     ]);
 
     if (globalPolicy) {
@@ -306,7 +306,7 @@ export const accessApprovalRequestServiceFactory = ({
     });
 
     if (approvalBridge.usesGlobalBridge) {
-      return secretAccessApprovalRequestBridge.createAccessApprovalRequest({
+      return secretAccessApprovalGlobalRequestBridge.createAccessApprovalRequest({
         policy: approvalBridge.globalPolicy,
         projectId: project.id,
         envId: environment.id,
@@ -528,7 +528,7 @@ export const accessApprovalRequestServiceFactory = ({
     editNote,
     requestId
   }) => {
-    if (await secretAccessApprovalRequestBridge.isGlobalAccessApprovalRequest(requestId)) {
+    if (await secretAccessApprovalGlobalRequestBridge.isGlobalAccessApprovalRequest(requestId)) {
       throw new BadRequestError({ message: "Access requests on the global approval system cannot be edited" });
     }
 
@@ -737,7 +737,7 @@ export const accessApprovalRequestServiceFactory = ({
     const policies = await accessApprovalPolicyDAL.find({ projectId });
     const [legacyRequests, globalRequests] = await Promise.all([
       accessApprovalRequestDAL.findRequestsWithPrivilegeByPolicyIds(policies.map((p) => p.id)),
-      secretAccessApprovalRequestBridge.listAccessApprovalRequests({ projectId })
+      secretAccessApprovalGlobalRequestBridge.listAccessApprovalRequests({ projectId })
     ]);
     return [...legacyRequests, ...globalRequests];
   };
@@ -804,8 +804,8 @@ export const accessApprovalRequestServiceFactory = ({
     actorOrgId,
     bypassReason
   }) => {
-    if (await secretAccessApprovalRequestBridge.isGlobalAccessApprovalRequest(requestId)) {
-      return secretAccessApprovalRequestBridge.reviewAccessApprovalRequest({
+    if (await secretAccessApprovalGlobalRequestBridge.isGlobalAccessApprovalRequest(requestId)) {
+      return secretAccessApprovalGlobalRequestBridge.reviewAccessApprovalRequest({
         requestId,
         actor,
         status,
@@ -1172,8 +1172,8 @@ export const accessApprovalRequestServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }) => {
-    if (await secretAccessApprovalRequestBridge.isGlobalAccessApprovalRequest(requestId)) {
-      return secretAccessApprovalRequestBridge.revokeAccessApprovalRequest({
+    if (await secretAccessApprovalGlobalRequestBridge.isGlobalAccessApprovalRequest(requestId)) {
+      return secretAccessApprovalGlobalRequestBridge.revokeAccessApprovalRequest({
         requestId,
         actor,
         actorId,
@@ -1276,7 +1276,7 @@ export const accessApprovalRequestServiceFactory = ({
   }) => {
     const [legacyCount, globalCount] = await Promise.all([
       accessApprovalRequestDAL.getCount({ projectId, policyId, requestedByUserId }),
-      secretAccessApprovalRequestBridge.countAccessApprovalRequests({
+      secretAccessApprovalGlobalRequestBridge.countAccessApprovalRequests({
         projectId,
         policyId,
         requesterId: requestedByUserId

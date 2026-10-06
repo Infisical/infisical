@@ -25,9 +25,9 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { TSecretAccessApprovalPolicyBridgeDALFactory } from "./secret-access-approval-policy-bridge-dal";
+import { TSecretAccessApprovalGlobalPolicyBridgeDALFactory } from "./secret-access-approval-global-policy-bridge-dal";
 
-export type TSecretAccessApprovalPolicyBridgeServiceFactoryDep = {
+export type TSecretAccessApprovalGlobalPolicyBridgeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findEffectiveProjectSubjectsMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
@@ -47,13 +47,16 @@ export type TSecretAccessApprovalPolicyBridgeServiceFactoryDep = {
   approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "update">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  secretAccessApprovalPolicyBridgeDAL: Pick<TSecretAccessApprovalPolicyBridgeDALFactory, "findSecretAccessPolicies">;
+  secretAccessApprovalGlobalPolicyBridgeDAL: Pick<
+    TSecretAccessApprovalGlobalPolicyBridgeDALFactory,
+    "findSecretAccessPolicies"
+  >;
 };
 
-export type TCreateSecretAccessApprovalPolicyDTO = TCreateAccessApprovalPolicy;
-export type TUpdateSecretAccessApprovalPolicyDTO = TUpdateAccessApprovalPolicy;
-export type TDeleteSecretAccessApprovalPolicyDTO = TDeleteAccessApprovalPolicy;
-export type TGetSecretAccessApprovalPolicyByIdDTO = TGetAccessApprovalPolicyByIdDTO;
+export type TCreateSecretAccessApprovalGlobalPolicyDTO = TCreateAccessApprovalPolicy;
+export type TUpdateSecretAccessApprovalGlobalPolicyDTO = TUpdateAccessApprovalPolicy;
+export type TDeleteSecretAccessApprovalGlobalPolicyDTO = TDeleteAccessApprovalPolicy;
+export type TGetSecretAccessApprovalGlobalPolicyByIdDTO = TGetAccessApprovalPolicyByIdDTO;
 
-export type TListSecretAccessApprovalPoliciesDTO = { projectId: string };
-export type TCountSecretAccessApprovalPoliciesDTO = { projectId: string; envId: string };
+export type TListSecretAccessApprovalGlobalPoliciesDTO = { projectId: string };
+export type TCountSecretAccessApprovalGlobalPoliciesDTO = { projectId: string; envId: string };

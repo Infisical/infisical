@@ -278,7 +278,7 @@ import {
 } from "@app/services/approval-policy/approval-request-dal";
 import { certRequestApprovalResourceFactory } from "@app/services/approval-policy/cert-request/cert-request-policy-factory";
 import { codeSigningApprovalResourceFactory } from "@app/services/approval-policy/code-signing/code-signing-policy-factory";
-import { secretAccessApprovalResourceFactory } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
+import { secretAccessApprovalGlobalResourceFactory } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
 import { authDALFactory } from "@app/services/auth/auth-dal";
 import { authLoginServiceFactory } from "@app/services/auth/auth-login-service";
 import { authPaswordServiceFactory } from "@app/services/auth/auth-password-service";
@@ -512,10 +512,10 @@ import { secretQueueFactory } from "@app/services/secret/secret-queue";
 import { secretServiceFactory } from "@app/services/secret/secret-service";
 import { secretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { secretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
-import { secretAccessApprovalPolicyBridgeDALFactory } from "@app/services/secret-access-approval-policy-bridge/secret-access-approval-policy-bridge-dal";
-import { secretAccessApprovalPolicyBridgeServiceFactory } from "@app/services/secret-access-approval-policy-bridge/secret-access-approval-policy-bridge-service";
-import { secretAccessApprovalRequestBridgeDALFactory } from "@app/services/secret-access-approval-request-bridge/secret-access-approval-request-bridge-dal";
-import { secretAccessApprovalRequestBridgeServiceFactory } from "@app/services/secret-access-approval-request-bridge/secret-access-approval-request-bridge-service";
+import { secretAccessApprovalGlobalPolicyBridgeDALFactory } from "@app/services/secret-access-approval-global-policy-bridge/secret-access-approval-global-policy-bridge-dal";
+import { secretAccessApprovalGlobalPolicyBridgeServiceFactory } from "@app/services/secret-access-approval-global-policy-bridge/secret-access-approval-global-policy-bridge-service";
+import { secretAccessApprovalGlobalRequestBridgeDALFactory } from "@app/services/secret-access-approval-global-request-bridge/secret-access-approval-global-request-bridge-dal";
+import { secretAccessApprovalGlobalRequestBridgeServiceFactory } from "@app/services/secret-access-approval-global-request-bridge/secret-access-approval-global-request-bridge-service";
 import { secretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
 import { secretBlindIndexServiceFactory } from "@app/services/secret-blind-index/secret-blind-index-service";
 import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -1813,8 +1813,8 @@ export const registerRoutes = async (
   const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
   const approvalPolicyBypassersDAL = approvalPolicyBypassersDALFactory(db);
   const approvalPolicySecretEnvironmentDAL = approvalPolicySecretEnvironmentDALFactory(db);
-  const secretAccessApprovalPolicyBridgeDAL = secretAccessApprovalPolicyBridgeDALFactory(db);
-  const secretAccessApprovalRequestBridgeDAL = secretAccessApprovalRequestBridgeDALFactory(db);
+  const secretAccessApprovalGlobalPolicyBridgeDAL = secretAccessApprovalGlobalPolicyBridgeDALFactory(db);
+  const secretAccessApprovalGlobalRequestBridgeDAL = secretAccessApprovalGlobalRequestBridgeDALFactory(db);
   const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(db);
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
@@ -2473,13 +2473,13 @@ export const registerRoutes = async (
     licenseService
   });
 
-  const secretAccessApprovalResource = secretAccessApprovalResourceFactory({
+  const secretAccessApprovalGlobalResource = secretAccessApprovalGlobalResourceFactory({
     approvalPolicyDAL,
     approvalRequestGrantsDAL,
     additionalPrivilegeDAL
   });
 
-  const secretAccessApprovalPolicyBridgeService = secretAccessApprovalPolicyBridgeServiceFactory({
+  const secretAccessApprovalGlobalPolicyBridgeService = secretAccessApprovalGlobalPolicyBridgeServiceFactory({
     projectDAL,
     permissionService,
     projectEnvDAL,
@@ -2491,7 +2491,7 @@ export const registerRoutes = async (
     approvalPolicyStepApproversDAL,
     approvalPolicyBypassersDAL,
     approvalPolicySecretEnvironmentDAL,
-    secretAccessApprovalPolicyBridgeDAL,
+    secretAccessApprovalGlobalPolicyBridgeDAL,
     approvalRequestDAL,
     approvalRequestStepsDAL,
     approvalRequestStepEligibleApproversDAL,
@@ -2499,7 +2499,7 @@ export const registerRoutes = async (
     additionalPrivilegeDAL
   });
 
-  const secretAccessApprovalRequestBridgeService = secretAccessApprovalRequestBridgeServiceFactory({
+  const secretAccessApprovalGlobalRequestBridgeService = secretAccessApprovalGlobalRequestBridgeServiceFactory({
     projectDAL,
     permissionService,
     userDAL,
@@ -2510,8 +2510,8 @@ export const registerRoutes = async (
     approvalRequestApprovalsDAL,
     approvalRequestGrantsDAL,
     additionalPrivilegeDAL,
-    secretAccessApprovalPolicyBridgeDAL,
-    secretAccessApprovalRequestBridgeDAL,
+    secretAccessApprovalGlobalPolicyBridgeDAL,
+    secretAccessApprovalGlobalRequestBridgeDAL,
     smtpService,
     notificationService,
     kmsService,
@@ -2519,7 +2519,7 @@ export const registerRoutes = async (
     microsoftTeamsService,
     projectMicrosoftTeamsConfigDAL,
     queueService,
-    secretAccessApprovalResource
+    secretAccessApprovalGlobalResource
   });
 
   const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
@@ -2537,7 +2537,7 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     approvalPolicyDAL,
     approvalPolicySecretEnvironmentDAL,
-    secretAccessApprovalPolicyBridge: secretAccessApprovalPolicyBridgeService
+    secretAccessApprovalGlobalPolicyBridge: secretAccessApprovalGlobalPolicyBridgeService
   });
 
   const accessApprovalRequestService = accessApprovalRequestServiceFactory({
@@ -2545,8 +2545,8 @@ export const registerRoutes = async (
     permissionService,
     accessApprovalRequestReviewerDAL,
     accessApprovalPolicyDAL,
-    secretAccessApprovalResource,
-    secretAccessApprovalRequestBridge: secretAccessApprovalRequestBridgeService,
+    secretAccessApprovalGlobalResource,
+    secretAccessApprovalGlobalRequestBridge: secretAccessApprovalGlobalRequestBridgeService,
     accessApprovalRequestDAL,
     projectEnvDAL,
     userDAL,
@@ -4431,8 +4431,8 @@ export const registerRoutes = async (
     identitySpiffeAuth: identitySpiffeAuthService,
     identityLdapAuth: identityLdapAuthService,
     accessApprovalPolicy: accessApprovalPolicyService,
-    secretAccessApprovalPolicyBridge: secretAccessApprovalPolicyBridgeService,
-    secretAccessApprovalRequestBridge: secretAccessApprovalRequestBridgeService,
+    secretAccessApprovalGlobalPolicyBridge: secretAccessApprovalGlobalPolicyBridgeService,
+    secretAccessApprovalGlobalRequestBridge: secretAccessApprovalGlobalRequestBridgeService,
     accessApprovalRequest: accessApprovalRequestService,
     secretApprovalPolicy: secretApprovalPolicyService,
     secretApprovalRequest: secretApprovalRequestService,
