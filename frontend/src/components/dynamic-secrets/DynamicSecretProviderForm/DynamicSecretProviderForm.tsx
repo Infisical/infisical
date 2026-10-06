@@ -233,6 +233,9 @@ export const DynamicSecretProviderForm = <
   const nameError = form.formState.errors.name;
   const defaultTtlError = form.formState.errors.defaultTTL;
   const maxTtlError = form.formState.errors.maxTTL;
+  const ttlDescriptionId = commonFields?.ttlDescription
+    ? "dynamic-secret-ttl-description"
+    : undefined;
 
   return (
     <FormProvider {...form}>
@@ -299,6 +302,7 @@ export const DynamicSecretProviderForm = <
                             commonFields?.defaultTTL?.description
                               ? "dynamic-secret-default-ttl-description"
                               : undefined,
+                            ttlDescriptionId,
                             defaultTtlError ? "dynamic-secret-default-ttl-error" : undefined
                           ]
                             .filter(Boolean)
@@ -342,6 +346,7 @@ export const DynamicSecretProviderForm = <
                             commonFields?.maxTTL?.description
                               ? "dynamic-secret-max-ttl-description"
                               : undefined,
+                            ttlDescriptionId,
                             maxTtlError ? "dynamic-secret-max-ttl-error" : undefined
                           ]
                             .filter(Boolean)
@@ -364,6 +369,11 @@ export const DynamicSecretProviderForm = <
                 />
               )}
             </div>
+            {ttlDescriptionId && ttlFieldCount > 0 && (
+              <FieldDescription id={ttlDescriptionId}>
+                {commonFields?.ttlDescription}
+              </FieldDescription>
+            )}
             {mode === "create" &&
               !isSingleEnvironmentMode &&
               commonFields?.environment?.isVisible !== false && (
