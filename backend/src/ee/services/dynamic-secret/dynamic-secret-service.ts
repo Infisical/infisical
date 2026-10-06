@@ -450,15 +450,6 @@ export const dynamicSecretServiceFactory = ({
     if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
 
     const updatedDynamicCfg = await dynamicSecretDAL.transaction(async (tx) => {
-      await dynamicSecretDAL.lockById(dynamicSecretCfg.id, "update", tx);
-      // the earlier count came from a replica before the lock, so leases it missed were validated as absent
-      const lockedLeaseCount = await dynamicSecretLeaseDAL.countLeasesForDynamicSecret(dynamicSecretCfg.id, tx);
-      if (lockedLeaseCount > 0 && activeLeaseCount === 0) {
-        throw new BadRequestError({
-          message: "A lease was created for this dynamic secret while it was being updated. Try the update again."
-        });
-      }
-
       const cfg = await dynamicSecretDAL.updateById(
         dynamicSecretCfg.id,
         {

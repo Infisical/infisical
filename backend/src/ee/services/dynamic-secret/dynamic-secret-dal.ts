@@ -64,7 +64,6 @@ export interface TDynamicSecretDALFactory extends Omit<TOrmify<TableName.Dynamic
   >;
   countByGatewayPoolId: (gatewayPoolId: string, tx?: Knex) => Promise<number>;
   countByProject: (projectId: string, tx?: Knex) => Promise<number>;
-  lockById: (id: string, mode: "update" | "share", tx: Knex) => Promise<TDynamicSecrets | undefined>;
 }
 
 export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory => {
@@ -297,19 +296,8 @@ export const dynamicSecretDALFactory = (db: TDbClient): TDynamicSecretDALFactory
     }
   };
 
-  const lockById: TDynamicSecretDALFactory["lockById"] = async (id, mode, tx) => {
-    try {
-      const query = tx(TableName.DynamicSecret).where({ id });
-      const lockedQuery = mode === "update" ? query.forUpdate() : query.forShare();
-      return await lockedQuery.first();
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Lock by ID - Dynamic Secret" });
-    }
-  };
-
   return {
     ...orm,
-    lockById,
     listDynamicSecretsByFolderIds,
     findOne,
     findWithMetadata,
