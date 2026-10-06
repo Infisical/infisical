@@ -36,10 +36,12 @@ import {
   collectSecretAccessPolicyGroupIds,
   collectSecretAccessRequestUserIds,
   composeSecretAccessRequestRows,
+  isPendingSecretAccessRequestItem,
   isPolicySubjectMatch,
   notifySecretAccessBypass,
   notifySecretAccessStepApprovers,
-  toLegacyAccessApprovalRequest
+  toLegacyAccessApprovalRequest,
+  toSecretAccessRequestListItem
 } from "./secret-access-approval-global-request-bridge-fns";
 import {
   TCountSecretAccessApprovalGlobalRequestsDTO,
@@ -56,6 +58,7 @@ export type TSecretAccessApprovalGlobalRequestBridgeServiceFactory = ReturnType<
 
 export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
   projectDAL,
+  projectEnvDAL,
   permissionService,
   userDAL,
   userGroupMembershipDAL,
@@ -135,56 +138,32 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     });
   };
 
-  const listAccessApprovalRequests = async ({ projectId }: TListSecretAccessApprovalGlobalRequestsDTO) => {
-    const rows = await $loadRequestRows({ projectId });
+  const $listRequestItems = async (filter: { projectId: string; policyId?: string; requesterId?: string }) => {
+    const rows = await $loadRequestRows(filter);
+    const environments = rows.some((row) => !row.policy)
+      ? await projectEnvDAL.find({ projectId: filter.projectId })
+      : [];
+    const environmentsBySlug = new Map(environments.map((environment) => [environment.slug, environment]));
 
     return rows.flatMap((row) => {
-      if (!row.policy || !row.environment || !row.requestedByUser) return [];
-      const data = parseSecretAccessRequestData(row.request.requestData);
-      if (!data) return [];
-
-      const legacy = toLegacyAccessApprovalRequest(
-        { ...row.request, grant: row.grant, privilegeId: row.privilegeId },
-        row.approvedByUser?.userId ?? null
-      );
-      const { approvers, bypassers, ...policy } = row.policy;
-
-      return [
-        {
-          ...legacy,
-          projectId,
-          environment: row.environment.slug,
-          environmentName: row.environment.name,
-          policy: { ...policy, approvers, bypassers },
-          requestedByUser: row.requestedByUser,
-          approvedByUser: row.approvedByUser,
-          revokedByUser: row.revokedByUser,
-          privilege: legacy.privilegeId ? row.privilege : null,
-          isApproved: legacy.status === ApprovalStatus.APPROVED,
-          reviewers: row.reviewers,
-          approvers,
-          bypassers
-        }
-      ];
+      const item = toSecretAccessRequestListItem(row, { projectId: filter.projectId, environmentsBySlug });
+      return item ? [item] : [];
     });
   };
+
+  const listAccessApprovalRequests = ({ projectId }: TListSecretAccessApprovalGlobalRequestsDTO) =>
+    $listRequestItems({ projectId });
 
   const countAccessApprovalRequests = async ({
     projectId,
     policyId,
     requesterId
   }: TCountSecretAccessApprovalGlobalRequestsDTO) => {
-    const rows = await $loadRequestRows({ projectId, policyId, requesterId });
+    const items = await $listRequestItems({ projectId, policyId, requesterId });
     const now = new Date();
 
-    const isPending = (row: (typeof rows)[number]) =>
-      Boolean(row.policy) &&
-      row.request.status === ApprovalRequestStatus.Pending &&
-      !row.reviewers.some((reviewer) => reviewer.status === ApprovalRequestApprovalDecision.Rejected) &&
-      !(row.request.expiresAt && new Date(row.request.expiresAt) < now);
-
-    const pendingCount = rows.filter(isPending).length;
-    return { pendingCount, finalizedCount: rows.length - pendingCount };
+    const pendingCount = items.filter((item) => isPendingSecretAccessRequestItem(item, now)).length;
+    return { pendingCount, finalizedCount: items.length - pendingCount };
   };
 
   const $queueAccessRequestWebhook = async ({

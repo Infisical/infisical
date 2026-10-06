@@ -98,6 +98,38 @@ describe("buildSecretAccessPolicySteps", () => {
     ).toThrow(BadRequestError);
   });
 
+  test("the first step falls back to approvals when it has no entry", () => {
+    const steps = buildSecretAccessPolicySteps([user("a"), user("b"), user("c", 2)], undefined, 2);
+
+    expect(steps.map((step) => step.requiredApprovals)).toEqual([2, 1]);
+  });
+
+  test("an explicit entry for the first step wins over approvals", () => {
+    const steps = buildSecretAccessPolicySteps(
+      [user("a"), user("b"), user("c")],
+      [{ stepNumber: 1, numberOfApprovals: 3 }],
+      2
+    );
+
+    expect(steps[0].requiredApprovals).toBe(3);
+  });
+
+  test("approvals only stands in for the first step", () => {
+    const steps = buildSecretAccessPolicySteps(
+      [user("a", 1), user("b", 2), user("c", 2)],
+      [{ stepNumber: 1, numberOfApprovals: 1 }],
+      2
+    );
+
+    expect(steps.map((step) => step.requiredApprovals)).toEqual([1, 1]);
+  });
+
+  test("approvals above the first step's user approvers is rejected", () => {
+    expect(() => buildSecretAccessPolicySteps([user("a")], undefined, 2)).toThrow(
+      "Step 1 requires 2 approvals but only has 1 approver."
+    );
+  });
+
   test("a step containing a group approver is never rejected for its size", () => {
     const steps = buildSecretAccessPolicySteps([user("a"), group("g")], [{ stepNumber: 1, numberOfApprovals: 10 }]);
 

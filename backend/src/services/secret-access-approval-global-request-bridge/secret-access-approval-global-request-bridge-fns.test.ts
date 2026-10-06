@@ -13,8 +13,10 @@ import {
 import {
   collectSecretAccessRequestUserIds,
   composeSecretAccessRequestRows,
+  isPendingSecretAccessRequestItem,
   isPolicySubjectMatch,
   toLegacyAccessApprovalRequest,
+  toSecretAccessRequestListItem,
   TSecretAccessRequestListInput
 } from "./secret-access-approval-global-request-bridge-fns";
 
@@ -398,5 +400,104 @@ describe("composeSecretAccessRequestRows", () => {
     const [row] = composeSecretAccessRequestRows(listInput({ requests: [request({ requesterId: null })] }));
 
     expect(row.requestedByUser).toBeNull();
+  });
+});
+
+describe("toSecretAccessRequestListItem", () => {
+  const environmentsBySlug = new Map([["dev", { id: ENV_ID, name: "Development", slug: "dev" }]]);
+  const toItem = (input: Partial<TSecretAccessRequestListInput>, envs = environmentsBySlug) => {
+    const [row] = composeSecretAccessRequestRows(listInput(input));
+    return toSecretAccessRequestListItem(row, { projectId: "project-1", environmentsBySlug: envs });
+  };
+
+  test("a request with a policy reports that policy and its environment", () => {
+    const item = toItem({});
+
+    expect(item?.policyId).toBe("policy-1");
+    expect(item?.policy.id).toBe("policy-1");
+    expect(item?.policy.deletedAt).toBeNull();
+    expect(item?.environment).toBe("dev");
+    expect(item?.environmentName).toBe("Development");
+    expect(item?.status).toBe(ApprovalStatus.PENDING);
+    expect(item?.approvers).toEqual(item?.policy.approvers);
+  });
+
+  test("a request cancelled by its policy's deletion reads as pending under a deleted policy", () => {
+    const item = toItem({ requests: [request({ policyId: null, status: ApprovalRequestStatus.Cancelled })] });
+
+    expect(item?.policyId).toBeNull();
+    expect(item?.policy).toEqual({
+      id: null,
+      name: "",
+      approvals: 0,
+      secretPath: "/app",
+      enforcementLevel: "hard",
+      allowedSelfApprovals: false,
+      envId: ENV_ID,
+      deletedAt: updatedAt,
+      maxTimePeriod: null,
+      requestExpirationTime: null,
+      approvers: [],
+      bypassers: []
+    });
+    expect(item?.environment).toBe("dev");
+    expect(item?.status).toBe(ApprovalStatus.PENDING);
+    expect(item?.isApproved).toBe(false);
+  });
+
+  test("a grant revoked by the policy's deletion reads as revoked", () => {
+    const item = toItem({
+      requests: [request({ policyId: null, status: ApprovalRequestStatus.Approved })],
+      grants: [grant({ status: ApprovalRequestGrantStatus.Revoked, revokedByUserId: "admin" })]
+    });
+
+    expect(item?.policy.deletedAt).toEqual(updatedAt);
+    expect(item?.status).toBe(ApprovalStatus.REVOKED);
+    expect(item?.privilege).toBeNull();
+  });
+
+  test("a request is hidden when its policy and environment are both gone", () => {
+    expect(toItem({ requests: [request({ policyId: null })] }, new Map())).toBeNull();
+  });
+
+  test("a request is hidden when its requester is gone", () => {
+    expect(toItem({ requests: [request({ requesterId: null })] })).toBeNull();
+  });
+
+  test("a request is hidden when its data is malformed", () => {
+    expect(toItem({ requests: [request({ requestData: { version: 2 } })] })).toBeNull();
+  });
+});
+
+describe("isPendingSecretAccessRequestItem", () => {
+  const now = new Date("2026-01-05T00:00:00.000Z");
+  const pendingItem = {
+    policy: { deletedAt: null },
+    status: ApprovalStatus.PENDING,
+    reviewers: [{ userId: "approver-a", status: ApprovalRequestApprovalDecision.Approved, isOrgMembershipActive: true }],
+    expiresAt: null
+  };
+
+  test("an open request under a live policy is pending", () => {
+    expect(isPendingSecretAccessRequestItem(pendingItem, now)).toBe(true);
+  });
+
+  test("a deleted policy, a rejection, a closed status or an expiry finalizes it", () => {
+    expect(isPendingSecretAccessRequestItem({ ...pendingItem, policy: { deletedAt: now } }, now)).toBe(false);
+    expect(
+      isPendingSecretAccessRequestItem(
+        {
+          ...pendingItem,
+          reviewers: [
+            { userId: "approver-a", status: ApprovalRequestApprovalDecision.Rejected, isOrgMembershipActive: true }
+          ]
+        },
+        now
+      )
+    ).toBe(false);
+    expect(isPendingSecretAccessRequestItem({ ...pendingItem, status: ApprovalStatus.APPROVED }, now)).toBe(false);
+    expect(
+      isPendingSecretAccessRequestItem({ ...pendingItem, expiresAt: new Date("2026-01-04T00:00:00.000Z") }, now)
+    ).toBe(false);
   });
 });

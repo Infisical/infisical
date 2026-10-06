@@ -20,6 +20,7 @@ import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/mic
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TSecretAccessApprovalGlobalPolicyBridgeDALFactory } from "@app/services/secret-access-approval-global-policy-bridge/secret-access-approval-global-policy-bridge-dal";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
@@ -29,6 +30,7 @@ import { TSecretAccessApprovalGlobalRequestBridgeDALFactory } from "./secret-acc
 
 export type TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   userDAL: Pick<TUserDALFactory, "find" | "findById">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "findGroupMembershipsByUserIdInOrg">;

@@ -14,6 +14,7 @@ const getDb = () => (globalThis as unknown as { testDb: Knex }).testDb;
 const SECRET_ACCESS_TYPE = "secret-access";
 
 const globalPolicyIds: string[] = [];
+const policylessRequestIds: string[] = [];
 
 const authHeaders = () => ({ authorization: `Bearer ${jwtAuthToken}` });
 
@@ -82,6 +83,13 @@ const countAccessRequests = () =>
     headers: authHeaders()
   });
 
+const deletePolicy = (policyId: string) =>
+  testServer.inject({
+    method: "DELETE",
+    url: `/api/v1/access-approvals/policies/${policyId}`,
+    headers: authHeaders()
+  });
+
 const createApprovedTemporaryRequest = async (secretPath: string) => {
   const policy = await createGlobalPolicy({ name: `lifecycle-${secretPath.slice(1)}`, secretPath });
 
@@ -110,6 +118,10 @@ describe("Access approval request lifecycle on the global system", () => {
     if (globalIds.length) {
       await db(TableName.ApprovalRequests).whereIn("policyId", globalIds).del();
       await db(TableName.ApprovalPolicies).whereIn("id", globalIds).del();
+    }
+    const requestIds = policylessRequestIds.splice(0);
+    if (requestIds.length) {
+      await db(TableName.ApprovalRequests).whereIn("id", requestIds).del();
     }
   });
 
@@ -199,6 +211,46 @@ describe("Access approval request lifecycle on the global system", () => {
     const secondRevoke = await revokeAccessRequest(requestId);
     expect(secondRevoke.statusCode).toBe(400);
     expect(secondRevoke.json().message).toBe("Only approved requests can be revoked");
+  });
+
+  test("Deleting a policy keeps its requests listed and the count in step", async () => {
+    const { policy, requestId: approvedId } = await createApprovedTemporaryRequest("/lifecycle-deleted-policy");
+    const pendingRes = await createAccessRequest("/lifecycle-deleted-policy", { isTemporary: false });
+    expect(pendingRes.statusCode).toBe(200);
+    const pendingId = pendingRes.json().approval.id as string;
+    policylessRequestIds.push(approvedId, pendingId);
+
+    const countBefore = (await countAccessRequests()).json();
+
+    expect((await deletePolicy(policy.id)).statusCode).toBe(200);
+
+    const listRes = await listAccessRequests();
+    expect(listRes.statusCode).toBe(200);
+    const { requests } = listRes.json();
+
+    const approved = requests.find((request: { id: string }) => request.id === approvedId);
+    expect(approved).toBeDefined();
+    expect(approved.policyId).toBeNull();
+    expect(approved.policy.id).toBeNull();
+    expect(approved.policy.deletedAt).toBeTruthy();
+    expect(approved.policy.secretPath).toBe("/lifecycle-deleted-policy");
+    expect(approved.environment).toBe(seedData1.environment.slug);
+    expect(approved.status).toBe("revoked");
+    expect(approved.privilege).toBeNull();
+
+    const pending = requests.find((request: { id: string }) => request.id === pendingId);
+    expect(pending).toBeDefined();
+    expect(pending.policyId).toBeNull();
+    expect(pending.policy.deletedAt).toBeTruthy();
+    expect(pending.status).toBe("pending");
+
+    const countAfter = (await countAccessRequests()).json();
+    expect(countAfter.pendingCount).toBe(countBefore.pendingCount - 1);
+    expect(countAfter.finalizedCount).toBe(countBefore.finalizedCount + 1);
+
+    const reviewRes = await reviewAccessRequest(pendingId, { status: "approved" });
+    expect(reviewRes.statusCode).toBe(400);
+    expect(reviewRes.json().message).toBe("The policy associated with this access request has been deleted.");
   });
 
   test("Rejecting a request creates no grant and no privilege", async () => {
@@ -725,20 +777,25 @@ describe("Per-step required approvals on the global system", () => {
     expect(secondReview.json().message).toBe("The request has been closed");
   });
 
-  test("A step with no approvalsRequired entry needs one approval, whatever approvals says", async () => {
-    const secretPath = "/required-default-one";
+  test("A first step with no approvalsRequired entry needs the policy's approvals", async () => {
+    const secretPath = "/required-from-approvals";
     const policy = await createPolicyWithApprovers({
       secretPath,
-      approvers: [{ type: ApproverType.User, id: a.userId }],
-      approvals: 3
+      approvers: [
+        { type: ApproverType.User, id: a.userId },
+        { type: ApproverType.User, id: b.userId }
+      ],
+      approvals: 2
     });
 
     const steps = await getPolicySteps(policy.id);
-    expect(steps.map((step) => step.requiredApprovals)).toEqual([1]);
+    expect(steps.map((step) => step.requiredApprovals)).toEqual([2]);
 
     const requestId = await openRequest(secretPath);
     expect((await reviewAs(a, requestId)).statusCode).toBe(200);
+    expect((await getRequestState(requestId)).status).toBe("pending");
 
+    expect((await reviewAs(b, requestId)).statusCode).toBe(200);
     const state = await getRequestState(requestId);
     expect(state.status).toBe("approved");
     expect(state.privilege).toBeDefined();

@@ -1,6 +1,7 @@
 import msFn from "ms";
 
 import { TAdditionalPrivileges, TApprovalRequestGrants, TApprovalRequests, TUsers } from "@app/db/schemas";
+import { verifyRequestedPermissions } from "@app/ee/services/access-approval-request/access-approval-request-fns";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -9,13 +10,18 @@ import { ms } from "@app/lib/ms";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import {
+  ApprovalRequestApprovalDecision,
   ApprovalRequestGrantStatus,
   ApprovalRequestStatus,
-  ApproverType
+  ApproverType,
+  EnforcementLevel
 } from "@app/services/approval-policy/approval-policy-enums";
 import { ApprovalPolicyStep } from "@app/services/approval-policy/approval-policy-types";
 import { resolveStepApproverUserIds } from "@app/services/approval-policy/approval-request-fns";
-import { getSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-fns";
+import {
+  getSecretAccessRequestData,
+  parseSecretAccessRequestData
+} from "@app/services/approval-policy/secret-access/secret-access-policy-fns";
 import { TSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TSecretAccessApprovalGlobalPolicyBridgeDALFactory } from "@app/services/secret-access-approval-global-policy-bridge/secret-access-approval-global-policy-bridge-dal";
@@ -29,25 +35,27 @@ export type TSecretAccessRequestRow = TApprovalRequests & {
   privilegeId: string | null;
 };
 
-export const toLegacyAccessApprovalRequest = (
-  request: Pick<
-    TSecretAccessRequestRow,
-    | "id"
-    | "policyId"
-    | "requesterId"
-    | "requestData"
-    | "justification"
-    | "status"
-    | "expiresAt"
-    | "createdAt"
-    | "updatedAt"
-    | "grant"
-    | "privilegeId"
-  >,
+type TLegacyAccessApprovalRequestInput = Pick<
+  TSecretAccessRequestRow,
+  | "id"
+  | "policyId"
+  | "requesterId"
+  | "requestData"
+  | "justification"
+  | "status"
+  | "expiresAt"
+  | "createdAt"
+  | "updatedAt"
+  | "grant"
+  | "privilegeId"
+>;
+
+export const toLegacyAccessApprovalRequestFields = (
+  request: TLegacyAccessApprovalRequestInput,
   approvedByUserId: string | null = null
 ): {
   id: string;
-  policyId: string;
+  policyId: string | null;
   requestedByUserId: string;
   isTemporary: boolean;
   temporaryRange: string | null;
@@ -67,9 +75,6 @@ export const toLegacyAccessApprovalRequest = (
   bypassReason: string | null;
   privilegeDeletedAt: null;
 } => {
-  if (!request.policyId) {
-    throw new BadRequestError({ message: "The policy associated with this access request has been deleted." });
-  }
   if (!request.requesterId) {
     throw new NotFoundError({ message: "The user who created this access request no longer exists" });
   }
@@ -84,7 +89,7 @@ export const toLegacyAccessApprovalRequest = (
 
   return {
     id: request.id,
-    policyId: request.policyId,
+    policyId: request.policyId ?? null,
     requestedByUserId: request.requesterId,
     isTemporary: data.isTemporary,
     temporaryRange: data.temporaryRange,
@@ -104,6 +109,16 @@ export const toLegacyAccessApprovalRequest = (
     bypassReason: grant?.isBreakGlass ? (grant.bypassReason ?? null) : null,
     privilegeDeletedAt: null
   };
+};
+
+export const toLegacyAccessApprovalRequest = (
+  request: TLegacyAccessApprovalRequestInput,
+  approvedByUserId: string | null = null
+) => {
+  if (!request.policyId) {
+    throw new BadRequestError({ message: "The policy associated with this access request has been deleted." });
+  }
+  return { ...toLegacyAccessApprovalRequestFields(request, approvedByUserId), policyId: request.policyId };
 };
 
 type TNotifySecretAccessStepApproversDep = Pick<
@@ -474,3 +489,95 @@ export const composeSecretAccessRequestRows = ({
     };
   });
 };
+
+type TSecretAccessRequestComposedRow = ReturnType<typeof composeSecretAccessRequestRows>[number];
+type TSecretAccessRequestListPolicy = Omit<NonNullable<TSecretAccessRequestComposedRow["policy"]>, "id" | "deletedAt"> & {
+  id: string | null;
+  deletedAt: Date | null;
+};
+
+export const toSecretAccessRequestListItem = (
+  row: TSecretAccessRequestComposedRow,
+  {
+    projectId,
+    environmentsBySlug
+  }: { projectId: string; environmentsBySlug: Map<string, { id: string; slug: string; name: string }> }
+) => {
+  if (!row.requestedByUser) return null;
+  const data = parseSecretAccessRequestData(row.request.requestData);
+  if (!data) return null;
+
+  const legacy = toLegacyAccessApprovalRequestFields(
+    { ...row.request, grant: row.grant, privilegeId: row.privilegeId },
+    row.approvedByUser?.userId ?? null
+  );
+
+  let { status } = legacy;
+  let environment: { slug: string; name: string };
+  let policy: TSecretAccessRequestListPolicy;
+  if (row.policy) {
+    if (!row.environment) return null;
+    environment = row.environment;
+    policy = row.policy;
+  } else {
+    let requested: { envSlug: string; secretPath: string };
+    try {
+      requested = verifyRequestedPermissions({ permissions: data.permissions });
+    } catch {
+      return null;
+    }
+    const requestedEnvironment = environmentsBySlug.get(requested.envSlug);
+    if (!requestedEnvironment) return null;
+
+    environment = requestedEnvironment;
+    policy = {
+      id: null,
+      name: "",
+      approvals: 0,
+      secretPath: requested.secretPath,
+      enforcementLevel: EnforcementLevel.Hard,
+      allowedSelfApprovals: false,
+      envId: requestedEnvironment.id,
+      // A hard delete leaves no deletion time behind; the UI only needs a non-null marker here.
+      deletedAt: row.request.updatedAt,
+      maxTimePeriod: null,
+      requestExpirationTime: null,
+      approvers: [],
+      bypassers: []
+    };
+    // Legacy left a deleted policy's open requests pending, and the UI shows "Policy Deleted" only for a
+    // request that was neither approved nor rejected.
+    if (row.request.status === ApprovalRequestStatus.Cancelled) status = ApprovalStatus.PENDING;
+  }
+
+  return {
+    ...legacy,
+    status,
+    projectId,
+    environment: environment.slug,
+    environmentName: environment.name,
+    policy,
+    requestedByUser: row.requestedByUser,
+    approvedByUser: row.approvedByUser,
+    revokedByUser: row.revokedByUser,
+    privilege: legacy.privilegeId ? row.privilege : null,
+    isApproved: status === ApprovalStatus.APPROVED,
+    reviewers: row.reviewers,
+    approvers: policy.approvers,
+    bypassers: policy.bypassers
+  };
+};
+
+export const isPendingSecretAccessRequestItem = (
+  item: {
+    policy: { deletedAt: Date | null };
+    status: string;
+    reviewers: { status: string }[];
+    expiresAt: Date | null;
+  },
+  now: Date
+) =>
+  !item.policy.deletedAt &&
+  item.status === ApprovalStatus.PENDING &&
+  !item.reviewers.some((reviewer) => reviewer.status === ApprovalRequestApprovalDecision.Rejected) &&
+  !(item.expiresAt && new Date(item.expiresAt) < now);

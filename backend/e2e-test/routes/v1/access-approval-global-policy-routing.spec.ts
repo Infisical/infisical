@@ -457,7 +457,7 @@ describe("Access approval policy required approvals per step", () => {
       (step) => step.requiredApprovals
     );
 
-  test("Updating without approvalsRequired resets every step to one approval", async () => {
+  test("Updating without approvalsRequired takes approvals for the first step", async () => {
     const policy = await createGlobalPolicy({ name: "policy-routing-required-reset", secretPath: "/required-reset" });
     const approvers = [
       { type: ApproverType.User, id: seedData1.id, sequence: 1 },
@@ -472,7 +472,7 @@ describe("Access approval policy required approvals per step", () => {
     expect(withEntry.statusCode).toBe(200);
     expect(await getStepRequirements(policy.id)).toEqual([2]);
 
-    const withoutEntry = await patchPolicy(policy.id, { approvers, approvals: 2 });
+    const withoutEntry = await patchPolicy(policy.id, { approvers, approvals: 1 });
     expect(withoutEntry.statusCode).toBe(200);
     expect(await getStepRequirements(policy.id)).toEqual([1]);
 
@@ -549,6 +549,50 @@ describe("Access approval policy required approvals per step", () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.json().message).toContain("Step 2 requires 2 approvals but only has 1 approver");
+    expect(await getDb()(TableName.ApprovalPolicies).where({ name }).first()).toBeUndefined();
+  });
+
+  test("approvals reads back as written when no approvalsRequired is sent", async () => {
+    const approvers = [
+      { type: ApproverType.User, id: seedData1.id, sequence: 1 },
+      { type: ApproverType.User, id: otherApproverId, sequence: 1 }
+    ];
+    const createRes = await createPolicyRaw({
+      name: "policy-routing-approvals-round-trip",
+      secretPath: "/approvals-round-trip",
+      approvers,
+      approvals: 2
+    });
+    expect(createRes.statusCode).toBe(200);
+    const policyId = createRes.json().approval.id as string;
+    globalPolicyIds.push(policyId);
+
+    expect(createRes.json().approval.approvals).toBe(2);
+    expect(await getStepRequirements(policyId)).toEqual([2]);
+    expect((await getPolicy(policyId)).json().approval.approvals).toBe(2);
+
+    const withoutApprovals = await patchPolicy(policyId, { approvers, approvals: undefined });
+    expect(withoutApprovals.statusCode).toBe(200);
+    expect(withoutApprovals.json().approval.approvals).toBe(2);
+    expect(await getStepRequirements(policyId)).toEqual([2]);
+
+    const lowered = await patchPolicy(policyId, { approvers, approvals: 1 });
+    expect(lowered.statusCode).toBe(200);
+    expect((await getPolicy(policyId)).json().approval.approvals).toBe(1);
+    expect(await getStepRequirements(policyId)).toEqual([1]);
+  });
+
+  test("Creating with more approvals than the first step's user approvers is rejected", async () => {
+    const name = "policy-routing-approvals-too-many";
+    const res = await createPolicyRaw({
+      name,
+      secretPath: "/approvals-too-many",
+      approvers: [{ type: ApproverType.User, id: seedData1.id, sequence: 1 }],
+      approvals: 2
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toContain("Step 1 requires 2 approvals but only has 1 approver");
     expect(await getDb()(TableName.ApprovalPolicies).where({ name }).first()).toBeUndefined();
   });
 

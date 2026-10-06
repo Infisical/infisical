@@ -193,18 +193,21 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
   const $buildSteps = ({
     approverUserIds,
     groupApprovers,
-    approvalsRequired
+    approvalsRequired,
+    approvals
   }: {
     approverUserIds: TSequencedSubject[];
     groupApprovers: TSequencedSubject[];
     approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
+    approvals?: number;
   }): TPolicyStep[] =>
     buildSecretAccessPolicySteps(
       [
         ...approverUserIds.map((el) => ({ type: ApproverType.User, id: el.id, sequence: el.sequence ?? 1 })),
         ...groupApprovers.map((el) => ({ type: ApproverType.Group, id: el.id, sequence: el.sequence ?? 1 }))
       ],
-      approvalsRequired
+      approvalsRequired,
+      approvals
     );
 
   const $insertStepsAndBypassers = async (
@@ -369,7 +372,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     const scope = { projectId: project.id, orgId: project.orgId };
     const { approverUserIds, groupApprovers } = await $resolveApprovers(approvers, scope);
     const { bypasserUserIds, groupBypassers } = await $resolveBypassers(bypassers, scope);
-    const steps = $buildSteps({ approverUserIds, groupApprovers, approvalsRequired });
+    const steps = $buildSteps({ approverUserIds, groupApprovers, approvalsRequired, approvals });
 
     await $assertNoConflictingPolicy({ envs, secretPath });
 
@@ -411,7 +414,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       id: policy.id,
       name: policy.name,
       secretPath,
-      approvals,
+      approvals: steps[0]?.requiredApprovals ?? 1,
       envId: envs[0].id,
       createdAt: policy.createdAt,
       updatedAt: policy.updatedAt,
@@ -437,6 +440,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     actor,
     actorOrgId,
     actorAuthMethod,
+    approvals,
     enforcementLevel,
     allowedSelfApprovals,
     approvalsRequired,
@@ -478,7 +482,12 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     const scope = { projectId: policy.projectId, orgId: actorOrgId };
     const { approverUserIds, groupApprovers } = await $resolveApprovers(approvers, scope);
     const { bypasserUserIds, groupBypassers } = await $resolveBypassers(bypassers, scope);
-    const steps = $buildSteps({ approverUserIds, groupApprovers, approvalsRequired });
+    const steps = $buildSteps({
+      approverUserIds,
+      groupApprovers,
+      approvalsRequired,
+      approvals: approvals ?? policy.approvals
+    });
 
     return approvalPolicyDAL.transaction(async (tx) => {
       await approvalPolicyDAL.updateById(

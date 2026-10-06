@@ -2501,6 +2501,7 @@ export const registerRoutes = async (
 
   const secretAccessApprovalGlobalRequestBridgeService = secretAccessApprovalGlobalRequestBridgeServiceFactory({
     projectDAL,
+    projectEnvDAL,
     permissionService,
     userDAL,
     userGroupMembershipDAL,

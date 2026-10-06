@@ -38,11 +38,12 @@ export const secretAccessApprovalGlobalPolicyExists = async (
   return policy?.envId;
 };
 
-// Legacy stores null on approver rows for a step with no approvalsRequired entry and reviews it as 1,
-// so the top-level `approvals` must not leak into a step's requirement.
+// Reads report `approvals` as the first step's requirement, so that step falls back to it when it has no
+// approvalsRequired entry; otherwise a caller that only sets `approvals` would read back a different value.
 export const buildSecretAccessPolicySteps = <T extends { type: ApproverType; id: string; sequence: number }>(
   approvers: T[],
-  approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[]
+  approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[],
+  approvals?: number
 ) => {
   const approvalsRequiredByStepNumber = groupBy(approvalsRequired || [], (i) => i.stepNumber);
   const approversBySequence = groupBy(approvers, (el) => el.sequence);
@@ -57,7 +58,8 @@ export const buildSecretAccessPolicySteps = <T extends { type: ApproverType; id:
         seen.add(key);
         return true;
       });
-      const requiredApprovals = approvalsRequiredByStepNumber[sequence]?.[0]?.numberOfApprovals || 1;
+      const requiredApprovals =
+        approvalsRequiredByStepNumber[sequence]?.[0]?.numberOfApprovals || (index === 0 ? approvals : undefined) || 1;
 
       const hasGroupApprover = stepApprovers.some((approver) => approver.type === ApproverType.Group);
       if (!hasGroupApprover && requiredApprovals > stepApprovers.length) {
