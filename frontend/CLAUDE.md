@@ -99,6 +99,10 @@ Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in
 
 9 layout components in `src/layouts/` — `AdminLayout`, `OrganizationLayout`, `SecretManagerLayout`, `PkiManagerLayout`, `KmsLayout`, `PamLayout`, etc. Layouts handle sidebar navigation and page chrome for their product area.
 
+### Highlighting new integrations
+
+To promote a newly shipped secret sync, add an entry to `SECRET_SYNC_RELEASES` in `src/helpers/featureReleases.ts` in the same PR. For 30 days it gets a New badge and a Recently Added slot in the Add Sync picker, and users who have not opened the picker yet see info dots on the Integrations nav item, the Secret Syncs tab, and Add Sync (`useSecretSyncDiscovery`). Each user's seen releases are stored server-side through `/api/v1/feature-discoveries`. Keep `releaseId` stable once shipped.
+
 ### Org-scoped products
 
 PAM and Agent Vault live at `/organizations/$orgId/<slug>` over a single implicit project, so their URLs carry no `$projectId`. Their layout's `beforeLoad` publishes `implicitProjectId` and `implicitProductType` into route context, and `useImplicitProjectId()` / `useImplicitProduct()` read them back off the matched routes. **Anything that decides whether a `useProject()` caller renders must use `useImplicitProduct()`, never the pathname.** The router changes location before it swaps matches, so a pathname gate mounts a frame early on the way in and unmounts a frame late on the way out, leaving the component asking for a project the router no longer resolves — which throws into `ErrorPage`. Reading the matches keeps these products in step with `useParams`, which is match-derived and is what every other product's gate already uses. The gates that matter today are `OrgSidebar`'s `isInsideProject`, the `ProjectSelect` wrapper, and `OrganizationCommandMenu` in `RootCommandMenu.tsx`, which had exactly this bug when it arrived from main with a pathname check; `getOrgScopedProductFromPath` remains correct for the cosmetic uses behind no `useProject` (navbar scope, `useScopeVariant`, `TypeSelect`).

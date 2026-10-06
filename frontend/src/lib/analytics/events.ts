@@ -6,6 +6,8 @@ export const AnalyticsEvent = {
   FolderAccessGrantSheetOpened: "Folder Access Grant Sheet Opened",
   SecretsAddResourceMenuOpened: "Secrets Add Resource Menu Opened",
   SecretsAddResourceActionSelected: "Secrets Add Resource Action Selected",
+  SecretSyncRecentlyAddedViewed: "Secret Sync Recently Added Viewed",
+  SecretSyncRecentlyAddedSelected: "Secret Sync Recently Added Selected",
   ThemePreferenceChanged: "Theme Preference Changed",
   SignupFlowCompleted: "Signup Flow Completed"
 } as const;
@@ -67,6 +69,16 @@ type SecretsAddResourceActionSelectedProperties = {
   environmentMode: SecretsAddResourceEnvironmentMode;
 };
 
+type SecretSyncRecentlyAddedViewedProperties = {
+  projectId: string;
+  releaseIds: string[];
+};
+
+type SecretSyncRecentlyAddedSelectedProperties = {
+  projectId: string;
+  releaseId: string;
+};
+
 export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.PaywallViewed]: PaywallProperties;
   [AnalyticsEvent.PaywallUpgradeClicked]: PaywallProperties;
@@ -75,6 +87,8 @@ export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.FolderAccessGrantSheetOpened]: FolderAccessGrantSheetOpenedProperties;
   [AnalyticsEvent.SecretsAddResourceMenuOpened]: SecretsAddResourceMenuOpenedProperties;
   [AnalyticsEvent.SecretsAddResourceActionSelected]: SecretsAddResourceActionSelectedProperties;
+  [AnalyticsEvent.SecretSyncRecentlyAddedViewed]: SecretSyncRecentlyAddedViewedProperties;
+  [AnalyticsEvent.SecretSyncRecentlyAddedSelected]: SecretSyncRecentlyAddedSelectedProperties;
 };
 
 export type OrganizationAnalyticsEvent = keyof OrganizationAnalyticsEventMap;

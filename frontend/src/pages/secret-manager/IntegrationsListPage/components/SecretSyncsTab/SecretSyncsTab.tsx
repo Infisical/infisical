@@ -7,6 +7,7 @@ import { CreateSecretSyncModal } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import {
   Button,
+  ButtonBadge,
   Card,
   CardAction,
   CardContent,
@@ -20,6 +21,7 @@ import { ProjectPermissionSub, useOrganization, useProject } from "@app/context"
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useListSecretSyncs } from "@app/hooks/api/secretSyncs";
+import { useSecretSyncDiscovery } from "@app/hooks/useSecretSyncDiscovery";
 
 import { SecretSyncsTable } from "./SecretSyncTable";
 
@@ -35,6 +37,7 @@ export const SecretSyncsTab = () => {
 
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const { hasUnseenSecretSyncs } = useSecretSyncDiscovery();
 
   useEffect(() => {
     if (!addSync) return;
@@ -114,6 +117,7 @@ export const SecretSyncsTab = () => {
                 >
                   <PlusIcon />
                   Add Sync
+                  {hasUnseenSecretSyncs && <ButtonBadge variant="info">New</ButtonBadge>}
                 </Button>
               )}
             </ProjectPermissionCan>

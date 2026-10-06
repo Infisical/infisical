@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2Icon, Search } from "lucide-react";
 
 import {
+  Badge,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -12,10 +13,12 @@ import {
   InputGroupInput
 } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
-import { useSubscription } from "@app/context";
+import { useOrganization, useProject, useSubscription } from "@app/context";
 import { POPULAR_SECRET_SYNCS, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { usePopUp } from "@app/hooks";
 import { SecretSync, useSecretSyncOptions } from "@app/hooks/api/secretSyncs";
+import { useSecretSyncDiscovery } from "@app/hooks/useSecretSyncDiscovery";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
 import { UpgradePlanModal } from "../license/UpgradePlanModal";
 
@@ -28,11 +31,15 @@ type SyncOption = {
   enterprise?: boolean;
 };
 
+const RECENTLY_ADDED_LIMIT = 3;
+
 const ProviderCard = ({
   destination,
+  isNew,
   onClick
 }: {
   destination: SecretSync;
+  isNew?: boolean;
   onClick: () => void;
 }) => {
   const { name, image, category, description } = SECRET_SYNC_MAP[destination];
@@ -52,7 +59,10 @@ const ProviderCard = ({
         </span>
       </div>
       <div className="flex flex-col gap-1">
-        <p className="text-sm font-semibold text-foreground">{name}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold text-foreground">{name}</p>
+          {isNew && <Badge variant="info">New</Badge>}
+        </div>
         <p className="text-xs leading-relaxed text-muted">{description}</p>
       </div>
     </button>
@@ -65,6 +75,9 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 
 export const SecretSyncSelect = ({ onSelect }: Props) => {
   const { subscription } = useSubscription();
+  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
+  const { newSecretSyncReleases, markSecretSyncsSeen } = useSecretSyncDiscovery();
   const { isPending, data: secretSyncOptions } = useSecretSyncOptions();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
   const [search, setSearch] = useState("");
@@ -76,6 +89,17 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
         text: "All Secret Syncs can be unlocked if you switch to Infisical Enterprise plan."
       });
       return;
+    }
+    const release = newSecretSyncReleases.find((r) => r.destination === option.destination);
+    if (release) {
+      analytics.captureForOrganization(
+        AnalyticsEvent.SecretSyncRecentlyAddedSelected,
+        currentOrg.id,
+        {
+          projectId: currentProject.id,
+          releaseId: release.releaseId
+        }
+      );
     }
     onSelect(option.destination);
   };
@@ -113,7 +137,32 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
     [optionsByDestination]
   );
 
+  const newDestinations = useMemo(
+    () => new Set(newSecretSyncReleases.map(({ destination }) => destination)),
+    [newSecretSyncReleases]
+  );
+
+  const recentlyAddedReleases = useMemo(
+    () =>
+      newSecretSyncReleases
+        .filter(({ destination }) => optionsByDestination.has(destination))
+        .slice(0, RECENTLY_ADDED_LIMIT),
+    [newSecretSyncReleases, optionsByDestination]
+  );
+
   const isSearching = search.trim().length > 0;
+
+  const hasRecordedView = useRef(false);
+  useEffect(() => {
+    if (isPending || isSearching || !recentlyAddedReleases.length || hasRecordedView.current)
+      return;
+    hasRecordedView.current = true;
+    markSecretSyncsSeen();
+    analytics.captureForOrganization(AnalyticsEvent.SecretSyncRecentlyAddedViewed, currentOrg.id, {
+      projectId: currentProject.id,
+      releaseIds: recentlyAddedReleases.map(({ releaseId }) => releaseId)
+    });
+  }, [isPending, isSearching, recentlyAddedReleases]);
 
   if (isPending) {
     return (
@@ -145,6 +194,7 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
                 <ProviderCard
                   key={option.destination}
                   destination={option.destination}
+                  isNew={newDestinations.has(option.destination)}
                   onClick={() => handleSelect(option)}
                 />
               ))}
@@ -163,6 +213,21 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
         </section>
       ) : (
         <>
+          {recentlyAddedReleases.length > 0 && (
+            <section>
+              <SectionLabel>Recently Added</SectionLabel>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {recentlyAddedReleases.map(({ destination }) => (
+                  <ProviderCard
+                    key={destination}
+                    destination={destination}
+                    isNew
+                    onClick={() => handleSelect(optionsByDestination.get(destination)!)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
           {popularOptions.length > 0 && (
             <section>
               <SectionLabel>Popular</SectionLabel>
@@ -171,6 +236,7 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
                   <ProviderCard
                     key={option.destination}
                     destination={option.destination}
+                    isNew={newDestinations.has(option.destination)}
                     onClick={() => handleSelect(option)}
                   />
                 ))}
@@ -184,6 +250,7 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
                 <ProviderCard
                   key={option.destination}
                   destination={option.destination}
+                  isNew={newDestinations.has(option.destination)}
                   onClick={() => handleSelect(option)}
                 />
               ))}

@@ -25,6 +25,7 @@ import {
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { useGetWorkspaceIntegrations } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { useSecretSyncDiscovery } from "@app/hooks/useSecretSyncDiscovery";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import {
@@ -40,6 +41,8 @@ export const IntegrationsListPage = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+
+  const { hasUnseenSecretSyncs } = useSecretSyncDiscovery();
 
   const { selectedTab } = useSearch({
     from: ROUTE_PATHS.SecretManager.IntegrationsListPage.id
@@ -83,7 +86,15 @@ export const IntegrationsListPage = () => {
               <TabsTrigger value={IntegrationsListPageTabs.AppConnections}>
                 App Connections
               </TabsTrigger>
-              <TabsTrigger value={IntegrationsListPageTabs.SecretSyncs}>Secret Syncs</TabsTrigger>
+              <TabsTrigger value={IntegrationsListPageTabs.SecretSyncs}>
+                Secret Syncs
+                {hasUnseenSecretSyncs && (
+                  <>
+                    <span aria-hidden className="size-2 rounded-full bg-info" />
+                    <span className="sr-only">New syncs available</span>
+                  </>
+                )}
+              </TabsTrigger>
               <TabsTrigger value={IntegrationsListPageTabs.FrameworkIntegrations}>
                 Framework Integrations
               </TabsTrigger>

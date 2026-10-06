@@ -852,6 +852,11 @@ import {
   TSecretValidationRulesUpdate
 } from "@app/db/schemas/secret-validation-rules";
 import {
+  TUserFeatureDiscoveries,
+  TUserFeatureDiscoveriesInsert,
+  TUserFeatureDiscoveriesUpdate
+} from "@app/db/schemas/user-feature-discoveries";
+import {
   TUserNotifications,
   TUserNotificationsInsert,
   TUserNotificationsUpdate
@@ -2015,6 +2020,11 @@ declare module "knex/types/tables" {
       TSecretValidationRules,
       TSecretValidationRulesInsert,
       TSecretValidationRulesUpdate
+    >;
+    [TableName.UserFeatureDiscovery]: KnexOriginal.CompositeTableType<
+      TUserFeatureDiscoveries,
+      TUserFeatureDiscoveriesInsert,
+      TUserFeatureDiscoveriesUpdate
     >;
   }
 }

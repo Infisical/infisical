@@ -15,13 +15,22 @@ import { isOrgScopedProduct } from "@app/helpers/project";
 import type { NavItem, Submenu } from "./types";
 import { PROJECT_TYPE_PATH } from "./types";
 
+const NAV_DOT_STYLES: Record<
+  NonNullable<NavItem["dotVariant"]>,
+  { className: string; label: string }
+> = {
+  danger: { className: "bg-danger", label: "Needs attention" },
+  warning: { className: "bg-warning", label: "Needs attention" },
+  info: { className: "bg-info", label: "New features available" }
+};
+
 const NavDot = ({ variant }: { variant: NonNullable<NavItem["dotVariant"]> }) => (
   <span className="ml-auto flex shrink-0">
     <span
       aria-hidden
-      className={twMerge("size-2 rounded-full", variant === "danger" ? "bg-danger" : "bg-warning")}
+      className={twMerge("size-2 rounded-full", NAV_DOT_STYLES[variant].className)}
     />
-    <span className="sr-only">Needs attention</span>
+    <span className="sr-only">{NAV_DOT_STYLES[variant].label}</span>
   </span>
 );
 

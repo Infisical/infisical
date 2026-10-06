@@ -350,6 +350,8 @@ import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-gr
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
 import { externalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
+import { featureDiscoveryDALFactory } from "@app/services/feature-discovery/feature-discovery-dal";
+import { featureDiscoveryServiceFactory } from "@app/services/feature-discovery/feature-discovery-service";
 import { folderCheckpointDALFactory } from "@app/services/folder-checkpoint/folder-checkpoint-dal";
 import { folderCheckpointResourcesDALFactory } from "@app/services/folder-checkpoint-resources/folder-checkpoint-resources-dal";
 import { folderCommitDALFactory } from "@app/services/folder-commit/folder-commit-dal";
@@ -741,6 +743,7 @@ export const registerRoutes = async (
   const hsmConnectorDAL = hsmConnectorDALFactory(db);
   const secretSyncDAL = secretSyncDALFactory(db, folderDAL);
   const userNotificationDAL = userNotificationDALFactory(db);
+  const featureDiscoveryDAL = featureDiscoveryDALFactory(db);
   const pamSessionDAL = pamSessionDALFactory(db);
 
   const deferredGatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails"> = {
@@ -1234,6 +1237,7 @@ export const registerRoutes = async (
   });
 
   const announcementService = announcementServiceFactory({ userDAL, keyStore });
+  const featureDiscoveryService = featureDiscoveryServiceFactory({ featureDiscoveryDAL });
 
   const clickhouseAuditLogDAL = clickhouse
     ? clickhouseAuditLogDALFactory(clickhouse, db, envConfig.CLICKHOUSE_AUDIT_LOG_TABLE_NAME)
@@ -4558,6 +4562,7 @@ export const registerRoutes = async (
     alert: alertService,
     alertChannelTest: alertChannelTestService,
     announcement: announcementService,
+    featureDiscovery: featureDiscoveryService,
     mfaSession: mfaSessionService,
     membershipUser: membershipUserService,
     membershipIdentity: membershipIdentityService,
