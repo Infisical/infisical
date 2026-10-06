@@ -17,7 +17,8 @@ export const useCreateFeatureDiscoveries = () => {
       return data.featureDiscoveries;
     },
     // Optimistic so the dots clear the moment the picker renders, not after the round trip.
-    onMutate: (releaseIds) => {
+    onMutate: async (releaseIds) => {
+      await queryClient.cancelQueries({ queryKey: featureDiscoveryKeys.all });
       const createdAt = new Date().toISOString();
       queryClient.setQueryData<TFeatureDiscovery[]>(featureDiscoveryKeys.all, (prev = []) => [
         ...prev,

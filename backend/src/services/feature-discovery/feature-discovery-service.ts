@@ -1,7 +1,7 @@
 import { TFeatureDiscoveryDALFactory } from "./feature-discovery-dal";
 
 type TFeatureDiscoveryServiceFactoryDep = {
-  featureDiscoveryDAL: Pick<TFeatureDiscoveryDALFactory, "find" | "insertIgnoringDuplicates">;
+  featureDiscoveryDAL: Pick<TFeatureDiscoveryDALFactory, "find" | "insertIgnoringDuplicates" | "transaction">;
 };
 
 export type TFeatureDiscoveryServiceFactory = ReturnType<typeof featureDiscoveryServiceFactory>;
@@ -13,8 +13,11 @@ export const featureDiscoveryServiceFactory = ({ featureDiscoveryDAL }: TFeature
   };
 
   const createFeatureDiscoveries = async (userId: string, releaseIds: string[]) => {
-    await featureDiscoveryDAL.insertIgnoringDuplicates(userId, [...new Set(releaseIds)]);
-    return listFeatureDiscoveries(userId);
+    const discoveries = await featureDiscoveryDAL.transaction(async (tx) => {
+      await featureDiscoveryDAL.insertIgnoringDuplicates(userId, [...new Set(releaseIds)], tx);
+      return featureDiscoveryDAL.find({ userId }, { tx });
+    });
+    return discoveries.map(({ releaseId, createdAt }) => ({ releaseId, createdAt }));
   };
 
   return { listFeatureDiscoveries, createFeatureDiscoveries };

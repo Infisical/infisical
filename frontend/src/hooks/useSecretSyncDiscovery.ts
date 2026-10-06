@@ -1,5 +1,3 @@
-import { useCallback, useMemo } from "react";
-
 import { useUser } from "@app/context";
 import {
   FEATURE_RELEASE_NEW_WINDOW_DAYS,
@@ -21,7 +19,8 @@ export const useSecretSyncDiscovery = () => {
   const { data: discoveries } = useGetFeatureDiscoveries();
   const { mutate: createDiscoveries } = useCreateFeatureDiscoveries();
 
-  const newReleases = useMemo(() => {
+  // Recomputed every render so a page left open past a release window stops promoting it.
+  const newReleases = (() => {
     const now = Date.now();
     const available = new Set(syncOptions?.map((option) => option.destination));
     return SECRET_SYNC_RELEASES.filter(({ destination, releasedAt }) => {
@@ -30,21 +29,19 @@ export const useSecretSyncDiscovery = () => {
         available.has(destination) && age >= 0 && age < FEATURE_RELEASE_NEW_WINDOW_DAYS * DAY_MS
       );
     }).sort((a, b) => b.releasedAt.localeCompare(a.releasedAt));
-  }, [syncOptions]);
+  })();
 
-  const unseenReleaseIds = useMemo(() => {
-    const seen = new Set(discoveries?.map(({ releaseId }) => releaseId));
-    return newReleases
-      .filter(({ releaseId }) => !seen.has(releaseId))
-      .map(({ releaseId }) => releaseId);
-  }, [discoveries, newReleases]);
+  const seen = new Set(discoveries?.map(({ releaseId }) => releaseId));
+  const unseenReleaseIds = newReleases
+    .filter(({ releaseId }) => !seen.has(releaseId))
+    .map(({ releaseId }) => releaseId);
 
   const isInGracePeriod =
     Date.now() - new Date(user.createdAt).getTime() < NEW_USER_GRACE_PERIOD_MS;
 
-  const markSecretSyncsSeen = useCallback(() => {
+  const markSecretSyncsSeen = () => {
     if (unseenReleaseIds.length) createDiscoveries(unseenReleaseIds);
-  }, [unseenReleaseIds, createDiscoveries]);
+  };
 
   return {
     newSecretSyncReleases: newReleases,
