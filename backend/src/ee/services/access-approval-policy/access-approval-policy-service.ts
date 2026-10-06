@@ -110,18 +110,11 @@ export const accessApprovalPolicyServiceFactory = ({
       throw new BadRequestError({ message: "Must provide either envId or envIds" });
     }
 
-    for (const id of resolvedEnvIds) {
-      if (
-        // eslint-disable-next-line no-await-in-loop
-        await secretAccessApprovalPolicyExists(
-          { envId: id, secretPath, excludePolicyId: policyId },
-          { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL }
-        )
-      ) {
-        return true;
-      }
-    }
-    return false;
+    const conflictingEnvId = await secretAccessApprovalPolicyExists(
+      { envIds: resolvedEnvIds, secretPath, excludePolicyId: policyId },
+      { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL }
+    );
+    return Boolean(conflictingEnvId);
   };
 
   const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });

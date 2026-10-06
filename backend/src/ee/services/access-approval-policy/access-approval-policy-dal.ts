@@ -149,7 +149,7 @@ export interface TAccessApprovalPolicyDALFactory
     | undefined
   >;
   findPolicyByEnvIdAndSecretPath: (
-    { envIds, secretPath }: { envIds: string[]; secretPath: string },
+    { envIds, secretPath, excludePolicyId }: { envIds: string[]; secretPath: string; excludePolicyId?: string },
     tx?: Knex
   ) => Promise<{
     name: string;
@@ -605,7 +605,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
   };
 
   const findPolicyByEnvIdAndSecretPath: TAccessApprovalPolicyDALFactory["findPolicyByEnvIdAndSecretPath"] = async (
-    { envIds, secretPath },
+    { envIds, secretPath, excludePolicyId },
     tx
   ) => {
     try {
@@ -641,6 +641,9 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
           )
         )
         .whereNull(`${TableName.AccessApprovalPolicy}.deletedAt`)
+        .where((qb) => {
+          if (excludePolicyId) void qb.whereNot(`${TableName.AccessApprovalPolicy}.id`, excludePolicyId);
+        })
         .orderBy("deletedAt", "desc")
         .orderByRaw(`"deletedAt" IS NULL`)
         .select(selectAllTableCols(TableName.AccessApprovalPolicy))

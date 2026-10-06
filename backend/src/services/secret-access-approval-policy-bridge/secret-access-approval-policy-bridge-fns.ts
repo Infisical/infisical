@@ -17,25 +17,25 @@ type TSecretAccessApprovalPolicyExistsDep = {
 };
 
 export const secretAccessApprovalPolicyExists = async (
-  { envId, secretPath, excludePolicyId }: { envId: string; secretPath: string; excludePolicyId?: string },
+  { envIds, secretPath, excludePolicyId }: { envIds: string[]; secretPath: string; excludePolicyId?: string },
   { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL }: TSecretAccessApprovalPolicyExistsDep,
   tx?: Knex
 ) => {
   const legacyPolicy = await accessApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath(
-    { envIds: [envId], secretPath },
+    { envIds, secretPath, excludePolicyId },
     tx
   );
-  if (legacyPolicy && legacyPolicy.id !== excludePolicyId) return true;
+  if (legacyPolicy) return legacyPolicy.environments[0]?.id ?? envIds[0];
 
   const policy = await approvalPolicySecretEnvironmentDAL.findPolicyByEnvIdsAndSecretPath(
     {
-      envIds: [envId],
+      envIds,
       secretPath,
       excludePolicyId
     },
     tx
   );
-  return Boolean(policy);
+  return policy?.envId;
 };
 
 // Legacy stores null on approver rows for a step with no approvalsRequired entry and reviews it as 1,

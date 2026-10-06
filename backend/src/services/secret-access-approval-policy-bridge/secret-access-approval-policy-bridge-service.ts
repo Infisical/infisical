@@ -302,20 +302,21 @@ export const secretAccessApprovalPolicyBridgeServiceFactory = ({
     }: { envs: { id: string; slug: string }[]; secretPath: string; excludePolicyId?: string },
     tx?: Knex
   ) => {
-    for (const env of envs) {
-      if (
-        // eslint-disable-next-line no-await-in-loop
-        await secretAccessApprovalPolicyExists(
-          { envId: env.id, secretPath, excludePolicyId },
-          { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL },
-          tx
-        )
-      ) {
-        throw new BadRequestError({
-          message: `A policy for secret path '${secretPath}' already exists in environment '${env.slug}'`
-        });
-      }
-    }
+    if (!envs.length) return;
+
+    const conflictingEnvId = await secretAccessApprovalPolicyExists(
+      { envIds: envs.map((env) => env.id), secretPath, excludePolicyId },
+      { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL },
+      tx
+    );
+    if (!conflictingEnvId) return;
+
+    const env = envs.find((candidate) => candidate.id === conflictingEnvId);
+    throw new BadRequestError({
+      message: env
+        ? `A policy for secret path '${secretPath}' already exists in environment '${env.slug}'`
+        : `A policy for secret path '${secretPath}' already exists`
+    });
   };
 
   const createAccessApprovalPolicy = async ({
