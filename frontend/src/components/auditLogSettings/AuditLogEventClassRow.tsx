@@ -59,7 +59,7 @@ export const AuditLogEventClassRow = ({
           {auditLogEventClassToDescriptionMap[eventClass]}
         </FieldDescription>
         {descriptionExtra && (
-          <FieldDescription className="max-w-2xl">{descriptionExtra}</FieldDescription>
+          <FieldDescription className="max-w-2xl pb-1">{descriptionExtra}</FieldDescription>
         )}
       </FieldContent>
       <div className="shrink-0">
