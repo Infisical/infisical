@@ -16,9 +16,6 @@ import {
   TFindOpt
 } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
-import { AlertChannelType } from "@app/services/alert/alert-channel-types";
-import { AlertPrincipalType } from "@app/services/alert/alert-types";
-import { SECRET_REMINDER_RESOURCE_TYPE } from "@app/services/reminder/reminder-events";
 import type { TFindSecretsByFolderIdsFilter } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 
 export const SecretServiceCacheKeys = {
@@ -101,17 +98,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.SecretV2}.id`,
           `${TableName.HoneyTokenSecretMapping}.secretId`
         )
-        .leftJoin(
-          TableName.SecretReminderRecipients,
-          `${TableName.SecretV2}.id`,
-          `${TableName.SecretReminderRecipients}.secretId`
-        )
-        .leftJoin(TableName.Users, `${TableName.SecretReminderRecipients}.userId`, `${TableName.Users}.id`)
         .select(selectAllTableCols(TableName.SecretV2))
-        .select(db.ref("id").withSchema(TableName.SecretReminderRecipients).as("reminderRecipientId"))
-        .select(db.ref("username").withSchema(TableName.Users).as("reminderRecipientUsername"))
-        .select(db.ref("email").withSchema(TableName.Users).as("reminderRecipientEmail"))
-        .select(db.ref("id").withSchema(TableName.Users).as("reminderRecipientUserId"))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
@@ -136,23 +123,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
               color,
               slug,
               name: slug
-            })
-          },
-          {
-            key: "reminderRecipientId",
-            label: "secretReminderRecipients" as const,
-            mapper: ({
-              reminderRecipientId,
-              reminderRecipientUsername,
-              reminderRecipientEmail,
-              reminderRecipientUserId
-            }) => ({
-              user: {
-                id: reminderRecipientUserId,
-                username: reminderRecipientUsername,
-                email: reminderRecipientEmail
-              },
-              id: reminderRecipientId
             })
           }
         ]
@@ -786,36 +756,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.HoneyTokenSecretMapping}.secretId`
         )
         .leftJoin(TableName.Reminder, `${TableName.SecretV2}.id`, `${TableName.Reminder}.secretId`)
-        // Reminder recipients live on the reminder's alert email channel.
-        .leftJoin(TableName.Alert, (bd) => {
-          void bd
-            .on(`${TableName.Alert}.resourceId`, db.raw(`"${TableName.SecretV2}"."id"::text`))
-            .andOn(`${TableName.Alert}.resourceType`, db.raw("?", [SECRET_REMINDER_RESOURCE_TYPE]));
-        })
-        .leftJoin(
-          TableName.AlertChannelMembership,
-          `${TableName.Alert}.id`,
-          `${TableName.AlertChannelMembership}.alertId`
-        )
-        .leftJoin(TableName.AlertChannel, (bd) => {
-          void bd
-            .on(`${TableName.AlertChannelMembership}.channelId`, `${TableName.AlertChannel}.id`)
-            .andOn(`${TableName.AlertChannel}.channelType`, db.raw("?", [AlertChannelType.EMAIL]));
-        })
-        .leftJoin(TableName.AlertChannelRecipient, (bd) => {
-          void bd
-            .on(`${TableName.AlertChannel}.id`, `${TableName.AlertChannelRecipient}.channelId`)
-            .andOn(`${TableName.AlertChannelRecipient}.principalType`, db.raw("?", [AlertPrincipalType.USER]));
-        })
-        // The CASE keeps the uuid cast off non-user principals and lets the join use the users primary key.
-        .leftJoin(TableName.Users, (bd) => {
-          void bd.on(
-            `${TableName.Users}.id`,
-            db.raw(
-              `CASE WHEN "${TableName.AlertChannelRecipient}"."principalId" ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN "${TableName.AlertChannelRecipient}"."principalId"::uuid END`
-            )
-          );
-        })
         .where((qb) => {
           if (filters?.metadataFilter && filters.metadataFilter.length > 0) {
             filters.metadataFilter.forEach((meta) => {
@@ -843,10 +783,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .select(db.ref("message").withSchema(TableName.Reminder).as("reminderNote"))
         .select(db.ref("repeatDays").withSchema(TableName.Reminder).as("reminderRepeatDays"))
         .select(db.ref("nextReminderDate").withSchema(TableName.Reminder).as("nextReminderDate"))
-        .select(db.ref("id").withSchema(TableName.AlertChannelRecipient).as("reminderRecipientId"))
-        .select(db.ref("username").withSchema(TableName.Users).as("reminderRecipientUsername"))
-        .select(db.ref("email").withSchema(TableName.Users).as("reminderRecipientEmail"))
-        .select(db.ref("id").withSchema(TableName.Users).as("reminderRecipientUserId"))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
@@ -912,23 +848,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           isRotatedSecret: Boolean(el.rotationId)
         }),
         childrenMapper: [
-          {
-            key: "reminderRecipientId",
-            label: "secretReminderRecipients" as const,
-            mapper: ({
-              reminderRecipientId,
-              reminderRecipientUsername,
-              reminderRecipientEmail,
-              reminderRecipientUserId
-            }) => ({
-              user: {
-                id: reminderRecipientUserId,
-                username: reminderRecipientUsername,
-                email: reminderRecipientEmail
-              },
-              id: reminderRecipientId
-            })
-          },
           {
             key: "tagId",
             label: "tags" as const,

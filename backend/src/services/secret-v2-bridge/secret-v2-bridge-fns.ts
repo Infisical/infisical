@@ -34,7 +34,6 @@ import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
-import { TSecretReminderRecipient } from "../secret-reminder-recipients/secret-reminder-recipients-types";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import {
@@ -711,7 +710,6 @@ export const reshapeBridgeSecret = (
     isRotatedSecret?: boolean;
     isHoneyTokenSecret?: boolean;
     rotationId?: string;
-    secretReminderRecipients?: TSecretReminderRecipient[];
   },
   secretValueHidden: boolean,
   // a personal override is only ever readable by its owner, so unmasking one requires proving who is asking
@@ -748,7 +746,6 @@ export const reshapeBridgeSecret = (
   isRotatedSecret: secret.isRotatedSecret,
   isHoneyTokenSecret: secret.isHoneyTokenSecret,
   rotationId: secret.rotationId,
-  secretReminderRecipients: secret.secretReminderRecipients || [],
   ...(secretValueHidden
     ? {
         secretValue:

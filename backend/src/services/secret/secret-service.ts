@@ -741,7 +741,6 @@ export const secretServiceFactory = ({
         ...secret,
         workspace: projectId,
         environment,
-        secretReminderRecipients: [],
         secretPath: groupedPaths[secret.folderId][0].path
       }))
     };

@@ -136,11 +136,12 @@ describe("Secret reminders delivered through alerts", () => {
     });
     expect(res.statusCode).toBe(200);
     const [secret] = res.json().secrets as {
-      secretReminderRecipients: { user: { id: string } }[];
       secretReminderRepeatDays: number;
+      reminder: { repeatDays: number; recipients: string[] };
     }[];
     expect(secret.secretReminderRepeatDays).toBe(30);
-    expect(secret.secretReminderRecipients.map((recipient) => recipient.user.id)).toEqual([member.userId]);
+    expect(secret.reminder.repeatDays).toBe(30);
+    expect(secret.reminder.recipients).toEqual([member.userId]);
   });
 
   test("moving a secret carries its reminder alert to the new secret", async () => {
