@@ -12,6 +12,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 
@@ -22,6 +23,7 @@ import { TSecretApprovalPolicyApproverDALFactory } from "../../ee/services/secre
 import { TSecretApprovalPolicyDALFactory } from "../../ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
+import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
@@ -66,6 +68,7 @@ type TProjectMembershipServiceFactoryDep = {
   accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "find">;
   secretApprovalPolicyApproverDAL: Pick<TSecretApprovalPolicyApproverDALFactory, "find">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "find">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findPoliciesWhereSubjectIsApprover">;
   secretReminderRecipientsDAL: Pick<TSecretReminderRecipientsDALFactory, "delete">;
   groupProjectDAL: TGroupProjectDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -94,6 +97,7 @@ export const projectMembershipServiceFactory = ({
   accessApprovalPolicyDAL,
   secretApprovalPolicyApproverDAL,
   secretApprovalPolicyDAL,
+  approvalPolicyDAL,
   membershipUserDAL,
   userDAL,
   userAliasDAL,
@@ -142,6 +146,18 @@ export const projectMembershipServiceFactory = ({
           message: `${actionLabel}: user is an approver in secret approval ${policies.length > 1 ? "policies" : "policy"}: ${policyNames}`
         });
       }
+    }
+
+    const secretChangePolicies = await approvalPolicyDAL.findPoliciesWhereSubjectIsApprover({
+      projectId,
+      type: ApprovalPolicyType.SecretChange,
+      userIds
+    });
+    if (secretChangePolicies.length > 0) {
+      const policyNames = secretChangePolicies.map((p) => p.name).join(", ");
+      throw new BadRequestError({
+        message: `${actionLabel}: user is an approver in secret approval ${secretChangePolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
+      });
     }
   };
 

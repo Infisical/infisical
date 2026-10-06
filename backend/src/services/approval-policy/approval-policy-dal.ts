@@ -217,15 +217,16 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
   };
 
   /**
-   * Return the list of policies (with name + id) that include the given subject as an approver
-   * on any step. The subject is identified by `userId` OR `groupId` (not both). Used to block
-   * removing a member from an application while they're still wired up as a reviewer.
+   * Return the list of policies (with name + id) that include any of the given subjects as an approver
+   * on any step. The subjects are identified by `userIds` OR `groupId` (not both). Used to block
+   * removing members while they're still wired up as reviewers.
    */
   const findPoliciesWhereSubjectIsApprover = async (args: {
     projectId: string;
+    type?: string;
     scopeType?: string;
     scopeId?: string;
-    userId?: string;
+    userIds?: string[];
     groupId?: string;
   }) => {
     try {
@@ -244,6 +245,10 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
           `${TableName.ApprovalPolicySteps}.id`
         );
 
+      if (typeof args.type === "string") {
+        void baseQuery.where(`${TableName.ApprovalPolicies}.type`, args.type);
+      }
+
       if (typeof args.scopeType === "string") {
         void baseQuery.where(`${TableName.ApprovalPolicies}.scopeType`, args.scopeType);
         if (typeof args.scopeId === "string") {
@@ -251,8 +256,8 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
         }
       }
 
-      if (args.userId) {
-        void baseQuery.where(`${TableName.ApprovalPolicyStepApprovers}.userId`, args.userId);
+      if (args.userIds?.length) {
+        void baseQuery.whereIn(`${TableName.ApprovalPolicyStepApprovers}.userId`, args.userIds);
       } else if (args.groupId) {
         void baseQuery.where(`${TableName.ApprovalPolicyStepApprovers}.groupId`, args.groupId);
       } else {

@@ -161,6 +161,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretChangeRequestBridgeService: Pick<
     TSecretChangeRequestBridgeServiceFactory,
     | "findSecretChangeRequest"
+    | "findFolderIdsWithOpenSecretChangeRequests"
     | "generateSecretChangeRequest"
     | "mergeSecretChangeRequest"
     | "reviewSecretChangeRequest"
@@ -1286,7 +1287,7 @@ export const secretApprovalRequestServiceFactory = ({
 
     if (await secretChangePolicyBridgeService.findSecretChangePolicy(policy.id)) {
       throw new BadRequestError({
-        message: `Secret approval policy with ID '${policy.id}' is on the new approval system, which does not support projects that have not been upgraded to the latest secrets version.`
+        message: `Secret approval policy with ID '${policy.id}' is on the global approval system, which does not support projects that have not been upgraded to the latest secrets version.`
       });
     }
 
@@ -1808,6 +1809,21 @@ export const secretApprovalRequestServiceFactory = ({
     return secretApprovalRequest;
   };
 
+  const findFolderIdsWithOpenRequests = async (folderIds: string[], tx?: Knex) => {
+    if (!folderIds.length) return [];
+
+    const legacyRequests = await secretApprovalRequestDAL.find(
+      { $in: { folderId: folderIds }, status: RequestState.Open },
+      { tx }
+    );
+    const secretChangeFolderIds = await secretChangeRequestBridgeService.findFolderIdsWithOpenSecretChangeRequests(
+      folderIds,
+      tx
+    );
+
+    return [...new Set([...legacyRequests.map((request) => request.folderId), ...secretChangeFolderIds])];
+  };
+
   return {
     generateSecretApprovalRequest,
     generateSecretApprovalRequestV2Bridge,
@@ -1817,6 +1833,7 @@ export const secretApprovalRequestServiceFactory = ({
     updateApprovalStatus,
     getSecretApprovals,
     getSecretApprovalDetails,
-    requestCount
+    requestCount,
+    findFolderIdsWithOpenRequests
   };
 };

@@ -82,7 +82,7 @@ describe("generateSecretApprovalRequest", () => {
       })
     ).rejects.toThrow(
       new BadRequestError({
-        message: `Secret approval policy with ID '${POLICY_ID}' is on the new approval system, which does not support projects that have not been upgraded to the latest secrets version.`
+        message: `Secret approval policy with ID '${POLICY_ID}' is on the global approval system, which does not support projects that have not been upgraded to the latest secrets version.`
       })
     );
 

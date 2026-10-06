@@ -85,7 +85,7 @@ export const secretApprovalRequestCreationFnsFactory = ({
   const createSecretApprovalRequest = async (dto: TCreateSecretApprovalRequestDTO, tx?: Knex) => {
     if (await $isSecretChangePolicy(dto.policy.id, tx)) {
       throw new BadRequestError({
-        message: `Secret approval policy with ID '${dto.policy.id}' is on the new approval system, which does not support projects that have not been upgraded to the latest secrets version.`
+        message: `Secret approval policy with ID '${dto.policy.id}' is on the global approval system, which does not support projects that have not been upgraded to the latest secrets version.`
       });
     }
 

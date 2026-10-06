@@ -140,7 +140,7 @@ export const secretChangePolicyBridgeServiceFactory = ({
     if (project.version !== ProjectVersion.V3) {
       throw new BadRequestError({
         message:
-          "Secret approval policies on the new approval system are only supported on projects that have been upgraded to the latest secrets version. Upgrade the project before creating one."
+          "Secret approval policies on the global approval system are only supported on projects that have been upgraded to the latest secrets version. Upgrade the project before creating one."
       });
     }
 

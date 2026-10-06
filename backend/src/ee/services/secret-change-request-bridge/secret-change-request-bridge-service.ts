@@ -95,6 +95,7 @@ import { TSecretChangeRequestDALFactory } from "./secret-change-request-dal";
 type TSecretChangeRequestBridgeServiceFactoryDep = {
   approvalRequestDAL: Pick<
     TApprovalRequestDALFactory,
+    | "find"
     | "findById"
     | "findByIdForUpdate"
     | "findStepsByRequestId"
@@ -109,7 +110,7 @@ type TSecretChangeRequestBridgeServiceFactoryDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findStepsByPolicyId" | "findBypassersByPolicyIds">;
   secretChangeRequestDAL: Pick<
     TSecretChangeRequestDALFactory,
-    "create" | "findOne" | "updateById" | "findByProjectId" | "countByProjectId"
+    "create" | "find" | "findOne" | "updateById" | "findByProjectId" | "countByProjectId"
   >;
   secretApprovalRequestSecretDAL: Pick<
     TSecretApprovalRequestSecretDALFactory,
@@ -248,6 +249,23 @@ export const secretChangeRequestBridgeServiceFactory = ({
     });
 
   const findSecretChangeRequest = (requestId: string, tx?: Knex) => approvalRequestDAL.findById(requestId, tx);
+
+  const findFolderIdsWithOpenSecretChangeRequests = async (folderIds: string[], tx?: Knex) => {
+    if (!folderIds.length) return [];
+
+    const secretChangeRequests = await secretChangeRequestDAL.find({ $in: { folderId: folderIds } }, { tx });
+    if (!secretChangeRequests.length) return [];
+
+    const openRequests = await approvalRequestDAL.find(
+      { $in: { id: secretChangeRequests.map((request) => request.approvalRequestId) }, status: RequestState.Open },
+      { tx }
+    );
+    const openRequestIds = new Set(openRequests.map((request) => request.id));
+
+    return secretChangeRequests
+      .filter((request) => openRequestIds.has(request.approvalRequestId))
+      .map((request) => request.folderId);
+  };
 
   const $findSecretChangeRequestOrThrow = async (requestId: string, tx?: Knex) => {
     const approvalRequest = await approvalRequestDAL.findById(requestId, tx);
@@ -1072,6 +1090,7 @@ export const secretChangeRequestBridgeServiceFactory = ({
 
   return {
     findSecretChangeRequest,
+    findFolderIdsWithOpenSecretChangeRequests,
     generateSecretChangeRequest,
     createSecretChangeRequest,
     createSecretChangeRequestSideEffects,

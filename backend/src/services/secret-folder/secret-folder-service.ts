@@ -13,6 +13,7 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services
 import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
+import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -107,6 +108,7 @@ type TSecretFolderServiceFactoryDep = {
     TSecretApprovalRequestCreationFnsFactory,
     "createSecretApprovalRequestV2Bridge"
   >;
+  secretApprovalRequestService: Pick<TSecretApprovalRequestServiceFactory, "findFolderIdsWithOpenRequests">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
   secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "find">;
@@ -137,6 +139,7 @@ export const secretFolderServiceFactory = ({
   secretVersionTagDAL,
   resourceMetadataDAL,
   secretApprovalRequestCreationFns,
+  secretApprovalRequestService,
   secretQueueService,
   secretSyncQueue,
   dynamicSecretDAL,
@@ -613,13 +616,15 @@ export const secretFolderServiceFactory = ({
     env,
     parentId,
     idOrName,
-    actor
+    actor,
+    tx
   }: {
     projectId: string;
     env: TProjectEnvironments;
     parentId: string;
     idOrName: string;
     actor: ActorType;
+    tx?: Knex;
   }) => {
     let targetFolder = await folderDAL
       .findOne({
@@ -685,6 +690,21 @@ export const secretFolderServiceFactory = ({
       id: folder.id
     }));
 
+    const folderIdsWithOpenRequests = await secretApprovalRequestService.findFolderIdsWithOpenRequests(
+      folderPolicyPaths.map((p) => p.id),
+      tx
+    );
+    if (folderIdsWithOpenRequests.length > 0) {
+      const blockedPaths = folderPolicyPaths
+        .filter((p) => folderIdsWithOpenRequests.includes(p.id))
+        .map((p) => `"${p.path}"`)
+        .join(", ");
+      throw new BadRequestError({
+        message: `You cannot delete the selected folder because it has open change requests at folder path ${blockedPaths}. Merge or close the change requests and try again.`,
+        name: "DeleteFolderHasOpenChangeRequests"
+      });
+    }
+
     // get secrets under the given folders
     const secrets = await secretV2BridgeDAL.findByFolderIds({
       folderIds: folderPolicyPaths.map((p) => p.id)
@@ -745,7 +765,7 @@ export const secretFolderServiceFactory = ({
           message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
         });
 
-      await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor });
+      await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, tx });
 
       let folderToDelete = await folderDAL
         .findOne({
@@ -1430,7 +1450,7 @@ export const secretFolderServiceFactory = ({
             });
           }
 
-          await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor });
+          await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, tx });
 
           let folderToDelete = await folderDAL
             .findOne({
