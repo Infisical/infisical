@@ -21,7 +21,7 @@ import { MilvusProvider } from "./milvus";
 import { DynamicSecretProviders, TDynamicProviderFns } from "./models";
 import { MongoAtlasProvider } from "./mongo-atlas";
 import { MongoDBProvider } from "./mongo-db";
-import { OAuthProvider } from "./oauth";
+import { OAuth2Provider } from "./oauth2";
 import { RabbitMqProvider } from "./rabbit-mq";
 import { RedisDatabaseProvider } from "./redis";
 import { SapAseProvider } from "./sap-ase";
@@ -70,5 +70,5 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.Ssh]: SshProvider(),
   [DynamicSecretProviders.IbmApiConnect]: IbmApiConnectProvider(),
   [DynamicSecretProviders.Tailscale]: TailscaleProvider(),
-  [DynamicSecretProviders.OAuth]: OAuthProvider()
+  [DynamicSecretProviders.OAuth2]: OAuth2Provider()
 });

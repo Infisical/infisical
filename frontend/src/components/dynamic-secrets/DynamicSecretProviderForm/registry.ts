@@ -54,7 +54,7 @@ export const DYNAMIC_SECRET_PROVIDER_PICKER_ORDER = [
   DynamicSecretProviders.Ssh,
   DynamicSecretProviders.IbmApiConnect,
   DynamicSecretProviders.Tailscale,
-  DynamicSecretProviders.OAuth
+  DynamicSecretProviders.OAuth2
 ] as const satisfies readonly DynamicSecretProviders[];
 
 const DYNAMIC_SECRET_PROVIDER_DOCS_SLUG: Partial<Record<DynamicSecretProviders, string>> = {

@@ -247,8 +247,8 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
       supportsRenewal: false
     }
   },
-  [DynamicSecretProviders.OAuth]: {
-    presentation: { providerFamily: "OAuth" },
+  [DynamicSecretProviders.OAuth2]: {
+    presentation: { providerFamily: "OAuth 2.0" },
     leaseCapabilities: {
       provisioner: "default",
       output: oneTimeFields([

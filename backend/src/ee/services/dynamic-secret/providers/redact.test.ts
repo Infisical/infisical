@@ -2,15 +2,15 @@ import { describe, expect, test } from "vitest";
 
 import { SshCertKeyAlgorithm } from "@app/lib/ssh";
 
-import { DynamicSecretProviders, OAuthClientAuthMethod, OAuthGrantType } from "./models";
+import { DynamicSecretProviders, OAuth2ClientAuthMethod, OAuth2GrantType } from "./models";
 import { DYNAMIC_SECRET_SECRET_FIELDS, redactStoredInputs, restoreOmittedSecretFields } from "./redact";
 
-const oauthStoredInputs = {
-  grantType: OAuthGrantType.ClientCredentials,
+const oauth2StoredInputs = {
+  grantType: OAuth2GrantType.ClientCredentials,
   tokenUrl: "https://auth.example.com/token",
   revocationUrl: "https://auth.example.com/revoke",
   clientId: "client-id",
-  clientAuth: { method: OAuthClientAuthMethod.ClientSecretPost, clientSecret: "stored-secret" },
+  clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretPost, clientSecret: "stored-secret" },
   extraParams: []
 };
 
@@ -53,11 +53,11 @@ describe("redactStoredInputs", () => {
   });
 
   test("withholds a nested secret field and keeps its siblings", () => {
-    const redacted = redactStoredInputs(DynamicSecretProviders.OAuth, oauthStoredInputs);
+    const redacted = redactStoredInputs(DynamicSecretProviders.OAuth2, oauth2StoredInputs);
 
     expect(redacted).toStrictEqual({
-      ...oauthStoredInputs,
-      clientAuth: { method: OAuthClientAuthMethod.ClientSecretPost }
+      ...oauth2StoredInputs,
+      clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretPost }
     });
     expect(JSON.stringify(redacted)).not.toContain("stored-secret");
   });
@@ -65,24 +65,24 @@ describe("redactStoredInputs", () => {
 
 describe("restoreOmittedSecretFields", () => {
   test("restores a nested secret the edit left out", () => {
-    const restored = restoreOmittedSecretFields(DynamicSecretProviders.OAuth, oauthStoredInputs, {
-      ...oauthStoredInputs,
-      clientAuth: { method: OAuthClientAuthMethod.ClientSecretBasic }
+    const restored = restoreOmittedSecretFields(DynamicSecretProviders.OAuth2, oauth2StoredInputs, {
+      ...oauth2StoredInputs,
+      clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretBasic }
     });
 
     expect(restored).toStrictEqual({
-      ...oauthStoredInputs,
-      clientAuth: { method: OAuthClientAuthMethod.ClientSecretBasic, clientSecret: "stored-secret" }
+      ...oauth2StoredInputs,
+      clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretBasic, clientSecret: "stored-secret" }
     });
   });
 
   test("keeps a secret the edit supplied", () => {
     const edited = {
-      ...oauthStoredInputs,
-      clientAuth: { method: OAuthClientAuthMethod.ClientSecretPost, clientSecret: "rotated-secret" }
+      ...oauth2StoredInputs,
+      clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretPost, clientSecret: "rotated-secret" }
     };
 
-    expect(restoreOmittedSecretFields(DynamicSecretProviders.OAuth, oauthStoredInputs, edited)).toStrictEqual(edited);
+    expect(restoreOmittedSecretFields(DynamicSecretProviders.OAuth2, oauth2StoredInputs, edited)).toStrictEqual(edited);
   });
 
   test("leaves inputs untouched for a provider that declares no secret fields", () => {

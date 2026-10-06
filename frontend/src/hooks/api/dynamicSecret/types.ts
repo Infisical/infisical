@@ -46,14 +46,14 @@ export enum DynamicSecretProviders {
   Ssh = "ssh",
   IbmApiConnect = "ibm-api-connect",
   Tailscale = "tailscale",
-  OAuth = "oauth"
+  OAuth2 = "oauth2"
 }
 
-export enum OAuthGrantType {
+export enum OAuth2GrantType {
   ClientCredentials = "client-credentials"
 }
 
-export enum OAuthClientAuthMethod {
+export enum OAuth2ClientAuthMethod {
   ClientSecretBasic = "client_secret_basic",
   ClientSecretPost = "client_secret_post"
 }
@@ -588,14 +588,14 @@ export type TDynamicSecretProvider =
           };
     }
   | {
-      type: DynamicSecretProviders.OAuth;
+      type: DynamicSecretProviders.OAuth2;
       inputs: {
-        grantType: OAuthGrantType.ClientCredentials;
+        grantType: OAuth2GrantType.ClientCredentials;
         tokenUrl: string;
         revocationUrl: string;
         clientId: string;
         clientAuth: {
-          method: OAuthClientAuthMethod;
+          method: OAuth2ClientAuthMethod;
           clientSecret?: string;
         };
         scope?: string;

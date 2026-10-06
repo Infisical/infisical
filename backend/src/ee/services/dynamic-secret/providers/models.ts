@@ -831,7 +831,7 @@ export enum DynamicSecretProviders {
   Ssh = "ssh",
   IbmApiConnect = "ibm-api-connect",
   Tailscale = "tailscale",
-  OAuth = "oauth"
+  OAuth2 = "oauth2"
 }
 
 export const DynamicSecretIbmApiConnectSchema = z.object({
@@ -974,15 +974,15 @@ export const DynamicSecretTailscaleSchema = z
     }
   });
 
-export enum OAuthGrantType {
+export enum OAuth2GrantType {
   ClientCredentials = "client-credentials"
 }
 
-export const OAUTH_MAX_EXTRA_PARAMS = 20;
+export const OAUTH2_MAX_EXTRA_PARAMS = 20;
 
 // Parameters Infisical sets itself or that carry client authentication; letting extra params
 // override them would change the grant or leak credentials into the request body.
-export const OAUTH_RESERVED_PARAMS = new Set([
+export const OAUTH2_RESERVED_PARAMS = new Set([
   "grant_type",
   "scope",
   "client_id",
@@ -992,44 +992,44 @@ export const OAUTH_RESERVED_PARAMS = new Set([
 ]);
 
 // RFC 6749 section 3.3: scope-token = 1*( %x21 / %x23-5B / %x5D-7E )
-const OAUTH_SCOPE_TOKEN_REGEX = new RE2(/^[\x21\x23-\x5B\x5D-\x7E]+$/);
-const OAUTH_PARAM_KEY_REGEX = new RE2(/^[A-Za-z0-9._~:[\]-]+$/);
+const OAUTH2_SCOPE_TOKEN_REGEX = new RE2(/^[\x21\x23-\x5B\x5D-\x7E]+$/);
+const OAUTH2_PARAM_KEY_REGEX = new RE2(/^[A-Za-z0-9._~:[\]-]+$/);
 const WHITESPACE_REGEX = new RE2(/\s+/);
 
-export const normalizeOAuthScope = (scope: string) =>
+export const normalizeOAuth2Scope = (scope: string) =>
   [...new Set(scope.split(WHITESPACE_REGEX).filter(Boolean))].join(" ");
 
 // RFC 7591 registry names, so they match what servers advertise in token_endpoint_auth_methods_supported
-export enum OAuthClientAuthMethod {
+export enum OAuth2ClientAuthMethod {
   ClientSecretBasic = "client_secret_basic",
   ClientSecretPost = "client_secret_post"
 }
 
-const OAuthClientSecretSchema = z
+const OAuth2ClientSecretSchema = z
   .string()
   .trim()
   .min(1, "Client secret is required")
   .max(4096)
-  .describe("The OAuth client secret.");
+  .describe("The OAuth 2.0 client secret.");
 
-export const OAuthClientAuthSchema = z.discriminatedUnion("method", [
+export const OAuth2ClientAuthSchema = z.discriminatedUnion("method", [
   z.object({
     method: z
-      .literal(OAuthClientAuthMethod.ClientSecretBasic)
+      .literal(OAuth2ClientAuthMethod.ClientSecretBasic)
       .describe("Send the client credentials in an HTTP Basic Authorization header."),
-    clientSecret: OAuthClientSecretSchema
+    clientSecret: OAuth2ClientSecretSchema
   }),
   z.object({
     method: z
-      .literal(OAuthClientAuthMethod.ClientSecretPost)
+      .literal(OAuth2ClientAuthMethod.ClientSecretPost)
       .describe("Send the client credentials as client_id and client_secret form parameters."),
-    clientSecret: OAuthClientSecretSchema
+    clientSecret: OAuth2ClientSecretSchema
   })
 ]);
 
-export const DynamicSecretOAuthSchema = z.discriminatedUnion("grantType", [
+export const DynamicSecretOAuth2Schema = z.discriminatedUnion("grantType", [
   z.object({
-    grantType: z.literal(OAuthGrantType.ClientCredentials),
+    grantType: z.literal(OAuth2GrantType.ClientCredentials),
     tokenUrl: z
       .string()
       .trim()
@@ -1042,8 +1042,8 @@ export const DynamicSecretOAuthSchema = z.discriminatedUnion("grantType", [
       .max(2048)
       .url("Revocation URL must be a valid URL")
       .describe("The authorization server's RFC 7009 token revocation endpoint."),
-    clientId: z.string().trim().min(1, "Client ID is required").max(1024).describe("The OAuth client ID."),
-    clientAuth: OAuthClientAuthSchema.describe(
+    clientId: z.string().trim().min(1, "Client ID is required").max(1024).describe("The OAuth 2.0 client ID."),
+    clientAuth: OAuth2ClientAuthSchema.describe(
       "How Infisical authenticates the client to the token and revocation endpoints."
     ),
     scope: z
@@ -1053,7 +1053,7 @@ export const DynamicSecretOAuthSchema = z.discriminatedUnion("grantType", [
       .superRefine((scope, ctx) => {
         const invalidTokens = scope
           .split(WHITESPACE_REGEX)
-          .filter((token) => token && !OAUTH_SCOPE_TOKEN_REGEX.test(token));
+          .filter((token) => token && !OAUTH2_SCOPE_TOKEN_REGEX.test(token));
         if (invalidTokens.length) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -1061,7 +1061,7 @@ export const DynamicSecretOAuthSchema = z.discriminatedUnion("grantType", [
           });
         }
       })
-      .transform((scope) => normalizeOAuthScope(scope) || undefined)
+      .transform((scope) => normalizeOAuth2Scope(scope) || undefined)
       .optional()
       .describe("Space-separated scopes to request. Leave empty to use the client's default scopes."),
     extraParams: z
@@ -1072,15 +1072,15 @@ export const DynamicSecretOAuthSchema = z.discriminatedUnion("grantType", [
             .trim()
             .min(1, "Parameter name is required")
             .max(128)
-            .refine((key) => OAUTH_PARAM_KEY_REGEX.test(key), "Parameter name contains invalid characters")
+            .refine((key) => OAUTH2_PARAM_KEY_REGEX.test(key), "Parameter name contains invalid characters")
             .refine(
-              (key) => !OAUTH_RESERVED_PARAMS.has(key.toLowerCase()),
+              (key) => !OAUTH2_RESERVED_PARAMS.has(key.toLowerCase()),
               (key) => ({ message: `'${key}' is set by Infisical and can't be used as an extra parameter` })
             ),
           value: z.string().trim().min(1, "Parameter value is required").max(2048)
         })
       )
-      .max(OAUTH_MAX_EXTRA_PARAMS, `At most ${OAUTH_MAX_EXTRA_PARAMS} extra parameters are allowed`)
+      .max(OAUTH2_MAX_EXTRA_PARAMS, `At most ${OAUTH2_MAX_EXTRA_PARAMS} extra parameters are allowed`)
       .superRefine((params, ctx) => {
         const seen = new Set<string>();
         params.forEach(({ key }, index) => {
@@ -1144,7 +1144,7 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
     inputs: DynamicSecretIbmApiConnectSchema
   }),
   z.object({ type: z.literal(DynamicSecretProviders.Tailscale), inputs: DynamicSecretTailscaleSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.OAuth), inputs: DynamicSecretOAuthSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.OAuth2), inputs: DynamicSecretOAuth2Schema })
 ]);
 
 // Extended metadata passed to a provider's create() call. When the project

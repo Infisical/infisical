@@ -2,7 +2,7 @@ import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 
 import { Button, Field, FieldError, FieldLabel, IconButton, Input } from "@app/components/v3";
-import { DynamicSecretProviders, OAuthClientAuthMethod } from "@app/hooks/api/dynamicSecret/types";
+import { DynamicSecretProviders, OAuth2ClientAuthMethod } from "@app/hooks/api/dynamicSecret/types";
 
 import { DynamicSecretProviderFields } from "../DynamicSecretProviderFields";
 import { DynamicSecretProviderGroup } from "../DynamicSecretProviderGroup";
@@ -13,16 +13,16 @@ import {
   TDynamicSecretProviderRendererProps
 } from "../types";
 import {
-  getOAuthCreateDefaultValues,
-  getOAuthCreatePayload,
-  getOAuthEditDefaultValues,
-  getOAuthEditPayload,
-  OAUTH_CUSTOM_RENDERER_REASONS,
-  OAUTH_MAX_EXTRA_PARAMS,
-  oauthCreateFormSchema,
-  oauthEditFormSchema,
-  TOAuthEditFormValues
-} from "./oauthContract";
+  getOAuth2CreateDefaultValues,
+  getOAuth2CreatePayload,
+  getOAuth2EditDefaultValues,
+  getOAuth2EditPayload,
+  OAUTH2_CUSTOM_RENDERER_REASONS,
+  OAUTH2_MAX_EXTRA_PARAMS,
+  oauth2CreateFormSchema,
+  oauth2EditFormSchema,
+  TOAuth2EditFormValues
+} from "./oauth2Contract";
 
 const getConnectionFields = (mode: TDynamicSecretProviderRendererProps["mode"]) =>
   [
@@ -50,11 +50,11 @@ const getConnectionFields = (mode: TDynamicSecretProviderRendererProps["mode"]) 
       options: [
         {
           label: "HTTP Basic Header",
-          value: OAuthClientAuthMethod.ClientSecretBasic
+          value: OAuth2ClientAuthMethod.ClientSecretBasic
         },
         {
           label: "Request Body",
-          value: OAuthClientAuthMethod.ClientSecretPost
+          value: OAuth2ClientAuthMethod.ClientSecretPost
         }
       ]
     },
@@ -62,14 +62,14 @@ const getConnectionFields = (mode: TDynamicSecretProviderRendererProps["mode"]) 
       name: "inputs.clientId",
       type: "text",
       label: "Client ID",
-      placeholder: "Enter OAuth client ID",
+      placeholder: "Enter OAuth 2.0 client ID",
       layout: "half"
     },
     {
       name: "inputs.clientAuth.clientSecret",
       type: "secret",
       label: "Client Secret",
-      placeholder: mode === "edit" ? "••••••••" : "Enter OAuth client secret",
+      placeholder: mode === "edit" ? "••••••••" : "Enter OAuth 2.0 client secret",
       autoComplete: "new-password",
       layout: "half",
       ...(mode === "edit"
@@ -84,20 +84,20 @@ const getConnectionFields = (mode: TDynamicSecretProviderRendererProps["mode"]) 
       isOptional: true,
       description: "Space-separated scopes. Leave blank to use the client's default scopes."
     }
-  ] satisfies readonly TDynamicSecretProviderField<TOAuthEditFormValues>[];
+  ] satisfies readonly TDynamicSecretProviderField<TOAuth2EditFormValues>[];
 
-const OAuthFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
-  const { control } = useFormContext<TOAuthEditFormValues>();
+const OAuth2Fields = ({ mode }: TDynamicSecretProviderRendererProps) => {
+  const { control } = useFormContext<TOAuth2EditFormValues>();
   const extraParams = useFieldArray({ control, name: "inputs.extraParams" });
 
   return (
     <>
-      <DynamicSecretProviderGroup id="oauth-configuration" presentation="panel">
-        <DynamicSecretProviderFields<TOAuthEditFormValues> fields={getConnectionFields(mode)} />
+      <DynamicSecretProviderGroup id="oauth2-configuration" presentation="panel">
+        <DynamicSecretProviderFields<TOAuth2EditFormValues> fields={getConnectionFields(mode)} />
       </DynamicSecretProviderGroup>
 
       <DynamicSecretProviderGroup
-        id="oauth-extra-params"
+        id="oauth2-extra-params"
         presentation="panel"
         surface
         title="Extra Parameters"
@@ -115,7 +115,7 @@ const OAuthFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
                   control={control}
                   name={`inputs.extraParams.${index}.${part}`}
                   render={({ field, fieldState: { error } }) => {
-                    const inputId = `oauth-extra-param-${index}-${part}`;
+                    const inputId = `oauth2-extra-param-${index}-${part}`;
                     const errorId = `${inputId}-error`;
 
                     return (
@@ -155,7 +155,7 @@ const OAuthFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
             type="button"
             size="sm"
             className="self-start"
-            isDisabled={extraParams.fields.length >= OAUTH_MAX_EXTRA_PARAMS}
+            isDisabled={extraParams.fields.length >= OAUTH2_MAX_EXTRA_PARAMS}
             onClick={() => extraParams.append({ key: "", value: "" })}
           >
             <PlusIcon />
@@ -167,30 +167,30 @@ const OAuthFields = ({ mode }: TDynamicSecretProviderRendererProps) => {
   );
 };
 
-const oauthCommonFields: TDynamicSecretProviderCommonFields = {
+const oauth2CommonFields: TDynamicSecretProviderCommonFields = {
   ttlDescription:
     "TTLs must fit within the token lifetime the authorization server sets. They aren't checked if the server doesn't report a lifetime."
 };
 
-export const oauthDynamicSecretProvider = defineDynamicSecretProvider({
-  provider: DynamicSecretProviders.OAuth,
+export const oauth2DynamicSecretProvider = defineDynamicSecretProvider({
+  provider: DynamicSecretProviders.OAuth2,
   label: "OAuth 2.0",
   customRenderer: {
-    reasons: OAUTH_CUSTOM_RENDERER_REASONS,
-    Component: OAuthFields
+    reasons: OAUTH2_CUSTOM_RENDERER_REASONS,
+    Component: OAuth2Fields
   },
   create: {
-    schema: oauthCreateFormSchema,
-    getDefaultValues: getOAuthCreateDefaultValues,
-    toPayload: getOAuthCreatePayload,
-    commonFields: oauthCommonFields,
+    schema: oauth2CreateFormSchema,
+    getDefaultValues: getOAuth2CreateDefaultValues,
+    toPayload: getOAuth2CreatePayload,
+    commonFields: oauth2CommonFields,
     submitLabel: "Submit"
   },
   edit: {
-    schema: oauthEditFormSchema,
-    getDefaultValues: getOAuthEditDefaultValues,
-    toPayload: getOAuthEditPayload,
-    commonFields: oauthCommonFields,
+    schema: oauth2EditFormSchema,
+    getDefaultValues: getOAuth2EditDefaultValues,
+    toPayload: getOAuth2EditPayload,
+    commonFields: oauth2CommonFields,
     submitLabel: "Submit",
     successMessage: "Successfully updated dynamic secret"
   }

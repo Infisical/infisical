@@ -3,19 +3,19 @@ import { describe, it } from "vitest";
 
 import {
   DynamicSecretProviders,
-  OAuthClientAuthMethod,
-  OAuthGrantType
+  OAuth2ClientAuthMethod,
+  OAuth2GrantType
 } from "@app/hooks/api/dynamicSecret/types";
 
 import {
-  getOAuthCreateDefaultValues,
-  getOAuthCreatePayload,
-  getOAuthEditDefaultValues,
-  getOAuthEditPayload,
-  OAUTH_CUSTOM_RENDERER_REASONS,
-  oauthCreateFormSchema,
-  oauthEditFormSchema
-} from "./providerDefinitions/oauthContract";
+  getOAuth2CreateDefaultValues,
+  getOAuth2CreatePayload,
+  getOAuth2EditDefaultValues,
+  getOAuth2EditPayload,
+  OAUTH2_CUSTOM_RENDERER_REASONS,
+  oauth2CreateFormSchema,
+  oauth2EditFormSchema
+} from "./providerDefinitions/oauth2Contract";
 import { testDynamicSecretProviderContract } from "./providerContractTestHarness";
 import type {
   TCreateDynamicSecretProviderFormContext,
@@ -32,11 +32,11 @@ const createContext: TCreateDynamicSecretProviderFormContext = {
 };
 
 const storedInputs = {
-  grantType: OAuthGrantType.ClientCredentials,
+  grantType: OAuth2GrantType.ClientCredentials,
   tokenUrl: "https://auth.example.com/oauth2/token",
   revocationUrl: "https://auth.example.com/oauth2/revoke",
   clientId: "client-id",
-  clientAuth: { method: OAuthClientAuthMethod.ClientSecretPost },
+  clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretPost },
   scope: "read write",
   extraParams: [{ key: "audience", value: "https://api.example.com" }]
 };
@@ -48,7 +48,7 @@ const editContext: TEditDynamicSecretProviderFormContext = {
   dynamicSecret: {
     id: "dynamic-secret-id",
     name: "existing-secret",
-    type: DynamicSecretProviders.OAuth,
+    type: DynamicSecretProviders.OAuth2,
     createdAt: "2026-01-01",
     updatedAt: "2026-01-01",
     defaultTTL: "30m",
@@ -59,20 +59,20 @@ const editContext: TEditDynamicSecretProviderFormContext = {
 
 const NoopRenderer = () => null;
 
-const oauthDynamicSecretProvider = defineDynamicSecretProvider({
-  provider: DynamicSecretProviders.OAuth,
+const oauth2DynamicSecretProvider = defineDynamicSecretProvider({
+  provider: DynamicSecretProviders.OAuth2,
   label: "OAuth 2.0",
-  customRenderer: { reasons: OAUTH_CUSTOM_RENDERER_REASONS, Component: NoopRenderer },
+  customRenderer: { reasons: OAUTH2_CUSTOM_RENDERER_REASONS, Component: NoopRenderer },
   create: {
-    schema: oauthCreateFormSchema,
-    getDefaultValues: getOAuthCreateDefaultValues,
-    toPayload: getOAuthCreatePayload,
+    schema: oauth2CreateFormSchema,
+    getDefaultValues: getOAuth2CreateDefaultValues,
+    toPayload: getOAuth2CreatePayload,
     submitLabel: "Submit"
   },
   edit: {
-    schema: oauthEditFormSchema,
-    getDefaultValues: getOAuthEditDefaultValues,
-    toPayload: getOAuthEditPayload,
+    schema: oauth2EditFormSchema,
+    getDefaultValues: getOAuth2EditDefaultValues,
+    toPayload: getOAuth2EditPayload,
     submitLabel: "Submit",
     successMessage: "Successfully updated dynamic secret"
   }
@@ -84,11 +84,11 @@ const createDefaults = {
   maxTTL: "1h",
   environment,
   inputs: {
-    grantType: OAuthGrantType.ClientCredentials,
+    grantType: OAuth2GrantType.ClientCredentials,
     tokenUrl: "",
     revocationUrl: "",
     clientId: "",
-    clientAuth: { method: OAuthClientAuthMethod.ClientSecretBasic, clientSecret: "" },
+    clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretBasic, clientSecret: "" },
     scope: "",
     extraParams: []
   }
@@ -96,39 +96,39 @@ const createDefaults = {
 
 const createValues = {
   ...createDefaults,
-  name: "oauth-secret",
+  name: "oauth2-secret",
   inputs: {
     ...storedInputs,
-    clientAuth: { method: OAuthClientAuthMethod.ClientSecretBasic, clientSecret: "client-secret" },
+    clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretBasic, clientSecret: "client-secret" },
     scope: " read  write read "
   }
 };
 
 const editValues = {
-  name: "renamed-oauth-secret",
+  name: "renamed-oauth2-secret",
   defaultTTL: "30m",
   maxTTL: "1h",
   inputs: {
     ...storedInputs,
-    clientAuth: { method: OAuthClientAuthMethod.ClientSecretPost, clientSecret: "" },
+    clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretPost, clientSecret: "" },
     scope: ""
   }
 };
 
 testDynamicSecretProviderContract({
   name: "OAuth 2.0",
-  definition: oauthDynamicSecretProvider,
+  definition: oauth2DynamicSecretProvider,
   create: {
     context: createContext,
     defaultValues: createDefaults,
     validValues: createValues,
     payload: {
       provider: {
-        type: DynamicSecretProviders.OAuth,
+        type: DynamicSecretProviders.OAuth2,
         inputs: {
           ...storedInputs,
           clientAuth: {
-            method: OAuthClientAuthMethod.ClientSecretBasic,
+            method: OAuth2ClientAuthMethod.ClientSecretBasic,
             clientSecret: "client-secret"
           },
           scope: "read write"
@@ -136,7 +136,7 @@ testDynamicSecretProviderContract({
       },
       defaultTTL: "30m",
       maxTTL: "1h",
-      name: "oauth-secret",
+      name: "oauth2-secret",
       path: "/folder",
       projectSlug: "project",
       environmentSlug: "dev"
@@ -153,7 +153,7 @@ testDynamicSecretProviderContract({
           ...createValues,
           inputs: {
             ...createValues.inputs,
-            clientAuth: { method: OAuthClientAuthMethod.ClientSecretBasic, clientSecret: "" }
+            clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretBasic, clientSecret: "" }
           }
         },
         issuePaths: [["inputs", "clientAuth", "clientSecret"]]
@@ -195,7 +195,7 @@ testDynamicSecretProviderContract({
       maxTTL: "1h",
       inputs: {
         ...storedInputs,
-        clientAuth: { method: OAuthClientAuthMethod.ClientSecretPost, clientSecret: "" }
+        clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretPost, clientSecret: "" }
       }
     },
     validValues: editValues,
@@ -206,7 +206,7 @@ testDynamicSecretProviderContract({
       environmentSlug: "dev",
       data: {
         inputs: { ...storedInputs, scope: "" },
-        newName: "renamed-oauth-secret",
+        newName: "renamed-oauth2-secret",
         defaultTTL: "30m",
         maxTTL: "1h"
       }
@@ -218,31 +218,31 @@ type TClientAuthPayload = { clientAuth: { method: string; clientSecret?: string 
 
 describe("OAuth 2.0 edit payload", () => {
   it("omits a blank client secret so the stored one is kept", () => {
-    const payload = getOAuthEditPayload(editValues, editContext);
+    const payload = getOAuth2EditPayload(editValues, editContext);
     const { clientAuth } = payload.data.inputs as TClientAuthPayload;
-    assert.deepEqual(clientAuth, { method: OAuthClientAuthMethod.ClientSecretPost });
+    assert.deepEqual(clientAuth, { method: OAuth2ClientAuthMethod.ClientSecretPost });
   });
 
   it("sends a new client secret and auth method when they change", () => {
-    const payload = getOAuthEditPayload(
+    const payload = getOAuth2EditPayload(
       {
         ...editValues,
         inputs: {
           ...editValues.inputs,
-          clientAuth: { method: OAuthClientAuthMethod.ClientSecretBasic, clientSecret: "rotated" }
+          clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretBasic, clientSecret: "rotated" }
         }
       },
       editContext
     );
     const { clientAuth } = payload.data.inputs as TClientAuthPayload;
     assert.deepEqual(clientAuth, {
-      method: OAuthClientAuthMethod.ClientSecretBasic,
+      method: OAuth2ClientAuthMethod.ClientSecretBasic,
       clientSecret: "rotated"
     });
   });
 
   it("hydrates the stored auth method on edit", () => {
-    const defaults = getOAuthEditDefaultValues(editContext);
-    assert.equal(defaults.inputs.clientAuth.method, OAuthClientAuthMethod.ClientSecretPost);
+    const defaults = getOAuth2EditDefaultValues(editContext);
+    assert.equal(defaults.inputs.clientAuth.method, OAuth2ClientAuthMethod.ClientSecretPost);
   });
 });

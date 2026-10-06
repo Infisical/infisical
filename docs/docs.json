@@ -385,7 +385,7 @@
                       "documentation/platform/dynamic-secrets/github",
                       "documentation/platform/dynamic-secrets/kubernetes",
                       "documentation/platform/dynamic-secrets/ldap",
-                      "documentation/platform/dynamic-secrets/oauth",
+                      "documentation/platform/dynamic-secrets/oauth2",
                       "documentation/platform/dynamic-secrets/tailscale"
                     ]
                   },

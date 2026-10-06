@@ -11,13 +11,13 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { safeRequest } from "@app/lib/validator";
 
 import {
-  DynamicSecretOAuthSchema,
-  OAuthClientAuthMethod,
+  DynamicSecretOAuth2Schema,
+  OAuth2ClientAuthMethod,
   TDynamicProviderFns,
   TDynamicProviderValidateMetadata
 } from "./models";
 
-type TOAuthProviderInputs = z.infer<typeof DynamicSecretOAuthSchema>;
+type TOAuth2ProviderInputs = z.infer<typeof DynamicSecretOAuth2Schema>;
 
 type TIssuedToken = {
   accessToken: string;
@@ -34,14 +34,14 @@ const TTL_TOLERANCE_MS = 60_000;
 const MAX_UPSTREAM_ERROR_LENGTH = 300;
 const MIN_LITERAL_IDENTIFIER_REDACTION_LENGTH = 8;
 
-const OAuthTokenResponseSchema = z.object({
+const OAuth2TokenResponseSchema = z.object({
   access_token: z.string().min(1),
   token_type: z.string().optional(),
   scope: z.string().optional(),
   expires_in: z.union([z.number(), z.string()]).optional()
 });
 
-const OAuthLeaseDataSchema = z.object({
+const OAuth2LeaseDataSchema = z.object({
   ACCESS_TOKEN: z.string().min(1)
 });
 
@@ -50,24 +50,24 @@ const formEncode = (value: string) => new URLSearchParams([["", value]]).toStrin
 
 // RFC 7009 section 2.1 requires the revocation request to authenticate the same way as the token request,
 // so both go through here; it adds body parameters in place and returns any headers to send
-const applyClientAuth = ({ clientId, clientAuth }: TOAuthProviderInputs, body: URLSearchParams) => {
+const applyClientAuth = ({ clientId, clientAuth }: TOAuth2ProviderInputs, body: URLSearchParams) => {
   switch (clientAuth.method) {
-    case OAuthClientAuthMethod.ClientSecretBasic:
+    case OAuth2ClientAuthMethod.ClientSecretBasic:
       return {
         Authorization: `Basic ${Buffer.from(`${formEncode(clientId)}:${formEncode(clientAuth.clientSecret)}`).toString("base64")}`
       };
-    case OAuthClientAuthMethod.ClientSecretPost:
+    case OAuth2ClientAuthMethod.ClientSecretPost:
       body.set("client_id", clientId);
       body.set("client_secret", clientAuth.clientSecret);
       return {};
     default: {
       const exhaustiveCheck: never = clientAuth;
-      throw new Error(`Unhandled OAuth client auth method: ${JSON.stringify(exhaustiveCheck)}`);
+      throw new Error(`Unhandled OAuth 2.0 client auth method: ${JSON.stringify(exhaustiveCheck)}`);
     }
   }
 };
 
-const getRedactionTargets = ({ clientId, clientAuth }: TOAuthProviderInputs, accessToken?: string) => ({
+const getRedactionTargets = ({ clientId, clientAuth }: TOAuth2ProviderInputs, accessToken?: string) => ({
   secrets: [clientAuth.clientSecret, accessToken],
   identifiers: [clientId]
 });
@@ -149,9 +149,9 @@ const resolveExpiresAt = (accessToken: string, expiresIn: number | string | unde
   return null;
 };
 
-export const OAuthProvider = (): TDynamicProviderFns => {
+export const OAuth2Provider = (): TDynamicProviderFns => {
   const $parseInputs = async (inputs: unknown) => {
-    const providerInputs = await DynamicSecretOAuthSchema.parseAsync(inputs);
+    const providerInputs = await DynamicSecretOAuth2Schema.parseAsync(inputs);
     assertSecureUrl(providerInputs.tokenUrl, "Token URL");
     assertSecureUrl(providerInputs.revocationUrl, "Revocation URL");
     return providerInputs;
@@ -184,7 +184,7 @@ export const OAuthProvider = (): TDynamicProviderFns => {
     return providerInputs;
   };
 
-  const $requestToken = async (providerInputs: TOAuthProviderInputs): Promise<TIssuedToken> => {
+  const $requestToken = async (providerInputs: TOAuth2ProviderInputs): Promise<TIssuedToken> => {
     const body = new URLSearchParams({ grant_type: "client_credentials" });
     if (providerInputs.scope) body.set("scope", providerInputs.scope);
     providerInputs.extraParams.forEach(({ key, value }) => body.set(key, value));
@@ -213,7 +213,7 @@ export const OAuthProvider = (): TDynamicProviderFns => {
       });
     }
 
-    const parsed = OAuthTokenResponseSchema.safeParse(parseJsonBody(responseData));
+    const parsed = OAuth2TokenResponseSchema.safeParse(parseJsonBody(responseData));
     if (!parsed.success) {
       throw new BadRequestError({
         message: `The authorization server at ${sanitizeUrlForLog(providerInputs.tokenUrl)} returned a token response without an access_token. Check that the token URL points to an OAuth 2.0 token endpoint.`
@@ -231,7 +231,7 @@ export const OAuthProvider = (): TDynamicProviderFns => {
     };
   };
 
-  const $revokeToken = async (providerInputs: TOAuthProviderInputs, accessToken: string) => {
+  const $revokeToken = async (providerInputs: TOAuth2ProviderInputs, accessToken: string) => {
     const body = new URLSearchParams({ token: accessToken, token_type_hint: "access_token" });
     const authHeaders = applyClientAuth(providerInputs, body);
 
@@ -251,7 +251,7 @@ export const OAuthProvider = (): TDynamicProviderFns => {
 
       if (code === "unsupported_token_type") {
         throw new BadRequestError({
-          message: `The authorization server at ${revocationUrl} doesn't support revoking access tokens (unsupported_token_type). The OAuth dynamic secret requires RFC 7009 access token revocation.`
+          message: `The authorization server at ${revocationUrl} doesn't support revoking access tokens (unsupported_token_type). The OAuth 2.0 dynamic secret requires RFC 7009 access token revocation.`
         });
       }
       if (status === 503) {
@@ -276,12 +276,12 @@ export const OAuthProvider = (): TDynamicProviderFns => {
     });
   };
 
-  const $revokeBestEffort = async (providerInputs: TOAuthProviderInputs, accessToken: string, reason: string) => {
+  const $revokeBestEffort = async (providerInputs: TOAuth2ProviderInputs, accessToken: string, reason: string) => {
     try {
       await $revokeToken(providerInputs, accessToken);
     } catch (err) {
       logger.warn(
-        `OAuth dynamic secret: failed to revoke token after ${reason} [revocationUrl=${sanitizeUrlForLog(providerInputs.revocationUrl)}]: ${(err as Error)?.message}`
+        `OAuth 2.0 dynamic secret: failed to revoke token after ${reason} [revocationUrl=${sanitizeUrlForLog(providerInputs.revocationUrl)}]: ${(err as Error)?.message}`
       );
     }
   };
@@ -337,7 +337,7 @@ export const OAuthProvider = (): TDynamicProviderFns => {
   const revoke = async (inputs: unknown, entityId: string, metadata: { leaseData?: Record<string, string> }) => {
     const providerInputs = await $parseInputs(inputs);
 
-    const leaseData = OAuthLeaseDataSchema.safeParse(metadata.leaseData);
+    const leaseData = OAuth2LeaseDataSchema.safeParse(metadata.leaseData);
     if (!leaseData.success) {
       throw new BadRequestError({
         message:
@@ -351,7 +351,7 @@ export const OAuthProvider = (): TDynamicProviderFns => {
 
   const renew = async (): Promise<{ entityId: string }> => {
     throw new BadRequestError({
-      message: "OAuth access tokens can't be extended. Create a new lease to get a new token."
+      message: "OAuth 2.0 access tokens can't be extended. Create a new lease to get a new token."
     });
   };
 

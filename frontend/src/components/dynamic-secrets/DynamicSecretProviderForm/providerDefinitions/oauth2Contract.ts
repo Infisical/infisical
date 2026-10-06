@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import {
   DynamicSecretProviders,
-  OAuthClientAuthMethod,
-  OAuthGrantType,
+  OAuth2ClientAuthMethod,
+  OAuth2GrantType,
   TDynamicSecretProvider,
   TUpdateDynamicSecretDTO
 } from "@app/hooks/api/dynamicSecret/types";
@@ -20,11 +20,11 @@ import {
   TEditDynamicSecretProviderFormContext
 } from "../types";
 
-export const OAUTH_CUSTOM_RENDERER_REASONS = ["repeatable-fields"] as const;
-export const OAUTH_MAX_EXTRA_PARAMS = 20;
+export const OAUTH2_CUSTOM_RENDERER_REASONS = ["repeatable-fields"] as const;
+export const OAUTH2_MAX_EXTRA_PARAMS = 20;
 
-// keep in sync with OAUTH_RESERVED_PARAMS in backend/src/ee/services/dynamic-secret/providers/models.ts
-const OAUTH_RESERVED_PARAMS = new Set([
+// keep in sync with OAUTH2_RESERVED_PARAMS in backend/src/ee/services/dynamic-secret/providers/models.ts
+const OAUTH2_RESERVED_PARAMS = new Set([
   "grant_type",
   "scope",
   "client_id",
@@ -35,12 +35,12 @@ const OAUTH_RESERVED_PARAMS = new Set([
 const SCOPE_TOKEN_REGEX = /^[\x21\x23-\x5B\x5D-\x7E]+$/;
 const PARAM_KEY_REGEX = /^[A-Za-z0-9._~:[\]-]+$/;
 
-type TOAuthInputs = Extract<
+type TOAuth2Inputs = Extract<
   TDynamicSecretProvider,
-  { type: DynamicSecretProviders.OAuth }
+  { type: DynamicSecretProviders.OAuth2 }
 >["inputs"];
 
-export const normalizeOAuthScope = (scope?: string) =>
+export const normalizeOAuth2Scope = (scope?: string) =>
   [...new Set((scope ?? "").split(/\s+/).filter(Boolean))].join(" ");
 
 const urlSchema = (label: string) =>
@@ -73,13 +73,13 @@ const extraParamsSchema = z
         .max(128)
         .regex(PARAM_KEY_REGEX, "Parameter name contains invalid characters")
         .refine(
-          (key) => !OAUTH_RESERVED_PARAMS.has(key.toLowerCase()),
+          (key) => !OAUTH2_RESERVED_PARAMS.has(key.toLowerCase()),
           "Infisical sets this parameter"
         ),
       value: z.string().trim().min(1, "Parameter value is required").max(2048)
     })
   )
-  .max(OAUTH_MAX_EXTRA_PARAMS, `At most ${OAUTH_MAX_EXTRA_PARAMS} extra parameters are allowed`)
+  .max(OAUTH2_MAX_EXTRA_PARAMS, `At most ${OAUTH2_MAX_EXTRA_PARAMS} extra parameters are allowed`)
   .superRefine((params, context) => {
     const seen = new Set<string>();
     params.forEach(({ key }, index) => {
@@ -94,8 +94,8 @@ const extraParamsSchema = z
     });
   });
 
-const oauthBaseInputs = {
-  grantType: z.literal(OAuthGrantType.ClientCredentials),
+const oauth2BaseInputs = {
+  grantType: z.literal(OAuth2GrantType.ClientCredentials),
   tokenUrl: urlSchema("Token URL"),
   revocationUrl: urlSchema("Revocation URL"),
   clientId: z.string().trim().min(1, "Client ID is required").max(1024),
@@ -105,26 +105,26 @@ const oauthBaseInputs = {
 
 const makeClientAuthSchema = <T extends z.ZodTypeAny>(clientSecret: T) =>
   z.discriminatedUnion("method", [
-    z.object({ method: z.literal(OAuthClientAuthMethod.ClientSecretBasic), clientSecret }),
-    z.object({ method: z.literal(OAuthClientAuthMethod.ClientSecretPost), clientSecret })
+    z.object({ method: z.literal(OAuth2ClientAuthMethod.ClientSecretBasic), clientSecret }),
+    z.object({ method: z.literal(OAuth2ClientAuthMethod.ClientSecretPost), clientSecret })
   ]);
 
-const oauthCreateInputsSchema = z.object({
-  ...oauthBaseInputs,
+const oauth2CreateInputsSchema = z.object({
+  ...oauth2BaseInputs,
   clientAuth: makeClientAuthSchema(z.string().trim().min(1, "Client secret is required").max(4096))
 });
 
 // the stored secret is never returned, so an empty value on edit keeps it
-const oauthEditInputsSchema = z.object({
-  ...oauthBaseInputs,
+const oauth2EditInputsSchema = z.object({
+  ...oauth2BaseInputs,
   clientAuth: makeClientAuthSchema(z.string().trim().max(4096).optional())
 });
 
-export type TOAuthCreateFormValues = TDynamicSecretProviderFormValues<
-  z.infer<typeof oauthCreateInputsSchema>
+export type TOAuth2CreateFormValues = TDynamicSecretProviderFormValues<
+  z.infer<typeof oauth2CreateInputsSchema>
 >;
-export type TOAuthEditFormValues = TDynamicSecretProviderFormValues<
-  z.infer<typeof oauthEditInputsSchema>
+export type TOAuth2EditFormValues = TDynamicSecretProviderFormValues<
+  z.infer<typeof oauth2EditInputsSchema>
 >;
 
 const withTtlOrder = <T extends z.ZodTypeAny>(schema: T) =>
@@ -139,47 +139,47 @@ const withTtlOrder = <T extends z.ZodTypeAny>(schema: T) =>
     { path: ["maxTTL"], message: "Max TTL must be greater than or equal to Default TTL" }
   );
 
-export const oauthCreateFormSchema = withTtlOrder(
-  createDynamicSecretProviderFormSchema(oauthCreateInputsSchema)
-) as z.ZodType<TOAuthCreateFormValues>;
+export const oauth2CreateFormSchema = withTtlOrder(
+  createDynamicSecretProviderFormSchema(oauth2CreateInputsSchema)
+) as z.ZodType<TOAuth2CreateFormValues>;
 
-export const oauthEditFormSchema = withTtlOrder(
-  editDynamicSecretProviderFormSchema(oauthEditInputsSchema)
-) as z.ZodType<TOAuthEditFormValues>;
+export const oauth2EditFormSchema = withTtlOrder(
+  editDynamicSecretProviderFormSchema(oauth2EditInputsSchema)
+) as z.ZodType<TOAuth2EditFormValues>;
 
-export const getOAuthCreateDefaultValues = (
+export const getOAuth2CreateDefaultValues = (
   context: TCreateDynamicSecretProviderFormContext
-): TOAuthCreateFormValues => ({
+): TOAuth2CreateFormValues => ({
   name: "",
   defaultTTL: "30m",
   maxTTL: "1h",
   environment: context.isSingleEnvironmentMode ? context.environments[0] : undefined,
   inputs: {
-    grantType: OAuthGrantType.ClientCredentials,
+    grantType: OAuth2GrantType.ClientCredentials,
     tokenUrl: "",
     revocationUrl: "",
     clientId: "",
-    clientAuth: { method: OAuthClientAuthMethod.ClientSecretBasic, clientSecret: "" },
+    clientAuth: { method: OAuth2ClientAuthMethod.ClientSecretBasic, clientSecret: "" },
     scope: "",
     extraParams: []
   }
 });
 
-export const getOAuthEditDefaultValues = (
+export const getOAuth2EditDefaultValues = (
   context: TEditDynamicSecretProviderFormContext
-): TOAuthEditFormValues => {
-  const inputs = context.dynamicSecret.inputs as Partial<TOAuthInputs>;
+): TOAuth2EditFormValues => {
+  const inputs = context.dynamicSecret.inputs as Partial<TOAuth2Inputs>;
   return {
     name: context.dynamicSecret.name,
     defaultTTL: context.dynamicSecret.defaultTTL,
     maxTTL: context.dynamicSecret.maxTTL,
     inputs: {
-      grantType: OAuthGrantType.ClientCredentials,
+      grantType: OAuth2GrantType.ClientCredentials,
       tokenUrl: inputs.tokenUrl ?? "",
       revocationUrl: inputs.revocationUrl ?? "",
       clientId: inputs.clientId ?? "",
       clientAuth: {
-        method: inputs.clientAuth?.method ?? OAuthClientAuthMethod.ClientSecretBasic,
+        method: inputs.clientAuth?.method ?? OAuth2ClientAuthMethod.ClientSecretBasic,
         clientSecret: ""
       },
       scope: inputs.scope ?? "",
@@ -188,10 +188,10 @@ export const getOAuthEditDefaultValues = (
   };
 };
 
-const buildInputs = (inputs: TOAuthEditFormValues["inputs"]) => {
+const buildInputs = (inputs: TOAuth2EditFormValues["inputs"]) => {
   const clientSecret = inputs.clientAuth.clientSecret?.trim();
   return {
-    grantType: OAuthGrantType.ClientCredentials,
+    grantType: OAuth2GrantType.ClientCredentials,
     tokenUrl: inputs.tokenUrl.trim(),
     revocationUrl: inputs.revocationUrl.trim(),
     clientId: inputs.clientId.trim(),
@@ -203,15 +203,15 @@ const buildInputs = (inputs: TOAuthEditFormValues["inputs"]) => {
   } as const;
 };
 
-export const getOAuthCreatePayload = (
-  values: TOAuthCreateFormValues,
+export const getOAuth2CreatePayload = (
+  values: TOAuth2CreateFormValues,
   context: TCreateDynamicSecretProviderFormContext
-): TCreateDynamicSecretProviderDTO<DynamicSecretProviders.OAuth> => ({
+): TCreateDynamicSecretProviderDTO<DynamicSecretProviders.OAuth2> => ({
   provider: {
-    type: DynamicSecretProviders.OAuth,
+    type: DynamicSecretProviders.OAuth2,
     inputs: {
       ...buildInputs(values.inputs),
-      scope: normalizeOAuthScope(values.inputs.scope) || undefined
+      scope: normalizeOAuth2Scope(values.inputs.scope) || undefined
     }
   },
   defaultTTL: values.defaultTTL,
@@ -222,8 +222,8 @@ export const getOAuthCreatePayload = (
   environmentSlug: values.environment?.slug ?? ""
 });
 
-export const getOAuthEditPayload = (
-  values: TOAuthEditFormValues,
+export const getOAuth2EditPayload = (
+  values: TOAuth2EditFormValues,
   context: TEditDynamicSecretProviderFormContext
 ): TUpdateDynamicSecretDTO => ({
   name: context.dynamicSecret.name,
@@ -232,7 +232,7 @@ export const getOAuthEditPayload = (
   environmentSlug: context.environment,
   data: {
     // an omitted scope would keep the stored one, so a cleared scope is sent as ""
-    inputs: { ...buildInputs(values.inputs), scope: normalizeOAuthScope(values.inputs.scope) },
+    inputs: { ...buildInputs(values.inputs), scope: normalizeOAuth2Scope(values.inputs.scope) },
     newName: values.name === context.dynamicSecret.name ? undefined : values.name,
     defaultTTL: values.defaultTTL,
     maxTTL: values.maxTTL
