@@ -1,7 +1,7 @@
 import {
   CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
-  CertificateAlertEvent,
-  certificateAlertEventEmitterFactory
+  certificateAlertEventEmitterFactory,
+  CertificateApplicationAlertEvent
 } from "./certificate-alert-events";
 
 const buildEmitter = () => {
@@ -21,13 +21,13 @@ describe("certificate alert event emitter", () => {
   test("emits one event without a resource for a certificate outside any application", async () => {
     const { emitter, emitted } = buildEmitter();
     await emitter.emit(
-      { certificateId: "cert-1", projectId: "proj-1", eventType: CertificateAlertEvent.Issuance },
+      { certificateId: "cert-1", projectId: "proj-1", eventType: CertificateApplicationAlertEvent.Issuance },
       {} as never
     );
 
     expect(emitted).toEqual([
       {
-        eventType: CertificateAlertEvent.Issuance,
+        eventType: CertificateApplicationAlertEvent.Issuance,
         payload: {
           orgId: "org-1",
           projectId: "proj-1",
@@ -47,13 +47,13 @@ describe("certificate alert event emitter", () => {
         projectId: "proj-1",
         orgId: "org-1",
         applicationId: "app-1",
-        eventType: CertificateAlertEvent.Revocation
+        eventType: CertificateApplicationAlertEvent.Revocation
       },
       {} as never
     );
 
     expect(emitted.map((event) => [event.eventType, event.payload.resourceType, event.payload.resourceId])).toEqual([
-      [CertificateAlertEvent.Revocation, CERT_MANAGER_APPLICATION_RESOURCE_TYPE, "app-1"]
+      [CertificateApplicationAlertEvent.Revocation, CERT_MANAGER_APPLICATION_RESOURCE_TYPE, "app-1"]
     ]);
   });
 });

@@ -24,7 +24,7 @@ import {
   TAlertPermissionInput,
   TAlertTelemetryEvent
 } from "../alert-types";
-import { TApplicationAlertCertificate } from "./cert-manager-application-alert-dal";
+import { TAlertCertificate } from "./cert-manager-certificate-alert-dal";
 
 const MIN_ALERT_BEFORE_DAYS = 1;
 const MAX_ALERT_BEFORE_DAYS = 365;
@@ -67,6 +67,8 @@ export const CERT_MANAGER_ALERT_PERMISSION_ACTIONS: Record<AlertPermissionAction
   [AlertPermissionAction.Edit]: ProjectPermissionActions.Edit,
   [AlertPermissionAction.Delete]: ProjectPermissionActions.Delete
 };
+
+export const getScopeWideAlertWebhookSource = ({ alertId }: { alertId: string }) => `/alerts/${alertId}`;
 
 export const assertNoAlertResource = (resourceId: string | null | undefined, message: string) => {
   if (resourceId) throw new BadRequestError({ message });
@@ -136,6 +138,19 @@ export const resolveCertManagerProjectId = async (
 
 type TAlertFilterNames = { id: string; name: string | null }[];
 
+export const toAlertChannelTestAuditMetadata = ({
+  test
+}: Extract<TAlertAuditInput, { action: AlertAuditAction.TestChannel }>) => ({
+  alertId: test.alertId,
+  alertName: test.alertName ?? null,
+  channelId: test.channelId,
+  channelName: test.channelName ?? null,
+  channelType: test.channelType,
+  success: test.success,
+  deliveredTo: test.deliveredTo,
+  error: test.error
+});
+
 export const buildCertificateManagerAlertAuditEvent = (
   input: TAlertAuditInput,
   {
@@ -145,20 +160,7 @@ export const buildCertificateManagerAlertAuditEvent = (
   }: { applications: TAlertFilterNames; profiles: TAlertFilterNames; sources: CertificateSource[] }
 ): TAuditEvent => {
   if (input.action === AlertAuditAction.TestChannel) {
-    const { test } = input;
-    return {
-      type: EventType.TEST_CERTIFICATE_MANAGER_ALERT_CHANNEL,
-      metadata: {
-        alertId: test.alertId,
-        alertName: test.alertName ?? null,
-        channelId: test.channelId,
-        channelName: test.channelName ?? null,
-        channelType: test.channelType,
-        success: test.success,
-        deliveredTo: test.deliveredTo,
-        error: test.error
-      }
-    };
+    return { type: EventType.TEST_CERTIFICATE_MANAGER_ALERT_CHANNEL, metadata: toAlertChannelTestAuditMetadata(input) };
   }
 
   const { alert } = input;
@@ -211,7 +213,7 @@ const CERTIFICATE_ALERT_KIND_VERBS: Record<CertificateAlertKind, string> = {
   [CertificateAlertKind.Revocation]: "was revoked"
 };
 
-const certificateSeverity = (kind: CertificateAlertKind, targets: TApplicationAlertCertificate[]): TAlertSeverity => {
+const certificateSeverity = (kind: CertificateAlertKind, targets: TAlertCertificate[]): TAlertSeverity => {
   if (kind === CertificateAlertKind.Expiry) return expirySeverity(targets.map((target) => target.notAfter));
   if (kind === CertificateAlertKind.Revocation) return "warning";
   return "info";
@@ -230,7 +232,7 @@ export const buildCertificateAlertPayload = ({
   applicationName
 }: {
   alert: TAlertContext;
-  targets: TApplicationAlertCertificate[];
+  targets: TAlertCertificate[];
   viewUrl: string;
   kind: CertificateAlertKind;
   webhookSource?: string;

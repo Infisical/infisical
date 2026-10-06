@@ -4,13 +4,13 @@ sidebarTitle: "Alerts"
 description: "Get notified about certificate events anywhere in Certificate Manager, inside or outside an application."
 ---
 
-An alert under **Settings** > **Alerts** covers certificates across Certificate Manager for one event, whether or not they belong to an [Application](/documentation/platform/pki/applications/overview). Without filters, it covers every certificate. Use a Certificate Manager alert when a team needs to hear about certificates across several applications. To alert on a single application, create an [application alert](/documentation/platform/pki/applications/alerting/overview) instead.
+An alert under **Settings** > **Alerts** covers certificates across Certificate Manager for one event, whether or not they belong to an [Application](/documentation/platform/pki/applications/overview). Without filters, it covers every certificate. To alert on a single application, create an [application alert](/documentation/platform/pki/applications/alerting/overview) instead.
 
 Certificate Manager alerts use the same events and [notification channels](/documentation/platform/pki/applications/alerting/overview#notification-channels) as application alerts. They can also alert on [signer certificate expiration](#signer-certificate-expiration) for **Code Signing**.
 
 ## Prerequisites
 
-- The Certificate Manager **Admin** role to create or edit an alert, because it sends details of certificates from every application and every signer
+- The Certificate Manager **Admin** role to create or edit an alert
 - For Slack, PagerDuty, and webhook channels, the Enterprise plan. Email channels are available on every plan.
 - For email alerts, recipients who are organization members, or addresses on one of your organization's [verified email domains](/documentation/platform/email-domain)
 
@@ -27,7 +27,7 @@ Certificate Manager alerts use the same events and [notification channels](/docu
     Select the **Alert Type** from the **Certificate Lifecycle** or **Code Signing** group, then enter an **Alert Name** and an optional **Description**. For an expiration alert, enter **Alert Before** as a number and a unit, for example `30d` or `2w`, up to 365 days. Turn on **Repeat daily until expiry** to get a reminder every day. See [how often expiration alerts repeat](/documentation/platform/pki/applications/alerting/overview#faq). Select **Continue**.
   </Step>
   <Step>
-    On the **Filters** step, optionally select **Add Filter** to narrow the alert by **Applications**, **Certificate Profiles**, or **Source**. See [which certificates an alert covers](#which-certificates-an-alert-covers). **Matched Certificates** lists the active certificates the alert covers. The list updates as you change filters. Select **Continue**.
+    On the **Filters** step, optionally select **Add Filter** to narrow the alert by **Applications**, **Certificate Profiles**, or **Source**. See [which certificates an alert covers](#which-certificates-an-alert-covers). **Matched Certificates** lists the active certificates the alert covers. Select **Continue**.
   </Step>
   <Step>
     Select **Add Channel** and choose where to send notifications. You can add up to 10 channels. Select **Continue**.
@@ -63,23 +63,110 @@ Only each signer's current certificate counts. When you reissue a signer's certi
   <Accordion title="What happens to an alert when I delete an application or profile it lists?">
     The alert keeps the deleted application or profile in its list, and the deleted one matches no certificates. When you edit the alert, the **Filters** step shows it as **Unknown application** or **Unknown profile**, so you can remove it.
   </Accordion>
-  <Accordion title="Why did I get two notifications for the same certificate?">
-    If a certificate is covered by a Certificate Manager alert and an older alert under **Legacy** > **Alerts** in the sidebar, each alert sends its own notification. Older alerts keep running until you delete them. You can also get one notification from a Certificate Manager alert and one from an application alert if both cover the certificate.
-  </Accordion>
   <Accordion title="What do webhook receivers get from Certificate Manager alerts?">
-    The [application alert webhook payload](/documentation/platform/pki/applications/alerting/webhook-alerts#webhook-payload-format), with these differences:
+    The same [webhook payload format](/documentation/platform/pki/applications/alerting/webhook-alerts#webhook-payload-format) as application alerts. These examples show one alert of each type:
 
-    | Field | Certificate Manager alert |
-    |-------|---------------------------|
-    | `type` | `com.infisical.cert-manager.certificate.<event>`, for example `com.infisical.cert-manager.certificate.issuance` |
-    | `subject` | `cert-manager.certificate.<event>`, for example `cert-manager.certificate.issuance` |
-    | `source` | `/alerts/<alert-id>` |
-    | `data.alert.resourceType` | `cert-manager`, with no `resourceId` |
-    | `data.metadata.viewUrl` | Opens the certificate inventory |
-    | `data.items[].fields` | Includes an entry labelled `Application` when the certificate belongs to an application |
-    | `data.items[].resource.applicationId` | `null` for a certificate outside an application |
+    <CodeGroup>
+    ```json Certificate alert
+    {
+      "specversion": "1.0",
+      "type": "com.infisical.cert-manager.certificate.revocation",
+      "source": "/alerts/453421e2-2e73-4700-92c8-60ccd3e7073e",
+      "id": "8360c717-097a-4592-a2b0-63c494c3b558",
+      "time": "2026-10-05T21:37:35.935Z",
+      "datacontenttype": "application/json",
+      "subject": "cert-manager.certificate.revocation",
+      "data": {
+        "alert": {
+          "id": "453421e2-2e73-4700-92c8-60ccd3e7073e",
+          "name": "prod-revocations",
+          "resourceType": "cert-manager"
+        },
+        "items": [
+          {
+            "id": "4f70e08e-ad7a-4f94-ac16-241126ab88ed",
+            "title": "api.example.com",
+            "summary": "Certificate 'api.example.com' was revoked in application 'payments-api'",
+            "severity": "warning",
+            "fields": [
+              { "label": "Serial Number", "value": "77c2b1368a7dd4a8442c61d51d20cbdb2060a1e5" },
+              { "label": "Profile", "value": "tls-server" },
+              { "label": "Application", "value": "payments-api" },
+              { "label": "Expires", "value": "November 4, 2026 at 09:37 PM UTC" },
+              { "label": "Revocation Reason", "value": "Unspecified" }
+            ],
+            "resource": {
+              "id": "4f70e08e-ad7a-4f94-ac16-241126ab88ed",
+              "serialNumber": "77c2b1368a7dd4a8442c61d51d20cbdb2060a1e5",
+              "commonName": "api.example.com",
+              "altNames": [],
+              "status": "revoked",
+              "notBefore": "2026-10-05T21:37:28.426Z",
+              "notAfter": "2026-11-04T21:37:28.426Z",
+              "revokedAt": "2026-10-05T21:37:30.299Z",
+              "revocationReason": 0,
+              "profileId": "8d04ef1b-67cd-4021-8da4-b3096d11133b",
+              "profileName": "tls-server",
+              "applicationId": "d6e7232b-ffa5-48bf-9133-4731c6d001a0",
+              "applicationName": "payments-api"
+            }
+          }
+        ],
+        "metadata": {
+          "totalItems": 1,
+          "viewUrl": "https://app.infisical.com/organizations/<org-id>/projects/cert-manager/<project-id>/inventory"
+        }
+      }
+    }
+    ```
 
-    A **Signer Certificate Expiration** alert has `cert-manager.signer` as its `data.alert.resourceType` and sends `cert-manager.signer.certificate.expiry` as its `subject` (`type` is `com.infisical.cert-manager.signer.certificate.expiry`). It opens **Code Signing** from `data.metadata.viewUrl` and sends one item per certificate. Each item's `fields` are `Signer` (`Signers` when several signers share the certificate), `Serial Number`, `SANs` when the certificate has any, and `Expires`. Its `resource` has `id`, `serialNumber`, `commonName`, `altNames`, `status`, `notBefore`, `notAfter`, `signerIds`, and `signerNames`, with no application, profile, or revocation keys.
+    ```json Signer certificate expiration
+    {
+      "specversion": "1.0",
+      "type": "com.infisical.cert-manager.signer.certificate.expiry",
+      "source": "/alerts/9b3c1d2e-5f6a-4b7c-8d9e-0f1a2b3c4d5e",
+      "id": "2c4e6a8b-1d3f-4a5c-9e7b-0d2f4a6c8e1b",
+      "time": "2026-10-05T00:05:00.000Z",
+      "datacontenttype": "application/json",
+      "subject": "cert-manager.signer.certificate.expiry",
+      "data": {
+        "alert": {
+          "id": "9b3c1d2e-5f6a-4b7c-8d9e-0f1a2b3c4d5e",
+          "name": "signer-expiry",
+          "resourceType": "cert-manager.signer"
+        },
+        "items": [
+          {
+            "id": "7e1f3a5c-9b2d-4e6f-8a0c-1d3e5f7a9b2c",
+            "title": "release signing",
+            "summary": "Certificate 'release signing' of signer 'release-signer' expires on October 25, 2026 at 12:00 AM UTC",
+            "severity": "warning",
+            "fields": [
+              { "label": "Signer", "value": "release-signer" },
+              { "label": "Serial Number", "value": "0a1b2c3d4e5f60718293a4b5c6d7e8f901234567" },
+              { "label": "Expires", "value": "October 25, 2026 at 12:00 AM UTC" }
+            ],
+            "resource": {
+              "id": "7e1f3a5c-9b2d-4e6f-8a0c-1d3e5f7a9b2c",
+              "serialNumber": "0a1b2c3d4e5f60718293a4b5c6d7e8f901234567",
+              "commonName": "release signing",
+              "altNames": [],
+              "status": "active",
+              "notBefore": "2025-10-25T00:00:00.000Z",
+              "notAfter": "2026-10-25T00:00:00.000Z",
+              "signerIds": ["3d5f7a9b-2c4e-4f6a-8b0d-1e3f5a7c9e2b"],
+              "signerNames": ["release-signer"]
+            }
+          }
+        ],
+        "metadata": {
+          "totalItems": 1,
+          "viewUrl": "https://app.infisical.com/organizations/<org-id>/projects/cert-manager/<project-id>/code-signing"
+        }
+      }
+    }
+    ```
+    </CodeGroup>
   </Accordion>
 </AccordionGroup>
 

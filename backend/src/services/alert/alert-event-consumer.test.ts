@@ -38,7 +38,7 @@ const buildConsumer = (opts?: {
   results?: AlertDispatchOutcome[];
   eventKeys?: string[];
   findAlerts?: (filter: { resourceType: string; resourceId?: string | null; eventType: string }) => Promise<unknown[]>;
-  relays?: { resourceType: string; eventKey: string }[];
+  sourcedEvents?: { resourceType: string; eventKey: string }[];
 }) => {
   const runs: {
     alertId: string;
@@ -78,7 +78,7 @@ const buildConsumer = (opts?: {
     } as never,
     alertProviderRegistry: {
       eventTriggeredKeys: () => new Set(eventKeys),
-      relaysFor: () => opts?.relays ?? [],
+      findEventsBySource: () => opts?.sourcedEvents ?? [],
       get: (resourceType: string) =>
         resourceType === "approval.workflow"
           ? ({ events: eventKeys.map((key) => ({ key, triggerType: AlertTriggerType.Event })) } as never)
@@ -117,15 +117,15 @@ describe("alert event consumer", () => {
     expect(runs[0].targetIds).toEqual(["req-1"]);
   });
 
-  test("also runs the alerts of a provider that relays the event, as resource-less alerts on its own event", async () => {
+  test("also runs the resource-less alerts of every event sourced from this event, each under its own event", async () => {
     const lookupsSeen: { resourceType: string; resourceId?: string | null; eventType: string }[] = [];
     const { consumer, runs } = buildConsumer({
-      relays: [{ resourceType: "approval.org", eventKey: "approval.org.request_opened" }],
+      sourcedEvents: [{ resourceType: "approval.org", eventKey: "approval.org.request_opened" }],
       findAlerts: async (filter) => {
         lookupsSeen.push(filter);
         return [
           {
-            id: filter.resourceType === "approval.org" ? "relayed-alert" : "bound-alert",
+            id: filter.resourceType === "approval.org" ? "sourced-alert" : "bound-alert",
             resourceType: filter.resourceType,
             orgId: ORG_ID,
             eventType: filter.eventType
@@ -150,7 +150,7 @@ describe("alert event consumer", () => {
     expect(runs.map((run) => [run.alertId, run.eventType])).toEqual(
       expect.arrayContaining([
         ["bound-alert", EVENT_TYPE],
-        ["relayed-alert", "approval.org.request_opened"]
+        ["sourced-alert", "approval.org.request_opened"]
       ])
     );
   });

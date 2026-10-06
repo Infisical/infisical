@@ -48,9 +48,9 @@ import {
 } from "@app/components/v3";
 import {
   AlertRunStatus,
-  CertificateAlertEventType,
   CertificateAlertResourceType,
   TAlert,
+  TCertificateAlertEventType,
   useDeleteAlert,
   useListAlerts,
   useUpdateAlert
@@ -76,17 +76,15 @@ import {
 
 const SCOPE_CARD_CONFIG: Record<
   CertificateAlertScopeKind,
-  { description: string; emptyDescription: string; docsUrl: string; hasFiltersColumn: boolean }
+  { emptyDescription: string; docsUrl: string; hasFiltersColumn: boolean }
 > = {
   [CertificateAlertScopeKind.Application]: {
-    description: "Get notified about certificate events.",
     emptyDescription:
       "No alerts configured. Create one to get notified about certificate events for this application.",
     docsUrl: PkiDocsUrls.applications.alerting.overview,
     hasFiltersColumn: false
   },
   [CertificateAlertScopeKind.CertificateManager]: {
-    description: "Get notified about certificate events.",
     emptyDescription:
       "No alerts configured. Create one to get notified about certificate events across Certificate Manager.",
     docsUrl: PkiDocsUrls.settings.alerts,
@@ -95,59 +93,38 @@ const SCOPE_CARD_CONFIG: Record<
 };
 
 const AlertFiltersSummary = ({ alert }: { alert: TAlert }) => {
-  const applicationIds = alert.condition?.applicationIds ?? [];
-  const profileIds = alert.condition?.profileIds ?? [];
-  const sources = alert.condition?.sources ?? [];
   const conditionNames = toConditionNames(alert);
-  const namesOf = (kind: CertificateFilterKind, ids: string[]) =>
-    ids.map((id) => getFilterName(kind, id, conditionNames)).join(", ");
+  const activeFilters = Object.values(CertificateFilterKind).flatMap((kind) => {
+    const ids: string[] = alert.condition?.[kind] ?? [];
+    return ids.length ? [{ kind, ids }] : [];
+  });
 
-  if (!isFilterableEventType(alert.eventType as CertificateAlertEventType)) {
+  if (!isFilterableEventType(alert.eventType as TCertificateAlertEventType)) {
     return <span className="text-muted">All signers</span>;
   }
 
-  if (!applicationIds.length && !profileIds.length && !sources.length) {
+  if (!activeFilters.length) {
     return <span className="text-muted">All certificates</span>;
   }
-
-  const summary = [
-    applicationIds.length ? pluralize(applicationIds.length, "application") : null,
-    profileIds.length ? pluralize(profileIds.length, "certificate profile") : null,
-    sources.length ? pluralize(sources.length, "source") : null
-  ]
-    .filter(Boolean)
-    .join(", ");
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="cursor-default text-accent">{summary}</span>
+        <span className="cursor-default text-accent">
+          {activeFilters
+            .map(({ kind, ids }) =>
+              pluralize(ids.length, CERTIFICATE_FILTER_DEFINITIONS[kind].noun)
+            )
+            .join(", ")}
+        </span>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="flex max-w-sm flex-col gap-1">
-        {applicationIds.length > 0 && (
-          <span>
-            <span className="text-muted">
-              {CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Applications].label}:{" "}
-            </span>
-            {namesOf(CertificateFilterKind.Applications, applicationIds)}
+        {activeFilters.map(({ kind, ids }) => (
+          <span key={kind}>
+            <span className="text-muted">{CERTIFICATE_FILTER_DEFINITIONS[kind].label}: </span>
+            {ids.map((id) => getFilterName(kind, id, conditionNames)).join(", ")}
           </span>
-        )}
-        {profileIds.length > 0 && (
-          <span>
-            <span className="text-muted">
-              {CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Profiles].label}:{" "}
-            </span>
-            {namesOf(CertificateFilterKind.Profiles, profileIds)}
-          </span>
-        )}
-        {sources.length > 0 && (
-          <span>
-            <span className="text-muted">
-              {CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Sources].label}:{" "}
-            </span>
-            {namesOf(CertificateFilterKind.Sources, sources)}
-          </span>
-        )}
+        ))}
       </TooltipContent>
     </Tooltip>
   );
@@ -213,7 +190,7 @@ const AlertRow = ({
         </div>
       </TableCell>
       <TableCell className="whitespace-nowrap text-accent">
-        {CERTIFICATE_ALERT_EVENT_LABELS[alert.eventType as CertificateAlertEventType] ??
+        {CERTIFICATE_ALERT_EVENT_LABELS[alert.eventType as TCertificateAlertEventType] ??
           alert.eventType}
       </TableCell>
       <TableCell className="whitespace-nowrap">
@@ -346,7 +323,7 @@ export const CertificateAlertsCard = ({
     (scope.kind === CertificateAlertScopeKind.CertificateManager && isSignerAlertsError);
   const usedEventTypes =
     scope.kind === CertificateAlertScopeKind.Application
-      ? alerts.map((alert) => alert.eventType as CertificateAlertEventType)
+      ? alerts.map((alert) => alert.eventType as TCertificateAlertEventType)
       : [];
   const creatableEventTypes = getScopeEventTypes(scope);
   const hasAllEventTypes = creatableEventTypes.every((eventType) =>
@@ -381,7 +358,7 @@ export const CertificateAlertsCard = ({
             Alerts
             <DocumentationLinkBadge href={config.docsUrl} />
           </CardTitle>
-          <CardDescription>{config.description}</CardDescription>
+          <CardDescription>Get notified about certificate events.</CardDescription>
           <CardAction>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -483,7 +460,6 @@ export const CertificateAlertsCard = ({
         alert={alerts.find((a) => a.id === alertModal.alertId)}
         isReadOnly={alertModal.isReadOnly}
         usedEventTypes={usedEventTypes}
-        allowedEventTypes={creatableEventTypes}
       />
       <DeleteConfirmDialog
         isOpen={deleteAlertModal.isOpen}

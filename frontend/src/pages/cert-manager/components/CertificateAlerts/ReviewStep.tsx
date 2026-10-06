@@ -73,51 +73,29 @@ const describeChannel = (channel: TChannelForm, members: TMemberEmails): string 
 };
 
 const FilterDetails = ({
-  applicationIds,
-  profileIds,
-  sources,
+  filters,
   conditionNames
 }: {
-  applicationIds: string[];
-  profileIds: string[];
-  sources: string[];
+  filters: Partial<Record<CertificateFilterKind, string[]>>;
   conditionNames: Record<string, string>;
-}) => {
-  const getApplicationName = (id: string) =>
-    getFilterName(CertificateFilterKind.Applications, id, conditionNames);
-  const getProfileName = (id: string) =>
-    getFilterName(CertificateFilterKind.Profiles, id, conditionNames);
-
-  return (
-    <>
-      <Detail label={CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Applications].label}>
-        {applicationIds.length ? (
-          <PkiSyncFilterValueBadges values={applicationIds.map(getApplicationName)} />
-        ) : (
-          CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Applications].allLabel
-        )}
-      </Detail>
-      <Detail label={CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Profiles].label}>
-        {profileIds.length ? (
-          <PkiSyncFilterValueBadges values={profileIds.map(getProfileName)} />
-        ) : (
-          CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Profiles].allLabel
-        )}
-      </Detail>
-      <Detail label={CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Sources].label}>
-        {sources.length ? (
-          <PkiSyncFilterValueBadges
-            values={sources.map((source) =>
-              getFilterName(CertificateFilterKind.Sources, source, conditionNames)
-            )}
-          />
-        ) : (
-          CERTIFICATE_FILTER_DEFINITIONS[CertificateFilterKind.Sources].allLabel
-        )}
-      </Detail>
-    </>
-  );
-};
+}) => (
+  <>
+    {Object.values(CertificateFilterKind).map((kind) => {
+      const ids = filters[kind] ?? [];
+      return (
+        <Detail key={kind} label={CERTIFICATE_FILTER_DEFINITIONS[kind].label}>
+          {ids.length ? (
+            <PkiSyncFilterValueBadges
+              values={ids.map((id) => getFilterName(kind, id, conditionNames))}
+            />
+          ) : (
+            CERTIFICATE_FILTER_DEFINITIONS[kind].allLabel
+          )}
+        </Detail>
+      );
+    })}
+  </>
+);
 
 export const ReviewStep = ({ form, scope, members }: Props) => {
   const values = useWatch({ control: form.control }) as TCertificateAlertForm;
@@ -147,16 +125,9 @@ export const ReviewStep = ({ form, scope, members }: Props) => {
       {scope.kind === CertificateAlertScopeKind.CertificateManager &&
         isFilterableEventType(values.eventType) && (
           <Section title="Certificate Filters">
-            {values.applicationIds?.length ||
-            values.profileIds?.length ||
-            values.sources?.length ? (
+            {Object.values(CertificateFilterKind).some((kind) => values[kind]?.length) ? (
               <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                <FilterDetails
-                  applicationIds={values.applicationIds ?? []}
-                  profileIds={values.profileIds ?? []}
-                  sources={values.sources ?? []}
-                  conditionNames={values.conditionNames}
-                />
+                <FilterDetails filters={values} conditionNames={values.conditionNames} />
               </div>
             ) : (
               <span className="text-sm text-muted">{NO_FILTERS_DESCRIPTION}</span>

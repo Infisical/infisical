@@ -15,7 +15,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { logger } from "@app/lib/logger";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import {
-  CertificateAlertEvent,
+  CertificateApplicationAlertEvent,
   TCertificateAlertEventEmitter,
   TCertificateAlertEventInput
 } from "@app/services/certificate/certificate-alert-events";
@@ -238,7 +238,7 @@ export const certificateApprovalServiceFactory = (
   } = deps;
 
   const $emitIssuanceAlert = (input: Omit<TCertificateAlertEventInput, "eventType">, tx: Knex) =>
-    certificateAlertEventEmitter.emit({ ...input, eventType: CertificateAlertEvent.Issuance }, tx);
+    certificateAlertEventEmitter.emit({ ...input, eventType: CertificateApplicationAlertEvent.Issuance }, tx);
 
   const $queueIssuanceAlert = async (certificateId: string, projectId: string, applicationId?: string | null) => {
     try {

@@ -5,11 +5,11 @@ import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/teleme
 
 import { AlertChannelType } from "../alert-channel-types";
 import { AlertAuditAction, AlertPermissionAction, AlertTelemetryAction, TAlertContext } from "../alert-types";
-import { TApplicationAlertCertificate } from "./cert-manager-application-alert-dal";
 import {
   certManagerApplicationAlertProviderFactory,
   TCertManagerApplicationAlertProviderDep
 } from "./cert-manager-application-alert-provider";
+import { TAlertCertificate } from "./cert-manager-certificate-alert-dal";
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({ SITE_URL: "https://app.infisical.com" })
@@ -24,7 +24,7 @@ const PROFILE_ID = "7d9f5b2a-0c3e-4a4d-9f8b-3c4d5e6f7081";
 
 const futureDate = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
-const sampleCertificate = (overrides: Partial<TApplicationAlertCertificate> = {}): TApplicationAlertCertificate => ({
+const sampleCertificate = (overrides: Partial<TAlertCertificate> = {}): TAlertCertificate => ({
   id: "cert-1",
   serialNumber: "105d3b4c",
   commonName: "api.example.com",
@@ -55,7 +55,7 @@ const alertContext = (overrides: Partial<TAlertContext> = {}): TAlertContext => 
 
 const buildProvider = (opts?: {
   application?: { id: string; name: string; projectId: string; orgId: string };
-  certificates?: TApplicationAlertCertificate[];
+  certificates?: TAlertCertificate[];
   onFindExpiring?: (args: Record<string, unknown>) => void;
   onFindByIds?: (args: Record<string, unknown>) => void;
   onFindNames?: (ids: string[], orgId: string) => void;
@@ -94,7 +94,7 @@ const buildProvider = (opts?: {
     getPlan: async () => ({ pkiEnterpriseAlerting: opts?.pkiEnterpriseAlerting ?? false })
   };
   const provider = certManagerApplicationAlertProviderFactory({
-    certManagerApplicationAlertDAL: dal,
+    certManagerCertificateAlertDAL: dal,
     permissionService,
     licenseService
   } as unknown as TCertManagerApplicationAlertProviderDep);

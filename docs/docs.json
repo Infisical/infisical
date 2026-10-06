@@ -3926,15 +3926,6 @@
                         ]
                       },
                       {
-                        "group": "Application alerts",
-                        "pages": [
-                          "api-reference/endpoints/pki/applications/alerts/list",
-                          "api-reference/endpoints/pki/applications/alerts/create",
-                          "api-reference/endpoints/pki/applications/alerts/update",
-                          "api-reference/endpoints/pki/applications/alerts/delete"
-                        ]
-                      },
-                      {
                         "group": "Enrollment methods",
                         "pages": [
                           "api-reference/endpoints/pki/applications/enrollment/get-state",
@@ -3971,12 +3962,14 @@
                         ]
                       },
                       {
-                        "group": "Alerting",
+                        "group": "Alerts",
                         "pages": [
-                          "api-reference/endpoints/pki-alerts/create",
-                          "api-reference/endpoints/pki-alerts/read",
-                          "api-reference/endpoints/pki-alerts/update",
-                          "api-reference/endpoints/pki-alerts/delete"
+                          "api-reference/endpoints/alerts/list",
+                          "api-reference/endpoints/alerts/create",
+                          "api-reference/endpoints/alerts/get",
+                          "api-reference/endpoints/alerts/update",
+                          "api-reference/endpoints/alerts/delete",
+                          "api-reference/endpoints/alerts/test-channel"
                         ]
                       },
                       {
@@ -5070,6 +5063,38 @@
     {
       "source": "/documentation/platform/pki/est",
       "destination": "/documentation/platform/pki/applications/enrollment-methods/est"
+    },
+    {
+      "source": "/api-reference/endpoints/pki/applications/alerts/list",
+      "destination": "/api-reference/endpoints/alerts/list"
+    },
+    {
+      "source": "/api-reference/endpoints/pki/applications/alerts/create",
+      "destination": "/api-reference/endpoints/alerts/create"
+    },
+    {
+      "source": "/api-reference/endpoints/pki/applications/alerts/update",
+      "destination": "/api-reference/endpoints/alerts/update"
+    },
+    {
+      "source": "/api-reference/endpoints/pki/applications/alerts/delete",
+      "destination": "/api-reference/endpoints/alerts/delete"
+    },
+    {
+      "source": "/api-reference/endpoints/pki-alerts/create",
+      "destination": "/api-reference/endpoints/alerts/create"
+    },
+    {
+      "source": "/api-reference/endpoints/pki-alerts/read",
+      "destination": "/api-reference/endpoints/alerts/get"
+    },
+    {
+      "source": "/api-reference/endpoints/pki-alerts/update",
+      "destination": "/api-reference/endpoints/alerts/update"
+    },
+    {
+      "source": "/api-reference/endpoints/pki-alerts/delete",
+      "destination": "/api-reference/endpoints/alerts/delete"
     },
     {
       "source": "/documentation/platform/pki/alerting",

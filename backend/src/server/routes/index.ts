@@ -250,8 +250,8 @@ import { alertQueueServiceFactory } from "@app/services/alert/alert-queue";
 import { alertRecipientResolverFactory } from "@app/services/alert/alert-recipient-resolver";
 import { alertServiceFactory } from "@app/services/alert/alert-service";
 import { certManagerAlertProviderFactory } from "@app/services/alert/providers/cert-manager-alert-provider";
-import { certManagerApplicationAlertDALFactory } from "@app/services/alert/providers/cert-manager-application-alert-dal";
 import { certManagerApplicationAlertProviderFactory } from "@app/services/alert/providers/cert-manager-application-alert-provider";
+import { certManagerCertificateAlertDALFactory } from "@app/services/alert/providers/cert-manager-certificate-alert-dal";
 import { certManagerSignerAlertDALFactory } from "@app/services/alert/providers/cert-manager-signer-alert-dal";
 import { certManagerSignerAlertProviderFactory } from "@app/services/alert/providers/cert-manager-signer-alert-provider";
 import { identityCredentialAlertDALFactory } from "@app/services/alert/providers/identity-credential-alert-dal";
@@ -1086,7 +1086,7 @@ export const registerRoutes = async (
   const alertChannelDAL = alertChannelDALFactory(db);
   const alertChannelMembershipDAL = alertChannelMembershipDALFactory(db);
   const alertHistoryDAL = alertHistoryDALFactory(db);
-  const certManagerApplicationAlertDAL = certManagerApplicationAlertDALFactory(db);
+  const certManagerCertificateAlertDAL = certManagerCertificateAlertDALFactory(db);
   const certManagerProjectResolver = certManagerProjectResolverFactory({
     orgDAL,
     projectDAL
@@ -1100,14 +1100,14 @@ export const registerRoutes = async (
   );
   alertProviderRegistry.register(
     certManagerApplicationAlertProviderFactory({
-      certManagerApplicationAlertDAL,
+      certManagerCertificateAlertDAL,
       permissionService,
       licenseService
     })
   );
   alertProviderRegistry.register(
     certManagerAlertProviderFactory({
-      certManagerApplicationAlertDAL,
+      certManagerCertificateAlertDAL,
       permissionService,
       licenseService,
       certManagerProjectResolver

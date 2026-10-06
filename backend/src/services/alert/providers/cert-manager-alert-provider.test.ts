@@ -6,7 +6,7 @@ import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/teleme
 import { AlertChannelType } from "../alert-channel-types";
 import { AlertAuditAction, AlertPermissionAction, AlertTelemetryAction, TAlertContext } from "../alert-types";
 import { certManagerAlertProviderFactory, TCertManagerAlertProviderDep } from "./cert-manager-alert-provider";
-import { TApplicationAlertCertificate } from "./cert-manager-application-alert-dal";
+import { TAlertCertificate } from "./cert-manager-certificate-alert-dal";
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({ SITE_URL: "https://app.infisical.com" })
@@ -22,7 +22,7 @@ const PROFILE_ID = "7d9f5b2a-0c3e-4a4d-9f8b-3c4d5e6f7081";
 
 const futureDate = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
-const sampleCertificate = (overrides: Partial<TApplicationAlertCertificate> = {}): TApplicationAlertCertificate => ({
+const sampleCertificate = (overrides: Partial<TAlertCertificate> = {}): TAlertCertificate => ({
   id: "cert-1",
   serialNumber: "105d3b4c",
   commonName: "api.example.com",
@@ -53,7 +53,7 @@ const alertContext = (overrides: Partial<TAlertContext> = {}): TAlertContext => 
 
 const buildProvider = (opts?: {
   application?: { id: string; name: string; projectId: string; orgId: string };
-  certificates?: TApplicationAlertCertificate[];
+  certificates?: TAlertCertificate[];
   onFindExpiring?: (args: Record<string, unknown>) => void;
   onFindByIds?: (args: Record<string, unknown>) => void;
   onFindNames?: (ids: string[], orgId: string) => void;
@@ -104,7 +104,7 @@ const buildProvider = (opts?: {
     getPlan: async () => ({ pkiEnterpriseAlerting: opts?.pkiEnterpriseAlerting ?? false })
   };
   const provider = certManagerAlertProviderFactory({
-    certManagerApplicationAlertDAL: dal,
+    certManagerCertificateAlertDAL: dal,
     permissionService,
     licenseService,
     certManagerProjectResolver: {
@@ -131,12 +131,12 @@ describe("cert manager alert provider", () => {
     expect(schema.safeParse({ alertBefore: "30d", filters: [] }).success).toBe(false);
   });
 
-  test("issuance, renewal and revocation are relayed from the application events and take only optional filters", () => {
+  test("issuance, renewal and revocation are sourced from the application events and take only optional filters", () => {
     const { provider } = buildProvider();
     expect(provider.resourceType).toBe("cert-manager");
     expect(provider.supportsScopeWideAlerts).toBe(true);
     const eventTriggered = provider.events.filter((event) => event.triggerType === "event");
-    expect(eventTriggered.map((event) => [event.key, event.relayedFrom])).toEqual([
+    expect(eventTriggered.map((event) => [event.key, event.sourceEvent])).toEqual([
       [
         ISSUANCE_EVENT,
         { resourceType: "cert-manager.application", eventKey: "cert-manager.application.certificate.issuance" }
@@ -326,13 +326,13 @@ describe("cert manager alert provider", () => {
     });
     const create = { action: AlertPermissionAction.Create, orgId: "org-1", projectId: "proj-1", actor };
     await expect(provider.assertPermission({ ...create, resourceId: APPLICATION_ID })).rejects.toThrow(
-      "can't be bound to one"
+      "aren't bound to a single application"
     );
     await expect(provider.assertResourceInScope({ orgId: "org-1", resourceId: APPLICATION_ID })).rejects.toThrow(
-      "can't be bound to one"
+      "aren't bound to a single application"
     );
     await expect(provider.resolveProjectId?.({ orgId: "org-1", resourceId: APPLICATION_ID })).rejects.toThrow(
-      "can't be bound to one"
+      "aren't bound to a single application"
     );
   });
 
@@ -449,17 +449,6 @@ describe("cert manager alert provider", () => {
     await expect(
       provider.assertPermission({ action: AlertPermissionAction.Read, orgId: "org-1", actor })
     ).rejects.toThrow("Certificate alerts must be created in Certificate Manager");
-  });
-
-  test("an alert with no application uses the project-level alerts permission", async () => {
-    const { provider, permissionService } = buildProvider();
-    await expect(
-      provider.assertPermission({ action: AlertPermissionAction.Read, orgId: "org-1", projectId: "proj-1", actor })
-    ).resolves.toBeUndefined();
-    await expect(
-      provider.assertPermission({ action: AlertPermissionAction.Create, orgId: "org-1", projectId: "proj-1", actor })
-    ).rejects.toThrow();
-    expect(permissionService.getProjectPermission).toHaveBeenCalled();
   });
 
   test("creating or editing an alert with no application requires a project admin, reading and deleting only PKI alert access", async () => {

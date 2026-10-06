@@ -6,7 +6,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 export const CERT_MANAGER_APPLICATION_RESOURCE_TYPE = "cert-manager.application";
 
-export enum CertificateAlertEvent {
+export enum CertificateApplicationAlertEvent {
   Expiry = "cert-manager.application.certificate.expiry",
   Issuance = "cert-manager.application.certificate.issuance",
   Renewal = "cert-manager.application.certificate.renewal",
@@ -23,14 +23,14 @@ export enum CertificateManagerAlertEvent {
 }
 
 export const getIssuanceAlertEvent = (isRenewal?: boolean) =>
-  isRenewal ? CertificateAlertEvent.Renewal : CertificateAlertEvent.Issuance;
+  isRenewal ? CertificateApplicationAlertEvent.Renewal : CertificateApplicationAlertEvent.Issuance;
 
 export type TCertificateAlertEventInput = {
   certificateId: string;
   projectId: string;
   orgId?: string;
   applicationId?: string | null;
-  eventType: CertificateAlertEvent;
+  eventType: CertificateApplicationAlertEvent;
 };
 
 type TCertificateAlertEventEmitterDep = {

@@ -36,13 +36,20 @@ export enum CertificateAlertResourceType {
   Signer = "cert-manager.signer"
 }
 
-export enum CertificateAlertEventType {
+export enum CertificateApplicationAlertEventType {
   Expiry = "cert-manager.application.certificate.expiry",
   Issuance = "cert-manager.application.certificate.issuance",
   Renewal = "cert-manager.application.certificate.renewal",
-  Revocation = "cert-manager.application.certificate.revocation",
-  SignerCertificateExpiry = "cert-manager.signer.certificate.expiry"
+  Revocation = "cert-manager.application.certificate.revocation"
 }
+
+export enum SignerAlertEventType {
+  CertificateExpiry = "cert-manager.signer.certificate.expiry"
+}
+
+export type TCertificateAlertEventType =
+  | CertificateApplicationAlertEventType
+  | SignerAlertEventType;
 
 export enum CertificateManagerAlertEventType {
   Expiry = "cert-manager.certificate.expiry",

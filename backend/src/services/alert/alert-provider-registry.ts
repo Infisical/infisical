@@ -1,6 +1,6 @@
 import { BadRequestError } from "@app/lib/errors";
 
-import { AlertTriggerType, IResourceAlertProvider, TAlertEventDefinition } from "./alert-types";
+import { AlertTriggerType, IResourceAlertProvider, TAlertEventDefinition, TAlertEventRef } from "./alert-types";
 
 export const resolveAlertProjectId = async (
   provider: IResourceAlertProvider,
@@ -70,17 +70,17 @@ export const alertProviderRegistryFactory = () => {
     return eventTriggeredKeyCache;
   };
 
-  const relaysFor = (resourceType: string, eventKey: string): { resourceType: string; eventKey: string }[] =>
+  const findEventsBySource = (source: TAlertEventRef): TAlertEventRef[] =>
     [...providers.values()].flatMap((provider) =>
       provider.events
         .filter(
           (event) =>
             event.triggerType === AlertTriggerType.Event &&
-            event.relayedFrom?.resourceType === resourceType &&
-            event.relayedFrom.eventKey === eventKey
+            event.sourceEvent?.resourceType === source.resourceType &&
+            event.sourceEvent.eventKey === source.eventKey
         )
         .map((event) => ({ resourceType: provider.resourceType, eventKey: event.key }))
     );
 
-  return { register, get, resourceTypes, eventTriggeredKeys, relaysFor };
+  return { register, get, resourceTypes, eventTriggeredKeys, findEventsBySource };
 };

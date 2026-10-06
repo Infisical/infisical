@@ -194,21 +194,23 @@ describe("cert manager signer alert provider", () => {
     expect(payload.items[0].fields?.[0]).toEqual({ label: "Signers", value: "build-signer, release-signer" });
   });
 
-  test("logs Certificate Manager alert audit events and PKI alert telemetry", () => {
+  test("logs its own signer alert audit events and PKI alert telemetry", () => {
     const provider = buildProvider();
     const alert = { ...signerAlert, enabled: true, channels: [] } as never;
 
     expect(provider.getAuditEvent?.({ action: AlertAuditAction.Create, alert })).toEqual({
-      type: EventType.CREATE_CERTIFICATE_MANAGER_ALERT,
-      metadata: {
-        alertId: "alert-1",
-        name: "signer-expiry",
-        eventType: EXPIRY_EVENT,
-        applications: [],
-        profiles: [],
-        sources: []
-      }
+      type: EventType.CREATE_SIGNER_ALERT,
+      metadata: { alertId: "alert-1", name: "signer-expiry", eventType: EXPIRY_EVENT }
     });
+    expect(provider.getAuditEvent?.({ action: AlertAuditAction.Delete, alert })?.type).toBe(
+      EventType.DELETE_SIGNER_ALERT
+    );
+    expect(
+      provider.getAuditEvent?.({
+        action: AlertAuditAction.TestChannel,
+        test: { resourceType: RESOURCE_TYPE, alertId: "alert-1", channelType: "email", success: true }
+      })
+    ).toMatchObject({ type: EventType.TEST_SIGNER_ALERT_CHANNEL, metadata: { alertId: "alert-1", success: true } });
     expect(
       provider.getTelemetryEvent?.({
         action: AlertTelemetryAction.Create,

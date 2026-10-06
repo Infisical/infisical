@@ -28,7 +28,7 @@ type TAlertEventPayload = z.infer<typeof AlertEventPayloadSchema>;
 export type TAlertEventConsumerDep = {
   alertDAL: Pick<TAlertDALFactory, "findEnabledForEvent">;
   alertEngine: Pick<TAlertEngine, "runAlertForEvent">;
-  alertProviderRegistry: Pick<TAlertProviderRegistry, "get" | "eventTriggeredKeys" | "relaysFor">;
+  alertProviderRegistry: Pick<TAlertProviderRegistry, "get" | "eventTriggeredKeys" | "findEventsBySource">;
 };
 
 type TAlertLookup = TAlertDALFactory["findEnabledForEvent"];
@@ -70,11 +70,14 @@ export const alertEventConsumerFactory = ({
       };
     }
 
+    const sourcedEvents = alertProviderRegistry.findEventsBySource({ resourceType, eventKey: event.eventType });
     const lookups = [
       { resourceType, resourceId, eventType: event.eventType },
-      ...alertProviderRegistry
-        .relaysFor(resourceType, event.eventType)
-        .map((relay) => ({ resourceType: relay.resourceType, resourceId: null, eventType: relay.eventKey }))
+      ...sourcedEvents.map((sourced) => ({
+        resourceType: sourced.resourceType,
+        resourceId: null,
+        eventType: sourced.eventKey
+      }))
     ];
     const alerts = (await Promise.all(lookups.map((lookup) => findAlerts({ orgId, projectId, ...lookup })))).flat();
 

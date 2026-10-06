@@ -966,7 +966,11 @@ export enum EventType {
   CREATE_CERTIFICATE_MANAGER_ALERT = "create-certificate-manager-alert",
   UPDATE_CERTIFICATE_MANAGER_ALERT = "update-certificate-manager-alert",
   DELETE_CERTIFICATE_MANAGER_ALERT = "delete-certificate-manager-alert",
-  TEST_CERTIFICATE_MANAGER_ALERT_CHANNEL = "test-certificate-manager-alert-channel"
+  TEST_CERTIFICATE_MANAGER_ALERT_CHANNEL = "test-certificate-manager-alert-channel",
+  CREATE_SIGNER_ALERT = "create-signer-alert",
+  UPDATE_SIGNER_ALERT = "update-signer-alert",
+  DELETE_SIGNER_ALERT = "delete-signer-alert",
+  TEST_SIGNER_ALERT_CHANNEL = "test-signer-alert-channel"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -7959,18 +7963,46 @@ interface DeleteCertificateManagerAlertEvent {
   metadata: TCertificateManagerAlertEventMetadata;
 }
 
+type TAlertChannelTestEventMetadata = {
+  alertId?: string;
+  alertName?: string | null;
+  channelId?: string;
+  channelName?: string | null;
+  channelType: string;
+  success: boolean;
+  deliveredTo?: number;
+  error?: string;
+};
+
 interface TestCertificateManagerAlertEvent {
   type: EventType.TEST_CERTIFICATE_MANAGER_ALERT_CHANNEL;
-  metadata: {
-    alertId?: string;
-    alertName?: string | null;
-    channelId?: string;
-    channelName?: string | null;
-    channelType: string;
-    success: boolean;
-    deliveredTo?: number;
-    error?: string;
-  };
+  metadata: TAlertChannelTestEventMetadata;
+}
+
+type TSignerAlertEventMetadata = {
+  alertId: string;
+  name: string;
+  eventType: string;
+};
+
+interface CreateSignerAlertEvent {
+  type: EventType.CREATE_SIGNER_ALERT;
+  metadata: TSignerAlertEventMetadata;
+}
+
+interface UpdateSignerAlertEvent {
+  type: EventType.UPDATE_SIGNER_ALERT;
+  metadata: TSignerAlertEventMetadata;
+}
+
+interface DeleteSignerAlertEvent {
+  type: EventType.DELETE_SIGNER_ALERT;
+  metadata: TSignerAlertEventMetadata;
+}
+
+interface TestSignerAlertEvent {
+  type: EventType.TEST_SIGNER_ALERT_CHANNEL;
+  metadata: TAlertChannelTestEventMetadata;
 }
 
 export type Event =
@@ -7986,6 +8018,10 @@ export type Event =
   | UpdateCertificateManagerAlertEvent
   | DeleteCertificateManagerAlertEvent
   | TestCertificateManagerAlertEvent
+  | CreateSignerAlertEvent
+  | UpdateSignerAlertEvent
+  | DeleteSignerAlertEvent
+  | TestSignerAlertEvent
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
   | DeleteSubOrganizationEvent

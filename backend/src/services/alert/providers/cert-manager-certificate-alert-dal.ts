@@ -4,12 +4,12 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { DatabaseError } from "@app/lib/errors";
-import { AlertRunStatus, TAlreadyAlertedFilter } from "@app/services/alert/alert-types";
-import { CertStatus } from "@app/services/certificate/certificate-types";
 
-export type TCertManagerApplicationAlertDALFactory = ReturnType<typeof certManagerApplicationAlertDALFactory>;
+import { scanExpiringCertificates, TExpiringCertificatesScan } from "./cert-manager-expiring-certificates-fns";
 
-export type TApplicationAlertCertificate = {
+export type TCertManagerCertificateAlertDALFactory = ReturnType<typeof certManagerCertificateAlertDALFactory>;
+
+export type TAlertCertificate = {
   id: string;
   serialNumber: string;
   commonName: string;
@@ -25,13 +25,6 @@ export type TApplicationAlertCertificate = {
   applicationName: string | null;
 };
 
-type TExpiryWindow = {
-  alertBeforeInterval: string;
-  leadInterval: string;
-  asOf: Date;
-  alreadyAlerted: TAlreadyAlertedFilter;
-};
-
 type TCertificateScope = {
   projectId: string;
   applicationId?: string | null;
@@ -40,9 +33,7 @@ type TCertificateScope = {
   sources?: CertificateSource[];
 };
 
-const MAX_EXPIRING_CERTIFICATES_PER_RUN = 1000;
-
-export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
+export const certManagerCertificateAlertDALFactory = (db: TDbClient) => {
   const $selectCertificates = (
     reader: Knex,
     { projectId, applicationId, applicationIds, profileIds, sources }: TCertificateScope
@@ -79,69 +70,16 @@ export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
       );
 
   const findExpiringCertificates = async (
-    scope: TCertificateScope & TExpiryWindow,
+    scope: TCertificateScope & TExpiringCertificatesScan,
     tx?: Knex
-  ): Promise<TApplicationAlertCertificate[]> => {
+  ): Promise<TAlertCertificate[]> => {
     try {
       const reader = tx || db.replicaNode();
-      const { alertId, channelIds, since } = scope.alreadyAlerted;
-
-      const deliveredOnEveryChannel = reader(`${TableName.AlertHistory} as deliveredHist`)
-        .join(`${TableName.AlertHistoryTarget} as deliveredTgt`, "deliveredHist.id", "deliveredTgt.alertHistoryId")
-        .where("deliveredHist.alertId", alertId)
-        .where("deliveredTgt.status", AlertRunStatus.SUCCESS)
-        .whereIn("deliveredTgt.channelId", channelIds)
-        .groupBy("deliveredTgt.targetId")
-        .havingRaw(`count(distinct "deliveredTgt"."channelId") >= ?`, [channelIds.length]);
-
-      const notFullyNotified = (await $selectCertificates(reader, scope)
-        .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
-        .whereNot(`${TableName.Certificate}.status`, CertStatus.REVOKED)
-        .whereRaw(`"${TableName.Certificate}"."notAfter" > ?::timestamptz`, [scope.asOf])
-        .whereRaw(`"${TableName.Certificate}"."notAfter" <= ?::timestamptz + ?::interval + ?::interval`, [
-          scope.asOf,
-          scope.alertBeforeInterval,
-          scope.leadInterval
-        ])
-        .whereRaw(`"${TableName.Certificate}".id::text not in (?)`, [
-          deliveredOnEveryChannel.clone().select("deliveredTgt.targetId")
-        ])
-        .orderBy(`${TableName.Certificate}.notAfter`, "asc")
-        .limit(MAX_EXPIRING_CERTIFICATES_PER_RUN)) as TApplicationAlertCertificate[];
-      if (notFullyNotified.length >= MAX_EXPIRING_CERTIFICATES_PER_RUN) return notFullyNotified;
-
-      const deliveredChannelCountSince = reader(`${TableName.AlertHistory} as hist`)
-        .join(`${TableName.AlertHistoryTarget} as tgt`, "hist.id", "tgt.alertHistoryId")
-        .where("hist.alertId", alertId)
-        .where("hist.triggeredAt", ">=", since)
-        .where("tgt.status", AlertRunStatus.SUCCESS)
-        .whereIn("tgt.channelId", channelIds)
-        .whereRaw(`"tgt"."targetId" = "${TableName.Certificate}".id::text`)
-        .countDistinct("tgt.channelId");
-      const leastRecentlyNotified = (await $selectCertificates(reader, scope)
-        .joinRaw(
-          `inner join (?) as "lastDelivered" on "lastDelivered"."targetId" = "${TableName.Certificate}".id::text`,
-          [
-            deliveredOnEveryChannel
-              .clone()
-              .select("deliveredTgt.targetId")
-              .max("deliveredHist.triggeredAt as lastDeliveredAt")
-          ]
-        )
-        .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
-        .whereNot(`${TableName.Certificate}.status`, CertStatus.REVOKED)
-        .whereRaw(`"${TableName.Certificate}"."notAfter" > ?::timestamptz`, [scope.asOf])
-        .whereRaw(`"${TableName.Certificate}"."notAfter" <= ?::timestamptz + ?::interval + ?::interval`, [
-          scope.asOf,
-          scope.alertBeforeInterval,
-          scope.leadInterval
-        ])
-        .whereRaw("(?) < ?", [deliveredChannelCountSince, channelIds.length])
-        .orderBy("lastDelivered.lastDeliveredAt", "asc")
-        .orderBy(`${TableName.Certificate}.notAfter`, "asc")
-        .limit(MAX_EXPIRING_CERTIFICATES_PER_RUN - notFullyNotified.length)) as TApplicationAlertCertificate[];
-
-      return [...notFullyNotified, ...leastRecentlyNotified];
+      return await scanExpiringCertificates<TAlertCertificate>(
+        reader,
+        () => $selectCertificates(reader, scope).whereNull(`${TableName.Certificate}.renewedByCertificateId`),
+        scope
+      );
     } catch (error) {
       throw new DatabaseError({ error, name: "FindExpiringCertificates" });
     }
@@ -150,12 +88,12 @@ export const certManagerApplicationAlertDALFactory = (db: TDbClient) => {
   const findCertificatesByIds = async (
     scope: TCertificateScope & { certificateIds: string[] },
     tx?: Knex
-  ): Promise<TApplicationAlertCertificate[]> => {
+  ): Promise<TAlertCertificate[]> => {
     try {
       const certificates = (await $selectCertificates(tx || db, scope).whereIn(
         `${TableName.Certificate}.id`,
         scope.certificateIds
-      )) as TApplicationAlertCertificate[];
+      )) as TAlertCertificate[];
 
       return certificates;
     } catch (error) {

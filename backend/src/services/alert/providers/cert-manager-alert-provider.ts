@@ -9,7 +9,7 @@ import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-i
 import {
   CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
   CERT_MANAGER_RESOURCE_TYPE,
-  CertificateAlertEvent,
+  CertificateApplicationAlertEvent,
   CertificateManagerAlertEvent
 } from "@app/services/certificate/certificate-alert-events";
 import { PkiAlertScope } from "@app/services/telemetry/telemetry-types";
@@ -40,12 +40,10 @@ import {
   CertificateAlertKind,
   expiryDedupWindowHours,
   ExpiryFieldsSchema,
+  getScopeWideAlertWebhookSource,
   resolveCertManagerProjectId
 } from "./cert-manager-alert-fns";
-import {
-  TApplicationAlertCertificate,
-  TCertManagerApplicationAlertDALFactory
-} from "./cert-manager-application-alert-dal";
+import { TAlertCertificate, TCertManagerCertificateAlertDALFactory } from "./cert-manager-certificate-alert-dal";
 
 const MAX_CERTIFICATE_ALERT_FILTER_IDS = 100;
 
@@ -56,10 +54,10 @@ const ALERT_KIND_BY_EVENT: Record<CertificateManagerAlertEvent, CertificateAlert
   [CertificateManagerAlertEvent.Revocation]: CertificateAlertKind.Revocation
 };
 
-const RELAYED_EVENTS: [CertificateManagerAlertEvent, CertificateAlertEvent][] = [
-  [CertificateManagerAlertEvent.Issuance, CertificateAlertEvent.Issuance],
-  [CertificateManagerAlertEvent.Renewal, CertificateAlertEvent.Renewal],
-  [CertificateManagerAlertEvent.Revocation, CertificateAlertEvent.Revocation]
+const EVENTS_SOURCED_FROM_APPLICATION_EVENTS: [CertificateManagerAlertEvent, CertificateApplicationAlertEvent][] = [
+  [CertificateManagerAlertEvent.Issuance, CertificateApplicationAlertEvent.Issuance],
+  [CertificateManagerAlertEvent.Renewal, CertificateApplicationAlertEvent.Renewal],
+  [CertificateManagerAlertEvent.Revocation, CertificateApplicationAlertEvent.Revocation]
 ];
 
 const filterIdsSchema = (field: string, noun: string) =>
@@ -110,33 +108,31 @@ const parseFilters = (condition: unknown) => {
 const assertNoResource = (resourceId?: string | null) =>
   assertNoAlertResource(
     resourceId,
-    "Certificate Manager alerts cover every application and can't be bound to one. Remove resourceId, or narrow the alert with applicationIds."
+    "Certificate Manager alerts aren't bound to a single application. Remove resourceId, and use applicationIds to narrow the alert to specific applications."
   );
 
-const getWebhookSource = ({ alertId }: { alertId: string }) => `/alerts/${alertId}`;
-
 export type TCertManagerAlertProviderDep = {
-  certManagerApplicationAlertDAL: TCertManagerApplicationAlertDALFactory;
+  certManagerCertificateAlertDAL: TCertManagerCertificateAlertDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certManagerProjectResolver: Pick<TCertManagerProjectResolverFactory, "getActiveProjectId">;
 };
 
 export const certManagerAlertProviderFactory = ({
-  certManagerApplicationAlertDAL,
+  certManagerCertificateAlertDAL,
   permissionService,
   licenseService,
   certManagerProjectResolver
-}: TCertManagerAlertProviderDep): IScheduledAlertProvider<TApplicationAlertCertificate> &
-  IEventAlertProvider<TApplicationAlertCertificate> => {
+}: TCertManagerAlertProviderDep): IScheduledAlertProvider<TAlertCertificate> &
+  IEventAlertProvider<TAlertCertificate> => {
   const buildViewUrl = async (alert: TAlertContext): Promise<string> =>
     `${getConfig().SITE_URL}/organizations/${alert.orgId}/projects/cert-manager/${alert.projectId}/inventory`;
 
-  const findScheduledTargets = async (input: TFindScheduledTargetsInput): Promise<TApplicationAlertCertificate[]> => {
+  const findScheduledTargets = async (input: TFindScheduledTargetsInput): Promise<TAlertCertificate[]> => {
     if (!input.projectId || input.resourceId || !input.alreadyAlerted?.channelIds.length) return [];
     const { alertBefore, applicationIds, profileIds, sources } = ExpirationConditionSchema.parse(input.condition);
 
-    return certManagerApplicationAlertDAL.findExpiringCertificates({
+    return certManagerCertificateAlertDAL.findExpiringCertificates({
       projectId: input.projectId,
       applicationIds,
       profileIds,
@@ -148,11 +144,11 @@ export const certManagerAlertProviderFactory = ({
     });
   };
 
-  const findEventTargets = async (input: TFindEventTargetsInput): Promise<TApplicationAlertCertificate[]> => {
+  const findEventTargets = async (input: TFindEventTargetsInput): Promise<TAlertCertificate[]> => {
     if (!input.projectId || input.resourceId) return [];
     const condition = EventConditionSchema.parse(input.condition);
 
-    return certManagerApplicationAlertDAL.findCertificatesByIds({
+    return certManagerCertificateAlertDAL.findCertificatesByIds({
       projectId: input.projectId,
       applicationIds: condition?.applicationIds,
       profileIds: condition?.profileIds,
@@ -161,13 +157,13 @@ export const certManagerAlertProviderFactory = ({
     });
   };
 
-  const buildPayload = (alert: TAlertContext, targets: TApplicationAlertCertificate[], viewUrl: string) =>
+  const buildPayload = (alert: TAlertContext, targets: TAlertCertificate[], viewUrl: string) =>
     buildCertificateAlertPayload({
       alert,
       targets,
       viewUrl,
       kind: ALERT_KIND_BY_EVENT[alert.eventType as CertificateManagerAlertEvent],
-      webhookSource: getWebhookSource({ alertId: alert.id }),
+      webhookSource: getScopeWideAlertWebhookSource({ alertId: alert.id }),
       resourceOwnerKind: "Certificate Manager",
       applicationName: null
     });
@@ -208,7 +204,7 @@ export const certManagerAlertProviderFactory = ({
     await assertCertManagerAdminAlertPermission(
       permissionService,
       { action, projectId, actor },
-      "Certificate Manager alerts send certificate details from every application, so only Certificate Manager admins can create or edit them. Create the alert on an application instead."
+      "Certificate Manager alerts can send details of certificates from any application, so only Certificate Manager admins can create or edit them. Create the alert on an application instead."
     );
   };
 
@@ -228,10 +224,10 @@ export const certManagerAlertProviderFactory = ({
 
     const [foundApplicationIds, foundProfileIds]: string[][] = await Promise.all([
       addedApplicationIds.length
-        ? certManagerApplicationAlertDAL.findProjectApplicationIds(input.projectId, addedApplicationIds)
+        ? certManagerCertificateAlertDAL.findProjectApplicationIds(input.projectId, addedApplicationIds)
         : [],
       addedProfileIds.length
-        ? certManagerApplicationAlertDAL.findProjectProfileIds(input.projectId, addedProfileIds)
+        ? certManagerCertificateAlertDAL.findProjectProfileIds(input.projectId, addedProfileIds)
         : []
     ]);
 
@@ -265,8 +261,8 @@ export const certManagerAlertProviderFactory = ({
     const profileIds = [...new Set(filtersByAlert.flatMap((filters) => filters.profileIds ?? []))];
 
     const [applications, profiles] = await Promise.all([
-      certManagerApplicationAlertDAL.findApplicationNamesByIds(applicationIds, orgId),
-      projectId ? certManagerApplicationAlertDAL.findProfileNamesByIds(projectId, profileIds) : []
+      certManagerCertificateAlertDAL.findApplicationNamesByIds(applicationIds, orgId),
+      projectId ? certManagerCertificateAlertDAL.findProfileNamesByIds(projectId, profileIds) : []
     ]);
     const nameById = new Map([...applications, ...profiles].map((entry) => [entry.id.toLowerCase(), entry.name]));
 
@@ -289,11 +285,11 @@ export const certManagerAlertProviderFactory = ({
         triggerType: AlertTriggerType.Scheduled,
         conditionSchema: ExpirationConditionSchema
       },
-      ...RELAYED_EVENTS.map(([key, sourceEventKey]) => ({
+      ...EVENTS_SOURCED_FROM_APPLICATION_EVENTS.map(([key, sourceEventKey]) => ({
         key,
         triggerType: AlertTriggerType.Event,
         conditionSchema: EventConditionSchema,
-        relayedFrom: { resourceType: CERT_MANAGER_APPLICATION_RESOURCE_TYPE, eventKey: sourceEventKey }
+        sourceEvent: { resourceType: CERT_MANAGER_APPLICATION_RESOURCE_TYPE, eventKey: sourceEventKey }
       }))
     ],
     findScheduledTargets,
@@ -310,7 +306,7 @@ export const certManagerAlertProviderFactory = ({
     recipientPolicy: { atOrgScope: true, allowEmailAddresses: true },
     includeLastRun: true,
     getAuditEvent,
-    getWebhookSource,
+    getWebhookSource: getScopeWideAlertWebhookSource,
     getFilters,
     resolveProjectId: async ({ orgId, resourceId }) => {
       assertNoResource(resourceId);

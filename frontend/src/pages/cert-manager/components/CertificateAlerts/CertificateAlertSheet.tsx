@@ -26,8 +26,8 @@ import {
 import { useGetOrgUsers } from "@app/hooks/api";
 import {
   AlertChannelType,
-  CertificateAlertEventType,
   TAlert,
+  TCertificateAlertEventType,
   toChannelInput,
   useCreateAlert,
   useUpdateAlert
@@ -46,6 +46,7 @@ import {
   emptyCertificateAlertForm,
   getAlertResourceId,
   getAlertResourceType,
+  getScopeEventTypes,
   getSteps,
   STEP_FIELDS,
   TCertificateAlertForm,
@@ -63,8 +64,7 @@ type Props = {
   scope: TCertificateAlertScope;
   alert?: TAlert;
   isReadOnly?: boolean;
-  usedEventTypes: CertificateAlertEventType[];
-  allowedEventTypes: CertificateAlertEventType[];
+  usedEventTypes: TCertificateAlertEventType[];
 };
 
 type WizardProps = Omit<Props, "isOpen"> & {
@@ -79,7 +79,6 @@ const CertificateAlertWizard = ({
   alert,
   isReadOnly = false,
   usedEventTypes,
-  allowedEventTypes,
   members,
   onDirtyChange
 }: WizardProps) => {
@@ -93,7 +92,7 @@ const CertificateAlertWizard = ({
     defaultValues: alert
       ? toCertificateAlertForm(alert, members)
       : emptyCertificateAlertForm(
-          allowedEventTypes.find((event) => !usedEventTypes.includes(event))
+          getScopeEventTypes(scope).find((event) => !usedEventTypes.includes(event))
         )
   });
   const eventType = useWatch({ control: form.control, name: "eventType" });
@@ -223,7 +222,6 @@ const CertificateAlertWizard = ({
               scope={scope}
               isEditing={isEditing}
               usedEventTypes={usedEventTypes}
-              allowedEventTypes={allowedEventTypes}
             />
           )}
           {currentStep.key === CertificateAlertStep.Filters && (

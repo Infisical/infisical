@@ -10,7 +10,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import {
   CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
-  CertificateAlertEvent
+  CertificateApplicationAlertEvent
 } from "@app/services/certificate/certificate-alert-events";
 import { PkiAlertScope } from "@app/services/telemetry/telemetry-types";
 
@@ -38,16 +38,13 @@ import {
   expiryDedupWindowHours,
   ExpiryFieldsSchema
 } from "./cert-manager-alert-fns";
-import {
-  TApplicationAlertCertificate,
-  TCertManagerApplicationAlertDALFactory
-} from "./cert-manager-application-alert-dal";
+import { TAlertCertificate, TCertManagerCertificateAlertDALFactory } from "./cert-manager-certificate-alert-dal";
 
-const ALERT_KIND_BY_EVENT: Record<CertificateAlertEvent, CertificateAlertKind> = {
-  [CertificateAlertEvent.Expiry]: CertificateAlertKind.Expiry,
-  [CertificateAlertEvent.Issuance]: CertificateAlertKind.Issuance,
-  [CertificateAlertEvent.Renewal]: CertificateAlertKind.Renewal,
-  [CertificateAlertEvent.Revocation]: CertificateAlertKind.Revocation
+const ALERT_KIND_BY_EVENT: Record<CertificateApplicationAlertEvent, CertificateAlertKind> = {
+  [CertificateApplicationAlertEvent.Expiry]: CertificateAlertKind.Expiry,
+  [CertificateApplicationAlertEvent.Issuance]: CertificateAlertKind.Issuance,
+  [CertificateApplicationAlertEvent.Renewal]: CertificateAlertKind.Renewal,
+  [CertificateApplicationAlertEvent.Revocation]: CertificateAlertKind.Revocation
 };
 
 const ExpirationConditionSchema = ExpiryFieldsSchema.strict();
@@ -61,30 +58,30 @@ const assertValidApplicationId = (applicationId: string) => {
 };
 
 export type TCertManagerApplicationAlertProviderDep = {
-  certManagerApplicationAlertDAL: TCertManagerApplicationAlertDALFactory;
+  certManagerCertificateAlertDAL: TCertManagerCertificateAlertDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export const certManagerApplicationAlertProviderFactory = ({
-  certManagerApplicationAlertDAL,
+  certManagerCertificateAlertDAL,
   permissionService,
   licenseService
-}: TCertManagerApplicationAlertProviderDep): IScheduledAlertProvider<TApplicationAlertCertificate> &
-  IEventAlertProvider<TApplicationAlertCertificate> => {
+}: TCertManagerApplicationAlertProviderDep): IScheduledAlertProvider<TAlertCertificate> &
+  IEventAlertProvider<TAlertCertificate> => {
   const buildViewUrl = async (alert: TAlertContext): Promise<string> => {
     const base = `${getConfig().SITE_URL}/organizations/${alert.orgId}/projects/cert-manager/${alert.projectId}`;
     const application = alert.resourceId
-      ? await certManagerApplicationAlertDAL.findApplicationById(alert.resourceId)
+      ? await certManagerCertificateAlertDAL.findApplicationById(alert.resourceId)
       : undefined;
     return application ? `${base}/applications/${encodeURIComponent(application.name)}` : `${base}/applications`;
   };
 
-  const findScheduledTargets = async (input: TFindScheduledTargetsInput): Promise<TApplicationAlertCertificate[]> => {
+  const findScheduledTargets = async (input: TFindScheduledTargetsInput): Promise<TAlertCertificate[]> => {
     if (!input.projectId || !input.resourceId || !input.alreadyAlerted?.channelIds.length) return [];
     const { alertBefore } = ExpirationConditionSchema.parse(input.condition);
 
-    return certManagerApplicationAlertDAL.findExpiringCertificates({
+    return certManagerCertificateAlertDAL.findExpiringCertificates({
       projectId: input.projectId,
       applicationId: input.resourceId,
       alertBeforeInterval: `${durationToDays(alertBefore)} days`,
@@ -94,11 +91,11 @@ export const certManagerApplicationAlertProviderFactory = ({
     });
   };
 
-  const findEventTargets = async (input: TFindEventTargetsInput): Promise<TApplicationAlertCertificate[]> => {
+  const findEventTargets = async (input: TFindEventTargetsInput): Promise<TAlertCertificate[]> => {
     if (!input.projectId || !input.resourceId) return [];
     EventConditionSchema.parse(input.condition);
 
-    return certManagerApplicationAlertDAL.findCertificatesByIds({
+    return certManagerCertificateAlertDAL.findCertificatesByIds({
       projectId: input.projectId,
       applicationId: input.resourceId,
       certificateIds: input.targetIds
@@ -145,16 +142,16 @@ export const certManagerApplicationAlertProviderFactory = ({
     return buildPkiAlertTelemetryEvent(
       action,
       { orgId, projectId, applicationId: resourceId, alertScope: PkiAlertScope.Application },
-      CERTIFICATE_ALERT_KIND_TELEMETRY_TYPES[ALERT_KIND_BY_EVENT[eventType as CertificateAlertEvent]]
+      CERTIFICATE_ALERT_KIND_TELEMETRY_TYPES[ALERT_KIND_BY_EVENT[eventType as CertificateApplicationAlertEvent]]
     );
   };
 
-  const buildPayload = (alert: TAlertContext, targets: TApplicationAlertCertificate[], viewUrl: string) =>
+  const buildPayload = (alert: TAlertContext, targets: TAlertCertificate[], viewUrl: string) =>
     buildCertificateAlertPayload({
       alert,
       targets,
       viewUrl,
-      kind: ALERT_KIND_BY_EVENT[alert.eventType as CertificateAlertEvent],
+      kind: ALERT_KIND_BY_EVENT[alert.eventType as CertificateApplicationAlertEvent],
       webhookSource: getWebhookSource({ alertId: alert.id, resourceId: alert.resourceId }),
       resourceOwnerKind: "Application",
       applicationName: targets[0]?.applicationName ?? null
@@ -193,7 +190,7 @@ export const certManagerApplicationAlertProviderFactory = ({
     if (!input.resourceId) return;
     assertValidApplicationId(input.resourceId);
 
-    const application = await certManagerApplicationAlertDAL.findApplicationById(input.resourceId);
+    const application = await certManagerCertificateAlertDAL.findApplicationById(input.resourceId);
     if (!application || application.orgId !== input.orgId || application.projectId !== input.projectId) {
       throw new NotFoundError({
         message: `Application with ID '${input.resourceId}' not found in Certificate Manager`
@@ -206,7 +203,7 @@ export const certManagerApplicationAlertProviderFactory = ({
       throw new BadRequestError({ message: "Application alerts require an application ID" });
     }
     assertValidApplicationId(resourceId);
-    const application = await certManagerApplicationAlertDAL.findApplicationById(resourceId);
+    const application = await certManagerCertificateAlertDAL.findApplicationById(resourceId);
     if (!application || application.orgId !== orgId) {
       throw new NotFoundError({ message: `Application with ID '${resourceId}' not found` });
     }
@@ -217,17 +214,19 @@ export const certManagerApplicationAlertProviderFactory = ({
     resourceType: CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
     events: [
       {
-        key: CertificateAlertEvent.Expiry,
+        key: CertificateApplicationAlertEvent.Expiry,
         triggerType: AlertTriggerType.Scheduled,
         conditionSchema: ExpirationConditionSchema
       },
-      ...[CertificateAlertEvent.Issuance, CertificateAlertEvent.Renewal, CertificateAlertEvent.Revocation].map(
-        (key) => ({
-          key,
-          triggerType: AlertTriggerType.Event,
-          conditionSchema: EventConditionSchema
-        })
-      )
+      ...[
+        CertificateApplicationAlertEvent.Issuance,
+        CertificateApplicationAlertEvent.Renewal,
+        CertificateApplicationAlertEvent.Revocation
+      ].map((key) => ({
+        key,
+        triggerType: AlertTriggerType.Event,
+        conditionSchema: EventConditionSchema
+      }))
     ],
     findScheduledTargets,
     findEventTargets,
@@ -246,7 +245,7 @@ export const certManagerApplicationAlertProviderFactory = ({
     resolveProjectId,
     getResourceNames: async ({ orgId, resourceIds }) =>
       new Map(
-        (await certManagerApplicationAlertDAL.findApplicationNamesByIds(resourceIds, orgId)).map((app) => [
+        (await certManagerCertificateAlertDAL.findApplicationNamesByIds(resourceIds, orgId)).map((app) => [
           app.id,
           app.name
         ])

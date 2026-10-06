@@ -3,7 +3,7 @@ import knex, { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 
-import { certManagerApplicationAlertDALFactory } from "./cert-manager-application-alert-dal";
+import { certManagerCertificateAlertDALFactory } from "./cert-manager-certificate-alert-dal";
 
 const PROJECT_ID = "3f2d7a4e-1b6c-4d8e-9a0f-5c7b2e1d4a6b";
 const APPLICATION_ID = "7b0a6b54-3c1e-4f3a-9d5e-2f1b8c4d6e90";
@@ -24,7 +24,7 @@ const buildDAL = (firstQueryRows: unknown[] = []) => {
   }) as unknown as Knex;
 
   const db = Object.assign(reader, { replicaNode: () => reader }) as unknown as TDbClient;
-  return { dal: certManagerApplicationAlertDALFactory(db), queries };
+  return { dal: certManagerCertificateAlertDALFactory(db), queries };
 };
 
 describe("cert manager certificate alert DAL", () => {

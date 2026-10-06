@@ -6,11 +6,11 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { AlertRunStatus } from "@app/services/alert/alert-types";
-import { certManagerApplicationAlertDALFactory } from "@app/services/alert/providers/cert-manager-application-alert-dal";
+import { certManagerCertificateAlertDALFactory } from "@app/services/alert/providers/cert-manager-certificate-alert-dal";
 
 declare const testDb: Knex;
 
-const dal = certManagerApplicationAlertDALFactory(testDb as never);
+const dal = certManagerCertificateAlertDALFactory(testDb as never);
 
 const PROJECT_ID = seedData1.project.id;
 const ORG_ID = seedData1.organization.id;

@@ -19,7 +19,7 @@ import {
   TextArea,
   Toggle
 } from "@app/components/v3";
-import { CertificateAlertEventType } from "@app/hooks/api/alerts";
+import { TCertificateAlertEventType } from "@app/hooks/api/alerts";
 
 import {
   CERTIFICATE_ALERT_EVENT_LABELS,
@@ -36,22 +36,15 @@ type Props = {
   form: UseFormReturn<TCertificateAlertForm>;
   scope: TCertificateAlertScope;
   isEditing: boolean;
-  usedEventTypes: CertificateAlertEventType[];
-  allowedEventTypes: CertificateAlertEventType[];
+  usedEventTypes: TCertificateAlertEventType[];
 };
 
-export const DetailsStep = ({
-  form,
-  scope,
-  isEditing,
-  usedEventTypes,
-  allowedEventTypes
-}: Props) => {
+export const DetailsStep = ({ form, scope, isEditing, usedEventTypes }: Props) => {
   const eventType = useWatch({ control: form.control, name: "eventType" });
   const eventGroups = getScopeEventGroups(scope);
 
   const onEventTypeChange = (
-    next: CertificateAlertEventType,
+    next: TCertificateAlertEventType,
     onChange: (value: string) => void
   ) => {
     onChange(next);
@@ -74,7 +67,7 @@ export const DetailsStep = ({
               <Select
                 value={field.value}
                 onValueChange={(next) =>
-                  onEventTypeChange(next as CertificateAlertEventType, field.onChange)
+                  onEventTypeChange(next as TCertificateAlertEventType, field.onChange)
                 }
                 disabled={isEditing}
               >
@@ -90,10 +83,7 @@ export const DetailsStep = ({
                         <SelectItem
                           key={event}
                           value={event}
-                          disabled={
-                            !isEditing &&
-                            (usedEventTypes.includes(event) || !allowedEventTypes.includes(event))
-                          }
+                          disabled={!isEditing && usedEventTypes.includes(event)}
                         >
                           {CERTIFICATE_ALERT_EVENT_LABELS[event]}
                         </SelectItem>
