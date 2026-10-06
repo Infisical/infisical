@@ -11,6 +11,30 @@ export type TS3AccessCheck = { ok: true } | { ok: false; failure: "unreachable" 
 
 export type TS3Bucket = ReturnType<typeof createS3Bucket>;
 
+export const createS3Client = ({
+  region,
+  credentials,
+  endpoint
+}: {
+  region: string;
+  credentials: TS3Credentials;
+  endpoint?: string;
+}) =>
+  new S3Client({
+    region,
+    sha256: CustomAWSHasher,
+    credentials,
+    ...(endpoint
+      ? {
+          endpoint,
+          forcePathStyle: true,
+          // not every S3-compatible provider accepts the SDK's default flexible checksums
+          requestChecksumCalculation: "WHEN_REQUIRED",
+          responseChecksumValidation: "WHEN_REQUIRED"
+        }
+      : { useFipsEndpoint: crypto.isFipsModeEnabled() })
+  });
+
 export const createS3Bucket = ({
   region,
   bucket,
@@ -20,12 +44,7 @@ export const createS3Bucket = ({
   bucket: string;
   credentials: TS3Credentials;
 }) => {
-  const client = new S3Client({
-    region,
-    useFipsEndpoint: crypto.isFipsModeEnabled(),
-    sha256: CustomAWSHasher,
-    credentials
-  });
+  const client = createS3Client({ region, credentials });
 
   // These headers are signed so S3 enforces them: the body must be the declared size and hash to the declared
   // digest, and If-None-Match stops a re-minted link from overwriting an object already stored.

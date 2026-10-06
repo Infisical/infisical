@@ -1,6 +1,6 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@app/components/v3";
-import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
+import { PAM_RECORDING_CONNECTION_APPS } from "@app/hooks/api/pam/constants";
 
 const NONE_VALUE = "__none__";
 
@@ -13,8 +13,8 @@ type Props = {
 
 export const RecordingConnectionPicker = ({ value, onChange, isError, includeNone }: Props) => {
   const { data: connections = [], isPending } = useListAppConnections();
-  const awsConnections = connections.filter(
-    (connection) => connection.app === AppConnection.AWS && !connection.projectId
+  const recordingConnections = connections.filter(
+    (connection) => PAM_RECORDING_CONNECTION_APPS.includes(connection.app) && !connection.projectId
   );
 
   return (
@@ -28,12 +28,13 @@ export const RecordingConnectionPicker = ({ value, onChange, isError, includeNon
       </SelectTrigger>
       <SelectContent position="popper" className="z-[70]">
         {includeNone && <SelectItem value={NONE_VALUE}>None</SelectItem>}
-        {awsConnections.length === 0 && (
+        {recordingConnections.length === 0 && (
           <div className="px-2 py-3 text-center text-xs text-muted">
-            No AWS connections found. Create one from the App Connections page.
+            No AWS or S3-Compatible Storage connections found. Create one from the App Connections
+            page.
           </div>
         )}
-        {awsConnections.map((connection) => (
+        {recordingConnections.map((connection) => (
           <SelectItem key={connection.id} value={connection.id}>
             {connection.name}
           </SelectItem>

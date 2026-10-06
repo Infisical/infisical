@@ -178,6 +178,7 @@ import { ValidateRenderConnectionCredentialsSchema } from "./render/render-conne
 import { renderConnectionService } from "./render/render-connection-service";
 import { ValidateRundeckConnectionCredentialsSchema } from "./rundeck";
 import { rundeckConnectionService } from "./rundeck/rundeck-connection-service";
+import { ValidateS3CompatibleConnectionCredentialsSchema } from "./s3-compatible";
 import { ValidateSalesforceConnectionCredentialsSchema } from "./salesforce";
 import { salesforceConnectionService } from "./salesforce/salesforce-connection-service";
 import { ValidateSmbConnectionCredentialsSchema } from "./smb";
@@ -318,7 +319,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.PowerDns]: ValidatePowerDnsConnectionCredentialsSchema,
   [AppConnection.Spacelift]: ValidateSpaceliftConnectionCredentialsSchema,
   [AppConnection.Daytona]: ValidateDaytonaConnectionCredentialsSchema,
-  [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema
+  [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema,
+  [AppConnection.S3Compatible]: ValidateS3CompatibleConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

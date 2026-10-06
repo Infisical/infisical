@@ -90,6 +90,7 @@ import { PowerDnsConnectionMethod } from "@app/hooks/api/appConnections/types/po
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 import { RundeckConnectionMethod } from "@app/hooks/api/appConnections/types/rundeck-connection";
+import { S3CompatibleConnectionMethod } from "@app/hooks/api/appConnections/types/s3-compatible-connection";
 import { SalesforceConnectionMethod } from "@app/hooks/api/appConnections/types/salesforce-connection";
 import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
 import { SnowflakeConnectionMethod } from "@app/hooks/api/appConnections/types/snowflake-connection";
@@ -645,6 +646,13 @@ export const APP_CONNECTION_MAP: Record<
     image: "Daytona.png",
     category: "PLATFORM",
     description: "Organization secret access for Daytona sandboxes."
+  },
+  [AppConnection.S3Compatible]: {
+    name: "S3-Compatible Storage",
+    image: "S3 Compatible.svg",
+    aliases: ["aws s3", "cloudflare r2", "google cloud storage", "gcs", "oracle", "oci"],
+    category: "STORAGE",
+    description: "Connect to AWS S3, Cloudflare R2, Google Cloud Storage or OCI Object Storage."
   }
 };
 
@@ -677,6 +685,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "OAuth", icon: IdCardIcon };
     case AwsConnectionMethod.AccessKey:
     case OCIConnectionMethod.AccessKey:
+    case S3CompatibleConnectionMethod.AccessKey:
       return { name: "Access Key", icon: KeyRoundIcon };
     case AwsConnectionMethod.AssumeRole:
       return { name: "Assume Role", icon: UserIcon };

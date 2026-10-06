@@ -34,7 +34,10 @@ import {
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useProject } from "@app/context";
-import { AppConnection, useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import {
+  AppConnection,
+  useListAvailableAppConnectionsForApps
+} from "@app/hooks/api/appConnections";
 import {
   accountTypeRequiresRecording,
   isRotatablePamAccountType,
@@ -47,6 +50,7 @@ import {
   usePamAccountTypeMap,
   useUpdatePamAccountTemplate
 } from "@app/hooks/api/pam";
+import { PAM_RECORDING_CONNECTION_APPS } from "@app/hooks/api/pam/constants";
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 
@@ -95,7 +99,7 @@ const buildSettingsSchema = (maxPwLength: number) =>
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["recordingConnectionId"],
-            message: "Select an AWS connection"
+            message: "Select a connection"
           });
         }
         if (!data.s3Bucket?.trim()) {
@@ -275,8 +279,8 @@ const SettingsTab = ({
   const { data: template, isLoading } = useGetPamAccountTemplate(templateId);
   const updateTemplate = useUpdatePamAccountTemplate({ skipValidationToast: true });
   const { currentProject } = useProject();
-  const { data: awsConnections = [] } = useListAvailableAppConnections(
-    AppConnection.AWS,
+  const { connections: recordingConnections } = useListAvailableAppConnectionsForApps(
+    PAM_RECORDING_CONNECTION_APPS,
     currentProject.id
   );
   const { map: accountTypeMap } = usePamAccountTypeMap();
@@ -398,6 +402,9 @@ const SettingsTab = ({
   const gatewayPoolId = watch("gatewayPoolId");
   const policies = watch("policies");
   const storageBackend = watch("recordingStorageBackend");
+  const recordingConnectionApp = recordingConnections.find(
+    (conn) => conn.id === watch("recordingConnectionId")
+  )?.app;
   const rotationEnabled = watch("settings.rotationEnabled");
   const heartbeatEnabled = watch("settings.heartbeatEnabled");
   const requiresRecording = accountTypeRequiresRecording(template.type);
@@ -420,7 +427,9 @@ const SettingsTab = ({
     if (data.recordingStorageBackend === "aws-s3" && data.s3Bucket) {
       settings.recordingS3Config = {
         bucket: data.s3Bucket,
-        region: data.s3Region || "us-east-1",
+        ...(recordingConnectionApp === AppConnection.S3Compatible
+          ? {}
+          : { region: data.s3Region || "us-east-1" }),
         ...(data.s3KeyPrefix ? { keyPrefix: data.s3KeyPrefix } : {})
       };
     } else {
@@ -848,7 +857,7 @@ const SettingsTab = ({
                       </SelectTrigger>
                       <SelectContent position="popper">
                         <SelectItem value="postgres">Internal Database</SelectItem>
-                        <SelectItem value="aws-s3">AWS S3</SelectItem>
+                        <SelectItem value="aws-s3">S3 Bucket</SelectItem>
                       </SelectContent>
                     </Select>
                   </FieldContent>
@@ -885,17 +894,17 @@ const SettingsTab = ({
                   control={control}
                   render={({ field, fieldState }) => (
                     <Field>
-                      <FieldLabel>AWS Connection</FieldLabel>
+                      <FieldLabel>Connection</FieldLabel>
                       <FieldContent>
                         <Select
                           value={field.value ?? ""}
                           onValueChange={(v) => field.onChange(v || null)}
                         >
                           <SelectTrigger className="w-full" isError={!!fieldState.error}>
-                            <SelectValue placeholder="Select an AWS connection" />
+                            <SelectValue placeholder="Select a connection" />
                           </SelectTrigger>
                           <SelectContent position="popper">
-                            {awsConnections.map((conn) => (
+                            {recordingConnections.map((conn) => (
                               <SelectItem key={conn.id} value={conn.id}>
                                 {conn.name}
                               </SelectItem>
@@ -906,7 +915,7 @@ const SettingsTab = ({
                           <FieldError>{fieldState.error.message}</FieldError>
                         ) : (
                           <FieldDescription>
-                            The AWS connection used to authenticate with S3.
+                            The AWS or S3-Compatible Storage connection used to access the bucket.
                           </FieldDescription>
                         )}
                       </FieldContent>
@@ -932,18 +941,20 @@ const SettingsTab = ({
                   )}
                 />
 
-                <Controller
-                  name="s3Region"
-                  control={control}
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel>Region</FieldLabel>
-                      <FieldContent>
-                        <Input {...field} placeholder="us-east-1" />
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
+                {recordingConnectionApp !== AppConnection.S3Compatible && (
+                  <Controller
+                    name="s3Region"
+                    control={control}
+                    render={({ field }) => (
+                      <Field>
+                        <FieldLabel>Region</FieldLabel>
+                        <FieldContent>
+                          <Input {...field} placeholder="us-east-1" />
+                        </FieldContent>
+                      </Field>
+                    )}
+                  />
+                )}
 
                 <Controller
                   name="s3KeyPrefix"
