@@ -5,14 +5,14 @@ describe("resolveStsVerificationUrl", () => {
     expect(resolveStsVerificationUrl({ region: "eu-west-1" }, {})).toBe("https://sts.eu-west-1.amazonaws.com");
   });
 
-  test("treats the stored global default as not configured", () => {
-    expect(
-      resolveStsVerificationUrl({ region: "eu-west-1", configuredEndpoint: "https://sts.amazonaws.com/" }, {})
-    ).toBe("https://sts.eu-west-1.amazonaws.com");
+  test("never uses the fallback while a signing region is present", () => {
+    expect(resolveStsVerificationUrl({ region: "eu-west-1", fallback: "http://127.0.0.1:8080/" }, {})).toBe(
+      "https://sts.eu-west-1.amazonaws.com"
+    );
   });
 
-  test("falls back to the configured endpoint when no region is available", () => {
-    expect(resolveStsVerificationUrl({ region: null, configuredEndpoint: "https://sts.amazonaws.com/" }, {})).toBe(
+  test("falls back when no region is available", () => {
+    expect(resolveStsVerificationUrl({ region: null, fallback: "https://sts.amazonaws.com/" }, {})).toBe(
       "https://sts.amazonaws.com/"
     );
   });
@@ -32,16 +32,7 @@ describe("resolveStsVerificationUrl", () => {
     ).toBe("http://sts-only:4566");
   });
 
-  test("an explicitly configured endpoint wins over the env vars", () => {
-    expect(
-      resolveStsVerificationUrl(
-        { region: "us-gov-west-1", configuredEndpoint: "https://sts.us-gov-west-1.amazonaws.com" },
-        { AWS_ENDPOINT_URL: "http://localstack:4566" }
-      )
-    ).toBe("https://sts.us-gov-west-1.amazonaws.com");
-  });
-
-  test("AWS_IGNORE_CONFIGURED_ENDPOINT_URLS disables the env overrides", () => {
+  test("AWS_IGNORE_CONFIGURED_ENDPOINT_URLS disables the overrides", () => {
     expect(
       resolveStsVerificationUrl(
         { region: "us-east-1" },
