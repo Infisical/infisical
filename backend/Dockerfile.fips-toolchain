@@ -48,9 +48,6 @@ RUN ARCH=$(dpkg --print-architecture) && \
 
 FROM node:26.10.0-trixie-slim
 
-# Pinned to match the runtime image; see Dockerfile.standalone-infisical.
-RUN npm install -g npm@10.9.9
-
 ARG SOFTHSM2_VERSION=2.5.0
 ARG SOFTHSM2_COMMIT=369df0383d101bc8952692c2a368ac8bc887d1b4
 

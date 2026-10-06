@@ -6,12 +6,6 @@ ARG INFISICAL_CLI_VERSION=0.43.136
 
 FROM node:26.10.0-trixie-slim AS base
 
-# The base image ships npm 10.9.8, whose bundled tar 7.5.11 carries CVE-2026-59873;
-# 10.9.9 fixes it. package.json declares npm >= 11.10.0, but the committed lockfile
-# does not install under npm 11, which requires every optional platform entry to be
-# present. Regenerating the lockfile is a separate change; until then this stays on 10.x.
-RUN npm install -g npm@10.9.9
-
 FROM base AS frontend-dependencies
 WORKDIR /app
 
@@ -114,7 +108,6 @@ RUN npm ci
 
 COPY /backend .
 COPY --chown=non-root-user:nodejs standalone-entrypoint.sh standalone-entrypoint.sh
-RUN npm i -g tsconfig-paths
 RUN npm run build
 
 # Bake in-app announcements + their images at build time so self-hosted / air-gapped
