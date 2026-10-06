@@ -432,6 +432,12 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           .boolean()
           .optional()
           .describe("Allow secret imports and references to target secrets in other projects within the organization"),
+        requireGatewayPools: z
+          .boolean()
+          .optional()
+          .describe(
+            "Require resources in the organization to connect through a gateway pool instead of an individual gateway"
+          ),
         secretShareBrandConfig: z
           .object({
             primaryColor: z
