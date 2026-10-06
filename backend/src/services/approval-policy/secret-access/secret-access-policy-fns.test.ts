@@ -1,4 +1,5 @@
 import {
+  getSecretAccessAllowedSelfApprovals,
   getSecretAccessGrantWindow,
   hasSameAccessCriteria,
   isSecretAccessBreakGlassEligible,
@@ -96,6 +97,34 @@ describe("hasSameAccessCriteria", () => {
   });
 });
 
+describe("getSecretAccessAllowedSelfApprovals", () => {
+  test("a mapped policy uses the top-level flag", () => {
+    expect(getSecretAccessAllowedSelfApprovals({ allowedSelfApprovals: false })).toBe(false);
+    expect(
+      getSecretAccessAllowedSelfApprovals({
+        allowedSelfApprovals: true,
+        constraints: { version: 1, constraints: { allowedSelfApprovals: false, requestExpirationTime: null } }
+      })
+    ).toBe(true);
+  });
+
+  test("a raw policy row is read from constraints", () => {
+    expect(
+      getSecretAccessAllowedSelfApprovals({
+        constraints: {
+          version: 1,
+          constraints: { allowedSelfApprovals: false, requestExpirationTime: null, maxTimePeriod: null }
+        }
+      })
+    ).toBe(false);
+  });
+
+  test("an unreadable constraints blob keeps self-approval allowed", () => {
+    expect(getSecretAccessAllowedSelfApprovals({ constraints: { version: 1 } })).toBe(true);
+    expect(getSecretAccessAllowedSelfApprovals({})).toBe(true);
+  });
+});
+
 describe("isSecretAccessBreakGlassEligible", () => {
   const actorUserId = "a3c1f0e2-5b7d-4e8f-9a0b-1c2d3e4f5a6b";
   const groupId = "0f9e8d7c-6b5a-4e3d-8c2b-1a0f9e8d7c6b";
@@ -103,20 +132,45 @@ describe("isSecretAccessBreakGlassEligible", () => {
 
   test("a hard policy can never be bypassed", () => {
     expect(
-      isSecretAccessBreakGlassEligible({ enforcementLevel: "hard", bypassers: [], actorUserId, actorGroupIds })
+      isSecretAccessBreakGlassEligible({
+        enforcementLevel: "hard",
+        allowedSelfApprovals: true,
+        bypassers: [],
+        actorUserId,
+        actorGroupIds
+      })
     ).toBe(false);
   });
 
-  test("a soft policy with no bypassers lets anyone bypass", () => {
+  test("a soft policy with no bypassers lets anyone bypass when self-approvals are allowed", () => {
     expect(
-      isSecretAccessBreakGlassEligible({ enforcementLevel: "soft", bypassers: [], actorUserId, actorGroupIds })
+      isSecretAccessBreakGlassEligible({
+        enforcementLevel: "soft",
+        allowedSelfApprovals: true,
+        bypassers: [],
+        actorUserId,
+        actorGroupIds
+      })
     ).toBe(true);
+  });
+
+  test("a soft policy with no bypassers refuses break-glass when self-approvals are off", () => {
+    expect(
+      isSecretAccessBreakGlassEligible({
+        enforcementLevel: "soft",
+        allowedSelfApprovals: false,
+        bypassers: [],
+        actorUserId,
+        actorGroupIds
+      })
+    ).toBe(false);
   });
 
   test("a soft policy lets a listed user bypass", () => {
     expect(
       isSecretAccessBreakGlassEligible({
         enforcementLevel: "soft",
+        allowedSelfApprovals: false,
         bypassers: [{ type: "user", id: actorUserId }],
         actorUserId,
         actorGroupIds
@@ -128,6 +182,7 @@ describe("isSecretAccessBreakGlassEligible", () => {
     expect(
       isSecretAccessBreakGlassEligible({
         enforcementLevel: "soft",
+        allowedSelfApprovals: false,
         bypassers: [{ type: "group", id: groupId }],
         actorUserId,
         actorGroupIds
@@ -139,6 +194,7 @@ describe("isSecretAccessBreakGlassEligible", () => {
     expect(
       isSecretAccessBreakGlassEligible({
         enforcementLevel: "soft",
+        allowedSelfApprovals: true,
         bypassers: [
           { type: "user", id: "ffffffff-0000-4000-8000-000000000000" },
           { type: "group", id: "eeeeeeee-0000-4000-8000-000000000000" }

@@ -15,7 +15,10 @@ import {
   EnforcementLevel
 } from "../approval-policy-enums";
 import { TApprovalRequestGrantsDALFactory } from "../approval-request-dal";
-import { SecretAccessPolicyRequestDataSchema } from "./secret-access-policy-schemas";
+import {
+  SecretAccessPolicyConstraintsSchema,
+  SecretAccessPolicyRequestDataSchema
+} from "./secret-access-policy-schemas";
 import { TSecretAccessPolicyConstraints, TSecretAccessRequestData } from "./secret-access-policy-types";
 
 const StoredRequestDataSchema = z.object({ version: z.literal(1), requestData: SecretAccessPolicyRequestDataSchema });
@@ -74,19 +77,37 @@ export const validateSecretAccessConstraints = (
   };
 };
 
+const StoredConstraintsSchema = z.object({
+  version: z.literal(1),
+  constraints: SecretAccessPolicyConstraintsSchema
+});
+
+export const getSecretAccessAllowedSelfApprovals = (policy: {
+  allowedSelfApprovals?: boolean;
+  constraints?: unknown;
+}) => {
+  if (typeof policy.allowedSelfApprovals === "boolean") return policy.allowedSelfApprovals;
+
+  const parsed = StoredConstraintsSchema.safeParse(policy.constraints);
+  return parsed.success ? parsed.data.constraints.allowedSelfApprovals : true;
+};
+
 export const isSecretAccessBreakGlassEligible = ({
   enforcementLevel,
+  allowedSelfApprovals,
   bypassers,
   actorUserId,
   actorGroupIds
 }: {
   enforcementLevel: string;
+  allowedSelfApprovals: boolean;
   bypassers: { type: string; id?: string | null }[];
   actorUserId: string;
   actorGroupIds: Set<string>;
 }) => {
   if (enforcementLevel !== EnforcementLevel.Soft) return false;
-  if (bypassers.length === 0) return true;
+  // An empty list means everyone, and only the requester can break glass, so that is self-approval.
+  if (bypassers.length === 0) return allowedSelfApprovals;
 
   return bypassers.some((bypasser) => {
     if (!bypasser.id) return false;

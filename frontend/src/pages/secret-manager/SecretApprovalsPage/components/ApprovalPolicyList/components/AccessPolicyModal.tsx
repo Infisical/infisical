@@ -244,6 +244,7 @@ const Form = ({
   const formGroupBypassers = watch("groupBypassers");
   const formEnvironments = watch("environments");
   const bypasserCount = (formUserBypassers || []).length + (formGroupBypassers || []).length;
+  const allowedSelfApprovals = watch("allowedSelfApprovals");
 
   const handleCreatePolicy = async ({
     environments,
@@ -1122,7 +1123,9 @@ const Form = ({
               <Alert variant="warning">
                 <TriangleAlertIcon />
                 <AlertDescription>
-                  Not selecting specific users or groups will allow anyone to bypass this policy.
+                  {isAccessPolicyType && allowedSelfApprovals === false
+                    ? "Self approvals are off, so nobody can bypass this policy until you select bypassers."
+                    : "Not selecting specific users or groups will allow anyone to bypass this policy."}
                 </AlertDescription>
               </Alert>
             )}

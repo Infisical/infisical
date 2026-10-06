@@ -1025,7 +1025,7 @@ describe("Break-glass approvals on the global system", () => {
     expect(listed.policy.bypassers).toEqual([seedData1.id]);
   });
 
-  test("A soft policy with no bypassers lets the requester break glass", async () => {
+  test("A soft policy with no bypassers refuses break-glass when self-approvals are off", async () => {
     const secretPath = "/break-glass-anyone";
     await createSoftPolicy({ secretPath });
 
@@ -1034,13 +1034,12 @@ describe("Break-glass approvals on the global system", () => {
     const requestId = createRes.json().approval.id as string;
 
     const bypassRes = await reviewAccessRequest(requestId, { status: "approved", bypassReason });
-    expect(bypassRes.statusCode).toBe(200);
+    expect(bypassRes.statusCode).toBe(403);
+    expect(bypassRes.json().message).toBe("You are not permitted to bypass approval on this request");
 
     const state = await getRequestState(requestId);
-    expect(state.status).toBe("approved");
-    expect(state.grant?.isBreakGlass).toBe(true);
-    expect(state.grant?.expiresAt).toBeNull();
-    expect(state.privilege?.isTemporary).toBe(false);
+    expect(state.status).toBe("pending");
+    expect(state.grant).toBeUndefined();
   });
 
   test("A requester who is not on a non-empty bypasser list is refused", async () => {

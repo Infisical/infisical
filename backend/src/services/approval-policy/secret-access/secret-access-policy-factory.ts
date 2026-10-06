@@ -1,4 +1,3 @@
-import { TApprovalPolicies } from "@app/db/schemas";
 import { NotFoundError } from "@app/lib/errors";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 
@@ -8,6 +7,7 @@ import { TApprovalActor, TApprovalResource } from "../approval-policy-types";
 import { TApprovalRequestGrantsDALFactory } from "../approval-request-dal";
 import {
   createSecretAccessGrantWithPrivilege,
+  getSecretAccessAllowedSelfApprovals,
   getSecretAccessRequestData,
   hasSameAccessCriteria,
   isSecretAccessBreakGlassEligible,
@@ -90,13 +90,18 @@ export const secretAccessApprovalGlobalResourceFactory = ({
       actor,
       userGroupIds
     }: {
-      policy: Pick<TApprovalPolicies, "enforcementLevel">;
+      policy: {
+        enforcementLevel: string;
+        constraints?: unknown;
+        allowedSelfApprovals?: boolean;
+      };
       bypassers: { type: string; id?: string | null }[];
       actor: Pick<TApprovalActor, "id">;
       userGroupIds: Set<string>;
     }) =>
       isSecretAccessBreakGlassEligible({
         enforcementLevel: policy.enforcementLevel,
+        allowedSelfApprovals: getSecretAccessAllowedSelfApprovals(policy),
         bypassers,
         actorUserId: actor.id,
         actorGroupIds: userGroupIds

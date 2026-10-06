@@ -383,8 +383,9 @@ export const AccessApprovalRequest = ({
       const isRequestedByCurrentUser = request.requestedByUserId === user.id;
       const isSelfApproveAllowed = request.policy.allowedSelfApprovals;
       const userReviewStatus = request.reviewers.find(({ userId }) => userId === user.id)?.status;
-      const canBypass =
-        !request.policy.bypassers.length || request.policy.bypassers.includes(user.id);
+      const canBypass = request.policy.bypassers.length
+        ? request.policy.bypassers.includes(user.id)
+        : request.policy.allowedSelfApprovals;
 
       let displayData: {
         label: string;
