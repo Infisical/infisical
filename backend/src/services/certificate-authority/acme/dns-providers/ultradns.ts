@@ -90,6 +90,7 @@ const applyToTxtRecordSet = async (
   let accessToken: string | undefined;
   let lastError: Error | undefined;
   let shouldWaitBeforeRetry = false;
+  let hasUnconfirmedWrite = false;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     if (shouldWaitBeforeRetry) await delay(RETRY_DELAY_MS * 2 ** (attempt - 2));
@@ -101,8 +102,14 @@ const applyToTxtRecordSet = async (
 
       if (!nextValues) return { isConfirmed: true, lastError };
 
-      const status = await writeTxtRecordValues(url, accessToken, nextValues, currentValues.length === 0);
-      shouldWaitBeforeRetry = status === APPLY_PENDING_STATUS;
+      if (hasUnconfirmedWrite) {
+        hasUnconfirmedWrite = false;
+        shouldWaitBeforeRetry = true;
+      } else {
+        const status = await writeTxtRecordValues(url, accessToken, nextValues, currentValues.length === 0);
+        hasUnconfirmedWrite = true;
+        shouldWaitBeforeRetry = status === APPLY_PENDING_STATUS;
+      }
     } catch (error) {
       if (isNonRetryableError(error)) throw error;
       lastError = toError(error);

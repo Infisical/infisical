@@ -26,6 +26,14 @@ Infisical connects to UltraDNS with the username and password of an UltraDNS use
   <Step title="Confirm the zone type">
     Only zones of type **Primary** are available to Infisical, because secondary zones can't accept record changes.
   </Step>
+  <Step title="Allow Infisical's IP addresses">
+    Skip this step unless your UltraDNS account limits REST API access to allowed IP ranges. With that limit in place,
+    UltraDNS rejects every request from an address outside the ranges, including the credential check when you create
+    the connection. Add Infisical's outbound IP addresses to the allowed ranges:
+
+    - **Infisical Cloud**: the addresses for your region, listed in [Infisical IP addresses](/documentation/setup/networking).
+    - **Self-hosted Infisical**: the public IP address your Infisical server uses for outbound traffic.
+  </Step>
 </Steps>
 
 ## Setup UltraDNS connection in Infisical

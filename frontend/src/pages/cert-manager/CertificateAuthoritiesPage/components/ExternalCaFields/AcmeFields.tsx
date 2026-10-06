@@ -127,6 +127,15 @@ export const AcmeFields = ({
           <Field className="mb-4">
             <FieldLabel>
               Zone <span className="text-danger">*</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
+                  The DNS zone where Infisical creates the challenge TXT records. It must contain
+                  the domains you request certificates for.
+                </TooltipContent>
+              </Tooltip>
             </FieldLabel>
             <FilterableSelect
               isLoading={isZonesPending && !!dnsAppConnection.id}
@@ -157,6 +166,15 @@ export const AcmeFields = ({
         <Field className="mb-4">
           <FieldLabel>
             Directory URL <span className="text-danger">*</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-md">
+                The ACME directory of the CA that issues your certificates, such as Let&apos;s
+                Encrypt or ZeroSSL.
+              </TooltipContent>
+            </Tooltip>
           </FieldLabel>
           <Input
             {...field}
@@ -182,6 +200,15 @@ export const AcmeFields = ({
         <Field className="mb-4">
           <FieldLabel>
             Account Email <span className="text-danger">*</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-md">
+                The email address registered with the CA for this ACME account. CAs such as
+                Let&apos;s Encrypt use it for expiry and account notices.
+              </TooltipContent>
+            </Tooltip>
           </FieldLabel>
           <Input {...field} placeholder="user@infisical.com" isError={Boolean(error)} />
           <FieldError errors={[error]} />

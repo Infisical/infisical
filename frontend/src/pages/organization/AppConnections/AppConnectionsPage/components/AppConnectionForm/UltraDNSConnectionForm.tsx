@@ -5,7 +5,6 @@ import { z } from "zod";
 
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldLabel,
   Input,
@@ -119,11 +118,18 @@ export const UltraDNSConnectionForm = ({ appConnection, onSubmit }: Props) => {
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
-              <FieldLabel htmlFor="username">Username</FieldLabel>
-              <FieldDescription>
-                An UltraDNS user without Two Factor Mobile Authentication, which the UltraDNS REST
-                API doesn&apos;t support.
-              </FieldDescription>
+              <FieldLabel htmlFor="username">
+                Username
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    UltraDNS blocks API access for users with Two Factor Mobile Authentication
+                    turned on, so use a user that has it off.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
               <Input
                 id="username"
                 value={value}

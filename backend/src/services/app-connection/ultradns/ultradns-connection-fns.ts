@@ -19,6 +19,8 @@ const MAX_ZONE_PAGES = 100;
 
 export const ULTRADNS_REQUEST_TIMEOUT_MS = 10_000;
 
+const TWO_FACTOR_ERROR_FRAGMENT = "two factor mobile authentication";
+
 export const ultraDNSRequest = createRequestClient({ timeout: ULTRADNS_REQUEST_TIMEOUT_MS });
 
 export const ultraDNSSingleAttemptRequest = createRequestClient(
@@ -39,6 +41,9 @@ export const getUltraDNSErrorMessage = (error: unknown) => {
       | { errorMessage?: string }[]
       | undefined;
     const apiMessage = Array.isArray(data) ? data[0]?.errorMessage : (data?.errorMessage ?? data?.error_description);
+    if (apiMessage?.toLowerCase().includes(TWO_FACTOR_ERROR_FRAGMENT)) {
+      return "This UltraDNS user has Two Factor Mobile Authentication enabled, and UltraDNS blocks API access for those users. Turn it off for this user in the UltraDNS Portal, or connect with a different user.";
+    }
     return apiMessage || error.message || "Unknown error";
   }
   return error instanceof Error ? error.message : "Unknown error";
