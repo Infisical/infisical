@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, ProjectVersion } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -36,7 +36,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretApprovalPolicyDAL: TSecretApprovalPolicyDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "find">;
-  projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
   secretApprovalPolicyBypasserDAL: TSecretApprovalPolicyBypasserDALFactory;
@@ -49,6 +49,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
     | "findSecretChangePolicyBySecretPath"
     | "findSecretChangePoliciesByEnvId"
     | "findSecretChangePoliciesByProjectId"
+    | "createSecretChangePolicy"
     | "updateSecretChangePolicy"
     | "deleteSecretChangePolicy"
     | "getSecretChangePolicyById"
@@ -98,23 +99,29 @@ export const secretApprovalPolicyServiceFactory = ({
   const $useSecretChangePolicyBridge = async (policyId: string) =>
     Boolean(await secretChangePolicyBridgeService.findSecretChangePolicy(policyId));
 
-  const createSecretApprovalPolicy = async ({
-    name,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    approvals,
-    approvers,
-    bypassers,
-    projectId,
-    secretPath,
-    environment,
-    environments,
-    enforcementLevel,
-    allowedSelfApprovals,
-    bypassForMachineIdentities
-  }: TCreateSapDTO) => {
+  const createSecretApprovalPolicy = async (dto: TCreateSapDTO) => {
+    const project = await projectDAL.findById(dto.projectId);
+    if (project?.version === ProjectVersion.V3) {
+      return secretChangePolicyBridgeService.createSecretChangePolicy(dto);
+    }
+
+    const {
+      name,
+      actor,
+      actorId,
+      actorOrgId,
+      actorAuthMethod,
+      approvals,
+      approvers,
+      bypassers,
+      projectId,
+      secretPath,
+      environment,
+      environments,
+      enforcementLevel,
+      allowedSelfApprovals,
+      bypassForMachineIdentities
+    } = dto;
     const groupApprovers = approvers
       ?.filter((approver) => approver.type === ApproverType.Group)
       .map((approver) => approver.id)

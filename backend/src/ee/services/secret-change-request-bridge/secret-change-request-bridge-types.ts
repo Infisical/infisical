@@ -25,7 +25,10 @@ import {
 // generic request envelope holds no data of its own.
 export type TSecretChangeRequestData = Record<string, never>;
 
-export type TSecretChangeRequest = TSecretApprovalRequests & { commits: TSecretApprovalRequestsSecretsV2[] };
+export type TSecretChangeRequest = Omit<TSecretApprovalRequests, "policyId"> & {
+  policyId: string | null;
+  commits: TSecretApprovalRequestsSecretsV2[];
+};
 
 export type TSecretChangeRequestCommitInsert = Omit<
   TSecretApprovalRequestsSecretsV2Insert,

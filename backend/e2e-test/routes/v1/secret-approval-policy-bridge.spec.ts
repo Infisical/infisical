@@ -1,3 +1,4 @@
+import { seedLegacySecretApprovalPolicy } from "e2e-test/testUtils/secret-approval-policies";
 import { Knex } from "knex";
 
 import { TableName } from "@app/db/schemas";
@@ -13,15 +14,17 @@ const LEGACY_PATH = "/sap-policy-bridge-legacy";
 const NEW_PATH = "/sap-policy-bridge-new";
 const MOVED_PATH = "/sap-policy-bridge-moved";
 const GLOB_BASE = "/sap-policy-bridge-glob";
+const V1_PATH = "/sap-policy-bridge-v1";
 const authHeaders = () => ({ authorization: `Bearer ${jwtAuthToken}` });
 const approvers = [{ type: ApproverType.User, id: seedData1.id }];
 
-const createLegacyPolicy = (secretPath: string) =>
-  testServer.inject({
-    method: "POST",
-    url: "/api/v1/secret-approvals",
-    headers: authHeaders(),
-    body: { workspaceId: projectId, environment: envSlug, secretPath, approvers, approvals: 1, name: "legacy-policy" }
+const seedLegacyPolicy = (secretPath: string) =>
+  seedLegacySecretApprovalPolicy(getDb(), {
+    projectId,
+    environment: envSlug,
+    secretPath,
+    name: "legacy-policy",
+    approverUserId: seedData1.id
   });
 
 const createBridgePolicy = (secretPath: string) =>
@@ -101,9 +104,7 @@ describe("Secret approval policy bridge routing", () => {
   });
 
   test("a legacy policy stays on the legacy tables through update and is soft-deleted on delete", async () => {
-    const createRes = await createLegacyPolicy(LEGACY_PATH);
-    expect(createRes.statusCode).toBe(200);
-    const legacyId = createRes.json().approval.id as string;
+    const legacyId = (await seedLegacyPolicy(LEGACY_PATH)).id;
     legacyIds.push(legacyId);
     expect(await legacyRow(legacyId)).toMatchObject({ secretPath: LEGACY_PATH, deletedAt: null });
     expect(await bridgeRow(legacyId)).toBeUndefined();
@@ -184,9 +185,7 @@ describe("Secret approval policy bridge routing", () => {
   });
 
   test("an update is refused when the path is governed by a policy on the other store", async () => {
-    const legacyRes = await createLegacyPolicy(NEW_PATH);
-    expect(legacyRes.statusCode).toBe(200);
-    const legacyId = legacyRes.json().approval.id as string;
+    const legacyId = (await seedLegacyPolicy(NEW_PATH)).id;
     legacyIds.push(legacyId);
     const [bridgeId] = bridgeIds;
 
@@ -257,9 +256,7 @@ describe("Secret approval policy bridge routing", () => {
   });
 
   test("a secret path is resolved across both stores with the exact path winning over a glob", async () => {
-    const legacyRes = await createLegacyPolicy(`${GLOB_BASE}/**`);
-    expect(legacyRes.statusCode).toBe(200);
-    const legacyId = legacyRes.json().approval.id as string;
+    const legacyId = (await seedLegacyPolicy(`${GLOB_BASE}/**`)).id;
     legacyIds.push(legacyId);
 
     const bridgeRes = await createBridgePolicy(`${GLOB_BASE}/svc`);
@@ -331,5 +328,28 @@ describe("Secret approval policy bridge routing", () => {
     const deleteEnvRes = await deleteEnv(true);
     expect(deleteEnvRes.statusCode).toBe(200);
     expect(deleteEnvRes.json().environment.id).toBe(guardedEnvId);
+  });
+
+  test("the deprecated v1 create puts a policy on a V3 project on the global approval system", async () => {
+    const createRes = await testServer.inject({
+      method: "POST",
+      url: "/api/v1/secret-approvals",
+      headers: authHeaders(),
+      body: {
+        workspaceId: projectId,
+        environment: envSlug,
+        secretPath: V1_PATH,
+        approvers,
+        approvals: 1,
+        name: "v1-policy"
+      }
+    });
+    expect(createRes.statusCode).toBe(200);
+    const policyId = createRes.json().approval.id as string;
+    bridgeIds.push(policyId);
+
+    expect(await bridgeRow(policyId)).toMatchObject({ type: ApprovalPolicyType.SecretChange, projectId });
+    expect(await bridgeEnvRows(policyId)).toMatchObject([{ policyId, envId, secretPath: V1_PATH }]);
+    expect(await legacyRow(policyId)).toBeUndefined();
   });
 });

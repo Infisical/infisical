@@ -1,11 +1,9 @@
 import { ForbiddenError } from "@casl/ability";
-import { Knex } from "knex";
 
 import { ActionProjectType, ProjectVersion } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { removeTrailingSlash } from "@app/lib/fn";
 import {
   TApprovalPolicyBypassersDALFactory,
   TApprovalPolicyDALFactory,
@@ -20,15 +18,10 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
-import { resolvePolicyForPath } from "../secret-approval-policy/secret-approval-policy-fns";
 import { RequestState } from "../secret-approval-request/secret-approval-request-types";
 import { TSecretChangePolicyBridgeDALFactory } from "./secret-change-policy-bridge-dal";
 import { secretChangePolicyFnsFactory, splitApprovers, toSecretChangePolicy } from "./secret-change-policy-bridge-fns";
-import {
-  TSecretChangePolicy,
-  TSecretChangePolicyBridgeMethods,
-  TSecretChangePolicyEnvironment
-} from "./secret-change-policy-bridge-types";
+import { TSecretChangePolicyBridgeMethods, TSecretChangePolicyEnvironment } from "./secret-change-policy-bridge-types";
 import { TApprovalPolicySecretEnvironmentDALFactory } from "./secret-change-policy-environment-dal";
 
 type TSecretChangePolicyBridgeServiceFactoryDep = {
@@ -46,7 +39,7 @@ type TSecretChangePolicyBridgeServiceFactoryDep = {
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "update">;
   secretChangePolicyBridgeDAL: Pick<TSecretChangePolicyBridgeDALFactory, "findSecretChangePolicies">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath">;
-  projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -103,16 +96,6 @@ export const secretChangePolicyBridgeServiceFactory = ({
       throw new NotFoundError({ message: `Secret approval policy with ID '${secretPolicyId}' not found` });
     }
     return toSecretChangePolicy(row);
-  };
-
-  const $findEnvPolicies = async (projectId: string, environment: string, tx?: Knex) => {
-    const env = await projectEnvDAL.findOne({ slug: environment, projectId }, tx);
-    if (!env) {
-      throw new NotFoundError({
-        message: `Environment with slug '${environment}' not found in project with ID ${projectId}`
-      });
-    }
-    return findSecretChangePoliciesByEnvId(env.id, tx);
   };
 
   const createSecretChangePolicy: TSecretChangePolicyBridgeMethods["createSecretChangePolicy"] = async ({
@@ -364,72 +347,6 @@ export const secretChangePolicyBridgeServiceFactory = ({
     return { ...policy, deletedAt: new Date() };
   };
 
-  const getSecretChangePolicy: TSecretChangePolicyBridgeMethods["getSecretChangePolicy"] = async (
-    projectId,
-    environment,
-    path,
-    tx
-  ) => {
-    const policies = await $findEnvPolicies(projectId, environment, tx);
-    return resolvePolicyForPath(policies, removeTrailingSlash(path));
-  };
-
-  const getSecretChangePolicyByPaths: TSecretChangePolicyBridgeMethods["getSecretChangePolicyByPaths"] = async (
-    projectId,
-    environment,
-    secretPaths,
-    tx
-  ) => {
-    const policyByPath = new Map<string, TSecretChangePolicy>();
-    const policies = await $findEnvPolicies(projectId, environment, tx);
-    if (!policies.length) return policyByPath;
-
-    for (const path of secretPaths) {
-      const policy = resolvePolicyForPath(policies, removeTrailingSlash(path));
-      if (policy) policyByPath.set(path, policy);
-    }
-    return policyByPath;
-  };
-
-  const getSecretChangePolicyByProjectId: TSecretChangePolicyBridgeMethods["getSecretChangePolicyByProjectId"] =
-    async ({ actor, actorId, actorOrgId, actorAuthMethod, projectId }) => {
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.SecretManager
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Read,
-        ProjectPermissionSub.SecretApproval
-      );
-
-      return findSecretChangePoliciesByProjectId(projectId);
-    };
-
-  const getSecretChangePolicyOfFolder: TSecretChangePolicyBridgeMethods["getSecretChangePolicyOfFolder"] = async ({
-    projectId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    environment,
-    secretPath
-  }) => {
-    await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-
-    return getSecretChangePolicy(projectId, environment, secretPath);
-  };
-
   const getSecretChangePolicyById: TSecretChangePolicyBridgeMethods["getSecretChangePolicyById"] = async ({
     actor,
     actorId,
@@ -461,10 +378,6 @@ export const secretChangePolicyBridgeServiceFactory = ({
     createSecretChangePolicy,
     updateSecretChangePolicy,
     deleteSecretChangePolicy,
-    getSecretChangePolicy,
-    getSecretChangePolicyByPaths,
-    getSecretChangePolicyByProjectId,
-    getSecretChangePolicyOfFolder,
     getSecretChangePolicyById
   };
 };

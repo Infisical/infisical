@@ -143,9 +143,6 @@ const buildService = ({
     projectEnvDAL: {
       find: vi.fn(({ $in }: { $in: { slug: string[] } }) =>
         Promise.resolve(envs.filter((env) => $in.slug.includes(env.slug)))
-      ),
-      findOne: vi.fn(({ slug, projectId }: { slug: string; projectId: string }) =>
-        Promise.resolve(envs.find((env) => env.slug === slug && env.projectId === projectId))
       )
     },
     projectDAL: { findById: vi.fn().mockResolvedValue(project), findEffectiveProjectSubjectsMembership },
@@ -817,92 +814,6 @@ describe("secretChangePolicyBridge getSecretChangePolicyById", () => {
     const { service, deps } = buildService({ permission: allowRead, rows: [row] });
 
     await expect(getById(service)).resolves.toEqual(toSecretChangePolicy(row));
-    expect(deps.permissionService.getProjectPermission).toHaveBeenCalledWith(
-      expect.objectContaining({ projectId: PROJECT_ID })
-    );
-  });
-});
-
-describe("secretChangePolicyBridge getSecretChangePolicyByProjectId", () => {
-  const list = (service: TService) => service.getSecretChangePolicyByProjectId({ ...ctx, projectId: PROJECT_ID });
-
-  test("rejects an actor without read permission on secret approvals", async () => {
-    const { service, deps } = buildService({ permission: denyAll });
-
-    await expect(list(service)).rejects.toBeInstanceOf(ForbiddenError);
-    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies).not.toHaveBeenCalled();
-  });
-
-  test("returns every policy of the project in the legacy shape", async () => {
-    const rows = [buildRow(), buildRow({ id: "policy-2", secretPath: "/other" })];
-    const { service, deps } = buildService({ permission: allowRead, rows });
-
-    await expect(list(service)).resolves.toEqual(rows.map(toSecretChangePolicy));
-    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies).toHaveBeenCalledWith({ projectId: PROJECT_ID });
-  });
-});
-
-describe("secretChangePolicyBridge getSecretChangePolicy", () => {
-  const globRow = buildRow({ id: "glob", secretPath: "/app/**", createdAt: new Date("2026-01-01") });
-  const exactRow = buildRow({ id: "exact", secretPath: "/app/svc", createdAt: new Date("2026-01-02") });
-
-  test("rejects an environment slug that does not exist in the project", async () => {
-    const { service, deps } = buildService();
-
-    const result = service.getSecretChangePolicy(PROJECT_ID, "staging", "/app", TX);
-    await expect(result).rejects.toBeInstanceOf(NotFoundError);
-    await expect(result).rejects.toThrow("Environment with slug 'staging' not found in project with ID project-1");
-    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies).not.toHaveBeenCalled();
-  });
-
-  test("threads the transaction through the environment lookup and the policy read", async () => {
-    const { service, deps } = buildService({ rows: [globRow] });
-
-    await service.getSecretChangePolicy(PROJECT_ID, "dev", "/app/svc", TX);
-
-    expect(deps.projectEnvDAL.findOne).toHaveBeenCalledWith({ slug: "dev", projectId: PROJECT_ID }, TX);
-    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies).toHaveBeenCalledWith({ envId: ENV_DEV.id }, TX);
-  });
-
-  test("prefers an exact path over a glob and ignores a trailing slash", async () => {
-    const { service } = buildService({ rows: [globRow, exactRow] });
-
-    await expect(service.getSecretChangePolicy(PROJECT_ID, "dev", "/app/svc/")).resolves.toMatchObject({
-      id: "exact"
-    });
-    await expect(service.getSecretChangePolicy(PROJECT_ID, "dev", "/app/other")).resolves.toMatchObject({
-      id: "glob"
-    });
-    await expect(service.getSecretChangePolicy(PROJECT_ID, "dev", "/elsewhere")).resolves.toBeUndefined();
-  });
-
-  test("returns a policy per governed path when resolving several paths at once", async () => {
-    const { service, deps } = buildService({ rows: [globRow, exactRow] });
-
-    const byPath = await service.getSecretChangePolicyByPaths(
-      PROJECT_ID,
-      "dev",
-      ["/app/svc/", "/app/other", "/elsewhere"],
-      TX
-    );
-
-    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies).toHaveBeenCalledTimes(1);
-    expect([...byPath.keys()]).toEqual(["/app/svc/", "/app/other"]);
-    expect(byPath.get("/app/svc/")).toMatchObject({ id: "exact" });
-    expect(byPath.get("/app/other")).toMatchObject({ id: "glob" });
-  });
-
-  test("only requires project membership to read the policy of a folder", async () => {
-    const { service, deps } = buildService({ permission: denyAll, rows: [exactRow] });
-
-    await expect(
-      service.getSecretChangePolicyOfFolder({
-        ...ctx,
-        projectId: PROJECT_ID,
-        environment: "dev",
-        secretPath: "/app/svc"
-      })
-    ).resolves.toMatchObject({ id: "exact", userApprovers: [{ userId: "user-1" }] });
     expect(deps.permissionService.getProjectPermission).toHaveBeenCalledWith(
       expect.objectContaining({ projectId: PROJECT_ID })
     );

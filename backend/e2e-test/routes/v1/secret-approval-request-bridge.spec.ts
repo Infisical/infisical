@@ -1,4 +1,5 @@
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
+import { seedLegacySecretApprovalPolicy } from "e2e-test/testUtils/secret-approval-policies";
 import { Knex } from "knex";
 
 import { SecretType, TableName } from "@app/db/schemas";
@@ -81,25 +82,6 @@ const mergeRequest = (id: string) =>
     body: {}
   });
 
-const seedLegacyPolicy = async (db: Knex) => {
-  const env = await db(TableName.Environment).where({ projectId, slug: seedData1.environment.slug }).first();
-  if (!env) throw new Error("seeded environment not found");
-
-  const [policy] = await db(TableName.SecretApprovalPolicy)
-    .insert({
-      name: "legacy-bridge-test-policy",
-      secretPath: "/",
-      approvals: 1,
-      envId: env.id,
-      enforcementLevel: "hard",
-      bypassForMachineIdentities: false
-    })
-    .returning("*");
-  await db(TableName.SecretApprovalPolicyEnvironment).insert({ policyId: policy.id, envId: env.id });
-  await db(TableName.SecretApprovalPolicyApprover).insert({ policyId: policy.id, approverUserId: seedData1.id });
-  return policy;
-};
-
 const createGlobalSystemPolicy = async () => {
   const res = await testServer.inject({
     method: "POST",
@@ -127,7 +109,15 @@ describe("Secret approval request bridge routing", () => {
 
   beforeAll(async () => {
     const db = getDb();
-    legacyPolicyId = (await seedLegacyPolicy(db)).id;
+    legacyPolicyId = (
+      await seedLegacySecretApprovalPolicy(db, {
+        projectId,
+        environment: envSlug,
+        secretPath: "/",
+        name: "legacy-bridge-test-policy",
+        approverUserId: seedData1.id
+      })
+    ).id;
     globalSystemFolderId = (
       await createFolder({
         workspaceId: projectId,
@@ -403,9 +393,9 @@ describe("Secret approval request bridge routing", () => {
 
     const closedRes = await listRequests(`&status=${RequestState.Closed}`);
     expect(closedRes.statusCode).toBe(200);
-    const closed: { approvals: (TListedRequest & { policyId: string })[] } = closedRes.json();
+    const closed: { approvals: (TListedRequest & { policyId: string | null })[] } = closedRes.json();
     expect(closed.approvals.find((row) => row.id === request.id)).toMatchObject({
-      policyId: "",
+      policyId: null,
       status: RequestState.Closed,
       policy: { name: "Deleted policy", deletedAt: expect.any(String) as string }
     });
@@ -413,7 +403,7 @@ describe("Secret approval request bridge routing", () => {
     const detailsRes = await getRequest(request.id);
     expect(detailsRes.statusCode).toBe(200);
     expect(detailsRes.json().approval).toMatchObject({
-      policyId: "",
+      policyId: null,
       status: RequestState.Closed,
       policy: { name: "Deleted policy" }
     });

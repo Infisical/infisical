@@ -1,4 +1,5 @@
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
+import { seedLegacySecretApprovalPolicy } from "e2e-test/testUtils/secret-approval-policies";
 import { Knex } from "knex";
 
 import { SecretType, TableName } from "@app/db/schemas";
@@ -87,9 +88,15 @@ describe("Secret move under a secret approval policy", () => {
       folderIds[name] = folder.id;
     }
 
-    const legacyRes = await createPolicy("/api/v1/secret-approvals", `/${LEGACY_FOLDER}`, "move-legacy-policy");
-    expect(legacyRes.statusCode).toBe(200);
-    legacyPolicyId = legacyRes.json().approval.id as string;
+    legacyPolicyId = (
+      await seedLegacySecretApprovalPolicy(getDb(), {
+        projectId,
+        environment: envSlug,
+        secretPath: `/${LEGACY_FOLDER}`,
+        name: "move-legacy-policy",
+        approverUserId: seedData1.id
+      })
+    ).id;
 
     const bridgeRes = await createPolicy("/api/v2/secret-approvals", `/${BRIDGE_FOLDER}`, "move-bridge-policy");
     expect(bridgeRes.statusCode).toBe(200);

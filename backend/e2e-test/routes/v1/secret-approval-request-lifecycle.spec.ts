@@ -1,4 +1,5 @@
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
+import { seedLegacySecretApprovalPolicy } from "e2e-test/testUtils/secret-approval-policies";
 import { Knex } from "knex";
 
 import { SecretType, TableName } from "@app/db/schemas";
@@ -394,9 +395,15 @@ describe("Secret approval request lifecycle on a policy on the legacy approval s
 
   beforeAll(async () => {
     ({ folderId, secretPath, baseSecretId, baseVersion } = await setupFolderWithBaseSecret(FOLDER));
-    const policyRes = await createPolicy("/api/v1/secret-approvals", secretPath, "lifecycle-legacy-policy");
-    expect(policyRes.statusCode).toBe(200);
-    policyId = policyRes.json().approval.id as string;
+    policyId = (
+      await seedLegacySecretApprovalPolicy(getDb(), {
+        projectId,
+        environment: envSlug,
+        secretPath,
+        name: "lifecycle-legacy-policy",
+        approverUserId: seedData1.id
+      })
+    ).id;
   });
 
   afterAll(async () => {

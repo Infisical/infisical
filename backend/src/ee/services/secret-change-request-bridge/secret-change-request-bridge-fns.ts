@@ -95,7 +95,7 @@ export const toSecretChangeRequestBase = ({
   secretChangeRequest: TSecretChangeRequests;
 }): Omit<TSecretChangeRequest, "commits"> => ({
   id: approvalRequest.id,
-  policyId: approvalRequest.policyId ?? "",
+  policyId: approvalRequest.policyId ?? null,
   status: approvalRequest.status,
   hasMerged: secretChangeRequest.hasMerged,
   conflicts: secretChangeRequest.conflicts ?? null,

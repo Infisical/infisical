@@ -2,6 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
+import { ProjectVersion } from "@app/db/schemas";
 import { conditionsMatcher } from "@app/lib/casl";
 import { EnforcementLevel } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -50,9 +51,11 @@ const buildService = ({
   bridgePolicy = undefined as TExistingPolicy | undefined,
   legacyPolicies = [] as TPolicy[],
   bridgePolicies = [] as TPolicy[],
-  bridgeOwnsPolicy = false
+  bridgeOwnsPolicy = false,
+  projectVersion = ProjectVersion.V2
 } = {}) => {
   const deps = {
+    projectDAL: { findById: vi.fn().mockResolvedValue({ id: PROJECT_ID, version: projectVersion }) },
     permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission: allowAll }) },
     licenseService: { getPlan: vi.fn().mockResolvedValue({ secretApproval: true }) },
     projectEnvDAL: {
@@ -68,6 +71,7 @@ const buildService = ({
       findSecretChangePolicyBySecretPath: vi.fn().mockResolvedValue(bridgePolicy),
       findSecretChangePoliciesByEnvId: vi.fn().mockResolvedValue(bridgePolicies),
       findSecretChangePoliciesByProjectId: vi.fn().mockResolvedValue(bridgePolicies),
+      createSecretChangePolicy: vi.fn().mockResolvedValue({ id: "bridge-policy" }),
       getSecretChangePolicyById: vi.fn().mockResolvedValue({ id: "bridge-policy" })
     }
   };
@@ -79,25 +83,39 @@ const buildService = ({
 };
 
 describe("secretApprovalPolicyService createSecretApprovalPolicy", () => {
+  const createDto = {
+    ...ctx,
+    projectId: PROJECT_ID,
+    name: "dev-policy",
+    approvals: 1,
+    approvers: [{ type: ApproverType.User, id: "user-1" }],
+    secretPath: "/",
+    environment: ENV_DEV.slug,
+    enforcementLevel: EnforcementLevel.Hard,
+    allowedSelfApprovals: true,
+    bypassForMachineIdentities: false
+  } as unknown as Parameters<ReturnType<typeof secretApprovalPolicyServiceFactory>["createSecretApprovalPolicy"]>[0];
+
+  test("creates a policy on a V3 project on the global approval system", async () => {
+    const { service, deps } = buildService({ projectVersion: ProjectVersion.V3 });
+
+    await expect(service.createSecretApprovalPolicy(createDto)).resolves.toEqual({ id: "bridge-policy" });
+
+    expect(deps.secretChangePolicyBridgeService.createSecretChangePolicy).toHaveBeenCalledWith(createDto);
+    expect(deps.permissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(deps.secretApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath).not.toHaveBeenCalled();
+  });
+
   test("rejects a path and environment already governed by a policy created through the bridge", async () => {
     const { service, deps } = buildService({
       bridgePolicy: { id: "bridge-policy-1", environments: [{ id: ENV_DEV.id }] }
     });
 
-    await expect(
-      service.createSecretApprovalPolicy({
-        ...ctx,
-        projectId: PROJECT_ID,
-        name: "dev-policy",
-        approvals: 1,
-        approvers: [{ type: ApproverType.User, id: "user-1" }],
-        secretPath: "/",
-        environment: ENV_DEV.slug,
-        enforcementLevel: EnforcementLevel.Hard,
-        allowedSelfApprovals: true,
-        bypassForMachineIdentities: false
-      } as unknown as Parameters<typeof service.createSecretApprovalPolicy>[0])
-    ).rejects.toThrow("A policy for secret path '/' already exists in environment 'dev'");
+    await expect(service.createSecretApprovalPolicy(createDto)).rejects.toThrow(
+      "A policy for secret path '/' already exists in environment 'dev'"
+    );
+
+    expect(deps.secretChangePolicyBridgeService.createSecretChangePolicy).not.toHaveBeenCalled();
 
     expect(deps.secretApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath).toHaveBeenCalledWith({
       envIds: [ENV_DEV.id],
