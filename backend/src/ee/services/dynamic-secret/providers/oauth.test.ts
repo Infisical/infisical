@@ -316,6 +316,21 @@ describe("OAuthProvider token request", () => {
     await expect(result).rejects.not.toThrow(/super-secret-value/);
   });
 
+  test("redacts a short client secret in its raw and form-encoded forms", async () => {
+    mockedPost.mockRejectedValueOnce(
+      upstreamError(401, { error: "invalid_client", error_description: "bad secret p+s (sent as p%2Bs)" })
+    );
+
+    const result = OAuthProvider().create(
+      createArgs(Date.now() + 60_000, {
+        ...baseInputs,
+        clientAuth: { method: OAuthClientAuthMethod.ClientSecretBasic, clientSecret: "p+s" }
+      })
+    );
+
+    await expect(result).rejects.toThrow("bad secret [REDACTED] (sent as [REDACTED])");
+  });
+
   test("rejects a token response without an access_token", async () => {
     mockedPost.mockResolvedValueOnce(tokenResponse({ token_type: "Bearer" }));
 

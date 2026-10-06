@@ -39,7 +39,7 @@ import {
 
 type TDynamicSecretLeaseServiceFactoryDep = {
   dynamicSecretLeaseDAL: TDynamicSecretLeaseDALFactory;
-  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne">;
+  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "lockById">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
   dynamicSecretQueueService: TDynamicSecretLeaseQueueServiceFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -204,18 +204,32 @@ export const dynamicSecretLeaseServiceFactory = ({
     const leaseData = selectedProvider.persistedLeaseFields?.length
       ? pickPersistedLeaseData(data, selectedProvider.persistedLeaseFields)
       : undefined;
+    const encryptedLeaseData = leaseData
+      ? secretManagerEncryptor({ plainText: Buffer.from(JSON.stringify(leaseData)) }).cipherTextBlob
+      : undefined;
 
     let dynamicSecretLease;
     try {
-      dynamicSecretLease = await dynamicSecretLeaseDAL.create({
-        expireAt,
-        version: 1,
-        dynamicSecretId: dynamicSecretCfg.id,
-        externalEntityId: entityId,
-        config,
-        encryptedLeaseData: leaseData
-          ? secretManagerEncryptor({ plainText: Buffer.from(JSON.stringify(leaseData)) }).cipherTextBlob
-          : undefined
+      dynamicSecretLease = await dynamicSecretLeaseDAL.transaction(async (tx) => {
+        // an update that commits between issuing and inserting would leave this credential revoked with the new config
+        const lockedDynamicSecret = await dynamicSecretDAL.lockById(dynamicSecretCfg.id, "share", tx);
+        if (!lockedDynamicSecret?.encryptedInput.equals(dynamicSecretCfg.encryptedInput)) {
+          throw new BadRequestError({
+            message: `Dynamic secret '${name}' was updated while this lease was being created. Create the lease again.`
+          });
+        }
+
+        return dynamicSecretLeaseDAL.create(
+          {
+            expireAt,
+            version: 1,
+            dynamicSecretId: dynamicSecretCfg.id,
+            externalEntityId: entityId,
+            config,
+            encryptedLeaseData
+          },
+          tx
+        );
       });
     } catch (error) {
       // the credential already exists upstream; without a lease row nothing would ever revoke it

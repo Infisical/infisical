@@ -32,7 +32,7 @@ const REQUEST_TIMEOUT_MS = 30_000;
 // comparison would reject TTLs that match what the admin configured on the server.
 const TTL_TOLERANCE_MS = 60_000;
 const MAX_UPSTREAM_ERROR_LENGTH = 300;
-const MIN_LITERAL_REDACTION_LENGTH = 8;
+const MIN_LITERAL_IDENTIFIER_REDACTION_LENGTH = 8;
 
 const OAuthTokenResponseSchema = z.object({
   access_token: z.string().min(1),
@@ -67,10 +67,10 @@ const applyClientAuth = ({ clientId, clientAuth }: TOAuthProviderInputs, body: U
   }
 };
 
-const getClientCredentialSecrets = ({ clientId, clientAuth }: TOAuthProviderInputs) => [
-  clientId,
-  clientAuth.clientSecret
-];
+const getRedactionTargets = ({ clientId, clientAuth }: TOAuthProviderInputs, accessToken?: string) => ({
+  secrets: [clientAuth.clientSecret, accessToken],
+  identifiers: [clientId]
+});
 
 const parseJsonBody = (data: unknown): unknown => {
   if (typeof data !== "string") return data;
@@ -81,18 +81,30 @@ const parseJsonBody = (data: unknown): unknown => {
   }
 };
 
-const redact = (message: string, secrets: (string | undefined)[]) => {
-  const tokens = secrets
-    .filter((secret): secret is string => Boolean(secret))
-    .flatMap((secret) => [secret, formEncode(secret), encodeURIComponent(secret)]);
+const withEncodings = (values: (string | undefined)[]) =>
+  values
+    .filter((value): value is string => Boolean(value))
+    .flatMap((value) => [value, formEncode(value), encodeURIComponent(value)]);
+
+const redact = (
+  message: string,
+  { secrets, identifiers }: { secrets: (string | undefined)[]; identifiers: (string | undefined)[] }
+) => {
+  const secretTokens = withEncodings(secrets);
+  const identifierTokens = withEncodings(identifiers);
+
+  // a short client ID would match inside ordinary words, so only long identifiers are replaced as substrings
+  const literalTokens = [
+    ...secretTokens,
+    ...identifierTokens.filter((token) => token.length >= MIN_LITERAL_IDENTIFIER_REDACTION_LENGTH)
+  ];
 
   // sanitizeString only matches whole \w+ words, which misses JWTs and secrets containing punctuation
-  const literallyRedacted = [...new Set(tokens)]
-    .filter((token) => token.length >= MIN_LITERAL_REDACTION_LENGTH)
+  const literallyRedacted = [...new Set(literalTokens)]
     .sort((a, b) => b.length - a.length)
     .reduce((acc, token) => acc.split(token).join("[REDACTED]"), message);
 
-  return sanitizeString({ unsanitizedString: literallyRedacted, tokens });
+  return sanitizeString({ unsanitizedString: literallyRedacted, tokens: [...secretTokens, ...identifierTokens] });
 };
 
 const describeUpstreamError = (err: unknown): { code?: string; status?: number; message: string } => {
@@ -197,7 +209,7 @@ export const OAuthProvider = (): TDynamicProviderFns => {
     } catch (err) {
       const { message } = describeUpstreamError(err);
       throw new BadRequestError({
-        message: `The authorization server at ${sanitizeUrlForLog(providerInputs.tokenUrl)} rejected the token request: ${redact(message, getClientCredentialSecrets(providerInputs))}`
+        message: `The authorization server at ${sanitizeUrlForLog(providerInputs.tokenUrl)} rejected the token request: ${redact(message, getRedactionTargets(providerInputs))}`
       });
     }
 
@@ -234,7 +246,7 @@ export const OAuthProvider = (): TDynamicProviderFns => {
       });
     } catch (err) {
       const { code, status, message } = describeUpstreamError(err);
-      const sanitizedMessage = redact(message, [...getClientCredentialSecrets(providerInputs), accessToken]);
+      const sanitizedMessage = redact(message, getRedactionTargets(providerInputs, accessToken));
       const revocationUrl = sanitizeUrlForLog(providerInputs.revocationUrl);
 
       if (code === "unsupported_token_type") {
