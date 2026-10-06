@@ -15,6 +15,7 @@ import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { getTlsServerNameOptions } from "@app/lib/tls";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionRaw, TSqlConnection } from "@app/services/app-connection/app-connection-types";
 import { TSqlConnectionConfig } from "@app/services/app-connection/shared/sql/sql-connection-types";
@@ -46,7 +47,7 @@ export const getConnectionConfig = ({
           ? {
               rejectUnauthorized: sslRejectUnauthorized,
               ca: sslCertificate,
-              servername: host
+              ...getTlsServerNameOptions(host)
             }
           : false
       };

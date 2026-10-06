@@ -1,4 +1,5 @@
 import { createPrivateKey, X509Certificate } from "node:crypto";
+import { isIP } from "node:net";
 
 import ldapjs from "@infisical/ldapjs";
 
@@ -62,7 +63,8 @@ export const buildLdapTlsOptions = (cfg: TLdapTlsConfigInput) => {
   // changing TLS handshake behavior for existing non-mTLS configs.
   if (cfg.clientCertificate || cfg.clientKeyCertificate) {
     try {
-      tlsOptions.servername = new URL(cfg.url).hostname;
+      const { hostname } = new URL(cfg.url);
+      if (!isIP(hostname)) tlsOptions.servername = hostname;
     } catch {
       // Malformed URL — connection itself will surface the error.
     }

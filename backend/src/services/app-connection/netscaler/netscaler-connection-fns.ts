@@ -7,6 +7,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
+import { getTlsServerNameOptions } from "@app/lib/tls";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -56,7 +57,7 @@ const requestWithNetScalerGateway = async <T>(
     return withGatewayV2Proxy(
       async (proxyPort) => {
         const httpsAgent = new https.Agent({
-          servername: hostname,
+          ...getTlsServerNameOptions(hostname),
           rejectUnauthorized: credentials.sslRejectUnauthorized,
           ca: credentials.sslCertificate ? [credentials.sslCertificate] : undefined
         });
@@ -179,7 +180,7 @@ export const executeNetScalerOperationWithGateway = async <T>(
     return withGatewayV2Proxy(
       async (proxyPort) => {
         const httpsAgent = new https.Agent({
-          servername: hostname,
+          ...getTlsServerNameOptions(hostname),
           rejectUnauthorized: credentials.sslRejectUnauthorized,
           ca: credentials.sslCertificate ? [credentials.sslCertificate] : undefined
         });
