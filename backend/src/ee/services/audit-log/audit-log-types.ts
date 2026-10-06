@@ -3573,6 +3573,7 @@ interface CertificateIssuanceFailedEvent {
     certificateProfileId?: string;
     profileName?: string;
     caId?: string;
+    caName?: string;
     certificateRequestId?: string;
     originalCertificateId?: string;
     commonName?: string;

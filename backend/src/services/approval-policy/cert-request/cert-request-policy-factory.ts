@@ -1,6 +1,5 @@
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
-import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
@@ -116,11 +115,7 @@ export const certRequestApprovalResourceFactory = ({
         status: CertificateRequestStatus.FAILED,
         errorMessage
       });
-      await certificateRequestService.recordIssuanceFailure(
-        failedRequest,
-        failedRequest.csr ? CertificateIssuanceOperation.SIGN : CertificateIssuanceOperation.ISSUE,
-        error
-      );
+      await certificateRequestService.recordIssuanceFailure(failedRequest, { error });
       logger.error(
         { error, certificateRequestId: certReqId, approvalRequestId: request.id },
         `Failed to issue certificate after approval [certificateRequestId=${certReqId}]`

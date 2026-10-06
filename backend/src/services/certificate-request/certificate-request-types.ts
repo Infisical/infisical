@@ -57,6 +57,8 @@ export type TUpdateCertificateRequestStatusDTO = {
   status: CertificateRequestStatus;
   errorMessage?: string;
   operation?: CertificateIssuanceOperation;
+  originalCertificateId?: string;
+  error?: unknown;
 };
 
 export type TAttachCertificateToRequestDTO = {

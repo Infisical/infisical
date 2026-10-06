@@ -20,6 +20,7 @@ import { logger } from "@app/lib/logger";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
+import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import {
   CertificateIssuanceOperation,
   domainComponentsSchema,
@@ -29,9 +30,7 @@ import {
   describeCustomExtensionValue,
   TResolvedCustomExtension
 } from "@app/services/certificate-common/certificate-extension-fns";
-import { recordCertificateIssuanceFailure } from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
-import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -39,6 +38,7 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TCertificateRequestDALFactory } from "./certificate-request-dal";
+import { recordCertificateRequestFailure } from "./certificate-request-fns";
 import {
   CertificateRequestStatus,
   TAttachCertificateToRequestDTO,
@@ -60,6 +60,7 @@ type TCertificateRequestServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
 };
 
@@ -160,6 +161,7 @@ export const certificateRequestServiceFactory = ({
   userDAL,
   identityDAL,
   certificateProfileDAL,
+  certificateAuthorityDAL,
   auditLogService
 }: TCertificateRequestServiceFactoryDep) => {
   const $resolveApplicationName = async (applicationId?: string | null) => {
@@ -472,48 +474,22 @@ export const certificateRequestServiceFactory = ({
     };
   };
 
-  const recordIssuanceFailure = async (
+  const recordIssuanceFailure = (
     certificateRequest: TCertificateRequests,
-    operation: CertificateIssuanceOperation,
-    error?: unknown
-  ) => {
-    try {
-      const profile = certificateRequest.profileId
-        ? await certificateProfileDAL.findById(certificateRequest.profileId)
-        : undefined;
-      const applicationName = await $resolveApplicationName(certificateRequest.applicationId);
-
-      await recordCertificateIssuanceFailure(auditLogService, {
-        auditLogInfo: { actor: { type: ActorType.PLATFORM, metadata: {} } },
-        projectId: certificateRequest.projectId,
-        error: error ?? new Error(certificateRequest.errorMessage || "Certificate issuance failed"),
-        metadata: {
-          operation,
-          ...(certificateRequest.enrollmentType && {
-            enrollmentType: certificateRequest.enrollmentType as EnrollmentType
-          }),
-          certificateRequestId: certificateRequest.id,
-          ...(certificateRequest.profileId && { certificateProfileId: certificateRequest.profileId }),
-          ...(profile && { profileName: profile.slug }),
-          ...(certificateRequest.caId && { caId: certificateRequest.caId }),
-          ...(certificateRequest.commonName && { commonName: certificateRequest.commonName }),
-          ...(certificateRequest.applicationId && { applicationId: certificateRequest.applicationId }),
-          ...(applicationName && { applicationName })
-        }
-      });
-    } catch (auditError) {
-      logger.warn(
-        auditError,
-        `Failed to record certificate issuance failure [certificateRequestId=${certificateRequest.id}]`
-      );
-    }
-  };
+    options: { operation?: CertificateIssuanceOperation; originalCertificateId?: string; error?: unknown } = {}
+  ) =>
+    recordCertificateRequestFailure(
+      { auditLogService, certificateAuthorityDAL, certificateProfileDAL, pkiApplicationDAL },
+      { certificateRequest, ...options }
+    );
 
   const updateCertificateRequestStatus = async ({
     certificateRequestId,
     status,
     errorMessage,
-    operation = CertificateIssuanceOperation.ORDER
+    operation,
+    originalCertificateId,
+    error
   }: TUpdateCertificateRequestStatusDTO) => {
     const certificateRequest = await certificateRequestDAL.findById(certificateRequestId);
     if (!certificateRequest) {
@@ -523,7 +499,7 @@ export const certificateRequestServiceFactory = ({
     const updated = await certificateRequestDAL.transitionFromPending(certificateRequestId, status, errorMessage);
     // A null result means the request already left pending, so its failure was recorded then.
     if (updated && status === CertificateRequestStatus.FAILED) {
-      await recordIssuanceFailure(updated, operation);
+      await recordIssuanceFailure(updated, { operation, originalCertificateId, error });
     }
     return updated;
   };

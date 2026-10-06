@@ -1060,7 +1060,7 @@ export const pkiScepServiceFactory = ({
         commonName = undefined;
       }
 
-      await recordCertificateIssuanceFailure(auditLogService, {
+      await recordCertificateIssuanceFailure({ auditLogService, certificateAuthorityDAL, pkiApplicationDAL }, {
         auditLogInfo: {
           ipAddress: clientIp,
           actor: { type: ActorType.SCEP_ACCOUNT, metadata: { profileId: params.profile.id } }
@@ -1073,7 +1073,7 @@ export const pkiScepServiceFactory = ({
           certificateProfileId: params.profile.id,
           profileName: params.profile.slug,
           ...(params.profile.caId && { caId: params.profile.caId }),
-          commonName,
+          ...(commonName && { commonName }),
           ...(params.applicationId && { applicationId: params.applicationId })
         }
       });

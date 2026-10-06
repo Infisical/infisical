@@ -50,7 +50,10 @@ import {
 } from "@app/services/certificate-authority/certificate-authority-maps";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
-import { recordCertificateIssuanceFailure } from "@app/services/certificate-common/certificate-issuance-audit-fns";
+import {
+  recordCertificateIssuanceFailure,
+  tagErrorWithCertificateRequest
+} from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { recordNewCertificateQuotaKey } from "@app/services/certificate-common/certificate-quota-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -570,7 +573,7 @@ export const certificateV3ServiceFactory = ({
     error: unknown;
     metadata: Omit<
       Parameters<typeof recordCertificateIssuanceFailure>[1]["metadata"],
-      "certificateProfileId" | "profileName" | "applicationName"
+      "certificateProfileId" | "profileName" | "applicationName" | "caName"
     >;
   }) => {
     if (!auditLogInfo) return;
@@ -583,18 +586,19 @@ export const certificateV3ServiceFactory = ({
       const project = await projectDAL.findById(resolvedProjectId);
       if (project?.orgId !== actorOrgId) return;
 
-      const applicationName = await $resolveApplicationName(metadata.applicationId);
-      await recordCertificateIssuanceFailure(auditLogService, {
-        auditLogInfo,
-        projectId: resolvedProjectId,
-        error,
-        metadata: {
-          ...metadata,
-          ...(profile && { certificateProfileId: profile.id, profileName: profile.slug }),
-          ...(!metadata.caId && profile?.caId && { caId: profile.caId }),
-          ...(applicationName && { applicationName })
+      await recordCertificateIssuanceFailure(
+        { auditLogService, certificateAuthorityDAL, pkiApplicationDAL },
+        {
+          auditLogInfo,
+          projectId: resolvedProjectId,
+          error,
+          metadata: {
+            ...metadata,
+            ...(profile && { certificateProfileId: profile.id, profileName: profile.slug }),
+            ...(!metadata.caId && profile?.caId && { caId: profile.caId })
+          }
         }
-      });
+      );
     } catch (lookupError) {
       logger.warn(lookupError, `Failed to record certificate issuance failure [operation=${metadata.operation}]`);
     }
@@ -1782,6 +1786,7 @@ export const certificateV3ServiceFactory = ({
         error: err,
         fallbackMessage: "Certificate issuance failed"
       });
+      tagErrorWithCertificateRequest(err, pendingRequest.id);
       throw err;
     }
 
@@ -2386,8 +2391,8 @@ export const certificateV3ServiceFactory = ({
         metadata: {
           operation: CertificateIssuanceOperation.ISSUE,
           enrollmentType: EnrollmentType.API,
-          commonName: dto.certificateRequest.commonName,
-          applicationId: dto.applicationId
+          ...(dto.certificateRequest.commonName && { commonName: dto.certificateRequest.commonName }),
+          ...(dto.applicationId && { applicationId: dto.applicationId })
         }
       });
       throw error;
@@ -2398,16 +2403,17 @@ export const certificateV3ServiceFactory = ({
     try {
       return await $signCertificateFromProfile(dto);
     } catch (error) {
+      const commonName = $commonNameFromCsr(dto.csr);
       await $recordIssuanceFailure({
         auditLogInfo: dto.auditLogInfo,
         actorOrgId: dto.actorOrgId,
         profileId: dto.profileId,
         error,
         metadata: {
-          operation: CertificateIssuanceOperation.SIGN,
+          operation: dto.issuanceOperation ?? CertificateIssuanceOperation.SIGN,
           enrollmentType: dto.enrollmentType,
-          commonName: $commonNameFromCsr(dto.csr),
-          applicationId: dto.applicationId
+          ...(commonName && { commonName }),
+          ...(dto.applicationId && { applicationId: dto.applicationId })
         }
       });
       throw error;
@@ -2418,6 +2424,7 @@ export const certificateV3ServiceFactory = ({
     try {
       return await $orderCertificate(dto);
     } catch (error) {
+      const commonName = dto.certificateOrder.commonName || $commonNameFromCsr(dto.certificateOrder.csr);
       await $recordIssuanceFailure({
         auditLogInfo: dto.auditLogInfo,
         actorOrgId: dto.actorOrgId,
@@ -2426,8 +2433,8 @@ export const certificateV3ServiceFactory = ({
         metadata: {
           operation: CertificateIssuanceOperation.ORDER,
           enrollmentType: EnrollmentType.API,
-          commonName: dto.certificateOrder.commonName || $commonNameFromCsr(dto.certificateOrder.csr),
-          applicationId: dto.applicationId
+          ...(commonName && { commonName }),
+          ...(dto.applicationId && { applicationId: dto.applicationId })
         }
       });
       throw error;

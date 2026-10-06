@@ -19,7 +19,9 @@ import { NotFoundError } from "@app/lib/errors";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 
 import { TCertificateRequestDALFactory } from "./certificate-request-dal";
 import { certificateRequestServiceFactory, TCertificateRequestServiceFactory } from "./certificate-request-service";
@@ -64,6 +66,7 @@ describe("CertificateRequestService", () => {
   const mockUserDAL = { findById: vi.fn() };
   const mockIdentityDAL = { findById: vi.fn() };
   const mockCertificateProfileDAL = { findById: vi.fn() };
+  const mockCertificateAuthorityDAL = { findById: vi.fn(), findByIdWithAssociatedCa: vi.fn() };
   const mockAuditLogService = { createCollapsedAuditLog: vi.fn() };
 
   beforeEach(() => {
@@ -80,6 +83,7 @@ describe("CertificateRequestService", () => {
       userDAL: mockUserDAL as any,
       identityDAL: mockIdentityDAL as any,
       certificateProfileDAL: mockCertificateProfileDAL as any,
+      certificateAuthorityDAL: mockCertificateAuthorityDAL as any,
       auditLogService: mockAuditLogService
     });
   });
@@ -652,13 +656,14 @@ describe("CertificateRequestService", () => {
         })
       ).rejects.toThrow(NotFoundError);
     });
+
     it("records a certificate-issuance-failed event when the request moves to failed", async () => {
       const failedRequest = {
         id: "550e8400-e29b-41d4-a716-446655440014",
         projectId: "project-1",
         status: CertificateRequestStatus.FAILED,
         errorMessage: "Certificate issuance failed: DigiCert rejected the order",
-        enrollmentType: "api",
+        enrollmentType: EnrollmentType.API,
         profileId: "profile-1",
         caId: "ca-1",
         commonName: "app.example.com"
@@ -666,12 +671,14 @@ describe("CertificateRequestService", () => {
       (mockCertificateRequestDAL.findById as any).mockResolvedValue({ ...failedRequest, status: "pending" });
       (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue(failedRequest);
       mockCertificateProfileDAL.findById.mockResolvedValue({ id: "profile-1", slug: "public-web" });
+      mockCertificateAuthorityDAL.findById.mockResolvedValue({ id: "ca-1", name: "digicert-ca" });
 
       await service.updateCertificateRequestStatus({
         certificateRequestId: failedRequest.id,
         status: CertificateRequestStatus.FAILED,
         errorMessage: failedRequest.errorMessage,
-        operation: CertificateIssuanceOperation.RENEW
+        operation: CertificateIssuanceOperation.RENEW,
+        originalCertificateId: "cert-0"
       });
 
       expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
@@ -682,12 +689,14 @@ describe("CertificateRequestService", () => {
             type: EventType.CERTIFICATE_ISSUANCE_FAILED,
             metadata: {
               operation: CertificateIssuanceOperation.RENEW,
-              enrollmentType: "api",
+              enrollmentType: EnrollmentType.API,
               certificateRequestId: failedRequest.id,
               certificateProfileId: "profile-1",
               profileName: "public-web",
               caId: "ca-1",
+              caName: "digicert-ca",
               commonName: "app.example.com",
+              originalCertificateId: "cert-0",
               errorName: "Error",
               error: "Certificate issuance failed: DigiCert rejected the order"
             }
@@ -710,6 +719,44 @@ describe("CertificateRequestService", () => {
       });
 
       expect(mockAuditLogService.createCollapsedAuditLog).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      { caType: CaType.DIGICERT, csr: null, expected: CertificateIssuanceOperation.ORDER },
+      { caType: undefined, csr: "csr-pem", expected: CertificateIssuanceOperation.SIGN },
+      { caType: undefined, csr: null, expected: CertificateIssuanceOperation.ISSUE }
+    ])("derives $expected from the request when no operation is given", async ({ caType, csr, expected }) => {
+      const failedRequest = {
+        id: "550e8400-e29b-41d4-a716-446655440016",
+        projectId: "project-1",
+        status: CertificateRequestStatus.FAILED,
+        errorMessage: "boom",
+        caId: "ca-1",
+        commonName: "app.example.com",
+        csr
+      };
+      (mockCertificateRequestDAL.findById as any).mockResolvedValue({ ...failedRequest, status: "pending" });
+      (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue(failedRequest);
+      mockCertificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue({
+        id: "ca-1",
+        externalCa: caType ? { type: caType } : undefined
+      });
+      mockCertificateAuthorityDAL.findById.mockResolvedValue({ id: "ca-1", name: "ca" });
+
+      await service.updateCertificateRequestStatus({
+        certificateRequestId: failedRequest.id,
+        status: CertificateRequestStatus.FAILED,
+        errorMessage: "boom",
+        error: new TypeError("socket hang up")
+      });
+
+      expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: expect.objectContaining({
+            metadata: expect.objectContaining({ operation: expected, errorName: "TypeError", error: "socket hang up" })
+          })
+        })
+      );
     });
   });
 

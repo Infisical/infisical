@@ -25,7 +25,9 @@ import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { CrlReason } from "../certificate/certificate-types";
 import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
+import { recordCertificateRequestFailure } from "../certificate-request/certificate-request-fns";
 import {
   CertificateRequestStatus,
   TAttachCertificateToRequestDTO,
@@ -172,6 +174,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -204,7 +207,8 @@ export const certificateAuthorityServiceFactory = ({
   certificateAuthoritySecretDAL,
   licenseService,
   pkiAlertV2Queue,
-  certificateAlertEventEmitter
+  certificateAlertEventEmitter,
+  auditLogService
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -1471,8 +1475,20 @@ export const certificateAuthorityServiceFactory = ({
       updateCertificateRequestStatus: async ({
         certificateRequestId: id,
         status,
-        errorMessage
-      }: TUpdateCertificateRequestStatusDTO) => certificateRequestDAL.transitionFromPending(id, status, errorMessage),
+        errorMessage,
+        operation,
+        originalCertificateId,
+        error
+      }: TUpdateCertificateRequestStatusDTO) => {
+        const updated = await certificateRequestDAL.transitionFromPending(id, status, errorMessage);
+        if (updated && status === CertificateRequestStatus.FAILED) {
+          await recordCertificateRequestFailure(
+            { auditLogService, certificateAuthorityDAL, certificateProfileDAL, pkiApplicationDAL },
+            { certificateRequest: updated, operation, originalCertificateId, error }
+          );
+        }
+        return updated;
+      },
       attachCertificateToRequest: async ({ certificateRequestId: id, certificateId }: TAttachCertificateToRequestDTO) =>
         certificateRequestDAL.attachCertificate(id, certificateId)
     };

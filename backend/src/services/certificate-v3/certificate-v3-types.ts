@@ -3,6 +3,7 @@ import { TProjectPermission } from "@app/lib/types";
 
 import {
   CertExtendedKeyUsageType,
+  CertificateIssuanceOperation,
   CertificateRequestStatus,
   CertKeyAlgorithm,
   CertKeyUsageType,
@@ -65,6 +66,7 @@ export type TSignCertificateFromProfileDTO = {
   applicationId?: string;
   acmeOrderId?: string;
   auditLogInfo?: AuditLogInfo;
+  issuanceOperation?: CertificateIssuanceOperation;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TOrderCertificateFromProfileDTO = {

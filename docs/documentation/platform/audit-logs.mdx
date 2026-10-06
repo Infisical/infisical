@@ -305,23 +305,25 @@ To keep a misconfigured client from filling the log, Infisical records the first
 
 ### Certificate issuance failures
 
-If Infisical can't issue a certificate, it records a `certificate-issuance-failed` event with the reason. Infisical records the event for certificates requested through the API or the Infisical UI, ACME, EST, and SCEP, including renewals and certificates issued after an approval. The event is in the `management` class, so it's always recorded.
+If Infisical can't issue a certificate, it records a `certificate-issuance-failed` event with the reason. Infisical records the event for certificates requested from a certificate profile through the API or the Infisical UI, ACME, EST, and SCEP, including manual renewals and certificates issued after an approval. The event is in the `management` class, so it's always recorded.
+
+Infisical doesn't record the event for automatic renewals, for EST enrollment through a certificate template, or for EST requests rejected before Infisical reads the CSR, such as a failed sign-in.
 
 The event records which certificate failed and why:
 
 - `operation`: what was requested (`issue`, `sign`, `order`, or `renew`)
 - `enrollmentType`: how the certificate was requested (`api`, `acme`, `est`, or `scep`)
 - `error` and `errorName`: why issuance failed, such as a TTL longer than the certificate policy allows or an error from the CA
-- `certificateProfileId`, `profileName`, `caId`, `commonName`, `applicationId`, and `applicationName`: the certificate the request was for, where Infisical knows them
+- `certificateProfileId`, `profileName`, `caId`, `caName`, `commonName`, `applicationId`, and `applicationName`: the certificate the request was for, where Infisical knows them
 - `certificateRequestId`: the certificate request that failed, if Infisical had already created one
 - `originalCertificateId`: on a failed renewal, the certificate being renewed
 - `suppressedRepeats`, `suppressedFrom`, and `suppressedUntil`: on a summary event, how many identical failures Infisical counted instead of recording, and the minute they fell in
 
-If issuance fails after the request has already returned, the event's actor is `platform`. This happens when an external CA such as DigiCert rejects an order, or when issuance fails after an approver approves the request. To find who requested the certificate, look for the request's original event, such as `order-certificate-from-profile`, with the same `certificateRequestId`.
+If issuance fails in a background job, or after an approver approves the request, the event's actor is `platform`. A background job issues the certificate when the CA is external, such as DigiCert or AWS Private CA. To find who requested a certificate through the API or the Infisical UI, look for the request's original event, such as `order-certificate-from-profile`, with the same `certificateRequestId`.
 
 If a request is denied because the actor's role doesn't allow it, Infisical records a [`permission-denied` event](#permission-denials) instead.
 
-Infisical counts identical failures the same way it counts [repeated denials](#permission-denials): it records the first failure per actor, profile, and reason in each minute, then writes one summary event when the minute ends.
+Infisical counts identical failures the same way it counts [repeated denials](#permission-denials). In each minute, it records the first failure with a given actor, operation, certificate, and error, then writes one summary event when the minute ends.
 
 ## Filtering audit logs
 

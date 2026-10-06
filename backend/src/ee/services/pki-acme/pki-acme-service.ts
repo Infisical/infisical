@@ -63,6 +63,7 @@ import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certi
 import { TAcmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
+import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -192,6 +193,7 @@ type TPkiAcmeServiceFactoryDep = {
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy" | "matchPolicy">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "create" | "updateById" | "transitionFromPending">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   acmeEnrollmentConfigDAL: Pick<TAcmeEnrollmentConfigDALFactory, "findById">;
 };
 
@@ -221,6 +223,7 @@ export const pkiAcmeServiceFactory = ({
   approvalPolicyService,
   certificateRequestDAL,
   pkiApplicationProfileDAL,
+  pkiApplicationDAL,
   acmeEnrollmentConfigDAL
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
   const validateAcmeProfile = async (
@@ -1220,7 +1223,7 @@ export const pkiAcmeServiceFactory = ({
       const finalizeCaType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
 
       const $recordFinalizeFailure = (error: unknown, applicationId?: string | null) =>
-        recordCertificateIssuanceFailure(auditLogService, {
+        recordCertificateIssuanceFailure({ auditLogService, pkiApplicationDAL }, {
           auditLogInfo: {
             ...auditLogInfo,
             actor: { type: ActorType.ACME_ACCOUNT, metadata: { profileId, accountId } }
@@ -1235,8 +1238,9 @@ export const pkiAcmeServiceFactory = ({
             enrollmentType: EnrollmentType.ACME,
             certificateProfileId: profileId,
             profileName: profile.slug,
-            ...(profile.caId && { caId: profile.caId }),
-            commonName: certificateRequest.commonName || undefined,
+            caId: ca.id,
+            caName: ca.name,
+            ...(certificateRequest.commonName && { commonName: certificateRequest.commonName }),
             ...(applicationId && { applicationId })
           }
         });
@@ -1329,7 +1333,7 @@ export const pkiAcmeServiceFactory = ({
               { profileCustomExtensions: profile.defaults?.customExtensions }
             );
             if (!validationResult.isValid) {
-              throw await $rejectCsr(`Invalid CSR: ${validationResult.errors.join(", ")}`, accountApplicationId);
+              throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
             }
             assertAcmeCaSupportsCustomExtensions(
               finalizeCaType,
@@ -1342,7 +1346,10 @@ export const pkiAcmeServiceFactory = ({
               resolvedCustomExtensions: validationResult.resolvedCustomExtensions,
               policySteps: await approvalPolicyDAL.findStepsByPolicyId(matchedApprovalPolicy.id)
             };
-          })()
+          })().catch(async (error: unknown) => {
+            await $recordFinalizeFailure(error, accountApplicationId);
+            throw error;
+          })
         : undefined;
 
       // Claims the order under a row lock and asserts it is still finalizable. The approval path
@@ -1491,6 +1498,9 @@ export const pkiAcmeServiceFactory = ({
             },
             "ACME certificate request requires approval"
           );
+        }).catch(async (error: unknown) => {
+          if (!(error instanceof AcmeOrderNotReadyError)) await $recordFinalizeFailure(error, accountApplicationId);
+          throw error;
         });
       } else {
         // Commit the claim on its own so the connection is released before signing starts.

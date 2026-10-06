@@ -3537,7 +3537,8 @@ export const registerRoutes = async (
     telemetryService,
     keyStore,
     pkiAlertV2Queue,
-    certificateAlertEventEmitter
+    certificateAlertEventEmitter,
+    auditLogService
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -3648,6 +3649,7 @@ export const registerRoutes = async (
     userDAL,
     identityDAL,
     certificateProfileDAL,
+    certificateAuthorityDAL,
     auditLogService
   });
 
@@ -4079,6 +4081,7 @@ export const registerRoutes = async (
     approvalPolicyService,
     certificateRequestDAL,
     pkiApplicationProfileDAL,
+    pkiApplicationDAL,
     acmeEnrollmentConfigDAL
   });
 

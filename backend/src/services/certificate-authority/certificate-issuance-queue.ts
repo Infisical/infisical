@@ -552,6 +552,8 @@ export const certificateIssuanceQueueFactory = ({
                 certificateRequestId,
                 status: CertificateRequestStatus.FAILED,
                 operation: issuanceOperation,
+                originalCertificateId,
+                error: attachError,
                 errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
               });
             } catch (statusUpdateError) {
@@ -619,6 +621,8 @@ export const certificateIssuanceQueueFactory = ({
                 certificateRequestId,
                 status: CertificateRequestStatus.FAILED,
                 operation: issuanceOperation,
+                originalCertificateId,
+                error: attachError,
                 errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
               });
             } catch (statusUpdateError) {
@@ -691,6 +695,8 @@ export const certificateIssuanceQueueFactory = ({
                 certificateRequestId,
                 status: CertificateRequestStatus.FAILED,
                 operation: issuanceOperation,
+                originalCertificateId,
+                error: attachError,
                 errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
               });
             } catch (statusUpdateError) {
@@ -761,6 +767,8 @@ export const certificateIssuanceQueueFactory = ({
                 certificateRequestId,
                 status: CertificateRequestStatus.FAILED,
                 operation: issuanceOperation,
+                originalCertificateId,
+                error: attachError,
                 errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
               });
             } catch (statusUpdateError) {
@@ -833,6 +841,8 @@ export const certificateIssuanceQueueFactory = ({
                 certificateRequestId,
                 status: CertificateRequestStatus.FAILED,
                 operation: issuanceOperation,
+                originalCertificateId,
+                error: attachError,
                 errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
               });
             } catch (statusUpdateError) {
@@ -1112,6 +1122,8 @@ export const certificateIssuanceQueueFactory = ({
                 certificateRequestId,
                 status: CertificateRequestStatus.FAILED,
                 operation: issuanceOperation,
+                originalCertificateId,
+                error: attachError,
                 errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
               });
             } catch (statusUpdateError) {
@@ -1268,6 +1280,8 @@ export const certificateIssuanceQueueFactory = ({
             certificateRequestId,
             status: CertificateRequestStatus.FAILED,
             operation: issuanceOperation,
+            originalCertificateId,
+            error,
             errorMessage: isAcmeTerminal ? errorMessage : `Certificate issuance failed: ${errorMessage}`
           });
           logger.info(`Updated certificate request ${certificateRequestId} status to failed due to issuance error`);
@@ -1312,6 +1326,8 @@ export const certificateIssuanceQueueFactory = ({
                 certificateRequestId,
                 status: CertificateRequestStatus.FAILED,
                 operation: job.data.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
+                originalCertificateId: job.data.originalCertificateId,
+                error,
                 errorMessage: `AWS ACM DNS validation did not complete after ${maxAttempts} attempts: ${error.message}`
               });
               logger.info(

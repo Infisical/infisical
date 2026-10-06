@@ -3604,7 +3604,6 @@ describe("CertificateV3Service", () => {
               operation: CertificateIssuanceOperation.ISSUE,
               enrollmentType: EnrollmentType.API,
               commonName: "fail.example.com",
-              applicationId: undefined,
               certificateProfileId: "profile-123",
               profileName: "web-servers",
               caId: "ca-123",
@@ -3650,6 +3649,63 @@ describe("CertificateV3Service", () => {
       mockAuditLogService.createCollapsedAuditLog.mockRejectedValueOnce(new Error("redis down"));
 
       await expect(service.issueCertificateFromProfile({ ...issueDto, auditLogInfo })).rejects.toBe(failure);
+    });
+
+    it("records a sign failure under the operation the caller passed", async () => {
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockRejectedValue(new BadRequestError({ message: "x" }));
+
+      await expect(
+        service.signCertificateFromProfile({
+          profileId: "profile-123",
+          csr: "not a csr",
+          validity: { ttl: "30d" },
+          enrollmentType: EnrollmentType.EST,
+          issuanceOperation: CertificateIssuanceOperation.RENEW,
+          actor: ActorType.USER,
+          actorId: "user-123",
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: "org-123",
+          auditLogInfo
+        } as never)
+      ).rejects.toThrow("x");
+
+      expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: expect.objectContaining({
+            metadata: expect.objectContaining({
+              operation: CertificateIssuanceOperation.RENEW,
+              enrollmentType: EnrollmentType.EST
+            })
+          })
+        })
+      );
+    });
+
+    it("records an order failure with the order's common name", async () => {
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockRejectedValue(new BadRequestError({ message: "x" }));
+
+      await expect(
+        service.orderCertificate({
+          profileId: "profile-123",
+          certificateOrder: { commonName: "order.example.com", altNames: [], validity: { ttl: "30d" } },
+          actor: ActorType.USER,
+          actorId: "user-123",
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: "org-123",
+          auditLogInfo
+        } as never)
+      ).rejects.toThrow("x");
+
+      expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: expect.objectContaining({
+            metadata: expect.objectContaining({
+              operation: CertificateIssuanceOperation.ORDER,
+              commonName: "order.example.com"
+            })
+          })
+        })
+      );
     });
 
     it("records a failed renewal against the original certificate", async () => {

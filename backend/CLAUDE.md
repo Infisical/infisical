@@ -1056,12 +1056,16 @@ for. To collapse another event, call it instead of `createAuditLog` and add
 `TAuditLogCollapseSummary` to that event's metadata type so the summary fields are typed.
 
 `CERTIFICATE_ISSUANCE_FAILED` is recorded by `recordCertificateIssuanceFailure`
-(`services/certificate-common/certificate-issuance-audit-fns.ts`), collapsed the same way. The
-synchronous paths record it only when the caller passes `auditLogInfo` to
+(`services/certificate-common/certificate-issuance-audit-fns.ts`), collapsed the same way, and it
+never throws. The synchronous paths record it only when the caller passes `auditLogInfo` to
 `issueCertificateFromProfile`, `signCertificateFromProfile`, `orderCertificate` or `renewCertificate`,
-so a new route or protocol handler that issues certificates must pass it. Asynchronous failures are
-recorded where the request leaves pending, in `certificateRequestService.updateCertificateRequestStatus`,
-with a `PLATFORM` actor, so write a failed request through it rather than through the DAL.
+so a new route that issues certificates must pass it. ACME and SCEP record their own failures with
+their own actor, so they must not pass `auditLogInfo` to those methods. When code that created a
+certificate request rethrows, `tagErrorWithCertificateRequest` links the event to that request.
+Asynchronous failures are recorded by `recordCertificateRequestFailure`
+(`services/certificate-request/certificate-request-fns.ts`) with a `PLATFORM` actor. Mark a request
+failed through `certificateRequestService.updateCertificateRequestStatus`, which records it once on
+the transition out of pending, or call `recordIssuanceFailure` if you write the status yourself.
 
 ### Server Plugins
 

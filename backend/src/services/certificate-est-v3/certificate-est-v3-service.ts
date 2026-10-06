@@ -14,6 +14,7 @@ import {
   getCaCertChain,
   getCaCertChains
 } from "@app/services/certificate-authority/certificate-authority-fns";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
@@ -347,6 +348,7 @@ export const certificateEstV3ServiceFactory = ({
       validity: { ttl },
       enrollmentType: EnrollmentType.EST,
       applicationId,
+      issuanceOperation: CertificateIssuanceOperation.RENEW,
       auditLogInfo: auditLogInfo && {
         ...auditLogInfo,
         actor: { type: ActorType.EST_ACCOUNT, metadata: { profileId } }
