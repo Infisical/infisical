@@ -910,42 +910,44 @@ export const CreateSecretForm = ({
                         </Tooltip>
                       </FieldLabel>
                     </div>
-                    <FieldContent className="relative col-span-2 row-start-2">
-                      <InfisicalSecretInput
-                        id={`create-secret-${index}-value`}
-                        autoFocus={Boolean(editSecret)}
-                        value={
-                          editSecret?.canEditButNotView && !valueWasEdited
-                            ? HIDDEN_SECRET_VALUE
-                            : (field.value ?? "")
-                        }
-                        onChange={(value) => handleValueChange(value, field.onChange)}
-                        containerClassName={
-                          editSecret?.mixedFields?.value
-                            ? "[&>div]:pr-9 [&_textarea]:pr-9"
-                            : undefined
-                        }
-                        isReadOnly={editSecret ? isEditReadOnly : undefined}
-                        canEditButNotView={editSecret?.canEditButNotView}
-                        secretPath={editSecret ? secretPath : undefined}
-                        environment={
-                          editSecret && selectedEnvironments.length === 1
-                            ? selectedEnvironments[0]?.slug
-                            : undefined
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === "Tab" && !event.shiftKey && !event.defaultPrevented) {
-                            event.preventDefault();
-                            generateButtonRefs.current[index]?.focus();
+                    <FieldContent className="col-span-2 row-start-2">
+                      <div className="relative">
+                        <InfisicalSecretInput
+                          id={`create-secret-${index}-value`}
+                          autoFocus={Boolean(editSecret)}
+                          value={
+                            editSecret?.canEditButNotView && !valueWasEdited
+                              ? HIDDEN_SECRET_VALUE
+                              : (field.value ?? "")
                           }
-                        }}
-                        placeholder="Enter secret value..."
-                      />
-                      {editSecret?.mixedFields?.value && (
-                        <div className="absolute top-2 right-2 flex items-center">
-                          {mixedFieldWarning("value", "Value")}
-                        </div>
-                      )}
+                          onChange={(value) => handleValueChange(value, field.onChange)}
+                          containerClassName={
+                            editSecret?.mixedFields?.value
+                              ? "[&>div]:pr-9 [&_textarea]:pr-9"
+                              : undefined
+                          }
+                          isReadOnly={editSecret ? isEditReadOnly : undefined}
+                          canEditButNotView={editSecret?.canEditButNotView}
+                          secretPath={editSecret ? secretPath : undefined}
+                          environment={
+                            editSecret && selectedEnvironments.length === 1
+                              ? selectedEnvironments[0]?.slug
+                              : undefined
+                          }
+                          onKeyDown={(event) => {
+                            if (event.key === "Tab" && !event.shiftKey && !event.defaultPrevented) {
+                              event.preventDefault();
+                              generateButtonRefs.current[index]?.focus();
+                            }
+                          }}
+                          placeholder="Enter secret value..."
+                        />
+                        {editSecret?.mixedFields?.value && (
+                          <div className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center">
+                            {mixedFieldWarning("value", "Value")}
+                          </div>
+                        )}
+                      </div>
                       {editSecret && hasValueChanges && !watchedValue && (
                         <FieldDescription>
                           {editSecret.isSharedEdit
@@ -1116,7 +1118,7 @@ export const CreateSecretForm = ({
                                 />
                               )}
                               {canReadTags && editSecret?.mixedFields?.tags && (
-                                <div className="absolute top-2 right-9 flex items-center">
+                                <div className="absolute top-1/2 right-9 flex -translate-y-1/2 items-center">
                                   {mixedFieldWarning("tags", "Tags")}
                                 </div>
                               )}
