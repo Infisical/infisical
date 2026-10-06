@@ -35,7 +35,6 @@ export type TSecretChangeRequestListRow = TApprovalRequests &
     policyEnforcementLevel: string | null;
     policyConstraints: unknown;
     policySecretPath: string | null;
-    policyApprovals: number | null;
     committerUserEmail: string | null;
     committerUserUsername: string | null;
     committerUserFirstName: string | null;
@@ -123,13 +122,6 @@ export const secretChangeRequestDALFactory = (db: TDbClient) => {
             `${TableName.SecretFolder}.envId`
           );
         })
-        .leftJoin(db(TableName.ApprovalPolicySteps).as("firstPolicyStep"), function joinFirstPolicyStep() {
-          this.on("firstPolicyStep.policyId", `${TableName.ApprovalPolicies}.id`).andOnVal(
-            "firstPolicyStep.stepNumber",
-            "=",
-            1
-          );
-        })
         .leftJoin(
           db(TableName.Users).as("committerUser"),
           `${TableName.ApprovalRequests}.requesterId`,
@@ -164,7 +156,6 @@ export const secretChangeRequestDALFactory = (db: TDbClient) => {
           db.ref("enforcementLevel").withSchema(TableName.ApprovalPolicies).as("policyEnforcementLevel"),
           db.ref("constraints").withSchema(TableName.ApprovalPolicies).as("policyConstraints"),
           db.ref("secretPath").withSchema(TableName.ApprovalPolicySecretEnvironment).as("policySecretPath"),
-          db.ref("requiredApprovals").withSchema("firstPolicyStep").as("policyApprovals"),
           db.ref("email").withSchema("committerUser").as("committerUserEmail"),
           db.ref("username").withSchema("committerUser").as("committerUserUsername"),
           db.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),

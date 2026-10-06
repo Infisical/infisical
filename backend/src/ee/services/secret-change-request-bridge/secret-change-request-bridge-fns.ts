@@ -456,7 +456,7 @@ export const toSecretChangeRequestListItem = ({
     ? {
         id: row.policyId,
         name: row.policyName ?? "",
-        approvals: row.policyApprovals ?? steps[0]?.requiredApprovals ?? 1,
+        approvals: steps[0]?.requiredApprovals ?? 1,
         secretPath: row.policySecretPath,
         enforcementLevel: row.policyEnforcementLevel ?? EnforcementLevel.Hard,
         allowedSelfApprovals: readSecretChangePolicyConstraints(row.policyConstraints).allowedSelfApprovals ?? true,

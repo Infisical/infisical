@@ -108,7 +108,10 @@ type TSecretChangeRequestBridgeServiceFactoryDep = {
   approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create">;
   approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create">;
   approvalRequestApprovalsDAL: Pick<TApprovalRequestApprovalsDALFactory, "findOne" | "create" | "updateById">;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findStepsByPolicyId" | "findBypassersByPolicyIds">;
+  approvalPolicyDAL: Pick<
+    TApprovalPolicyDALFactory,
+    "findByIdForShare" | "findStepsByPolicyId" | "findBypassersByPolicyIds"
+  >;
   secretChangeRequestDAL: Pick<
     TSecretChangeRequestDALFactory,
     "create" | "find" | "findOne" | "updateById" | "findByProjectId" | "countByProjectId"
@@ -361,7 +364,8 @@ export const secretChangeRequestBridgeServiceFactory = ({
     },
     tx: Knex
   ) => {
-    const policy = await secretChangePolicyBridgeService.findSecretChangePolicyById(policyId, tx);
+    const lockedPolicy = await approvalPolicyDAL.findByIdForShare(policyId, tx);
+    const policy = lockedPolicy ? await secretChangePolicyBridgeService.findSecretChangePolicyById(policyId, tx) : null;
     if (!policy) {
       throw new NotFoundError({ message: `Secret approval policy with ID '${policyId}' not found` });
     }
@@ -980,7 +984,7 @@ export const secretChangeRequestBridgeServiceFactory = ({
       ? {
           id: policy.id,
           name: policy.name,
-          approvals: policy.approvals,
+          approvals: steps[0]?.requiredApprovals ?? 1,
           secretPath: policy.secretPath ?? null,
           enforcementLevel: policy.enforcementLevel,
           allowedSelfApprovals: policy.allowedSelfApprovals,

@@ -21,6 +21,14 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByIdForShare = async (id: string, tx: Knex) => {
+    try {
+      return await tx(TableName.ApprovalPolicies).where({ id }).forShare().first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindApprovalPolicyByIdForShare" });
+    }
+  };
+
   const findStepsByPolicyId = async (policyId: string, tx?: Knex) => {
     try {
       const dbInstance = tx || db.replicaNode();
@@ -500,6 +508,7 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
   return {
     ...orm,
     findByIdForUpdate,
+    findByIdForShare,
     findStepsByPolicyId,
     findBypassersByPolicyId,
     findBypassersByPolicyIds,

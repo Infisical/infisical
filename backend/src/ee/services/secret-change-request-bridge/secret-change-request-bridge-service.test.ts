@@ -192,6 +192,7 @@ const buildService = ({
       )
     },
     approvalPolicyDAL: {
+      findByIdForShare: vi.fn().mockResolvedValue({ id: "policy-1" }),
       findStepsByPolicyId: vi.fn().mockResolvedValue(steps),
       findBypassersByPolicyIds: vi.fn().mockResolvedValue({})
     },
@@ -284,8 +285,12 @@ describe("secretChangeRequestBridge generateSecretChangeRequest", () => {
 
     expect(buildSecretApprovalCommits).toHaveBeenCalledWith(expect.objectContaining({ policy: { id: "policy-1" } }));
     expect(deps.approvalRequestDAL.transaction).toHaveBeenCalledTimes(1);
+    expect(deps.approvalPolicyDAL.findByIdForShare).toHaveBeenCalledWith("policy-1", OWN_TX);
     expect(deps.secretChangePolicyBridgeService.findSecretChangePolicyById).toHaveBeenCalledWith("policy-1", OWN_TX);
     expect(deps.approvalPolicyDAL.findStepsByPolicyId).toHaveBeenCalledWith("policy-1", OWN_TX);
+    expect(deps.approvalPolicyDAL.findByIdForShare.mock.invocationCallOrder[0]).toBeLessThan(
+      deps.secretChangePolicyBridgeService.findSecretChangePolicyById.mock.invocationCallOrder[0]
+    );
     expect(resolveRequester).toHaveBeenCalledWith(ActorType.USER, "user-1", OWN_TX);
 
     expect(deps.approvalRequestDAL.create).toHaveBeenCalledWith(
@@ -412,6 +417,16 @@ describe("secretChangeRequestBridge generateSecretChangeRequest", () => {
     expect(deps.approvalRequestDAL.create).not.toHaveBeenCalled();
     expect(deps.secretChangeRequestDAL.create).not.toHaveBeenCalled();
     expect(runSecretChangeRequestSideEffects).not.toHaveBeenCalled();
+  });
+
+  test("writes nothing when the policy is deleted while the request waits on its lock", async () => {
+    const { service, deps } = buildService();
+    deps.approvalPolicyDAL.findByIdForShare.mockResolvedValueOnce(undefined);
+
+    await expect(generate(service)).rejects.toBeInstanceOf(NotFoundError);
+    expect(deps.secretChangePolicyBridgeService.findSecretChangePolicyById).not.toHaveBeenCalled();
+    expect(deps.approvalPolicyDAL.findStepsByPolicyId).not.toHaveBeenCalled();
+    expect(deps.approvalRequestDAL.create).not.toHaveBeenCalled();
   });
 
   test("refuses a policy without an approval step", async () => {
@@ -1235,6 +1250,15 @@ describe("secretChangeRequestBridge getSecretChangeRequestById", () => {
     });
   });
 
+  test("reports the approvals the request requires, not the policy's current count", async () => {
+    const { service, deps } = buildDetailsService({ requestSteps: [{ ...reviewedStep, requiredApprovals: 2 }] });
+    deps.secretChangePolicyBridgeService.findSecretChangePolicyById.mockResolvedValue({ ...POLICY, approvals: 3 });
+
+    const result = await details(service);
+
+    expect(result.policy.approvals).toBe(2);
+  });
+
   test("still answers when the policy was deleted and when the requesting user is gone", async () => {
     const { service, deps } = buildDetailsService();
     deps.approvalRequestDAL.findById.mockResolvedValueOnce({
@@ -1286,7 +1310,6 @@ describe("secretChangeRequestBridge listSecretChangeRequests and countSecretChan
     policyEnforcementLevel: "soft",
     policyConstraints: { constraints: { allowedSelfApprovals: false } },
     policySecretPath: "/app",
-    policyApprovals: 2,
     committerUserEmail: "alice@example.com",
     committerUserUsername: "alice",
     committerUserFirstName: "Alice",
@@ -1300,6 +1323,7 @@ describe("secretChangeRequestBridge listSecretChangeRequests and countSecretChan
       requestSteps: [
         {
           ...REQUEST_STEP,
+          requiredApprovals: 2,
           approvals: [
             {
               id: "approval-1",
@@ -1367,7 +1391,7 @@ describe("secretChangeRequestBridge listSecretChangeRequests and countSecretChan
   test("marks a request whose policy is gone and skips the follow-up reads on an empty page", async () => {
     const { service, deps } = buildService();
     deps.secretChangeRequestDAL.findByProjectId.mockResolvedValueOnce({
-      rows: [{ ...LIST_ROW, policyId: null, policyName: null, policySecretPath: null, policyApprovals: null }],
+      rows: [{ ...LIST_ROW, policyId: null, policyName: null, policySecretPath: null }],
       totalCount: 1
     });
 
