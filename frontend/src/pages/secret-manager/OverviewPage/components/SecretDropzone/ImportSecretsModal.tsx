@@ -735,7 +735,9 @@ const ImportSecretsContent = ({
                         type="button"
                         className="flex cursor-pointer items-center gap-1 rounded-xs outline-none focus-visible:ring-2 focus-visible:ring-ring [&>svg]:size-4"
                         aria-label={
-                          areAllFoldersCollapsed ? "Expand all folders" : "Collapse all folders"
+                          areAllFoldersCollapsed
+                            ? "Key: expand all folders"
+                            : "Key: collapse all folders"
                         }
                         aria-expanded={!areAllFoldersCollapsed}
                         title={
