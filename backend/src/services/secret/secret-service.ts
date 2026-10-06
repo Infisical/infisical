@@ -2080,6 +2080,7 @@ export const secretServiceFactory = ({
       metadata,
       secretReminderRepeatDays,
       secretReminderNote,
+      secretReminderRecipients,
       newSecretName,
       secretKeyIV: secretKeyEncrypted.iv,
       secretKeyTag: secretKeyEncrypted.tag,

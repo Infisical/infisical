@@ -13,7 +13,7 @@ import { TGenericPermission } from "@app/lib/types";
 import { TAlertChannelInput, TChannelRecipientInput } from "../alert/alert-channel-service-types";
 import { AlertChannelType } from "../alert/alert-channel-types";
 import { TAlertServiceFactory } from "../alert/alert-service";
-import { AlertPrincipalType, MAX_RECIPIENTS_PER_CHANNEL } from "../alert/alert-types";
+import { AlertPrincipalType, MAX_CHANNELS_PER_ALERT, MAX_RECIPIENTS_PER_CHANNEL } from "../alert/alert-types";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -85,6 +85,7 @@ export const reminderServiceFactory = ({
   const resolveReminderRecipients: TReminderServiceFactory["resolveReminderRecipients"] = async ({
     actorOrgId,
     projectId,
+    secretId,
     recipients
   }) => {
     // Reminder recipients were never pruned when someone left the project, so drop them rather than fail.
@@ -100,7 +101,28 @@ export const reminderServiceFactory = ({
         message: "None of the selected reminder recipients are members of this project. Choose recipients again."
       });
     }
-    return inScope.length ? inScope : [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: projectId }];
+    const emailRecipients: TChannelRecipientInput[] = inScope.length
+      ? inScope
+      : [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: projectId }];
+
+    // The email channels sit beside the alert's other channels (Slack, webhook, PagerDuty), and the alert
+    // API refuses to save more than MAX_CHANNELS_PER_ALERT in total. Writing past it here would leave an
+    // alert nobody can edit until a channel is removed.
+    const [existing] = await alertService.findAlertChannelSummariesForResources({
+      resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+      resourceIds: [secretId]
+    });
+    const otherChannelCount =
+      existing?.channels.filter((channel) => channel.channelType !== AlertChannelType.EMAIL).length ?? 0;
+    const emailChannelCount = Math.ceil(emailRecipients.length / MAX_RECIPIENTS_PER_CHANNEL);
+    if (otherChannelCount + emailChannelCount > MAX_CHANNELS_PER_ALERT) {
+      const maxRecipients = Math.max(MAX_CHANNELS_PER_ALERT - otherChannelCount, 0) * MAX_RECIPIENTS_PER_CHANNEL;
+      throw new BadRequestError({
+        message: `This reminder already sends to ${otherChannelCount} other channels, so it can email at most ${maxRecipients} recipients. Remove recipients or channels and try again.`
+      });
+    }
+
+    return emailRecipients;
   };
 
   // Given `channels`, they are the alert's complete channel list. Otherwise the reminder API only knows
@@ -249,7 +271,8 @@ export const reminderServiceFactory = ({
     }
 
     const emailRecipients =
-      resolvedRecipients ?? (await resolveReminderRecipients({ actorOrgId: actor.actorOrgId, projectId, recipients }));
+      resolvedRecipients ??
+      (await resolveReminderRecipients({ actorOrgId: actor.actorOrgId, projectId, secretId, recipients }));
 
     // The alert goes first, outside any transaction because encrypting channel config can call out to
     // KMS. If the reminder write then fails, an alert with no reminder never fires and is reused next time.

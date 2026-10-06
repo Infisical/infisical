@@ -358,8 +358,43 @@ describe("reminder alert sync", () => {
   test("resolving recipients refuses a list with nobody left in the project", async () => {
     const { service } = buildWriteService({ projectUserIds: [] });
     await expect(
-      service.resolveReminderRecipients({ actorOrgId: "org-1", projectId: "proj-1", recipients: ["user-gone"] })
+      service.resolveReminderRecipients({
+        actorOrgId: "org-1",
+        projectId: "proj-1",
+        secretId: "secret-1",
+        recipients: ["user-gone"]
+      })
     ).rejects.toThrow(/None of the selected reminder recipients/);
+  });
+
+  test("refuses more email recipients than fit beside the alert's other channels", async () => {
+    const webhookOnly = {
+      id: "alert-1",
+      name: "Reminder for DB_PASSWORD",
+      resourceId: "secret-1",
+      channels: [{ id: "ch-hook", name: "Webhook", channelType: "webhook", enabled: true }]
+    };
+    const { service, calls } = buildWriteService({ existingAlert: webhookOnly });
+    const recipients = Array.from({ length: 200 }, (_, i) => `user-${i}`);
+
+    await expect(saveReminder(service, { recipients })).rejects.toThrow(
+      "This reminder already sends to 1 other channels, so it can email at most 180 recipients."
+    );
+    expect(calls).toEqual([]);
+  });
+
+  test("accepts as many email recipients as fit beside the alert's other channels", async () => {
+    const webhookOnly = {
+      id: "alert-1",
+      name: "Reminder for DB_PASSWORD",
+      resourceId: "secret-1",
+      channels: [{ id: "ch-hook", name: "Webhook", channelType: "webhook", enabled: true }]
+    };
+    const { service, updated } = buildWriteService({ existingAlert: webhookOnly });
+    const recipients = Array.from({ length: 180 }, (_, i) => `user-${i}`);
+
+    await saveReminder(service, { recipients });
+    expect(updated[0].channels).toHaveLength(10);
   });
 
   test("given channels, saves them as the alert's complete channel list", async () => {

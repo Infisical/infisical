@@ -45,6 +45,7 @@ export interface TReminderServiceFactory {
   resolveReminderRecipients: (input: {
     actorOrgId: string;
     projectId: string;
+    secretId: string;
     recipients?: string[] | null;
   }) => Promise<TChannelRecipientInput[]>;
 

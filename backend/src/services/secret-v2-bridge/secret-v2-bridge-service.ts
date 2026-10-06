@@ -803,6 +803,7 @@ export const secretV2BridgeServiceFactory = ({
       ? await reminderService.resolveReminderRecipients({
           actorOrgId,
           projectId,
+          secretId,
           recipients: inputSecret.secretReminderRecipients
         })
       : undefined;
