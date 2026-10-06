@@ -309,7 +309,7 @@ If you [turn authorization events on](#choose-which-classes-to-record), Infisica
 | `projectId`                | The project the request was for, if it had one                  |
 
 <Info>
-If the same denial repeats within a minute, Infisical records it once, then records one summary event with the number of repeats in `suppressedRepeats`.
+If the same denial repeats within a minute, Infisical records it once, then records one summary event with the number of repeats in `suppressedRepeats`. The summary's `suppressedFrom` and `suppressedUntil` fields give the start and end of the interval covered by that count.
 </Info>
 
 ## Filtering audit logs
