@@ -1,6 +1,8 @@
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
+import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { TCertificateApprovalService } from "@app/services/certificate-v3/certificate-approval-fns";
 import { NotificationType } from "@app/services/notification/notification-types";
@@ -21,12 +23,14 @@ type TCertRequestApprovalResourceDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId">;
   certificateApprovalService: TCertificateApprovalService;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
+  certificateRequestService: Pick<TCertificateRequestServiceFactory, "recordIssuanceFailure">;
 };
 
 export const certRequestApprovalResourceFactory = ({
   approvalPolicyDAL,
   certificateApprovalService,
-  certificateRequestDAL
+  certificateRequestDAL,
+  certificateRequestService
 }: TCertRequestApprovalResourceDep): TApprovalResource<
   TCertRequestPolicyInputs,
   TCertRequestPolicy,
@@ -108,10 +112,15 @@ export const certRequestApprovalResourceFactory = ({
       );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      await certificateRequestDAL.updateById(certReqId, {
+      const failedRequest = await certificateRequestDAL.updateById(certReqId, {
         status: CertificateRequestStatus.FAILED,
         errorMessage
       });
+      await certificateRequestService.recordIssuanceFailure(
+        failedRequest,
+        failedRequest.csr ? CertificateIssuanceOperation.SIGN : CertificateIssuanceOperation.ISSUE,
+        error
+      );
       logger.error(
         { error, certificateRequestId: certReqId, approvalRequestId: request.id },
         `Failed to issue certificate after approval [certificateRequestId=${certReqId}]`

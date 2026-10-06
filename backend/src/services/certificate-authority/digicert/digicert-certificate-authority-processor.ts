@@ -142,6 +142,7 @@ export const processDigiCertPendingValidationRequest = async (
     await deps.certificateRequestService.updateCertificateRequestStatus({
       certificateRequestId: request.id,
       status: CertificateRequestStatus.FAILED,
+      operation: parsed.digicert.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
       errorMessage: "Validation timed out after 24h"
     });
     logger.info(`DigiCert validation timed out [certificateRequestId=${request.id}]`);
@@ -239,6 +240,7 @@ export const processDigiCertPendingValidationRequest = async (
     await deps.certificateRequestService.updateCertificateRequestStatus({
       certificateRequestId: request.id,
       status: CertificateRequestStatus.FAILED,
+      operation: parsed.digicert.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
       errorMessage: `DigiCert order ${orderStatus}`
     });
     logger.info(`DigiCert order terminal state [certificateRequestId=${request.id}] [status=${orderStatus}]`);

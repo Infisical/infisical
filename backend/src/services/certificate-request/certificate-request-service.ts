@@ -2,7 +2,8 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { ActionProjectType, ResourceType, TCertificateRequests } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -20,6 +21,7 @@ import { QueueName, TQueueServiceFactory } from "@app/queue";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import {
+  CertificateIssuanceOperation,
   domainComponentsSchema,
   resolvedCustomExtensionSchema
 } from "@app/services/certificate-common/certificate-constants";
@@ -27,6 +29,9 @@ import {
   describeCustomExtensionValue,
   TResolvedCustomExtension
 } from "@app/services/certificate-common/certificate-extension-fns";
+import { recordCertificateIssuanceFailure } from "@app/services/certificate-common/certificate-issuance-audit-fns";
+import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
@@ -54,6 +59,8 @@ type TCertificateRequestServiceFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "stopJobById" | "cancelActiveJob">;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
+  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
 };
 
 export type TCertificateRequestServiceFactory = ReturnType<typeof certificateRequestServiceFactory>;
@@ -151,7 +158,9 @@ export const certificateRequestServiceFactory = ({
   resourceMetadataDAL,
   queueService,
   userDAL,
-  identityDAL
+  identityDAL,
+  certificateProfileDAL,
+  auditLogService
 }: TCertificateRequestServiceFactoryDep) => {
   const $resolveApplicationName = async (applicationId?: string | null) => {
     if (!applicationId) return null;
@@ -463,17 +472,60 @@ export const certificateRequestServiceFactory = ({
     };
   };
 
+  const recordIssuanceFailure = async (
+    certificateRequest: TCertificateRequests,
+    operation: CertificateIssuanceOperation,
+    error?: unknown
+  ) => {
+    try {
+      const profile = certificateRequest.profileId
+        ? await certificateProfileDAL.findById(certificateRequest.profileId)
+        : undefined;
+      const applicationName = await $resolveApplicationName(certificateRequest.applicationId);
+
+      await recordCertificateIssuanceFailure(auditLogService, {
+        auditLogInfo: { actor: { type: ActorType.PLATFORM, metadata: {} } },
+        projectId: certificateRequest.projectId,
+        error: error ?? new Error(certificateRequest.errorMessage || "Certificate issuance failed"),
+        metadata: {
+          operation,
+          ...(certificateRequest.enrollmentType && {
+            enrollmentType: certificateRequest.enrollmentType as EnrollmentType
+          }),
+          certificateRequestId: certificateRequest.id,
+          ...(certificateRequest.profileId && { certificateProfileId: certificateRequest.profileId }),
+          ...(profile && { profileName: profile.slug }),
+          ...(certificateRequest.caId && { caId: certificateRequest.caId }),
+          ...(certificateRequest.commonName && { commonName: certificateRequest.commonName }),
+          ...(certificateRequest.applicationId && { applicationId: certificateRequest.applicationId }),
+          ...(applicationName && { applicationName })
+        }
+      });
+    } catch (auditError) {
+      logger.warn(
+        auditError,
+        `Failed to record certificate issuance failure [certificateRequestId=${certificateRequest.id}]`
+      );
+    }
+  };
+
   const updateCertificateRequestStatus = async ({
     certificateRequestId,
     status,
-    errorMessage
+    errorMessage,
+    operation = CertificateIssuanceOperation.ORDER
   }: TUpdateCertificateRequestStatusDTO) => {
     const certificateRequest = await certificateRequestDAL.findById(certificateRequestId);
     if (!certificateRequest) {
       throw new NotFoundError({ message: "Certificate request not found" });
     }
 
-    return certificateRequestDAL.transitionFromPending(certificateRequestId, status, errorMessage);
+    const updated = await certificateRequestDAL.transitionFromPending(certificateRequestId, status, errorMessage);
+    // A null result means the request already left pending, so its failure was recorded then.
+    if (updated && status === CertificateRequestStatus.FAILED) {
+      await recordIssuanceFailure(updated, operation);
+    }
+    return updated;
   };
 
   const attachCertificateToRequest = async ({
@@ -733,6 +785,7 @@ export const certificateRequestServiceFactory = ({
     getCertificateRequest,
     getCertificateFromRequest,
     updateCertificateRequestStatus,
+    recordIssuanceFailure,
     attachCertificateToRequest,
     cancelCertificateRequest,
     listCertificateRequests

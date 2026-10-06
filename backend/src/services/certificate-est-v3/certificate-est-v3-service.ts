@@ -1,5 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
+import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -124,12 +125,14 @@ export const certificateEstV3ServiceFactory = ({
     csr,
     profileId,
     sslClientCert,
-    applicationId
+    applicationId,
+    auditLogInfo
   }: {
     csr: string;
     profileId: string;
     sslClientCert: string;
     applicationId?: string;
+    auditLogInfo?: AuditLogInfo;
   }) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
@@ -187,7 +190,11 @@ export const certificateEstV3ServiceFactory = ({
       csr,
       validity: { ttl },
       enrollmentType: EnrollmentType.EST,
-      applicationId
+      applicationId,
+      auditLogInfo: auditLogInfo && {
+        ...auditLogInfo,
+        actor: { type: ActorType.EST_ACCOUNT, metadata: { profileId } }
+      }
     });
 
     if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
@@ -208,12 +215,14 @@ export const certificateEstV3ServiceFactory = ({
     csr,
     profileId,
     sslClientCert,
-    applicationId
+    applicationId,
+    auditLogInfo
   }: {
     csr: string;
     profileId: string;
     sslClientCert: string;
     applicationId?: string;
+    auditLogInfo?: AuditLogInfo;
   }) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
@@ -337,7 +346,11 @@ export const certificateEstV3ServiceFactory = ({
       csr,
       validity: { ttl },
       enrollmentType: EnrollmentType.EST,
-      applicationId
+      applicationId,
+      auditLogInfo: auditLogInfo && {
+        ...auditLogInfo,
+        actor: { type: ActorType.EST_ACCOUNT, metadata: { profileId } }
+      }
     });
 
     if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {

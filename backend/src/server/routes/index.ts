@@ -3646,7 +3646,9 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     queueService,
     userDAL,
-    identityDAL
+    identityDAL,
+    certificateProfileDAL,
+    auditLogService
   });
 
   const certificateIssuanceQueue = certificateIssuanceQueueFactory({
@@ -3727,7 +3729,8 @@ export const registerRoutes = async (
     [ApprovalPolicyType.CertRequest]: certRequestApprovalResourceFactory({
       approvalPolicyDAL,
       certificateApprovalService,
-      certificateRequestDAL
+      certificateRequestDAL,
+      certificateRequestService
     }) as TApprovalResourceRegistry[ApprovalPolicyType],
     [ApprovalPolicyType.CertCodeSigning]: codeSigningApprovalResourceFactory({
       approvalPolicyDAL,
@@ -3947,7 +3950,8 @@ export const registerRoutes = async (
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
     licenseService,
-    telemetryService
+    telemetryService,
+    auditLogService
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({

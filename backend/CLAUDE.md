@@ -1055,6 +1055,14 @@ windows and a late flush never share a counter), and the job writes one summary 
 for. To collapse another event, call it instead of `createAuditLog` and add
 `TAuditLogCollapseSummary` to that event's metadata type so the summary fields are typed.
 
+`CERTIFICATE_ISSUANCE_FAILED` is recorded by `recordCertificateIssuanceFailure`
+(`services/certificate-common/certificate-issuance-audit-fns.ts`), collapsed the same way. The
+synchronous paths record it only when the caller passes `auditLogInfo` to
+`issueCertificateFromProfile`, `signCertificateFromProfile`, `orderCertificate` or `renewCertificate`,
+so a new route or protocol handler that issues certificates must pass it. Asynchronous failures are
+recorded where the request leaves pending, in `certificateRequestService.updateCertificateRequestStatus`,
+with a `PLATFORM` actor, so write a failed request through it rather than through the DAL.
+
 ### Server Plugins
 
 Key plugins in `src/server/plugins/`:

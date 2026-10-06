@@ -1,7 +1,7 @@
 import { TProjectPermission } from "@app/lib/types";
 import { TResolvedCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
 
-import { CertificateRequestStatus } from "../certificate-common/certificate-constants";
+import { CertificateIssuanceOperation, CertificateRequestStatus } from "../certificate-common/certificate-constants";
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
 
 export { CertificateRequestStatus };
@@ -56,6 +56,7 @@ export type TUpdateCertificateRequestStatusDTO = {
   certificateRequestId: string;
   status: CertificateRequestStatus;
   errorMessage?: string;
+  operation?: CertificateIssuanceOperation;
 };
 
 export type TAttachCertificateToRequestDTO = {

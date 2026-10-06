@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -49,6 +50,7 @@ import {
 } from "@app/services/certificate-authority/certificate-authority-maps";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import { recordCertificateIssuanceFailure } from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { recordNewCertificateQuotaKey } from "@app/services/certificate-common/certificate-quota-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -199,6 +201,7 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
 };
 
 export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3ServiceFactory>;
@@ -362,7 +365,8 @@ export const certificateV3ServiceFactory = ({
   licenseService,
   usageCounterDAL,
   keyStore,
-  telemetryService
+  telemetryService,
+  auditLogService
 }: TCertificateV3ServiceFactoryDep) => {
   const $quotaDeps = { projectDAL, licenseService, usageCounterDAL, keyStore };
 
@@ -551,7 +555,61 @@ export const certificateV3ServiceFactory = ({
     return application?.name ?? null;
   };
 
-  const issueCertificateFromProfile = async ({
+  const $recordIssuanceFailure = async ({
+    auditLogInfo,
+    actorOrgId,
+    projectId,
+    profileId,
+    error,
+    metadata
+  }: {
+    auditLogInfo?: AuditLogInfo;
+    actorOrgId: string;
+    projectId?: string;
+    profileId?: string | null;
+    error: unknown;
+    metadata: Omit<
+      Parameters<typeof recordCertificateIssuanceFailure>[1]["metadata"],
+      "certificateProfileId" | "profileName" | "applicationName"
+    >;
+  }) => {
+    if (!auditLogInfo) return;
+    try {
+      const profile = profileId ? await certificateProfileDAL.findById(profileId) : undefined;
+      const resolvedProjectId = projectId ?? profile?.projectId;
+      if (!resolvedProjectId) return;
+
+      // The ids come from the caller, so never write into another org's audit log.
+      const project = await projectDAL.findById(resolvedProjectId);
+      if (project?.orgId !== actorOrgId) return;
+
+      const applicationName = await $resolveApplicationName(metadata.applicationId);
+      await recordCertificateIssuanceFailure(auditLogService, {
+        auditLogInfo,
+        projectId: resolvedProjectId,
+        error,
+        metadata: {
+          ...metadata,
+          ...(profile && { certificateProfileId: profile.id, profileName: profile.slug }),
+          ...(!metadata.caId && profile?.caId && { caId: profile.caId }),
+          ...(applicationName && { applicationName })
+        }
+      });
+    } catch (lookupError) {
+      logger.warn(lookupError, `Failed to record certificate issuance failure [operation=${metadata.operation}]`);
+    }
+  };
+
+  const $commonNameFromCsr = (csr?: string) => {
+    if (!csr) return undefined;
+    try {
+      return extractCertificateRequestFromCSR(csr).commonName || undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const $issueCertificateFromProfile = async ({
     profileId,
     certificateRequest,
     metadata,
@@ -1286,7 +1344,7 @@ export const certificateV3ServiceFactory = ({
     };
   };
 
-  const signCertificateFromProfile = async ({
+  const $signCertificateFromProfile = async ({
     profileId,
     csr,
     validity,
@@ -1779,7 +1837,7 @@ export const certificateV3ServiceFactory = ({
     };
   };
 
-  const orderCertificate = async ({
+  const $orderCertificate = async ({
     profileId,
     certificateOrder,
     metadata,
@@ -2316,8 +2374,97 @@ export const certificateV3ServiceFactory = ({
     reportCertificateIssued: $reportCertificateIssued
   });
 
+  const issueCertificateFromProfile = async (dto: TIssueCertificateFromProfileDTO) => {
+    try {
+      return await $issueCertificateFromProfile(dto);
+    } catch (error) {
+      await $recordIssuanceFailure({
+        auditLogInfo: dto.auditLogInfo,
+        actorOrgId: dto.actorOrgId,
+        profileId: dto.profileId,
+        error,
+        metadata: {
+          operation: CertificateIssuanceOperation.ISSUE,
+          enrollmentType: EnrollmentType.API,
+          commonName: dto.certificateRequest.commonName,
+          applicationId: dto.applicationId
+        }
+      });
+      throw error;
+    }
+  };
+
+  const signCertificateFromProfile = async (dto: TSignCertificateFromProfileDTO) => {
+    try {
+      return await $signCertificateFromProfile(dto);
+    } catch (error) {
+      await $recordIssuanceFailure({
+        auditLogInfo: dto.auditLogInfo,
+        actorOrgId: dto.actorOrgId,
+        profileId: dto.profileId,
+        error,
+        metadata: {
+          operation: CertificateIssuanceOperation.SIGN,
+          enrollmentType: dto.enrollmentType,
+          commonName: $commonNameFromCsr(dto.csr),
+          applicationId: dto.applicationId
+        }
+      });
+      throw error;
+    }
+  };
+
+  const orderCertificate = async (dto: TOrderCertificateFromProfileDTO) => {
+    try {
+      return await $orderCertificate(dto);
+    } catch (error) {
+      await $recordIssuanceFailure({
+        auditLogInfo: dto.auditLogInfo,
+        actorOrgId: dto.actorOrgId,
+        profileId: dto.profileId,
+        error,
+        metadata: {
+          operation: CertificateIssuanceOperation.ORDER,
+          enrollmentType: EnrollmentType.API,
+          commonName: dto.certificateOrder.commonName || $commonNameFromCsr(dto.certificateOrder.csr),
+          applicationId: dto.applicationId
+        }
+      });
+      throw error;
+    }
+  };
+
+  const renewCertificate = async (dto: Parameters<typeof renewalService.renewCertificate>[0]) => {
+    try {
+      return await renewalService.renewCertificate(dto);
+    } catch (error) {
+      const certificate = dto.auditLogInfo
+        ? await certificateDAL.findById(dto.certificateId).catch(() => undefined)
+        : undefined;
+      if (certificate) {
+        await $recordIssuanceFailure({
+          auditLogInfo: dto.auditLogInfo,
+          actorOrgId: dto.actorOrgId,
+          projectId: certificate.projectId,
+          profileId: certificate.profileId,
+          error,
+          metadata: {
+            operation: CertificateIssuanceOperation.RENEW,
+            enrollmentType: EnrollmentType.API,
+            originalCertificateId: certificate.id,
+            commonName: certificate.commonName,
+            ...(certificate.caId && { caId: certificate.caId }),
+            ...(certificate.applicationId && { applicationId: certificate.applicationId })
+          }
+        });
+      }
+      throw error;
+    }
+  };
+
   return {
     ...renewalService,
+    renewCertificate,
     issueCertificateFromProfile,
     signCertificateFromProfile,
     orderCertificate,

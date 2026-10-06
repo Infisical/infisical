@@ -30,10 +30,12 @@ import {
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { assertCaSupportsCustomExtensions } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "@app/services/certificate-common/certificate-csr-utils";
+import { recordCertificateIssuanceFailure } from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { validateCertificateRequestLicense } from "@app/services/certificate-common/certificate-utils";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
@@ -104,7 +106,7 @@ type TPkiScepServiceFactoryDep = {
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
-  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog" | "createCollapsedAuditLog">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
@@ -515,7 +517,9 @@ export const pkiScepServiceFactory = ({
         parsed,
         csrPem,
         ttl,
-        applicationId
+        applicationId,
+        isRenewal: false,
+        clientIp
       });
     } catch (err) {
       // Notify the validator that post-validation issuance failed.
@@ -776,7 +780,9 @@ export const pkiScepServiceFactory = ({
       parsed,
       csrPem,
       ttl,
-      applicationId
+      applicationId,
+      isRenewal: true,
+      clientIp
     });
 
     if (result.status === ScepIssuanceStatus.Pending) {
@@ -863,7 +869,7 @@ export const pkiScepServiceFactory = ({
 
   // For internal CAs signs directly via signCertificateFromProfile.
   // For external CAs, creates a cert request and queues async issuance.
-  const issueOrQueueCertificate = async ({
+  const $issueOrQueueCertificate = async ({
     profile,
     project,
     caType,
@@ -1033,6 +1039,46 @@ export const pkiScepServiceFactory = ({
     }
 
     return { status: ScepIssuanceStatus.Pending };
+  };
+
+  const issueOrQueueCertificate = async ({
+    isRenewal,
+    clientIp,
+    ...params
+  }: Parameters<typeof $issueOrQueueCertificate>[0] & { isRenewal: boolean; clientIp: string }) => {
+    try {
+      return await $issueOrQueueCertificate(params);
+    } catch (error) {
+      let operation =
+        params.caType === CaType.INTERNAL ? CertificateIssuanceOperation.SIGN : CertificateIssuanceOperation.ORDER;
+      if (isRenewal) operation = CertificateIssuanceOperation.RENEW;
+
+      let commonName: string | undefined;
+      try {
+        commonName = extractCertificateRequestFromCSR(params.csrPem).commonName || undefined;
+      } catch {
+        commonName = undefined;
+      }
+
+      await recordCertificateIssuanceFailure(auditLogService, {
+        auditLogInfo: {
+          ipAddress: clientIp,
+          actor: { type: ActorType.SCEP_ACCOUNT, metadata: { profileId: params.profile.id } }
+        },
+        projectId: params.profile.projectId,
+        error,
+        metadata: {
+          operation,
+          enrollmentType: EnrollmentType.SCEP,
+          certificateProfileId: params.profile.id,
+          profileName: params.profile.slug,
+          ...(params.profile.caId && { caId: params.profile.caId }),
+          commonName,
+          ...(params.applicationId && { applicationId: params.applicationId })
+        }
+      });
+      throw error;
+    }
   };
 
   const handleGetCertInitial = async ({

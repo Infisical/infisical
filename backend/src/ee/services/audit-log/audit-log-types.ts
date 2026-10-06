@@ -47,6 +47,8 @@ import {
   CrlReason
 } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
 import type { ExternalMigrationImportStatus } from "@app/services/external-migration/external-migration-types";
@@ -469,6 +471,7 @@ export enum EventType {
   AUTOMATED_RENEW_SUBSCRIBER_CERT = "automated-renew-subscriber-cert",
   AUTOMATED_RENEW_CERTIFICATE = "automated-renew-certificate",
   AUTOMATED_RENEW_CERTIFICATE_FAILED = "automated-renew-certificate-failed",
+  CERTIFICATE_ISSUANCE_FAILED = "certificate-issuance-failed",
   LIST_PKI_SUBSCRIBER_CERTS = "list-pki-subscriber-certs",
   GET_SUBSCRIBER_ACTIVE_CERT_BUNDLE = "get-subscriber-active-cert-bundle",
   CREATE_KMS = "create-kms",
@@ -3558,6 +3561,24 @@ interface AutomatedRenewCertificateFailed {
     profileId: string;
     renewBeforeDays: string;
     profileName: string;
+    error: string;
+  };
+}
+
+interface CertificateIssuanceFailedEvent {
+  type: EventType.CERTIFICATE_ISSUANCE_FAILED;
+  metadata: TAuditLogCollapseSummary & {
+    operation: CertificateIssuanceOperation;
+    enrollmentType?: EnrollmentType;
+    certificateProfileId?: string;
+    profileName?: string;
+    caId?: string;
+    certificateRequestId?: string;
+    originalCertificateId?: string;
+    commonName?: string;
+    applicationId?: string;
+    applicationName?: string;
+    errorName: string;
     error: string;
   };
 }
@@ -8591,6 +8612,7 @@ export type Event =
   | CancelCertificateRequestEvent
   | AutomatedRenewCertificate
   | AutomatedRenewCertificateFailed
+  | CertificateIssuanceFailedEvent
   | UserLoginEvent
   | SelectOrganizationEvent
   | SelectSubOrganizationEvent

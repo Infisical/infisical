@@ -403,6 +403,7 @@ export const certificateIssuanceQueueFactory = ({
       basicConstraints,
       customExtensions
     } = data;
+    const issuanceOperation = isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER;
 
     const setPending = async (message: string) => {
       if (!certificateRequestId || !certificateRequestDAL) return;
@@ -550,6 +551,7 @@ export const certificateIssuanceQueueFactory = ({
               await certificateRequestService.updateCertificateRequestStatus({
                 certificateRequestId,
                 status: CertificateRequestStatus.FAILED,
+                operation: issuanceOperation,
                 errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
               });
             } catch (statusUpdateError) {
@@ -616,6 +618,7 @@ export const certificateIssuanceQueueFactory = ({
               await certificateRequestService.updateCertificateRequestStatus({
                 certificateRequestId,
                 status: CertificateRequestStatus.FAILED,
+                operation: issuanceOperation,
                 errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
               });
             } catch (statusUpdateError) {
@@ -687,6 +690,7 @@ export const certificateIssuanceQueueFactory = ({
               await certificateRequestService.updateCertificateRequestStatus({
                 certificateRequestId,
                 status: CertificateRequestStatus.FAILED,
+                operation: issuanceOperation,
                 errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
               });
             } catch (statusUpdateError) {
@@ -756,6 +760,7 @@ export const certificateIssuanceQueueFactory = ({
               await certificateRequestService.updateCertificateRequestStatus({
                 certificateRequestId,
                 status: CertificateRequestStatus.FAILED,
+                operation: issuanceOperation,
                 errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
               });
             } catch (statusUpdateError) {
@@ -827,6 +832,7 @@ export const certificateIssuanceQueueFactory = ({
               await certificateRequestService.updateCertificateRequestStatus({
                 certificateRequestId,
                 status: CertificateRequestStatus.FAILED,
+                operation: issuanceOperation,
                 errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
               });
             } catch (statusUpdateError) {
@@ -1105,6 +1111,7 @@ export const certificateIssuanceQueueFactory = ({
               await certificateRequestService.updateCertificateRequestStatus({
                 certificateRequestId,
                 status: CertificateRequestStatus.FAILED,
+                operation: issuanceOperation,
                 errorMessage: `Failed to attach certificate: ${attachError instanceof Error ? attachError.message : String(attachError)}`
               });
             } catch (statusUpdateError) {
@@ -1228,7 +1235,7 @@ export const certificateIssuanceQueueFactory = ({
           profileId,
           applicationId: scopedApplicationId,
           enrollmentType: telemetryProfile?.enrollmentType ?? EnrollmentType.API,
-          operation: isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER
+          operation: issuanceOperation
         });
       }
     } catch (error: unknown) {
@@ -1260,6 +1267,7 @@ export const certificateIssuanceQueueFactory = ({
           await certificateRequestService.updateCertificateRequestStatus({
             certificateRequestId,
             status: CertificateRequestStatus.FAILED,
+            operation: issuanceOperation,
             errorMessage: isAcmeTerminal ? errorMessage : `Certificate issuance failed: ${errorMessage}`
           });
           logger.info(`Updated certificate request ${certificateRequestId} status to failed due to issuance error`);
@@ -1303,6 +1311,7 @@ export const certificateIssuanceQueueFactory = ({
               await certificateRequestService.updateCertificateRequestStatus({
                 certificateRequestId,
                 status: CertificateRequestStatus.FAILED,
+                operation: job.data.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
                 errorMessage: `AWS ACM DNS validation did not complete after ${maxAttempts} attempts: ${error.message}`
               });
               logger.info(

@@ -41,10 +41,12 @@ import {
   TCertificateIssuanceQueueFactory,
   TIssueCertificateFromProfileJobData
 } from "@app/services/certificate-authority/certificate-issuance-queue";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "@app/services/certificate-common/certificate-csr-utils";
+import { recordCertificateIssuanceFailure } from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { validateCertificateRequestLicense } from "@app/services/certificate-common/certificate-utils";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
@@ -185,7 +187,7 @@ type TPkiAcmeServiceFactoryDep = {
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
   acmeChallengeService: Pick<TPkiAcmeChallengeServiceFactory, "markChallengeAsReady">;
   pkiAcmeQueueService: Pick<TPkiAcmeQueueServiceFactory, "queueChallengeValidation">;
-  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog" | "createCollapsedAuditLog">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "findStepsByPolicyId">;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy" | "matchPolicy">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "create" | "updateById" | "transitionFromPending">;
@@ -1503,7 +1505,6 @@ export const pkiAcmeServiceFactory = ({
           certIssuanceJobData = result.certIssuanceJobData;
         } catch (exp) {
           logger.error(exp, "Failed to sign certificate");
-          // TODO: audit log the error
           if (issuedCertificateId) {
             // The certificate is already issued and committed, and its certificate request is marked
             // ISSUED against this order, so marking the order invalid here would strand a real
@@ -1514,6 +1515,24 @@ export const pkiAcmeServiceFactory = ({
               message: "Failed to finalize certificate issuance"
             });
           }
+          await recordCertificateIssuanceFailure(auditLogService, {
+            auditLogInfo: {
+              ...auditLogInfo,
+              actor: { type: ActorType.ACME_ACCOUNT, metadata: { profileId, accountId } }
+            },
+            projectId: profile.projectId,
+            error: exp,
+            metadata: {
+              operation:
+                caType === CaType.INTERNAL ? CertificateIssuanceOperation.SIGN : CertificateIssuanceOperation.ORDER,
+              enrollmentType: EnrollmentType.ACME,
+              certificateProfileId: profileId,
+              profileName: profile.slug,
+              ...(profile.caId && { caId: profile.caId }),
+              commonName: certificateRequest.commonName || undefined,
+              ...(accountApplicationId && { applicationId: accountApplicationId })
+            }
+          });
           await acmeOrderDAL.updateById(orderId, {
             csr,
             status: AcmeOrderStatus.Invalid,
