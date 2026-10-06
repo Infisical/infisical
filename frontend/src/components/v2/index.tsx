@@ -1,7 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 export * from "./Accordion";
 export * from "./Alert";
-export * from "./Breadcrumb";
 export * from "./Button";
 export * from "./Card";
 export * from "./Checkbox";

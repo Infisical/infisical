@@ -12,11 +12,32 @@ The backend code quality guide is imported below, so it is always in context for
 
 All commands run from the `backend/` directory:
 
-- `npm run dev` — start dev server with tsx watch + pino-pretty logging
-- `npm run build` — production build via tsup with sourcemaps
+- `npm run dev` — start dev server with tsx watch + pino-pretty logging (`dev:docker` is the same with the debugger on 9229)
+- `npm run build` — production build via tsdown (`tsdown.config.ts`) with sourcemaps
 - `npm run lint:fix` — ESLint autofix
 - `npm run type:check` — TypeScript check (uses 8GB heap)
 - `make reviewable-api` (from repo root) — runs `lint:fix` + `type:check` (run before PRs)
+
+The backend runs on Node 26. TypeScript files run directly through tsx (dev server, scripts, the
+`*-dev` knex commands, and the e2e environment's migration loading); there is no ts-node.
+
+### Build (tsdown)
+
+`tsdown` compiles every module to its own `dist/**/*.mjs` (unbundled ESM) and rewrites `@app/*` to
+relative paths itself. Invariants that a config change can silently break:
+
+- **The output extension stays `.mjs`.** knex records each migration's file name, extension included, in
+  `infisical_migrations`, so production rows are `*.mjs`. A different extension makes every applied
+  migration look unknown and the boot check refuses to start.
+- **`main` stays the first entry, and entry paths stay absolute.** Rolldown orders each file's imports by
+  execution order, walking entries in order; a glob that sorts another entry ahead of `main` hoists its
+  imports above the telemetry instrumentation. Object entries ignore `root`, so relative paths nest every
+  other module under `dist/src/`.
+- **Rolldown reorders imports, even within one file.** Never rely on import order for a global side effect
+  that another package needs; import it explicitly where it is needed (see `reflect-metadata` in
+  `lib/crypto/pqc/pqc-algorithm.ts`).
+- **`deps.onlyBundle: []` fails the build if a `node_modules` package would be inlined.** That means
+  `src/` imports a package that `package.json` does not declare; declare it instead of loosening the guard.
 
 ### Testing
 
@@ -983,6 +1004,8 @@ EE routes register before community routes so they can override/extend endpoints
 **PAM**: Before working on any `pam-*` service or router, read [`src/ee/services/pam/CLAUDE.md`](src/ee/services/pam/CLAUDE.md) for a high-level map of the PAM backend — module layout, permission model, and non-obvious invariants. It is intentionally a concept map, not a spec: read the referenced code for implementation detail. If you add a feature, keep any addition there brief (a concept or invariant, not code mechanics).
 
 **Agent Vault**: the same applies to the `agent-vault-*` services and routers; the concept map is [`src/ee/services/agent-vault/CLAUDE.md`](src/ee/services/agent-vault/CLAUDE.md). PAM and Agent Vault are the two **org-scoped products**: one implicit project per org, resolved lazily, whose roles collapse to admin or member. Anything that branches on `ProjectType.PAM` (metering emits, predefined roles, the billable-project count, invite grants) almost always needs an Agent Vault arm too.
+
+**Dynamic secret lease secrets needed at revoke time go in `dynamic_secret_leases.encryptedLeaseData`**, never in `externalEntityId` or `config` (both plaintext, and `externalEntityId` is returned by every lease route and logged in audit events). A provider opts in by listing the `create()` `data` keys in `persistedLeaseFields`; the lease service encrypts them with the project's SecretManager key and every revoke path passes them back as `metadata.leaseData`. Lease routes return `SanitizedDynamicSecretLeaseSchema` so the column never reaches a response. Secret *config* fields are listed separately in `DYNAMIC_SECRET_SECRET_FIELDS` (`providers/redact.ts`), as dotted paths so nested secrets work (`clientAuth.clientSecret`): reads strip them via `redactStoredInputs`, and an update that omits one keeps the stored value via `restoreOmittedSecretFields`, because the update merge is shallow.
 
 **Gateways: there is only one generation.** Gateway v1 (`ee/services/gateway`, `lib/gateway`, the QUIC
 transport over `@infisical/quic`, and `/api/v1/gateways`) is gone; `gateway-v2` and `gateway-pool` are the

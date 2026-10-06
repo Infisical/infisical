@@ -1,4 +1,4 @@
-import crypto from "node:crypto";
+import crypto, { webcrypto } from "node:crypto";
 
 const BLIND_INDEX_CONTEXT = "infisical-secret-value-blind-index-v1";
 
@@ -30,7 +30,7 @@ export const deriveSecretValueBlindIndexKey = async (kmsDataKey: Buffer): Promis
 const importBlindIndexKey = (blindIndexKey: Buffer) =>
   crypto.subtle.importKey("raw", blindIndexKey, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
 
-const signBlindIndex = async (secretValue: Buffer, cryptoKey: CryptoKey): Promise<string> => {
+const signBlindIndex = async (secretValue: Buffer, cryptoKey: webcrypto.CryptoKey): Promise<string> => {
   const signature = await crypto.subtle.sign("HMAC", cryptoKey, secretValue);
 
   return Buffer.from(signature).toString("hex");
@@ -56,7 +56,7 @@ export const generateSecretValueBlindIndexFromKmsKey = async (
 // import for each one adds threadpool work that changes nothing in the output. Lazy, because most
 // callers of a cipher pair never hash anything.
 export const createSecretValueBlindIndexer = (kmsDataKey: Buffer) => {
-  let cryptoKey: Promise<CryptoKey> | undefined;
+  let cryptoKey: Promise<webcrypto.CryptoKey> | undefined;
 
   const getCryptoKey = () => {
     if (!cryptoKey) {
