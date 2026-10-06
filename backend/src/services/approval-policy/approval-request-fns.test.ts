@@ -42,7 +42,7 @@ describe("upsertApprovalRequestStepDecision", () => {
 
     const result = await upsertApprovalRequestStepDecision(
       { stepId: "step-1", approverUserId: "user-1", decision: ApprovalRequestApprovalDecision.Approved, comment: "ok" },
-      deps,
+      deps as unknown as Parameters<typeof upsertApprovalRequestStepDecision>[1],
       TX
     );
 
@@ -63,7 +63,7 @@ describe("upsertApprovalRequestStepDecision", () => {
 
     const result = await upsertApprovalRequestStepDecision(
       { stepId: "step-1", approverUserId: "user-1", decision: ApprovalRequestApprovalDecision.Rejected },
-      deps,
+      deps as unknown as Parameters<typeof upsertApprovalRequestStepDecision>[1],
       TX
     );
 

@@ -261,18 +261,108 @@ describe("Secret change request lifecycle on a policy on the global approval sys
     ]);
   });
 
-  test("reading details and merging are refused until the bridge supports them", async () => {
+  test("reading details is refused until the bridge supports it", async () => {
     for await (const requestId of requestIds) {
-      const responses = await Promise.all([getRequest(requestId), mergeRequest(requestId)]);
-      for (const res of responses) {
-        expect(res.statusCode).toBe(400);
-        expect(res.json().message).toBe(BRIDGE_MESSAGE);
-      }
-
-      expect(await getDb()(TableName.ApprovalRequests).where({ id: requestId }).first()).toMatchObject({
-        status: ApprovalRequestStatus.Open
-      });
+      const res = await getRequest(requestId);
+      expect(res.statusCode).toBe(400);
+      expect(res.json().message).toBe(BRIDGE_MESSAGE);
     }
+  });
+
+  test("a request without enough approvals cannot be merged", async () => {
+    const [createRequestId] = requestIds;
+    const db = getDb();
+
+    const mergeRes = await mergeRequest(createRequestId);
+    expect(mergeRes.statusCode).toBe(400);
+    expect(mergeRes.json().message).toMatch(/needs 1 approval\(s\) on step 1 and has 0/);
+
+    expect(await db(TableName.ApprovalRequests).where({ id: createRequestId }).first()).toMatchObject({
+      status: ApprovalRequestStatus.Open
+    });
+    expect(
+      await db(TableName.SecretChangeRequests).where({ approvalRequestId: createRequestId }).first()
+    ).toMatchObject({ hasMerged: false, statusChangedByUserId: null });
+  });
+
+  test("merging the approved create request closes it on the global tables and creates the secret", async () => {
+    const [createRequestId] = requestIds;
+    const db = getDb();
+
+    expect((await reviewRequest(createRequestId, ApprovalStatus.APPROVED)).statusCode).toBe(200);
+
+    const mergeRes = await mergeRequest(createRequestId);
+    expect(mergeRes.statusCode).toBe(200);
+    expect(mergeRes.json().approval).toMatchObject({
+      id: createRequestId,
+      hasMerged: true,
+      status: RequestState.Closed,
+      statusChangedByUserId: seedData1.id,
+      conflicts: []
+    });
+
+    expect(await db(TableName.ApprovalRequests).where({ id: createRequestId }).first()).toMatchObject({
+      status: ApprovalRequestStatus.Closed
+    });
+    const change = await db(TableName.SecretChangeRequests).where({ approvalRequestId: createRequestId }).first();
+    expect(change).toMatchObject({ hasMerged: true, statusChangedByUserId: seedData1.id, conflicts: [] });
+
+    const secretRes = await getSecret(secretPath, NEW_KEY);
+    expect(secretRes.statusCode).toBe(200);
+    expect(secretRes.json().secret.secretValue).toBe("value");
+
+    const [commit] = await db(TableName.SecretApprovalRequestSecretV2).where({ secretChangeId: change?.id });
+    expect(commit.secretId).toBe(secretRes.json().secret.id);
+  });
+
+  test("a merged request cannot be merged again", async () => {
+    const [createRequestId] = requestIds;
+
+    const mergeRes = await mergeRequest(createRequestId);
+    expect(mergeRes.statusCode).toBe(400);
+    expect(mergeRes.json().message).toBe("This secret approval request has already been merged.");
+  });
+
+  test("merging the approved update request changes the secret value", async () => {
+    const [, updateRequestId] = requestIds;
+
+    const mergeRes = await mergeRequest(updateRequestId);
+    expect(mergeRes.statusCode).toBe(200);
+    expect(mergeRes.json().approval).toMatchObject({ hasMerged: true, status: RequestState.Closed, conflicts: [] });
+
+    expect((await getSecret(secretPath, BASE_KEY)).json().secret.secretValue).toBe("changed");
+  });
+
+  test("merging the delete request removes the secret and a later update on it merges with a conflict", async () => {
+    const [, , deleteRequestId] = requestIds;
+    const db = getDb();
+
+    const staleUpdateRes = await updateSecret(secretPath, BASE_KEY, "stale");
+    expect(staleUpdateRes.statusCode).toBe(200);
+    const staleUpdateRequestId = staleUpdateRes.json().approval.id as string;
+    requestIds.push(staleUpdateRequestId);
+    expect((await reviewRequest(staleUpdateRequestId, ApprovalStatus.APPROVED)).statusCode).toBe(200);
+    const staleChange = await db(TableName.SecretChangeRequests)
+      .where({ approvalRequestId: staleUpdateRequestId })
+      .first();
+    const [staleCommit] = await db(TableName.SecretApprovalRequestSecretV2).where({ secretChangeId: staleChange?.id });
+
+    const deleteMergeRes = await mergeRequest(deleteRequestId);
+    expect(deleteMergeRes.statusCode).toBe(200);
+    expect(deleteMergeRes.json().approval).toMatchObject({ hasMerged: true, status: RequestState.Closed });
+    expect((await getSecret(secretPath, BASE_KEY)).statusCode).toBe(404);
+
+    const staleMergeRes = await mergeRequest(staleUpdateRequestId);
+    expect(staleMergeRes.statusCode).toBe(200);
+    expect(staleMergeRes.json().approval).toMatchObject({
+      hasMerged: true,
+      status: RequestState.Closed,
+      conflicts: [{ op: SecretOperations.Update, secretId: staleCommit.id }]
+    });
+    expect(
+      await db(TableName.SecretChangeRequests).where({ approvalRequestId: staleUpdateRequestId }).first()
+    ).toMatchObject({ hasMerged: true, conflicts: [{ op: SecretOperations.Update, secretId: staleCommit.id }] });
+    expect((await getSecret(secretPath, BASE_KEY)).statusCode).toBe(404);
   });
 });
 

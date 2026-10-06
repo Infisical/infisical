@@ -223,13 +223,23 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByRequestIdBridgeSecretV2 = async (requestId: string, tx?: Knex) => {
+  const $findBridgeSecretV2 = async (
+    where: { requestId: string } | { secretChangeId: string },
+    errorName: string,
+    tx?: Knex
+  ) => {
     try {
       const doc = await (tx || db.replicaNode())({
         secVerTag: TableName.SecretTag
       })
         .from(TableName.SecretApprovalRequestSecretV2)
-        .where({ requestId })
+        .where((qb) => {
+          if ("requestId" in where) {
+            void qb.where(`${TableName.SecretApprovalRequestSecretV2}.requestId`, where.requestId);
+          } else {
+            void qb.where(`${TableName.SecretApprovalRequestSecretV2}.secretChangeId`, where.secretChangeId);
+          }
+        })
         .leftJoin(
           TableName.SecretApprovalRequestSecretTagV2,
           `${TableName.SecretApprovalRequestSecretV2}.id`,
@@ -382,9 +392,16 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
         secretVersion: secretVersion?.[0]
       }));
     } catch (error) {
-      throw new DatabaseError({ error, name: "FindByRequestId" });
+      throw new DatabaseError({ error, name: errorName });
     }
   };
+
+  const findByRequestIdBridgeSecretV2 = (requestId: string, tx?: Knex) =>
+    $findBridgeSecretV2({ requestId }, "FindByRequestIdBridgeSecretV2", tx);
+
+  const findBySecretChangeIdBridgeSecretV2 = (secretChangeId: string, tx?: Knex) =>
+    $findBridgeSecretV2({ secretChangeId }, "FindBySecretChangeIdBridgeSecretV2", tx);
+
   // special query for migration to v2 secret
   const findByProjectId = async (projectId: string, tx?: Knex) => {
     try {
@@ -445,6 +462,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
     updateV2ById: secretApprovalRequestSecretV2Orm.updateById,
     findByRequestId,
     findByRequestIdBridgeSecretV2,
+    findBySecretChangeIdBridgeSecretV2,
     bulkUpdateNoVersionIncrement,
     findByProjectId,
     insertApprovalSecretTags: secretApprovalRequestSecretTagOrm.insertMany,

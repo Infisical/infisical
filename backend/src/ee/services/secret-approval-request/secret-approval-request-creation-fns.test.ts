@@ -6,6 +6,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { SecretOperations } from "@app/services/secret/secret-types";
 
 import { secretApprovalRequestCreationFnsFactory } from "./secret-approval-request-creation-fns";
+import { TSecretApprovalRequestCommit } from "./secret-approval-request-types";
 
 const TX = { isTx: "caller" } as unknown as Knex;
 const OWN_TX = { isTx: "own" } as unknown as Knex;
@@ -151,7 +152,9 @@ describe("createSecretApprovalRequestV2Bridge", () => {
 });
 
 describe("createSecretApprovalRequest", () => {
-  const commits = [{ op: SecretOperations.Delete, secretBlindIndex: "blind-1", secretId: "secret-1" }];
+  const commits = [
+    { op: SecretOperations.Delete, secretBlindIndex: "blind-1", secretId: "secret-1" }
+  ] as unknown as TSecretApprovalRequestCommit[];
 
   test("writes the request and its v1 commits inside the caller's transaction", async () => {
     const { fns, secretApprovalRequestDAL, secretApprovalRequestSecretDAL } = build();

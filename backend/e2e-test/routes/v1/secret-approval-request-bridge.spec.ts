@@ -233,14 +233,20 @@ describe("Secret approval request bridge routing", () => {
       { approverUserId: seedData1.id, decision: ApprovalStatus.APPROVED }
     ]);
 
-    const responses = await Promise.all([
-      getRequest(approval.id),
-      setRequestStatus(approval.id, RequestState.Closed),
-      mergeRequest(approval.id)
-    ]);
-    responses.forEach((res) => {
+    for await (const res of [getRequest(approval.id), setRequestStatus(approval.id, RequestState.Closed)]) {
       expect(res.statusCode).toBe(400);
       expect(res.json().message).toBe(BRIDGE_MESSAGE);
+    }
+
+    const mergeRes = await mergeRequest(approval.id);
+    expect(mergeRes.statusCode).toBe(200);
+    expect(mergeRes.json().approval).toMatchObject({ hasMerged: true, status: RequestState.Closed });
+    expect(await db(TableName.ApprovalRequests).where({ id: approval.id }).first()).toMatchObject({
+      status: ApprovalRequestStatus.Closed
+    });
+    expect(await db(TableName.SecretChangeRequests).where({ approvalRequestId: approval.id }).first()).toMatchObject({
+      hasMerged: true,
+      statusChangedByUserId: seedData1.id
     });
   });
 });

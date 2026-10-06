@@ -33,6 +33,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { ChangeRequestWebhookAction, TWebhookActor, WebhookEvents } from "@app/services/webhook/webhook-types";
 
+import { TSecretApprovalBridgeCommit } from "../secret-approval-request/secret-approval-request-merge-fns";
 import { TSecretChangePolicy } from "../secret-change-policy-bridge/secret-change-policy-bridge-types";
 import { TSecretChangeRequest } from "./secret-change-request-bridge-types";
 
@@ -100,6 +101,17 @@ export const toSecretChangeRequest = ({
   bypassReason: secretChangeRequest.bypassReason ?? null,
   commitMessage: secretChangeRequest.commitMessage ?? null,
   commits
+});
+
+export const toSecretChangeRequestCommit = ({
+  secret,
+  secretVersion,
+  tags,
+  oldSecretMetadata,
+  ...commit
+}: TSecretApprovalBridgeCommit): TSecretApprovalRequestsSecretsV2 => ({
+  ...commit,
+  secretVersion: secretVersion?.id ?? null
 });
 
 export const toSecretChangeRequestReview = (
@@ -212,11 +224,12 @@ export const secretChangeRequestFnsFactory = ({
     project,
     environment,
     environmentName,
-    secretPath
+    secretPath,
+    isBypassed
   }: Pick<
     TSecretChangeRequestSideEffectsDTO,
     "approvalRequest" | "secretChangeRequest" | "policy" | "project" | "environment" | "secretPath"
-  > & { action: ChangeRequestWebhookAction; environmentName: string }) => {
+  > & { action: ChangeRequestWebhookAction; environmentName: string; isBypassed?: boolean }) => {
     const requestedBy: TWebhookActor | null = approvalRequest.requesterId
       ? {
           type: ActorType.USER,
@@ -244,7 +257,7 @@ export const secretChangeRequestFnsFactory = ({
             url: buildApprovalUrl(project.orgId, project.id, approvalRequest.id),
             status: approvalRequest.status,
             hasMerged: secretChangeRequest.hasMerged,
-            isBypassed: Boolean(secretChangeRequest.bypassReason),
+            isBypassed: isBypassed ?? Boolean(secretChangeRequest.bypassReason),
             policy: { id: policy.id, name: policy.name, enforcementLevel: policy.enforcementLevel },
             requestedBy,
             createdAt: approvalRequest.createdAt.toISOString(),
