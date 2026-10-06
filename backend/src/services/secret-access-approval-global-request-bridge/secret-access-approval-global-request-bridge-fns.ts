@@ -491,7 +491,10 @@ export const composeSecretAccessRequestRows = ({
 };
 
 type TSecretAccessRequestComposedRow = ReturnType<typeof composeSecretAccessRequestRows>[number];
-type TSecretAccessRequestListPolicy = Omit<NonNullable<TSecretAccessRequestComposedRow["policy"]>, "id" | "deletedAt"> & {
+type TSecretAccessRequestListPolicy = Omit<
+  NonNullable<TSecretAccessRequestComposedRow["policy"]>,
+  "id" | "deletedAt"
+> & {
   id: string | null;
   deletedAt: Date | null;
 };

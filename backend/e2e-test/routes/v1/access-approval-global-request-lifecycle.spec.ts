@@ -234,7 +234,7 @@ describe("Access approval request lifecycle on the global system", () => {
     expect(approved.policy.id).toBeNull();
     expect(approved.policy.deletedAt).toBeTruthy();
     expect(approved.policy.secretPath).toBe("/lifecycle-deleted-policy");
-    expect(approved.environment).toBe(seedData1.environment.slug);
+    expect(approved.environmentName).toBe(seedData1.environment.slug);
     expect(approved.status).toBe("revoked");
     expect(approved.privilege).toBeNull();
 

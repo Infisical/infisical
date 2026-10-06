@@ -474,7 +474,7 @@ describe("isPendingSecretAccessRequestItem", () => {
   const pendingItem = {
     policy: { deletedAt: null },
     status: ApprovalStatus.PENDING,
-    reviewers: [{ userId: "approver-a", status: ApprovalRequestApprovalDecision.Approved, isOrgMembershipActive: true }],
+    reviewers: [{ status: ApprovalRequestApprovalDecision.Approved }],
     expiresAt: null
   };
 
@@ -488,9 +488,7 @@ describe("isPendingSecretAccessRequestItem", () => {
       isPendingSecretAccessRequestItem(
         {
           ...pendingItem,
-          reviewers: [
-            { userId: "approver-a", status: ApprovalRequestApprovalDecision.Rejected, isOrgMembershipActive: true }
-          ]
+          reviewers: [{ status: ApprovalRequestApprovalDecision.Rejected }]
         },
         now
       )
