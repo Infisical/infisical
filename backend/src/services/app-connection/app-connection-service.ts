@@ -409,7 +409,7 @@ export const appConnectionServiceFactory = ({
     const appConnection = await appConnectionDAL.findById(connectionId);
 
     // Checked before any permission or app check, so a connection outside the scope reads exactly like a missing one.
-    if (!appConnection || (scope && appConnection.projectId !== scope.projectId))
+    if (!appConnection || appConnection.orgId !== actor.orgId || (scope && appConnection.projectId !== scope.projectId))
       throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     if (appConnection.projectId) {
@@ -773,7 +773,7 @@ export const appConnectionServiceFactory = ({
 
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection || (scope && appConnection.projectId !== scope.projectId))
+    if (!appConnection || appConnection.orgId !== actor.orgId || (scope && appConnection.projectId !== scope.projectId))
       throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     await enterpriseAppCheck(
@@ -1139,7 +1139,7 @@ export const appConnectionServiceFactory = ({
   ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection || (scope && appConnection.projectId !== scope.projectId))
+    if (!appConnection || appConnection.orgId !== actor.orgId || (scope && appConnection.projectId !== scope.projectId))
       throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     if (appConnection.projectId) {
@@ -1208,7 +1208,8 @@ export const appConnectionServiceFactory = ({
     const allowedApps = Array.isArray(app) ? app : [app];
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+    if (!appConnection || appConnection.orgId !== actor.orgId)
+      throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     const connectionApp = appConnection.app as AppConnection;
 
@@ -1341,7 +1342,8 @@ export const appConnectionServiceFactory = ({
   const findAppConnectionUsageById = async (app: AppConnection, connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+    if (!appConnection || appConnection.orgId !== actor.orgId)
+      throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     const { permission } = await permissionService.getOrgPermission({
       actorId: actor.id,
@@ -1372,7 +1374,7 @@ export const appConnectionServiceFactory = ({
   ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection || (scope && appConnection.projectId !== scope.projectId))
+    if (!appConnection || appConnection.orgId !== actor.orgId || (scope && appConnection.projectId !== scope.projectId))
       throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     if (appConnection.app !== app)
