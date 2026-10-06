@@ -244,34 +244,33 @@ export const pamAccessRequestServiceFactory = ({
             });
           }
         }
+      }
 
-        // Legacy Slack configs can only be removed, so every config sent back must match a stored one.
-        const storedKeys = (await getNotificationConfigs(folderId)).map(toNotificationConfigKey);
+      // Legacy Slack configs can only be removed, so every config sent back must match a stored one.
+      await pamFolderNotificationConfigDAL.transaction(async (tx) => {
+        const unmatchedKeyById = new Map(
+          (await pamFolderNotificationConfigDAL.findByFolderIdWithIntegration(folderId, tx)).map((row) => [
+            row.id,
+            toNotificationConfigKey({
+              workflowIntegrationId: row.workflowIntegrationId,
+              channels: parseNotificationChannels(row.channels),
+              events: parseNotificationEvents(row.events)
+            })
+          ])
+        );
         for (const config of notificationConfigs) {
-          const index = storedKeys.indexOf(toNotificationConfigKey(config));
-          if (index === -1) {
+          const key = toNotificationConfigKey(config);
+          const matchedId = [...unmatchedKeyById.keys()].find((id) => unmatchedKeyById.get(id) === key);
+          if (!matchedId) {
             throw new BadRequestError({
               message:
                 "Slack notifications on PAM folders can no longer be added or edited, only removed. Create an alert on the folder instead."
             });
           }
-          storedKeys.splice(index, 1);
+          unmatchedKeyById.delete(matchedId);
         }
-      }
-
-      await pamFolderNotificationConfigDAL.transaction(async (tx) => {
-        await pamFolderNotificationConfigDAL.delete({ folderId }, tx);
-        if (notificationConfigs.length > 0) {
-          await pamFolderNotificationConfigDAL.insertMany(
-            notificationConfigs.map((config) => ({
-              folderId,
-              workflowIntegrationId: config.workflowIntegrationId,
-              // arrays must be pre-serialized or knex binds them as PG arrays instead of jsonb
-              channels: JSON.stringify(config.channels),
-              events: JSON.stringify(config.events)
-            })),
-            tx
-          );
+        if (unmatchedKeyById.size > 0) {
+          await pamFolderNotificationConfigDAL.delete({ $in: { id: [...unmatchedKeyById.keys()] } }, tx);
         }
       });
     }

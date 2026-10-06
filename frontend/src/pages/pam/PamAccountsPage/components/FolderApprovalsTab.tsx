@@ -537,7 +537,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Alerts</CardTitle>
+          <CardTitle>Alerts</CardTitle>
           <CardDescription>
             Notify email, Slack, webhook, or PagerDuty channels about access request activity for
             accounts in this folder.

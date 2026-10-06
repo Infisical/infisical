@@ -116,11 +116,9 @@ export const pamFolderAlertProviderFactory = ({
   permissionService,
   licenseService
 }: TPamFolderAlertProviderDep): IEventAlertProvider<TPamAccessRequestTarget> => {
-  const buildViewUrl = async (alert: TAlertContext): Promise<string> => {
-    const base = `${getConfig().SITE_URL}/organizations/${alert.orgId}/pam`;
-    if (alert.eventType === PamAccessRequestEvent.Requested) return `${base}/approval-requests`;
-    return `${base}/accounts/${alert.resourceId}`;
-  };
+  // The folder's Approvals tab lists every request, while the approval inbox only shows the visitor's own queue.
+  const buildViewUrl = async (alert: TAlertContext): Promise<string> =>
+    `${getConfig().SITE_URL}/organizations/${alert.orgId}/pam/accounts?folderId=${alert.resourceId}&tab=approvals`;
 
   const findEventTargets = async (input: TFindEventTargetsInput): Promise<TPamAccessRequestTarget[]> => {
     if (!input.projectId || !input.resourceId) return [];
@@ -176,7 +174,6 @@ export const pamFolderAlertProviderFactory = ({
 
   const buildPayload = (alert: TAlertContext, targets: TPamAccessRequestTarget[], viewUrl: string): TAlertPayload => {
     const eventType = alert.eventType as PamAccessRequestEvent;
-    const isSingleRequest = eventType === PamAccessRequestEvent.Requested && targets.length === 1;
 
     return {
       alert: {
@@ -186,7 +183,7 @@ export const pamFolderAlertProviderFactory = ({
         ...(alert.projectId ? { projectId: alert.projectId } : {}),
         resourceType: alert.resourceType,
         ...(alert.resourceId ? { resourceId: alert.resourceId } : {}),
-        viewUrl: isSingleRequest ? `${viewUrl}?requestId=${targets[0].requestId}` : viewUrl
+        viewUrl
       },
       eventKey: eventType,
       eventLabel: EVENT_LABELS[eventType],
@@ -281,8 +278,11 @@ export const pamFolderAlertProviderFactory = ({
         type: EventType.PAM_FOLDER_ALERT_CHANNEL_TEST,
         metadata: {
           ...(test.resourceId ? { folderId: test.resourceId } : {}),
+          folderName: test.resourceName ?? null,
           alertId: test.alertId,
+          alertName: test.alertName ?? null,
           channelId: test.channelId,
+          channelName: test.channelName ?? null,
           channelType: test.channelType,
           success: test.success,
           deliveredTo: test.deliveredTo,
@@ -293,6 +293,7 @@ export const pamFolderAlertProviderFactory = ({
 
     const metadata = {
       ...(input.alert.resourceId ? { folderId: input.alert.resourceId } : {}),
+      folderName: input.alert.resourceName ?? null,
       alertId: input.alert.id,
       name: input.alert.name,
       eventType: input.alert.eventType
@@ -316,6 +317,13 @@ export const pamFolderAlertProviderFactory = ({
     assertPermission,
     assertResourceInScope,
     assertChannelTypesAllowed,
-    getAuditEvent
+    getAuditEvent,
+    getResourceNames: async ({ orgId, resourceIds }) =>
+      new Map(
+        (await pamFolderAlertDAL.findFolderNamesByIds({ orgId, folderIds: resourceIds })).map((folder) => [
+          folder.id,
+          folder.name
+        ])
+      )
   };
 };

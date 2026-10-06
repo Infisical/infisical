@@ -1419,7 +1419,6 @@ export const approvalPolicyServiceFactory = ({
           );
 
           nextStepToNotifyInner = nextStep;
-          await $emitEvent({ event: ApprovalNotificationEvent.Requested, request: locked }, tx);
         } else {
           const completedReq = await approvalRequestDAL.updateById(
             requestId,

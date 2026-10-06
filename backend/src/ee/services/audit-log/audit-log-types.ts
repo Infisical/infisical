@@ -6745,7 +6745,13 @@ interface PamApprovalConfigUpdateEvent {
   };
 }
 
-type TPamFolderAlertEventMetadata = { folderId?: string; alertId: string; name: string; eventType: string };
+type TPamFolderAlertEventMetadata = {
+  folderId?: string;
+  folderName: string | null;
+  alertId: string;
+  name: string;
+  eventType: string;
+};
 
 interface PamFolderAlertCreateEvent {
   type: EventType.PAM_FOLDER_ALERT_CREATE;
@@ -6766,8 +6772,11 @@ interface PamFolderAlertChannelTestEvent {
   type: EventType.PAM_FOLDER_ALERT_CHANNEL_TEST;
   metadata: {
     folderId?: string;
+    folderName: string | null;
     alertId?: string;
+    alertName?: string | null;
     channelId?: string;
+    channelName?: string | null;
     channelType: string;
     success: boolean;
     deliveredTo?: number;
