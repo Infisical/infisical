@@ -102,7 +102,7 @@ export type TExternalKmsGcpSchema = z.infer<typeof ExternalKmsGcpSchema>;
 
 export const SanitizedExternalKmsGcpSchema = ExternalKmsGcpSchema.pick({ gcpRegion: true, keyName: true });
 
-export const ExternalKmsGcpClientSchema = ExternalKmsGcpSchema.pick({ gcpRegion: true }).extend({
+const ExternalKmsGcpClientSchema = ExternalKmsGcpSchema.pick({ gcpRegion: true }).extend({
   credential: ExternalKmsGcpCredentialSchema
 });
 export type TExternalKmsGcpClientSchema = z.infer<typeof ExternalKmsGcpClientSchema>;

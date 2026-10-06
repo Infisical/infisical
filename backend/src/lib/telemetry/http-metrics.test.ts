@@ -114,12 +114,6 @@ const collectPair = async (first: string, second: string): Promise<[DataPoint<nu
 };
 
 describe("api-metrics plugin", () => {
-  // The first import transforms the plugin's whole module graph, which can outlast a test's timeout on
-  // its own. Each test still re-imports after resetModules(), so it binds to its own provider.
-  beforeAll(async () => {
-    await import("@app/server/plugins/api-metrics");
-  }, 30_000);
-
   beforeEach(() => {
     collected = false;
     mockConfig.OTEL_TELEMETRY_COLLECTION_ENABLED = true;

@@ -41,7 +41,7 @@ export const createOnUpdateTrigger = async (knex: Knex, tableName: string) => {
   `);
 
   if (!triggerExists?.rows?.[0]?.exists) {
-    await knex.raw(`
+    return knex.raw(`
       CREATE TRIGGER "${tableName}_updatedAt"
       BEFORE UPDATE ON ${tableName}
       FOR EACH ROW

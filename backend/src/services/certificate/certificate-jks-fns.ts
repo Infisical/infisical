@@ -1,5 +1,5 @@
 /* eslint-disable no-bitwise */
-import type { KeyObject, webcrypto } from "node:crypto";
+import type { JsonWebKey, KeyObject } from "node:crypto";
 
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
@@ -102,7 +102,7 @@ const JKS_SUPPORTED_EC_CURVES = new Set(["P-256", "P-384", "P-521"]);
 
 // Java cannot load an EC key encoded with explicit curve parameters, so re-encode it with the named curve.
 const toNamedCurveEcKey = (key: KeyObject): KeyObject => {
-  let jwk: webcrypto.JsonWebKey | undefined;
+  let jwk: JsonWebKey | undefined;
   try {
     jwk = key.export({ format: "jwk" });
   } catch {

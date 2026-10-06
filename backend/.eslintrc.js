@@ -1,72 +1,4 @@
 /* eslint-env node */
-const { rules: bestPractices } = require("eslint-config-airbnb-base/rules/best-practices");
-const { rules: es6 } = require("eslint-config-airbnb-base/rules/es6");
-const { rules: imports } = require("eslint-config-airbnb-base/rules/imports");
-const { rules: style } = require("eslint-config-airbnb-base/rules/style");
-const { rules: variables } = require("eslint-config-airbnb-base/rules/variables");
-
-// What eslint-config-airbnb-typescript/base added on top of airbnb-base. It has no release that
-// supports typescript-eslint 8, so it lives here. Its formatting rules are left out: they no longer
-// exist in typescript-eslint 8, and Prettier owns formatting.
-const airbnbTypescriptRules = {
-  camelcase: "off",
-  "@typescript-eslint/naming-convention": [
-    "error",
-    { selector: "variable", format: ["camelCase", "PascalCase", "UPPER_CASE"] },
-    { selector: "function", format: ["camelCase", "PascalCase"] },
-    { selector: "typeLike", format: ["PascalCase"] }
-  ],
-  "default-param-last": "off",
-  "@typescript-eslint/default-param-last": bestPractices["default-param-last"],
-  "dot-notation": "off",
-  "@typescript-eslint/dot-notation": bestPractices["dot-notation"],
-  "no-array-constructor": "off",
-  "@typescript-eslint/no-array-constructor": style["no-array-constructor"],
-  "no-dupe-class-members": "off",
-  "@typescript-eslint/no-dupe-class-members": es6["no-dupe-class-members"],
-  "no-empty-function": "off",
-  "@typescript-eslint/no-empty-function": bestPractices["no-empty-function"],
-  "no-implied-eval": "off",
-  "no-new-func": "off",
-  "@typescript-eslint/no-implied-eval": bestPractices["no-implied-eval"],
-  "no-loop-func": "off",
-  "@typescript-eslint/no-loop-func": bestPractices["no-loop-func"],
-  "no-magic-numbers": "off",
-  "@typescript-eslint/no-magic-numbers": bestPractices["no-magic-numbers"],
-  "no-redeclare": "off",
-  "@typescript-eslint/no-redeclare": bestPractices["no-redeclare"],
-  "no-shadow": "off",
-  "@typescript-eslint/no-shadow": variables["no-shadow"],
-  "no-throw-literal": "off",
-  "@typescript-eslint/only-throw-error": bestPractices["no-throw-literal"],
-  "no-unused-expressions": "off",
-  "@typescript-eslint/no-unused-expressions": bestPractices["no-unused-expressions"],
-  "no-unused-vars": "off",
-  "no-use-before-define": "off",
-  "@typescript-eslint/no-use-before-define": variables["no-use-before-define"],
-  "no-useless-constructor": "off",
-  "@typescript-eslint/no-useless-constructor": es6["no-useless-constructor"],
-  "require-await": "off",
-  "@typescript-eslint/require-await": bestPractices["require-await"],
-  "no-return-await": "off",
-  "@typescript-eslint/return-await": [bestPractices["no-return-await"], "in-try-catch"],
-  "@typescript-eslint/no-unused-vars": [
-    variables["no-unused-vars"][0],
-    // typescript-eslint 8 changed the default to "all"; "none" keeps the behavior of v6.
-    { ...variables["no-unused-vars"][1], caughtErrors: "none" }
-  ],
-  "import/no-extraneous-dependencies": [
-    imports["import/no-extraneous-dependencies"][0],
-    {
-      ...imports["import/no-extraneous-dependencies"][1],
-      devDependencies: imports["import/no-extraneous-dependencies"][1].devDependencies.flatMap((glob) => {
-        const tsGlob = glob.replace(/\bjs(x?)\b/g, "ts$1");
-        return tsGlob === glob ? [glob] : [glob, tsGlob];
-      })
-    }
-  ]
-};
-
 module.exports = {
   env: {
     es6: true,
@@ -77,6 +9,7 @@ module.exports = {
     "plugin:@typescript-eslint/recommended",
     "plugin:@typescript-eslint/recommended-type-checked",
     "airbnb-base",
+    "airbnb-typescript/base",
     "plugin:prettier/recommended",
     "prettier"
   ],
@@ -87,40 +20,8 @@ module.exports = {
     sourceType: "module",
     tsconfigRootDir: __dirname
   },
-  settings: {
-    "import/parsers": { "@typescript-eslint/parser": [".ts", ".tsx", ".d.ts"] },
-    "import/resolver": { node: { extensions: [".mjs", ".js", ".json", ".ts", ".d.ts"] } },
-    "import/extensions": [".js", ".mjs", ".jsx", ".ts", ".tsx", ".d.ts"],
-    "import/external-module-folders": ["node_modules", "node_modules/@types"]
-  },
   root: true,
   overrides: [
-    {
-      files: ["*.ts", "*.tsx"],
-      rules: {
-        // Already checked, more thoroughly, by the TypeScript compiler.
-        "constructor-super": "off",
-        "getter-return": "off",
-        "no-const-assign": "off",
-        "no-dupe-args": "off",
-        "no-dupe-class-members": "off",
-        "no-dupe-keys": "off",
-        "no-func-assign": "off",
-        "no-import-assign": "off",
-        "no-new-symbol": "off",
-        "no-obj-calls": "off",
-        "no-redeclare": "off",
-        "no-setter-return": "off",
-        "no-this-before-super": "off",
-        "no-undef": "off",
-        "no-unreachable": "off",
-        "no-unsafe-negation": "off",
-        "valid-typeof": "off",
-        "import/named": "off",
-        "import/no-named-as-default-member": "off",
-        "import/no-unresolved": "off"
-      }
-    },
     {
       files: ["./src/**/*"],
       excludedFiles: ["./src/lib/telemetry/*"],
@@ -175,16 +76,6 @@ module.exports = {
   ],
 
   rules: {
-    ...airbnbTypescriptRules,
-    // typescript-eslint 8 widened these rules and they report ~1,000 findings on code that predates
-    // the upgrade. Off until a follow-up re-enables them and fixes the findings.
-    "@typescript-eslint/no-unnecessary-type-assertion": "off",
-    "@typescript-eslint/await-thenable": "off",
-    "@typescript-eslint/no-base-to-string": "off",
-    "@typescript-eslint/prefer-promise-reject-errors": "off",
-    "@typescript-eslint/return-await": "off",
-    // v6's ban-types allowed empty interfaces; keep that while v8 still rejects a bare `{}` type.
-    "@typescript-eslint/no-empty-object-type": ["error", { allowInterfaces: "always" }],
     "@typescript-eslint/no-empty-function": "off",
     "@typescript-eslint/no-unsafe-enum-comparison": "off",
     "no-void": "off",

@@ -283,7 +283,7 @@ export const secretSyncQueueFactory = ({
     });
     const actorOrgId = secretSync.connection.orgId;
 
-    const decryptSecretValue = (value?: Buffer | null) =>
+    const decryptSecretValue = (value?: Buffer | undefined | null) =>
       value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : "";
 
     const { expandSecretReferences } = expandSecretReferencesFactory({

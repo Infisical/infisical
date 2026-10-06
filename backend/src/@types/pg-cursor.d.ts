@@ -19,9 +19,7 @@ declare module "pg-cursor" {
     constructor(text: string, values?: unknown[] | null, config?: CursorConfig);
 
     submit(connection: Connection): void;
-
     read(rows: number): Promise<TRow[]>;
-
     close(): Promise<void>;
   }
 

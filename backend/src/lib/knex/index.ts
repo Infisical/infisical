@@ -120,7 +120,7 @@ export type TOrmify<Tname extends keyof Tables> = {
     data: readonly Tables[Tname]["insert"][],
     onConflictField: keyof Tables[Tname]["base"] | Array<keyof Tables[Tname]["base"]>,
     tx?: Knex,
-    mergeColumns?: (keyof Knex.ResolveTableType<Knex.TableType<Tname>, "update">)[]
+    mergeColumns?: (keyof Knex.ResolveTableType<Knex.TableType<Tname>, "update">)[] | undefined
   ) => Promise<Tables[Tname]["base"][]>;
   updateById: (
     id: string,

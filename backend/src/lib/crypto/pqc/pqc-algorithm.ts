@@ -1,8 +1,6 @@
-// tsyringe throws at load unless this polyfill is already installed, and the build may reorder imports.
-import "reflect-metadata";
-
 // eslint-disable-next-line import/no-extraneous-dependencies -- transitive dependency of @peculiar/x509
 import { AlgorithmIdentifier } from "@peculiar/asn1-x509";
+// eslint-disable-next-line import/no-extraneous-dependencies -- transitive dependency of @peculiar/x509
 import { container } from "tsyringe";
 
 import { pqcNameToOid, pqcOidToName } from "./pqc-utils";

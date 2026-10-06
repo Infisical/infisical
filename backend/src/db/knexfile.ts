@@ -1,7 +1,9 @@
+// eslint-disable-next-line
+import "ts-node/register";
+
 import dotenv from "dotenv";
 import type { Knex } from "knex";
 import path from "path";
-
 import { initLogger } from "@app/lib/logger";
 
 import { DbApplicationName } from "./instance";

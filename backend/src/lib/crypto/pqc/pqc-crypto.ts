@@ -1,3 +1,4 @@
+// eslint-disable-next-line import/no-extraneous-dependencies -- transitive deps of @peculiar/x509
 import { PrivateKeyInfo } from "@peculiar/asn1-pkcs8";
 // eslint-disable-next-line import/no-extraneous-dependencies -- transitive dep of @peculiar/x509
 import { AsnConvert, OctetString } from "@peculiar/asn1-schema";

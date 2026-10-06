@@ -781,7 +781,7 @@ describe("Agent Vault V1 Router", async () => {
     // Enrollment only checks that it is a live CA. ECDSA P-256, because the FIPS image refuses Ed25519.
     const createProxyCaPem = async () => {
       const algorithm = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
-      const keys = await globalThis.crypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
+      const keys = await crypto.webcrypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
       const certificate = await x509.X509CertificateGenerator.createSelfSigned({
         name: "CN=Agent Vault Variables Test CA",
         serialNumber: "01",
