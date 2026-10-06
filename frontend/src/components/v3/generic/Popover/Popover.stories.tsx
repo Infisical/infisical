@@ -1,21 +1,12 @@
-import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { CheckIcon, InfoIcon, PencilIcon } from "lucide-react";
 
 import { Button } from "../Button";
-import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "../Dialog";
 import { Field, FieldDescription, FieldLabel } from "../Field";
 import { IconButton } from "../IconButton";
 import { Input } from "../Input";
-import {
-  InteractiveHoverPopover,
-  InteractiveHoverPopoverContent,
-  InteractiveHoverPopoverTrigger,
-  Popover,
-  PopoverAnchor,
-  PopoverContent,
-  PopoverTrigger
-} from "./Popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "./Popover";
+
 /**
  * Reach for `Popover` when the content is contextual but interactive (forms,
  * pickers, action menus). Use `Tooltip` for read-only label-style hints, `Dialog`
@@ -277,145 +268,4 @@ export const WithAnchor: Story = {
       </PopoverContent>
     </Popover>
   )
-};
-
-function InteractiveHelp({
-  label = "Coming Soon",
-  container
-}: {
-  label?: string;
-  container?: HTMLElement | null;
-}) {
-  return (
-    <InteractiveHoverPopover side="bottom" align="center" sideOffset={5} delay={50} closeDelay={0}>
-      <InteractiveHoverPopoverTrigger asChild>
-        <Button variant="outline">{label}</Button>
-      </InteractiveHoverPopoverTrigger>
-      <InteractiveHoverPopoverContent container={container} aria-label="Coming Soon services">
-        <p className="mb-2">Infisical is constantly adding support for more services.</p>
-        <p>
-          If you don&apos;t see the third-party service you&apos;re looking for,{" "}
-          <a
-            href="https://community.infisical.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline"
-          >
-            let us know in the community forum
-          </a>{" "}
-          or{" "}
-          <a
-            href="https://github.com/Infisical/infisical/discussions"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline"
-          >
-            make a request on GitHub
-          </a>
-          .
-        </p>
-      </InteractiveHoverPopoverContent>
-    </InteractiveHoverPopover>
-  );
-}
-
-export const InteractiveHoverLinks: Story = {
-  name: "Example: Interactive Hover Links",
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Use the three separately named InteractiveHoverPopover parts for lightweight interactive help with links. The new Root is uncontrolled only: defaultOpen sets its initial state and onOpenChange reports notifications, not acceptance or veto. Content stays inline immediately after Trigger, so a focused trigger can hover open and Tab directly to both links. Hover opening and exit retain existing focus only when content has not received focus; cold Enter opens the native dialog, then Tab reaches links. Escape from a focused link returns focus to the trigger after native exit. The shown composition requires nonclipping ancestors; it does not replace the ordinary click Popover or guarantee rapid exit-window parent dismissal. The 50ms delay is configured here, not presented as a measured timing guarantee."
-      }
-    }
-  },
-  render: () => (
-    <div className="flex flex-col items-start gap-4">
-      <Button variant="ghost">Before help</Button>
-      <InteractiveHelp />
-      <Button variant="ghost">After help</Button>
-      <p className="max-w-sm text-sm text-muted">
-        Hover without moving focus, then use native Tab and Escape to inspect the links.
-      </p>
-    </div>
-  )
-};
-
-export const InteractiveHoverParentBoundaries: Story = {
-  name: "Boundary: Default Dialog Clipping",
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Default Dialog Content is transformed and scroll-clipping: the inline hover panel below its trigger is visibly clipped in the first example. The second example explicitly owns a nonclipping Dialog composition using the public className API; no Dialog defaults, tokens or lifecycle are changed. These are distinct contracts, not universal parent parity. Short picker-parent containment, Loader rendering, actual picker scrolling and rapid second Escape need separately attributed acceptance; a fitting popup does not make an off-screen trigger usable."
-      }
-    }
-  },
-  render: () => (
-    <div className="flex flex-col items-start gap-4">
-      <p className="max-w-sm text-sm text-muted">
-        Unsupported default clipping and an explicitly owned nonclipping composition.
-      </p>
-      <Dialog>
-        <DialogTrigger asChild>
-          <Button variant="outline">Default Dialog: clipped hover panel</Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogTitle>Unsupported default clipping</DialogTitle>
-          <DialogDescription>
-            This parent keeps its defaults. The inline help below is clipped by its boundary.
-          </DialogDescription>
-          <InteractiveHelp label="Hover to see the clipping" />
-          <p className="text-sm text-muted">
-            Popup visibility is not guaranteed in this composition.
-          </p>
-        </DialogContent>
-      </Dialog>
-      <Dialog>
-        <DialogTrigger asChild>
-          <Button variant="outline">Owned nonclipping Dialog</Button>
-        </DialogTrigger>
-        <DialogContent className="overflow-visible">
-          <DialogTitle>Owned nonclipping composition</DialogTitle>
-          <DialogDescription>
-            Inline content remains adjacent to its trigger, with no parent Escape handshake.
-          </DialogDescription>
-          <InteractiveHelp />
-          <p className="text-sm text-muted">
-            This is an explicit composition, not a default change.
-          </p>
-        </DialogContent>
-      </Dialog>
-    </div>
-  )
-};
-
-function UnsupportedPortalOrder() {
-  const [outerContainer, setOuterContainer] = useState<HTMLDivElement | null>(null);
-
-  return (
-    <div className="flex max-w-lg flex-col items-start gap-4">
-      <p className="text-sm text-muted">
-        Negative examples: pointer visibility does not imply direct keyboard link order.
-      </p>
-      <InteractiveHelp label="Body portal: unsupported hover order" container={document.body} />
-      <Button variant="ghost">Following control before the body-portal links</Button>
-      <InteractiveHelp label="Outer portal: unsupported hover order" container={outerContainer} />
-      <Button variant="ghost">Following control before the outer-portal links</Button>
-      <div ref={setOuterContainer} />
-    </div>
-  );
-}
-
-export const InteractiveHoverPortalBoundaries: Story = {
-  name: "Boundary: Body and Outer Portal Keyboard Order",
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Do not default interactive hover help to body or outer-parent portals. In these negative examples, hover a naturally focused trigger and press Tab: the following control occurs before its links and native outside-focus dismissal can close the panel. An explicit portal target is supported only when the caller owns a nonclipping, DOM-adjacent location. Radix alone renders, positions, focuses and dismisses; public Floating UI separately calculates internal safePolygon placement metadata. The native corridor depends on placement side and actual reference/content rectangles, not alignment equivalence between calculations. Root shares requested placement/gap/padding inputs, but two independent placement calculations remain a maintenance obligation through flips and viewport/scroll/boundary changes. No metadata output, floating styles or extra focus manager are applied."
-      }
-    }
-  },
-  render: () => <UnsupportedPortalOrder />
 };
