@@ -1,20 +1,19 @@
+import { useState } from "react";
 import { TriangleAlert } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
-import { cn } from "@app/components/v3/utils";
-import { isInfisicalCloud } from "@app/helpers/platform";
-import { BillingV2CatalogProduct, BillingV2Organization, BillingV2Overview } from "@app/hooks/api";
+import {
+  BillingV2BreakdownScopeKind,
+  BillingV2CatalogProduct,
+  BillingV2Organization,
+  BillingV2Overview
+} from "@app/hooks/api";
 
 import { BillingV2RenderState } from "../billing-v2-view-types";
-import { BillingHeaderCard } from "./cards/BillingHeaderCard";
-import { DetailsCard } from "./cards/DetailsCard";
-import { InvoicesCard } from "./cards/InvoicesCard";
-import { PaymentCard } from "./cards/PaymentCard";
-import { ProductsCard } from "./cards/ProductsCard";
 import { ErrorPanel } from "./states/ErrorPanel";
-import { BillingSectionSkeleton, StatTilesSkeleton } from "./states/OverviewSkeleton";
 import { Banner } from "./Banner";
 import { RootOrgFilter } from "./RootOrgFilter";
+import { TabbedOverview, TabbedOverviewSkeleton } from "./TabbedOverview";
 import { TrialBanners } from "./TrialBanners";
 
 export type OverviewProps = {
@@ -24,13 +23,15 @@ export type OverviewProps = {
   onManageSubscription: () => void;
   onUpgrade: (productId: string) => void;
   onSetCommitment: (productId: string) => void;
-  onViewBreakdown: (productId: string) => void;
+  onViewBreakdown: (productId: string, dimensionKey?: string) => void;
   rootOrgs: BillingV2Organization[];
   rootOrgCount: number;
   isRootOrgsLoading: boolean;
   isReloading: boolean;
   selectedOrgId: string;
   onSelectOrg: (orgId: string) => void;
+  breakdownOrgId: string;
+  breakdownScope: BillingV2BreakdownScopeKind;
   onSearchOrgs: (search: string) => void;
   showOrgFilter: boolean;
   onUpdatePayment: () => void;
@@ -59,6 +60,8 @@ export const Overview = ({
   isReloading,
   selectedOrgId,
   onSelectOrg,
+  breakdownOrgId,
+  breakdownScope,
   onSearchOrgs,
   showOrgFilter,
   onUpdatePayment,
@@ -71,6 +74,7 @@ export const Overview = ({
   onRetry,
   canManageBilling
 }: OverviewProps) => {
+  const [tab, setTab] = useState("overview");
   const orgFilter = showOrgFilter ? (
     <RootOrgFilter
       orgs={rootOrgs}
@@ -83,42 +87,7 @@ export const Overview = ({
   ) : null;
 
   if (subState === "loading" || isReloading) {
-    const isManagedShell = overview ? overview.mode === "managed" : !isInfisicalCloud();
-    const hasHeaderTiles = overview ? overview.subState !== "no-subscription" : true;
-    const keepsBillingHistory = Boolean(
-      overview && (overview.payment || overview.billingDetails || overview.invoices.length > 0)
-    );
-    const hasBillingSection = overview
-      ? overview.isCloud && (overview.subState !== "no-subscription" || keepsBillingHistory)
-      : isInfisicalCloud();
-
-    return (
-      <div className="flex flex-col gap-4">
-        {isManagedShell && (
-          <Banner
-            mode="managed"
-            subState={subState}
-            canManage={false}
-            onUpdatePayment={onUpdatePayment}
-            onManageSubscription={onManageSubscription}
-          />
-        )}
-        {hasHeaderTiles && <StatTilesSkeleton />}
-        <ProductsCard
-          key="products"
-          overview={overview}
-          catalog={catalog}
-          readOnly
-          orgFilter={orgFilter}
-          isReloading
-          onManage={onUpgrade}
-          onSetCommitment={onSetCommitment}
-          onViewBreakdown={onViewBreakdown}
-          onContact={onContact}
-        />
-        {hasBillingSection && <BillingSectionSkeleton />}
-      </div>
-    );
+    return <TabbedOverviewSkeleton orgFilter={orgFilter} />;
   }
 
   if (subState === "error" || !overview) {
@@ -138,100 +107,30 @@ export const Overview = ({
   // products area and show a notice — the customer never reaches a control that would 503.
   const productsReadOnly = isManaged || !canManageBilling || checkoutFrozen;
 
-  const frozenNotice =
-    checkoutFrozen && !isManaged ? (
-      <Alert variant="warning">
-        <TriangleAlert />
-        <AlertTitle>Billing changes are temporarily paused</AlertTitle>
-        <AlertDescription>
-          Purchases and plan changes are unavailable right now. Your current subscription is
-          unaffected; please check back shortly.
-        </AlertDescription>
-      </Alert>
-    ) : null;
-
-  // An enterprise-managed org (billing_method enterprise_*) sees the surface but self-serve is off; the
-  // per-product controls render disabled and this points them to sales. Distinct from checkoutFrozen.
-  const enterpriseNotice =
-    !selfServe && !isManaged ? (
-      <Alert variant="info">
-        <TriangleAlert />
-        <AlertTitle>Managed Billing</AlertTitle>
-        <AlertDescription>
-          Contact your Infisical account manager to adjust products, commitments, or your
-          subscription.
-        </AlertDescription>
-      </Alert>
-    ) : null;
-
-  const showPayment = overview.isCloud && !isManaged;
-
-  const hasBillingHistory =
-    Boolean(overview.payment) || Boolean(overview.billingDetails) || overview.invoices.length > 0;
-
-  const billingSection = !isManaged && (
-    <>
-      <div className="@container">
-        <div className={cn("grid gap-4", showPayment && "@3xl:grid-cols-[2fr_3fr]")}>
-          {showPayment && (
-            <PaymentCard
-              overview={overview}
-              canManage={canManageBilling}
-              onUpdate={onUpdatePayment}
-            />
-          )}
-          <DetailsCard overview={overview} canManage={canManageBilling} onEdit={onEditDetails} />
-        </div>
-      </div>
-      {showPayment && <InvoicesCard invoices={overview.invoices} />}
-    </>
-  );
-
-  if (subState === "no-subscription") {
-    return (
-      <div className="flex flex-col gap-4">
-        {frozenNotice}
-        {enterpriseNotice}
-        <Banner
-          mode={mode}
-          subState={subState}
-          canManage={canManageBilling}
-          paymentAlert={overview.paymentAlert}
-          onUpdatePayment={onUpdatePayment}
-          onManageSubscription={onManageSubscription}
-        />
-        <TrialBanners
-          overview={overview}
-          catalog={catalog}
-          readOnly={productsReadOnly}
-          onManage={onUpgrade}
-          onUpdatePayment={onUpdatePayment}
-          onContact={onContact}
-          onCompleteTrialPayment={onCompleteTrialPayment}
-          isCompletingTrialPayment={isCompletingTrialPayment}
-          hasTrialApproval={hasTrialApproval}
-          onOpenTrialApproval={onOpenTrialApproval}
-        />
-        <ProductsCard
-          key="products"
-          overview={overview}
-          catalog={catalog}
-          readOnly={productsReadOnly}
-          orgFilter={orgFilter}
-          onManage={onUpgrade}
-          onSetCommitment={onSetCommitment}
-          onViewBreakdown={onViewBreakdown}
-          onContact={onContact}
-        />
-        {hasBillingHistory && billingSection}
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-4">
-      {frozenNotice}
-      {enterpriseNotice}
+      {checkoutFrozen && !isManaged && (
+        <Alert variant="warning">
+          <TriangleAlert />
+          <AlertTitle>Billing changes are temporarily paused</AlertTitle>
+          <AlertDescription>
+            Purchases and plan changes are unavailable right now. Your current subscription is
+            unaffected; please check back shortly.
+          </AlertDescription>
+        </Alert>
+      )}
+      {/* An enterprise-managed org (billing_method enterprise_*) sees the surface but self-serve is
+          off; the per-product controls are hidden and this points them to sales. */}
+      {!selfServe && !isManaged && (
+        <Alert variant="info">
+          <TriangleAlert />
+          <AlertTitle>Managed Billing</AlertTitle>
+          <AlertDescription>
+            Contact your Infisical account manager to adjust products, commitments, or your
+            subscription.
+          </AlertDescription>
+        </Alert>
+      )}
       <Banner
         mode={mode}
         subState={subState}
@@ -252,19 +151,23 @@ export const Overview = ({
         hasTrialApproval={hasTrialApproval}
         onOpenTrialApproval={onOpenTrialApproval}
       />
-      <BillingHeaderCard overview={overview} catalog={catalog} />
-      <ProductsCard
-        key="products"
+      <TabbedOverview
+        tab={tab}
+        onTabChange={setTab}
         overview={overview}
         catalog={catalog}
         readOnly={productsReadOnly}
+        canManageBilling={canManageBilling}
         orgFilter={orgFilter}
+        breakdownOrgId={breakdownOrgId}
+        breakdownScope={breakdownScope}
         onManage={onUpgrade}
         onSetCommitment={onSetCommitment}
         onViewBreakdown={onViewBreakdown}
+        onUpdatePayment={onUpdatePayment}
+        onEditDetails={onEditDetails}
         onContact={onContact}
       />
-      {billingSection}
     </div>
   );
 };
