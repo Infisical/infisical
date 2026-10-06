@@ -1287,19 +1287,17 @@ export const CertificatesTable = ({
                                     Manage PKI Syncs
                                   </DropdownMenuItem>
                                 )}
-                              {hasProjectRole("admin") &&
-                                !certificate.applicationId &&
-                                certificate.source !== CertSource.Discovered && (
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setAssignTargetId(certificate.id);
-                                    }}
-                                  >
-                                    <BoxIcon />
-                                    Assign to Application
-                                  </DropdownMenuItem>
-                                )}
+                              {hasProjectRole("admin") && !certificate.applicationId && (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAssignTargetId(certificate.id);
+                                  }}
+                                >
+                                  <BoxIcon />
+                                  Assign to Application
+                                </DropdownMenuItem>
+                              )}
                               {(() => {
                                 if (
                                   !canRevokeCertificate ||

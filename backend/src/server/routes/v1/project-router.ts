@@ -14,9 +14,13 @@ import {
   SortDirection
 } from "@app/db/schemas";
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
+import {
+  AuditLogSettingsResponseSchema,
+  updateAuditLogSettingsBodySchema
+} from "@app/ee/services/audit-log/audit-log-settings-schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
-import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
+import { ApiDocsTags, AUDIT_LOG_SETTINGS, PROJECTS } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { re2Validator } from "@app/lib/zod";
 import { JobState } from "@app/queue/queue-service";
@@ -586,6 +590,21 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      if (req.body.auditLogsRetentionDays !== undefined) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.params.projectId,
+          event: {
+            type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
+            metadata: {
+              scope: "project",
+              auditLogsRetentionDays: req.body.auditLogsRetentionDays
+            }
+          }
+        });
+      }
+
       return {
         project
       };
@@ -709,8 +728,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         orgId: req.permission.orgId,
         projectId: project.id,
         event: {
-          type: EventType.UPDATE_PROJECT,
-          metadata: req.body
+          type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
+          metadata: {
+            scope: "project",
+            auditLogsRetentionDays: req.body.auditLogsRetentionDays
+          }
         }
       });
 
@@ -718,6 +740,84 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         message: "Successfully updated project's audit logs retention period",
         project
       };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/audit-log-settings",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "getProjectAuditLogSettings",
+      tags: [ApiDocsTags.AuditLogs],
+      description: "Get which audit log event classes the project records",
+      params: z.object({
+        projectId: z.string().uuid().describe(AUDIT_LOG_SETTINGS.GET_PROJECT.projectId)
+      }),
+      response: {
+        200: AuditLogSettingsResponseSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const auditLogSettings = await server.services.auditLogSettings.getProjectSettings({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId
+      });
+      return { auditLogSettings };
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/:projectId/audit-log-settings",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "updateProjectAuditLogSettings",
+      tags: [ApiDocsTags.AuditLogs],
+      description: "Update which audit log event classes the project records. Requires the project admin role.",
+      params: z.object({
+        projectId: z.string().uuid().describe(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.projectId)
+      }),
+      body: updateAuditLogSettingsBodySchema(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.isEnabled),
+      response: {
+        200: AuditLogSettingsResponseSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const auditLogSettings = await server.services.auditLogSettings.updateProjectSettings({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        eventClasses: req.body.eventClasses
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
+          metadata: {
+            scope: "project",
+            eventClasses: req.body.eventClasses
+          }
+        }
+      });
+
+      return { auditLogSettings };
     }
   });
 

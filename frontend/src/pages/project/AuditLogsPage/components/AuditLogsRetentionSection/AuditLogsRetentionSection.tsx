@@ -17,10 +17,16 @@ import {
   FieldLabel,
   Input
 } from "@app/components/v3";
-import { useProject, useProjectPermission, useSubscription } from "@app/context";
+import {
+  ProjectPermissionAuditLogsActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission,
+  useSubscription
+} from "@app/context";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { usePopUp } from "@app/hooks";
 import { useUpdateWorkspaceAuditLogsRetention } from "@app/hooks/api/projects/queries";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const formSchema = z.object({
   auditLogsRetentionDays: z.coerce.number().min(0)
@@ -32,7 +38,7 @@ export const AuditLogsRetentionSection = () => {
   const { mutateAsync: updateAuditLogsRetention } = useUpdateWorkspaceAuditLogsRetention();
 
   const { currentProject } = useProject();
-  const { hasProjectRole } = useProjectPermission();
+  const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
@@ -78,30 +84,24 @@ export const AuditLogsRetentionSection = () => {
     });
   };
 
-  // render only for dedicated/self-hosted instances of Infisical
-  if (
-    window.location.origin.includes("https://app.infisical.com") ||
-    window.location.origin.includes("https://gamma.infisical.com")
-  ) {
-    return null;
-  }
+  // Retention is only configurable on dedicated and self-hosted instances.
+  if (isInfisicalCloud()) return null;
 
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const canEdit = permission.can(
+    ProjectPermissionAuditLogsActions.Edit,
+    ProjectPermissionSub.AuditLogs
+  );
   return (
     <>
-      <form
-        onSubmit={handleSubmit(handleAuditLogsRetentionSubmit)}
-        autoComplete="off"
-        className="mb-6"
-      >
-        <Card className="gap-0 overflow-hidden p-0">
-          <CardHeader className="p-6">
-            <CardTitle className="font-alliance">Audit Logs Retention</CardTitle>
+      <form onSubmit={handleSubmit(handleAuditLogsRetentionSubmit)} autoComplete="off">
+        <Card>
+          <CardHeader>
+            <CardTitle>Audit Logs Retention</CardTitle>
             <CardDescription>
               Set the number of days to keep your project audit logs.
             </CardDescription>
           </CardHeader>
-          <CardContent className="max-w-xs px-6 pb-6">
+          <CardContent>
             <Controller
               control={control}
               defaultValue={0}
@@ -115,7 +115,7 @@ export const AuditLogsRetentionSection = () => {
                     type="number"
                     min={1}
                     step={1}
-                    disabled={!isAdmin}
+                    disabled={!canEdit}
                     isError={Boolean(error)}
                   />
                   <FieldError>{error?.message}</FieldError>
@@ -123,15 +123,15 @@ export const AuditLogsRetentionSection = () => {
               )}
             />
           </CardContent>
-          <CardFooter className="min-h-8 justify-end border-t border-neutral/15 bg-neutral/5 p-4">
+          <CardFooter className="justify-end">
             <Button
               variant="project"
               size="sm"
               type="submit"
               isPending={isSubmitting}
-              isDisabled={!isAdmin || !isDirty}
+              isDisabled={!canEdit || !isDirty}
             >
-              Save changes
+              Save Changes
             </Button>
           </CardFooter>
         </Card>
