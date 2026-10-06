@@ -402,6 +402,17 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
   const findBySecretChangeIdBridgeSecretV2 = (secretChangeId: string, tx?: Knex) =>
     $findBridgeSecretV2({ secretChangeId }, "FindBySecretChangeIdBridgeSecretV2", tx);
 
+  const findCommitsBySecretChangeIds = async (secretChangeIds: string[], tx?: Knex) => {
+    if (!secretChangeIds.length) return [];
+    const rows = await secretApprovalRequestSecretV2Orm.find({ $in: { secretChangeId: secretChangeIds } }, { tx });
+    return rows.map(({ id, op, secretId, secretChangeId }) => ({
+      id,
+      op,
+      secretId: secretId ?? null,
+      secretChangeId: secretChangeId as string
+    }));
+  };
+
   // special query for migration to v2 secret
   const findByProjectId = async (projectId: string, tx?: Knex) => {
     try {
@@ -463,6 +474,7 @@ export const secretApprovalRequestSecretDALFactory = (db: TDbClient) => {
     findByRequestId,
     findByRequestIdBridgeSecretV2,
     findBySecretChangeIdBridgeSecretV2,
+    findCommitsBySecretChangeIds,
     bulkUpdateNoVersionIncrement,
     findByProjectId,
     insertApprovalSecretTags: secretApprovalRequestSecretTagOrm.insertMany,

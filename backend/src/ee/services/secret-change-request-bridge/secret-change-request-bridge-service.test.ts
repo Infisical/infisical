@@ -11,6 +11,7 @@ import {
   ApproverType
 } from "@app/services/approval-policy/approval-policy-enums";
 import { ActorType } from "@app/services/auth/auth-type";
+import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "@app/services/secret/secret-fns";
 import { SecretOperations } from "@app/services/secret/secret-types";
 import { ChangeRequestWebhookAction } from "@app/services/webhook/webhook-types";
 
@@ -121,7 +122,10 @@ const MERGED_FOLDER = {
   environmentSlug: "dev",
   environmentName: "Development"
 };
-const CIPHER = { cipher: "secret-manager" };
+const CIPHER = {
+  cipher: "secret-manager",
+  decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => Buffer.from(`plain:${cipherTextBlob.toString()}`)
+};
 const COMMIT_ROWS = [
   {
     id: "commit-1",
@@ -153,6 +157,7 @@ const buildService = ({
       findById: vi.fn().mockResolvedValue(APPROVAL_REQUEST),
       findByIdForUpdate: vi.fn().mockResolvedValue(APPROVAL_REQUEST),
       findStepsByRequestId: vi.fn().mockResolvedValue(requestSteps),
+      findStepsByRequestIds: vi.fn().mockResolvedValue({ "request-1": requestSteps }),
       updateById: vi.fn((id: string, row: Record<string, unknown>) =>
         Promise.resolve({ ...APPROVAL_REQUEST, id, ...row, updatedAt: new Date("2026-03-01") })
       ),
@@ -182,12 +187,17 @@ const buildService = ({
         Promise.resolve({ id, stepId: "step-1", approverUserId: "approver-1", createdAt: REVIEW_CREATED_AT, ...row })
       )
     },
-    approvalPolicyDAL: { findStepsByPolicyId: vi.fn().mockResolvedValue(steps) },
+    approvalPolicyDAL: {
+      findStepsByPolicyId: vi.fn().mockResolvedValue(steps),
+      findBypassersByPolicyIds: vi.fn().mockResolvedValue({})
+    },
     secretChangeRequestDAL: {
       create: vi.fn((row: Record<string, unknown>) =>
         Promise.resolve({ id: "change-1", conflicts: null, bypassReason: null, statusChangedByUserId: null, ...row })
       ),
       findOne: vi.fn().mockResolvedValue(SECRET_CHANGE_REQUEST),
+      findByProjectId: vi.fn().mockResolvedValue({ rows: [], totalCount: 0 }),
+      countByProjectId: vi.fn().mockResolvedValue({ open: 2, closed: 1 }),
       updateById: vi.fn((id: string, row: Record<string, unknown>) =>
         Promise.resolve({
           ...SECRET_CHANGE_REQUEST,
@@ -197,7 +207,18 @@ const buildService = ({
         })
       )
     },
-    permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ hasRole, permission: { can: vi.fn() } }) },
+    permissionService: {
+      getProjectPermission: vi.fn().mockResolvedValue({ hasRole, permission: { can: vi.fn().mockReturnValue(false) } })
+    },
+    membershipUserDAL: {
+      find: vi.fn().mockResolvedValue([{ actorUserId: "approver-1", isActive: true }])
+    },
+    userDAL: {
+      find: vi.fn().mockResolvedValue([
+        { id: "approver-1", email: "approver@example.com", username: "approver", firstName: "App", lastName: "Rover" },
+        { id: "user-1", email: "alice@example.com", username: "alice", firstName: "Alice", lastName: "Smith" }
+      ])
+    },
     licenseService: { getPlan: vi.fn().mockResolvedValue({ secretApproval: true }) },
     userGroupMembershipDAL: {
       findGroupMembershipsByUserIdInOrg: vi.fn().mockResolvedValue([]),
@@ -216,7 +237,8 @@ const buildService = ({
         (rows) => Promise.resolve(rows.map((row, index) => ({ id: `commit-${index}`, ...row })))
       ),
       insertApprovalSecretV2Tags: vi.fn().mockResolvedValue([]),
-      findBySecretChangeIdBridgeSecretV2: vi.fn().mockResolvedValue(COMMIT_ROWS)
+      findBySecretChangeIdBridgeSecretV2: vi.fn().mockResolvedValue(COMMIT_ROWS),
+      findCommitsBySecretChangeIds: vi.fn().mockResolvedValue([])
     },
     secretChangePolicyBridgeService: { findSecretChangePolicyById: vi.fn().mockResolvedValue(policy) }
   };
@@ -875,5 +897,489 @@ describe("secretChangeRequestBridge mergeSecretChangeRequest", () => {
 
     await expect(merge(service)).resolves.toMatchObject({ approval: { hasMerged: true } });
     expect(syncMergedSecrets).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("secretChangeRequestBridge updateSecretChangeRequestStatus", () => {
+  beforeEach(() => {
+    queueChangeRequestWebhook.mockClear();
+  });
+
+  const setStatus = (service: ReturnType<typeof buildService>["service"], overrides: Record<string, unknown> = {}) =>
+    service.updateSecretChangeRequestStatus({
+      approvalId: "request-1",
+      actor: ActorType.USER,
+      actorId: "approver-1",
+      actorOrgId: "org-1",
+      actorAuthMethod: null,
+      status: RequestState.Closed,
+      ...overrides
+    } as Parameters<ReturnType<typeof buildService>["service"]["updateSecretChangeRequestStatus"]>[0]);
+
+  test("closes an open request on both tables under the request lock and queues the webhook", async () => {
+    const { service, deps } = buildService();
+
+    const result = await setStatus(service);
+
+    expect(deps.licenseService.getPlan).toHaveBeenCalledWith("org-1");
+    expect(deps.approvalRequestDAL.findByIdForUpdate).toHaveBeenCalledWith("request-1", OWN_TX);
+    expect(deps.secretChangeRequestDAL.findOne).toHaveBeenCalledWith({ approvalRequestId: "request-1" }, OWN_TX);
+    expect(deps.approvalRequestDAL.updateById).toHaveBeenCalledWith(
+      "request-1",
+      { status: ApprovalRequestStatus.Closed },
+      OWN_TX
+    );
+    expect(deps.secretChangeRequestDAL.updateById).toHaveBeenCalledWith(
+      "change-1",
+      { statusChangedByUserId: "approver-1" },
+      OWN_TX
+    );
+    expect(queueChangeRequestWebhook).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: ChangeRequestWebhookAction.Closed,
+        approvalRequest: expect.objectContaining({ status: ApprovalRequestStatus.Closed }) as unknown,
+        secretChangeRequest: expect.objectContaining({ statusChangedByUserId: "approver-1" }) as unknown,
+        environment: "dev",
+        environmentName: "Development",
+        secretPath: "/app"
+      })
+    );
+    expect(result).toMatchObject({
+      id: "request-1",
+      status: ApprovalRequestStatus.Closed,
+      statusChangedByUserId: "approver-1",
+      slug: "slug-1",
+      hasMerged: false,
+      projectId: "project-1"
+    });
+    expect(result).not.toHaveProperty("commits");
+  });
+
+  test("reopens a closed request", async () => {
+    const { service, deps } = buildService();
+    const closed = { ...APPROVAL_REQUEST, status: ApprovalRequestStatus.Closed };
+    deps.approvalRequestDAL.findById.mockResolvedValue(closed);
+    deps.approvalRequestDAL.findByIdForUpdate.mockResolvedValue(closed);
+
+    await expect(setStatus(service, { status: RequestState.Open })).resolves.toMatchObject({
+      status: ApprovalRequestStatus.Open
+    });
+    expect(queueChangeRequestWebhook).toHaveBeenCalledWith(
+      expect.objectContaining({ action: ChangeRequestWebhookAction.Reopened })
+    );
+  });
+
+  test("refuses when the plan lacks secret approvals", async () => {
+    const { service, deps } = buildService();
+    deps.licenseService.getPlan.mockResolvedValue({ secretApproval: false });
+
+    await expect(setStatus(service)).rejects.toThrow("plan restriction");
+    expect(deps.approvalRequestDAL.findById).not.toHaveBeenCalled();
+  });
+
+  test("reads an unknown id or a request of another type as not found", async () => {
+    const { service, deps } = buildService();
+
+    deps.approvalRequestDAL.findById.mockResolvedValueOnce(null);
+    await expect(setStatus(service)).rejects.toBeInstanceOf(NotFoundError);
+
+    deps.approvalRequestDAL.findById.mockResolvedValueOnce({ ...APPROVAL_REQUEST, type: ApprovalPolicyType.PamAccess });
+    await expect(setStatus(service)).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  test("refuses a non-user actor and a request whose policy is gone", async () => {
+    const { service, deps } = buildService();
+
+    await expect(setStatus(service, { actor: ActorType.IDENTITY })).rejects.toThrow("Must be a user");
+
+    deps.secretChangePolicyBridgeService.findSecretChangePolicyById.mockResolvedValueOnce(null);
+    await expect(setStatus(service)).rejects.toThrow("has been deleted");
+    expect(deps.approvalRequestDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  test("lets a project admin, the requester and a group member change the status but not a stranger", async () => {
+    const { service, deps, hasRole } = buildService();
+
+    hasRole.mockReturnValueOnce(true);
+    await expect(setStatus(service, { actorId: "outsider" })).resolves.toMatchObject({
+      statusChangedByUserId: "outsider"
+    });
+
+    await expect(setStatus(service, { actorId: "user-1" })).resolves.toMatchObject({ statusChangedByUserId: "user-1" });
+
+    deps.userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg.mockResolvedValueOnce([{ groupId: "group-1" }]);
+    await expect(setStatus(service, { actorId: "member-1" })).resolves.toMatchObject({
+      statusChangedByUserId: "member-1"
+    });
+
+    await expect(setStatus(service, { actorId: "stranger" })).rejects.toBeInstanceOf(ForbiddenRequestError);
+  });
+
+  test("refuses a merged request and a request already in the requested status", async () => {
+    const { service, deps } = buildService();
+
+    deps.secretChangeRequestDAL.findOne.mockResolvedValueOnce({ ...SECRET_CHANGE_REQUEST, hasMerged: true });
+    await expect(setStatus(service)).rejects.toThrow("Approval request has been merged");
+
+    await expect(setStatus(service, { status: RequestState.Open })).rejects.toThrow("Approval request is already open");
+
+    deps.approvalRequestDAL.findById.mockResolvedValueOnce({
+      ...APPROVAL_REQUEST,
+      status: ApprovalRequestStatus.Closed
+    });
+    await expect(setStatus(service)).rejects.toThrow("Approval request is already closed");
+    expect(deps.approvalRequestDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("gives up when the request changed between the checks and the lock", async () => {
+    const { service, deps } = buildService();
+
+    deps.approvalRequestDAL.findByIdForUpdate.mockResolvedValueOnce({
+      ...APPROVAL_REQUEST,
+      status: ApprovalRequestStatus.Closed
+    });
+    await expect(setStatus(service)).rejects.toThrow("Approval request is already closed");
+
+    deps.secretChangeRequestDAL.findOne
+      .mockResolvedValueOnce(SECRET_CHANGE_REQUEST)
+      .mockResolvedValueOnce({ ...SECRET_CHANGE_REQUEST, hasMerged: true });
+    await expect(setStatus(service)).rejects.toThrow("Approval request has been merged");
+    expect(deps.approvalRequestDAL.updateById).not.toHaveBeenCalled();
+    expect(queueChangeRequestWebhook).not.toHaveBeenCalled();
+  });
+
+  test("keeps the status change when the webhook cannot be queued or the folder is gone", async () => {
+    const { service, deps } = buildService();
+
+    queueChangeRequestWebhook.mockRejectedValueOnce(new Error("redis down"));
+    await expect(setStatus(service)).resolves.toMatchObject({ status: ApprovalRequestStatus.Closed });
+
+    deps.folderDAL.findSecretPathByFolderIds.mockResolvedValueOnce([]);
+    await expect(setStatus(service)).resolves.toMatchObject({ status: ApprovalRequestStatus.Closed });
+    expect(queueChangeRequestWebhook).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("secretChangeRequestBridge getSecretChangeRequestById", () => {
+  const DETAIL_COMMIT = {
+    id: "commit-1",
+    op: SecretOperations.Update,
+    key: "NEW_KEY",
+    version: 2,
+    secretId: "secret-1",
+    encryptedValue: Buffer.from("new"),
+    encryptedComment: null,
+    skipMultilineEncoding: null,
+    secretMetadata: null,
+    tags: [{ id: "tag-1", name: "t", slug: "t", color: "red" }],
+    secret: {
+      id: "secret-1",
+      version: 1,
+      key: "NEW_KEY",
+      encryptedValue: Buffer.from("live"),
+      encryptedComment: null,
+      isRotatedSecret: false,
+      rotationId: null
+    },
+    secretVersion: undefined,
+    oldSecretMetadata: []
+  };
+  const reviewedStep = {
+    ...REQUEST_STEP,
+    approvals: [
+      {
+        id: "approval-1",
+        stepId: "step-1",
+        approverUserId: "approver-1",
+        decision: ApprovalRequestApprovalDecision.Approved,
+        comment: null,
+        createdAt: REVIEW_CREATED_AT
+      }
+    ]
+  };
+
+  const details = (service: ReturnType<typeof buildService>["service"], overrides: Record<string, unknown> = {}) =>
+    service.getSecretChangeRequestById({
+      id: "request-1",
+      actor: ActorType.USER,
+      actorId: "approver-1",
+      actorOrgId: "org-1",
+      actorAuthMethod: null,
+      ...overrides
+    } as Parameters<ReturnType<typeof buildService>["service"]["getSecretChangeRequestById"]>[0]);
+
+  const buildDetailsService = (overrides: Parameters<typeof buildService>[0] = {}) => {
+    const built = buildService({ requestSteps: [reviewedStep], ...overrides });
+    built.deps.secretApprovalRequestSecretDAL.findBySecretChangeIdBridgeSecretV2.mockResolvedValue([DETAIL_COMMIT]);
+    built.deps.secretChangeRequestDAL.findOne.mockResolvedValue({
+      ...SECRET_CHANGE_REQUEST,
+      statusChangedByUserId: "user-1"
+    });
+    return built;
+  };
+
+  test("returns the request with its policy, people and decrypted commits for an eligible approver", async () => {
+    const { service, deps } = buildDetailsService();
+
+    const result = await details(service);
+
+    expect(deps.licenseService.getPlan).not.toHaveBeenCalled();
+    expect(deps.userGroupMembershipDAL.find).toHaveBeenCalledWith({ $in: { groupId: ["group-1"] } });
+    expect(deps.membershipUserDAL.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scopeOrgId: "org-1",
+        $in: { actorUserId: expect.arrayContaining(["approver-1", "user-1"]) as string[] }
+      })
+    );
+    expect(result).toMatchObject({
+      id: "request-1",
+      projectId: "project-1",
+      environment: "dev",
+      secretPath: "/app",
+      slug: "slug-1",
+      policy: {
+        id: "policy-1",
+        name: "dev-policy",
+        enforcementLevel: "hard",
+        allowedSelfApprovals: true,
+        deletedAt: null,
+        approvers: [{ userId: "approver-1", email: "approver@example.com", isOrgMembershipActive: true }],
+        bypassers: []
+      },
+      statusChangedByUser: { userId: "user-1", username: "alice" },
+      committerUser: { userId: "user-1", email: "alice@example.com", firstName: "Alice" },
+      committerIdentity: null,
+      reviewers: [
+        {
+          userId: "approver-1",
+          status: ApprovalRequestApprovalDecision.Approved,
+          comment: "",
+          createdAt: REVIEW_CREATED_AT,
+          isOrgMembershipActive: true
+        }
+      ],
+      commits: [
+        {
+          id: "commit-1",
+          secretKey: "NEW_KEY",
+          op: SecretOperations.Update,
+          secretValueHidden: false,
+          secretValue: "plain:new",
+          secret: { id: "secret-1", secretValue: "plain:live", secretValueHidden: false }
+        }
+      ]
+    });
+    expect(result.policy.approvers[0]).not.toHaveProperty("isOrgMembershipActive", null);
+  });
+
+  test("refuses a service token and reads an unknown id or a missing folder as not found", async () => {
+    const { service, deps } = buildDetailsService();
+
+    await expect(details(service, { actor: ActorType.SERVICE })).rejects.toThrow("Cannot use service token");
+
+    deps.approvalRequestDAL.findById.mockResolvedValueOnce(null);
+    await expect(details(service)).rejects.toBeInstanceOf(NotFoundError);
+
+    deps.folderDAL.findSecretPathByFolderIds.mockResolvedValueOnce([]);
+    await expect(details(service)).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  test("lets the read permission, an admin, the requester, the requesting identity or a group member in", async () => {
+    const { service, deps, hasRole } = buildDetailsService();
+
+    await expect(details(service, { actorId: "stranger" })).rejects.toBeInstanceOf(ForbiddenRequestError);
+
+    deps.permissionService.getProjectPermission.mockResolvedValueOnce({
+      hasRole,
+      permission: { can: vi.fn().mockReturnValue(true) }
+    });
+    await expect(details(service, { actorId: "stranger" })).resolves.toMatchObject({ id: "request-1" });
+
+    hasRole.mockReturnValueOnce(true);
+    await expect(details(service, { actorId: "stranger" })).resolves.toMatchObject({ id: "request-1" });
+
+    await expect(details(service, { actorId: "user-1" })).resolves.toMatchObject({ id: "request-1" });
+
+    deps.approvalRequestDAL.findById.mockResolvedValueOnce({
+      ...APPROVAL_REQUEST,
+      requesterId: null,
+      machineIdentityId: "identity-1",
+      requesterName: "Deploy bot"
+    });
+    await expect(details(service, { actor: ActorType.IDENTITY, actorId: "identity-1" })).resolves.toMatchObject({
+      committerUser: null,
+      committerIdentity: { identityId: "identity-1", name: "Deploy bot" }
+    });
+
+    deps.userGroupMembershipDAL.find.mockResolvedValueOnce([{ groupId: "group-1", userId: "member-1" }]);
+    await expect(details(service, { actorId: "member-1" })).resolves.toMatchObject({ id: "request-1" });
+  });
+
+  test("masks the values once the request is closed for an approver without read access", async () => {
+    const { service, deps } = buildDetailsService();
+    deps.approvalRequestDAL.findById.mockResolvedValueOnce({
+      ...APPROVAL_REQUEST,
+      status: ApprovalRequestStatus.Closed
+    });
+
+    const result = await details(service);
+
+    expect(result.commits[0]).toMatchObject({
+      secretValueHidden: true,
+      secretValue: INFISICAL_SECRET_VALUE_HIDDEN_MASK
+    });
+  });
+
+  test("still answers when the policy was deleted and when the requesting user is gone", async () => {
+    const { service, deps } = buildDetailsService();
+    deps.approvalRequestDAL.findById.mockResolvedValueOnce({
+      ...APPROVAL_REQUEST,
+      policyId: null,
+      requesterId: "ghost-1",
+      requesterEmail: "ghost@example.com",
+      requesterName: "Ghost"
+    });
+
+    const result = await details(service);
+
+    expect(deps.secretChangePolicyBridgeService.findSecretChangePolicyById).not.toHaveBeenCalled();
+    expect(result.policy).toMatchObject({
+      id: "",
+      approvals: 1,
+      deletedAt: expect.any(Date) as Date,
+      approvers: [{ userId: "approver-1" }]
+    });
+    expect(result.committerUser).toEqual({
+      userId: "ghost-1",
+      email: "ghost@example.com",
+      username: "ghost@example.com",
+      firstName: "Ghost",
+      lastName: null
+    });
+  });
+});
+
+describe("secretChangeRequestBridge listSecretChangeRequests and countSecretChangeRequests", () => {
+  const LIST_ROW = {
+    ...APPROVAL_REQUEST,
+    requesterName: "Alice Smith",
+    requesterEmail: "alice@example.com",
+    machineIdentityId: null,
+    secretChangeId: "change-1",
+    folderId: "folder-1",
+    slug: "slug-1",
+    hasMerged: false,
+    conflicts: null,
+    commitMessage: "msg",
+    bypassReason: null,
+    statusChangedByUserId: null,
+    environment: "dev",
+    environmentName: "Development",
+    requestFolderPath: "app",
+    policyName: "dev-policy",
+    policyEnforcementLevel: "soft",
+    policyConstraints: { constraints: { allowedSelfApprovals: false } },
+    policySecretPath: "/app",
+    policyApprovals: 2,
+    committerUserEmail: "alice@example.com",
+    committerUserUsername: "alice",
+    committerUserFirstName: "Alice",
+    committerUserLastName: "Smith",
+    committerIdentityName: null
+  };
+  const filter = { projectId: "project-1", userId: "approver-1", limit: 20, offset: 0 };
+
+  test("hydrates the page in batches and maps it onto the list shape", async () => {
+    const { service, deps } = buildService({
+      requestSteps: [
+        {
+          ...REQUEST_STEP,
+          approvals: [
+            {
+              id: "approval-1",
+              stepId: "step-1",
+              approverUserId: "approver-1",
+              decision: ApprovalRequestApprovalDecision.Approved
+            }
+          ]
+        }
+      ]
+    });
+    deps.secretChangeRequestDAL.findByProjectId.mockResolvedValue({ rows: [LIST_ROW], totalCount: 5 });
+    deps.secretApprovalRequestSecretDAL.findCommitsBySecretChangeIds.mockResolvedValue([
+      { id: "commit-1", op: "create", secretId: null, secretChangeId: "change-1" }
+    ]);
+    deps.approvalPolicyDAL.findBypassersByPolicyIds.mockResolvedValue({
+      "policy-1": [{ type: ApproverType.Group, id: "group-2" }]
+    });
+    deps.userGroupMembershipDAL.find.mockResolvedValue([
+      { groupId: "group-1", userId: "member-1" },
+      { groupId: "group-1", userId: "approver-1" },
+      { groupId: "group-2", userId: "bypasser-1" }
+    ]);
+
+    const result = await service.listSecretChangeRequests(filter);
+
+    expect(deps.secretChangeRequestDAL.findByProjectId).toHaveBeenCalledWith(filter);
+    expect(deps.approvalRequestDAL.findStepsByRequestIds).toHaveBeenCalledWith(["request-1"]);
+    expect(deps.secretApprovalRequestSecretDAL.findCommitsBySecretChangeIds).toHaveBeenCalledWith(["change-1"]);
+    expect(deps.approvalPolicyDAL.findBypassersByPolicyIds).toHaveBeenCalledWith(["policy-1"]);
+    expect(deps.userGroupMembershipDAL.find).toHaveBeenCalledWith({
+      $in: { groupId: expect.arrayContaining(["group-1", "group-2"]) as string[] }
+    });
+    expect(result.totalCount).toBe(5);
+    expect(result.approvals).toHaveLength(1);
+    expect(result.approvals[0]).toMatchObject({
+      id: "request-1",
+      projectId: "project-1",
+      environment: "dev",
+      environmentName: "Development",
+      status: ApprovalRequestStatus.Open,
+      slug: "slug-1",
+      commitMessage: "msg",
+      committerUserId: "user-1",
+      policy: {
+        id: "policy-1",
+        name: "dev-policy",
+        approvals: 2,
+        secretPath: "/app",
+        enforcementLevel: "soft",
+        allowedSelfApprovals: false,
+        deletedAt: null,
+        approvers: [{ userId: "approver-1" }, { userId: "member-1" }],
+        bypassers: [{ userId: "bypasser-1" }]
+      },
+      committerUser: { userId: "user-1", email: "alice@example.com", username: "alice", firstName: "Alice" },
+      committerIdentity: null,
+      reviewers: [{ userId: "approver-1", status: ApprovalRequestApprovalDecision.Approved }],
+      commits: [{ op: "create", secretId: null }],
+      approvers: [{ userId: "approver-1" }, { userId: "member-1" }],
+      bypassers: [{ userId: "bypasser-1" }]
+    });
+  });
+
+  test("marks a request whose policy is gone and skips the follow-up reads on an empty page", async () => {
+    const { service, deps } = buildService();
+    deps.secretChangeRequestDAL.findByProjectId.mockResolvedValueOnce({
+      rows: [{ ...LIST_ROW, policyId: null, policyName: null, policySecretPath: null, policyApprovals: null }],
+      totalCount: 1
+    });
+
+    const result = await service.listSecretChangeRequests(filter);
+    expect(deps.approvalPolicyDAL.findBypassersByPolicyIds).toHaveBeenCalledWith([]);
+    expect(result.approvals[0].policy).toMatchObject({ id: "", approvals: 1, deletedAt: expect.any(Date) as Date });
+
+    deps.approvalRequestDAL.findStepsByRequestIds.mockClear();
+    await expect(service.listSecretChangeRequests(filter)).resolves.toEqual({ approvals: [], totalCount: 0 });
+    expect(deps.approvalRequestDAL.findStepsByRequestIds).not.toHaveBeenCalled();
+  });
+
+  test("counts through the DAL", async () => {
+    const { service, deps } = buildService();
+
+    await expect(
+      service.countSecretChangeRequests({ projectId: "project-1", userId: "approver-1", policyId: "policy-1" })
+    ).resolves.toEqual({ open: 2, closed: 1 });
+    expect(deps.secretChangeRequestDAL.countByProjectId).toHaveBeenCalledWith("project-1", "approver-1", "policy-1");
   });
 });

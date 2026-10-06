@@ -2375,6 +2375,7 @@ export const registerRoutes = async (
 
   const secretChangeRequestBridgeService = secretChangeRequestBridgeServiceFactory({
     approvalRequestDAL,
+    membershipUserDAL,
     approvalRequestStepsDAL,
     approvalRequestStepEligibleApproversDAL,
     approvalRequestApprovalsDAL,

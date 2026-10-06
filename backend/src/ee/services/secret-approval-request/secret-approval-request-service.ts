@@ -42,8 +42,7 @@ import {
   fnSecretBulkDelete,
   fnSecretBulkInsert,
   fnSecretBulkUpdate,
-  getAllNestedSecretReferences,
-  INFISICAL_SECRET_VALUE_HIDDEN_MASK
+  getAllNestedSecretReferences
 } from "@app/services/secret/secret-fns";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { SecretOperations } from "@app/services/secret/secret-types";
@@ -64,10 +63,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { ChangeRequestWebhookAction, TWebhookActor, WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import { TLicenseServiceFactory } from "../license/license-service";
-import {
-  hasSecretReadValueOrDescribePermission,
-  throwIfMissingSecretReadValueOrDescribePermission
-} from "../permission/permission-fns";
+import { throwIfMissingSecretReadValueOrDescribePermission } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
   ProjectPermissionSecretActions,
@@ -79,9 +75,14 @@ import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secre
 import { getCommitterIds } from "../secret-approval-policy/secret-approval-policy-fns";
 import { TSecretChangePolicyBridgeServiceFactory } from "../secret-change-policy-bridge/secret-change-policy-bridge-service";
 import { TSecretChangeRequestBridgeServiceFactory } from "../secret-change-request-bridge/secret-change-request-bridge-service";
+import { TSecretChangeRequestListItem } from "../secret-change-request-bridge/secret-change-request-bridge-types";
 import { pickApprovalCommitColumns, secretApprovalRequestCommitFnsFactory } from "./secret-approval-request-commit-fns";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
-import { sendApprovalEmailsFn } from "./secret-approval-request-fns";
+import {
+  buildSecretApprovalCommitValueAccess,
+  formatSecretApprovalCommitsV2Bridge
+} from "./secret-approval-request-details-fns";
+import { mergeSecretApprovalRequestPages, sendApprovalEmailsFn } from "./secret-approval-request-fns";
 import { buildRequestedByActor, secretApprovalRequestMergeFnsFactory } from "./secret-approval-request-merge-fns";
 import { TSecretApprovalRequestReviewerDALFactory } from "./secret-approval-request-reviewer-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "./secret-approval-request-secret-dal";
@@ -165,6 +166,8 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "reviewSecretChangeRequest"
     | "updateSecretChangeRequestStatus"
     | "getSecretChangeRequestById"
+    | "listSecretChangeRequests"
+    | "countSecretChangeRequests"
   >;
 };
 
@@ -264,8 +267,14 @@ export const secretApprovalRequestServiceFactory = ({
     // If user has the permission, count all requests; otherwise count only their requests
     const userIdFilter = canReadAllApprovalRequests ? undefined : actorId;
 
-    const count = await secretApprovalRequestDAL.findProjectRequestCount(projectId, userIdFilter, policyId);
-    return count;
+    const [legacyCount, secretChangeCount] = await Promise.all([
+      secretApprovalRequestDAL.findProjectRequestCount(projectId, userIdFilter, policyId),
+      secretChangeRequestBridgeService.countSecretChangeRequests({ projectId, userId: userIdFilter, policyId })
+    ]);
+    return {
+      open: legacyCount.open + secretChangeCount.open,
+      closed: legacyCount.closed + secretChangeCount.closed
+    };
   };
 
   const getSecretApprovals = async ({
@@ -277,8 +286,8 @@ export const secretApprovalRequestServiceFactory = ({
     status,
     environment,
     committer,
-    limit,
-    offset,
+    limit = 20,
+    offset = 0,
     search,
     orderBy,
     orderDirection
@@ -307,15 +316,29 @@ export const secretApprovalRequestServiceFactory = ({
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
     if (shouldUseSecretV2Bridge) {
-      return secretApprovalRequestDAL.findByProjectIdBridgeSecretV2({
+      // Policies on the global approval system only exist on upgraded projects, so only this branch has
+      // requests on both systems. Each is asked for the head of the list up to the requested page.
+      const headOfList = {
         projectId,
         committer,
         environment,
         status,
         userId: userIdFilter,
-        limit,
-        offset,
         search,
+        orderBy,
+        orderDirection,
+        limit: offset + limit,
+        offset: 0
+      };
+      const [legacyRequests, secretChangeRequests] = await Promise.all([
+        secretApprovalRequestDAL.findByProjectIdBridgeSecretV2(headOfList),
+        secretChangeRequestBridgeService.listSecretChangeRequests(headOfList)
+      ]);
+      type TListedRequest = (typeof legacyRequests)["approvals"][number] | TSecretChangeRequestListItem;
+      return mergeSecretApprovalRequestPages<TListedRequest>({
+        pages: [legacyRequests, secretChangeRequests],
+        offset,
+        limit,
         orderBy,
         orderDirection
       });
@@ -378,123 +401,32 @@ export const secretApprovalRequestServiceFactory = ({
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
-    const getHasSecretReadAccess = (environment: string, tags: { slug: string }[], secretPath?: string) => {
-      const isReviewer = policy.approvers.some(({ userId }) => userId === actorId);
-
-      // Reviewers get temporary read access only while the request is open for review
-      if (isReviewer && secretApprovalRequest.status === RequestState.Open) {
-        return true;
-      }
-
-      // Otherwise check actual read permissions
-      const canRead = hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-        environment,
-        secretPath: secretPath || "/",
-        secretTags: tags.map((i) => i.slug)
-      });
-      return canRead;
-    };
-
     let secrets;
     const secretPath = await folderDAL.findSecretPathByFolderIds(secretApprovalRequest.projectId, [
       secretApprovalRequest.folderId
     ]);
+    const canReadSecretValue = buildSecretApprovalCommitValueAccess({
+      permission,
+      isReviewer: policy.approvers.some(({ userId }) => userId === actorId),
+      isRequestOpen: secretApprovalRequest.status === RequestState.Open,
+      environment: secretApprovalRequest.environment,
+      secretPath: secretPath?.[0]?.path
+    });
     if (shouldUseSecretV2Bridge) {
-      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
       const encryptedSecrets = await secretApprovalRequestSecretDAL.findByRequestIdBridgeSecretV2(
         secretApprovalRequest.id
       );
-      secrets = encryptedSecrets.map((el) => ({
-        ...el,
-        secretKey: el.key,
-        id: el.id,
-        version: el.version,
-        secretMetadata: (Array.isArray(el.secretMetadata)
-          ? (el.secretMetadata as { key: string; value?: string | null; encryptedValue?: string | null }[])
-          : []
-        ).map((meta) => ({
-          key: meta.key,
-          isEncrypted: Boolean(meta.encryptedValue),
-          value: meta.encryptedValue
-            ? secretManagerDecryptor({ cipherTextBlob: Buffer.from(meta.encryptedValue, "base64") }).toString()
-            : meta.value || ""
-        })),
-        isRotatedSecret: el.secret?.isRotatedSecret ?? false,
-        secretValueHidden: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path),
-        secretValue: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path)
-          ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
-          : el.secret && el.secret.isRotatedSecret
-            ? undefined
-            : el.encryptedValue !== undefined && el.encryptedValue !== null
-              ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
-              : undefined,
-        secretComment:
-          el.encryptedComment !== undefined && el.encryptedComment !== null
-            ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
-            : undefined,
-        skipMultilineEncoding:
-          el.skipMultilineEncoding !== undefined && el.skipMultilineEncoding !== null
-            ? el.skipMultilineEncoding
-            : undefined,
-        secret: el.secret
-          ? {
-              secretKey: el.secret.key,
-              id: el.secret.id,
-              version: el.secret.version,
-              secretValueHidden: !getHasSecretReadAccess(
-                secretApprovalRequest.environment,
-                el.tags,
-                secretPath?.[0]?.path
-              ),
-              secretValue: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path)
-                ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
-                : el.secret.encryptedValue
-                  ? secretManagerDecryptor({ cipherTextBlob: el.secret.encryptedValue }).toString()
-                  : "",
-              secretComment: el.secret.encryptedComment
-                ? secretManagerDecryptor({ cipherTextBlob: el.secret.encryptedComment }).toString()
-                : ""
-            }
-          : undefined,
-        secretVersion: el.secretVersion
-          ? {
-              secretKey: el.secretVersion.key,
-              id: el.secretVersion.id,
-              version: el.secretVersion.version,
-              secretValueHidden: !getHasSecretReadAccess(
-                secretApprovalRequest.environment,
-                el.tags,
-                secretPath?.[0]?.path
-              ),
-              secretValue: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path)
-                ? INFISICAL_SECRET_VALUE_HIDDEN_MASK
-                : el.secretVersion.encryptedValue
-                  ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedValue }).toString()
-                  : "",
-              secretComment: el.secretVersion.encryptedComment
-                ? secretManagerDecryptor({ cipherTextBlob: el.secretVersion.encryptedComment }).toString()
-                : "",
-              tags: el.secretVersion.tags,
-              secretMetadata: el.oldSecretMetadata?.map((meta) => ({
-                key: meta.key,
-                isEncrypted: Boolean(meta.encryptedValue),
-                value: meta.encryptedValue
-                  ? secretManagerDecryptor({ cipherTextBlob: Buffer.from(meta.encryptedValue) }).toString()
-                  : meta.value || ""
-              })),
-              skipMultilineEncoding: el.secretVersion.skipMultilineEncoding
-            }
-          : undefined
-      }));
+      secrets = formatSecretApprovalCommitsV2Bridge({ commits: encryptedSecrets, decryptor, canReadSecretValue });
     } else {
       if (!botKey) throw new NotFoundError({ message: `Project bot key not found`, name: "BotKeyNotFound" }); // CLI depends on this error message. TODO(daniel): Make API check for name BotKeyNotFound instead of message
       const encryptedSecrets = await secretApprovalRequestSecretDAL.findByRequestId(secretApprovalRequest.id);
       secrets = encryptedSecrets.map((el) => ({
         ...el,
-        secretValueHidden: !getHasSecretReadAccess(secretApprovalRequest.environment, el.tags, secretPath?.[0]?.path),
+        secretValueHidden: !canReadSecretValue(el.tags),
         ...decryptSecretWithBot(el, botKey),
         secret: el.secret
           ? {

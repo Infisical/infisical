@@ -7,6 +7,8 @@ import {
 } from "@app/db/schemas";
 import { Actor, Event } from "@app/ee/services/audit-log/audit-log-types";
 
+import { TSecretApprovalRequestListFilter } from "../secret-approval-request/secret-approval-request-dal";
+import { TFormattedSecretApprovalCommitV2Bridge } from "../secret-approval-request/secret-approval-request-details-fns";
 import { TMergedSecretsV2Bridge } from "../secret-approval-request/secret-approval-request-merge-fns";
 import {
   TCreateSecretApprovalRequestV2BridgeDTO,
@@ -34,6 +36,68 @@ export type TSecretChangeRequestMergeResult = {
   requestedByActor?: Actor;
 };
 
+export type TSecretChangeRequestStatusResult = Omit<TSecretChangeRequest, "commits"> & { projectId: string };
+
+export type TApprovalRequestUser = {
+  userId: string;
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  username: string;
+};
+
+export type TSecretChangeRequestPolicySummary = {
+  id: string;
+  name: string;
+  approvals: number;
+  secretPath: string | null;
+  enforcementLevel: string;
+  allowedSelfApprovals: boolean;
+  deletedAt: Date | null;
+};
+
+export type TSecretChangeRequestCommitter = {
+  committerUser: TApprovalRequestUser | null;
+  committerIdentity: { identityId: string; name: string } | null;
+};
+
+export type TSecretChangeRequestDetails = Omit<TSecretChangeRequest, "commits"> &
+  TSecretChangeRequestCommitter & {
+    projectId: string;
+    environment: string;
+    secretPath: string;
+    policy: TSecretChangeRequestPolicySummary & {
+      approvers: (TApprovalRequestUser & { isOrgMembershipActive: boolean | null })[];
+      bypassers: TApprovalRequestUser[];
+    };
+    statusChangedByUser?: TApprovalRequestUser;
+    reviewers: (TApprovalRequestUser & {
+      status: string;
+      comment: string;
+      createdAt: Date;
+      isOrgMembershipActive: boolean | null;
+    })[];
+    commits: TFormattedSecretApprovalCommitV2Bridge[];
+  };
+
+export type TSecretChangeRequestListItem = Omit<TSecretChangeRequest, "commits"> &
+  TSecretChangeRequestCommitter & {
+    projectId: string;
+    environment: string;
+    environmentName: string | null;
+    policy: TSecretChangeRequestPolicySummary & { approvers: { userId: string }[]; bypassers: { userId: string }[] };
+    reviewers: { userId: string; status: string }[];
+    commits: { op: string; secretId: string | null }[];
+    approvers: { userId: string }[];
+    bypassers: { userId: string }[];
+  };
+
+export type TSecretChangeRequestListResult = { approvals: TSecretChangeRequestListItem[]; totalCount: number };
+
+export type TSecretChangeRequestCount = { open: number; closed: number };
+
+export type TCountSecretChangeRequestsDTO = { projectId: string; userId?: string; policyId?: string };
+
 export type TSecretChangeRequestBridgeMethods = {
   generateSecretChangeRequest: (
     dto: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex; skipPostProcessing?: boolean }
@@ -41,6 +105,8 @@ export type TSecretChangeRequestBridgeMethods = {
   createSecretChangeRequest: (dto: TCreateSecretApprovalRequestV2BridgeDTO, tx?: Knex) => Promise<never>;
   mergeSecretChangeRequest: (dto: TMergeSecretApprovalRequestDTO) => Promise<TSecretChangeRequestMergeResult>;
   reviewSecretChangeRequest: (dto: TReviewRequestDTO) => Promise<TSecretChangeRequestReview>;
-  updateSecretChangeRequestStatus: (dto: TStatusChangeDTO) => Promise<never>;
-  getSecretChangeRequestById: (dto: TSecretApprovalDetailsDTO) => Promise<never>;
+  updateSecretChangeRequestStatus: (dto: TStatusChangeDTO) => Promise<TSecretChangeRequestStatusResult>;
+  getSecretChangeRequestById: (dto: TSecretApprovalDetailsDTO) => Promise<TSecretChangeRequestDetails>;
+  listSecretChangeRequests: (filter: TSecretApprovalRequestListFilter) => Promise<TSecretChangeRequestListResult>;
+  countSecretChangeRequests: (dto: TCountSecretChangeRequestsDTO) => Promise<TSecretChangeRequestCount>;
 };

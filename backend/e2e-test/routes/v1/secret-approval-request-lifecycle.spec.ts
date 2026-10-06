@@ -15,7 +15,6 @@ import { SecretOperations } from "@app/services/secret/secret-types";
 
 const getDb = () => (globalThis as unknown as { testDb: Knex }).testDb;
 
-const BRIDGE_MESSAGE = "Secret change requests on the approval system are not available yet.";
 const projectId = seedData1.projectV3.id;
 const envSlug = seedData1.environment.slug;
 const BASE_KEY = "LIFECYCLE_BASE";
@@ -261,11 +260,29 @@ describe("Secret change request lifecycle on a policy on the global approval sys
     ]);
   });
 
-  test("reading details is refused until the bridge supports it", async () => {
+  test("reading details returns the request from the global tables", async () => {
+    const [rejectedRequestId] = requestIds;
     for await (const requestId of requestIds) {
       const res = await getRequest(requestId);
-      expect(res.statusCode).toBe(400);
-      expect(res.json().message).toBe(BRIDGE_MESSAGE);
+      expect(res.statusCode).toBe(200);
+      const { approval } = res.json();
+      expect(approval).toMatchObject({
+        id: requestId,
+        folderId,
+        secretPath,
+        environment: envSlug,
+        status: RequestState.Open,
+        committerUser: { userId: seedData1.id },
+        policy: { id: policyId, deletedAt: null, approvers: [{ userId: seedData1.id }] },
+        reviewers: [
+          {
+            userId: seedData1.id,
+            status: requestId === rejectedRequestId ? ApprovalStatus.REJECTED : ApprovalStatus.APPROVED
+          }
+        ]
+      });
+      expect(approval.commits).toHaveLength(1);
+      expect(approval.commits[0]).toMatchObject({ secretValueHidden: false });
     }
   });
 

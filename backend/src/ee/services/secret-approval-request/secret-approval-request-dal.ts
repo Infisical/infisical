@@ -21,7 +21,7 @@ import { RequestState, SecretApprovalRequestOrderBy } from "./secret-approval-re
 
 export type TSecretApprovalRequestDALFactory = ReturnType<typeof secretApprovalRequestDALFactory>;
 
-type TFindQueryFilter = {
+export type TSecretApprovalRequestListFilter = {
   projectId: string;
   userId?: string;
   status?: RequestState;
@@ -33,6 +33,8 @@ type TFindQueryFilter = {
   orderBy?: SecretApprovalRequestOrderBy;
   orderDirection?: OrderByDirection;
 };
+
+type TFindQueryFilter = TSecretApprovalRequestListFilter;
 
 // Type for the query result documents in findByProjectId and findByProjectIdBridgeSecretV2
 type TSecretApprovalRequestDoc = TSecretApprovalRequests & {
@@ -97,7 +99,7 @@ const getOrderExpression = (orderBy = SecretApprovalRequestOrderBy.CreatedAt) =>
   }
 };
 
-const applyRequestOrdering = (
+export const applyRequestOrdering = (
   query: Knex.QueryBuilder,
   orderBy?: SecretApprovalRequestOrderBy,
   orderDirection = OrderByDirection.DESC
@@ -642,6 +644,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         parentMapper: (el) => ({
           ...SecretApprovalRequestsSchema.parse(el),
           environment: el.environment,
+          environmentName: el.environmentName,
           projectId: el.projectId,
           policy: {
             id: el.policyId,
@@ -906,6 +909,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         parentMapper: (el) => ({
           ...SecretApprovalRequestsSchema.parse(el),
           environment: el.environment,
+          environmentName: el.environmentName,
           projectId: el.projectId,
           policy: {
             id: el.policyId,

@@ -17,51 +17,72 @@ export type TApprovalRequestDALFactory = ReturnType<typeof approvalRequestDALFac
 export const approvalRequestDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ApprovalRequests);
 
+  const $attachStepRelations = async (steps: TApprovalRequestSteps[], dbInstance: Knex) => {
+    if (!steps.length) {
+      return [];
+    }
+
+    const stepIds = steps.map((step) => step.id);
+
+    const [approvers, approvals] = await Promise.all([
+      dbInstance(TableName.ApprovalRequestStepEligibleApprovers)
+        .whereIn("stepId", stepIds)
+        .select("stepId", "userId", "groupId"),
+      dbInstance(TableName.ApprovalRequestApprovals).whereIn("stepId", stepIds)
+    ]);
+
+    const approversByStepId = approvers.reduce<Record<string, { type: ApproverType; id: string }[]>>(
+      (acc, approver) => {
+        const stepApprovers = acc[approver.stepId] || [];
+        stepApprovers.push({
+          type: approver.userId ? ApproverType.User : ApproverType.Group,
+          id: (approver.userId || approver.groupId) as string
+        });
+        acc[approver.stepId] = stepApprovers;
+        return acc;
+      },
+      {}
+    );
+
+    const approvalsByStepId = approvals.reduce<Record<string, TApprovalRequestApprovals[]>>((acc, approval) => {
+      const stepApprovals = acc[approval.stepId] || [];
+      stepApprovals.push(approval);
+      acc[approval.stepId] = stepApprovals;
+      return acc;
+    }, {});
+
+    return steps.map((step) => ({
+      ...step,
+      approvers: approversByStepId[step.id] || [],
+      approvals: approvalsByStepId[step.id] || []
+    }));
+  };
+
+  const findStepsByRequestIds = async (requestIds: string[], tx?: Knex) => {
+    try {
+      if (!requestIds.length) return {};
+      const dbInstance = tx || db.replicaNode();
+      const steps = await dbInstance(TableName.ApprovalRequestSteps)
+        .whereIn("requestId", requestIds)
+        .orderBy("stepNumber", "asc");
+      const stepsWithRelations = await $attachStepRelations(steps, dbInstance);
+
+      return stepsWithRelations.reduce<Record<string, typeof stepsWithRelations>>((acc, step) => {
+        const requestSteps = acc[step.requestId] || [];
+        requestSteps.push(step);
+        acc[step.requestId] = requestSteps;
+        return acc;
+      }, {});
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find approval request steps by request ids" });
+    }
+  };
+
   const findStepsByRequestId = async (requestId: string, tx?: Knex) => {
     try {
       const dbInstance = tx || db.replicaNode();
       const steps = await dbInstance(TableName.ApprovalRequestSteps).where({ requestId }).orderBy("stepNumber", "asc");
-
-      if (!steps.length) {
-        return [];
-      }
-
-      const stepIds = steps.map((step) => step.id);
-
-      const [approvers, approvals] = await Promise.all([
-        dbInstance(TableName.ApprovalRequestStepEligibleApprovers)
-          .whereIn("stepId", stepIds)
-          .select("stepId", "userId", "groupId"),
-        dbInstance(TableName.ApprovalRequestApprovals).whereIn("stepId", stepIds)
-      ]);
-
-      const approversByStepId = approvers.reduce<Record<string, { type: ApproverType; id: string }[]>>(
-        (acc, approver) => {
-          const stepApprovers = acc[approver.stepId] || [];
-          stepApprovers.push({
-            type: approver.userId ? ApproverType.User : ApproverType.Group,
-            id: (approver.userId || approver.groupId) as string
-          });
-          acc[approver.stepId] = stepApprovers;
-          return acc;
-        },
-        {}
-      );
-
-      const approvalsByStepId = approvals.reduce<Record<string, TApprovalRequestApprovals[]>>((acc, approval) => {
-        const stepApprovals = acc[approval.stepId] || [];
-        stepApprovals.push(approval);
-        acc[approval.stepId] = stepApprovals;
-        return acc;
-      }, {});
-
-      return steps.map((step) => {
-        return {
-          ...step,
-          approvers: approversByStepId[step.id] || [],
-          approvals: approvalsByStepId[step.id] || []
-        };
-      });
+      return await $attachStepRelations(steps, dbInstance);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find approval request steps" });
     }
@@ -93,63 +114,10 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
         return [];
       }
 
-      const requestIds = requests.map((req) => req.id);
-
-      const steps = await dbInstance(TableName.ApprovalRequestSteps)
-        .whereIn("requestId", requestIds)
-        .orderBy("stepNumber", "asc");
-
-      const stepsByRequestId: Record<
-        string,
-        (TApprovalRequestSteps & {
-          approvers: { type: ApproverType; id: string }[];
-          approvals: TApprovalRequestApprovals[];
-        })[]
-      > = {};
-
-      if (steps.length) {
-        const stepIds = steps.map((step) => step.id);
-
-        const [approvers, approvals] = await Promise.all([
-          dbInstance(TableName.ApprovalRequestStepEligibleApprovers)
-            .whereIn("stepId", stepIds)
-            .select("stepId", "userId", "groupId"),
-          dbInstance(TableName.ApprovalRequestApprovals).whereIn("stepId", stepIds)
-        ]);
-
-        const approversByStepId = approvers.reduce<Record<string, { type: ApproverType; id: string }[]>>(
-          (acc, approver) => {
-            const stepApprovers = acc[approver.stepId] || [];
-            stepApprovers.push({
-              type: approver.userId ? ApproverType.User : ApproverType.Group,
-              id: (approver.userId || approver.groupId) as string
-            });
-            acc[approver.stepId] = stepApprovers;
-            return acc;
-          },
-          {}
-        );
-
-        const approvalsByStepId = approvals.reduce<Record<string, TApprovalRequestApprovals[]>>((acc, approval) => {
-          const stepApprovals = acc[approval.stepId] || [];
-          stepApprovals.push(approval);
-          acc[approval.stepId] = stepApprovals;
-          return acc;
-        }, {});
-
-        steps.forEach((step) => {
-          const formattedStep = {
-            ...step,
-            approvers: approversByStepId[step.id] || [],
-            approvals: approvalsByStepId[step.id] || []
-          };
-
-          if (!stepsByRequestId[step.requestId]) {
-            stepsByRequestId[step.requestId] = [];
-          }
-          stepsByRequestId[step.requestId].push(formattedStep);
-        });
-      }
+      const stepsByRequestId = await findStepsByRequestIds(
+        requests.map((req) => req.id),
+        dbInstance
+      );
 
       return requests.map((req) => ({
         ...req,
@@ -186,6 +154,7 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
   return {
     ...orm,
     findStepsByRequestId,
+    findStepsByRequestIds,
     findByProjectId,
     findByIdForUpdate,
     markExpiredRequests

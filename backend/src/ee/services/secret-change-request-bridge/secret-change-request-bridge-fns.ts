@@ -5,7 +5,8 @@ import {
   TApprovalRequests,
   TSecretApprovalRequestsReviewers,
   TSecretApprovalRequestsSecretsV2,
-  TSecretChangeRequests
+  TSecretChangeRequests,
+  TUsers
 } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -14,9 +15,11 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { EnforcementLevel } from "@app/lib/types";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -33,9 +36,17 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { ChangeRequestWebhookAction, TWebhookActor, WebhookEvents } from "@app/services/webhook/webhook-types";
 
+import { BypasserType } from "../access-approval-policy/access-approval-policy-types";
 import { TSecretApprovalBridgeCommit } from "../secret-approval-request/secret-approval-request-merge-fns";
+import { readSecretChangePolicyConstraints } from "../secret-change-policy-bridge/secret-change-policy-bridge-fns";
 import { TSecretChangePolicy } from "../secret-change-policy-bridge/secret-change-policy-bridge-types";
-import { TSecretChangeRequest } from "./secret-change-request-bridge-types";
+import {
+  TApprovalRequestUser,
+  TSecretChangeRequest,
+  TSecretChangeRequestListItem,
+  TSecretChangeRequestPolicySummary
+} from "./secret-change-request-bridge-types";
+import { TSecretChangeRequestListRow } from "./secret-change-request-dal";
 
 type TSecretChangeRequestFnsFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
@@ -76,15 +87,13 @@ export type TSecretChangeRequestSideEffectsDTO = {
 
 export type TSecretChangeRequestFnsFactory = ReturnType<typeof secretChangeRequestFnsFactory>;
 
-export const toSecretChangeRequest = ({
+export const toSecretChangeRequestBase = ({
   approvalRequest,
-  secretChangeRequest,
-  commits
+  secretChangeRequest
 }: {
   approvalRequest: TApprovalRequests;
   secretChangeRequest: TSecretChangeRequests;
-  commits: TSecretApprovalRequestsSecretsV2[];
-}): TSecretChangeRequest => ({
+}): Omit<TSecretChangeRequest, "commits"> => ({
   id: approvalRequest.id,
   policyId: approvalRequest.policyId as string,
   status: approvalRequest.status,
@@ -99,9 +108,17 @@ export const toSecretChangeRequest = ({
   committerIdentityId: approvalRequest.machineIdentityId ?? null,
   statusChangedByUserId: secretChangeRequest.statusChangedByUserId ?? null,
   bypassReason: secretChangeRequest.bypassReason ?? null,
-  commitMessage: secretChangeRequest.commitMessage ?? null,
-  commits
+  commitMessage: secretChangeRequest.commitMessage ?? null
 });
+
+export const toSecretChangeRequest = ({
+  commits,
+  ...request
+}: {
+  approvalRequest: TApprovalRequests;
+  secretChangeRequest: TSecretChangeRequests;
+  commits: TSecretApprovalRequestsSecretsV2[];
+}): TSecretChangeRequest => ({ ...toSecretChangeRequestBase(request), commits });
 
 export const toSecretChangeRequestCommit = ({
   secret,
@@ -365,4 +382,123 @@ export const secretChangeRequestFnsFactory = ({
   };
 
   return { resolveRequester, queueChangeRequestWebhook, runSecretChangeRequestSideEffects };
+};
+
+export const toApprovalRequestUser = (
+  user: Pick<TUsers, "id" | "email" | "firstName" | "lastName" | "username">
+): TApprovalRequestUser => ({
+  userId: user.id,
+  email: user.email,
+  firstName: user.firstName,
+  lastName: user.lastName,
+  username: user.username
+});
+
+// The global approval system hard-deletes policies and keeps no timestamp, so a request whose policy is gone
+// only knows that it is gone. Consumers test deletedAt for presence.
+export const toDeletedSecretChangePolicyStub = (
+  approvalRequest: Pick<TApprovalRequests, "policyId">,
+  steps: { requiredApprovals: number }[]
+): TSecretChangeRequestPolicySummary => ({
+  id: approvalRequest.policyId ?? "",
+  name: "Deleted policy",
+  approvals: steps[0]?.requiredApprovals ?? 1,
+  secretPath: null,
+  enforcementLevel: EnforcementLevel.Hard,
+  allowedSelfApprovals: true,
+  deletedAt: new Date()
+});
+
+export type TSecretChangeActor = { type: ApproverType | BypasserType; id: string };
+
+export const groupUserIdsByGroupId = (members: { groupId: string; userId: string }[]) =>
+  members.reduce<Record<string, string[]>>((acc, member) => {
+    const userIds = acc[member.groupId] || [];
+    userIds.push(member.userId);
+    acc[member.groupId] = userIds;
+    return acc;
+  }, {});
+
+export const isGroupActor = (actor: TSecretChangeActor) =>
+  actor.type === ApproverType.Group || actor.type === BypasserType.Group;
+
+export const resolveActorUserIds = (actors: TSecretChangeActor[], userIdsByGroupId: Record<string, string[]>) =>
+  unique(actors.flatMap((actor) => (isGroupActor(actor) ? (userIdsByGroupId[actor.id] ?? []) : [actor.id])));
+
+export type TSecretChangeRequestListStep = {
+  requiredApprovals: number;
+  approvers: TSecretChangeActor[];
+  approvals: Pick<TApprovalRequestApprovals, "approverUserId" | "decision">[];
+};
+
+export const toSecretChangeRequestListItem = ({
+  row,
+  steps,
+  commits,
+  bypassers,
+  userIdsByGroupId
+}: {
+  row: TSecretChangeRequestListRow;
+  steps: TSecretChangeRequestListStep[];
+  commits: { op: string; secretId: string | null }[];
+  bypassers: TSecretChangeActor[];
+  userIdsByGroupId: Record<string, string[]>;
+}): TSecretChangeRequestListItem => {
+  const approvers = resolveActorUserIds(
+    steps.flatMap((step) => step.approvers),
+    userIdsByGroupId
+  ).map((userId) => ({ userId }));
+  const bypasserUsers = resolveActorUserIds(bypassers, userIdsByGroupId).map((userId) => ({ userId }));
+  const policy: TSecretChangeRequestPolicySummary = row.policyId
+    ? {
+        id: row.policyId,
+        name: row.policyName ?? "",
+        approvals: row.policyApprovals ?? steps[0]?.requiredApprovals ?? 1,
+        secretPath: row.policySecretPath,
+        enforcementLevel: row.policyEnforcementLevel ?? EnforcementLevel.Hard,
+        allowedSelfApprovals: readSecretChangePolicyConstraints(row.policyConstraints).allowedSelfApprovals ?? true,
+        deletedAt: null
+      }
+    : toDeletedSecretChangePolicyStub(row, steps);
+
+  return {
+    ...toSecretChangeRequestBase({
+      approvalRequest: row,
+      secretChangeRequest: {
+        id: row.secretChangeId,
+        approvalRequestId: row.id,
+        folderId: row.folderId,
+        slug: row.slug,
+        hasMerged: row.hasMerged,
+        conflicts: row.conflicts,
+        commitMessage: row.commitMessage,
+        bypassReason: row.bypassReason,
+        statusChangedByUserId: row.statusChangedByUserId,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt
+      }
+    }),
+    projectId: row.projectId,
+    environment: row.environment,
+    environmentName: row.environmentName,
+    policy: { ...policy, approvers, bypassers: bypasserUsers },
+    committerUser: row.requesterId
+      ? {
+          userId: row.requesterId,
+          email: row.committerUserEmail ?? row.requesterEmail,
+          username: row.committerUserUsername ?? row.requesterEmail,
+          firstName: row.committerUserFirstName,
+          lastName: row.committerUserLastName
+        }
+      : null,
+    committerIdentity: row.machineIdentityId
+      ? { identityId: row.machineIdentityId, name: row.committerIdentityName ?? row.requesterName }
+      : null,
+    reviewers: steps
+      .flatMap((step) => step.approvals)
+      .map((approval) => ({ userId: approval.approverUserId, status: approval.decision })),
+    commits: commits.map(({ op, secretId }) => ({ op, secretId })),
+    approvers,
+    bypassers: bypasserUsers
+  };
 };
