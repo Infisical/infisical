@@ -39,6 +39,33 @@ export const registerNotificationRouter = async (server: FastifyZodProvider) => 
   });
 
   server.route({
+    url: "/user",
+    config: {
+      rateLimit: writeLimit
+    },
+    method: "DELETE",
+    schema: {
+      operationId: "deleteUserNotifications",
+      response: {
+        200: z.object({})
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      if (req.auth.authMode !== AuthMode.JWT) {
+        throw new UnauthorizedError({ message: "This endpoint can only be accessed by users" });
+      }
+
+      await server.services.notification.deleteUserNotifications({
+        userId: req.auth.userId,
+        orgId: req.auth.orgId
+      });
+
+      return {};
+    }
+  });
+
+  server.route({
     url: "/user/:notificationId",
     config: {
       rateLimit: writeLimit
