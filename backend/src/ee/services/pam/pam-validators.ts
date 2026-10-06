@@ -17,7 +17,11 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
-import { TPamAccountSettingsOverrides } from "../pam-account-template/pam-account-template-schemas";
+import {
+  PamAccountSettingsOverridesSchema,
+  PamTemplateSettingsSchema,
+  TPamAccountSettingsOverrides
+} from "../pam-account-template/pam-account-template-schemas";
 import {
   PAM_RECORDING_CONNECTION_APPS,
   resolveS3RecordingAccess
@@ -160,13 +164,20 @@ export const validateRecordingS3Config = async (
   return resolvedConfig;
 };
 
+export const getInheritedRecordingS3Config = (settingsOverrides: unknown, templateSettings: unknown) =>
+  PamAccountSettingsOverridesSchema.safeParse(settingsOverrides).data?.recordingS3Config ??
+  PamTemplateSettingsSchema.safeParse(templateSettings).data?.recordingS3Config;
+
 export const resolveOverridesS3Config = async (
   deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "kmsService">,
   settingsOverrides: TPamAccountSettingsOverrides | null | undefined,
   effectiveConnectionId: string | null | undefined,
-  ctx: TActorContext
+  ctx: TActorContext,
+  // an account that overrides only the connection still records to the bucket it inherits
+  inheritedS3Config?: TPamAccountSettingsOverrides["recordingS3Config"]
 ): Promise<TPamRecordingResolvedConfig | null> => {
-  if (!settingsOverrides?.recordingS3Config) return null;
+  const s3Config = settingsOverrides?.recordingS3Config ?? inheritedS3Config;
+  if (!s3Config) return null;
 
   if (!effectiveConnectionId) {
     throw new BadRequestError({
@@ -174,7 +185,7 @@ export const resolveOverridesS3Config = async (
     });
   }
 
-  return validateRecordingS3Config(deps, effectiveConnectionId, settingsOverrides.recordingS3Config, ctx);
+  return validateRecordingS3Config(deps, effectiveConnectionId, s3Config, ctx);
 };
 
 export const mintCorsProbeUrl = async (resolvedConfig: TPamRecordingResolvedConfig): Promise<string | null> => {

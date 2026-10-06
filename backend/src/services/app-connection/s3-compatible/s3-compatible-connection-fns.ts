@@ -9,15 +9,6 @@ import { S3CompatibleConnectionMethod, S3CompatibleProvider } from "./s3-compati
 import { parseS3CompatibleEndpoint, S3_COMPATIBLE_PROVIDER_MAP } from "./s3-compatible-connection-schemas";
 import { TS3CompatibleConnectionConfig } from "./s3-compatible-connection-types";
 
-const REJECTED_KEY_ERROR_CODES = new Set([
-  "invalidaccesskeyid",
-  "invalidargument",
-  "signaturedoesnotmatch",
-  "authorizationheadermalformed",
-  "invalidsecurity",
-  "unauthorized"
-]);
-
 export const getS3CompatibleConnectionListItem = () => {
   return {
     name: "S3-Compatible Storage" as const,
@@ -53,14 +44,8 @@ export const validateS3CompatibleConnectionCredentials = async (config: TS3Compa
   try {
     await createS3Client(clientConfig).send(new ListBucketsCommand({}));
   } catch (error) {
-    // keys scoped to a bucket can't list buckets, so only a rejected key fails here
-    if (
-      error instanceof S3ServiceException &&
-      !REJECTED_KEY_ERROR_CODES.has(error.name.toLowerCase()) &&
-      error.$metadata?.httpStatusCode !== 401
-    ) {
-      return config.credentials;
-    }
+    // keys scoped to a bucket can't list buckets, but an AccessDenied still means the key authenticated
+    if (error instanceof S3ServiceException && error.name === "AccessDenied") return config.credentials;
 
     logger.warn(
       { err: error },
@@ -69,7 +54,7 @@ export const validateS3CompatibleConnectionCredentials = async (config: TS3Compa
 
     if (error instanceof S3ServiceException) {
       throw new BadRequestError({
-        message: `${providerName} rejected the access key: ${error.message || error.name}`
+        message: `${providerName} couldn't verify the access key: ${error.message || error.name}`
       });
     }
 

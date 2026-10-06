@@ -52,6 +52,7 @@ import {
 } from "../pam/pam-permission";
 import { resolveAccessControls } from "../pam/pam-policies";
 import {
+  getInheritedRecordingS3Config,
   mintCorsProbeUrl,
   resolveOverridesS3Config,
   validateGatewayAttachment,
@@ -743,7 +744,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       deps,
       settingsOverrides,
       recordingConnectionId ?? template.recordingConnectionId,
-      ctx
+      ctx,
+      recordingConnectionId ? getInheritedRecordingS3Config(settingsOverrides, template.settings) : undefined
     );
 
     const forced = applyForcedFields(accountType, {
@@ -938,7 +940,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       settingsOverrides,
       (recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId) ??
         existing.templateRecordingConnectionId,
-      ctx
+      ctx,
+      recordingConnectionId
+        ? getInheritedRecordingS3Config(
+            settingsOverrides === undefined ? existing.settingsOverrides : settingsOverrides,
+            template ? template.settings : existing.templateSettings
+          )
+        : undefined
     );
 
     const updateData: Record<string, unknown> = {};
