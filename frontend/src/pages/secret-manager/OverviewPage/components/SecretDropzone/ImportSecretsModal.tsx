@@ -52,7 +52,6 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { cn } from "@app/components/v3/utils";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
@@ -100,7 +99,7 @@ type TReviewRow =
 
 const ImportKeyContent = ({ depth, children }: { depth?: number; children: ReactNode }) => (
   <div
-    className={cn("flex w-full items-center", depth === undefined ? "gap-1.5" : "gap-2")}
+    className="flex w-full items-center gap-2"
     style={depth === undefined ? undefined : { paddingInlineStart: `${depth * 1.5}rem` }}
   >
     {children}
@@ -719,17 +718,12 @@ const ImportSecretsContent = ({
           )}
           <div className="relative flex flex-col gap-2">
             <Table
-              className="border-collapse"
+              className="w-full table-fixed border-collapse"
               containerClassName="max-h-[60vh] overflow-y-auto overflow-x-hidden"
             >
               <TableHeader className="sticky top-0 z-[1] after:pointer-events-none after:absolute after:inset-x-0 after:-top-px after:h-px after:bg-container">
                 <TableRow className="relative h-9">
-                  <TableHead
-                    className={cn(
-                      "bg-container shadow-[inset_0_-1px_0_var(--color-border)]",
-                      folderTree && "w-1/2"
-                    )}
-                  >
+                  <TableHead className="w-1/2 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
                     {folderTree && folderTree.children.length > 0 ? (
                       <button
                         type="button"
@@ -745,8 +739,8 @@ const ImportSecretsContent = ({
                         }
                         onClick={toggleAllFolders}
                       >
-                        {areAllFoldersCollapsed ? <ChevronsUpDownIcon /> : <ChevronsDownUpIcon />}
                         Key
+                        {areAllFoldersCollapsed ? <ChevronsUpDownIcon /> : <ChevronsDownUpIcon />}
                       </button>
                     ) : (
                       "Key"
@@ -755,12 +749,7 @@ const ImportSecretsContent = ({
                   <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
                     Value
                   </TableHead>
-                  <TableHead
-                    className={cn(
-                      "bg-container shadow-[inset_0_-1px_0_var(--color-border)]",
-                      folderTree ? "w-24 text-right" : "w-10"
-                    )}
-                  >
+                  <TableHead className="w-24 bg-container text-right shadow-[inset_0_-1px_0_var(--color-border)]">
                     <IconButton
                       aria-label={
                         areAllVisible ? "Hide all secret values" : "Reveal all secret values"
@@ -842,9 +831,7 @@ const ImportSecretsContent = ({
                     <TableRow key={id}>
                       <TableCell isTruncatable className="w-1/2 overflow-hidden font-mono text-xs">
                         <ImportKeyContent depth={folderTree ? row.depth : undefined}>
-                          {folderTree && (
-                            <KeyRoundIcon className="size-4 shrink-0 text-secret" aria-hidden />
-                          )}
+                          <KeyRoundIcon className="size-4 shrink-0 text-secret" aria-hidden />
                           {editableKey ? (
                             <Input
                               value={editedKey}
@@ -925,7 +912,7 @@ const ImportSecretsContent = ({
                           <span className="tracking-widest">••••••••••••••••••••••</span>
                         )}
                       </TableCell>
-                      <TableCell className={cn(folderTree ? "w-24 text-right" : "w-10")}>
+                      <TableCell className="w-24 text-right">
                         <IconButton
                           aria-label={`${isVisible ? "Hide" : "Reveal"} ${key}`}
                           variant="ghost"
