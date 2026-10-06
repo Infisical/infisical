@@ -812,6 +812,12 @@ export const approvalPolicyServiceFactory = ({
       policy.type as ApprovalPolicyType
     );
 
+    if (policy.type === ApprovalPolicyType.SecretAccess) {
+      throw new BadRequestError({
+        message: "This is a secret access policy. Update it from the access approval policies instead."
+      });
+    }
+
     if (
       !resources[policy.type as ApprovalPolicyType]?.isBreakGlassEligible &&
       (enforcementLevel === EnforcementLevel.Soft || (bypassers && bypassers.length > 0))
@@ -1691,6 +1697,12 @@ export const approvalPolicyServiceFactory = ({
 
     if (!$isRequester(request, actor)) {
       throw new ForbiddenRequestError({ message: "You are not the requester of this request" });
+    }
+
+    if (request.type === ApprovalPolicyType.SecretAccess) {
+      throw new BadRequestError({
+        message: "This is a secret access request. Manage it from the access requests instead."
+      });
     }
 
     const [updatedRequest] = await approvalRequestDAL.update(
