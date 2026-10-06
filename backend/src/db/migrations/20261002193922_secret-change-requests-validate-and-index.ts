@@ -10,37 +10,42 @@ const MIGRATION_TIMEOUT = 60 * 60 * 1000; // 60 minutes
 const MIGRATION_LOCK_TIMEOUT = 30 * 1000; // 30 seconds
 
 export async function up(knex: Knex): Promise<void> {
-  const stmtResult = await knex.raw("SHOW statement_timeout");
-  const originalStatementTimeout = stmtResult.rows[0].statement_timeout;
-  const lockResult = await knex.raw("SHOW lock_timeout");
-  const originalLockTimeout = lockResult.rows[0].lock_timeout;
+  const connection = await knex.client.acquireConnection();
+  const raw = (sql: string, bindings: readonly Knex.RawBinding[] = []) =>
+    knex.raw(sql, bindings).connection(connection);
 
   try {
-    await knex.raw(`SET statement_timeout = ${MIGRATION_TIMEOUT}`);
-    await knex.raw(`SET lock_timeout = ${MIGRATION_LOCK_TIMEOUT}`);
+    const stmtResult = await raw("SHOW statement_timeout");
+    const originalStatementTimeout = stmtResult.rows[0].statement_timeout as string;
+    const lockResult = await raw("SHOW lock_timeout");
+    const originalLockTimeout = lockResult.rows[0].lock_timeout as string;
 
-    if (
-      (await knex.schema.hasTable(TableName.SecretApprovalRequestSecretV2)) &&
-      (await knex.schema.hasColumn(TableName.SecretApprovalRequestSecretV2, COLUMN))
-    ) {
-      await knex.raw(`ALTER TABLE ?? VALIDATE CONSTRAINT ??`, [
-        TableName.SecretApprovalRequestSecretV2,
-        REQUEST_XOR_CHANGE_CHECK
-      ]);
-      await knex.raw(`ALTER TABLE ?? VALIDATE CONSTRAINT ??`, [
-        TableName.SecretApprovalRequestSecretV2,
-        SECRET_CHANGE_FK
-      ]);
+    try {
+      await raw(`SET statement_timeout = ${MIGRATION_TIMEOUT}`);
+      await raw(`SET lock_timeout = ${MIGRATION_LOCK_TIMEOUT}`);
 
-      await knex.raw(`
-        CREATE INDEX CONCURRENTLY IF NOT EXISTS "${INDEX_NAME}"
-        ON ${TableName.SecretApprovalRequestSecretV2} ("${COLUMN}")
-        WHERE "${COLUMN}" IS NOT NULL
-      `);
+      if (
+        (await knex.schema.hasTable(TableName.SecretApprovalRequestSecretV2)) &&
+        (await knex.schema.hasColumn(TableName.SecretApprovalRequestSecretV2, COLUMN))
+      ) {
+        await raw(`ALTER TABLE ?? VALIDATE CONSTRAINT ??`, [
+          TableName.SecretApprovalRequestSecretV2,
+          REQUEST_XOR_CHANGE_CHECK
+        ]);
+        await raw(`ALTER TABLE ?? VALIDATE CONSTRAINT ??`, [TableName.SecretApprovalRequestSecretV2, SECRET_CHANGE_FK]);
+
+        await raw(`
+          CREATE INDEX CONCURRENTLY IF NOT EXISTS "${INDEX_NAME}"
+          ON ${TableName.SecretApprovalRequestSecretV2} ("${COLUMN}")
+          WHERE "${COLUMN}" IS NOT NULL
+        `);
+      }
+    } finally {
+      await raw(`SET statement_timeout = '${originalStatementTimeout}'`);
+      await raw(`SET lock_timeout = '${originalLockTimeout}'`);
     }
   } finally {
-    await knex.raw(`SET statement_timeout = '${originalStatementTimeout}'`);
-    await knex.raw(`SET lock_timeout = '${originalLockTimeout}'`);
+    await knex.client.releaseConnection(connection);
   }
 }
 
