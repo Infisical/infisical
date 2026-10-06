@@ -3,7 +3,8 @@ import { Knex } from "knex";
 import {
   TSecretApprovalRequests,
   TSecretApprovalRequestsReviewers,
-  TSecretApprovalRequestsSecretsV2
+  TSecretApprovalRequestsSecretsV2,
+  TSecretApprovalRequestsSecretsV2Insert
 } from "@app/db/schemas";
 import { Actor, Event } from "@app/ee/services/audit-log/audit-log-types";
 
@@ -12,6 +13,7 @@ import { TFormattedSecretApprovalCommitV2Bridge } from "../secret-approval-reque
 import { TMergedSecretsV2Bridge } from "../secret-approval-request/secret-approval-request-merge-fns";
 import {
   TCreateSecretApprovalRequestV2BridgeDTO,
+  TCreateSecretApprovalSideEffectsDTO,
   TGenerateSecretApprovalRequestV2BridgeDTO,
   TMergeSecretApprovalRequestDTO,
   TReviewRequestDTO,
@@ -24,6 +26,11 @@ import {
 export type TSecretChangeRequestData = Record<string, never>;
 
 export type TSecretChangeRequest = TSecretApprovalRequests & { commits: TSecretApprovalRequestsSecretsV2[] };
+
+export type TSecretChangeRequestCommitInsert = Omit<
+  TSecretApprovalRequestsSecretsV2Insert,
+  "requestId" | "secretChangeId"
+>;
 
 export type TSecretChangeRequestReview = TSecretApprovalRequestsReviewers & { projectId: string };
 
@@ -102,7 +109,8 @@ export type TSecretChangeRequestBridgeMethods = {
   generateSecretChangeRequest: (
     dto: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex; skipPostProcessing?: boolean }
   ) => Promise<TSecretChangeRequest>;
-  createSecretChangeRequest: (dto: TCreateSecretApprovalRequestV2BridgeDTO, tx?: Knex) => Promise<never>;
+  createSecretChangeRequest: (dto: TCreateSecretApprovalRequestV2BridgeDTO, tx?: Knex) => Promise<TSecretChangeRequest>;
+  createSecretChangeRequestSideEffects: (dto: TCreateSecretApprovalSideEffectsDTO) => Promise<void>;
   mergeSecretChangeRequest: (dto: TMergeSecretApprovalRequestDTO) => Promise<TSecretChangeRequestMergeResult>;
   reviewSecretChangeRequest: (dto: TReviewRequestDTO) => Promise<TSecretChangeRequestReview>;
   updateSecretChangeRequestStatus: (dto: TStatusChangeDTO) => Promise<TSecretChangeRequestStatusResult>;

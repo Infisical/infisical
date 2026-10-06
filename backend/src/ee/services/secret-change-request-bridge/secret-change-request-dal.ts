@@ -18,7 +18,14 @@ export type TSecretChangeRequestDALFactory = ReturnType<typeof secretChangeReque
 export type TSecretChangeRequestListRow = TApprovalRequests &
   Pick<
     TSecretChangeRequests,
-    "folderId" | "slug" | "hasMerged" | "conflicts" | "commitMessage" | "bypassReason" | "statusChangedByUserId"
+    | "folderId"
+    | "slug"
+    | "hasMerged"
+    | "conflicts"
+    | "commitMessage"
+    | "bypassReason"
+    | "isReplicated"
+    | "statusChangedByUserId"
   > & {
     secretChangeId: string;
     environment: string;
@@ -148,6 +155,7 @@ export const secretChangeRequestDALFactory = (db: TDbClient) => {
           db.ref("conflicts").withSchema(TableName.SecretChangeRequests),
           db.ref("commitMessage").withSchema(TableName.SecretChangeRequests),
           db.ref("bypassReason").withSchema(TableName.SecretChangeRequests),
+          db.ref("isReplicated").withSchema(TableName.SecretChangeRequests),
           db.ref("statusChangedByUserId").withSchema(TableName.SecretChangeRequests),
           db.ref("slug").withSchema(TableName.Environment).as("environment"),
           db.ref("name").withSchema(TableName.Environment).as("environmentName"),

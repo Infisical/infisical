@@ -107,7 +107,11 @@ describe("toSecretChangeRequest", () => {
         requesterId: null,
         machineIdentityId: "identity-1"
       }),
-      secretChangeRequest: secretChangeRequest({ statusChangedByUserId: "user-2", bypassReason: "hotfix" }),
+      secretChangeRequest: secretChangeRequest({
+        statusChangedByUserId: "user-2",
+        bypassReason: "hotfix",
+        isReplicated: true
+      }),
       commits: []
     });
 
@@ -116,7 +120,8 @@ describe("toSecretChangeRequest", () => {
       committerUserId: null,
       committerIdentityId: "identity-1",
       statusChangedByUserId: "user-2",
-      bypassReason: "hotfix"
+      bypassReason: "hotfix",
+      isReplicated: true
     });
     expect(result.status).toBe("close");
   });

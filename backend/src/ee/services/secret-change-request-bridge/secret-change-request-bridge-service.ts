@@ -87,6 +87,7 @@ import {
 import {
   TApprovalRequestUser,
   TSecretChangeRequestBridgeMethods,
+  TSecretChangeRequestCommitInsert,
   TSecretChangeRequestPolicySummary
 } from "./secret-change-request-bridge-types";
 import { TSecretChangeRequestDALFactory } from "./secret-change-request-dal";
@@ -161,9 +162,6 @@ type TSecretChangeRequestBridgeServiceFactoryDep = {
 };
 
 export type TSecretChangeRequestBridgeServiceFactory = ReturnType<typeof secretChangeRequestBridgeServiceFactory>;
-
-const notAvailable = () =>
-  new BadRequestError({ message: "Secret change requests on the approval system are not available yet." });
 
 export const secretChangeRequestBridgeServiceFactory = ({
   approvalRequestDAL,
@@ -251,20 +249,22 @@ export const secretChangeRequestBridgeServiceFactory = ({
 
   const findSecretChangeRequest = (requestId: string, tx?: Knex) => approvalRequestDAL.findById(requestId, tx);
 
-  const $findSecretChangeRequestOrThrow = async (requestId: string) => {
-    const approvalRequest = await approvalRequestDAL.findById(requestId);
+  const $findSecretChangeRequestOrThrow = async (requestId: string, tx?: Knex) => {
+    const approvalRequest = await approvalRequestDAL.findById(requestId, tx);
     if (!approvalRequest || approvalRequest.type !== ApprovalPolicyType.SecretChange) {
       throw new NotFoundError({ message: `Secret approval request with ID '${requestId}' not found` });
     }
-    const secretChangeRequest = await secretChangeRequestDAL.findOne({ approvalRequestId: approvalRequest.id });
+    const secretChangeRequest = await secretChangeRequestDAL.findOne({ approvalRequestId: approvalRequest.id }, tx);
     if (!secretChangeRequest) {
       throw new NotFoundError({ message: `Secret approval request with ID '${requestId}' not found` });
     }
     return { approvalRequest, secretChangeRequest };
   };
 
-  const $findSecretChangePolicyOrThrow = async (policyId: string | null | undefined) => {
-    const policy = policyId ? await secretChangePolicyBridgeService.findSecretChangePolicyById(policyId) : undefined;
+  const $findSecretChangePolicyOrThrow = async (policyId: string | null | undefined, tx?: Knex) => {
+    const policy = policyId
+      ? await secretChangePolicyBridgeService.findSecretChangePolicyById(policyId, tx)
+      : undefined;
     if (!policy) {
       throw new BadRequestError({
         message: "The policy associated with this secret approval request has been deleted."
@@ -316,71 +316,111 @@ export const secretChangeRequestBridgeServiceFactory = ({
     return { hasRole, permission, steps, currentStep, userGroupIds };
   };
 
+  const $writeSecretChangeRequest = async (
+    {
+      policyId,
+      folderId,
+      projectId,
+      orgId,
+      actor,
+      actorId,
+      commitMessage,
+      isReplicated,
+      commits,
+      commitTags
+    }: {
+      policyId: string;
+      folderId: string;
+      projectId: string;
+      orgId: string;
+      actor: ActorType;
+      actorId: string;
+      commitMessage?: string | null;
+      isReplicated?: boolean | null;
+      commits: TSecretChangeRequestCommitInsert[];
+      commitTags: Record<string, string[]>;
+    },
+    tx: Knex
+  ) => {
+    const policy = await secretChangePolicyBridgeService.findSecretChangePolicyById(policyId, tx);
+    if (!policy) {
+      throw new NotFoundError({ message: `Secret approval policy with ID '${policyId}' not found` });
+    }
+
+    const policySteps = await approvalPolicyDAL.findStepsByPolicyId(policy.id, tx);
+    if (!policySteps.length) {
+      throw new BadRequestError({
+        message: `Secret approval policy '${policy.name}' has no approval step configured. Edit the policy and set its approvers before requesting changes.`
+      });
+    }
+
+    const requester = await resolveRequester(actor, actorId, tx);
+
+    const approvalRequest = await createApprovalRequestWithSteps(
+      {
+        projectId,
+        organizationId: orgId,
+        policyId: policy.id,
+        policyType: ApprovalPolicyType.SecretChange,
+        policySteps,
+        requestData: {},
+        status: ApprovalRequestStatus.Open,
+        ...requester,
+        scopeType: null,
+        scopeId: null
+      },
+      { approvalRequestDAL, approvalRequestStepsDAL, approvalRequestStepEligibleApproversDAL },
+      tx
+    );
+
+    const secretChangeRequest = await secretChangeRequestDAL.create(
+      {
+        approvalRequestId: approvalRequest.id,
+        folderId,
+        slug: alphaNumericNanoId(),
+        hasMerged: false,
+        commitMessage,
+        isReplicated
+      },
+      tx
+    );
+
+    const approvalCommits = await secretApprovalRequestSecretDAL.insertV2Bridge(
+      commits.map((commit) => ({ ...commit, secretChangeId: secretChangeRequest.id })),
+      tx
+    );
+
+    const commitsGroupByKey = groupBy(approvalCommits, (commit) => commit.key);
+    const approvalSecretTags = Object.entries(commitTags).flatMap(([key, keyTagIds]) =>
+      keyTagIds.map((tagId) => ({ secretId: commitsGroupByKey[key][0].id, tagId }))
+    );
+    if (approvalSecretTags.length) {
+      await secretApprovalRequestSecretDAL.insertApprovalSecretV2Tags(approvalSecretTags, tx);
+    }
+
+    return { policy, approvalRequest, secretChangeRequest, commits: approvalCommits };
+  };
+
   const generateSecretChangeRequest: TSecretChangeRequestBridgeMethods["generateSecretChangeRequest"] = async (dto) => {
     const { actor, actorId, actorOrgId, projectId, environment, secretPath, commitMessage, trx, skipPostProcessing } =
       dto;
-    const { folderId, project, commits, commitTagIds, tagIds, secretKeys } = await buildSecretApprovalCommits(dto);
+    const { folderId, project, commits, commitTagIds, secretKeys } = await buildSecretApprovalCommits(dto);
 
-    const write = async (tx: Knex) => {
-      const policy = await secretChangePolicyBridgeService.findSecretChangePolicyById(dto.policy.id, tx);
-      if (!policy) {
-        throw new NotFoundError({ message: `Secret approval policy with ID '${dto.policy.id}' not found` });
-      }
-
-      const policySteps = await approvalPolicyDAL.findStepsByPolicyId(policy.id, tx);
-      if (!policySteps.length) {
-        throw new BadRequestError({
-          message: `Secret approval policy '${policy.name}' has no approval step configured. Edit the policy and set its approvers before requesting changes.`
-        });
-      }
-
-      const requester = await resolveRequester(actor, actorId, tx);
-
-      const approvalRequest = await createApprovalRequestWithSteps(
+    const write = (tx: Knex) =>
+      $writeSecretChangeRequest(
         {
-          projectId,
-          organizationId: project.orgId,
-          policyId: policy.id,
-          policyType: ApprovalPolicyType.SecretChange,
-          policySteps,
-          requestData: {},
-          status: ApprovalRequestStatus.Open,
-          ...requester,
-          scopeType: null,
-          scopeId: null
-        },
-        { approvalRequestDAL, approvalRequestStepsDAL, approvalRequestStepEligibleApproversDAL },
-        tx
-      );
-
-      const secretChangeRequest = await secretChangeRequestDAL.create(
-        {
-          approvalRequestId: approvalRequest.id,
+          policyId: dto.policy.id,
           folderId,
-          slug: alphaNumericNanoId(),
-          hasMerged: false,
-          commitMessage
+          projectId,
+          orgId: project.orgId,
+          actor,
+          actorId,
+          commitMessage,
+          commits: commits.map((commit) => pickApprovalCommitColumns(commit)),
+          commitTags: commitTagIds
         },
         tx
       );
-
-      const approvalCommits = await secretApprovalRequestSecretDAL.insertV2Bridge(
-        commits.map((commit) => ({ ...pickApprovalCommitColumns(commit), secretChangeId: secretChangeRequest.id })),
-        tx
-      );
-
-      if (tagIds.length) {
-        const commitsGroupByKey = groupBy(approvalCommits, (commit) => commit.key);
-        await secretApprovalRequestSecretDAL.insertApprovalSecretV2Tags(
-          Object.entries(commitTagIds).flatMap(([key, keyTagIds]) =>
-            keyTagIds.map((tagId) => ({ secretId: commitsGroupByKey[key][0].id, tagId }))
-          ),
-          tx
-        );
-      }
-
-      return { policy, approvalRequest, secretChangeRequest, commits: approvalCommits };
-    };
 
     const created = trx ? await write(trx) : await approvalRequestDAL.transaction(write);
     const result = toSecretChangeRequest(created);
@@ -401,6 +441,77 @@ export const secretChangeRequestBridgeServiceFactory = ({
 
     return result;
   };
+
+  const createSecretChangeRequest: TSecretChangeRequestBridgeMethods["createSecretChangeRequest"] = async (
+    dto,
+    trx
+  ) => {
+    const write = async (tx: Knex) => {
+      const policy = await secretChangePolicyBridgeService.findSecretChangePolicyById(dto.policy.id, tx);
+      if (!policy) {
+        throw new NotFoundError({ message: `Secret approval policy with ID '${dto.policy.id}' not found` });
+      }
+      const project = await projectDAL.findById(policy.projectId, tx);
+      if (!project) throw new NotFoundError({ message: `Project with ID '${policy.projectId}' not found` });
+
+      return $writeSecretChangeRequest(
+        {
+          policyId: policy.id,
+          folderId: dto.folderId,
+          projectId: project.id,
+          orgId: project.orgId,
+          actor: dto.actor,
+          actorId: dto.actorId,
+          commitMessage: dto.commitMessage,
+          isReplicated: dto.isReplicated,
+          commits: dto.commits.map(({ tagIds, ...commit }) => commit),
+          commitTags: Object.fromEntries(
+            dto.commits.flatMap(({ key, tagIds }) => (tagIds?.length ? [[key, tagIds]] : []))
+          )
+        },
+        tx
+      );
+    };
+
+    const created = trx ? await write(trx) : await approvalRequestDAL.transaction(write);
+    return toSecretChangeRequest(created);
+  };
+
+  const createSecretChangeRequestSideEffects: TSecretChangeRequestBridgeMethods["createSecretChangeRequestSideEffects"] =
+    async ({
+      secretApprovalRequest,
+      projectId,
+      environment,
+      secretPath,
+      secretKeys,
+      actor,
+      actorId,
+      actorOrgId,
+      tx
+    }) => {
+      const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(
+        secretApprovalRequest.id,
+        tx
+      );
+      const policy = await $findSecretChangePolicyOrThrow(approvalRequest.policyId, tx);
+      const project = await projectDAL.findById(projectId, tx);
+      if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+      await runSecretChangeRequestSideEffects({
+        approvalRequest,
+        secretChangeRequest,
+        policy,
+        project,
+        commits: secretApprovalRequest.commits,
+        environment,
+        secretPath,
+        secretKeys,
+        actor,
+        actorId,
+        actorOrgId,
+        tx
+      });
+    };
 
   const mergeSecretChangeRequest: TSecretChangeRequestBridgeMethods["mergeSecretChangeRequest"] = async ({
     approvalId,
@@ -959,6 +1070,8 @@ export const secretChangeRequestBridgeServiceFactory = ({
   return {
     findSecretChangeRequest,
     generateSecretChangeRequest,
+    createSecretChangeRequest,
+    createSecretChangeRequestSideEffects,
     mergeSecretChangeRequest,
     reviewSecretChangeRequest,
     updateSecretChangeRequestStatus,

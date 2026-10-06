@@ -1383,3 +1383,171 @@ describe("secretChangeRequestBridge listSecretChangeRequests and countSecretChan
     expect(deps.secretChangeRequestDAL.countByProjectId).toHaveBeenCalledWith("project-1", "approver-1", "policy-1");
   });
 });
+
+describe("secretChangeRequestBridge createSecretChangeRequest", () => {
+  const CREATE_DTO = {
+    policy: { id: "policy-1" },
+    folderId: "folder-1",
+    actor: ActorType.USER,
+    actorId: "user-1",
+    isReplicated: true,
+    commitMessage: "moved",
+    commits: [
+      { op: SecretOperations.Create, key: "NEW_KEY", encryptedValue: Buffer.from("v"), tagIds: ["tag-1"] },
+      { op: SecretOperations.Delete, key: "OLD_KEY", secretId: "secret-2", secretVersion: "version-2" }
+    ]
+  };
+
+  beforeEach(() => {
+    resolveRequester.mockReset().mockResolvedValue(REQUESTER);
+    runSecretChangeRequestSideEffects.mockClear();
+  });
+
+  const create = (service: ReturnType<typeof buildService>["service"], tx?: Knex) =>
+    service.createSecretChangeRequest(
+      CREATE_DTO as unknown as Parameters<ReturnType<typeof buildService>["service"]["createSecretChangeRequest"]>[0],
+      tx
+    );
+
+  test("writes the request envelope, change row, commits and tags in the caller's transaction", async () => {
+    const { service, deps } = buildService();
+    deps.secretChangePolicyBridgeService.findSecretChangePolicyById.mockResolvedValue({
+      ...POLICY,
+      projectId: "project-1"
+    });
+
+    const result = await create(service, CALLER_TX);
+
+    expect(deps.approvalRequestDAL.transaction).not.toHaveBeenCalled();
+    expect(deps.secretChangePolicyBridgeService.findSecretChangePolicyById).toHaveBeenCalledWith("policy-1", CALLER_TX);
+    expect(deps.projectDAL.findById).toHaveBeenCalledWith("project-1", CALLER_TX);
+    expect(resolveRequester).toHaveBeenCalledWith(ActorType.USER, "user-1", CALLER_TX);
+    expect(deps.approvalRequestDAL.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: "project-1",
+        organizationId: "org-1",
+        policyId: "policy-1",
+        type: ApprovalPolicyType.SecretChange,
+        status: ApprovalRequestStatus.Open,
+        requesterId: "user-1"
+      }),
+      CALLER_TX
+    );
+    expect(deps.secretChangeRequestDAL.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        approvalRequestId: "request-1",
+        folderId: "folder-1",
+        hasMerged: false,
+        commitMessage: "moved",
+        isReplicated: true
+      }),
+      CALLER_TX
+    );
+    expect(deps.secretApprovalRequestSecretDAL.insertV2Bridge).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({ key: "NEW_KEY", op: SecretOperations.Create, secretChangeId: "change-1" }),
+        expect.objectContaining({ key: "OLD_KEY", op: SecretOperations.Delete, secretChangeId: "change-1" })
+      ],
+      CALLER_TX
+    );
+    const [insertedCommits] = deps.secretApprovalRequestSecretDAL.insertV2Bridge.mock.calls[0];
+    expect(insertedCommits[0]).not.toHaveProperty("tagIds");
+    expect(deps.secretApprovalRequestSecretDAL.insertApprovalSecretV2Tags).toHaveBeenCalledWith(
+      [{ secretId: "commit-0", tagId: "tag-1" }],
+      CALLER_TX
+    );
+    expect(runSecretChangeRequestSideEffects).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      id: "request-1",
+      policyId: "policy-1",
+      status: ApprovalRequestStatus.Open,
+      folderId: "folder-1",
+      isReplicated: true,
+      committerUserId: "user-1",
+      commits: [expect.objectContaining({ key: "NEW_KEY" }), expect.objectContaining({ key: "OLD_KEY" })]
+    });
+  });
+
+  test("opens its own transaction when the caller has none and skips the tag insert without tags", async () => {
+    const { service, deps } = buildService();
+    deps.secretChangePolicyBridgeService.findSecretChangePolicyById.mockResolvedValue({
+      ...POLICY,
+      projectId: "project-1"
+    });
+
+    await service.createSecretChangeRequest({
+      ...CREATE_DTO,
+      commits: [{ op: SecretOperations.Delete, key: "OLD_KEY", secretId: "secret-2" }]
+    } as unknown as Parameters<ReturnType<typeof buildService>["service"]["createSecretChangeRequest"]>[0]);
+
+    expect(deps.approvalRequestDAL.transaction).toHaveBeenCalledTimes(1);
+    expect(deps.secretChangeRequestDAL.create).toHaveBeenCalledWith(expect.anything(), OWN_TX);
+    expect(deps.secretApprovalRequestSecretDAL.insertApprovalSecretV2Tags).not.toHaveBeenCalled();
+  });
+
+  test("writes nothing when the policy is gone or has no approval step", async () => {
+    const { service, deps } = buildService({ steps: [] });
+    deps.secretChangePolicyBridgeService.findSecretChangePolicyById.mockResolvedValueOnce(null);
+    await expect(create(service, CALLER_TX)).rejects.toBeInstanceOf(NotFoundError);
+
+    deps.secretChangePolicyBridgeService.findSecretChangePolicyById.mockResolvedValueOnce({
+      ...POLICY,
+      projectId: "project-1"
+    });
+    await expect(create(service, CALLER_TX)).rejects.toThrow("has no approval step configured");
+    expect(deps.approvalRequestDAL.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("secretChangeRequestBridge createSecretChangeRequestSideEffects", () => {
+  const SIDE_EFFECTS_DTO = {
+    secretApprovalRequest: { id: "request-1", policyId: "policy-1", commits: [{ id: "commit-1" }] },
+    projectId: "project-1",
+    environment: "dev",
+    secretPath: "/app",
+    secretKeys: ["NEW_KEY"],
+    actor: ActorType.USER,
+    actorId: "user-1",
+    actorOrgId: "org-1"
+  };
+
+  beforeEach(() => {
+    runSecretChangeRequestSideEffects.mockClear();
+  });
+
+  test("runs the bridge side effects for the stored request through the caller's transaction", async () => {
+    const { service, deps } = buildService();
+
+    await service.createSecretChangeRequestSideEffects({ ...SIDE_EFFECTS_DTO, tx: CALLER_TX });
+
+    expect(deps.approvalRequestDAL.findById).toHaveBeenCalledWith("request-1", CALLER_TX);
+    expect(deps.secretChangeRequestDAL.findOne).toHaveBeenCalledWith({ approvalRequestId: "request-1" }, CALLER_TX);
+    expect(deps.secretChangePolicyBridgeService.findSecretChangePolicyById).toHaveBeenCalledWith("policy-1", CALLER_TX);
+    expect(deps.projectDAL.findById).toHaveBeenCalledWith("project-1", CALLER_TX);
+    expect(runSecretChangeRequestSideEffects).toHaveBeenCalledWith({
+      approvalRequest: APPROVAL_REQUEST,
+      secretChangeRequest: SECRET_CHANGE_REQUEST,
+      policy: POLICY,
+      project: PROJECT,
+      commits: [{ id: "commit-1" }],
+      environment: "dev",
+      secretPath: "/app",
+      secretKeys: ["NEW_KEY"],
+      actor: ActorType.USER,
+      actorId: "user-1",
+      actorOrgId: "org-1",
+      tx: CALLER_TX
+    });
+  });
+
+  test("reads an unknown request as not found and refuses one whose policy is gone", async () => {
+    const { service, deps } = buildService();
+
+    deps.approvalRequestDAL.findById.mockResolvedValueOnce(null);
+    await expect(service.createSecretChangeRequestSideEffects(SIDE_EFFECTS_DTO)).rejects.toBeInstanceOf(NotFoundError);
+
+    deps.secretChangePolicyBridgeService.findSecretChangePolicyById.mockResolvedValueOnce(null);
+    await expect(service.createSecretChangeRequestSideEffects(SIDE_EFFECTS_DTO)).rejects.toThrow("has been deleted");
+    expect(runSecretChangeRequestSideEffects).not.toHaveBeenCalled();
+  });
+});

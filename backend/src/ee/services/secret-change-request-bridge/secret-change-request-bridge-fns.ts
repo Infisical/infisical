@@ -103,7 +103,7 @@ export const toSecretChangeRequestBase = ({
   folderId: secretChangeRequest.folderId,
   createdAt: approvalRequest.createdAt,
   updatedAt: approvalRequest.updatedAt,
-  isReplicated: null,
+  isReplicated: secretChangeRequest.isReplicated ?? null,
   committerUserId: approvalRequest.requesterId ?? null,
   committerIdentityId: approvalRequest.machineIdentityId ?? null,
   statusChangedByUserId: secretChangeRequest.statusChangedByUserId ?? null,
@@ -473,6 +473,7 @@ export const toSecretChangeRequestListItem = ({
         conflicts: row.conflicts,
         commitMessage: row.commitMessage,
         bypassReason: row.bypassReason,
+        isReplicated: row.isReplicated,
         statusChangedByUserId: row.statusChangedByUserId,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt

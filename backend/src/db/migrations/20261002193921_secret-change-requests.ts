@@ -27,6 +27,7 @@ export async function up(knex: Knex): Promise<void> {
       t.jsonb("conflicts").nullable();
       t.text("commitMessage").nullable();
       t.text("bypassReason").nullable();
+      t.boolean("isReplicated").nullable();
 
       t.timestamps(true, true, true);
     });

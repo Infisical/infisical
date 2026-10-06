@@ -17,6 +17,7 @@ export const SecretChangeRequestsSchema = z.object({
   conflicts: z.unknown().nullable().optional(),
   commitMessage: z.string().nullable().optional(),
   bypassReason: z.string().nullable().optional(),
+  isReplicated: z.boolean().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

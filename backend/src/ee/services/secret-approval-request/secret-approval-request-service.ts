@@ -168,6 +168,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "getSecretChangeRequestById"
     | "listSecretChangeRequests"
     | "countSecretChangeRequests"
+    | "createSecretChangeRequestSideEffects"
   >;
 };
 
@@ -236,8 +237,8 @@ export const secretApprovalRequestServiceFactory = ({
       smtpService
     });
 
-  const $useSecretChangeRequestBridge = async (requestId: string) =>
-    Boolean(await secretChangeRequestBridgeService.findSecretChangeRequest(requestId));
+  const $useSecretChangeRequestBridge = async (requestId: string, tx?: Knex) =>
+    Boolean(await secretChangeRequestBridgeService.findSecretChangeRequest(requestId, tx));
 
   const requestCount = async ({
     projectId,
@@ -1623,17 +1624,13 @@ export const secretApprovalRequestServiceFactory = ({
     return secretApprovalRequest;
   };
 
-  const createSecretApprovalSideEffects = async ({
-    secretApprovalRequest,
-    projectId,
-    environment,
-    secretPath,
-    secretKeys,
-    actor,
-    actorId,
-    actorOrgId,
-    tx
-  }: TCreateSecretApprovalSideEffectsDTO) => {
+  const createSecretApprovalSideEffects = async (dto: TCreateSecretApprovalSideEffectsDTO) => {
+    if (await $useSecretChangeRequestBridge(dto.secretApprovalRequest.id, dto.tx)) {
+      return secretChangeRequestBridgeService.createSecretChangeRequestSideEffects(dto);
+    }
+
+    const { secretApprovalRequest, projectId, environment, secretPath, secretKeys, actor, actorId, actorOrgId, tx } =
+      dto;
     const user =
       actor === ActorType.IDENTITY
         ? undefined
