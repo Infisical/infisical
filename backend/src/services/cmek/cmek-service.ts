@@ -4,7 +4,13 @@ import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionCmekActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, SigningAlgorithm, signingService } from "@app/lib/crypto/sign";
+import {
+  AsymmetricKeyAlgorithm,
+  isEd25519KeyAlgorithm,
+  isPqcKeyAlgorithm,
+  SigningAlgorithm,
+  signingService
+} from "@app/lib/crypto/sign";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
@@ -298,7 +304,7 @@ export const cmekServiceFactory = ({
 
     const encryptionAlgorithm = key.encryptionAlgorithm as TCmekKeyEncryptionAlgorithm;
 
-    if (isPqcKeyAlgorithm(encryptionAlgorithm as string)) {
+    if (isPqcKeyAlgorithm(encryptionAlgorithm as string) || isEd25519KeyAlgorithm(encryptionAlgorithm as string)) {
       return { signingAlgorithms: [encryptionAlgorithm as unknown as SigningAlgorithm], projectId: key.projectId };
     }
 

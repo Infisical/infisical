@@ -43,7 +43,7 @@ export const formatKmsKeyAlgorithm = (algorithm: string): string =>
   algorithm.replaceAll("_", "-").toUpperCase();
 
 export const getDefaultSigningAlgorithm = (cmek: TCmek): SigningAlgorithm => {
-  if (cmek?.algorithm?.startsWith("ML_DSA")) {
+  if (cmek?.algorithm?.startsWith("ML_DSA") || cmek?.algorithm === AsymmetricKeyAlgorithm.ED25519) {
     return cmek.algorithm as unknown as SigningAlgorithm;
   }
   if (cmek?.algorithm?.startsWith("RSA")) {
