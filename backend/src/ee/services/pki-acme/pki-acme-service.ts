@@ -1212,14 +1212,47 @@ export const pkiAcmeServiceFactory = ({
       // corrected CSR. This mirrors the previous behaviour, where these errors rolled the
       // enclosing transaction back.
       const certificateRequest = extractCertificateRequestFromCSR(csr);
+
+      const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
+      if (!ca) {
+        throw new NotFoundError({ message: "Certificate Authority not found" });
+      }
+      const finalizeCaType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
+
+      const $recordFinalizeFailure = (error: unknown, applicationId?: string | null) =>
+        recordCertificateIssuanceFailure(auditLogService, {
+          auditLogInfo: {
+            ...auditLogInfo,
+            actor: { type: ActorType.ACME_ACCOUNT, metadata: { profileId, accountId } }
+          },
+          projectId: profile.projectId,
+          error,
+          metadata: {
+            operation:
+              finalizeCaType === CaType.INTERNAL
+                ? CertificateIssuanceOperation.SIGN
+                : CertificateIssuanceOperation.ORDER,
+            enrollmentType: EnrollmentType.ACME,
+            certificateProfileId: profileId,
+            profileName: profile.slug,
+            ...(profile.caId && { caId: profile.caId }),
+            commonName: certificateRequest.commonName || undefined,
+            ...(applicationId && { applicationId })
+          }
+        });
+
+      const $rejectCsr = async (message: string, applicationId?: string | null) => {
+        const error = new AcmeBadCSRError({ message });
+        await $recordFinalizeFailure(error, applicationId);
+        return error;
+      };
+
       const allowedSanTypes = new Set([
         CertSubjectAlternativeNameType.DNS_NAME,
         CertSubjectAlternativeNameType.IP_ADDRESS
       ]);
       if (certificateRequest.subjectAlternativeNames?.some((san) => !allowedSanTypes.has(san.type))) {
-        throw new AcmeBadCSRError({
-          message: "Invalid CSR: Only DNS and IP subject alternative names are supported"
-        });
+        throw await $rejectCsr("Invalid CSR: Only DNS and IP subject alternative names are supported");
       }
 
       // Build a set of "type:value" pairs from CSR SANs to match against authorized identifiers
@@ -1254,7 +1287,7 @@ export const pkiAcmeServiceFactory = ({
         csrIdentifierPairs.size !== authIdentifierPairs.size ||
         ![...authIdentifierPairs].every((id) => csrIdentifierPairs.has(id))
       ) {
-        throw new AcmeBadCSRError({ message: "Invalid CSR: Common name + SANs mismatch with order identifiers" });
+        throw await $rejectCsr("Invalid CSR: Common name + SANs mismatch with order identifiers");
       }
 
       // Issuance context. These are reads only, and they deliberately run outside a transaction:
@@ -1263,14 +1296,7 @@ export const pkiAcmeServiceFactory = ({
       // TODO: ideally, this should be doen with onRequest: verifyAuth([AuthMode.ACME_JWS_SIGNATURE]), instead?
       const { ownerOrgId: actorOrgId } = (await certificateProfileDAL.findByIdWithOwnerOrgId(profileId))!;
 
-      const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
-      if (!ca) {
-        throw new NotFoundError({ message: "Certificate Authority not found" });
-      }
-
       assertCaInProfileProject(ca, profile);
-
-      const finalizeCaType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
 
       const finalizeAccount = await acmeAccountDAL.findByProjectIdAndAccountId(profile.id, accountId);
       const accountApplicationProfileId = (finalizeAccount as { applicationProfileId?: string | null } | null)
@@ -1303,7 +1329,7 @@ export const pkiAcmeServiceFactory = ({
               { profileCustomExtensions: profile.defaults?.customExtensions }
             );
             if (!validationResult.isValid) {
-              throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
+              throw await $rejectCsr(`Invalid CSR: ${validationResult.errors.join(", ")}`, accountApplicationId);
             }
             assertAcmeCaSupportsCustomExtensions(
               finalizeCaType,
@@ -1515,24 +1541,7 @@ export const pkiAcmeServiceFactory = ({
               message: "Failed to finalize certificate issuance"
             });
           }
-          await recordCertificateIssuanceFailure(auditLogService, {
-            auditLogInfo: {
-              ...auditLogInfo,
-              actor: { type: ActorType.ACME_ACCOUNT, metadata: { profileId, accountId } }
-            },
-            projectId: profile.projectId,
-            error: exp,
-            metadata: {
-              operation:
-                caType === CaType.INTERNAL ? CertificateIssuanceOperation.SIGN : CertificateIssuanceOperation.ORDER,
-              enrollmentType: EnrollmentType.ACME,
-              certificateProfileId: profileId,
-              profileName: profile.slug,
-              ...(profile.caId && { caId: profile.caId }),
-              commonName: certificateRequest.commonName || undefined,
-              ...(accountApplicationId && { applicationId: accountApplicationId })
-            }
-          });
+          await $recordFinalizeFailure(exp, accountApplicationId);
           await acmeOrderDAL.updateById(orderId, {
             csr,
             status: AcmeOrderStatus.Invalid,
