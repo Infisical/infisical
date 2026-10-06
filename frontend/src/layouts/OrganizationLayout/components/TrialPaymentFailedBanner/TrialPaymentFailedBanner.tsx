@@ -63,6 +63,7 @@ export const TrialPaymentFailedBanner = () => {
   // Billing lives on the root organization, and a sub-org role grants nothing there.
   const canResolve =
     isRootOrganization &&
+    permission.can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing) &&
     permission.can(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);
   return (
     <OrgAlertBanner
