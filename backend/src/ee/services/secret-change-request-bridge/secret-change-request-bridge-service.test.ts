@@ -1248,7 +1248,7 @@ describe("secretChangeRequestBridge getSecretChangeRequestById", () => {
     const result = await details(service);
 
     expect(deps.secretChangePolicyBridgeService.findSecretChangePolicyById).not.toHaveBeenCalled();
-    expect(result.policyId).toBe("");
+    expect(result.policyId).toBeNull();
     expect(result.policy).toMatchObject({
       id: "",
       approvals: 1,
@@ -1373,7 +1373,7 @@ describe("secretChangeRequestBridge listSecretChangeRequests and countSecretChan
 
     const result = await service.listSecretChangeRequests(filter);
     expect(deps.approvalPolicyDAL.findBypassersByPolicyIds).toHaveBeenCalledWith([]);
-    expect(result.approvals[0].policyId).toBe("");
+    expect(result.approvals[0].policyId).toBeNull();
     expect(result.approvals[0].policy).toMatchObject({ id: "", approvals: 1, deletedAt: expect.any(Date) as Date });
 
     deps.approvalRequestDAL.findStepsByRequestIds.mockClear();

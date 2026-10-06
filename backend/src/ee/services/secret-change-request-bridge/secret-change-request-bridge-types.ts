@@ -25,10 +25,9 @@ import {
 // generic request envelope holds no data of its own.
 export type TSecretChangeRequestData = Record<string, never>;
 
-export type TSecretChangeRequest = Omit<TSecretApprovalRequests, "policyId"> & {
-  policyId: string | null;
-  commits: TSecretApprovalRequestsSecretsV2[];
-};
+export type TSecretChangeRequest = TSecretApprovalRequests & { commits: TSecretApprovalRequestsSecretsV2[] };
+
+export type TSecretChangeRequestBase = Omit<TSecretChangeRequest, "commits" | "policyId"> & { policyId: string | null };
 
 export type TSecretChangeRequestCommitInsert = Omit<
   TSecretApprovalRequestsSecretsV2Insert,
@@ -71,7 +70,7 @@ export type TSecretChangeRequestCommitter = {
   committerIdentity: { identityId: string; name: string } | null;
 };
 
-export type TSecretChangeRequestDetails = Omit<TSecretChangeRequest, "commits"> &
+export type TSecretChangeRequestDetails = TSecretChangeRequestBase &
   TSecretChangeRequestCommitter & {
     projectId: string;
     environment: string;
@@ -90,7 +89,7 @@ export type TSecretChangeRequestDetails = Omit<TSecretChangeRequest, "commits"> 
     commits: TFormattedSecretApprovalCommitV2Bridge[];
   };
 
-export type TSecretChangeRequestListItem = Omit<TSecretChangeRequest, "commits"> &
+export type TSecretChangeRequestListItem = TSecretChangeRequestBase &
   TSecretChangeRequestCommitter & {
     projectId: string;
     environment: string;

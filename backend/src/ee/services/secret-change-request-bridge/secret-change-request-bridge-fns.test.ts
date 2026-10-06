@@ -75,6 +75,7 @@ describe("toSecretChangeRequest", () => {
     const commits = [{ id: "commit-1", key: "KEY", op: "create" }] as never[];
 
     const result = toSecretChangeRequest({
+      policy: { id: "policy-1" },
       approvalRequest: approvalRequest(),
       secretChangeRequest: secretChangeRequest(),
       commits
@@ -102,6 +103,7 @@ describe("toSecretChangeRequest", () => {
 
   test("passes the close status through and maps an identity requester onto committerIdentityId", () => {
     const result = toSecretChangeRequest({
+      policy: { id: "policy-1" },
       approvalRequest: approvalRequest({
         status: ApprovalRequestStatus.Closed,
         requesterId: null,

@@ -694,6 +694,7 @@ export const secretChangeRequestBridgeServiceFactory = ({
     return {
       secrets: merged.secrets,
       approval: toSecretChangeRequest({
+        policy,
         approvalRequest: merged.approvalRequest,
         secretChangeRequest: merged.secretChangeRequest,
         commits: commits.map(toSecretChangeRequestCommit)
@@ -878,7 +879,7 @@ export const secretChangeRequestBridgeServiceFactory = ({
       );
     }
 
-    return { ...toSecretChangeRequestBase(updated), projectId: approvalRequest.projectId };
+    return { ...toSecretChangeRequestBase(updated), policyId: policy.id, projectId: approvalRequest.projectId };
   };
 
   const getSecretChangeRequestById: TSecretChangeRequestBridgeMethods["getSecretChangeRequestById"] = async ({

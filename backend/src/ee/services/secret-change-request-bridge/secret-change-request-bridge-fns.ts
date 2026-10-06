@@ -43,6 +43,7 @@ import { TSecretChangePolicy } from "../secret-change-policy-bridge/secret-chang
 import {
   TApprovalRequestUser,
   TSecretChangeRequest,
+  TSecretChangeRequestBase,
   TSecretChangeRequestListItem,
   TSecretChangeRequestPolicySummary
 } from "./secret-change-request-bridge-types";
@@ -93,7 +94,7 @@ export const toSecretChangeRequestBase = ({
 }: {
   approvalRequest: TApprovalRequests;
   secretChangeRequest: TSecretChangeRequests;
-}): Omit<TSecretChangeRequest, "commits"> => ({
+}): TSecretChangeRequestBase => ({
   id: approvalRequest.id,
   policyId: approvalRequest.policyId ?? null,
   status: approvalRequest.status,
@@ -112,13 +113,15 @@ export const toSecretChangeRequestBase = ({
 });
 
 export const toSecretChangeRequest = ({
+  policy,
   commits,
   ...request
 }: {
+  policy: { id: string };
   approvalRequest: TApprovalRequests;
   secretChangeRequest: TSecretChangeRequests;
   commits: TSecretApprovalRequestsSecretsV2[];
-}): TSecretChangeRequest => ({ ...toSecretChangeRequestBase(request), commits });
+}): TSecretChangeRequest => ({ ...toSecretChangeRequestBase(request), policyId: policy.id, commits });
 
 export const toSecretChangeRequestCommit = ({
   secret,
