@@ -26,6 +26,7 @@ type TClickHouseFindArg = {
   secretPath?: string;
   secretKey?: string;
   eventType?: EventType[];
+  excludeEventType?: EventType[];
   eventMetadata?: Record<string, string>;
   pamScope?: TPamAuditLogScope;
 };
@@ -126,6 +127,11 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
     if (arg.eventType?.length) {
       conditions.push("eventType IN ({eventTypes:Array(String)})");
       params.eventTypes = arg.eventType;
+    }
+
+    if (arg.excludeEventType?.length) {
+      conditions.push("eventType NOT IN ({excludeEventTypes:Array(String)})");
+      params.excludeEventTypes = arg.excludeEventType;
     }
 
     // Optional: eventMetadata dynamic key/value filters

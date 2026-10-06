@@ -13,6 +13,7 @@ import { TAgentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-pro
 import { TAgentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
 import { TAgentVaultSessionLogServiceFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-service";
 import { TAssumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-types";
+import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { TAuditReportServiceFactory } from "@app/ee/services/audit-report/audit-report-service";
@@ -355,6 +356,7 @@ declare module "fastify" {
       ldap: TLdapConfigServiceFactory;
       auditLog: TAuditLogServiceFactory;
       auditLogStream: TAuditLogStreamServiceFactory;
+      auditLogSettings: TAuditLogSettingsServiceFactory;
       certificate: TCertificateServiceFactory;
       certificateCleanup: TCertificateCleanupServiceFactory;
       certificateInventoryView: TCertificateInventoryViewServiceFactory;

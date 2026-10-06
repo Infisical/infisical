@@ -321,13 +321,13 @@
     "odbc@2.4.9": true,
     "oracledb@6.10.0": true,
     "pkcs11js@2.1.6": true,
-    "re2@1.26.1": true,
     "segfault-handler@1.3.0": true,
     "sharp@0.34.5": true,
     "ssh2@1.17.0": true,
     "unrs-resolver@1.12.2": true,
     "core-js": false,
     "core-js-pure": false,
-    "protobufjs": false
+    "protobufjs": false,
+    "re2@1.27.0": true
   }
 }
