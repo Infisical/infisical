@@ -227,7 +227,7 @@ Each log contains the following fields:
 
 ## Event classes
 
-Every event type belongs to exactly one of four classes. The class tells you what kind of activity an event records. You can also turn recording on or off for the `authentication` and `authorization` classes.
+Every [event type](/documentation/platform/audit-logs#param-type) belongs to one of four classes, based on the kind of activity the event records.
 
 | Class            | What it covers                                                                                                             | Default |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------- | ------- |
@@ -236,14 +236,18 @@ Every event type belongs to exactly one of four classes. The class tells you wha
 | `authentication` | Logins, failed logins, organization selection, machine identity authentication, and Gateway enrollment and connections     | On      |
 | `authorization`  | [Permission denials](#permission-denials)                                                                                  | Off     |
 
-A class follows the operation that was attempted, not its outcome, so a failed login sits in `authentication` next to a successful one. Every event type that isn't a read, a login, or a denial is `management`, including viewing the audit log itself.
-
 ### Choose which classes to record
 
-By default, Infisical records every class except `authorization`. The `management` and `data-access` classes are always recorded and can't be turned off, so every configuration change and every read of secret material stays in the log, including changes to these settings. Each organization, sub-organization, and project has its own settings, and they don't inherit from each other. The organization settings cover organization-level events such as membership and login changes. A project's settings cover that project's events, so turning a class off for the organization doesn't turn it off for its projects.
+You can turn authentication and authorization events on or off. Management and data access events are always recorded, so the log always has every configuration change and every read of secret material.
+
+<Note>
+  Recording authorization events requires the new privilege system. If your organization still uses legacy privilege management, the **Authorization** toggle is disabled. To upgrade, go to **Access Control** in your organization and select **Learn More & Upgrade**.
+</Note>
 
 <Tabs>
   <Tab title="For an organization">
+    These settings cover organization-level events, such as membership and login changes. Projects and sub-organizations have their own settings.
+
     <Steps>
       <Step>
         From your organization's home page, go to **Audit Logs** and select the **Settings** tab.
@@ -253,9 +257,11 @@ By default, Infisical records every class except `authorization`. The `managemen
       </Step>
     </Steps>
 
-    Changing these toggles requires the **Edit** permission on **Audit Logs**, which the built-in admin role has. Anyone with the **Read** permission on **Audit Logs** can view them.
+    You need the **Edit** permission on **Audit Logs**, which the admin role has.
   </Tab>
   <Tab title="For a project">
+    These settings cover only the project's events.
+
     <Steps>
       <Step>
         Open the project, go to **Audit Logs**, and select the **Settings** tab.
@@ -265,10 +271,10 @@ By default, Infisical records every class except `authorization`. The `managemen
       </Step>
     </Steps>
 
-    Changing these toggles requires the **Edit** permission on **Audit Logs**, which the built-in admin role has. Anyone with the **Read** permission on **Audit Logs** can view them. A project that has never saved a setting uses the defaults.
+    You need the **Edit** permission on **Audit Logs**, which the admin role has.
   </Tab>
   <Tab title="API">
-    Update the organization's classes with [the organization audit log settings endpoint](/api-reference/endpoints/audit-logs/update-organization-audit-log-settings), or one project's classes with [the project audit log settings endpoint](/api-reference/endpoints/audit-logs/update-project-audit-log-settings). The request replaces the current settings, so include every class except `management` and `data-access`.
+    Update the organization's classes with [the organization audit log settings endpoint](/api-reference/endpoints/audit-logs/update-organization-audit-log-settings), or one project's classes with [the project audit log settings endpoint](/api-reference/endpoints/audit-logs/update-project-audit-log-settings). The request replaces the current settings, so include both `authentication` and `authorization`.
 
     ```bash
     curl -X PUT "https://app.infisical.com/api/v1/organization/audit-log-settings" \
@@ -285,23 +291,26 @@ By default, Infisical records every class except `authorization`. The `managemen
   </Tab>
 </Tabs>
 
-A change usually applies to new events right away, and always within 10 minutes. Events that were already recorded stay in the log until their retention period ends.
-
-Every change to these settings is itself recorded as an `update-audit-log-settings` event in the `management` class, with the new values in `event.metadata`. If you self-host Infisical, changing how long a project keeps its audit logs records the same event.
+<Info>
+Any changes you make apply to new events within 10 minutes. Events already in the log aren't affected.
+</Info>
 
 ### Permission denials
 
-If a user or machine identity calls an endpoint that its role doesn't allow, Infisical returns a 403 response and, once you [turn the `authorization` class on](#choose-which-classes-to-record), records a `permission-denied` event. The event records who was denied, what they tried to do, and where:
+If you [turn authorization events on](#choose-which-classes-to-record), Infisical records a `permission-denied` event whenever a user or machine identity tries an action its role doesn't allow. The event's metadata includes:
 
-- `permissionAction` and `permissionSubject`: the action and the resource type the role didn't allow (for example, `create` on `secrets`)
-- `permissionSubjectDetails`: the resource the actor targeted, such as the environment and secret path
-- `route` and `method`: the endpoint the actor called
-- `projectId`: the project the request was scoped to, if any
-- `suppressedRepeats`, `suppressedFrom`, and `suppressedUntil`: on a summary event, how many identical denials Infisical counted instead of recording, and the minute they fell in
+| Field                      | What it contains                                                |
+| -------------------------- | --------------------------------------------------------------- |
+| `permissionAction`         | The action the role didn't allow, such as `create`              |
+| `permissionSubject`        | The resource type the action was on, such as `secrets`          |
+| `permissionSubjectDetails` | The resource the actor targeted, such as an environment and secret path |
+| `route`                    | The endpoint the actor called                                   |
+| `method`                   | The HTTP method of the request                                  |
+| `projectId`                | The project the request was for, if it had one                  |
 
-Denials are only recorded for organizations on the new privilege system. If your organization still uses legacy privilege management, the **Authorization** toggle is disabled, and an API request that turns the `authorization` class on is rejected with a `400` response that says so. The `shouldUseNewPrivilegeSystem` field in the settings response tells you which system your organization is on. To upgrade, go to **Access Control** in your organization and select **Learn More & Upgrade**.
-
-To keep a misconfigured client from filling the log, Infisical records the first `permission-denied` event per actor, project, action, subject, and endpoint in each minute. Denials that repeat inside that minute are counted rather than recorded. When the minute ends, Infisical writes one more `permission-denied` event for the same combination with the count in `suppressedRepeats` and the minute in `suppressedFrom` and `suppressedUntil`. If nothing repeated, no summary event is written.
+<Info>
+If the same denial repeats within a minute, Infisical records it once, then records one summary event with the number of repeats in `suppressedRepeats`.
+</Info>
 
 ## Filtering audit logs
 
