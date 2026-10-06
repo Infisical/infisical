@@ -5,7 +5,8 @@ import { TableName, TAlerts } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
-import { AlertTriggerType } from "./alert-types";
+import { AlertChannelType } from "./alert-channel-types";
+import { AlertPrincipalType, AlertTriggerType } from "./alert-types";
 
 export type TAlertDALFactory = ReturnType<typeof alertDALFactory>;
 
@@ -201,7 +202,12 @@ export const alertDALFactory = (db: TDbClient) => {
       resourceIds,
       channelType,
       principalType
-    }: { resourceType: string; resourceIds: string[]; channelType: string; principalType: string },
+    }: {
+      resourceType: string;
+      resourceIds: string[];
+      channelType: AlertChannelType;
+      principalType: AlertPrincipalType;
+    },
     tx?: Knex
   ): Promise<{ resourceId: string; principalId: string }[]> => {
     if (resourceIds.length === 0) return [];

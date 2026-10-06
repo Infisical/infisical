@@ -2,7 +2,7 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
-export type TReminderSecret = {
+export type TSecretWithLocation = {
   secretId: string;
   secretKey: string;
   secretType: string;
@@ -19,7 +19,7 @@ export type TSecretReminderAlertDALFactory = ReturnType<typeof secretReminderAle
 export const secretReminderAlertDALFactory = (db: TDbClient) => {
   // Reads the primary: the event path treats an empty result as terminal, and a reminder can fire in
   // the same run that the secret was written.
-  const findReminderSecrets = async (secretIds: string[]): Promise<TReminderSecret[]> => {
+  const findSecretsByIds = async (secretIds: string[]): Promise<TSecretWithLocation[]> => {
     if (secretIds.length === 0) return [];
     try {
       const rows = (await db(TableName.SecretV2)
@@ -38,7 +38,7 @@ export const secretReminderAlertDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Environment).as("envName"),
           db.ref("id").withSchema(TableName.Project).as("projectId"),
           db.ref("orgId").withSchema(TableName.Project).as("orgId")
-        )) as Omit<TReminderSecret, "tagSlugs">[];
+        )) as Omit<TSecretWithLocation, "tagSlugs">[];
       if (rows.length === 0) return [];
 
       const tags = (await db(TableName.SecretV2JnTag)
@@ -57,9 +57,9 @@ export const secretReminderAlertDALFactory = (db: TDbClient) => {
         tagSlugs: tags.filter((tag) => tag.secretId === row.secretId).map((tag) => tag.slug)
       }));
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find reminder secrets" });
+      throw new DatabaseError({ error, name: "FindSecretsByIds" });
     }
   };
 
-  return { findReminderSecrets };
+  return { findSecretsByIds };
 };

@@ -38,6 +38,7 @@ import {
 import {
   AlertAuditAction,
   AlertPermissionAction,
+  AlertPrincipalType,
   AlertRunStatus,
   AlertTelemetryAction,
   IResourceAlertProvider,
@@ -831,7 +832,12 @@ export const alertServiceFactory = ({
   ) => alertDAL.findOrphanedResourceIds(input, tx);
 
   const findRecipientsForResources = (
-    input: { resourceType: string; resourceIds: string[]; channelType: string; principalType: string },
+    input: {
+      resourceType: string;
+      resourceIds: string[];
+      channelType: AlertChannelType;
+      principalType: AlertPrincipalType;
+    },
     tx?: Knex
   ) => alertDAL.findRecipientsForResources(input, tx);
 

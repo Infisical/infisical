@@ -8,14 +8,14 @@ import {
 } from "@app/services/reminder/reminder-events";
 
 import { AlertPermissionAction, TAlertContext } from "../alert-types";
-import { TReminderSecret } from "./secret-reminder-alert-dal";
+import { TSecretWithLocation } from "./secret-reminder-alert-dal";
 import { secretReminderAlertProviderFactory } from "./secret-reminder-alert-provider";
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({ SITE_URL: "https://app.infisical.com" })
 }));
 
-const SECRET: TReminderSecret = {
+const SECRET: TSecretWithLocation = {
   secretId: "secret-1",
   secretKey: "DB_PASSWORD",
   secretType: "shared",
@@ -28,13 +28,17 @@ const SECRET: TReminderSecret = {
 };
 
 const buildProvider = (
-  opts: { secrets?: TReminderSecret[]; rules?: { action: string; subject: string }[]; unresolvedPath?: boolean } = {}
+  opts: {
+    secrets?: TSecretWithLocation[];
+    rules?: { action: string; subject: string }[];
+    unresolvedPath?: boolean;
+  } = {}
 ) => {
   const permissionCalls: unknown[] = [];
   const pathLookupOptions: unknown[] = [];
   const provider = secretReminderAlertProviderFactory({
     secretReminderAlertDAL: {
-      findReminderSecrets: async (ids: string[]) =>
+      findSecretsByIds: async (ids: string[]) =>
         (opts.secrets ?? [SECRET]).filter((secret) => ids.includes(secret.secretId))
     },
     folderDAL: {

@@ -311,9 +311,8 @@ export const alertChannelServiceFactory = ({
     }
   };
 
-  // For callers that carry recipient lists from outside the alert module (eg reminder recipients that
-  // were never pruned when someone left the project), where an out-of-scope id should be dropped
-  // rather than fail the whole write.
+  // For callers that carry recipient lists in from outside the alert module, which can name someone who
+  // has since left the scope. An out-of-scope id is dropped rather than failing the whole write.
   const filterRecipientsInScope = async (
     scope: { orgId: string; projectId?: string | null },
     recipients: TChannelRecipientInput[],

@@ -23,11 +23,11 @@ import {
   TAlertPermissionInput,
   TFindEventTargetsInput
 } from "../alert-types";
-import { TReminderSecret, TSecretReminderAlertDALFactory } from "./secret-reminder-alert-dal";
+import { TSecretReminderAlertDALFactory, TSecretWithLocation } from "./secret-reminder-alert-dal";
 
 const SecretReminderConditionSchema = z.object({}).nullish();
 
-export type TSecretReminderTarget = TReminderSecret & {
+export type TSecretReminderTarget = TSecretWithLocation & {
   secretPath: string;
   note: string | null;
   repeatDays: number | null;
@@ -35,7 +35,7 @@ export type TSecretReminderTarget = TReminderSecret & {
 };
 
 export type TSecretReminderAlertProviderDep = {
-  secretReminderAlertDAL: Pick<TSecretReminderAlertDALFactory, "findReminderSecrets">;
+  secretReminderAlertDAL: Pick<TSecretReminderAlertDALFactory, "findSecretsByIds">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
@@ -59,7 +59,7 @@ export const secretReminderAlertProviderFactory = ({
   permissionService
 }: TSecretReminderAlertProviderDep): IEventAlertProvider<TSecretReminderTarget> => {
   const $loadSecretsWithPath = async (secretIds: string[]) => {
-    const secrets = await secretReminderAlertDAL.findReminderSecrets(secretIds);
+    const secrets = await secretReminderAlertDAL.findSecretsByIds(secretIds);
     const paths = new Map<string, string>();
     const folderIdsByProject = new Map<string, string[]>();
     secrets.forEach((secret) => {
