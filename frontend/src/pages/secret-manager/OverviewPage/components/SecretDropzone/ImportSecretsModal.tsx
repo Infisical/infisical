@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { subject } from "@casl/ability";
 import {
-  ChevronDownIcon,
   ChevronRightIcon,
+  ChevronsDownUpIcon,
+  ChevronsUpDownIcon,
   CircleXIcon,
   CodeXmlIcon,
   EyeIcon,
   EyeOffIcon,
   FolderIcon,
+  FolderOpenIcon,
   InfoIcon,
   KeyRoundIcon,
   MessageSquareIcon,
@@ -21,7 +23,6 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-  Badge,
   Button,
   Combobox,
   Field,
@@ -51,7 +52,6 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { cn } from "@app/components/v3/utils";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
@@ -99,22 +99,14 @@ type TReviewRow =
   | { type: "folder"; id: string; depth: number; node: TFolderNode }
   | { type: "secret"; id: string; depth: number; key: string; secretData: TParsedEnv[string] };
 
-const FOCUSABLE_BADGE_CLASS =
-  "relative z-10 inline-flex rounded-sm outline-0 focus-visible:ring-2 focus-visible:ring-ring";
-
-// One chevron-wide slot per ancestor, so with the row's gap each level lines a child's icon up
-// under its parent's folder icon and the guide line sits under the parent's chevron. The
-// negative margin lets the line run the full row height; the truncating cell clips it.
-const TreeIndentGuides = ({ depth }: { depth: number }) =>
-  Array.from({ length: depth }, (_, level) => (
-    <span
-      key={level}
-      aria-hidden
-      className="pointer-events-none -my-5 flex w-3.5 shrink-0 justify-center self-stretch"
-    >
-      <span className="w-px bg-border" />
-    </span>
-  ));
+const ImportKeyContent = ({ depth, children }: { depth?: number; children: ReactNode }) => (
+  <div
+    className="flex w-full items-center gap-2"
+    style={depth === undefined ? undefined : { paddingInlineStart: `${depth * 1.5}rem` }}
+  >
+    {children}
+  </div>
+);
 
 type ContentProps = {
   environments: { name: string; slug: string }[];
@@ -763,31 +755,30 @@ const ImportSecretsContent = ({
           )}
           <div className="relative flex flex-col gap-2">
             <Table
-              className="border-collapse"
+              className="w-full table-fixed border-collapse"
               containerClassName="max-h-[60vh] overflow-y-auto overflow-x-hidden"
             >
               <TableHeader className="sticky top-0 z-[1] after:pointer-events-none after:absolute after:inset-x-0 after:-top-px after:h-px after:bg-container">
                 <TableRow className="relative h-9">
-                  <TableHead
-                    className={cn(
-                      "bg-container shadow-[inset_0_-1px_0_var(--color-border)]",
-                      folderTree && "w-1/2"
-                    )}
-                  >
-                    {folderTree ? (
-                      <div className="flex items-center justify-between gap-2">
+                  <TableHead className="w-1/2 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
+                    {folderTree && folderTree.children.length > 0 ? (
+                      <button
+                        type="button"
+                        className="flex cursor-pointer items-center gap-1 rounded-xs outline-none focus-visible:ring-2 focus-visible:ring-ring [&>svg]:size-4"
+                        aria-label={
+                          areAllFoldersCollapsed
+                            ? "Key: expand all folders"
+                            : "Key: collapse all folders"
+                        }
+                        aria-expanded={!areAllFoldersCollapsed}
+                        title={
+                          areAllFoldersCollapsed ? "Expand all folders" : "Collapse all folders"
+                        }
+                        onClick={toggleAllFolders}
+                      >
                         Key
-                        {folderTree.children.length > 0 && (
-                          <Button
-                            variant="ghost"
-                            size="xs"
-                            className="-mr-2"
-                            onClick={toggleAllFolders}
-                          >
-                            {areAllFoldersCollapsed ? "Expand All" : "Collapse All"}
-                          </Button>
-                        )}
-                      </div>
+                        {areAllFoldersCollapsed ? <ChevronsUpDownIcon /> : <ChevronsDownUpIcon />}
+                      </button>
                     ) : (
                       "Key"
                     )}
@@ -795,8 +786,15 @@ const ImportSecretsContent = ({
                   <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
                     Value
                   </TableHead>
-                  <TableHead className="w-10 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
-                    <IconButton variant="ghost" size="xs" onClick={toggleAllSecretVisibility}>
+                  <TableHead className="w-24 bg-container text-right shadow-[inset_0_-1px_0_var(--color-border)]">
+                    <IconButton
+                      aria-label={
+                        areAllVisible ? "Hide all secret values" : "Reveal all secret values"
+                      }
+                      variant="ghost"
+                      size="xs"
+                      onClick={toggleAllSecretVisibility}
+                    >
                       {areAllVisible ? <EyeOffIcon /> : <EyeIcon />}
                     </IconButton>
                   </TableHead>
@@ -808,36 +806,46 @@ const ImportSecretsContent = ({
                     const { node } = row;
                     const isExpanded = !collapsedFolders.has(node.path);
                     return (
-                      <TableRow key={row.id} className="relative">
+                      <TableRow key={row.id} className="group/folder">
                         <TableCell isTruncatable className="w-1/2">
-                          <div className="flex items-center gap-1.5">
-                            <TreeIndentGuides depth={row.depth} />
+                          <ImportKeyContent depth={row.depth}>
                             <button
                               type="button"
+                              aria-label={`${isExpanded ? "Collapse" : "Expand"} ${node.name}`}
                               aria-expanded={isExpanded}
                               onClick={() => toggleFolder(node.path)}
-                              className="flex w-full min-w-0 cursor-pointer items-center gap-1.5 text-left outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
+                              className="flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-xs text-left font-mono text-xs focus-visible:ring-2 focus-visible:ring-ring"
                             >
                               {isExpanded ? (
-                                <ChevronDownIcon className="size-3.5 shrink-0 text-muted" />
+                                <FolderOpenIcon
+                                  className="size-4 shrink-0 text-folder"
+                                  aria-hidden
+                                />
                               ) : (
-                                <ChevronRightIcon className="size-3.5 shrink-0 text-muted" />
+                                <>
+                                  <FolderIcon
+                                    className="size-4 shrink-0 text-folder group-focus-within/folder:hidden group-hover/folder:hidden"
+                                    aria-hidden
+                                  />
+                                  <ChevronRightIcon className="hidden size-4 shrink-0 text-muted group-focus-within/folder:block group-hover/folder:block" />
+                                </>
                               )}
-                              <FolderIcon className="size-3.5 shrink-0 text-folder" />
                               <span className="truncate">{node.name}</span>
                             </button>
-                          </div>
+                          </ImportKeyContent>
                         </TableCell>
                         <TableCell isTruncatable className="w-1/2 font-mono text-muted">
                           {joinSecretPath(secretPath, node.path)}
                         </TableCell>
-                        <TableCell className="w-10 text-center">
+                        <TableCell className="w-24 text-right">
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable so keyboard users can open the tooltip; z-10 lifts it above the row's stretched toggle button */}
-                              <span tabIndex={0} className={FOCUSABLE_BADGE_CLASS}>
-                                <Badge variant="neutral">{node.secretCount}</Badge>
-                              </span>
+                              <button
+                                type="button"
+                                className="rounded-xs text-xs whitespace-nowrap text-muted focus-visible:ring-2 focus-visible:ring-ring"
+                              >
+                                {node.secretCount} secret{node.secretCount !== 1 ? "s" : ""}
+                              </button>
                             </TooltipTrigger>
                             <TooltipContent>
                               {node.secretCount} secret{node.secretCount !== 1 ? "s" : ""},
@@ -859,9 +867,8 @@ const ImportSecretsContent = ({
                   return (
                     <TableRow key={id}>
                       <TableCell isTruncatable className="w-1/2 overflow-hidden font-mono text-xs">
-                        <div className="flex w-full items-center gap-1.5">
-                          <TreeIndentGuides depth={row.depth} />
-                          {folderTree && <KeyRoundIcon className="size-3.5 shrink-0 text-secret" />}
+                        <ImportKeyContent depth={folderTree ? row.depth : undefined}>
+                          <KeyRoundIcon className="size-4 shrink-0 text-secret" aria-hidden />
                           {editableKey ? (
                             <Input
                               value={editedKey}
@@ -933,7 +940,7 @@ const ImportSecretsContent = ({
                               <TooltipContent>Multi-line encoding enabled</TooltipContent>
                             </Tooltip>
                           )}
-                        </div>
+                        </ImportKeyContent>
                       </TableCell>
                       <TableCell isTruncatable className="w-1/2 font-mono text-xs whitespace-pre">
                         {isVisible ? (
@@ -942,8 +949,9 @@ const ImportSecretsContent = ({
                           <span className="tracking-widest">••••••••••••••••••••••</span>
                         )}
                       </TableCell>
-                      <TableCell className="w-10">
+                      <TableCell className="w-24 text-right">
                         <IconButton
+                          aria-label={`${isVisible ? "Hide" : "Reveal"} ${key}`}
                           variant="ghost"
                           size="xs"
                           onClick={() => toggleSecretVisibility(id)}
