@@ -27,6 +27,7 @@ import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/servi
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
+  ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionMemberActions,
@@ -1019,11 +1020,10 @@ export const projectServiceFactory = ({
     }
 
     if (update.auditLogsRetentionDays !== undefined) {
-      if (!hasRole(ProjectMembershipRole.Admin)) {
-        throw new ForbiddenRequestError({
-          message: "Only project admins can update the audit logs retention period"
-        });
-      }
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAuditLogsActions.Edit,
+        ProjectPermissionSub.AuditLogs
+      );
 
       if (appCfg.isCloud) {
         throw new BadRequestError({
@@ -1181,7 +1181,7 @@ export const projectServiceFactory = ({
       });
     }
 
-    const { hasRole } = await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -1189,12 +1189,10 @@ export const projectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-
-    if (!hasRole(ProjectMembershipRole.Admin)) {
-      throw new ForbiddenRequestError({
-        message: "Insufficient privileges, only admins are allowed to take this action"
-      });
-    }
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAuditLogsActions.Edit,
+      ProjectPermissionSub.AuditLogs
+    );
 
     const plan = await licenseService.getPlan(project.orgId);
     if (!plan.auditLogs || auditLogsRetentionDays > plan.auditLogsRetentionDays) {

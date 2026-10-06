@@ -558,6 +558,8 @@ Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. For PAM and Agent Vault
 
 **Identity auth-method access goes through `assertIdentityAuthAccessAllowed`** (`src/services/identity/identity-auth-permission-fns.ts`), because repointing an identity's auth trust lets the caller authenticate as that identity. All 13 auth services call it once per attach/update/revoke, after the `throwUnlessCan` gate and outside the `identity.projectId` branch so both scopes are covered. A new auth method calls it too. Credential issuance (`createTokenAuthToken`, `createUniversalAuthClientSecret`) goes through it under `create-token`, since minting a credential is the same escalation as repointing the trust, and so do the per-credential paths: `updateTokenAuthToken` under `create-token`, `getUniversalAuthClientSecrets` / `getUniversalAuthClientSecretById` under `get-token`, and `revokeUniversalAuthClientSecret` under `delete-token`. **`PROJECT_ACTION_BY_ORG_ACTION` must map the org action to the same project action the route's own `throwUnlessCan` already checks** — that identity is what keeps the helper a no-op for new-system orgs, so a new entry is only safe once you have confirmed the pair matches. `revokeTokenAuthToken` and `clearUniversalAuthLockouts` are still unbounded in both scopes (and the former gates on `edit` where its UA counterpart gates on `delete-token`); that predates the helper and is a deliberate gap, not an oversight to copy. The target's grants come from `permissionService.getActorGrantAbilities`, not from a membership lookup, and it returns one ability per grant rather than per role. Two things a role-slug resolver misses: a group-derived membership carries a NULL `actorIdentityId`, so `membershipIdentityDAL.getIdentityById` never sees it, and an additional privilege carries a raw permission blob with no slug at all, so no `*PermissionByRoles` path can express it. Either omission clears an actor that out-ranks the target's direct roles but not its effective access. `getActorGrantAbilities` reads the same `permissionDAL.getPermission` query the ability itself is built from, so the bounded set cannot drift from the effective one.
 
+**Deny an RBAC check by throwing through CASL, never with `ForbiddenRequestError`.** `audit-log-permission-denied.ts` records a permission-denied audit event for every CASL `ForbiddenError` and `PermissionBoundaryError` a request throws, and skips plain `ForbiddenRequestError` because most of those are auth-mode, plan and ownership refusals. A service that calls `permission.can()` and throws `ForbiddenRequestError` itself therefore produces no denial event, and nothing fails to tell you. When the check has a fallback (a second action, an approver, an application grant), test the fallbacks first and make `ForbiddenError.from(permission).throwUnlessCan(...)` the last check, so the denial is recorded with a real action and subject. Keep `ForbiddenRequestError` for refusals that are not about a permission.
+
 **Project permission caching** uses a fingerprint-based two-tier cache (`withCacheFingerprint` in `src/lib/cache/with-cache.ts`):
 - **Short-lived marker** (10s TTL) in Redis — while present, cached data is served with 0 DB reads.
 - **Long-lived data payload** (10m TTL) in Redis — holds the full permission blob plus a fingerprint hash.
@@ -1002,6 +1004,56 @@ because clients re-send unchanged values on every save and resources created bef
 on must stay editable. The check reads the setting, not the plan, so it keeps applying after a downgrade.
 Only exempt a mode that refuses pools outright, the way gateway Kubernetes auth in Gateway review mode does
 (`$assertCanAttachProxy` in `resource-auth-method-service.ts`), or the policy removes that mode entirely.
+
+### Audit Log Event Classes and Settings
+
+Every `EventType` belongs to exactly one class in
+`src/ee/services/audit-log/audit-log-event-classes.ts`: `management`, `authentication`,
+`authorization` (only `PERMISSION_DENIED`), or `data-access`. The class is derived from the event
+type at write and read time, so stored rows carry no class column. **A new event type is
+`management` unless you add it to one of the explicit lists**, and `audit-log-event-classes.test.ts`
+fails if a type lands in two lists. Reads, lists, dashboards, insights views, CMEK use operations
+and the dynamic secret lease lifecycle are data access; VIEW_AUDIT_LOGS and privileged session
+lifecycle are management on purpose.
+
+Every class but management can be turned off per scope, and scopes do not inherit: an org (root or sub-org) has its own
+rows for org-level events, each project has its own rows for its events, and a scope without a row uses
+the default in `AUDIT_LOG_EVENT_CLASS_DEFAULTS` (data access on, authorization off). The rows live in
+`audit_log_settings` (one per scope and class, `projectId` null for the org scope) behind
+`audit-log-settings-service.ts`. `getEffectiveSettings(orgId, projectId?)` caches per scope, not per
+org: one key for the org's rows plus `shouldUseNewPrivilegeSystem`, one key per org and project
+(`{}` when it has no rows), read together in one `MGET` for 10 minutes. Never build a value that
+holds every project in an org, since every event would fetch and parse it. Each write clears only its own scope's key, and
+the lookup never throws: a failure records everything.
+Enforcement is `isAuditLogEventEnabled` in the settings service, called from `buildStreamEntry` in
+`audit-log-queue.ts` with the settings memoized per request so a batch of events costs one read.
+Suppressed events are dropped silently and do not count on the dropped counter. Management is
+always on: the helper returns true for it before looking at any row, `toSettings` reports it as
+enabled, and the update methods reject any request that names it, so the change that turns a
+class off is itself always recorded. An update is a full replacement: `PUT` must name every class in
+`CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES` exactly once, and the service deletes the scope's rows and
+inserts the new set, so there is no merge with what was stored before.
+
+`PERMISSION_DENIED` is recorded by the `onError` hook in
+`src/server/plugins/audit-log-permission-denied.ts` for every CASL `ForbiddenError` and
+`PermissionBoundaryError` (not `ForbiddenRequestError`, which verifyAuth and plan gates also throw),
+only for orgs on the new privilege system whose plan has audit log retention, and collapsed per
+actor, project, action, subject, route and method for one minute. `recordPermissionDenied` on the
+audit log service never throws to the request. Because a legacy org can never record a denial, the
+settings update methods reject a request that turns the authorization class on for one
+(`assertAuthorizationClassAllowed`), and the UI locks the toggle with a link to the upgrade, so the
+restriction is surfaced in the API error, the response's `shouldUseNewPrivilegeSystem`, the UI, and
+the docs rather than stored as a setting that does nothing.
+
+The collapse itself is generic. `createCollapsedAuditLog` on the audit log service takes any
+`TCreateAuditLogDTO` plus `collapseKeyParts` (the event type is always part of the key) and an
+optional `collapseWindowSeconds` (default 60). The first event per key is written at once and
+schedules a delayed `AuditLogCollapsedFlush` job; repeats inside the window only bump a keystore
+counter scoped to that window's start (which the window key holds as its value, so consecutive
+windows and a late flush never share a counter), and the job writes one summary event with `suppressedRepeats`, `suppressedFrom` and
+`suppressedUntil` in its metadata when the window closes, so a burst that stops is still accounted
+for. To collapse another event, call it instead of `createAuditLog` and add
+`TAuditLogCollapseSummary` to that event's metadata type so the summary fields are typed.
 
 ### Server Plugins
 

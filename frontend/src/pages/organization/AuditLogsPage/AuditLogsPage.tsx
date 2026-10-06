@@ -12,12 +12,14 @@ import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 
+import { AuditLogSettingsTab } from "./components/AuditLogSettingsTab";
 import { AuditLogStreamsTab } from "./components/AuditLogStreamTab";
 import { LogsSection } from "./components";
 
 enum AuditLogsPageTabs {
   AuditLogs = "audit-logs",
-  Streams = "streams"
+  Streams = "streams",
+  Settings = "settings"
 }
 
 const AuditLogsTab = () => <LogsSection pageView />;
@@ -31,7 +33,12 @@ export const AuditLogsPage = () => {
 
   const tabs = [
     { key: AuditLogsPageTabs.AuditLogs, label: "Audit Logs", component: AuditLogsTab },
-    { key: AuditLogsPageTabs.Streams, label: "External Log Streams", component: AuditLogStreamsTab }
+    {
+      key: AuditLogsPageTabs.Streams,
+      label: "External Log Streams",
+      component: AuditLogStreamsTab
+    },
+    { key: AuditLogsPageTabs.Settings, label: "Settings", component: AuditLogSettingsTab }
   ];
 
   const activeTab = tabs.some((tab) => tab.key === selectedTab)
