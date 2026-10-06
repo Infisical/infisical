@@ -374,4 +374,48 @@ describe("Secret approval request bridge routing", () => {
     });
     expect(await db(TableName.SecretApprovalRequest).where({ id: globalRequest.id }).first()).toBeUndefined();
   });
+
+  test("deleting a policy on the global approval system closes its open requests and keeps them readable", async () => {
+    const db = getDb();
+
+    const createRes = await createSecret("SAR_BRIDGE_POLICY_DELETE", "value", GLOBAL_SYSTEM_PATH);
+    expect(createRes.statusCode).toBe(200);
+    const request: TListedRequest = createRes.json().approval;
+    globalSystemRequestIds.push(request.id);
+
+    const deleteRes = await testServer.inject({
+      method: "DELETE",
+      url: `/api/v2/secret-approvals/${globalSystemPolicyId}`,
+      headers: authHeaders()
+    });
+    expect(deleteRes.statusCode).toBe(200);
+
+    expect(await db(TableName.ApprovalPolicies).where({ id: globalSystemPolicyId }).first()).toBeUndefined();
+    expect(
+      await db(TableName.ApprovalRequests)
+        .whereIn("id", globalSystemRequestIds)
+        .where({ status: ApprovalRequestStatus.Open })
+    ).toEqual([]);
+    expect(await db(TableName.ApprovalRequests).where({ id: request.id }).first()).toMatchObject({
+      status: ApprovalRequestStatus.Closed,
+      policyId: null
+    });
+
+    const closedRes = await listRequests(`&status=${RequestState.Closed}`);
+    expect(closedRes.statusCode).toBe(200);
+    const closed: { approvals: (TListedRequest & { policyId: string })[] } = closedRes.json();
+    expect(closed.approvals.find((row) => row.id === request.id)).toMatchObject({
+      policyId: "",
+      status: RequestState.Closed,
+      policy: { name: "Deleted policy", deletedAt: expect.any(String) as string }
+    });
+
+    const detailsRes = await getRequest(request.id);
+    expect(detailsRes.statusCode).toBe(200);
+    expect(detailsRes.json().approval).toMatchObject({
+      policyId: "",
+      status: RequestState.Closed,
+      policy: { name: "Deleted policy" }
+    });
+  });
 });

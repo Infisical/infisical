@@ -11,6 +11,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
 import { ProjectPermissionActions, ProjectPermissionSet, ProjectPermissionSub } from "../permission/project-permission";
+import { RequestState } from "../secret-approval-request/secret-approval-request-types";
 import { TSecretChangePolicyRow } from "./secret-change-policy-bridge-dal";
 import { toSecretChangePolicy } from "./secret-change-policy-bridge-fns";
 import { secretChangePolicyBridgeServiceFactory } from "./secret-change-policy-bridge-service";
@@ -123,6 +124,7 @@ const buildService = ({
       delete: vi.fn().mockResolvedValue([]),
       findPolicyByEnvIdAndSecretPath: vi.fn().mockResolvedValue(existingPolicy)
     },
+    approvalRequestDAL: { update: vi.fn().mockResolvedValue([]) },
     secretChangePolicyBridgeDAL: {
       findSecretChangePolicies: vi.fn<(filter: TFindFilter, tx?: Knex) => Promise<TSecretChangePolicyRow[]>>(
         ({ policyId, projectId, envId, organizationId }) =>
@@ -735,6 +737,7 @@ describe("secretChangePolicyBridge deleteSecretChangePolicy", () => {
     const { service, deps } = buildService({ permission: allowDelete, rows: [] });
 
     await expect(remove(service)).rejects.toBeInstanceOf(NotFoundError);
+    expect(deps.approvalRequestDAL.update).not.toHaveBeenCalled();
     expect(deps.approvalPolicyDAL.deleteById).not.toHaveBeenCalled();
   });
 
@@ -742,16 +745,37 @@ describe("secretChangePolicyBridge deleteSecretChangePolicy", () => {
     const { service, deps } = buildService({ permission: denyAll });
 
     await expect(remove(service)).rejects.toBeInstanceOf(ForbiddenError);
+    expect(deps.approvalRequestDAL.update).not.toHaveBeenCalled();
     expect(deps.approvalPolicyDAL.deleteById).not.toHaveBeenCalled();
   });
 
-  test("hard-deletes the policy and skips the plan check", async () => {
+  test("reports a policy deleted before the lock was taken as not found and writes nothing", async () => {
+    const { service, deps } = buildService({ permission: allowDelete });
+    deps.approvalPolicyDAL.findByIdForUpdate.mockResolvedValueOnce(undefined);
+
+    await expect(remove(service)).rejects.toBeInstanceOf(NotFoundError);
+    expect(deps.approvalRequestDAL.update).not.toHaveBeenCalled();
+    expect(deps.approvalPolicyDAL.deleteById).not.toHaveBeenCalled();
+  });
+
+  test("locks the policy, closes its open requests and hard-deletes it in one transaction, skipping the plan check", async () => {
     const { service, deps } = buildService({ permission: allowDelete });
 
     const policy = await remove(service);
 
     expect(deps.licenseService.getPlan).not.toHaveBeenCalled();
-    expect(deps.approvalPolicyDAL.deleteById).toHaveBeenCalledWith("policy-1");
+    expect(deps.approvalPolicyDAL.findByIdForUpdate).toHaveBeenCalledWith("policy-1", TX);
+    expect(deps.approvalRequestDAL.update).toHaveBeenCalledWith(
+      { policyId: "policy-1", status: RequestState.Open },
+      { status: RequestState.Closed },
+      TX
+    );
+    expect(deps.approvalPolicyDAL.deleteById).toHaveBeenCalledWith("policy-1", TX);
+    const [lockOrder] = deps.approvalPolicyDAL.findByIdForUpdate.mock.invocationCallOrder;
+    const [closeOrder] = deps.approvalRequestDAL.update.mock.invocationCallOrder;
+    const [deleteOrder] = deps.approvalPolicyDAL.deleteById.mock.invocationCallOrder;
+    expect(lockOrder).toBeLessThan(closeOrder);
+    expect(closeOrder).toBeLessThan(deleteOrder);
     expect(policy).toMatchObject({
       id: "policy-1",
       secretPath: "/",

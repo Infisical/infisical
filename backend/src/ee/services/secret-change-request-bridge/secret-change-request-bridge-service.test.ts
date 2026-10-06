@@ -1243,6 +1243,7 @@ describe("secretChangeRequestBridge getSecretChangeRequestById", () => {
     const result = await details(service);
 
     expect(deps.secretChangePolicyBridgeService.findSecretChangePolicyById).not.toHaveBeenCalled();
+    expect(result.policyId).toBe("");
     expect(result.policy).toMatchObject({
       id: "",
       approvals: 1,
@@ -1367,6 +1368,7 @@ describe("secretChangeRequestBridge listSecretChangeRequests and countSecretChan
 
     const result = await service.listSecretChangeRequests(filter);
     expect(deps.approvalPolicyDAL.findBypassersByPolicyIds).toHaveBeenCalledWith([]);
+    expect(result.approvals[0].policyId).toBe("");
     expect(result.approvals[0].policy).toMatchObject({ id: "", approvals: 1, deletedAt: expect.any(Date) as Date });
 
     deps.approvalRequestDAL.findStepsByRequestIds.mockClear();
@@ -1483,6 +1485,33 @@ describe("secretChangeRequestBridge createSecretChangeRequest", () => {
     expect(deps.approvalRequestDAL.transaction).toHaveBeenCalledTimes(1);
     expect(deps.secretChangeRequestDAL.create).toHaveBeenCalledWith(expect.anything(), OWN_TX);
     expect(deps.secretApprovalRequestSecretDAL.insertApprovalSecretV2Tags).not.toHaveBeenCalled();
+  });
+
+  test("keeps the tags of every commit that shares a key, as the legacy system does", async () => {
+    const { service, deps } = buildService();
+    deps.secretChangePolicyBridgeService.findSecretChangePolicyById.mockResolvedValue({
+      ...POLICY,
+      projectId: "project-1"
+    });
+
+    await service.createSecretChangeRequest(
+      {
+        ...CREATE_DTO,
+        commits: [
+          { op: SecretOperations.Delete, key: "KEY", secretId: "secret-1", tagIds: ["tag-1"] },
+          { op: SecretOperations.Create, key: "KEY", encryptedValue: Buffer.from("v"), tagIds: ["tag-2"] }
+        ]
+      } as unknown as Parameters<ReturnType<typeof buildService>["service"]["createSecretChangeRequest"]>[0],
+      CALLER_TX
+    );
+
+    expect(deps.secretApprovalRequestSecretDAL.insertApprovalSecretV2Tags).toHaveBeenCalledWith(
+      [
+        { secretId: "commit-0", tagId: "tag-1" },
+        { secretId: "commit-0", tagId: "tag-2" }
+      ],
+      CALLER_TX
+    );
   });
 
   test("writes nothing when the policy is gone or has no approval step", async () => {

@@ -13,6 +13,7 @@ import {
   TApprovalPolicyStepsDALFactory
 } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -20,6 +21,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { resolvePolicyForPath } from "../secret-approval-policy/secret-approval-policy-fns";
+import { RequestState } from "../secret-approval-request/secret-approval-request-types";
 import { TSecretChangePolicyBridgeDALFactory } from "./secret-change-policy-bridge-dal";
 import { secretChangePolicyFnsFactory, splitApprovers, toSecretChangePolicy } from "./secret-change-policy-bridge-fns";
 import {
@@ -41,6 +43,7 @@ type TSecretChangePolicyBridgeServiceFactoryDep = {
     TApprovalPolicySecretEnvironmentDALFactory,
     "insertMany" | "delete" | "findPolicyByEnvIdAndSecretPath"
   >;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "update">;
   secretChangePolicyBridgeDAL: Pick<TSecretChangePolicyBridgeDALFactory, "findSecretChangePolicies">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
@@ -58,6 +61,7 @@ export const secretChangePolicyBridgeServiceFactory = ({
   approvalPolicyStepApproversDAL,
   approvalPolicyBypassersDAL,
   approvalPolicySecretEnvironmentDAL,
+  approvalRequestDAL,
   secretChangePolicyBridgeDAL,
   secretApprovalPolicyDAL,
   projectEnvDAL,
@@ -344,9 +348,18 @@ export const secretChangePolicyBridgeServiceFactory = ({
       ProjectPermissionSub.SecretApproval
     );
 
-    // Legacy delete closes the policy's open requests. Secret change requests are not created on the
-    // global approval system yet, so cancelling them moves with the request migration.
-    await approvalPolicyDAL.deleteById(policy.id);
+    await approvalPolicyDAL.transaction(async (tx) => {
+      const lockedPolicy = await approvalPolicyDAL.findByIdForUpdate(policy.id, tx);
+      if (!lockedPolicy) {
+        throw new NotFoundError({ message: `Secret approval policy with ID '${policy.id}' not found` });
+      }
+      await approvalRequestDAL.update(
+        { policyId: policy.id, status: RequestState.Open },
+        { status: RequestState.Closed },
+        tx
+      );
+      await approvalPolicyDAL.deleteById(policy.id, tx);
+    });
 
     return { ...policy, deletedAt: new Date() };
   };

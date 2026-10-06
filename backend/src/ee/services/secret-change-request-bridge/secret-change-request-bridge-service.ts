@@ -446,6 +446,11 @@ export const secretChangeRequestBridgeServiceFactory = ({
     dto,
     trx
   ) => {
+    const commitTags = dto.commits.reduce<Record<string, string[]>>((acc, { key, tagIds }) => {
+      if (tagIds?.length) acc[key] = [...(acc[key] ?? []), ...tagIds];
+      return acc;
+    }, {});
+
     const write = async (tx: Knex) => {
       const policy = await secretChangePolicyBridgeService.findSecretChangePolicyById(dto.policy.id, tx);
       if (!policy) {
@@ -465,9 +470,7 @@ export const secretChangeRequestBridgeServiceFactory = ({
           commitMessage: dto.commitMessage,
           isReplicated: dto.isReplicated,
           commits: dto.commits.map(({ tagIds, ...commit }) => commit),
-          commitTags: Object.fromEntries(
-            dto.commits.flatMap(({ key, tagIds }) => (tagIds?.length ? [[key, tagIds]] : []))
-          )
+          commitTags
         },
         tx
       );

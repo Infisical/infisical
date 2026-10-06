@@ -779,10 +779,10 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findProjectWithOrg = async (projectId: string) => {
+  const findProjectWithOrg = async (projectId: string, tx?: Knex) => {
     // we just need the project, and we need to include a new .organization field that includes the org from the orgId reference
 
-    const project = await db(TableName.Project)
+    const project = await (tx || db)(TableName.Project)
       .where({ [`${TableName.Project}.id` as "id"]: projectId })
       .whereNull(`${TableName.Project}.deleteAfter`)
       .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Project}.orgId`)

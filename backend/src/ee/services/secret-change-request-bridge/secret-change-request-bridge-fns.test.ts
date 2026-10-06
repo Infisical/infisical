@@ -405,6 +405,7 @@ describe("runSecretChangeRequestSideEffects", () => {
     expect(deps.userDAL.findById).toHaveBeenCalledWith("user-1", TX);
     expect(deps.projectEnvDAL.findOne).toHaveBeenCalledWith({ slug: "dev", projectId: "project-1" }, TX);
     expect(deps.userDAL.find).toHaveBeenCalledWith({ $in: { id: ["user-2", "user-3"] } }, { tx: TX });
+    expect(deps.projectDAL.findProjectWithOrg).toHaveBeenCalledWith("project-1", TX);
   });
 
   test("logs a webhook failure instead of throwing when there is no caller transaction", async () => {

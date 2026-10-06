@@ -95,7 +95,7 @@ export const toSecretChangeRequestBase = ({
   secretChangeRequest: TSecretChangeRequests;
 }): Omit<TSecretChangeRequest, "commits"> => ({
   id: approvalRequest.id,
-  policyId: approvalRequest.policyId as string,
+  policyId: approvalRequest.policyId ?? "",
   status: approvalRequest.status,
   hasMerged: secretChangeRequest.hasMerged,
   conflicts: secretChangeRequest.conflicts ?? null,
@@ -203,7 +203,7 @@ export const secretChangeRequestFnsFactory = ({
     if (!approverUserIds.length) return;
 
     const approvers = await userDAL.find({ $in: { id: approverUserIds } }, { tx });
-    const project = await projectDAL.findProjectWithOrg(projectId);
+    const project = await projectDAL.findProjectWithOrg(projectId, tx);
     const approvalUrl = buildApprovalUrl(project.orgId, project.id, requestId);
 
     await notificationService.createUserNotifications(
