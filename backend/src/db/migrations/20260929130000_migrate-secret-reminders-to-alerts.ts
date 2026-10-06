@@ -101,6 +101,9 @@ export async function up(knex: Knex): Promise<void> {
       .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
       .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
       .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+      // Soft-deleted rows are being reaped, and the KMS lookup below can't see a soft-deleted project.
+      .whereNull(`${TableName.Project}.deleteAfter`)
+      .whereNull(`${TableName.Environment}.deleteAfter`)
       .modify((qb) => {
         if (cursor) void qb.where(`${TableName.Reminder}.id`, ">", cursor);
       })
