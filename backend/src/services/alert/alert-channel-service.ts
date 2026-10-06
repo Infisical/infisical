@@ -21,7 +21,12 @@ import {
 } from "./alert-channel-crypto-fns";
 import { TAlertChannelDALFactory } from "./alert-channel-dal";
 import { TAlertChannelRecipientDALFactory } from "./alert-channel-recipient-dal";
-import { TAlertChannelEmbedded, TChannelRecipientInput } from "./alert-channel-service-types";
+import {
+  TAlertChannelEmbedded,
+  TChannelRecipientInput,
+  TPreparedChannelCreate,
+  TPreparedChannelUpdate
+} from "./alert-channel-service-types";
 import { AlertChannelType } from "./alert-channel-types";
 import { findVerifiedEmailDomains, isOnVerifiedDomain, resolvePrincipalsInScope } from "./alert-principal-scope-fns";
 import { AlertPrincipalType, TAlertRecipientScope } from "./alert-types";
@@ -206,19 +211,19 @@ export const alertChannelServiceFactory = ({
     return redacted;
   };
 
-  const createChannelInTx = async (
+  const prepareChannelCreate = async (
     input: TCreateChannelInTxInput,
     encryptor: TAlertEncryptor,
-    tx: Knex
-  ): Promise<TAlertChannels> => {
+    tx?: Knex
+  ): Promise<TPreparedChannelCreate> => {
     const definition = getChannelDefinition(input.channelType);
     const recipients = input.recipients ?? [];
     $assertRecipientRules(definition, input.channelType, recipients);
     assertChannelConfigValid(definition, input.channelType, input.config);
     await validateRecipients(input.orgId, input.recipientScope, recipients, tx);
 
-    const created = await alertChannelDAL.create(
-      {
+    return {
+      row: {
         name: input.name,
         channelType: input.channelType,
         encryptedConfig: encryptChannelConfig(input.config, encryptor),
@@ -228,24 +233,37 @@ export const alertChannelServiceFactory = ({
         createdByActorId: input.createdByActorId,
         createdByActorType: input.createdByActorType
       },
-      tx
-    );
+      recipients
+    };
+  };
 
-    if (recipients.length) {
+  const applyChannelCreate = async (prepared: TPreparedChannelCreate, tx: Knex): Promise<TAlertChannels> => {
+    const created = await alertChannelDAL.create(prepared.row, tx);
+    if (prepared.recipients.length) {
       await alertChannelRecipientDAL.insertMany(
-        recipients.map((r) => ({ channelId: created.id, principalType: r.principalType, principalId: r.principalId })),
+        prepared.recipients.map((r) => ({
+          channelId: created.id,
+          principalType: r.principalType,
+          principalId: r.principalId
+        })),
         tx
       );
     }
     return created;
   };
 
-  const updateChannelInTx = async (
+  const createChannelInTx = async (
+    input: TCreateChannelInTxInput,
+    encryptor: TAlertEncryptor,
+    tx: Knex
+  ): Promise<TAlertChannels> => applyChannelCreate(await prepareChannelCreate(input, encryptor, tx), tx);
+
+  const prepareChannelUpdate = async (
     input: TUpdateChannelInTxInput,
     channel: TAlertChannels,
     cipher: { encryptor: TAlertEncryptor; decryptor: TAlertDecryptor },
-    tx: Knex
-  ): Promise<void> => {
+    tx?: Knex
+  ): Promise<TPreparedChannelUpdate> => {
     if (input.channelType !== undefined && input.channelType !== channel.channelType) {
       throw new BadRequestError({
         message: `Channel '${channel.id}' is a ${channel.channelType} channel and its type cannot be changed to ${input.channelType}`
@@ -268,22 +286,26 @@ export const alertChannelServiceFactory = ({
       await validateRecipients(channel.orgId, input.recipientScope, recipients, tx);
     }
 
-    await alertChannelDAL.updateById(
-      channel.id,
-      {
+    return {
+      channelId: channel.id,
+      patch: {
         ...(input.name !== undefined ? { name: input.name } : {}),
         ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
         ...(input.config !== undefined ? { encryptedConfig: encryptChannelConfig(finalConfig, cipher.encryptor) } : {})
       },
-      tx
-    );
+      recipients
+    };
+  };
 
-    if (recipients !== undefined) {
-      await alertChannelRecipientDAL.deleteByChannelId(channel.id, tx);
-      if (recipients.length) {
+  const applyChannelUpdate = async (prepared: TPreparedChannelUpdate, tx: Knex): Promise<void> => {
+    await alertChannelDAL.updateById(prepared.channelId, prepared.patch, tx);
+
+    if (prepared.recipients !== undefined) {
+      await alertChannelRecipientDAL.deleteByChannelId(prepared.channelId, tx);
+      if (prepared.recipients.length) {
         await alertChannelRecipientDAL.insertMany(
-          recipients.map((r) => ({
-            channelId: channel.id,
+          prepared.recipients.map((r) => ({
+            channelId: prepared.channelId,
             principalType: r.principalType,
             principalId: r.principalId
           })),
@@ -292,6 +314,13 @@ export const alertChannelServiceFactory = ({
       }
     }
   };
+
+  const updateChannelInTx = async (
+    input: TUpdateChannelInTxInput,
+    channel: TAlertChannels,
+    cipher: { encryptor: TAlertEncryptor; decryptor: TAlertDecryptor },
+    tx: Knex
+  ): Promise<void> => applyChannelUpdate(await prepareChannelUpdate(input, channel, cipher, tx), tx);
 
   // For callers that carry recipient lists from outside the alert module (eg reminder recipients that
   // were never pruned when someone left the project), where an out-of-scope id should be dropped
@@ -361,6 +390,10 @@ export const alertChannelServiceFactory = ({
   return {
     createChannelInTx,
     updateChannelInTx,
+    prepareChannelCreate,
+    applyChannelCreate,
+    prepareChannelUpdate,
+    applyChannelUpdate,
     deleteChannelInTx,
     getDetailsForChannels,
     validateRecipients,

@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
-import { TAlertChannelInput, TChannelRecipientInput } from "../alert/alert-channel-service-types";
+import { TAlertChannelInput } from "../alert/alert-channel-service-types";
+import { TAlertWritePlan } from "../alert/alert-service-types";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
 export type TReminder = {
@@ -26,10 +27,28 @@ export type TCreateReminderDTO = {
     fromDate?: string | null;
     nextReminderDate?: string | null;
     recipients?: string[] | null;
-    // From resolveReminderRecipients, for a caller that checked them before its own write.
-    resolvedRecipients?: TChannelRecipientInput[];
     channels?: TAlertChannelInput[];
   };
+};
+
+export type TPrepareReminderDTO = TCreateReminderDTO & {
+  // The key the secret will have once the caller's own write lands (eg a rename in the same update), so
+  // the alert is named after it rather than the key being replaced.
+  secretKey?: string;
+};
+
+// A reminder that has passed every check, ready to be written with applyReminder in the caller's
+// transaction.
+export type TPreparedReminder = {
+  secretId: string;
+  projectId: string;
+  row: {
+    message?: string | null;
+    repeatDays?: number | null;
+    nextReminderDate: Date;
+    fromDate?: Date;
+  };
+  alertPlan: TAlertWritePlan;
 };
 
 export type TBatchCreateReminderDTO = {
@@ -42,12 +61,9 @@ export type TBatchCreateReminderDTO = {
 }[];
 
 export interface TReminderServiceFactory {
-  resolveReminderRecipients: (input: {
-    actorOrgId: string;
-    projectId: string;
-    secretId: string;
-    recipients?: string[] | null;
-  }) => Promise<TChannelRecipientInput[]>;
+  prepareReminder: (dto: TPrepareReminderDTO) => Promise<TPreparedReminder>;
+
+  applyReminder: (prepared: TPreparedReminder, tx: Knex) => Promise<{ id: string; created: boolean }>;
 
   createReminder: ({ actor, actorId, actorOrgId, actorAuthMethod, reminder }: TCreateReminderDTO) => Promise<{
     id: string;

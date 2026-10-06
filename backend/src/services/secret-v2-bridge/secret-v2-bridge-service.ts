@@ -189,7 +189,8 @@ type TSecretV2BridgeServiceFactoryDep = {
   >;
   reminderService: Pick<
     TReminderServiceFactory,
-    | "resolveReminderRecipients"
+    | "prepareReminder"
+    | "applyReminder"
     | "createReminder"
     | "getReminder"
     | "batchCreateReminders"
@@ -798,13 +799,21 @@ export const secretV2BridgeServiceFactory = ({
       await $validateSecretReferences(projectId, permission, allSecretReferences);
     }
 
-    // A recipient nobody can notify has to fail here, before the secret changes, not after it has committed.
-    const reminderRecipients = inputSecret.secretReminderRepeatDays
-      ? await reminderService.resolveReminderRecipients({
+    // The secret and its reminder are one change: the reminder is checked before anything is written, then
+    // written in the secret's transaction, so either both land or neither does.
+    const preparedReminder = inputSecret.secretReminderRepeatDays
+      ? await reminderService.prepareReminder({
+          actor,
+          actorId,
           actorOrgId,
-          projectId,
-          secretId,
-          recipients: inputSecret.secretReminderRecipients
+          actorAuthMethod,
+          secretKey: inputSecret.newSecretName || inputSecret.secretName,
+          reminder: {
+            secretId,
+            message: inputSecret.secretReminderNote,
+            repeatDays: inputSecret.secretReminderRepeatDays,
+            recipients: inputSecret.secretReminderRecipients
+          }
         })
       : undefined;
 
@@ -869,23 +878,11 @@ export const secretV2BridgeServiceFactory = ({
         });
       }
 
+      if (preparedReminder) await reminderService.applyReminder(preparedReminder, tx);
+
       await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
       return modifiedSecretsInDB;
     });
-    if (inputSecret.secretReminderRepeatDays) {
-      await reminderService.createReminder({
-        actor,
-        actorId,
-        actorOrgId,
-        actorAuthMethod,
-        reminder: {
-          secretId: secret.id,
-          message: inputSecret.secretReminderNote,
-          repeatDays: inputSecret.secretReminderRepeatDays,
-          resolvedRecipients: reminderRecipients
-        }
-      });
-    }
 
     if (inputSecret.type === SecretType.Shared) {
       await secretQueueService.syncSecrets({

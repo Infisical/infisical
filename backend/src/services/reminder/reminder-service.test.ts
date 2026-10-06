@@ -207,7 +207,9 @@ type TStoredAlert = {
   }>;
 };
 
-const buildWriteService = (opts: { existingAlert?: TStoredAlert; projectUserIds?: string[] } = {}) => {
+const buildWriteService = (
+  opts: { existingAlert?: TStoredAlert; projectUserIds?: string[]; alertRefusal?: Error } = {}
+) => {
   const calls: string[] = [];
   const created: unknown[] = [];
   const updated: Array<{ alertId: string; name?: string; channels?: unknown[] }> = [];
@@ -215,11 +217,16 @@ const buildWriteService = (opts: { existingAlert?: TStoredAlert; projectUserIds?
   const deletedAlerts: Array<{ resourceIds: string[]; tx: unknown }> = [];
   const repointed: Array<{ fromResourceId: string; toResourceId: string; tx: unknown }> = [];
 
+  const reminderTx = { tx: "reminder" };
+  const writeTxs: unknown[] = [];
+
   const service = reminderServiceFactory({
     reminderDAL: {
+      transaction: async (cb: (trx: unknown) => unknown) => cb(reminderTx),
       findOne: async () => undefined,
-      create: async (data: Record<string, unknown>) => {
+      create: async (data: Record<string, unknown>, trx?: unknown) => {
         calls.push("reminder:create");
+        writeTxs.push(trx);
         return { id: "rem-1", ...data };
       },
       updateById: async () => ({}),
@@ -248,15 +255,27 @@ const buildWriteService = (opts: { existingAlert?: TStoredAlert; projectUserIds?
       filterRecipientsInScope: async (_scope: unknown, recipients: { principalType: string; principalId: string }[]) =>
         opts.projectUserIds ? recipients.filter((r) => opts.projectUserIds!.includes(r.principalId)) : recipients,
       findAlertChannelSummariesForResources: async () => (opts.existingAlert ? [opts.existingAlert] : []),
-      createAlert: async (input: unknown) => {
-        calls.push("alert:create");
+      prepareCreateAlert: async (input: unknown) => {
+        if (opts.alertRefusal) throw opts.alertRefusal;
         created.push(input);
-        return input;
+        return { kind: "create" };
       },
-      updateAlert: async ({ alertId, name, channels }: { alertId: string; name?: string; channels?: unknown[] }) => {
-        calls.push("alert:update");
+      prepareUpdateAlert: async ({
+        alertId,
+        name,
+        channels
+      }: {
+        alertId: string;
+        name?: string;
+        channels?: unknown[];
+      }) => {
+        if (opts.alertRefusal) throw opts.alertRefusal;
         updated.push({ alertId, name, channels });
-        return { alertId, name, channels };
+        return { kind: "update" };
+      },
+      applyAlertWrite: async (_plan: unknown, trx: unknown) => {
+        calls.push("alert:apply");
+        writeTxs.push(trx);
       },
       findRecipientsForResources: async ({ resourceIds }: { resourceIds: string[] }) =>
         resourceIds.map((resourceId) => ({ resourceId, principalId: "user-1" })),
@@ -276,14 +295,14 @@ const buildWriteService = (opts: { existingAlert?: TStoredAlert; projectUserIds?
     }
   } as never);
 
-  return { service, calls, created, updated, deletedAlerts, repointed, copied };
+  return { service, calls, created, updated, deletedAlerts, repointed, copied, reminderTx, writeTxs };
 };
 
 const caller = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null };
 
 const saveReminder = (
   service: ReturnType<typeof buildWriteService>["service"],
-  fields: { recipients?: string[] | null; resolvedRecipients?: unknown[]; channels?: unknown[] }
+  fields: { recipients?: string[] | null; channels?: unknown[] }
 ) =>
   service.createReminder({
     ...caller,
@@ -317,10 +336,44 @@ describe("reminder alert sync", () => {
     ]);
   });
 
-  test("syncs the alert before writing the reminder, so a reminder never exists without one", async () => {
-    const { service, calls } = buildWriteService();
+  test("writes the alert and the reminder in one transaction, so neither exists without the other", async () => {
+    const { service, calls, reminderTx, writeTxs } = buildWriteService();
     await saveReminder(service, { recipients: ["user-1"] });
-    expect(calls).toEqual(["alert:create", "reminder:create"]);
+    expect(calls).toEqual(["alert:apply", "reminder:create"]);
+    expect(writeTxs).toEqual([reminderTx, reminderTx]);
+  });
+
+  test("a refusal from the alert module stops the reminder before anything is written", async () => {
+    const { service, calls } = buildWriteService({
+      alertRefusal: new Error("An alert can have at most 10 channels, and this would leave it with 11")
+    });
+    await expect(saveReminder(service, { recipients: ["user-1"] })).rejects.toThrow(/at most 10 channels/);
+    expect(calls).toEqual([]);
+  });
+
+  test("preparing a reminder writes nothing until it is applied in the caller's transaction", async () => {
+    const { service, calls, writeTxs } = buildWriteService();
+    const callerTx = { tx: "secret-update" } as never;
+    const prepared = await service.prepareReminder({
+      ...caller,
+      secretKey: "RENAMED",
+      reminder: { secretId: "secret-1", repeatDays: 30, recipients: ["user-1"] }
+    } as never);
+    expect(calls).toEqual([]);
+
+    await service.applyReminder(prepared, callerTx);
+    expect(calls).toEqual(["alert:apply", "reminder:create"]);
+    expect(writeTxs).toEqual([callerTx, callerTx]);
+  });
+
+  test("a rename in the same request names the alert after the new key", async () => {
+    const { service, created } = buildWriteService();
+    await service.prepareReminder({
+      ...caller,
+      secretKey: "RENAMED",
+      reminder: { secretId: "secret-1", repeatDays: 30, recipients: ["user-1"] }
+    } as never);
+    expect(created).toEqual([expect.objectContaining({ name: "Reminder for RENAMED" })]);
   });
 
   test("no recipients means everyone in the project", async () => {
@@ -345,56 +398,6 @@ describe("reminder alert sync", () => {
       /None of the selected reminder recipients/
     );
     expect(calls).toEqual([]);
-  });
-
-  test("recipients a caller already resolved are used as given, without a second membership check", async () => {
-    const { service, created } = buildWriteService({ projectUserIds: [] });
-    await saveReminder(service, { resolvedRecipients: [{ principalType: "user", principalId: "user-1" }] });
-    expect((created[0] as { channels: { recipients: unknown }[] }).channels[0].recipients).toEqual([
-      { principalType: "user", principalId: "user-1" }
-    ]);
-  });
-
-  test("resolving recipients refuses a list with nobody left in the project", async () => {
-    const { service } = buildWriteService({ projectUserIds: [] });
-    await expect(
-      service.resolveReminderRecipients({
-        actorOrgId: "org-1",
-        projectId: "proj-1",
-        secretId: "secret-1",
-        recipients: ["user-gone"]
-      })
-    ).rejects.toThrow(/None of the selected reminder recipients/);
-  });
-
-  test("refuses more email recipients than fit beside the alert's other channels", async () => {
-    const webhookOnly = {
-      id: "alert-1",
-      name: "Reminder for DB_PASSWORD",
-      resourceId: "secret-1",
-      channels: [{ id: "ch-hook", name: "Webhook", channelType: "webhook", enabled: true }]
-    };
-    const { service, calls } = buildWriteService({ existingAlert: webhookOnly });
-    const recipients = Array.from({ length: 200 }, (_, i) => `user-${i}`);
-
-    await expect(saveReminder(service, { recipients })).rejects.toThrow(
-      "This reminder already sends to 1 other channels, so it can email at most 180 recipients."
-    );
-    expect(calls).toEqual([]);
-  });
-
-  test("accepts as many email recipients as fit beside the alert's other channels", async () => {
-    const webhookOnly = {
-      id: "alert-1",
-      name: "Reminder for DB_PASSWORD",
-      resourceId: "secret-1",
-      channels: [{ id: "ch-hook", name: "Webhook", channelType: "webhook", enabled: true }]
-    };
-    const { service, updated } = buildWriteService({ existingAlert: webhookOnly });
-    const recipients = Array.from({ length: 180 }, (_, i) => `user-${i}`);
-
-    await saveReminder(service, { recipients });
-    expect(updated[0].channels).toHaveLength(10);
   });
 
   test("given channels, saves them as the alert's complete channel list", async () => {

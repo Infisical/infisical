@@ -1,4 +1,4 @@
-import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
+import { OrgMembershipRole, ProjectMembershipRole, SecretType } from "@app/db/schemas";
 
 import { up as migrateRemindersToAlerts } from "../../../src/db/migrations/20260929130000_migrate-secret-reminders-to-alerts";
 import { updateAlert } from "../../testUtils/alerts";
@@ -344,6 +344,44 @@ describe("Secret reminders delivered through alerts", () => {
     });
     expect(secret.secretValue).toBe("value");
     expect(await getSecretReminder({ secretId, authToken })).toBeNull();
+  });
+
+  // The reminder provider only accepts reminders on shared secrets. That check belongs to the alert
+  // module, so this shows a refusal from it now fails the whole update before the secret is written.
+  test("a secret update whose reminder the alert module refuses leaves the secret unchanged", async () => {
+    await createSecret("PERSONAL_REMINDER");
+    await createSecretV2({
+      workspaceId: projectId,
+      environmentSlug: ENVIRONMENT,
+      secretPath: "/",
+      key: "PERSONAL_REMINDER",
+      value: "personal",
+      type: SecretType.Personal,
+      authToken
+    });
+
+    await updateSecretV2({
+      workspaceId: projectId,
+      environmentSlug: ENVIRONMENT,
+      secretPath: "/",
+      key: "PERSONAL_REMINDER",
+      value: "changed",
+      type: SecretType.Personal,
+      reminder: { repeatDays: 14 },
+      authToken
+    }).expect((res) => {
+      expect(res.statusCode).toBe(400);
+      expect(res.json<{ message: string }>().message).toMatch(/Reminders can only be set on shared secrets/);
+    });
+
+    const res = await testServer.inject({
+      method: "GET",
+      url: "/api/v3/secrets/raw/PERSONAL_REMINDER",
+      headers: { authorization: `Bearer ${authToken}` },
+      query: { workspaceId: projectId, environment: ENVIRONMENT, secretPath: "/", type: SecretType.Personal }
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json<{ secret: { secretValue: string } }>().secret.secretValue).toBe("personal");
   });
 
   test("deleting a reminder removes its alert, channels and recipients", async () => {

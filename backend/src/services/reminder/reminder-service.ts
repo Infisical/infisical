@@ -13,7 +13,8 @@ import { TGenericPermission } from "@app/lib/types";
 import { TAlertChannelInput, TChannelRecipientInput } from "../alert/alert-channel-service-types";
 import { AlertChannelType } from "../alert/alert-channel-types";
 import { TAlertServiceFactory } from "../alert/alert-service";
-import { AlertPrincipalType, MAX_CHANNELS_PER_ALERT, MAX_RECIPIENTS_PER_CHANNEL } from "../alert/alert-types";
+import { TAlertWritePlan } from "../alert/alert-service-types";
+import { AlertPrincipalType, MAX_RECIPIENTS_PER_CHANNEL } from "../alert/alert-types";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -34,8 +35,9 @@ type TReminderServiceFactoryDep = {
   eventEmitter: TEventEmitter;
   alertService: Pick<
     TAlertServiceFactory,
-    | "createAlert"
-    | "updateAlert"
+    | "prepareCreateAlert"
+    | "prepareUpdateAlert"
+    | "applyAlertWrite"
     | "findAlertChannelSummariesForResources"
     | "findRecipientsForResources"
     | "deleteAlertsForDeletedResources"
@@ -80,18 +82,20 @@ export const reminderServiceFactory = ({
   };
 
   // Who a reminder's email goes to. An empty list keeps the reminder's original meaning: everyone in the
-  // project. Exposed so a caller that writes something else first (a secret update) can refuse the
-  // request before that write instead of after it has committed.
-  const resolveReminderRecipients: TReminderServiceFactory["resolveReminderRecipients"] = async ({
-    actorOrgId,
+  // project.
+  const $resolveEmailRecipients = async ({
+    orgId,
     projectId,
-    secretId,
     recipients
-  }) => {
+  }: {
+    orgId: string;
+    projectId: string;
+    recipients?: string[] | null;
+  }): Promise<TChannelRecipientInput[]> => {
     // Reminder recipients were never pruned when someone left the project, so drop them rather than fail.
     const requested = [...new Set(recipients ?? [])];
     const inScope = await alertService.filterRecipientsInScope(
-      { orgId: actorOrgId, projectId },
+      { orgId, projectId },
       requested.map((principalId) => ({ principalType: AlertPrincipalType.USER, principalId }))
     );
     // Falling back to the whole project here would send the secret's key, path and note to people nobody
@@ -101,81 +105,56 @@ export const reminderServiceFactory = ({
         message: "None of the selected reminder recipients are members of this project. Choose recipients again."
       });
     }
-    const emailRecipients: TChannelRecipientInput[] = inScope.length
-      ? inScope
-      : [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: projectId }];
-
-    // The email channels sit beside the alert's other channels (Slack, webhook, PagerDuty), and the alert
-    // API refuses to save more than MAX_CHANNELS_PER_ALERT in total. Writing past it here would leave an
-    // alert nobody can edit until a channel is removed.
-    const [existing] = await alertService.findAlertChannelSummariesForResources({
-      resourceType: SECRET_REMINDER_RESOURCE_TYPE,
-      resourceIds: [secretId]
-    });
-    const otherChannelCount =
-      existing?.channels.filter((channel) => channel.channelType !== AlertChannelType.EMAIL).length ?? 0;
-    const emailChannelCount = Math.ceil(emailRecipients.length / MAX_RECIPIENTS_PER_CHANNEL);
-    if (otherChannelCount + emailChannelCount > MAX_CHANNELS_PER_ALERT) {
-      const maxRecipients = Math.max(MAX_CHANNELS_PER_ALERT - otherChannelCount, 0) * MAX_RECIPIENTS_PER_CHANNEL;
-      throw new BadRequestError({
-        message: `This reminder already sends to ${otherChannelCount} other channels, so it can email at most ${maxRecipients} recipients. Remove recipients or channels and try again.`
-      });
-    }
-
-    return emailRecipients;
+    return inScope.length ? inScope : [{ principalType: AlertPrincipalType.PROJECT_MEMBERS, principalId: projectId }];
   };
 
   // Given `channels`, they are the alert's complete channel list. Otherwise the reminder API only knows
   // user ids, so it owns the alert's email channels and leaves every other channel (Slack, webhook,
-  // PagerDuty) as the user configured it. The alert is written as the caller, so the reminder provider
-  // checks they can edit the secret.
-  const $syncReminderAlert = async ({
+  // PagerDuty) as the user configured it. The alert is prepared as the caller, so the reminder provider
+  // checks they can edit the secret, and the alert module refuses anything it would not accept from its
+  // own API (eg more channels than an alert can hold).
+  const $prepareReminderAlert = async ({
     secretId,
     secretKey,
     projectId,
-    emailRecipients,
+    recipients,
     channels,
     actor
   }: {
     secretId: string;
     secretKey: string;
     projectId: string;
-    emailRecipients: TChannelRecipientInput[];
+    recipients?: string[] | null;
     channels?: TAlertChannelInput[];
     actor: TGenericPermission;
-  }) => {
+  }): Promise<TAlertWritePlan> => {
     const [existing] = await alertService.findAlertChannelSummariesForResources({
       resourceType: SECRET_REMINDER_RESOURCE_TYPE,
       resourceIds: [secretId]
     });
 
-    const $writeAlert = async (alertChannels: TAlertChannelInput[]) => {
-      if (existing) {
-        await alertService.updateAlert({
-          alertId: existing.id,
-          name: reminderAlertName(secretKey),
-          channels: alertChannels,
-          ...actor
-        });
-        return;
-      }
-      await alertService.createAlert({
-        name: reminderAlertName(secretKey),
-        resourceType: SECRET_REMINDER_RESOURCE_TYPE,
-        resourceId: secretId,
-        eventType: SECRET_REMINDER_DUE_EVENT,
-        condition: null,
-        projectId,
-        channels: alertChannels,
-        ...actor
-      });
-    };
+    const $plan = (alertChannels: TAlertChannelInput[]) =>
+      existing
+        ? alertService.prepareUpdateAlert({
+            alertId: existing.id,
+            name: reminderAlertName(secretKey),
+            channels: alertChannels,
+            ...actor
+          })
+        : alertService.prepareCreateAlert({
+            name: reminderAlertName(secretKey),
+            resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+            resourceId: secretId,
+            eventType: SECRET_REMINDER_DUE_EVENT,
+            condition: null,
+            projectId,
+            channels: alertChannels,
+            ...actor
+          });
 
-    if (channels) {
-      await $writeAlert(channels);
-      return;
-    }
+    if (channels) return $plan(channels);
 
+    const emailRecipients = await $resolveEmailRecipients({ orgId: actor.actorOrgId, projectId, recipients });
     const existingEmailChannels =
       existing?.channels.filter((channel) => channel.channelType === AlertChannelType.EMAIL) ?? [];
 
@@ -199,7 +178,7 @@ export const reminderServiceFactory = ({
         enabled: channel.enabled
       }));
 
-    await $writeAlert([...emailChannels, ...otherChannels]);
+    return $plan([...emailChannels, ...otherChannels]);
   };
 
   const $getSecretForPermissionCheck = async (secretId: string) => {
@@ -226,30 +205,14 @@ export const reminderServiceFactory = ({
     };
   };
 
-  const $saveReminder = async ({
-    secretId,
-    secretKey,
-    message,
+  const $schedule = ({
     repeatDays,
     nextReminderDate: nextReminderDateInput,
-    recipients,
-    resolvedRecipients,
-    channels,
-    projectId,
-    fromDate: fromDateInput,
-    actor
+    fromDate: fromDateInput
   }: {
-    secretId: string;
-    secretKey: string;
-    message?: string | null;
     repeatDays?: number | null;
     nextReminderDate?: string | null;
-    recipients?: string[] | null;
-    resolvedRecipients?: TChannelRecipientInput[];
-    channels?: TAlertChannelInput[];
     fromDate?: string | null;
-    projectId: string;
-    actor: TGenericPermission;
   }) => {
     let nextReminderDate;
     let fromDate;
@@ -269,48 +232,21 @@ export const reminderServiceFactory = ({
     if (!nextReminderDate) {
       throw new BadRequestError({ message: "repeatDays must be a positive number" });
     }
-
-    const emailRecipients =
-      resolvedRecipients ??
-      (await resolveReminderRecipients({ actorOrgId: actor.actorOrgId, projectId, secretId, recipients }));
-
-    // The alert goes first, outside any transaction because encrypting channel config can call out to
-    // KMS. If the reminder write then fails, an alert with no reminder never fires and is reused next time.
-    await $syncReminderAlert({ secretId, secretKey, projectId, emailRecipients, channels, actor });
-
-    const existingReminder = await reminderDAL.findOne({ secretId });
-    let reminderId: string;
-
-    if (existingReminder) {
-      await reminderDAL.updateById(existingReminder.id, {
-        message,
-        repeatDays,
-        nextReminderDate,
-        fromDate
-      });
-      reminderId = existingReminder.id;
-    } else {
-      const newReminder = await reminderDAL.create({
-        secretId,
-        message,
-        repeatDays,
-        nextReminderDate,
-        fromDate
-      });
-      reminderId = newReminder.id;
-    }
-
-    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
-    return { id: reminderId, created: !existingReminder };
+    return { nextReminderDate, fromDate };
   };
 
-  const createReminder: TReminderServiceFactory["createReminder"] = async ({
+  // Everything that can refuse a reminder runs here, before anything is written: the caller's permission on
+  // the secret, the schedule, the recipients, and the alert module's own checks on the reminder's alert. A
+  // caller that writes something else in the same request (a secret update) prepares first, so a refused
+  // reminder fails the request before that write.
+  const prepareReminder: TReminderServiceFactory["prepareReminder"] = async ({
     actor,
     actorId,
     actorOrgId,
     actorAuthMethod,
-    reminder
-  }: TCreateReminderDTO) => {
+    reminder,
+    secretKey
+  }) => {
     const { secret, subjectFields } = await $getSecretForPermissionCheck(reminder.secretId!);
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -325,13 +261,42 @@ export const reminderServiceFactory = ({
       subject(ProjectPermissionSub.Secrets, subjectFields)
     );
 
-    return $saveReminder({
-      ...reminder,
+    const { nextReminderDate, fromDate } = $schedule(reminder);
+    const alertPlan = await $prepareReminderAlert({
       secretId: secret.id,
-      secretKey: secret.key,
+      secretKey: secretKey ?? secret.key,
       projectId: secret.projectId,
+      recipients: reminder.recipients,
+      channels: reminder.channels,
       actor: { actor, actorId, actorOrgId, actorAuthMethod }
     });
+
+    return {
+      secretId: secret.id,
+      projectId: secret.projectId,
+      row: { message: reminder.message, repeatDays: reminder.repeatDays, nextReminderDate, fromDate },
+      alertPlan
+    };
+  };
+
+  // Writes a prepared reminder and its alert in the caller's transaction, so the two land together.
+  const applyReminder: TReminderServiceFactory["applyReminder"] = async (prepared, tx) => {
+    await alertService.applyAlertWrite(prepared.alertPlan, tx);
+
+    const existingReminder = await reminderDAL.findOne({ secretId: prepared.secretId }, tx);
+    if (existingReminder) {
+      await reminderDAL.updateById(existingReminder.id, prepared.row, tx);
+      return { id: existingReminder.id, created: false };
+    }
+    const newReminder = await reminderDAL.create({ secretId: prepared.secretId, ...prepared.row }, tx);
+    return { id: newReminder.id, created: true };
+  };
+
+  const createReminder: TReminderServiceFactory["createReminder"] = async (dto: TCreateReminderDTO) => {
+    const prepared = await prepareReminder(dto);
+    const result = await reminderDAL.transaction((tx) => applyReminder(prepared, tx));
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(prepared.projectId);
+    return result;
   };
 
   const getReminder: TReminderServiceFactory["getReminder"] = async ({
@@ -607,7 +572,8 @@ export const reminderServiceFactory = ({
   };
 
   return {
-    resolveReminderRecipients,
+    prepareReminder,
+    applyReminder,
     createReminder,
     getReminder,
     dispatchDueReminders,

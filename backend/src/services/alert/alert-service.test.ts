@@ -159,17 +159,21 @@ const buildService = (opts?: {
         return data;
       }
     },
+    // Prepared writes are the inputs passed straight through, so applying one is where a row appears.
     alertChannelService: {
-      createChannelInTx: async (input: {
+      prepareChannelCreate: async (input: { recipientScope: { projectId: string | null } }) => {
+        recipientProjectIds.push(input.recipientScope.projectId);
+        return input;
+      },
+      prepareChannelUpdate: async (input: unknown) => input,
+      applyChannelCreate: async (input: {
         name: string;
         channelType: AlertChannelType | string;
         enabled?: boolean;
         recipients?: { principalType: string; principalId: string }[];
         orgId: string;
         projectId?: string | null;
-        recipientScope: { projectId: string | null };
       }) => {
-        recipientProjectIds.push(input.recipientScope.projectId);
         channelSeq += 1;
         const row: TChannelRow = {
           id: `ch-${channelSeq}`,
@@ -185,7 +189,7 @@ const buildService = (opts?: {
         channels.set(row.id, row);
         return row;
       },
-      updateChannelInTx: async (input: {
+      applyChannelUpdate: async (input: {
         channelId: string;
         name?: string;
         enabled?: boolean;
@@ -482,6 +486,34 @@ describe("alert service", () => {
     });
 
     expect(gatedChannelTypeCalls.at(-1)).toEqual([]);
+  });
+
+  test("refuses more channels than an alert can hold", async () => {
+    const { service } = buildService();
+    const channels = Array.from({ length: 11 }, (_, i) => ({
+      name: `hook-${i}`,
+      channelType: AlertChannelType.WEBHOOK,
+      config: { url: `https://example.com/${i}` }
+    }));
+    await expect(service.createAlert({ ...validCreate, channels })).rejects.toThrow(
+      "An alert can have at most 10 channels, and this would leave it with 11"
+    );
+
+    await service.createAlert(validCreate);
+    await expect(service.updateAlert({ alertId: "alert-1", channels, ...actor })).rejects.toThrow(
+      "An alert can have at most 10 channels, and this would leave it with 11"
+    );
+  });
+
+  test("a prepared write changes nothing until it is applied", async () => {
+    const { service, alerts, channels } = buildService();
+    const plan = await service.prepareCreateAlert(validCreate);
+    expect(alerts.size).toBe(0);
+    expect(channels.size).toBe(0);
+
+    await service.applyAlertWrite(plan, {} as never);
+    expect(alerts.size).toBe(1);
+    expect(channels.size).toBe(2);
   });
 
   test("update rejects an empty channel list", async () => {
