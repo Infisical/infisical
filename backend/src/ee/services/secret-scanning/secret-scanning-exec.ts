@@ -2,7 +2,7 @@ import { spawn } from "child_process";
 import RE2 from "re2";
 import { StringDecoder } from "string_decoder";
 
-import { getConfig } from "@app/lib/config/env";
+import { getConfig } from "../../../lib/config/env";
 
 export enum SecretScanningExecFailure {
   Timeout = "timeout",
@@ -30,7 +30,7 @@ const MAX_RETAINED_OUTPUT_CHARS = 4_000;
 // careful about logging `output`.
 const UrlCredentialsRegex = new RE2(/([a-z][a-z0-9+.-]*:\/\/)[^/\s@]+@/gi);
 
-const redactUrlCredentials = (value: string) => value.replace(UrlCredentialsRegex, "$1[REDACTED]@");
+export const redactUrlCredentials = (value: string) => value.replace(UrlCredentialsRegex, "$1[REDACTED]@");
 
 type TSecretScanningExecErrorParams = {
   failure: SecretScanningExecFailure;

@@ -1,8 +1,8 @@
 import { Camelize, GitbeakerRequestError, GroupHookSchema, ProjectHookSchema } from "@gitbeaker/rest";
 import { join } from "path";
 
-import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
-import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
+import { scanContentAndGetFindings } from "../../secret-scanning/secret-scanning-queue/secret-scanning-fns";
+import { SecretMatch } from "../../secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import {
   SecretScanningFindingSeverity,
   SecretScanningResource
@@ -321,6 +321,9 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
 
     const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
 
+    const instanceUrl = await getGitLabInstanceUrl(connection.credentials.instanceUrl);
+    const validatedHost = new URL(instanceUrl).host;
+
     const { commits, project } = payload;
 
     const allFindings: SecretMatch[] = [];
@@ -364,11 +367,11 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
             Fingerprint: `${commit.id}:${commitDiff.newPath}:${finding.RuleID}:${startLine}:${startColumn}`,
             Date: commit.timestamp,
             Attributes: {
-              ...finding.Attributes,
-              url: `https://gitlab.com/${resourceName}/blob/${commit.id}/${commitDiff.newPath}#L${startLine}`
+              ...(finding.Attributes || {}),
+
+              url: `https://${validatedHost}/${resourceName}/blob/${commit.id}/${commitDiff.newPath}#L${startLine}`
             }
-          };
-        });
+          };        });
 
         allFindings.push(...adjustedFindings);
       }
@@ -402,3 +405,4 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
     validateConfigUpdate
   };
 };
+export default GitLabSecretScanningFactory;

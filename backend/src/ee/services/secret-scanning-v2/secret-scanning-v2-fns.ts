@@ -1,36 +1,29 @@
+// Unique imports
 import { AxiosError } from "axios";
 import { join } from "path";
 import picomatch from "picomatch";
 import RE2 from "re2";
 
-import {
-  execFileBounded,
-  getGitThreadLimitArgs,
-  getScannerProcessEnv,
-  GIT_PROCESS_ENV,
-  SecretScanningExecError,
-  SecretScanningExecFailure,
-  SecretScanningExecPhase
-} from "@app/ee/services/secret-scanning/secret-scanning-exec";
-import {
-  createTempFolder,
-  deleteTempFolder,
-  readFindingsFile,
-  writeTextToFile
-} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
-import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
-import { BITBUCKET_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/bitbucket";
-import { GITHUB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/github";
-import { GITLAB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/gitlab";
-import { getConfig, SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT } from "@app/lib/config/env";
-import { crypto } from "@app/lib/crypto";
-import { BadRequestError } from "@app/lib/errors";
-import { titleCaseToCamelCase } from "@app/lib/fn";
-import { logger } from "@app/lib/logger";
+import { execFileBounded, getGitThreadLimitArgs, getScannerProcessEnv, GIT_PROCESS_ENV, redactUrlCredentials, SecretScanningExecError, SecretScanningExecFailure, SecretScanningExecPhase } from "../secret-scanning/secret-scanning-exec";
+
+import { createTempFolder, deleteTempFolder, readFindingsFile, writeTextToFile } from "../secret-scanning/secret-scanning-queue/secret-scanning-fns";
+
+import { SecretMatch } from "../secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
+
+import { BITBUCKET_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "./bitbucket";
+import { GITHUB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "./github";
+import { GITLAB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "./gitlab";
+
+import { getConfig, SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT } from "../../../lib/config/env";
+import { crypto } from "../../../lib/crypto";
+import { BadRequestError } from "../../../lib/errors";
+import { titleCaseToCamelCase } from "../../../lib/fn";
+import { logger } from "../../../lib/logger";
 
 import { SecretScanningDataSource, SecretScanningFindingSeverity } from "./secret-scanning-v2-enums";
 import { TCloneRepository, TGetFindingsPayload, TSecretScanningDataSourceListItem } from "./secret-scanning-v2-types";
 
+// Rest of file
 const SECRET_SCANNING_SOURCE_LIST_OPTIONS: Record<SecretScanningDataSource, TSecretScanningDataSourceListItem> = {
   [SecretScanningDataSource.GitHub]: GITHUB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION,
   [SecretScanningDataSource.Bitbucket]: BITBUCKET_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION,
@@ -41,7 +34,7 @@ export const listSecretScanningDataSourceOptions = () => {
   return Object.values(SECRET_SCANNING_SOURCE_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
 };
 
-// The scanner exits 77 when it wrote findings; that is a successful scan, not a failure.
+// The scanner exits 77 when it wrote findings, that is a successful scan, not a failure.
 const SCAN_FINDINGS_EXIT_CODE = 77;
 
 const KIB_PER_MIB = 1024;
@@ -209,8 +202,8 @@ export const planCommitBatches = async ({
 
   // prefixDigest is the hash that is regenerated on every commit and can be
   // recreated from history.
-  // A -> B -> C will generate a hash based on the commit sha and we can verify it
-  // if for some reason the history becomes: A -> B -> D -> C, when processing C
+  // A -\> B -\> C will generate a hash based on the commit sha and we can verify it
+  // if for some reason the history becomes: A -\> B -\> D -\> C, when processing C
   // the digest doesn't match anymore and it means that we have some unscanned commit
   // in the history.
   const prefix = crypto.nativeCrypto.createHash("sha256");
@@ -478,13 +471,18 @@ export const parseScanErrorMessage = (err: unknown): string => {
     errorMessage = parseExecErrorMessage(err);
   } else if (err instanceof SecretScanningSizeLimitError) {
     errorMessage = err.message;
-  } else if (err instanceof AxiosError) {
-    errorMessage = err?.response?.data
-      ? JSON.stringify(err?.response?.data)
+  } else if (err instanceof AxiosError || (err as any).isAxiosError) {
+    const responseData = (err as any).response?.data;
+    errorMessage = responseData
+      ? typeof responseData === 'string'
+        ? responseData
+        : JSON.stringify(responseData)
       : (err?.message ?? "An unknown error occurred.");
   } else {
     errorMessage = (err as Error)?.message || "An unknown error occurred.";
   }
+
+  errorMessage = redactUrlCredentials(errorMessage);
 
   return errorMessage.length <= MAX_MESSAGE_LENGTH
     ? errorMessage
