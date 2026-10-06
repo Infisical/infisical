@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
-import { type ComponentProps, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ComponentProps, type ReactNode, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -52,9 +52,6 @@ import {
   EmptyMedia,
   EmptyTitle,
   IconButton,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
   PageHeader,
   Pagination,
   Skeleton,
@@ -77,7 +74,8 @@ import {
 } from "@app/context";
 import {
   OrgPermissionAdminConsoleAction,
-  OrgPermissionProjectActions
+  OrgPermissionProjectActions,
+  OrgPermissionSecretsManagementInsightsActions
 } from "@app/context/OrgPermissionContext/types";
 import {
   getProjectHomePage,
@@ -91,13 +89,7 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import {
-  useDebounce,
-  usePagination,
-  usePopUp,
-  useResetPageHelper,
-  useSlashFocusSearch
-} from "@app/hooks";
+import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
   useGetMyPendingProjectAccessRequests,
   useGetUserProjects,
@@ -120,6 +112,8 @@ import {
   ProjectListToggle,
   ProjectListView
 } from "@app/pages/organization/ProjectsPage/components/ProjectListToggle";
+
+import { ProjectSearchInput } from "./ProjectSearchInput";
 
 enum ProjectsViewMode {
   GRID = "grid",
@@ -346,7 +340,7 @@ const ProjectTypeContent = ({
   const typeTitle = getProjectTitle(projectType);
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col gap-8">
+    <div className="mx-auto flex max-w-8xl flex-col">
       <Helmet>
         <title>{typeTitle} Projects</title>
         <link rel="icon" href="/infisical.ico" />
@@ -738,6 +732,7 @@ const MyProjectsForType = ({
   return (
     <div className="@container flex flex-col gap-5">
       <Toolbar
+        projectType={projectType}
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}
         projectsViewMode={projectsViewMode}
@@ -1105,6 +1100,7 @@ const AllProjectsForType = ({
   return (
     <div className="flex flex-col gap-5">
       <Toolbar
+        projectType={projectType}
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}
         projectsViewMode={ProjectsViewMode.LIST}
@@ -1178,6 +1174,7 @@ const AllProjectsForType = ({
 };
 
 const Toolbar = ({
+  projectType,
   searchFilter,
   onSearchChange,
   projectsViewMode,
@@ -1190,6 +1187,7 @@ const Toolbar = ({
   isAddingProjectsAllowed,
   isGridDisabled
 }: {
+  projectType: ProjectType;
   searchFilter: string;
   onSearchChange: (value: string) => void;
   projectsViewMode: ProjectsViewMode;
@@ -1202,23 +1200,22 @@ const Toolbar = ({
   isAddingProjectsAllowed: boolean;
   isGridDisabled?: boolean;
 }) => {
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  useSlashFocusSearch(searchInputRef);
+  const { currentOrg } = useOrganization();
+  const { permission } = useOrgPermission();
+  const canSearchAllSecretValues = permission.can(
+    OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
+    OrgPermissionSubjects.SecretsManagementInsights
+  );
 
   return (
     <div className="flex w-full flex-wrap items-center justify-between gap-2">
       <div className="flex min-w-72 flex-1 items-center gap-2">
-        <InputGroup className="min-w-48 flex-1">
-          <InputGroupAddon align="inline-start">
-            <SearchIcon />
-          </InputGroupAddon>
-          <InputGroupInput
-            ref={searchInputRef}
-            placeholder="Search by project name..."
-            value={searchFilter}
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
-        </InputGroup>
+        <ProjectSearchInput
+          orgId={currentOrg.id}
+          value={searchFilter}
+          onChange={onSearchChange}
+          canSearchByValue={projectType === ProjectType.SecretManager && canSearchAllSecretValues}
+        />
         {!hideProjectListToggle && (
           <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
         )}

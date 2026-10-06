@@ -160,7 +160,8 @@ export enum OrgPermissionHoneyTokenActions {
 export enum OrgPermissionSecretsManagementInsightsActions {
   Read = "read",
   GenerateReport = "generate-report",
-  DeleteReport = "delete-report"
+  DeleteReport = "delete-report",
+  SearchAllSecretValues = "search-all-secret-values"
 }
 
 export enum OrgPermissionProjectActions {
@@ -625,6 +626,10 @@ const buildAdminPermission = () => {
   can(OrgPermissionSecretsManagementInsightsActions.Read, OrgPermissionSubjects.SecretsManagementInsights);
   can(OrgPermissionSecretsManagementInsightsActions.GenerateReport, OrgPermissionSubjects.SecretsManagementInsights);
   can(OrgPermissionSecretsManagementInsightsActions.DeleteReport, OrgPermissionSubjects.SecretsManagementInsights);
+  can(
+    OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
+    OrgPermissionSubjects.SecretsManagementInsights
+  );
 
   return rules;
 };

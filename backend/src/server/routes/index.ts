@@ -536,6 +536,8 @@ import { secretVersionV2BridgeDALFactory } from "@app/services/secret-v2-bridge/
 import { secretVersionV2TagBridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { secretValidationRuleDALFactory } from "@app/services/secret-validation-rule/secret-validation-rule-dal";
 import { secretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
+import { secretValueTrackingQueueFactory } from "@app/services/secret-value-tracking/secret-value-tracking-queue";
+import { secretValueTrackingServiceFactory } from "@app/services/secret-value-tracking/secret-value-tracking-service";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import {
@@ -1748,10 +1750,7 @@ export const registerRoutes = async (
 
   const projectQueueService = projectQueueFactory({
     queueService,
-    keyStore,
     secretDAL,
-    secretV2BridgeDAL,
-    kmsService,
     folderDAL,
     projectDAL,
     orgDAL,
@@ -2030,6 +2029,7 @@ export const registerRoutes = async (
   const gatewayProxyRegistry = gatewayProxyRegistryFactory();
 
   const resourceAuthMethodService = resourceAuthMethodServiceFactory({
+    orgDAL,
     resourceAuthMethodDAL,
     resourceAwsAuthDAL,
     resourceGcpAuthDAL,
@@ -2098,6 +2098,8 @@ export const registerRoutes = async (
     dynamicSecretDAL,
     identityKubernetesAuthDAL,
     pkiDiscoveryConfigDAL,
+    pamAccountDAL,
+    pamAccountTemplateDAL,
     resourceAuthMethodService
   });
 
@@ -2123,6 +2125,7 @@ export const registerRoutes = async (
   });
 
   const pamAccountTemplateService = pamAccountTemplateServiceFactory({
+    orgDAL,
     pamAccountTemplateDAL,
     pamAccountDAL,
     permissionService,
@@ -2260,10 +2263,28 @@ export const registerRoutes = async (
     orgDAL
   });
 
+  const secretValueTrackingQueue = secretValueTrackingQueueFactory({
+    queueService,
+    keyStore,
+    projectDAL,
+    orgDAL,
+    folderDAL,
+    secretV2BridgeDAL,
+    kmsService
+  });
+
+  const secretValueTrackingService = secretValueTrackingServiceFactory({
+    permissionService,
+    orgDAL,
+    projectDAL,
+    secretValueTrackingQueue
+  });
+
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
     projectQueue: projectQueueService,
+    secretValueTrackingService,
     userDAL,
     projectEnvDAL,
     orgDAL,
@@ -2478,6 +2499,7 @@ export const registerRoutes = async (
     honeyTokenDAL,
     secretImportDAL,
     secretV2BridgeService,
+    secretValidationRuleService,
     reminderDAL,
     reminderService,
     keyStore
@@ -2629,6 +2651,7 @@ export const registerRoutes = async (
   });
 
   const identityAuthTemplateService = identityAuthTemplateServiceFactory({
+    orgDAL,
     identityAuthTemplateDAL,
     identityLdapAuthDAL,
     identityKubernetesAuthDAL,
@@ -2911,6 +2934,7 @@ export const registerRoutes = async (
     projectDAL
   });
   const dynamicSecretService = dynamicSecretServiceFactory({
+    orgDAL,
     projectDAL,
     dynamicSecretQueueService,
     dynamicSecretDAL,
@@ -3104,6 +3128,7 @@ export const registerRoutes = async (
   });
 
   const appConnectionService = appConnectionServiceFactory({
+    orgDAL,
     appConnectionDAL,
     permissionService,
     kmsService,
@@ -3131,6 +3156,7 @@ export const registerRoutes = async (
   });
 
   const hsmConnectorService = hsmConnectorServiceFactory({
+    orgDAL,
     hsmConnectorDAL,
     permissionService,
     kmsService,
@@ -3479,7 +3505,6 @@ export const registerRoutes = async (
     internalCertificateAuthorityDAL,
     permissionService,
     licenseService,
-    appConnectionDAL,
     appConnectionService,
     caAutoRenewalQueue
   });
@@ -3807,6 +3832,7 @@ export const registerRoutes = async (
   const pamAccountDependencyDAL = pamAccountDependencyDALFactory(db);
 
   const pamDiscoveryService = pamDiscoverySourceServiceFactory({
+    orgDAL,
     pamDiscoverySourceDAL,
     pamDiscoverySourceRunDAL,
     pamDiscoveredAccountDAL,
@@ -4106,6 +4132,7 @@ export const registerRoutes = async (
   });
 
   const pkiDiscoveryService = pkiDiscoveryServiceFactory({
+    orgDAL,
     pkiDiscoveryConfigDAL,
     pkiDiscoveryScanHistoryDAL,
     permissionService,
@@ -4381,6 +4408,7 @@ export const registerRoutes = async (
     projectKey: projectKeyService,
     projectEnv: projectEnvService,
     secret: secretService,
+    secretValueTracking: secretValueTrackingService,
     secretReplication: secretReplicationService,
     secretTag: secretTagService,
     secretValidationRule: secretValidationRuleService,

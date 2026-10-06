@@ -482,6 +482,7 @@ export const orgServiceFactory = ({
       maxSharedSecretViewLimit,
       blockDuplicateSecretSyncDestinations,
       allowCrossProjectSecretSharing,
+      requireGatewayPools,
       secretShareBrandConfig
     }
   }: TUpdateOrgDTO) => {
@@ -520,6 +521,15 @@ export const orgServiceFactory = ({
         throw new BadRequestError({
           message:
             "Failed to update secret share branding due to plan restriction. Upgrade plan to configure custom branding."
+        });
+      }
+    }
+
+    if (requireGatewayPools) {
+      if (!plan.gatewayPool) {
+        throw new BadRequestError({
+          message:
+            "Failed to require gateway pools due to plan restriction. Upgrade to Infisical Enterprise to use gateway pools."
         });
       }
     }
@@ -687,6 +697,7 @@ export const orgServiceFactory = ({
       maxSharedSecretViewLimit,
       blockDuplicateSecretSyncDestinations,
       allowCrossProjectSecretSharing,
+      requireGatewayPools,
       secretShareBrandConfig
     });
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });

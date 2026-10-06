@@ -3879,7 +3879,7 @@ export const SecretScanningFindings = {
   UPDATE: {
     findingId: "The ID of the Secret Scanning Finding to update.",
     status: "The updated status of the specified Secret Scanning Finding.",
-    remarks: "Remarks pertaining to the status of this finding."
+    triageComment: "A comment explaining the status given to this finding."
   }
 };
 

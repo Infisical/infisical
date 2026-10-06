@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { FileText } from "lucide-react";
 
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3/platform";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAuditLogsTabs } from "@app/pages/project/AuditLogsPage/components";
 

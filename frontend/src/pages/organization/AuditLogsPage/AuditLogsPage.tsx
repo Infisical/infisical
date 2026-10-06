@@ -1,7 +1,6 @@
 import { Helmet } from "react-helmet";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { PageHeader } from "@app/components/v2";
 import {
   LookingForOrgPageLink,
   Tabs,
@@ -9,6 +8,7 @@ import {
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 
