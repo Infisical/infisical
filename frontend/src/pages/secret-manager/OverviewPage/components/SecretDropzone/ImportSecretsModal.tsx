@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { subject } from "@casl/ability";
 import {
   ChevronRightIcon,
+  ChevronsDownUpIcon,
+  ChevronsUpDownIcon,
   CircleXIcon,
   CodeXmlIcon,
   EyeIcon,
@@ -50,6 +52,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
@@ -90,6 +93,10 @@ type Props = {
   initialSelectedEnvironments?: { name: string; slug: string }[];
   onComplete?: (envSlugs: string[]) => void;
 };
+
+type TReviewRow =
+  | { type: "folder"; id: string; depth: number; node: TFolderNode }
+  | { type: "secret"; id: string; depth: number; key: string; secretData: TParsedEnv[string] };
 
 type ContentProps = {
   environments: { name: string; slug: string }[];
@@ -170,6 +177,34 @@ const ImportSecretsContent = ({
     () => (nestedImport ? buildFolderTree(nestedImport) : null),
     [nestedImport]
   );
+
+  // Nested row ids are "<path>:<key>", which cannot collide because folder names and
+  // nested secret keys never contain ":"
+  const reviewRows = useMemo<TReviewRow[]>(() => {
+    const toSecretRows = (secrets: TParsedEnv, depth: number, path?: string): TReviewRow[] =>
+      Object.entries(secrets).map(([key, secretData]) => ({
+        type: "secret",
+        id: path ? `${path}:${key}` : key,
+        depth,
+        key,
+        secretData
+      }));
+    if (!folderTree) return activeSecrets ? toSecretRows(activeSecrets, 0) : [];
+
+    const toFolderRows = (node: TFolderNode, depth: number): TReviewRow[] => [
+      { type: "folder", id: node.path, depth, node },
+      ...(collapsedFolders.has(node.path)
+        ? []
+        : [
+            ...toSecretRows(node.secrets, depth + 1, node.path),
+            ...node.children.flatMap((child) => toFolderRows(child, depth + 1))
+          ])
+    ];
+    return [
+      ...toSecretRows(folderTree.secrets, 0, "/"),
+      ...folderTree.children.flatMap((child) => toFolderRows(child, 0))
+    ];
+  }, [folderTree, activeSecrets, collapsedFolders]);
 
   const allSecretKeys = nestedImport
     ? Object.entries(nestedImport.secretsByPath).flatMap(([path, secrets]) =>
@@ -556,92 +591,6 @@ const ImportSecretsContent = ({
     }
   };
 
-  const renderFolderContents = (node: TFolderNode, isRoot = false) => (
-    <ul className={isRoot ? undefined : "ml-4 border-l border-border pl-2"}>
-      {Object.entries(node.secrets).map(([key, secretData]) => {
-        const id = `${node.path}:${key}`;
-        const isVisible = visibleSecretKeys.has(id);
-        return (
-          <li
-            key={id}
-            className="grid min-h-9 grid-cols-[1rem_minmax(0,1fr)_minmax(0,1fr)_2rem] items-center gap-2 rounded-sm px-2 hover:bg-container-hover"
-          >
-            <KeyRoundIcon className="size-4 text-secret" aria-hidden />
-            <span className="truncate font-mono text-xs">{key}</span>
-            <span className="truncate font-mono text-xs whitespace-pre">
-              {isVisible ? (
-                secretData.value || <span className="text-muted">EMPTY</span>
-              ) : (
-                <span className="tracking-widest">••••••••••••••••••••••</span>
-              )}
-            </span>
-            <IconButton
-              aria-label={`${isVisible ? "Hide" : "Reveal"} ${key}`}
-              variant="ghost"
-              size="xs"
-              onClick={() => toggleSecretVisibility(id)}
-            >
-              {isVisible ? <EyeOffIcon /> : <EyeIcon />}
-            </IconButton>
-          </li>
-        );
-      })}
-      {node.children.map((child) => {
-        const isExpanded = !collapsedFolders.has(child.path);
-        return (
-          <li key={child.path}>
-            <div className="group/folder grid min-h-9 grid-cols-[1rem_minmax(0,1fr)_auto] items-center gap-2 rounded-sm px-2 hover:bg-container-hover">
-              <button
-                type="button"
-                className="rounded-xs text-muted focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={`${isExpanded ? "Collapse" : "Expand"} ${child.name}`}
-                aria-expanded={isExpanded}
-                onClick={() => toggleFolder(child.path)}
-              >
-                {isExpanded ? (
-                  <FolderOpenIcon className="size-4 text-folder" aria-hidden />
-                ) : (
-                  <>
-                    <FolderIcon
-                      className="size-4 text-folder group-focus-within/folder:hidden group-hover/folder:hidden"
-                      aria-hidden
-                    />
-                    <ChevronRightIcon className="hidden size-4 group-focus-within/folder:block group-hover/folder:block" />
-                  </>
-                )}
-              </button>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="min-w-0 truncate rounded-xs text-left font-mono text-xs focus-visible:ring-2 focus-visible:ring-ring"
-                    aria-expanded={isExpanded}
-                    onClick={() => toggleFolder(child.path)}
-                  >
-                    {child.name}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{joinSecretPath(secretPath, child.path)}</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="rounded-xs text-xs text-muted focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    {child.secretCount} secret{child.secretCount !== 1 ? "s" : ""}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Includes secrets in subfolders</TooltipContent>
-              </Tooltip>
-            </div>
-            {isExpanded && renderFolderContents(child)}
-          </li>
-        );
-      })}
-    </ul>
-  );
-
   const showUploadStep = !activeSecrets;
 
   if (csvData) {
@@ -760,157 +709,240 @@ const ImportSecretsContent = ({
             </Alert>
           )}
           <div className="relative flex flex-col gap-2">
-            {folderTree ? (
-              <div className="max-h-[60vh] overflow-y-auto rounded-md border border-border bg-container p-2">
-                <div className="sticky top-0 z-[1] mb-2 flex items-center justify-between bg-container px-2">
-                  <Button variant="ghost" size="xs" onClick={toggleAllFolders}>
-                    {areAllFoldersCollapsed ? "Expand All" : "Collapse All"}
-                  </Button>
-                  <IconButton
-                    aria-label={
-                      areAllVisible ? "Hide all secret values" : "Reveal all secret values"
-                    }
-                    variant="ghost"
-                    size="xs"
-                    onClick={toggleAllSecretVisibility}
+            <Table
+              className="border-collapse"
+              containerClassName="max-h-[60vh] overflow-y-auto overflow-x-hidden"
+            >
+              <TableHeader className="sticky top-0 z-[1] after:pointer-events-none after:absolute after:inset-x-0 after:-top-px after:h-px after:bg-container">
+                <TableRow className="relative h-9">
+                  <TableHead
+                    className={cn(
+                      "bg-container shadow-[inset_0_-1px_0_var(--color-border)]",
+                      folderTree && "w-1/2"
+                    )}
                   >
-                    {areAllVisible ? <EyeOffIcon /> : <EyeIcon />}
-                  </IconButton>
-                </div>
-                {renderFolderContents(folderTree, true)}
-              </div>
-            ) : (
-              <Table
-                className="border-collapse"
-                containerClassName="max-h-[60vh] overflow-y-auto overflow-x-hidden"
-              >
-                <TableHeader className="sticky top-0 z-[1] after:pointer-events-none after:absolute after:inset-x-0 after:-top-px after:h-px after:bg-container">
-                  <TableRow className="relative h-9">
-                    <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
-                      Key
-                    </TableHead>
-                    <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
-                      Value
-                    </TableHead>
-                    <TableHead className="w-10 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
-                      <IconButton variant="ghost" size="xs" onClick={toggleAllSecretVisibility}>
-                        {areAllVisible ? <EyeOffIcon /> : <EyeIcon />}
-                      </IconButton>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(activeSecrets).map(([key, secretData]) => {
-                    const id = key;
-                    const isVisible = visibleSecretKeys.has(id);
-                    const hasComments = secretData.comments.some((c) => c);
-                    const hasTags = Boolean(secretData.tagSlugs?.length);
-                    const hasMetadata = Boolean(secretData.secretMetadata?.length);
-                    const hasSkipMl = secretData.skipMultilineEncoding === true;
-                    const editableKey = secretData.isFileSecret === true;
-                    const editedKey = keyOverrides[key] ?? key;
-                    return (
-                      <TableRow key={id}>
-                        <TableCell
-                          isTruncatable
-                          className="w-1/2 overflow-hidden font-mono text-xs"
-                        >
-                          <div className="flex w-full items-center gap-1.5">
-                            {editableKey ? (
-                              <Input
-                                value={editedKey}
-                                onChange={(e) =>
-                                  setKeyOverrides((prev) => ({ ...prev, [key]: e.target.value }))
-                                }
-                                isError={!editedKey.trim()}
-                                placeholder="Secret key"
-                                className="h-7 font-mono text-xs"
-                              />
-                            ) : (
-                              <p className="truncate">{key}</p>
-                            )}
-                            {hasComments && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <MessageSquareIcon className="size-3.5 shrink-0 text-muted" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="max-w-xl whitespace-pre-wrap">
-                                    {secretData.comments.join("\n")}
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                            {hasTags && (
-                              <Tooltip delayDuration={300}>
-                                <TooltipTrigger asChild>
-                                  <span className="flex size-5 shrink-0 items-center justify-center text-muted">
-                                    <TagsIcon className="size-3.5" />
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-xl">
-                                  <div className="flex flex-col gap-1">
-                                    {secretData.tagSlugs!.map((slug) => (
-                                      <span key={slug} className="font-mono text-xs break-all">
-                                        {slug}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                            {hasMetadata && (
-                              <Tooltip delayDuration={300}>
-                                <TooltipTrigger asChild>
-                                  <span className="flex size-5 shrink-0 items-center justify-center text-muted">
-                                    <CodeXmlIcon className="size-3.5" />
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-xl">
-                                  <div className="flex flex-col gap-1">
-                                    {secretData.secretMetadata!.map((m) => (
-                                      <span key={m.key} className="font-mono text-xs break-all">
-                                        {m.key}={m.value}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                            {hasSkipMl && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="flex size-5 shrink-0 items-center justify-center text-muted">
-                                    <WrapTextIcon className="size-3.5" />
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>Multi-line encoding enabled</TooltipContent>
-                              </Tooltip>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell isTruncatable className="w-1/2 font-mono text-xs whitespace-pre">
-                          {isVisible ? (
-                            secretData.value || <span className="text-muted">EMPTY</span>
-                          ) : (
-                            <span className="tracking-widest">••••••••••••••••••••••</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="w-10">
-                          <IconButton
+                    {folderTree ? (
+                      <div className="flex items-center justify-between gap-2">
+                        Key
+                        {folderTree.children.length > 0 && (
+                          <Button
                             variant="ghost"
                             size="xs"
-                            onClick={() => toggleSecretVisibility(id)}
+                            className="-mr-2"
+                            onClick={toggleAllFolders}
                           >
-                            {isVisible ? <EyeOffIcon /> : <EyeIcon />}
-                          </IconButton>
+                            {areAllFoldersCollapsed ? (
+                              <ChevronsUpDownIcon />
+                            ) : (
+                              <ChevronsDownUpIcon />
+                            )}
+                            {areAllFoldersCollapsed ? "Expand All" : "Collapse All"}
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      "Key"
+                    )}
+                  </TableHead>
+                  <TableHead className="bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
+                    Value
+                  </TableHead>
+                  <TableHead
+                    className={cn(
+                      "bg-container shadow-[inset_0_-1px_0_var(--color-border)]",
+                      folderTree ? "w-24 text-right" : "w-10"
+                    )}
+                  >
+                    <IconButton
+                      aria-label={
+                        areAllVisible ? "Hide all secret values" : "Reveal all secret values"
+                      }
+                      variant="ghost"
+                      size="xs"
+                      onClick={toggleAllSecretVisibility}
+                    >
+                      {areAllVisible ? <EyeOffIcon /> : <EyeIcon />}
+                    </IconButton>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reviewRows.map((row) => {
+                  if (row.type === "folder") {
+                    const { node } = row;
+                    const isExpanded = !collapsedFolders.has(node.path);
+                    return (
+                      <TableRow key={row.id} className="group/folder">
+                        <TableCell isTruncatable className="w-1/2">
+                          <div
+                            className="flex items-center gap-2"
+                            style={{ paddingInlineStart: `${row.depth * 1.5}rem` }}
+                          >
+                            <button
+                              type="button"
+                              aria-label={`${isExpanded ? "Collapse" : "Expand"} ${node.name}`}
+                              aria-expanded={isExpanded}
+                              onClick={() => toggleFolder(node.path)}
+                              className="flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-xs text-left font-mono text-xs focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              {isExpanded ? (
+                                <FolderOpenIcon
+                                  className="size-4 shrink-0 text-folder"
+                                  aria-hidden
+                                />
+                              ) : (
+                                <>
+                                  <FolderIcon
+                                    className="size-4 shrink-0 text-folder group-focus-within/folder:hidden group-hover/folder:hidden"
+                                    aria-hidden
+                                  />
+                                  <ChevronRightIcon className="hidden size-4 shrink-0 text-muted group-focus-within/folder:block group-hover/folder:block" />
+                                </>
+                              )}
+                              <span className="truncate">{node.name}</span>
+                            </button>
+                          </div>
+                        </TableCell>
+                        <TableCell isTruncatable className="w-1/2 font-mono text-muted">
+                          {joinSecretPath(secretPath, node.path)}
+                        </TableCell>
+                        <TableCell className="w-24 text-right">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                className="rounded-xs text-xs whitespace-nowrap text-muted focus-visible:ring-2 focus-visible:ring-ring"
+                              >
+                                {node.secretCount} secret{node.secretCount !== 1 ? "s" : ""}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {node.secretCount} secret{node.secretCount !== 1 ? "s" : ""},
+                              including subfolders
+                            </TooltipContent>
+                          </Tooltip>
                         </TableCell>
                       </TableRow>
                     );
-                  })}
-                </TableBody>
-              </Table>
-            )}
+                  }
+                  const { id, key, secretData } = row;
+                  const isVisible = visibleSecretKeys.has(id);
+                  const hasComments = secretData.comments.some((c) => c);
+                  const hasTags = Boolean(secretData.tagSlugs?.length);
+                  const hasMetadata = Boolean(secretData.secretMetadata?.length);
+                  const hasSkipMl = secretData.skipMultilineEncoding === true;
+                  const editableKey = secretData.isFileSecret === true;
+                  const editedKey = keyOverrides[key] ?? key;
+                  return (
+                    <TableRow key={id}>
+                      <TableCell isTruncatable className="w-1/2 overflow-hidden font-mono text-xs">
+                        <div
+                          className={cn(
+                            "flex w-full items-center",
+                            folderTree ? "gap-2" : "gap-1.5"
+                          )}
+                          style={
+                            folderTree ? { paddingInlineStart: `${row.depth * 1.5}rem` } : undefined
+                          }
+                        >
+                          {folderTree && (
+                            <KeyRoundIcon className="size-4 shrink-0 text-secret" aria-hidden />
+                          )}
+                          {editableKey ? (
+                            <Input
+                              value={editedKey}
+                              onChange={(e) =>
+                                setKeyOverrides((prev) => ({ ...prev, [key]: e.target.value }))
+                              }
+                              isError={!editedKey.trim()}
+                              placeholder="Secret key"
+                              className="h-7 font-mono text-xs"
+                            />
+                          ) : (
+                            <p className="truncate">{key}</p>
+                          )}
+                          {hasComments && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <MessageSquareIcon className="size-3.5 shrink-0 text-muted" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="max-w-xl whitespace-pre-wrap">
+                                  {secretData.comments.join("\n")}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          {hasTags && (
+                            <Tooltip delayDuration={300}>
+                              <TooltipTrigger asChild>
+                                <span className="flex size-5 shrink-0 items-center justify-center text-muted">
+                                  <TagsIcon className="size-3.5" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xl">
+                                <div className="flex flex-col gap-1">
+                                  {secretData.tagSlugs!.map((slug) => (
+                                    <span key={slug} className="font-mono text-xs break-all">
+                                      {slug}
+                                    </span>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          {hasMetadata && (
+                            <Tooltip delayDuration={300}>
+                              <TooltipTrigger asChild>
+                                <span className="flex size-5 shrink-0 items-center justify-center text-muted">
+                                  <CodeXmlIcon className="size-3.5" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xl">
+                                <div className="flex flex-col gap-1">
+                                  {secretData.secretMetadata!.map((m) => (
+                                    <span key={m.key} className="font-mono text-xs break-all">
+                                      {m.key}={m.value}
+                                    </span>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          {hasSkipMl && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="flex size-5 shrink-0 items-center justify-center text-muted">
+                                  <WrapTextIcon className="size-3.5" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>Multi-line encoding enabled</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell isTruncatable className="w-1/2 font-mono text-xs whitespace-pre">
+                        {isVisible ? (
+                          secretData.value || <span className="text-muted">EMPTY</span>
+                        ) : (
+                          <span className="tracking-widest">••••••••••••••••••••••</span>
+                        )}
+                      </TableCell>
+                      <TableCell className={cn(folderTree ? "w-24 text-right" : "w-10")}>
+                        <IconButton
+                          aria-label={`${isVisible ? "Hide" : "Reveal"} ${key}`}
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => toggleSecretVisibility(id)}
+                        >
+                          {isVisible ? <EyeOffIcon /> : <EyeIcon />}
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
           <Field>
             <FieldLabel htmlFor="target-environments">
