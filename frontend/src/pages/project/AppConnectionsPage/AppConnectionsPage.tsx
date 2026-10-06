@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet";
 
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3/platform";
 import { useProject } from "@app/context";
 import {
   ProjectPermissionAppConnectionActions,

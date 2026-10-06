@@ -26,7 +26,7 @@ export const SettingsPage = () => {
       <Helmet>
         <title>Settings</title>
       </Helmet>
-      <div className="flex w-full max-w-8xl flex-col gap-8">
+      <div className="flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}
           title="Settings"

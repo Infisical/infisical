@@ -161,6 +161,7 @@
   --color-import: oklch(55.93131% 0.0665942 223.3242);
   --color-secret-rotation: oklch(48.64461% 0.0587664 260.2333);
   --color-override: oklch(46.97085% 0.0894498 308.4585);
+  --color-override-foreground: oklch(70% 0.0894498 308.4585);
   --color-proxied-service: oklch(51.4929% 0.1474105 306.2291);
 }
 
@@ -341,6 +342,7 @@ html[data-theme="light"] {
   --color-import: oklch(0.4817 0.0660 224.6);
   --color-secret-rotation: oklch(0.4299 0.0621 260.7);
   --color-override: oklch(0.4138 0.0991 310.2);
+  --color-override-foreground: var(--color-override);
   --color-proxied-service: oklch(0.4447 0.1461 309.7);
 }
 

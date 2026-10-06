@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { SecretScanningDataSourcesSchema, SecretScanningFindingsSchema } from "@app/db/schemas";
+import {
+  SecretScanningDataSourcesSchema,
+  SecretScanningFindingsSchema,
+  SecretScanningResourcesSchema,
+  SecretScanningScansSchema
+} from "@app/db/schemas";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { SecretScanningDataSources } from "@app/lib/api-docs";
@@ -19,7 +24,9 @@ export const BaseSecretScanningDataSourceSchema = ({
     // unique to provider
     type: true,
     connectionId: true,
-    config: true
+    config: true,
+    // internal
+    encryptedCredentials: true
   }).extend({
     type: z.literal(type),
     connectionId: isConnectionRequired ? z.string().uuid() : z.null(),
@@ -92,7 +99,18 @@ export const GitRepositoryScanFindingDetailsSchema = z.object({
 });
 
 export const BaseSecretScanningFindingSchema = SecretScanningFindingsSchema.omit({
-  dataSourceType: true,
-  resourceType: true,
   details: true
+}).extend({
+  projectId: z.string(),
+  dataSourceId: z.string().uuid(),
+  dataSourceName: z.string(),
+  resourceName: z.string()
+});
+
+export const SecretScanningResourceSchema = SecretScanningResourcesSchema;
+
+export const SecretScanningScanSchema = SecretScanningScansSchema.omit({
+  lastScannedCommit: true,
+  lastScannedCommitDigest: true,
+  progressUpdatedAt: true
 });

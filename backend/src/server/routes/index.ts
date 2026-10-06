@@ -48,6 +48,8 @@ import { clickhouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-l
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-log-queue";
 import { auditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-service";
+import { auditLogSettingsDALFactory } from "@app/ee/services/audit-log/audit-log-settings-dal";
+import { auditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { auditLogStreamDALFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-dal";
 import { auditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { auditLogStreamOutboxDALFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-dal";
@@ -537,6 +539,8 @@ import { secretVersionV2BridgeDALFactory } from "@app/services/secret-v2-bridge/
 import { secretVersionV2TagBridgeDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
 import { secretValidationRuleDALFactory } from "@app/services/secret-validation-rule/secret-validation-rule-dal";
 import { secretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
+import { secretValueTrackingQueueFactory } from "@app/services/secret-value-tracking/secret-value-tracking-queue";
+import { secretValueTrackingServiceFactory } from "@app/services/secret-value-tracking/secret-value-tracking-service";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { serviceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import {
@@ -577,6 +581,7 @@ import { workflowIntegrationDALFactory } from "@app/services/workflow-integratio
 import { workflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 
 import { injectAuditLogInfo } from "../plugins/audit-log";
+import { injectPermissionDeniedAuditLog } from "../plugins/audit-log-permission-denied";
 import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
@@ -731,6 +736,7 @@ export const registerRoutes = async (
 
   const auditLogDAL = auditLogDALFactory(auditLogDb ?? db);
   const auditLogStreamDAL = auditLogStreamDALFactory(db);
+  const auditLogSettingsDAL = auditLogSettingsDALFactory(db);
   const auditLogStreamOutboxDAL = auditLogStreamOutboxDALFactory(db);
   const trustedIpDAL = trustedIpDALFactory(db);
   const telemetryDAL = telemetryDALFactory(db);
@@ -1230,11 +1236,21 @@ export const registerRoutes = async (
     auditLogStreamOutboxService
   });
 
+  const auditLogSettingsService = auditLogSettingsServiceFactory({
+    auditLogSettingsDAL,
+    orgDAL,
+    projectDAL,
+    permissionService,
+    licenseService,
+    keyStore
+  });
+
   const auditLogQueue = await auditLogQueueServiceFactory({
     auditLogDAL,
     queueService,
     projectDAL,
     licenseService,
+    auditLogSettingsService,
     auditLogStreamOutboxService,
     clickhouseClient: clickhouse,
     keyStore
@@ -1252,6 +1268,9 @@ export const registerRoutes = async (
     clickhouseAuditLogDAL,
     permissionService,
     auditLogQueue,
+    auditLogSettingsService,
+    licenseService,
+    queueService,
     keyStore,
     smtpService,
     userDAL,
@@ -1581,6 +1600,7 @@ export const registerRoutes = async (
   const certificatePolicyDAL = certificatePolicyDALFactory(db);
 
   const orgService = orgServiceFactory({
+    auditLogSettingsService,
     userAliasDAL,
     identityMetadataDAL,
     secretDAL,
@@ -1753,10 +1773,7 @@ export const registerRoutes = async (
 
   const projectQueueService = projectQueueFactory({
     queueService,
-    keyStore,
     secretDAL,
-    secretV2BridgeDAL,
-    kmsService,
     folderDAL,
     projectDAL,
     orgDAL,
@@ -2030,6 +2047,7 @@ export const registerRoutes = async (
   const gatewayProxyRegistry = gatewayProxyRegistryFactory();
 
   const resourceAuthMethodService = resourceAuthMethodServiceFactory({
+    orgDAL,
     resourceAuthMethodDAL,
     resourceAwsAuthDAL,
     resourceGcpAuthDAL,
@@ -2098,6 +2116,8 @@ export const registerRoutes = async (
     dynamicSecretDAL,
     identityKubernetesAuthDAL,
     pkiDiscoveryConfigDAL,
+    pamAccountDAL,
+    pamAccountTemplateDAL,
     resourceAuthMethodService
   });
 
@@ -2123,6 +2143,7 @@ export const registerRoutes = async (
   });
 
   const pamAccountTemplateService = pamAccountTemplateServiceFactory({
+    orgDAL,
     pamAccountTemplateDAL,
     pamAccountDAL,
     permissionService,
@@ -2260,10 +2281,28 @@ export const registerRoutes = async (
     orgDAL
   });
 
+  const secretValueTrackingQueue = secretValueTrackingQueueFactory({
+    queueService,
+    keyStore,
+    projectDAL,
+    orgDAL,
+    folderDAL,
+    secretV2BridgeDAL,
+    kmsService
+  });
+
+  const secretValueTrackingService = secretValueTrackingServiceFactory({
+    permissionService,
+    orgDAL,
+    projectDAL,
+    secretValueTrackingQueue
+  });
+
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
     projectQueue: projectQueueService,
+    secretValueTrackingService,
     userDAL,
     projectEnvDAL,
     orgDAL,
@@ -2478,6 +2517,7 @@ export const registerRoutes = async (
     honeyTokenDAL,
     secretImportDAL,
     secretV2BridgeService,
+    secretValidationRuleService,
     reminderDAL,
     reminderService,
     keyStore
@@ -2629,6 +2669,7 @@ export const registerRoutes = async (
   });
 
   const identityAuthTemplateService = identityAuthTemplateServiceFactory({
+    orgDAL,
     identityAuthTemplateDAL,
     identityLdapAuthDAL,
     identityKubernetesAuthDAL,
@@ -2911,6 +2952,7 @@ export const registerRoutes = async (
     projectDAL
   });
   const dynamicSecretService = dynamicSecretServiceFactory({
+    orgDAL,
     projectDAL,
     dynamicSecretQueueService,
     dynamicSecretDAL,
@@ -3104,6 +3146,7 @@ export const registerRoutes = async (
   });
 
   const appConnectionService = appConnectionServiceFactory({
+    orgDAL,
     appConnectionDAL,
     permissionService,
     kmsService,
@@ -3131,6 +3174,7 @@ export const registerRoutes = async (
   });
 
   const hsmConnectorService = hsmConnectorServiceFactory({
+    orgDAL,
     hsmConnectorDAL,
     permissionService,
     kmsService,
@@ -3479,7 +3523,6 @@ export const registerRoutes = async (
     internalCertificateAuthorityDAL,
     permissionService,
     licenseService,
-    appConnectionDAL,
     appConnectionService,
     caAutoRenewalQueue
   });
@@ -3807,6 +3850,7 @@ export const registerRoutes = async (
   const pamAccountDependencyDAL = pamAccountDependencyDALFactory(db);
 
   const pamDiscoveryService = pamDiscoverySourceServiceFactory({
+    orgDAL,
     pamDiscoverySourceDAL,
     pamDiscoverySourceRunDAL,
     pamDiscoveredAccountDAL,
@@ -4106,6 +4150,7 @@ export const registerRoutes = async (
   });
 
   const pkiDiscoveryService = pkiDiscoveryServiceFactory({
+    orgDAL,
     pkiDiscoveryConfigDAL,
     pkiDiscoveryScanHistoryDAL,
     permissionService,
@@ -4381,6 +4426,7 @@ export const registerRoutes = async (
     projectKey: projectKeyService,
     projectEnv: projectEnvService,
     secret: secretService,
+    secretValueTracking: secretValueTrackingService,
     secretReplication: secretReplicationService,
     secretTag: secretTagService,
     secretValidationRule: secretValidationRuleService,
@@ -4422,6 +4468,7 @@ export const registerRoutes = async (
     ldap: ldapService,
     auditLog: auditLogService,
     auditLogStream: auditLogStreamService,
+    auditLogSettings: auditLogSettingsService,
     certificate: certificateService,
     certificateCleanup: certificateCleanupService,
     certificateInventoryView: certificateInventoryViewService,
@@ -4635,6 +4682,7 @@ export const registerRoutes = async (
   await server.register(injectAgentVaultProjectId);
   await server.register(injectRateLimits);
   await server.register(injectAuditLogInfo);
+  await server.register(injectPermissionDeniedAuditLog);
 
   server.route({
     method: "GET",

@@ -4,6 +4,7 @@ import { OrganizationActionScope, TIdentityKubernetesAuthsUpdate, TIdentityOidcA
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
+import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
@@ -27,6 +28,7 @@ import { TIdentityLdapAuthDALFactory } from "@app/services/identity-ldap-auth/id
 import { TIdentityOidcAuthDALFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TIdentityAuthTemplateDALFactory } from "./identity-auth-template-dal";
 import { IdentityAuthTemplateMethod, TEMPLATE_SECRET_FIELDS_BY_METHOD } from "./identity-auth-template-enums";
@@ -51,6 +53,7 @@ type TIdentityAuthTemplateServiceFactoryDep = {
   identityOidcAuthDAL: Pick<TIdentityOidcAuthDALFactory, "updateByTemplateId">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "encryptWithInputKey" | "decryptWithInputKey">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -68,6 +71,7 @@ export const identityAuthTemplateServiceFactory = ({
   identityOidcAuthDAL,
   gatewayV2DAL,
   gatewayPoolDAL,
+  orgDAL,
   permissionService,
   kmsService,
   licenseService,
@@ -332,6 +336,7 @@ export const identityAuthTemplateServiceFactory = ({
           plan,
           permission
         });
+        await assertIndividualGatewayAllowed({ orgDAL, orgId: actorOrgId, gatewayId: normalizedFields.gatewayId });
         const { resolvedGatewayV2Id, resolvedGatewayPoolId } = await $resolveKubernetesTemplateGateway({
           gatewayId: normalizedFields.gatewayId,
           gatewayPoolId: normalizedFields.gatewayPoolId,
@@ -456,6 +461,12 @@ export const identityAuthTemplateServiceFactory = ({
           gatewayPoolId: merged.gatewayPoolId,
           plan,
           permission
+        });
+        await assertIndividualGatewayAllowed({
+          orgDAL,
+          orgId: template.orgId,
+          gatewayId: merged.gatewayId,
+          previousGatewayId: template.gatewayV2Id
         });
         const { resolvedGatewayV2Id, resolvedGatewayPoolId } = await $resolveKubernetesTemplateGateway({
           gatewayId: merged.gatewayId,

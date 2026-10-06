@@ -5,10 +5,12 @@ import { GlobeIcon, Layers3Icon, type LucideIcon, ServerIcon } from "lucide-reac
 import { useOrganization, useOrgPermission, useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
+  OrgGatewayPoolPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
+import { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 import { PoolHealthBadge } from "@app/pages/organization/NetworkingPage/components/GatewayTab/components/PoolHealthBadge";
 
@@ -38,6 +40,11 @@ type Props = {
   noGatewayIcon?: LucideIcon;
   // Hides one gateway from the list, for callers where selecting it would be self-referential.
   excludeGatewayId?: string;
+  // For callers where the backend exempts an individual gateway from the org's pool requirement.
+  allowIndividualGateways?: boolean;
+  // Limits the individual gateways to those that can serve the caller, such as HSM-capable ones.
+  // The currently selected gateway is always kept so an existing value stays visible.
+  filterGateway?: (gateway: TGatewayV2) => boolean;
 };
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
@@ -56,14 +63,25 @@ export const GatewayPicker = ({
   isError,
   noGatewayLabel = "Internet Gateway",
   noGatewayIcon: NoGatewayIcon = GlobeIcon,
-  excludeGatewayId
+  excludeGatewayId,
+  allowIndividualGateways,
+  filterGateway
 }: Props) => {
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
-  const showPools = subscription?.gatewayPool;
+  const isPoolRequired = Boolean(currentOrg?.requireGatewayPools) && !allowIndividualGateways;
+  // Pools stay listed when the policy is on even if the plan no longer includes them, or the
+  // picker would have nothing selectable.
+  const showPools = subscription?.gatewayPool || Boolean(currentOrg?.requireGatewayPools);
 
   const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
+  // The list above drops gateways that never connected. A saved value can still point at one, so it
+  // is looked up in the unfiltered list (same cached query) to keep the selection visible.
+  const { data: allGateways } = useQuery({
+    ...gatewaysQueryKeys.listAll(),
+    enabled: Boolean(value.gatewayId)
+  });
   const { data: pools, isPending: isPoolsLoading } = useQuery({
     ...gatewayPoolsQueryKeys.list(),
     enabled: Boolean(showPools)
@@ -88,15 +106,32 @@ export const GatewayPicker = ({
     }
   };
 
-  const v2Gateways = gateways?.filter((g) => g.id !== excludeGatewayId) ?? [];
+  const listedGateways =
+    gateways?.filter(
+      (g) =>
+        g.id !== excludeGatewayId &&
+        (!filterGateway || filterGateway(g) || g.id === value.gatewayId)
+    ) ?? [];
+  const unlistedSelectedGateway =
+    value.gatewayId && !listedGateways.some((g) => g.id === value.gatewayId)
+      ? allGateways?.find((g) => g.id === value.gatewayId)
+      : undefined;
+  const v2Gateways = unlistedSelectedGateway
+    ? [unlistedSelectedGateway, ...listedGateways]
+    : listedGateways;
 
   const isOnline = (gw: (typeof v2Gateways)[number]) => isGatewayHealthy(gw);
 
   const poolCount = pools?.length ?? 0;
   const hasAnyGateways = v2Gateways.length > 0 || poolCount > 0;
+  const isGatewayBlocked = (gatewayId: string) => isPoolRequired && gatewayId !== value.gatewayId;
   const canCreateGateway = permission.can(
     OrgGatewayPermissionActions.CreateGateways,
     OrgPermissionSubjects.Gateway
+  );
+  const canCreateGatewayPool = permission.can(
+    OrgGatewayPoolPermissionActions.CreateGatewayPools,
+    OrgPermissionSubjects.GatewayPool
   );
 
   return (
@@ -155,9 +190,19 @@ export const GatewayPicker = ({
                 <ServerIcon className="size-3" />
                 Individual Gateways
               </div>
+              {isPoolRequired && (
+                <div className="mt-1 text-2xs">
+                  Your organization requires a gateway pool, so individual gateways can&apos;t be
+                  selected.
+                </div>
+              )}
             </SectionLabel>
             {v2Gateways.map((gw) => (
-              <SelectItem value={`gateway:${gw.id}`} key={`gw-${gw.id}`}>
+              <SelectItem
+                value={`gateway:${gw.id}`}
+                key={`gw-${gw.id}`}
+                disabled={isGatewayBlocked(gw.id)}
+              >
                 <span className="flex min-w-0 items-center gap-2">
                   <ServerIcon className="size-3.5 shrink-0 text-muted" />
                   <span className="truncate">{gw.name}</span>
@@ -172,7 +217,29 @@ export const GatewayPicker = ({
           </>
         )}
 
-        {isRequired && !hasAnyGateways && (
+        {isPoolRequired && poolCount === 0 && (
+          <div className="px-2 py-4 text-center text-sm text-muted">
+            {canCreateGatewayPool ? (
+              <>
+                Your organization requires a gateway pool, but none exist yet.{" "}
+                <Link
+                  to="/organizations/$orgId/networking"
+                  params={{ orgId: currentOrg.id }}
+                  search={{ selectedTab: "gateways", gatewayView: "gateway-pools" }}
+                  target="_blank"
+                  className="text-foreground underline underline-offset-2 hover:text-info"
+                >
+                  Create one
+                </Link>{" "}
+                to continue.
+              </>
+            ) : (
+              "Your organization requires a gateway pool, but none exist yet. Ask your organization admin to create one."
+            )}
+          </div>
+        )}
+
+        {!isPoolRequired && isRequired && !hasAnyGateways && (
           <div className="px-2 py-4 text-center text-sm text-muted">
             {canCreateGateway ? (
               <>

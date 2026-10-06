@@ -91,7 +91,7 @@ export const OrgTabGroup = () => {
   const pageTitle = selectedTabName ? `${selectedTabName} - ${settingsTitle}` : settingsTitle;
 
   return (
-    <div className="flex w-full flex-col gap-8">
+    <div className="flex w-full flex-col">
       <Helmet>
         <title>{t("common.head-title", { title: pageTitle })}</title>
       </Helmet>

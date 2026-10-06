@@ -6,13 +6,16 @@ description: "Add and connect to ClickHouse databases."
 
 ClickHouse accounts let you manage access to a ClickHouse database. Users connect through Web Access or the CLI, and every statement they run is recorded in the [session](/documentation/platform/pam/sessions/overview).
 
-Sessions reach ClickHouse over its HTTP interface, on port 8123 or 8443, rather than the native protocol on 9000. Every request passes through the [gateway](/documentation/platform/gateways/overview) in your own network, and the credential never reaches the client.
+Sessions can use either of ClickHouse's interfaces: HTTP on port 8123 (8443 with TLS) and the native protocol on port 9000 (9440 with TLS). Each session gets one local port that works with both, and the credential never reaches the client.
+
+Set the ports your server serves and leave the other empty. An account needs at least one.
 
 ## Prerequisites
 
 - A ClickHouse user for Infisical to connect as.
-- The HTTP interface enabled on the target. `http_port` (8123) is on by default in a stock ClickHouse configuration. `https_port` (8443) needs a certificate configured, and is what ClickHouse Cloud exposes.
-- A [gateway](/documentation/platform/gateways/overview) that can reach that port. A gateway that predates ClickHouse support refuses the session with a version error.
+- At least one interface enabled on the server. Both are on by default, and ClickHouse Cloud serves both.
+- TLS on both interfaces or neither, since **SSL Enabled** applies to both.
+- A [gateway](/documentation/platform/gateways/overview) that can reach those ports. A **Native Port** needs a gateway recent enough to support the native protocol.
 
 ## Creating an account
 
@@ -28,9 +31,10 @@ Sessions reach ClickHouse over its HTTP interface, on port 8123 or 8443, rather 
     |-------|-------------|
     | **Name** | A descriptive name (e.g., `analytics-prod`) |
     | **Host** | ClickHouse host |
-    | **Port** | The HTTP interface port. 8123 for plain HTTP, 8443 for HTTPS |
+    | **HTTP Port** | The HTTP interface port. 8123 for plain HTTP, 8443 for HTTPS. Leave empty if the server only serves the native protocol |
+    | **Native Port** | The native protocol port. 9000 for plain TCP, 9440 with SSL. Needed by `clickhouse-client` and other native drivers. Leave empty if the server only serves HTTP |
     | **Database** | The database sessions open. Web Access lists the tables inside it |
-    | **SSL Enabled** | Use HTTPS for the connection. Required for port 8443 and for ClickHouse Cloud |
+    | **SSL Enabled** | Use TLS for the connection. Applies to both interfaces, so pair it with ports 8443 and 9440. Required for ClickHouse Cloud |
     | **Reject Unauthorized** | Reject connections with invalid certificates (only if SSL enabled) |
     | **SSL Certificate** | Custom CA certificate (only if SSL enabled) |
   </Step>
@@ -41,13 +45,13 @@ Sessions reach ClickHouse over its HTTP interface, on port 8123 or 8443, rather 
     | **Password** | The user's password. Leave blank for a user created with `no_password` |
   </Step>
   <Step title="Save">
-    Select **Create**. Infisical signs in to ClickHouse through the gateway and runs one statement to confirm the credential works before saving the account.
+    Select **Create**. Infisical checks the connection through the gateway before saving, and an error names the port that failed.
   </Step>
 </Steps>
 
 ## Permissions
 
-What a session can do comes from the ClickHouse grants on the account's user, so grant that user only what the people using the account need. Web Access reads the database, table and column lists from `system.databases`, `system.tables` and `system.columns`, which every user can read for the objects they already have access to.
+What a session can do comes from the ClickHouse grants on the account's user, so grant that user only what the people using the account need.
 
 ```sql
 CREATE USER pam_service IDENTIFIED WITH sha256_password BY '<password>';
@@ -56,7 +60,7 @@ GRANT SELECT ON analytics.* TO pam_service;
 
 Every session opens on the account's **Database**, whatever a client asks for. That is a starting point, not a limit: a session can still read any database the user has a grant on, and Web Access lists them all. Scope the grants, not the **Database** field.
 
-Sessions connect with the user's default roles. The gateway drops the `role` URL parameter, which would otherwise activate a role with no statement to record, so use `SET ROLE` instead and it's recorded like any other statement.
+Sessions connect with the user's default roles. To use another role, run `SET ROLE` in the session.
 
 Command blocking matches the text of each statement, so a statement that builds SQL at runtime can run something a pattern would otherwise reject. Use ClickHouse grants for restrictions that have to hold.
 
@@ -66,8 +70,8 @@ Command blocking matches the text of each statement, so a statement that builds 
   <Tab title="Web Access">
     Web Access provides a browser-based interface with two tools:
 
-    - **Data Explorer** — browse tables, view data, filter and sort, export to CSV/JSON
-    - **SQL Editor** — write and run SQL queries
+    - **Data Explorer**: browse tables, view data, filter and sort, export to CSV/JSON
+    - **SQL Editor**: write and run SQL queries
 
     To connect:
 
@@ -77,23 +81,28 @@ Command blocking matches the text of each statement, so a statement that builds 
 
     ClickHouse has no schema layer inside a database, so the Data Explorer sidebar lists databases where it lists schemas for other account types.
 
+    Web Access speaks ClickHouse's HTTP interface, so it needs the account to have an **HTTP Port**. On an account with only a native port it is greyed out, and the CLI is the way in.
+
   </Tab>
   <Tab title="CLI">
-    The CLI starts a local proxy that speaks ClickHouse's HTTP interface on `127.0.0.1`. Connect with TLS off and no certificate to trust, since the hop to the gateway is already an encrypted tunnel. The username and password a client sends are ignored, because the gateway authenticates for you.
+    The CLI starts a local proxy on `127.0.0.1` that serves both interfaces on one port. Connect with TLS off. The username and password a client sends are ignored, since the gateway signs in for you.
 
     ```bash
     infisical pam access analytics/clickhouse-prod
     ```
 
-    The command prints the port and a ready-made connection string. JDBC clients such as DBeaver and DataGrip, `clickhouse-connect`, `@clickhouse/client`, and `curl` all speak this interface. `clickhouse-client` and Python's `clickhouse-driver` speak only the native protocol, so they can't use this port.
+    The command prints the port and a connection string. Native clients such as `clickhouse-client`, `clickhouse-driver` and `clickhouse-go`, and HTTP clients such as JDBC tools, `clickhouse-connect` and `curl`, all work on that port.
 
     ```bash
+    clickhouse-client --host 127.0.0.1 --port <port>
     curl 'http://127.0.0.1:<port>/?query=SELECT+1'
     ```
 
+    Native clients need the account to have a **Native Port**.
+
     **Flags:**
-    - `--port <port>` — use a specific local port (otherwise one is assigned automatically)
-    - `--reason <reason>` — provide an access reason (if required by template)
+    - `--port <port>`: use a specific local port (otherwise one is assigned automatically)
+    - `--reason <reason>`: provide an access reason (if required by template)
 
   </Tab>
 </Tabs>
@@ -110,7 +119,11 @@ Every statement a session runs is recorded, along with the outcome of each one, 
 
 The template's **Command Blocking** policy applies to ClickHouse as well: a statement matching one of its patterns is rejected before it reaches ClickHouse, and the rejection is recorded. **Session Log Masking** patterns are applied to the recording before it's written.
 
-Applying that policy means reading the statement first, so on an account that blocks commands a request body over one megabyte is refused, and one compressed with anything other than `gzip` or `deflate` is rejected outright. Send large inserts in smaller batches, or use an account without the policy, where the body streams through and only its first megabyte is recorded.
+On an account with command blocking, an HTTP request body over 1 MB is refused, as is one compressed with anything other than `gzip` or `deflate`. Send large inserts in smaller batches.
+
+## Servers with HTTP turned off
+
+Set the **Native Port** and leave **HTTP Port** empty. Native clients work as usual. Web Access and HTTP clients such as JDBC tools, `clickhouse-connect` and ODBC need an HTTP port, so Web Access is greyed out on such an account.
 
 ## Next steps
 
