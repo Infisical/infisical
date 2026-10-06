@@ -230,6 +230,8 @@ describe("CertificateRequestService", () => {
   });
 
   describe("getCertificateFromRequest", () => {
+    const mockCertificateChain =
+      "-----BEGIN CERTIFICATE-----\nMOCK_INTERMEDIATE_PEM\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\nMOCK_ROOT_PEM\n-----END CERTIFICATE-----";
     const mockGetData = {
       actor: ActorType.USER,
       actorId: "550e8400-e29b-41d4-a716-446655440001",
@@ -267,7 +269,8 @@ describe("CertificateRequestService", () => {
         updatedAt: new Date()
       };
       const mockCertBody = {
-        certificate: "-----BEGIN CERTIFICATE-----\nMOCK_CERT_PEM\n-----END CERTIFICATE-----"
+        certificate: "-----BEGIN CERTIFICATE-----\nMOCK_CERT_PEM\n-----END CERTIFICATE-----",
+        certificateChain: mockCertificateChain
       };
       const mockPrivateKey = {
         certPrivateKey: "-----BEGIN PRIVATE KEY-----\nMOCK_KEY_PEM\n-----END PRIVATE KEY-----"
@@ -301,6 +304,7 @@ describe("CertificateRequestService", () => {
         status: CertificateRequestStatus.ISSUED,
         certificateId: "550e8400-e29b-41d4-a716-446655440006",
         certificate: "-----BEGIN CERTIFICATE-----\nMOCK_CERT_PEM\n-----END CERTIFICATE-----",
+        certificateChain: mockCertificateChain,
         privateKey: "-----BEGIN PRIVATE KEY-----\nMOCK_KEY_PEM\n-----END PRIVATE KEY-----",
         serialNumber: "123456",
         errorMessage: null,
@@ -320,6 +324,32 @@ describe("CertificateRequestService", () => {
       });
       expect(projectId).toEqual("550e8400-e29b-41d4-a716-446655440003");
     });
+
+    it.each([null, ""])(
+      "should preserve chain %j when an issued certificate has no chain",
+      async (certificateChain) => {
+        (mockPermissionService.getProjectPermission as any).mockResolvedValue({
+          permission: createMongoAbility<ProjectPermissionSet>([
+            { action: ProjectPermissionCertificateActions.Read, subject: ProjectPermissionSub.Certificates }
+          ])
+        });
+        (mockCertificateRequestDAL.findByIdWithCertificate as any).mockResolvedValue({
+          id: mockGetData.certificateRequestId,
+          projectId: mockGetData.projectId,
+          status: CertificateRequestStatus.ISSUED,
+          certificate: { id: "550e8400-e29b-41d4-a716-446655440006", serialNumber: "123456" }
+        });
+        (mockCertificateService.getCertBody as any).mockResolvedValue({
+          certificate: "-----BEGIN CERTIFICATE-----\nMOCK_CERT_PEM\n-----END CERTIFICATE-----",
+          certificateChain
+        });
+
+        const result = await service.getCertificateFromRequest(mockGetData);
+
+        expect(result.certificateRequest.certificateChain).toBe(certificateChain);
+        expect(mockCertificateService.getCertPrivateKey).not.toHaveBeenCalled();
+      }
+    );
 
     it("should get certificate from request successfully when no certificate is attached", async () => {
       const mockPermission = {
@@ -349,6 +379,7 @@ describe("CertificateRequestService", () => {
         status: CertificateRequestStatus.PENDING,
         certificateId: null,
         certificate: null,
+        certificateChain: null,
         privateKey: null,
         serialNumber: null,
         errorMessage: null,
@@ -393,7 +424,8 @@ describe("CertificateRequestService", () => {
         updatedAt: new Date()
       };
       const mockCertBody = {
-        certificate: "-----BEGIN CERTIFICATE-----\nMOCK_CERT_PEM\n-----END CERTIFICATE-----"
+        certificate: "-----BEGIN CERTIFICATE-----\nMOCK_CERT_PEM\n-----END CERTIFICATE-----",
+        certificateChain: mockCertificateChain
       };
 
       (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
@@ -417,6 +449,7 @@ describe("CertificateRequestService", () => {
         status: CertificateRequestStatus.ISSUED,
         certificateId: "550e8400-e29b-41d4-a716-446655440008",
         certificate: "-----BEGIN CERTIFICATE-----\nMOCK_CERT_PEM\n-----END CERTIFICATE-----",
+        certificateChain: mockCertificateChain,
         privateKey: null,
         serialNumber: "123456",
         errorMessage: null,
@@ -465,7 +498,8 @@ describe("CertificateRequestService", () => {
         updatedAt: new Date()
       };
       const mockCertBody = {
-        certificate: "-----BEGIN CERTIFICATE-----\nMOCK_CERT_PEM\n-----END CERTIFICATE-----"
+        certificate: "-----BEGIN CERTIFICATE-----\nMOCK_CERT_PEM\n-----END CERTIFICATE-----",
+        certificateChain: null
       };
 
       (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
@@ -496,6 +530,7 @@ describe("CertificateRequestService", () => {
         status: CertificateRequestStatus.ISSUED,
         certificateId: "550e8400-e29b-41d4-a716-446655440009",
         certificate: "-----BEGIN CERTIFICATE-----\nMOCK_CERT_PEM\n-----END CERTIFICATE-----",
+        certificateChain: null,
         privateKey: null,
         serialNumber: "123456",
         errorMessage: null,
@@ -543,6 +578,7 @@ describe("CertificateRequestService", () => {
       expect(certificateRequest).toEqual({
         status: CertificateRequestStatus.FAILED,
         certificate: null,
+        certificateChain: null,
         certificateId: null,
         privateKey: null,
         serialNumber: null,

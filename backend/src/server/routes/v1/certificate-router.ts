@@ -446,6 +446,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           status: z.nativeEnum(CertificateRequestStatus),
           certificate: z.string().nullable(),
+          certificateChain: z.string().nullable().describe(CERTIFICATES.GET_CERT.certificateChain),
           certificateId: z.string().nullable(),
           privateKey: z.string().nullable(),
           serialNumber: z.string().nullable(),
