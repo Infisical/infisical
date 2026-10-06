@@ -53,7 +53,7 @@ let refreshPromise: Promise<string> | null = null;
 
 const isTokenExpiredError = (message: string) => {
   const lower = message.toLowerCase();
-  return lower.includes("token expired") || lower.includes("stalesession");
+  return lower.includes("token expired") || lower.includes("session is no longer valid");
 };
 
 apiRequest.interceptors.response.use(

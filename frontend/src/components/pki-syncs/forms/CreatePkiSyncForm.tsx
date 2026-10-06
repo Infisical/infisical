@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Controller, FieldPath, FormProvider, useForm } from "react-hook-form";
+import { Controller, FieldErrors, FieldPath, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangleIcon } from "lucide-react";
 
@@ -43,7 +43,12 @@ import {
 } from "@app/hooks/api/pkiSyncs";
 
 import { KEMP_DEFAULT_CA_NAME_SCHEMA } from "./schemas/kemp-loadmaster-pki-sync-destination-schema";
-import { PkiSyncFormSchema, TPkiSyncForm } from "./schemas/pki-sync-schema";
+import {
+  getKeystoreFieldIssues,
+  PkiSyncFormSchema,
+  removeUnusedKeystoreOptions,
+  TPkiSyncForm
+} from "./schemas/pki-sync-schema";
 import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
@@ -258,7 +263,7 @@ export const CreatePkiSyncForm = ({
   const onSubmit = async ({ connection, destinationConfig, ...formData }: TPkiSyncForm) => {
     try {
       const pkiSync = await createPkiSync.mutateAsync({
-        ...formData,
+        ...removeUnusedKeystoreOptions(formData),
         connectionId: connection.id,
         projectId: currentProject.id,
         applicationId,
@@ -297,26 +302,24 @@ export const CreatePkiSyncForm = ({
     }
 
     if (FORM_TABS[index].key === "options") {
-      const values = getValues() as {
-        destination?: PkiSync;
-        syncOptions?: { exportFormat?: PkiSyncExportFormat };
-        credentials?: { exportPassword?: string };
-      };
-      const requiresPassword =
-        (values.destination === PkiSync.WindowsServer ||
-          values.destination === PkiSync.LinuxServer) &&
-        values.syncOptions?.exportFormat === PkiSyncExportFormat.Pkcs12 &&
-        !values.credentials?.exportPassword;
-      if (requiresPassword) {
-        setError("credentials.exportPassword" as FieldPath<TPkiSyncForm>, {
-          type: "manual",
-          message: "A password is required for PKCS#12 exports"
-        });
-        return false;
-      }
+      const issues = getKeystoreFieldIssues(getValues(), { requirePassword: true });
+      issues.forEach(({ path, message }) =>
+        setError(path.join(".") as FieldPath<TPkiSyncForm>, { type: "manual", message })
+      );
+      if (issues.length > 0) return false;
     }
 
     return true;
+  };
+
+  // A field from an earlier step can fail only when the whole form is checked, so show that step.
+  const onInvalid = (errors: FieldErrors<TPkiSyncForm>) => {
+    const errorKeys = Object.keys(errors);
+    const stepIndex = FORM_TABS.findIndex((tab) =>
+      tab.fields.some((field) => errorKeys.includes(String(field).split(".")[0]))
+    );
+    setShowConfirmation(false);
+    if (stepIndex >= 0) setSelectedTabIndex(stepIndex);
   };
 
   const isFinalStep = selectedTabIndex === FORM_TABS.length - 1;
@@ -511,7 +514,7 @@ export const CreatePkiSyncForm = ({
             <AlertDialogAction
               variant="project"
               isDisabled={createPkiSync.isPending}
-              onClick={handleSubmit(onSubmit)}
+              onClick={handleSubmit(onSubmit, onInvalid)}
             >
               I Understand
             </AlertDialogAction>
