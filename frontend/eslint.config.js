@@ -110,6 +110,7 @@ export default tseslint.config(
         }
       ],
       "@typescript-eslint/no-non-null-assertion": "off",
+      "jsx-a11y/no-noninteractive-tabindex": ["error", { tags: [], roles: ["tabpanel"] }],
       "@typescript-eslint/class-methods-use-this": [
         "error",
         { exceptMethods: [], enforceForClassFields: true }
