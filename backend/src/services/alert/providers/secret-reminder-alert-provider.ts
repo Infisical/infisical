@@ -35,7 +35,7 @@ export type TSecretReminderTarget = TReminderSecret & {
 };
 
 export type TSecretReminderAlertProviderDep = {
-  secretReminderAlertDAL: Pick<TSecretReminderAlertDALFactory, "findReminderSecrets" | "primaryNode">;
+  secretReminderAlertDAL: Pick<TSecretReminderAlertDALFactory, "findReminderSecrets">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
@@ -69,11 +69,9 @@ export const secretReminderAlertProviderFactory = ({
       // The path decides what a permission check allows, so it comes from the primary like the secret:
       // a replica that has not seen a new folder would otherwise leave it unresolved.
       // eslint-disable-next-line no-await-in-loop -- reminders fire per secret, so this is one project
-      const folders = await folderDAL.findSecretPathByFolderIds(
-        projectId,
-        folderIds,
-        secretReminderAlertDAL.primaryNode()
-      );
+      const folders = await folderDAL.findSecretPathByFolderIds(projectId, folderIds, undefined, {
+        readFromPrimary: true
+      });
       folders.forEach((folder) => {
         if (folder?.path) paths.set(folder.id, folder.path);
       });

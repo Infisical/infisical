@@ -31,14 +31,17 @@ const buildProvider = (
   opts: { secrets?: TReminderSecret[]; rules?: { action: string; subject: string }[]; unresolvedPath?: boolean } = {}
 ) => {
   const permissionCalls: unknown[] = [];
+  const pathLookupOptions: unknown[] = [];
   const provider = secretReminderAlertProviderFactory({
     secretReminderAlertDAL: {
       findReminderSecrets: async (ids: string[]) =>
-        (opts.secrets ?? [SECRET]).filter((secret) => ids.includes(secret.secretId)),
-      primaryNode: () => ({}) as never
+        (opts.secrets ?? [SECRET]).filter((secret) => ids.includes(secret.secretId))
     },
     folderDAL: {
-      findSecretPathByFolderIds: async () => (opts.unresolvedPath ? [] : [{ id: "folder-1", path: "/payments" }])
+      findSecretPathByFolderIds: async (_projectId: string, _folderIds: string[], _tx: unknown, options: unknown) => {
+        pathLookupOptions.push(options);
+        return opts.unresolvedPath ? [] : [{ id: "folder-1", path: "/payments" }];
+      }
     } as never,
     permissionService: {
       getProjectPermission: async (input: unknown) => {
@@ -54,7 +57,7 @@ const buildProvider = (
       }
     } as never
   });
-  return { provider, permissionCalls };
+  return { provider, permissionCalls, pathLookupOptions };
 };
 
 const alertContext: TAlertContext = {
@@ -115,6 +118,14 @@ describe("secret reminder alert provider", () => {
   test("drops a secret that is gone or sits in a soft-deleted environment", async () => {
     const { provider } = buildProvider({ secrets: [] });
     expect(await provider.findEventTargets(dueEvent())).toEqual([]);
+  });
+
+  // An empty result here marks the event delivered, so a replica that has not seen a new folder would lose
+  // the reminder for good.
+  test("reads folder paths from the primary", async () => {
+    const { provider, pathLookupOptions } = buildProvider();
+    await provider.findEventTargets(dueEvent());
+    expect(pathLookupOptions).toEqual([{ readFromPrimary: true }]);
   });
 
   test("drops a secret whose folder path cannot be resolved", async () => {
