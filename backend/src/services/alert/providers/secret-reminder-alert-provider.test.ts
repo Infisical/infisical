@@ -102,7 +102,7 @@ describe("secret reminder alert provider", () => {
     );
 
     const { provider } = buildProvider();
-    const targets = await provider.findTargetsByIds({
+    const targets = await provider.findEventTargets({
       ...dueEvent(),
       targetIds: emitted!.targetIds as string[],
       payload: emitted!
@@ -114,29 +114,29 @@ describe("secret reminder alert provider", () => {
 
   test("drops a secret that is gone or sits in a soft-deleted environment", async () => {
     const { provider } = buildProvider({ secrets: [] });
-    expect(await provider.findTargetsByIds(dueEvent())).toEqual([]);
+    expect(await provider.findEventTargets(dueEvent())).toEqual([]);
   });
 
   test("drops a secret whose folder path cannot be resolved", async () => {
     const { provider } = buildProvider({ unresolvedPath: true });
-    expect(await provider.findTargetsByIds(dueEvent())).toEqual([]);
+    expect(await provider.findEventTargets(dueEvent())).toEqual([]);
   });
 
   test("drops a secret that does not belong to the event's project", async () => {
     const { provider } = buildProvider({ secrets: [{ ...SECRET, projectId: "proj-2" }] });
-    expect(await provider.findTargetsByIds(dueEvent())).toEqual([]);
+    expect(await provider.findEventTargets(dueEvent())).toEqual([]);
   });
 
   test("rejects an unreadable payload instead of delivering a blank reminder", async () => {
     const { provider } = buildProvider();
-    await expect(provider.findTargetsByIds(dueEvent({ occurrenceDate: "10/10/2026" }))).rejects.toThrow(
+    await expect(provider.findEventTargets(dueEvent({ occurrenceDate: "10/10/2026" }))).rejects.toThrow(
       "Unreadable 'secret.reminder.due' payload"
     );
   });
 
   test("the payload names the secret's current key, environment, path, schedule and note", async () => {
     const { provider } = buildProvider({ secrets: [{ ...SECRET, secretKey: "DB_PASSWORD_V2" }] });
-    const targets = await provider.findTargetsByIds(dueEvent());
+    const targets = await provider.findEventTargets(dueEvent());
     const payload = provider.buildPayload(alertContext, targets, "https://view");
 
     expect(payload.summary).toBe("Reminder for secret 'DB_PASSWORD_V2' in Production");
@@ -151,7 +151,7 @@ describe("secret reminder alert provider", () => {
 
   test("a one-time reminder without a note says so and omits the note", async () => {
     const { provider } = buildProvider();
-    const targets = await provider.findTargetsByIds(dueEvent({ repeatDays: null, note: null }));
+    const targets = await provider.findEventTargets(dueEvent({ repeatDays: null, note: null }));
     const payload = provider.buildPayload(alertContext, targets, "https://view");
 
     expect(payload.items[0].fields).toContainEqual({ label: "Schedule", value: "One time" });

@@ -98,6 +98,11 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, gener
   const auditLogStreamOutboxService = {
     enqueueForLogs: vi.fn<(logs: unknown[]) => Promise<void>>(async () => undefined)
   };
+  const auditLogSettingsService = {
+    getEffectiveSettings: vi.fn<(orgId: string, projectId?: string | null) => Promise<Record<string, unknown> | null>>(
+      async () => null
+    )
+  };
   const clickhouseClient = clickhouse
     ? {
         insert: vi.fn<(opts: { table: string; values: Record<string, unknown>[] }) => Promise<unknown>>(
@@ -111,6 +116,7 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, gener
     queueService: queueService as never,
     projectDAL: projectDAL as never,
     licenseService: licenseService as never,
+    auditLogSettingsService: auditLogSettingsService as never,
     auditLogStreamOutboxService: auditLogStreamOutboxService as never,
     clickhouseClient: clickhouseClient as never,
     keyStore: keyStore as never
@@ -125,6 +131,7 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, gener
     projectDAL,
     licenseService,
     auditLogStreamOutboxService,
+    auditLogSettingsService,
     clickhouseClient,
     consumer: startHandlers.get(QueueName.AuditLogClickHouseBatch)!
   };
@@ -236,6 +243,102 @@ describe("audit-log-queue pushToLog", () => {
 
     await expect(service.pushToLog(dto({ orgId: "o" }) as never)).resolves.toBeUndefined();
     expect(keyStore.streamAdd).not.toHaveBeenCalled();
+  });
+
+  test("pushToLogOrThrow rejects when streamAdd fails", async () => {
+    const { service, keyStore } = await createHarness();
+    keyStore.streamAdd.mockRejectedValueOnce(new Error("redis down"));
+
+    await expect(service.pushToLogOrThrow(dto({ orgId: "o" }) as never)).rejects.toThrow("redis down");
+  });
+});
+
+describe("audit-log-queue event class settings", () => {
+  const settings = (overrides: Record<string, unknown> = {}) => ({
+    org: {},
+    shouldUseNewPrivilegeSystem: true,
+    ...overrides
+  });
+
+  test("drops an authentication event when the org disabled the class", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings({ org: { authentication: false } }));
+
+    await service.pushToLog(dto({ event: { type: "user-login", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).not.toHaveBeenCalled();
+  });
+
+  test("stores an authentication event when the class is enabled", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings({ org: { authentication: true } }));
+
+    await service.pushToLog(dto({ event: { type: "user-login", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+  });
+
+  test("records management and data-access events without looking up settings", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+
+    await service.pushToLog(dto({ event: { type: "update-secret", metadata: {} } }) as never);
+    await service.pushToLog(dto({ event: { type: "get-secrets", metadata: {} } }) as never);
+    await service.pushToLog(dto({ projectId: "p1", event: { type: "get-secrets", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(3);
+    expect(auditLogSettingsService.getEffectiveSettings).not.toHaveBeenCalled();
+  });
+
+  test("a project event uses the project's own setting, never the org's", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockImplementation(async (_orgId, projectId) =>
+      settings({ org: { authentication: false }, project: projectId === "p-off" ? { authentication: false } : {} })
+    );
+
+    await service.pushToLog(dto({ projectId: "p-none", event: { type: "user-login", metadata: {} } }) as never);
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+
+    await service.pushToLog(dto({ projectId: "p-off", event: { type: "user-login", metadata: {} } }) as never);
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+    expect(auditLogSettingsService.getEffectiveSettings).toHaveBeenLastCalledWith(expect.any(String), "p-off");
+  });
+
+  test("an org-scoped event ignores project settings", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(
+      settings({ org: {}, project: { authentication: false } })
+    );
+
+    await service.pushToLog(dto({ event: { type: "user-login", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+  });
+
+  test("drops a permission denial when no scope has turned authorization on", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings());
+
+    await service.pushToLog(dto({ event: { type: "permission-denied", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).not.toHaveBeenCalled();
+  });
+
+  test("records an authentication event when no scope has a setting", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings());
+
+    await service.pushToLog(dto({ event: { type: "user-login", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+  });
+
+  test("records the event when the settings lookup returns nothing", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(null);
+
+    await service.pushToLog(dto({ event: { type: "permission-denied", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -1,10 +1,11 @@
 import { Helmet } from "react-helmet";
 
-import { PageHeader } from "@app/components/v2";
 import { LookingForOrgPageLink } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { useProject } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { LogsSection } from "@app/pages/organization/AuditLogsPage/components";
+
+import { ProjectAuditLogsTabs } from "./components";
 
 export const AuditLogsPage = () => {
   const { currentProject } = useProject();
@@ -24,7 +25,7 @@ export const AuditLogsPage = () => {
           >
             <LookingForOrgPageLink page="auditLogs" />
           </PageHeader>
-          <LogsSection pageView project={currentProject} />
+          <ProjectAuditLogsTabs variant="project" />
         </div>
       </div>
     </div>

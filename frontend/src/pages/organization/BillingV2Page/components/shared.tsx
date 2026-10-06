@@ -1,8 +1,11 @@
 import { CSSProperties, Fragment, ReactNode, useState } from "react";
-import { Box, MinusIcon, PlusIcon } from "lucide-react";
+import { Box, ExternalLink, MinusIcon, PlusIcon, TriangleAlert } from "lucide-react";
 import { DynamicIcon, type IconName } from "lucide-react/dynamic";
 
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
   Empty,
@@ -17,7 +20,11 @@ import {
   Skeleton
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { BillingV2CatalogProduct, BillingV2EntitlementDim } from "@app/hooks/api";
+import {
+  BillingV2CatalogProduct,
+  BillingV2EntitlementDim,
+  useCreateBillingV2PortalSession
+} from "@app/hooks/api";
 
 import {
   dimBarSegments,
@@ -318,3 +325,57 @@ export const Stepper = ({ value, min = 0, max = 9999, onChange, isDisabled }: St
     </div>
   );
 };
+
+// Shown when the bank declined or held a charge (payment_action_required). The change was not applied,
+// so the way forward is a different card from the billing portal and a retry.
+export const PaymentActionRequiredNotice = ({ orgId }: { orgId: string }) => {
+  const portalSession = useCreateBillingV2PortalSession();
+  return (
+    <Alert variant="warning">
+      <TriangleAlert />
+      <AlertTitle>Your bank didn&apos;t approve this charge</AlertTitle>
+      <AlertDescription>
+        Nothing was changed. Try a different card from the billing portal, then retry.
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="xs"
+            isPending={portalSession.isPending}
+            onClick={() =>
+              portalSession.mutate(
+                { orgId, returnPath: window.location.pathname },
+                {
+                  onSuccess: (url) => {
+                    window.location.href = url;
+                  }
+                }
+              )
+            }
+          >
+            Open Billing Portal
+          </Button>
+        </div>
+      </AlertDescription>
+    </Alert>
+  );
+};
+
+export const PaymentApprovalNotice = ({ paymentUrl }: { paymentUrl: string }) => (
+  <Alert variant="warning">
+    <TriangleAlert />
+    <AlertTitle>Approve this payment with your bank</AlertTitle>
+    <AlertDescription>
+      Your bank needs you to confirm this charge. Approve it to finish the change.
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button
+          variant="warning"
+          size="xs"
+          onClick={() => window.open(paymentUrl, "_blank", "noopener,noreferrer")}
+        >
+          <ExternalLink />
+          Approve Payment
+        </Button>
+      </div>
+    </AlertDescription>
+  </Alert>
+);

@@ -63,7 +63,7 @@ export const DashboardPage = () => {
         <title>{t("common.head-title", { title: "Certificate Dashboard" })}</title>
       </Helmet>
       <div className="mx-auto flex flex-col text-foreground-inverse">
-        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <PageHeader
             scope={ProjectType.CertificateManager}
             title="Certificate Dashboard"
@@ -96,7 +96,7 @@ export const DashboardPage = () => {
                   <ValidityReadinessSection stats={stats} />
                   {stats.totals.total > 0 && (
                     <div className="flex flex-col gap-4">
-                      <h2 className="text-lg font-semibold text-foreground">
+                      <h2 className="text-lg font-normal text-foreground">
                         Post-Quantum Readiness
                       </h2>
                       <div className="flex flex-wrap gap-4">

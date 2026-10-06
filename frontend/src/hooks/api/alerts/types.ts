@@ -20,11 +20,30 @@ export enum AlertChannelType {
 export enum AlertPrincipalType {
   User = "user",
   Group = "group",
+  Email = "email",
   ProjectMembers = "project-members"
+}
+
+export enum AlertRunStatus {
+  Success = "success",
+  Partial = "partial",
+  Failed = "failed"
+}
+
+export enum CertificateAlertResourceType {
+  Application = "cert-manager.application"
+}
+
+export enum CertificateAlertEventType {
+  Expiry = "cert-manager.application.certificate.expiry",
+  Issuance = "cert-manager.application.certificate.issuance",
+  Renewal = "cert-manager.application.certificate.renewal",
+  Revocation = "cert-manager.application.certificate.revocation"
 }
 
 export const MIN_ALERT_BEFORE_DAYS = 1;
 export const MAX_ALERT_BEFORE_DAYS = 90;
+export const MAX_CERTIFICATE_ALERT_BEFORE_DAYS = 365;
 
 export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
   [AlertResourceType.IdentityAuthentication]: "Machine Identity Authentication",
@@ -75,7 +94,9 @@ export type TAlert = {
   enabled: boolean;
   orgId: string;
   projectId: string | null;
+  resourceName: string | null;
   channels: TAlertChannelEmbedded[];
+  lastRun: { timestamp: string; status: AlertRunStatus } | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -111,6 +132,7 @@ export type TTestAlertChannelDTO = {
   resourceType: string;
   resourceId?: string | null;
   projectId?: string | null;
+  alertId?: string;
   channelId?: string;
   channelType: AlertChannelType;
   config?: Record<string, unknown>;

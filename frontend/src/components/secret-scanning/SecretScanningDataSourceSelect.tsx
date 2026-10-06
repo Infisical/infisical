@@ -1,7 +1,8 @@
 import { faWrench } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Spinner, Tooltip } from "@app/components/v2";
+import { Tooltip } from "@app/components/v2";
+import { Loader } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import {
@@ -19,7 +20,7 @@ export const SecretScanningDataSourceSelect = ({ onSelect }: Props) => {
   if (isPending) {
     return (
       <div className="flex h-full flex-col items-center justify-center py-2.5">
-        <Spinner size="lg" className="text-surface-selected" />
+        <Loader size="md" label="Loading data source options" />
         <p className="mt-4 text-sm text-muted">Loading options...</p>
       </div>
     );

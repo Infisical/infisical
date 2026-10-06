@@ -2,12 +2,9 @@ import { useEffect, useState } from "react";
 import { Outlet } from "@tanstack/react-router";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { useProjectPermission, useSubscription } from "@app/context";
-
-import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
+import { useSubscription } from "@app/context";
 
 export const PamLayout = () => {
-  const { assumedPrivilegeDetails } = useProjectPermission();
   const { subscription } = useSubscription();
 
   const isPamGated = subscription?.pam === false;
@@ -19,7 +16,6 @@ export const PamLayout = () => {
 
   return (
     <>
-      {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
       <Outlet />
       <UpgradePlanModal
         paywallKey="pam.product-access"

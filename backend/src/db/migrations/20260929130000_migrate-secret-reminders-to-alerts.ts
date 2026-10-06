@@ -162,7 +162,8 @@ export async function up(knex: Knex): Promise<void> {
       const inScope = userIds.length
         ? await resolvePrincipalsInScope(
             { orgDAL, projectDAL },
-            { orgId: reminder.orgId, projectId: reminder.projectId, userIds, groupIds: [], tx: knex }
+            { orgId: reminder.orgId, projectId: reminder.projectId, userIds, groupIds: [] },
+            knex
           )
         : { userIds: new Set<string>() };
       const kept = userIds.filter((userId) => inScope.userIds.has(userId));

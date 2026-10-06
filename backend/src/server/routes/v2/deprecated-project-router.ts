@@ -20,8 +20,7 @@ import { InternalCertificateAuthorityResponseSchema, SanitizedProjectSchema } fr
 
 const projectWithEnv = SanitizedProjectSchema.extend({
   _id: z.string(),
-  environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array(),
-  kmsSecretManagerKeyId: z.string().nullable().optional()
+  environments: z.object({ name: z.string(), slug: z.string(), id: z.string() }).array()
 });
 
 export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider) => {

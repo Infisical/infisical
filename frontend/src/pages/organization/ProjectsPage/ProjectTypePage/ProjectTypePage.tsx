@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
-import { type ComponentProps, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ComponentProps, type ReactNode, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -18,19 +18,33 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { RequestProjectAccessModal } from "@app/components/projects/RequestProjectAccessModal";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogConfirmationField,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   Button,
   ButtonGroup,
   Card,
   CardAction,
   CardContent,
-  CardDescription,
   CardHeader,
+  CardTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Empty,
   EmptyContent,
   EmptyDescription,
@@ -38,9 +52,6 @@ import {
   EmptyMedia,
   EmptyTitle,
   IconButton,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
   PageHeader,
   Pagination,
   Skeleton,
@@ -63,7 +74,8 @@ import {
 } from "@app/context";
 import {
   OrgPermissionAdminConsoleAction,
-  OrgPermissionProjectActions
+  OrgPermissionProjectActions,
+  OrgPermissionSecretsManagementInsightsActions
 } from "@app/context/OrgPermissionContext/types";
 import {
   getProjectHomePage,
@@ -77,16 +89,11 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import {
-  useDebounce,
-  usePagination,
-  usePopUp,
-  useResetPageHelper,
-  useSlashFocusSearch
-} from "@app/hooks";
+import { useDebounce, usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import {
   useGetMyPendingProjectAccessRequests,
   useGetUserProjects,
+  useLeaveProject,
   useOrgAdminAccessProject,
   useSearchProjects
 } from "@app/hooks/api";
@@ -96,6 +103,7 @@ import {
   Project,
   ProjectEnv,
   ProjectType,
+  ProjectVersion,
   SearchProjectSortBy
 } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
@@ -104,6 +112,8 @@ import {
   ProjectListToggle,
   ProjectListView
 } from "@app/pages/organization/ProjectsPage/components/ProjectListToggle";
+
+import { ProjectSearchInput } from "./ProjectSearchInput";
 
 enum ProjectsViewMode {
   GRID = "grid",
@@ -330,7 +340,7 @@ const ProjectTypeContent = ({
   const typeTitle = getProjectTitle(projectType);
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col gap-8">
+    <div className="mx-auto flex max-w-8xl flex-col">
       <Helmet>
         <title>{typeTitle} Projects</title>
         <link rel="icon" href="/infisical.ico" />
@@ -534,7 +544,7 @@ const MyProjectsForType = ({
               <WorkspaceIcon className="size-5.5 shrink-0 text-accent transition-colors duration-200 ease-out group-hover:text-project" />
             </div>
             <div className="min-w-0 flex-1">
-              <CardDescription className="text-base font-semibold text-foreground">
+              <CardTitle className="text-base text-foreground">
                 {/* The name is the card's link, so the accessible name comes from visible text
                     rather than a duplicated label, and its stretched pseudo-element covers the
                     card. Siblings raised above it (CardAction) stay outside the anchor. */}
@@ -545,7 +555,7 @@ const MyProjectsForType = ({
                 >
                   {workspace.name}
                 </Link>
-              </CardDescription>
+              </CardTitle>
               <p className="truncate text-sm leading-5 text-muted">
                 {getProjectTitle(workspace.type)}
               </p>
@@ -722,6 +732,7 @@ const MyProjectsForType = ({
   return (
     <div className="@container flex flex-col gap-5">
       <Toolbar
+        projectType={projectType}
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}
         projectsViewMode={projectsViewMode}
@@ -787,6 +798,7 @@ const AllProjectsForType = ({
   };
 
   const orgAdminAccessProject = useOrgAdminAccessProject();
+  const leaveProject = useLeaveProject();
   const { permission } = useOrgPermission();
   const canAccessAllProjects = permission.can(
     OrgPermissionAdminConsoleAction.AccessAllProjects,
@@ -799,7 +811,8 @@ const AllProjectsForType = ({
   };
 
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp([
-    "requestAccessConfirmation"
+    "requestAccessConfirmation",
+    "leaveProjectConfirmation"
   ] as const);
 
   const { data: searchedProjects, isPending: isProjectLoading } = useSearchProjects({
@@ -835,6 +848,20 @@ const AllProjectsForType = ({
   });
 
   const requestedWorkspaceDetails = (popUp.requestAccessConfirmation.data || {}) as Project;
+  const projectToLeave = popUp.leaveProjectConfirmation.data as Project | undefined;
+  const handleLeaveProject = () => {
+    if (!projectToLeave || leaveProject.isPending) return;
+
+    leaveProject.mutate(
+      { projectId: projectToLeave.id },
+      {
+        onSuccess: () => {
+          handlePopUpToggle("leaveProjectConfirmation", false);
+          createNotification({ text: "Removed your direct project membership", type: "success" });
+        }
+      }
+    );
+  };
   const ProductIcon = getProjectLucideIcon(projectType);
 
   const hasProjects = !isProjectLoading && Boolean(searchedProjects?.totalCount);
@@ -923,10 +950,38 @@ const AllProjectsForType = ({
                 <TableCell className="relative z-10 w-0 pr-3 text-right">
                   {(() => {
                     const joinedBadge = (
-                      <Badge variant="info">
-                        <CheckIcon />
-                        Joined
-                      </Badge>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Badge variant="info" asChild>
+                            <button
+                              type="button"
+                              aria-label={`Membership options for ${workspace.name}`}
+                              className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                            >
+                              <CheckIcon />
+                              Joined
+                              <ChevronDownIcon />
+                            </button>
+                          </Badge>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {workspace.isDirectMember && workspace.version !== ProjectVersion.V1 ? (
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                handlePopUpOpen("leaveProjectConfirmation", workspace)
+                              }
+                            >
+                              Leave Project
+                            </DropdownMenuItem>
+                          ) : (
+                            <div className="max-w-60 px-2 py-2 text-sm text-muted">
+                              {workspace.isDirectMember
+                                ? "Ask a project admin to upgrade this project before you can leave."
+                                : "You have access through a group. Ask a group admin to remove your access."}
+                            </div>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     );
                     const adminAccessButton = (label: string) => (
                       <Button
@@ -1045,6 +1100,7 @@ const AllProjectsForType = ({
   return (
     <div className="flex flex-col gap-5">
       <Toolbar
+        projectType={projectType}
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}
         projectsViewMode={ProjectsViewMode.LIST}
@@ -1073,11 +1129,52 @@ const AllProjectsForType = ({
         onOpenChange={(isOpen) => handlePopUpToggle("requestAccessConfirmation", isOpen)}
         project={requestedWorkspaceDetails}
       />
+      <AlertDialog
+        open={popUp.leaveProjectConfirmation.isOpen}
+        confirmationValue="confirm"
+        onOpenChange={(isOpen) => {
+          if (!leaveProject.isPending) handlePopUpToggle("leaveProjectConfirmation", isOpen);
+        }}
+      >
+        <AlertDialogContent
+          onEscapeKeyDown={(event) => {
+            if (leaveProject.isPending) event.preventDefault();
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave {projectToLeave?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Leaving removes your direct membership in this project. Any access you have through a
+              group will remain.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogConfirmationField
+            inputProps={{ placeholder: "Type confirm here", disabled: leaveProject.isPending }}
+            onConfirm={handleLeaveProject}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel variant="outline" isDisabled={leaveProject.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              isPending={leaveProject.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                handleLeaveProject();
+              }}
+            >
+              Leave Project
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
 
 const Toolbar = ({
+  projectType,
   searchFilter,
   onSearchChange,
   projectsViewMode,
@@ -1090,6 +1187,7 @@ const Toolbar = ({
   isAddingProjectsAllowed,
   isGridDisabled
 }: {
+  projectType: ProjectType;
   searchFilter: string;
   onSearchChange: (value: string) => void;
   projectsViewMode: ProjectsViewMode;
@@ -1102,23 +1200,22 @@ const Toolbar = ({
   isAddingProjectsAllowed: boolean;
   isGridDisabled?: boolean;
 }) => {
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  useSlashFocusSearch(searchInputRef);
+  const { currentOrg } = useOrganization();
+  const { permission } = useOrgPermission();
+  const canSearchAllSecretValues = permission.can(
+    OrgPermissionSecretsManagementInsightsActions.SearchAllSecretValues,
+    OrgPermissionSubjects.SecretsManagementInsights
+  );
 
   return (
     <div className="flex w-full flex-wrap items-center justify-between gap-2">
       <div className="flex min-w-72 flex-1 items-center gap-2">
-        <InputGroup className="min-w-48 flex-1">
-          <InputGroupAddon align="inline-start">
-            <SearchIcon />
-          </InputGroupAddon>
-          <InputGroupInput
-            ref={searchInputRef}
-            placeholder="Search by project name..."
-            value={searchFilter}
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
-        </InputGroup>
+        <ProjectSearchInput
+          orgId={currentOrg.id}
+          value={searchFilter}
+          onChange={onSearchChange}
+          canSearchByValue={projectType === ProjectType.SecretManager && canSearchAllSecretValues}
+        />
         {!hideProjectListToggle && (
           <ProjectListToggle value={projectListView} onChange={onProjectListViewChange} />
         )}

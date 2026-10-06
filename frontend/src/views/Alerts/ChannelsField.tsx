@@ -1,14 +1,6 @@
 import { useFieldArray, useFormContext } from "react-hook-form";
-import { ChevronDownIcon, PlusIcon } from "lucide-react";
 
-import {
-  Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Label
-} from "@app/components/v3";
+import { Label } from "@app/components/v3";
 import {
   ALERT_CHANNEL_TYPE_LABELS,
   AlertChannelType,
@@ -17,8 +9,8 @@ import {
   TChannelsForm
 } from "@app/hooks/api/alerts";
 
+import { AddChannelMenu } from "./AddChannelMenu";
 import { ChannelCard } from "./ChannelCard";
-import { getChannelIcon } from "./channelIcons";
 
 type Props = {
   projectId?: string;
@@ -37,6 +29,16 @@ const buildNewChannel = (channelType: AlertChannelType, name: string): TChannelF
   integrationKey: ""
 });
 
+export const buildNextChannel = (existing: { name: string }[], channelType: AlertChannelType) => {
+  const takenNames = new Set(existing.map((channel) => channel.name));
+  const baseName = ALERT_CHANNEL_TYPE_LABELS[channelType];
+  let name = baseName;
+  for (let suffix = 2; takenNames.has(name); suffix += 1) {
+    name = `${baseName} ${suffix}`;
+  }
+  return buildNewChannel(channelType, name);
+};
+
 export const ChannelsField = ({ projectId, resourceType, resourceId }: Props) => {
   const {
     control,
@@ -49,13 +51,7 @@ export const ChannelsField = ({ projectId, resourceType, resourceId }: Props) =>
   // The name input was dropped from the design; new channels are named after their type,
   // suffixed to stay unique so multiples remain distinguishable (e.g. in Terraform).
   const appendChannel = (channelType: AlertChannelType) => {
-    const takenNames = new Set((getValues("channels") ?? []).map((channel) => channel.name));
-    const baseName = ALERT_CHANNEL_TYPE_LABELS[channelType];
-    let name = baseName;
-    for (let suffix = 2; takenNames.has(name); suffix += 1) {
-      name = `${baseName} ${suffix}`;
-    }
-    append(buildNewChannel(channelType, name));
+    append(buildNextChannel(getValues("channels") ?? [], channelType));
   };
 
   return (
@@ -67,30 +63,7 @@ export const ChannelsField = ({ projectId, resourceType, resourceId }: Props) =>
           </Label>
           <span className="text-xs text-muted">Add at least one delivery channel.</span>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button type="button" variant="outline" size="sm">
-              <PlusIcon className="size-4" />
-              Add channel
-              <ChevronDownIcon className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            sideOffset={4}
-            className="w-[var(--radix-dropdown-menu-trigger-width)]"
-          >
-            {Object.values(AlertChannelType).map((type) => {
-              const Icon = getChannelIcon(type);
-              return (
-                <DropdownMenuItem key={type} onClick={() => appendChannel(type)}>
-                  <Icon className="size-4" />
-                  {ALERT_CHANNEL_TYPE_LABELS[type]}
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <AddChannelMenu onAdd={appendChannel} />
       </div>
 
       {rootError && <p className="text-xs text-danger">{rootError}</p>}

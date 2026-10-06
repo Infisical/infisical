@@ -47,7 +47,7 @@ export const PkiCollectionItemsSection = ({ collectionId, type }: Props) => {
   return pkiCollection ? (
     <div className="w-full rounded-lg border border-border-control bg-surface-base p-4">
       <div className="flex items-center justify-between border-b border-border-emphasis pb-4">
-        <h3 className="text-lg font-medium text-foreground">{sectionName}</h3>
+        <h3 className="text-lg font-normal text-foreground">{sectionName}</h3>
         <IconButton
           ariaLabel="copy icon"
           variant="plain"

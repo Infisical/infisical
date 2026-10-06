@@ -21,7 +21,7 @@ import {
   IEventAlertProvider,
   TAlertContext,
   TAlertPermissionInput,
-  TFindTargetsByIdsInput
+  TFindEventTargetsInput
 } from "../alert-types";
 import { TReminderSecret, TSecretReminderAlertDALFactory } from "./secret-reminder-alert-dal";
 
@@ -86,7 +86,7 @@ export const secretReminderAlertProviderFactory = ({
     });
   };
 
-  const findTargetsByIds = async (input: TFindTargetsByIdsInput): Promise<TSecretReminderTarget[]> => {
+  const findEventTargets = async (input: TFindEventTargetsInput): Promise<TSecretReminderTarget[]> => {
     if (input.eventType !== SECRET_REMINDER_DUE_EVENT) return [];
 
     const parsed = SecretReminderDuePayloadSchema.safeParse(input.payload);
@@ -235,7 +235,7 @@ export const secretReminderAlertProviderFactory = ({
         conditionSchema: SecretReminderConditionSchema
       }
     ],
-    findTargetsByIds,
+    findEventTargets,
     buildViewUrl,
     buildPayload,
     targetId: (target) => `${target.secretId}:${target.occurrenceDate}`,

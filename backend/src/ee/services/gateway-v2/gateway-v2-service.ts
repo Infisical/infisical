@@ -36,6 +36,8 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { PamAccountType } from "../pam/pam-enums";
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-config-dal";
@@ -77,6 +79,8 @@ type TGatewayV2ServiceFactoryDep = {
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findByGatewayId" | "countByGatewayId">;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayId" | "countByGatewayId">;
   pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayId" | "countByGatewayId">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findByGatewayId" | "countByGatewayIds">;
+  pamAccountTemplateDAL: Pick<TPamAccountTemplateDALFactory, "findByGatewayId" | "countByGatewayIds">;
   resourceAuthMethodService: Pick<
     TResourceAuthMethodServiceFactory,
     | "initAtCreate"
@@ -104,6 +108,8 @@ export const gatewayV2ServiceFactory = ({
   dynamicSecretDAL,
   identityKubernetesAuthDAL,
   pkiDiscoveryConfigDAL,
+  pamAccountDAL,
+  pamAccountTemplateDAL,
   resourceAuthMethodService
 }: TGatewayV2ServiceFactoryDep) => {
   const $validateIdentityAccessToGateway = async (orgId: string, actorId: string, actorAuthMethod: ActorAuthMethod) => {
@@ -317,15 +323,23 @@ export const gatewayV2ServiceFactory = ({
 
     const gatewayIds = gateways.map((g) => g.id);
 
-    const [appConnectionsCounts, dynamicSecretsCounts, kubernetesAuthsCounts, pkiDiscoveryConfigsCounts] =
-      await Promise.all([
-        Promise.all(gatewayIds.map((id) => appConnectionDAL.countByGatewayId(id).then((count) => ({ id, count })))),
-        Promise.all(gatewayIds.map((id) => dynamicSecretDAL.countByGatewayId(id).then((count) => ({ id, count })))),
-        Promise.all(
-          gatewayIds.map((id) => identityKubernetesAuthDAL.countByGatewayId(id).then((count) => ({ id, count })))
-        ),
-        Promise.all(gatewayIds.map((id) => pkiDiscoveryConfigDAL.countByGatewayId(id).then((count) => ({ id, count }))))
-      ]);
+    const [
+      appConnectionsCounts,
+      dynamicSecretsCounts,
+      kubernetesAuthsCounts,
+      pkiDiscoveryConfigsCounts,
+      pamAccountsCounts,
+      pamAccountTemplatesCounts
+    ] = await Promise.all([
+      Promise.all(gatewayIds.map((id) => appConnectionDAL.countByGatewayId(id).then((count) => ({ id, count })))),
+      Promise.all(gatewayIds.map((id) => dynamicSecretDAL.countByGatewayId(id).then((count) => ({ id, count })))),
+      Promise.all(
+        gatewayIds.map((id) => identityKubernetesAuthDAL.countByGatewayId(id).then((count) => ({ id, count })))
+      ),
+      Promise.all(gatewayIds.map((id) => pkiDiscoveryConfigDAL.countByGatewayId(id).then((count) => ({ id, count })))),
+      pamAccountDAL.countByGatewayIds(gatewayIds),
+      pamAccountTemplateDAL.countByGatewayIds(gatewayIds)
+    ]);
 
     const countMap = new Map<string, number>();
 
@@ -341,6 +355,12 @@ export const gatewayV2ServiceFactory = ({
     for (const { id, count } of pkiDiscoveryConfigsCounts) {
       countMap.set(id, (countMap.get(id) ?? 0) + count);
     }
+    for (const { id, count } of pamAccountsCounts) {
+      countMap.set(id, (countMap.get(id) ?? 0) + count);
+    }
+    for (const { id, count } of pamAccountTemplatesCounts) {
+      countMap.set(id, (countMap.get(id) ?? 0) + count);
+    }
 
     return gateways.map((gateway) => ({
       ...gateway,
@@ -352,11 +372,14 @@ export const gatewayV2ServiceFactory = ({
     gatewayId,
     targetHost,
     targetPort,
+    // Named in the signed cert so the gateway need not trust a port out of the request body.
+    additionalTargetPorts,
     transport
   }: {
     gatewayId: string;
     targetHost: string;
     targetPort: number;
+    additionalTargetPorts?: number[];
     transport?: GatewayTransport;
   }): Promise<TGatewayV2ConnectionDetails | undefined> => {
     const gateway = await gatewayV2DAL.findById(gatewayId);
@@ -425,9 +448,13 @@ export const gatewayV2ServiceFactory = ({
     const clientKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
     const clientCertSerialNumber = createSerialNumber();
 
+    const allowedPorts = [targetPort, ...(additionalTargetPorts ?? [])].filter(
+      (port, index, ports) => port > 0 && ports.indexOf(port) === index
+    );
     const routingInfo = {
       targetHost,
-      targetPort
+      targetPort,
+      ...(allowedPorts.length > 1 ? { targetPorts: allowedPorts } : {})
     };
 
     const routingExtension = new x509.Extension(
@@ -1029,6 +1056,7 @@ export const gatewayV2ServiceFactory = ({
     capabilities?: {
       pkcs11?: boolean;
       sessionLogMaskingBuiltInDetection?: boolean;
+      clickhouseNativeProtocol?: boolean;
       supported_account_types?: string[];
     };
   }) => {
@@ -1263,18 +1291,23 @@ export const gatewayV2ServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
-    const [appConnections, dynamicSecrets, kubernetesAuths, pkiDiscoveryConfigs] = await Promise.all([
-      appConnectionDAL.findByGatewayId(gatewayId),
-      dynamicSecretDAL.findByGatewayId(gatewayId),
-      identityKubernetesAuthDAL.findByGatewayId(gatewayId),
-      pkiDiscoveryConfigDAL.findByGatewayId(gatewayId)
-    ]);
+    const [appConnections, dynamicSecrets, kubernetesAuths, pkiDiscoveryConfigs, pamAccounts, pamAccountTemplates] =
+      await Promise.all([
+        appConnectionDAL.findByGatewayId(gatewayId),
+        dynamicSecretDAL.findByGatewayId(gatewayId),
+        identityKubernetesAuthDAL.findByGatewayId(gatewayId),
+        pkiDiscoveryConfigDAL.findByGatewayId(gatewayId),
+        pamAccountDAL.findByGatewayId(gatewayId),
+        pamAccountTemplateDAL.findByGatewayId(gatewayId)
+      ]);
 
     return {
       appConnections,
       dynamicSecrets,
       kubernetesAuths,
-      pkiDiscoveryConfigs
+      pkiDiscoveryConfigs,
+      pamAccounts,
+      pamAccountTemplates
     };
   };
 

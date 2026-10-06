@@ -15,6 +15,7 @@ const buildResolver = (opts: {
   effectiveProjectGroupIds?: string[]; // groups currently holding a project membership
   projectMemberUserIds?: string[]; // users a project member listing returns
   projectGroupMemberUserIds?: string[]; // users a project group member listing returns
+  verifiedDomains?: string[];
 }) => {
   const usersById = new Map(opts.users.map((u) => [u.id, u]));
   return alertRecipientResolverFactory({
@@ -63,6 +64,9 @@ const buildResolver = (opts: {
     } as never,
     groupProjectDAL: {
       findAllProjectGroupMembers: async () => (opts.projectGroupMemberUserIds ?? []).map((id) => ({ user: { id } }))
+    } as never,
+    emailDomainDAL: {
+      find: async () => (opts.verifiedDomains ?? []).map((domain) => ({ domain }))
     } as never
   });
 };
@@ -233,6 +237,25 @@ describe("alert recipient resolver — send-time scope re-check", () => {
 
     const emails = (result.get("c1") ?? []).map((r) => r.email);
     expect(emails).toEqual(["u1@example.com"]);
+  });
+
+  test("drops a plain email whose domain is no longer verified", async () => {
+    const resolver = buildResolver({ users: [], verifiedDomains: ["verified.example.com"] });
+
+    const result = await resolver.resolveMany(
+      new Map([
+        [
+          "c1",
+          [
+            { principalType: AlertPrincipalType.EMAIL, principalId: "ops@verified.example.com" },
+            { principalType: AlertPrincipalType.EMAIL, principalId: "ops@withdrawn.example.com" }
+          ]
+        ]
+      ]),
+      { orgId: "org-1", projectId: null }
+    );
+
+    expect((result.get("c1") ?? []).map((r) => r.email)).toEqual(["ops@verified.example.com"]);
   });
 });
 

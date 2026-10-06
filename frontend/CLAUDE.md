@@ -62,6 +62,10 @@ When adding new queries, consider whether the default 60s staleTime is appropria
 - For data that must always be fresh (auth configs, lease TTLs): override with `staleTime: 0, gcTime: 0`.
 - For rarely-changing data (server config, user profile): use `staleTime: Infinity` as the context providers do.
 
+Organization switching resets the query cache centrally in `pages/middlewares/inject-org-details.tsx`, after authentication succeeds and before tenant data loads. `hooks/api/organization/cache.ts` tracks the active organization per `QueryClient` and removes all queries except the exact auth-token, user-profile, server-config, and session-announcement keys. Removing queries also cancels pending query results, including queries whose keys omit the organization. Same-organization navigation keeps the cache, and the organization layout remounts on organization changes to reset local UI state. Keep tenant cache cleanup at this boundary rather than adding feature-specific removal lists to individual organization selectors. Logout paths must use `clearSession` to remove user-specific cache entries while preserving public server configuration for the login page.
+
+Organization switchers use `helpers/organizationSwitch.ts` to retain safe sections and tabs while dropping resource IDs, action parameters, and legacy suborganization search state. Pass the current location through `navigateUserToOrg` only for organization switches; initial login keeps its Projects landing page. Explicit destinations take precedence, and MFA route handoffs retain the requested destination through `redirect_to`.
+
 ### Product Analytics
 
 Use `@app/lib/analytics` for new frontend product analytics. Define the event and its typed properties in the shared catalog, then capture it through the method matching its scope so required grouping is applied automatically. Do not call the legacy `Telemetry` wrapper directly from new code or define event names as local strings.
@@ -89,7 +93,7 @@ CASL-based (`@casl/ability`). Contexts: `OrgPermissionContext` and `ProjectPermi
 
 ### Styling
 
-Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in `src/index.css` (`@theme` directive). Custom breakpoint `dashboard: 1100px`. Typography roles: Inter is the default product UI face, Alliance is the display face, `font-mono` remains the functional application mono, and `font-jetbrains-mono` is reserved for decorative technical microcopy. See the root `DESIGN.md` before assigning a non-default face. Colors use semantic roles from `src/index.css`, including surfaces, content, structure, status, scope, and product/resource accents.
+Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in `src/index.css` (`@theme` directive). Custom breakpoint `dashboard: 1100px`. Typography roles: IBM Plex Sans is the default product UI face (`font-sans`); Alliance No. 2 Regular is for headings (`font-alliance`); JetBrains Mono is the functional mono (`font-mono`) for code, values, identifiers, and technical microcopy. See the root `DESIGN.md` for typography roles. Colors use semantic roles from `src/index.css`, including surfaces, content, structure, status, scope, and product/resource accents.
 
 ### Layouts
 

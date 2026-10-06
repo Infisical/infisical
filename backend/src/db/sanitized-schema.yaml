@@ -777,6 +777,7 @@ tables:
       - parentOrgId
       - rootOrgId
       - blockDuplicateSecretSyncDestinations
+      - requireGatewayPools
 
   - name: pam_accounts
     source: public.pam_accounts
@@ -1153,17 +1154,17 @@ tables:
     source: public.secret_scanning_findings
     columns:
       - id
-      - dataSourceName
-      - dataSourceType
-      - resourceName
-      - resourceType
+      - resourceId
       - rule
       - severity
+      - confidence
       - status
-      - remarks
+      - triageComment
+      - triagedByUserId
+      - triagedAt
+      - resolvedAt
       - fingerprint
       - details
-      - projectId
       - scanId
       - createdAt
       - updatedAt
@@ -1194,7 +1195,6 @@ tables:
       - id
       - externalId
       - name
-      - type
       - dataSourceId
       - createdAt
       - updatedAt

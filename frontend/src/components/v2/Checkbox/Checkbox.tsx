@@ -38,7 +38,7 @@ export const Checkbox = ({
 }: CheckboxProps): JSX.Element => {
   return (
     <div
-      className={twMerge("flex items-center font-inter text-label-secondary", containerClassName)}
+      className={twMerge("flex items-center font-sans text-label-secondary", containerClassName)}
     >
       <CheckboxPrimitive.Root
         className={twMerge(

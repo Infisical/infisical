@@ -34,6 +34,11 @@ import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
+import {
+  describeSecretValidationFailures,
+  SecretValidationError
+} from "../secret-validation-rule/secret-validation-rule-errors";
+import { createSecretBlindIndexer, TSecretBlindIndexer, TSecretValueBlindIndexes } from "./secret-blind-index-fns";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import {
@@ -81,7 +86,7 @@ export const fnSecretBulkInsert = async ({
       reminderNote,
       encryptedValue,
       reminderRepeatDays,
-      secretValueBlindIndex
+      blindIndexes
     }) => ({
       skipMultilineEncoding,
       type,
@@ -92,7 +97,8 @@ export const fnSecretBulkInsert = async ({
       reminderNote,
       encryptedValue,
       reminderRepeatDays,
-      secretValueBlindIndex
+      secretValueBlindIndex: blindIndexes?.secretValueBlindIndex ?? null,
+      secretValueOrgBlindIndex: blindIndexes?.secretValueOrgBlindIndex ?? null
     })
   );
 
@@ -240,7 +246,7 @@ export const fnSecretBulkUpdate = async ({
   const sanitizedInputSecrets = inputSecrets.map(
     ({
       filter,
-      data: { skipMultilineEncoding, type, key, encryptedValue, userId, encryptedComment, secretValueBlindIndex }
+      data: { skipMultilineEncoding, type, key, encryptedValue, userId, encryptedComment, blindIndexes }
     }) => ({
       filter: { ...filter, folderId },
       data: {
@@ -250,7 +256,14 @@ export const fnSecretBulkUpdate = async ({
         userId,
         encryptedComment,
         encryptedValue,
-        secretValueBlindIndex
+        // undefined means this update carries no value, so the columns are left out of the UPDATE
+        // entirely. Writing null here instead would wipe the digests on a rename or comment edit.
+        ...(blindIndexes === undefined
+          ? {}
+          : {
+              secretValueBlindIndex: blindIndexes?.secretValueBlindIndex ?? null,
+              secretValueOrgBlindIndex: blindIndexes?.secretValueOrgBlindIndex ?? null
+            })
       }
     })
   );
@@ -268,6 +281,7 @@ export const fnSecretBulkUpdate = async ({
         version,
         encryptedValue,
         secretValueBlindIndex,
+        secretValueOrgBlindIndex,
         id: secretId
       },
       index
@@ -288,6 +302,7 @@ export const fnSecretBulkUpdate = async ({
         ) || null,
       encryptedValue,
       secretValueBlindIndex,
+      secretValueOrgBlindIndex,
       folderId,
       secretId,
       userActorId,
@@ -787,7 +802,7 @@ type TFnUpdateSecretLinkedReferences = {
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
   encryptor: (data: { plainText: Buffer }) => { cipherTextBlob: Buffer };
   decryptor: (data: { cipherTextBlob: Buffer }) => Buffer;
-  generateSecretBlindIndex: (secretValue: Buffer) => Promise<string>;
+  blindIndexer: TSecretBlindIndexer;
   tx?: Knex;
 };
 
@@ -811,7 +826,7 @@ export const fnUpdateSecretLinkedReferences = async ({
   secretQueueService,
   encryptor,
   decryptor,
-  generateSecretBlindIndex,
+  blindIndexer,
   tx
 }: TFnUpdateSecretLinkedReferences) => {
   // case: nested references, can be inferred directly from the secret references table
@@ -847,7 +862,7 @@ export const fnUpdateSecretLinkedReferences = async ({
   // Use Map with secretId as key to avoid duplicates when a secret references the renamed secret multiple times
   const updatedSecretsMap: Map<
     string,
-    { secret: TSecretsV2; newEncryptedValue: Buffer; newVersion: number; newBlindIndex: string }
+    { secret: TSecretsV2; newEncryptedValue: Buffer; newVersion: number; newBlindIndexes: TSecretValueBlindIndexes }
   > = new Map();
 
   for await (const secretToUpdate of allSecretsToUpdate) {
@@ -888,12 +903,12 @@ export const fnUpdateSecretLinkedReferences = async ({
     if (newValue !== originalValue) {
       const newValueBuffer = Buffer.from(newValue);
       const newEncryptedValue = encryptor({ plainText: newValueBuffer }).cipherTextBlob;
-      const newBlindIndex = await generateSecretBlindIndex(newValueBuffer);
+      const newBlindIndexes = await blindIndexer.generateBlindIndexes(newValueBuffer);
 
       // Update secret with version increment
       const updatedSecret = await secretDAL.updateById(
         secretToUpdate.id,
-        { encryptedValue: newEncryptedValue, secretValueBlindIndex: newBlindIndex, $incr: { version: 1 } },
+        { encryptedValue: newEncryptedValue, ...newBlindIndexes, $incr: { version: 1 } },
         tx
       );
 
@@ -902,7 +917,7 @@ export const fnUpdateSecretLinkedReferences = async ({
         secret: updatedSecret,
         newEncryptedValue,
         newVersion: updatedSecret.version,
-        newBlindIndex
+        newBlindIndexes
       });
     }
   }
@@ -910,7 +925,12 @@ export const fnUpdateSecretLinkedReferences = async ({
   // Group updated secrets by folder for commit creation
   const updatedSecretsByFolder: Map<
     string,
-    Array<{ secret: TSecretsV2; newEncryptedValue: Buffer; newVersion: number; newBlindIndex: string }>
+    Array<{
+      secret: TSecretsV2;
+      newEncryptedValue: Buffer;
+      newVersion: number;
+      newBlindIndexes: TSecretValueBlindIndexes;
+    }>
   > = new Map();
   for (const [, data] of updatedSecretsMap) {
     const folderSecrets = updatedSecretsByFolder.get(data.secret.folderId) || [];
@@ -920,7 +940,7 @@ export const fnUpdateSecretLinkedReferences = async ({
 
   for await (const [updateFolderId, folderSecrets] of updatedSecretsByFolder) {
     const secretVersions = await secretVersionDAL.insertMany(
-      folderSecrets.map(({ secret, newEncryptedValue, newVersion, newBlindIndex }) => ({
+      folderSecrets.map(({ secret, newEncryptedValue, newVersion, newBlindIndexes }) => ({
         secretId: secret.id,
         version: newVersion,
         key: secret.key,
@@ -932,7 +952,7 @@ export const fnUpdateSecretLinkedReferences = async ({
         folderId: secret.folderId,
         userId: secret.userId,
         actorType: ActorType.PLATFORM,
-        secretValueBlindIndex: newBlindIndex
+        ...newBlindIndexes
       })),
       tx
     );
@@ -1009,7 +1029,7 @@ type TFnUpdateMovedSecretReferences = {
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
   encryptor: (data: { plainText: Buffer }) => { cipherTextBlob: Buffer };
   decryptor: (data: { cipherTextBlob: Buffer }) => Buffer;
-  generateSecretBlindIndex: (secretValue: Buffer) => Promise<string>;
+  blindIndexer: TSecretBlindIndexer;
   tx?: Knex;
 };
 
@@ -1038,13 +1058,13 @@ export const fnUpdateMovedSecretReferences = async ({
   secretQueueService,
   encryptor,
   decryptor,
-  generateSecretBlindIndex,
+  blindIndexer,
   tx
 }: TFnUpdateMovedSecretReferences) => {
   // Use Map with secretId as key to avoid duplicates when a secret references multiple moved secrets
   const updatedSecretsMap: Map<
     string,
-    { secret: TSecretsV2; newEncryptedValue: Buffer; newVersion: number; newBlindIndex: string }
+    { secret: TSecretsV2; newEncryptedValue: Buffer; newVersion: number; newBlindIndexes: TSecretValueBlindIndexes }
   > = new Map();
 
   const destPathPart = destinationSecretPath === "/" ? "" : `.${destinationSecretPath.slice(1).replaceAll("/", ".")}`;
@@ -1082,12 +1102,12 @@ export const fnUpdateMovedSecretReferences = async ({
     if (newValue !== originalValue) {
       const newValueBuffer = Buffer.from(newValue);
       const newEncryptedValue = encryptor({ plainText: newValueBuffer }).cipherTextBlob;
-      const newBlindIndex = await generateSecretBlindIndex(newValueBuffer);
+      const newBlindIndexes = await blindIndexer.generateBlindIndexes(newValueBuffer);
 
       // Update secret with version increment - use $incr to properly increment version
       const updatedSecret = await secretDAL.updateById(
         secretToUpdate.id,
-        { encryptedValue: newEncryptedValue, secretValueBlindIndex: newBlindIndex, $incr: { version: 1 } },
+        { encryptedValue: newEncryptedValue, ...newBlindIndexes, $incr: { version: 1 } },
         tx
       );
 
@@ -1096,7 +1116,7 @@ export const fnUpdateMovedSecretReferences = async ({
         secret: updatedSecret,
         newEncryptedValue,
         newVersion: updatedSecret.version,
-        newBlindIndex
+        newBlindIndexes
       });
 
       // update the secret references table (only for nested refs)
@@ -1150,12 +1170,12 @@ export const fnUpdateMovedSecretReferences = async ({
         if (newValue !== originalValue) {
           const newValueBuffer = Buffer.from(newValue);
           const newEncryptedValue = encryptor({ plainText: newValueBuffer }).cipherTextBlob;
-          const newBlindIndex = await generateSecretBlindIndex(newValueBuffer);
+          const newBlindIndexes = await blindIndexer.generateBlindIndexes(newValueBuffer);
 
           // Update secret with version increment
           const updatedSecret = await secretDAL.updateById(
             secretToUpdate.id,
-            { encryptedValue: newEncryptedValue, secretValueBlindIndex: newBlindIndex, $incr: { version: 1 } },
+            { encryptedValue: newEncryptedValue, ...newBlindIndexes, $incr: { version: 1 } },
             tx
           );
 
@@ -1164,7 +1184,7 @@ export const fnUpdateMovedSecretReferences = async ({
             secret: updatedSecret,
             newEncryptedValue,
             newVersion: updatedSecret.version,
-            newBlindIndex
+            newBlindIndexes
           });
 
           const updatedNestedRefs = nestedReferences.filter(
@@ -1204,12 +1224,12 @@ export const fnUpdateMovedSecretReferences = async ({
         if (newValue !== originalValue) {
           const newValueBuffer = Buffer.from(newValue);
           const newEncryptedValue = encryptor({ plainText: newValueBuffer }).cipherTextBlob;
-          const newBlindIndex = await generateSecretBlindIndex(newValueBuffer);
+          const newBlindIndexes = await blindIndexer.generateBlindIndexes(newValueBuffer);
 
           // Update secret with version increment
           const updatedSecret = await secretDAL.updateById(
             secretToUpdate.id,
-            { encryptedValue: newEncryptedValue, secretValueBlindIndex: newBlindIndex, $incr: { version: 1 } },
+            { encryptedValue: newEncryptedValue, ...newBlindIndexes, $incr: { version: 1 } },
             tx
           );
 
@@ -1218,7 +1238,7 @@ export const fnUpdateMovedSecretReferences = async ({
             secret: updatedSecret,
             newEncryptedValue,
             newVersion: updatedSecret.version,
-            newBlindIndex
+            newBlindIndexes
           });
 
           const updatedNestedRefs = nestedReferences.map((ref) => {
@@ -1285,12 +1305,12 @@ export const fnUpdateMovedSecretReferences = async ({
     if (valueChanged) {
       const newValueBuffer = Buffer.from(updatedValue);
       const newEncryptedValue = encryptor({ plainText: newValueBuffer }).cipherTextBlob;
-      const newBlindIndex = await generateSecretBlindIndex(newValueBuffer);
+      const newBlindIndexes = await blindIndexer.generateBlindIndexes(newValueBuffer);
 
       // Update secret with version increment
       const updatedSecret = await secretDAL.updateById(
         destinationMovedSecret.id,
-        { encryptedValue: newEncryptedValue, secretValueBlindIndex: newBlindIndex, $incr: { version: 1 } },
+        { encryptedValue: newEncryptedValue, ...newBlindIndexes, $incr: { version: 1 } },
         tx
       );
 
@@ -1299,7 +1319,7 @@ export const fnUpdateMovedSecretReferences = async ({
         secret: updatedSecret,
         newEncryptedValue,
         newVersion: updatedSecret.version,
-        newBlindIndex
+        newBlindIndexes
       });
 
       const { nestedReferences: finalNestedReferences } = getAllSecretReferences(updatedValue);
@@ -1313,7 +1333,12 @@ export const fnUpdateMovedSecretReferences = async ({
   // Group updated secrets by folder for commit creation
   const updatedSecretsByFolder: Map<
     string,
-    Array<{ secret: TSecretsV2; newEncryptedValue: Buffer; newVersion: number; newBlindIndex: string }>
+    Array<{
+      secret: TSecretsV2;
+      newEncryptedValue: Buffer;
+      newVersion: number;
+      newBlindIndexes: TSecretValueBlindIndexes;
+    }>
   > = new Map();
   for (const [, data] of updatedSecretsMap) {
     const folderSecrets = updatedSecretsByFolder.get(data.secret.folderId) || [];
@@ -1323,7 +1348,7 @@ export const fnUpdateMovedSecretReferences = async ({
 
   for await (const [updateFolderId, folderSecrets] of updatedSecretsByFolder) {
     const secretVersions = await secretVersionDAL.insertMany(
-      folderSecrets.map(({ secret, newEncryptedValue, newVersion, newBlindIndex }) => ({
+      folderSecrets.map(({ secret, newEncryptedValue, newVersion, newBlindIndexes }) => ({
         secretId: secret.id,
         version: newVersion,
         key: secret.key,
@@ -1335,7 +1360,7 @@ export const fnUpdateMovedSecretReferences = async ({
         folderId: secret.folderId,
         userId: secret.userId,
         actorType: ActorType.PLATFORM,
-        secretValueBlindIndex: newBlindIndex
+        ...newBlindIndexes
       })),
       tx
     );
@@ -1605,7 +1630,8 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     secretApprovalRequestSecretDAL,
     secretQueueService,
     reminderDAL,
-    reminderService
+    reminderService,
+    secretValidationRuleService
   } = dto;
 
   const sourceFolder = await folderDAL.findBySecretPath(projectId, sourceEnvironment, sourceSecretPath, tx);
@@ -1684,14 +1710,12 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     }
   });
 
-  const {
-    encryptor: secretManagerEncryptor,
-    decryptor: secretManagerDecryptor,
-    generateSecretBlindIndex
-  } = await kmsService.createCipherPairWithDataKey({
-    type: KmsDataKey.SecretManager,
-    projectId
-  });
+  const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+    await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+  const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService, tx });
   const decryptedSourceSecrets = sourceSecrets.map((secret) => ({
     ...secret,
     value: secret.encryptedValue
@@ -1798,6 +1822,41 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     }
   }
 
+  // validate the moved secrets against the destination's validation rules before writing anything, whether the
+  // move is applied directly or through a change request. the source secrets still exist at this point, so they
+  // are excluded from the duplicate check; otherwise each moved secret would be reported as a duplicate of itself.
+  try {
+    await secretValidationRuleService.validateSecrets(
+      {
+        projectId,
+        environment: destinationEnvironment,
+        envId: destinationFolder.envId,
+        secretPath: destinationFolder.path,
+        secrets: secretsToApplyAtDestination.map((secret) => ({
+          key: secret.key,
+          // empty values are stored without an encrypted value, so treat a missing value as an empty string
+          value: secret.value ?? "",
+          secretId: destinationSecretsGroupedByKey[secret.key]?.[0]?.id
+        })),
+        excludedSecretIds: secretsToApplyAtDestination.map((secret) => secret.id)
+      },
+      tx
+    );
+  } catch (error) {
+    if (!(error instanceof SecretValidationError)) throw error;
+
+    // Which secret already holds a duplicated value is only named to a writer who may read there, so the
+    // message is resolved against their permission rather than formatted inside validation.
+    throw new BadRequestError({
+      message: describeSecretValidationFailures(error.failures, (environment, secretPath) =>
+        permission.can(
+          ProjectPermissionSecretActions.DescribeSecret,
+          subject(ProjectPermissionSub.Secrets, { environment, secretPath })
+        )
+      )
+    });
+  }
+
   const destinationFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
     projectId,
     destinationFolder.environment.slug,
@@ -1892,7 +1951,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
           })) as { key: string; value?: string; encryptedValue?: Buffer }[] | undefined,
           references: doc.value ? getAllSecretReferences(doc.value).nestedReferences : [],
           tagIds: doc.tags.map((tag) => tag.id),
-          secretValueBlindIndex: doc.value ? await generateSecretBlindIndex(Buffer.from(doc.value)) : undefined
+          blindIndexes: await (doc.value ? blindIndexer.generateBlindIndexes(Buffer.from(doc.value)) : null)
         }))
       );
 
@@ -1935,7 +1994,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
               ? {
                   encryptedValue: doc.encryptedValue,
                   references: doc.value ? getAllSecretReferences(doc.value).nestedReferences : [],
-                  secretValueBlindIndex: doc.value ? await generateSecretBlindIndex(Buffer.from(doc.value)) : undefined
+                  blindIndexes: await (doc.value ? blindIndexer.generateBlindIndexes(Buffer.from(doc.value)) : null)
                 }
               : {
                   encryptedValue: undefined,
@@ -2097,7 +2156,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
         secretQueueService,
         encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
         decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
-        generateSecretBlindIndex,
+        blindIndexer,
         tx
       });
     }
