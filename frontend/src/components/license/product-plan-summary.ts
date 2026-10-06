@@ -23,7 +23,6 @@ export type ProductPlanSummary = {
   productName: string;
   planLabel: string;
   isTrialing: boolean;
-  isGracePeriod: boolean;
 };
 
 export const getProductPlanSummaries = (plans: SubscriptionPlan["productPlans"]) => {
@@ -48,8 +47,7 @@ export const getProductPlanSummaries = (plans: SubscriptionPlan["productPlans"])
           .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
           .join(" "),
       planLabel: PLAN_LABELS.get(planKey) ?? planKey.replace(/_/g, " "),
-      isTrialing,
-      isGracePeriod: plan.status === "grace"
+      isTrialing
     });
   });
   return [...summaries.values()];

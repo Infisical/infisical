@@ -12,7 +12,6 @@ export const ProductPlanSummaryList = ({ plans }: { plans: ProductPlanSummary[] 
             {plan.planLabel}
             {plan.isTrialing && " Trial"}
           </Badge>
-          {plan.isGracePeriod && <Badge variant="warning">Grace Period</Badge>}
         </div>
       </li>
     ))}
