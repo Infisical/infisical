@@ -8,12 +8,13 @@ export const stripIpv6Brackets = (host: string) =>
 // Node 26 throws when servername is an IP (SNI cannot carry one, RFC 6066). Earlier versions still sent the
 // IP as SNI, so omitting it changes what the server sees (no SNI, or "localhost" from an https.Agent with no
 // Host header). Keep the certificate check against the IP: many callers dial a local gateway proxy, where
-// Node would otherwise verify against "localhost".
+// Node would otherwise verify against "localhost". The servername key stays present for an IP because some
+// drivers (hdb) fill a missing one in from the host, which puts the IP straight back.
 export const getTlsServerNameOptions = (
   host?: string
 ): Pick<tls.ConnectionOptions, "servername" | "checkServerIdentity"> => {
   if (!host) return { servername: host };
   const ip = stripIpv6Brackets(host);
   if (!isIP(ip)) return { servername: host };
-  return { checkServerIdentity: (_hostname, cert) => tls.checkServerIdentity(ip, cert) };
+  return { servername: undefined, checkServerIdentity: (_hostname, cert) => tls.checkServerIdentity(ip, cert) };
 };
