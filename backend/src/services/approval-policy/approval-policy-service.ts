@@ -775,7 +775,7 @@ export const approvalPolicyServiceFactory = ({
 
     if (policy.type === ApprovalPolicyType.SecretAccess) {
       throw new BadRequestError({
-        message: "This is a secret access policy. Update it from the access approval policies instead."
+        message: "This is a secret access policy. Get it from the access approval endpoint instead."
       });
     }
 
