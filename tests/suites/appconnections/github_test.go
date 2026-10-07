@@ -22,7 +22,8 @@ func TestGitHubAppConnection_Create(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		token := id.Nonce()
-		github.Open(t, fixture.FakenetAdmin(t, tn), token).Fail(t, "", "*", http.StatusUnauthorized)
+		gh := github.Open(t, fixture.FakenetAdmin(t, tn), token)
+		gh.Fail(t, "", "*", http.StatusUnauthorized)
 		body, err := fixture.GitHubPATAppConnectionBody("refused-"+id.Short(), token)
 		require.NoError(t, err)
 
@@ -32,6 +33,7 @@ func TestGitHubAppConnection_Create(t *testing.T) {
 
 		// Assert
 		require.NoError(t, err)
+		require.Equal(t, 1, gh.Received(t, "GET", "/user"), "Infisical never checked the token with GitHub")
 		require.NotEqual(t, http.StatusOK, res.StatusCode(),
 			"the connection was created despite a refused token")
 	})
