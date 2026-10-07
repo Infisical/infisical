@@ -4,7 +4,6 @@ import { KeyRound } from "lucide-react";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
 import {
   Card,
   CardContent,
@@ -18,6 +17,7 @@ import {
   FieldTitle,
   Toggle
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,

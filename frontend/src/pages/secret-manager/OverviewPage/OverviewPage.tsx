@@ -2690,8 +2690,7 @@ const OverviewPageContent = () => {
       type="button"
       aria-label={`Resize ${index === 0 ? "Name" : visibleEnvs[index - 1].name} column`}
       title="Drag or use arrow keys to resize"
-      className="group absolute top-0 -right-1 z-20 w-2 cursor-col-resize touch-none focus-visible:outline-none"
-      style={{ height: "var(--resize-handle-height, 100%)" }}
+      className="group absolute top-0 -right-1 z-20 h-full w-2 cursor-col-resize touch-none focus-visible:outline-none"
       onPointerDown={(event) => {
         if (event.button !== 0) return;
         event.preventDefault();
@@ -2712,18 +2711,8 @@ const OverviewPageContent = () => {
           event.clientX - columnResize.current.startX
         );
       }}
-      onPointerUp={(event) => {
-        const resize = columnResize.current;
+      onPointerUp={() => {
         columnResize.current = null;
-        if (!resize || Math.abs(event.clientX - resize.startX) >= 3) return;
-        const handle = event.currentTarget;
-        const header = handle.closest("thead");
-        if (!header || event.clientY <= header.getBoundingClientRect().bottom) return;
-
-        handle.style.pointerEvents = "none";
-        const underlying = document.elementFromPoint(event.clientX, event.clientY);
-        handle.style.removeProperty("pointer-events");
-        if (underlying instanceof HTMLElement && !handle.contains(underlying)) underlying.click();
       }}
       onPointerCancel={() => {
         columnResize.current = null;
@@ -2734,7 +2723,7 @@ const OverviewPageContent = () => {
         resizeColumns(getCurrentColumnWidths(), index, event.key === "ArrowRight" ? 16 : -16);
       }}
     >
-      <span className="pointer-events-none absolute top-0 left-0 h-10 w-full group-focus-visible:outline-2 group-focus-visible:outline-ring" />
+      <span className="pointer-events-none absolute top-0 left-0 h-full w-full group-focus-visible:outline-2 group-focus-visible:outline-ring" />
     </button>
   );
 
@@ -2767,7 +2756,6 @@ const OverviewPageContent = () => {
 
     const handleResize = () => {
       setTableWidth(element.clientWidth);
-      if (table) element.style.setProperty("--resize-handle-height", `${table.offsetHeight}px`);
       if (nameHeader) {
         element.style.setProperty(
           "--name-column-width",
@@ -2931,13 +2919,14 @@ const OverviewPageContent = () => {
   };
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col gap-6 md:gap-8">
+    <div className="mx-auto flex max-w-8xl flex-col">
       <Helmet>
         <title>{t("common.head-title", { title: t("dashboard.title") })}</title>
         <meta property="og:title" content={String(t("dashboard.og-title"))} />
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
       <PageHeader
+        className="mb-6 md:mb-10"
         scope={ProjectType.SecretManager}
         title={currentProject.name}
         description={currentProject.description}

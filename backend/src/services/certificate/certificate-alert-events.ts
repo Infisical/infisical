@@ -6,22 +6,31 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 export const CERT_MANAGER_APPLICATION_RESOURCE_TYPE = "cert-manager.application";
 
-export enum CertificateAlertEvent {
+export enum CertificateApplicationAlertEvent {
   Expiry = "cert-manager.application.certificate.expiry",
   Issuance = "cert-manager.application.certificate.issuance",
   Renewal = "cert-manager.application.certificate.renewal",
   Revocation = "cert-manager.application.certificate.revocation"
 }
 
+export const CERT_MANAGER_RESOURCE_TYPE = "cert-manager";
+
+export enum CertificateManagerAlertEvent {
+  Expiry = "cert-manager.certificate.expiry",
+  Issuance = "cert-manager.certificate.issuance",
+  Renewal = "cert-manager.certificate.renewal",
+  Revocation = "cert-manager.certificate.revocation"
+}
+
 export const getIssuanceAlertEvent = (isRenewal?: boolean) =>
-  isRenewal ? CertificateAlertEvent.Renewal : CertificateAlertEvent.Issuance;
+  isRenewal ? CertificateApplicationAlertEvent.Renewal : CertificateApplicationAlertEvent.Issuance;
 
 export type TCertificateAlertEventInput = {
   certificateId: string;
   projectId: string;
   orgId?: string;
   applicationId?: string | null;
-  eventType: CertificateAlertEvent;
+  eventType: CertificateApplicationAlertEvent;
 };
 
 type TCertificateAlertEventEmitterDep = {
@@ -36,8 +45,6 @@ export const certificateAlertEventEmitterFactory = ({ eventEmitter, projectDAL }
     { certificateId, projectId, orgId, applicationId, eventType }: TCertificateAlertEventInput,
     tx?: Knex
   ) => {
-    if (!applicationId) return;
-
     const resolvedOrgId = orgId ?? (await projectDAL.findById(projectId, tx))?.orgId;
     if (!resolvedOrgId) return;
 
@@ -47,7 +54,7 @@ export const certificateAlertEventEmitterFactory = ({ eventEmitter, projectDAL }
         orgId: resolvedOrgId,
         projectId,
         resourceType: CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
-        resourceId: applicationId,
+        resourceId: applicationId ?? null,
         targetIds: [certificateId]
       }
     };

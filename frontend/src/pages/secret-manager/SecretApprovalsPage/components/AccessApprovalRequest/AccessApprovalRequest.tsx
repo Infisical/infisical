@@ -393,8 +393,9 @@ export const AccessApprovalRequest = ({
       const isRequestedByCurrentUser = request.requestedByUserId === user.id;
       const isSelfApproveAllowed = request.policy.allowedSelfApprovals;
       const userReviewStatus = request.reviewers.find(({ userId }) => userId === user.id)?.status;
-      const canBypass =
-        !request.policy.bypassers.length || request.policy.bypassers.includes(user.id);
+      const canBypass = request.policy.bypassers.length
+        ? request.policy.bypassers.includes(user.id)
+        : request.policy.allowedSelfApprovals;
 
       let displayData: {
         label: string;
@@ -988,16 +989,6 @@ export const AccessApprovalRequest = ({
             handlePopUpClose("reviewRequest");
             setSelectedRequest(null);
             refetchRequests();
-          }}
-          onUpdate={(request) => {
-            // scott: this isn't ideal but our current use of state makes this complicated...
-            // we shouldn't be using state like this...
-            handleSelectRequest({
-              ...selectedRequest,
-              isTemporary: request.isTemporary,
-              temporaryRange: request.temporaryRange,
-              reviewers: []
-            });
           }}
           canBypass={generateRequestDetails(selectedRequest).canBypass}
         />

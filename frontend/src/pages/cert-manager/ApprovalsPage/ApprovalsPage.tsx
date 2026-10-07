@@ -20,7 +20,7 @@ export const ApprovalsPage = () => {
       <Helmet>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={currentProject.type}
           title="Certificate Approvals"

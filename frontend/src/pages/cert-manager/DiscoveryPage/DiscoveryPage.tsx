@@ -47,7 +47,7 @@ export const DiscoveryPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "Certificate Discovery" })}</title>
       </Helmet>
-      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}
           title={

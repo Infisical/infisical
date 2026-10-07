@@ -164,7 +164,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       }),
       body: z.object({
         status: z.nativeEnum(SecretScanningFindingStatus).optional().describe(SecretScanningFindings.UPDATE.status),
-        remarks: z.string().nullish().describe(SecretScanningFindings.UPDATE.remarks)
+        triageComment: z.string().trim().max(1024).nullish().describe(SecretScanningFindings.UPDATE.triageComment)
       }),
       response: {
         200: z.object({ finding: SecretScanningFindingSchema })
@@ -225,7 +225,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         .object({
           findingId: z.string().trim().min(1, "Finding ID required").describe(SecretScanningFindings.UPDATE.findingId),
           status: z.nativeEnum(SecretScanningFindingStatus).optional().describe(SecretScanningFindings.UPDATE.status),
-          remarks: z.string().nullish().describe(SecretScanningFindings.UPDATE.remarks)
+          triageComment: z.string().trim().max(1024).nullish().describe(SecretScanningFindings.UPDATE.triageComment)
         })
         .array()
         .max(500),

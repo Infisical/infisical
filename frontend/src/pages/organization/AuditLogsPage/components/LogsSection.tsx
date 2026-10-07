@@ -202,6 +202,10 @@ const LogsSectionComponent = ({
               actorType: searchDerived.actorType || presets?.actorType,
               eventType:
                 searchDerived.eventType.length > 0 ? searchDerived.eventType : logFilter?.eventType,
+              eventClass:
+                searchDerived.eventClass.length > 0
+                  ? searchDerived.eventClass
+                  : logFilter?.eventClass,
               userAgentType: searchDerived.userAgentType || logFilter?.userAgentType || undefined,
               environment: searchDerived.environment || logFilter?.environment?.slug,
               secretPath: searchDerived.secretPath,
@@ -290,6 +294,7 @@ const LogsSectionComponent = ({
           actorType: presets?.actorType,
           limit: 15,
           eventType: logFilter?.eventType,
+          eventClass: logFilter?.eventClass,
           userAgentType: logFilter?.userAgentType ?? undefined,
           startDate: dateRange.startDate,
           endDate: dateRange.endDate,

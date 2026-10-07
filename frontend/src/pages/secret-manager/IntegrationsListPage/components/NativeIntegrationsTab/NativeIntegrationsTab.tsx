@@ -2,7 +2,8 @@ import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Checkbox, DeleteActionModal, Spinner } from "@app/components/v2";
+import { Button, Checkbox, DeleteActionModal } from "@app/components/v2";
+import { Spinner } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import {

@@ -83,6 +83,9 @@ import {
   TApprovalPolicyBypassers,
   TApprovalPolicyBypassersInsert,
   TApprovalPolicyBypassersUpdate,
+  TApprovalPolicySecretEnvironments,
+  TApprovalPolicySecretEnvironmentsInsert,
+  TApprovalPolicySecretEnvironmentsUpdate,
   TApprovalPolicyStepApprovers,
   TApprovalPolicyStepApproversInsert,
   TApprovalPolicyStepApproversUpdate,
@@ -105,6 +108,9 @@ import {
   TApprovalRequestStepsUpdate,
   TApprovalRequestsUpdate,
   TAuditLogs,
+  TAuditLogSettings,
+  TAuditLogSettingsInsert,
+  TAuditLogSettingsUpdate,
   TAuditLogsInsert,
   TAuditLogStreams,
   TAuditLogStreamsInsert,
@@ -1392,6 +1398,11 @@ declare module "knex/types/tables" {
       TAuditLogStreamsInsert,
       TAuditLogStreamsUpdate
     >;
+    [TableName.AuditLogSettings]: KnexOriginal.CompositeTableType<
+      TAuditLogSettings,
+      TAuditLogSettingsInsert,
+      TAuditLogSettingsUpdate
+    >;
     [TableName.AuditReport]: KnexOriginal.CompositeTableType<TAuditReports, TAuditReportsInsert, TAuditReportsUpdate>;
     [TableName.GitAppInstallSession]: KnexOriginal.CompositeTableType<
       TGitAppInstallSessions,
@@ -1936,6 +1947,11 @@ declare module "knex/types/tables" {
       TApprovalPolicyBypassers,
       TApprovalPolicyBypassersInsert,
       TApprovalPolicyBypassersUpdate
+    >;
+    [TableName.ApprovalPolicySecretEnvironment]: KnexOriginal.CompositeTableType<
+      TApprovalPolicySecretEnvironments,
+      TApprovalPolicySecretEnvironmentsInsert,
+      TApprovalPolicySecretEnvironmentsUpdate
     >;
     [TableName.ApprovalPolicyStepApprovers]: KnexOriginal.CompositeTableType<
       TApprovalPolicyStepApprovers,

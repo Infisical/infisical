@@ -1,5 +1,5 @@
-import { useCallback } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { ServerIcon } from "lucide-react";
 
@@ -9,42 +9,58 @@ import {
   FieldDescription,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
+import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker/GatewayPicker";
+import { useOrganization, useSubscription } from "@app/context";
+import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
+import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
+import { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 
 import { HostForm } from "./schemas";
 
-export type ReachedFromOption = {
-  value: string;
-  label: string;
-  group: "gateway" | "pool";
-};
-
 type Props = {
   form: ReturnType<typeof useForm<HostForm>>;
-  options: ReachedFromOption[];
-  isLoading: boolean;
 };
 
-export const HostStep = ({ form, options, isLoading }: Props) => {
-  const { orgId } = useParams({ strict: false });
+export const isHsmCapableGateway = (gateway: TGatewayV2) => gateway.capabilities?.pkcs11 === true;
 
-  const noOptionsMessage = useCallback(
-    () => (
-      <div className="space-y-1 py-2">
-        <p>No Gateways connected to an HSM yet.</p>
-        <Link
-          to="/organizations/$orgId/networking"
-          params={{ orgId: orgId ?? "" }}
-          className="underline hover:text-foreground"
-        >
-          Configure one in Networking
-        </Link>
-      </div>
-    ),
-    [orgId]
-  );
+// The HSM forms store the route as "gateway:<id>" or "pool:<id>"; the picker works with the two ids.
+export const toGatewayPickerValue = (reachedFrom: string) => {
+  const [kind, id] = reachedFrom.split(":");
+  return {
+    gatewayId: kind === "gateway" && id ? id : null,
+    gatewayPoolId: kind === "pool" && id ? id : null
+  };
+};
+
+export const fromGatewayPickerValue = ({
+  gatewayId,
+  gatewayPoolId
+}: {
+  gatewayId: string | null;
+  gatewayPoolId: string | null;
+}) => {
+  if (gatewayPoolId) return `pool:${gatewayPoolId}`;
+  if (gatewayId) return `gateway:${gatewayId}`;
+  return "";
+};
+
+export const HostStep = ({ form }: Props) => {
+  const { orgId } = useParams({ strict: false });
+  const { currentOrg } = useOrganization();
+  const { subscription } = useSubscription();
+  const isPoolRequired = Boolean(currentOrg?.requireGatewayPools);
+  const showPools = Boolean(subscription?.gatewayPool) || isPoolRequired;
+
+  const { data: gateways = [], isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
+  const { data: pools = [], isPending: isPoolsLoading } = useQuery({
+    ...gatewayPoolsQueryKeys.list(),
+    enabled: showPools
+  });
+  const isLoading = isGatewaysLoading || (showPools && isPoolsLoading);
+  const hasPools = showPools && pools.length > 0;
+  const hasUsableRoute = isPoolRequired ? hasPools : hasPools || gateways.some(isHsmCapableGateway);
 
   return (
     <FieldGroup>
@@ -57,25 +73,12 @@ export const HostStep = ({ form, options, isLoading }: Props) => {
               Gateway <span className="text-danger">*</span>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect<ReachedFromOption>
-                isLoading={isLoading}
-                options={options}
-                value={options.find((o) => o.value === field.value) ?? null}
-                onChange={(selected) => {
-                  const opt = selected as ReachedFromOption | null;
-                  field.onChange(opt?.value ?? "");
-                }}
-                getOptionLabel={(opt) => opt.label}
-                getOptionValue={(opt) => opt.value}
-                groupBy={options.length > 0 ? "group" : undefined}
-                getGroupHeaderLabel={
-                  options.length > 0
-                    ? (group: ReachedFromOption["group"]) =>
-                        group === "gateway" ? "Gateways" : "Gateway Pools"
-                    : undefined
-                }
+              <GatewayPicker
+                isRequired
+                value={toGatewayPickerValue(field.value)}
+                onChange={(next) => field.onChange(fromGatewayPickerValue(next))}
+                filterGateway={isHsmCapableGateway}
                 placeholder="Select a Gateway or Gateway Pool..."
-                noOptionsMessage={noOptionsMessage}
                 isError={Boolean(error)}
               />
               <FieldDescription>
@@ -97,26 +100,47 @@ export const HostStep = ({ form, options, isLoading }: Props) => {
         )}
       />
 
-      {!isLoading && options.length === 0 && (
+      {!isLoading && !hasUsableRoute && (
         <div className="rounded-md border border-border bg-surface-raised p-4">
           <div className="flex items-start gap-3">
             <ServerIcon className="mt-0.5 size-4 shrink-0 text-muted" />
-            <div className="min-w-0 flex-1 space-y-2 text-sm">
-              <p className="font-medium text-foreground">No Gateways are connected to an HSM yet</p>
-              <p className="text-muted">
-                A Gateway with PKCS#11 support must be running on a machine that can reach your HSM.
-                This is set up by someone with network and infrastructure access.{" "}
-                <a
-                  href="https://infisical.com/docs/documentation/platform/pki/settings/hsm-connectors"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-project hover:underline"
-                >
-                  Read the HSM Connectors setup guide
-                </a>
-                .
-              </p>
-            </div>
+            {isPoolRequired ? (
+              <div className="min-w-0 flex-1 space-y-2 text-sm">
+                <p className="font-medium text-foreground">No gateway pools exist yet</p>
+                <p className="text-muted">
+                  Your organization requires HSM Connectors to connect through a gateway pool. Add
+                  Gateways with PKCS#11 support to a pool, then come back to select it.{" "}
+                  <Link
+                    to="/organizations/$orgId/networking"
+                    params={{ orgId: orgId ?? "" }}
+                    search={{ selectedTab: "gateways", gatewayView: "gateway-pools" }}
+                    className="text-project hover:underline"
+                  >
+                    Create a pool in Networking
+                  </Link>
+                  .
+                </p>
+              </div>
+            ) : (
+              <div className="min-w-0 flex-1 space-y-2 text-sm">
+                <p className="font-medium text-foreground">
+                  No Gateways are connected to an HSM yet
+                </p>
+                <p className="text-muted">
+                  A Gateway with PKCS#11 support must be running on a machine that can reach your
+                  HSM. This is set up by someone with network and infrastructure access.{" "}
+                  <a
+                    href="https://infisical.com/docs/documentation/platform/pki/settings/hsm-connectors"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-project hover:underline"
+                  >
+                    Read the HSM Connectors setup guide
+                  </a>
+                  .
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
