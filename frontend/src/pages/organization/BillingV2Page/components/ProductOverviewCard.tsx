@@ -47,16 +47,13 @@ import { breakdownableDimensions } from "./UsageBreakdownSheet";
 
 const productTint = "color-mix(in srgb, var(--product-color-resolved) 85%, transparent)";
 
-const priceParts = (ent: BillingV2Entitlement): { amount: string; period?: string } => {
+const priceParts = (ent: BillingV2Entitlement): { amount: string; period: string }[] => {
   const annual = productAnnualCommitted(ent);
-  if (annual > 0) {
-    return { amount: fmtMoney(annual), period: "/ yr" };
-  }
   const monthly = ent.cadence === "annual" ? 0 : (ent.amount ?? 0);
-  if (monthly > 0) {
-    return { amount: fmtMoney(monthly), period: "/ mo" };
-  }
-  return { amount: "Included" };
+  return [
+    ...(annual > 0 ? [{ amount: fmtMoney(annual), period: "/ yr" }] : []),
+    ...(monthly > 0 ? [{ amount: fmtMoney(monthly), period: "/ mo" }] : [])
+  ];
 };
 
 const trialLine = (ent: BillingV2Entitlement) => {
@@ -101,9 +98,9 @@ const MeterTile = ({
   let subtext: ReactNode = null;
   if (overage > 0) {
     subtext = <span className="text-warning">+{overage.toLocaleString()} on-demand</span>;
-  } else if (!hasBar && monthlyRate > 0) {
+  } else if (allowance === null && monthlyRate > 0) {
     subtext = `${fmtMoneyCents(monthlyRate)} each / mo`;
-  } else if (!hasBar) {
+  } else if (allowance === null) {
     subtext = "no limit";
   }
 
@@ -114,7 +111,7 @@ const MeterTile = ({
         <span className={cn("text-base leading-5 font-medium", overage > 0 && "text-warning")}>
           {dim.used.toLocaleString()}
         </span>
-        {allowance !== null && allowance > 0 && (
+        {allowance !== null && (
           <span className="text-xs text-muted">/ {allowance.toLocaleString()}</span>
         )}
         {subtext && <span className="ml-1.5 truncate text-xs text-muted">{subtext}</span>}
@@ -195,7 +192,7 @@ const UsageDistribution = ({
           </span>
         )}
       </div>
-      <Button variant="link" size="xs" className="text-org" onClick={onViewBreakdown}>
+      <Button variant="link" size="xs" onClick={onViewBreakdown}>
         Full Breakdown
         <ChevronRightIcon />
       </Button>
@@ -251,12 +248,12 @@ const UsageDistribution = ({
         <div className="flex flex-col gap-2.5">
           {shaded.map(({ entry, shade }) => (
             <div key={entry.orgId} className="flex items-center gap-4 text-xs">
-              <span className="flex w-56 min-w-0 shrink-0 items-center gap-2">
+              <span className="flex min-w-0 flex-1 items-center gap-2 @2xl:w-56 @2xl:flex-none">
                 <span className={cn("size-2 shrink-0 rounded-xs", shade)} />
                 <span className="truncate font-medium">{entry.name}</span>
                 {!entry.isRoot && <span className="shrink-0 text-muted">sub-org</span>}
               </span>
-              <span className="h-1 flex-1 overflow-hidden rounded-xs bg-border">
+              <span className="hidden h-1 flex-1 overflow-hidden rounded-xs bg-border @2xl:block">
                 <span
                   className={cn("block h-full", shade)}
                   style={{ width: `${(entry.count / total) * 100}%` }}
@@ -275,7 +272,7 @@ const UsageDistribution = ({
           <div className="flex flex-col gap-2 rounded-md bg-card p-3 text-xs">
             <div className="flex items-center justify-between gap-3">
               <span className="font-medium text-accent">Top projects</span>
-              <Button variant="text" size="xs" className="text-muted" onClick={onViewBreakdown}>
+              <Button variant="text" size="xs" onClick={onViewBreakdown}>
                 All {projects.length} {projects.length === 1 ? "Project" : "Projects"}
               </Button>
             </div>
@@ -338,7 +335,7 @@ const PlanDetails = ({
       label: "Plan",
       value: [planName, cadence].filter(Boolean).join(" · "),
       action: canChangePlan && (
-        <Button variant="link" size="xs" className="text-org" onClick={onManage}>
+        <Button variant="link" size="xs" onClick={onManage}>
           Compare Plans
         </Button>
       )
@@ -364,7 +361,7 @@ const PlanDetails = ({
           : ""
       }`,
       action: index === 0 && canChangePlan && (
-        <Button variant="link" size="xs" className="text-org" onClick={onSetCommitment}>
+        <Button variant="link" size="xs" onClick={onSetCommitment}>
           Adjust
         </Button>
       )
@@ -401,10 +398,10 @@ const PlanDetails = ({
   return (
     <div className="flex min-w-0 flex-col gap-3.5 rounded-md bg-container p-4">
       <span className="text-sm font-medium">Plan and billing</span>
-      <div className="grid grid-cols-[7.5rem_minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-2.5 text-xs">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-1.5 text-xs @xl:grid-cols-[7.5rem_minmax(0,1fr)_auto] @xl:gap-y-2.5">
         {rows.map((row) => (
           <div key={row.key} className="contents">
-            <span className="truncate text-accent">{row.label}</span>
+            <span className="col-span-2 truncate text-accent @xl:col-span-1">{row.label}</span>
             <span className="min-w-0">{row.value}</span>
             <span className="justify-self-end">{row.action}</span>
           </div>
@@ -581,13 +578,13 @@ export const ProductOverviewCard = ({
   const planName = ent.planTier
     ? (prod.plans.find((plan) => plan.tier === ent.planTier)?.name ?? tierLabel(ent.planTier))
     : "Included";
-  const price = priceParts(ent);
+  const prices = priceParts(ent);
   const trial = trialLine(ent);
   const detailsId = `billing-product-details-${prod.id}`;
 
   return (
     <Card
-      className={cn("product-color @container gap-4 pb-3", isExpanded && "lg:col-span-2")}
+      className={cn("product-color @container", isExpanded && "lg:col-span-2")}
       style={{ "--product-color": prod.color } as CSSProperties}
     >
       <div className="flex items-start justify-between gap-3">
@@ -604,10 +601,14 @@ export const ProductOverviewCard = ({
             <div className="flex flex-wrap items-baseline gap-x-1.5 text-xs tabular-nums">
               {!isManaged && (
                 <>
-                  <span className={price.period ? "font-medium text-foreground" : "text-muted"}>
-                    {price.amount}
-                  </span>
-                  {price.period && <span className="text-muted">{price.period}</span>}
+                  {prices.length === 0 && <span className="text-muted">Included</span>}
+                  {prices.map((price, index) => (
+                    <span key={price.period} className="flex items-baseline gap-x-1.5">
+                      {index > 0 && <span className="text-muted">+</span>}
+                      <span className="font-medium text-foreground">{price.amount}</span>
+                      <span className="text-muted">{price.period}</span>
+                    </span>
+                  ))}
                   {onDemand > 0 && (
                     <span className="text-warning">+{fmtMoneyCents(onDemand)} on-demand</span>
                   )}
@@ -685,7 +686,6 @@ export const ProductOverviewCard = ({
         <Button
           variant="ghost"
           size="xs"
-          className="text-muted"
           aria-expanded={isExpanded}
           aria-controls={isExpanded ? detailsId : undefined}
           onClick={() => (isExpanded ? onCollapse() : onExpand())}
@@ -733,7 +733,7 @@ export const InactiveProductCard = ({
 
   return (
     <Card
-      className="product-color @container gap-4"
+      className="product-color @container"
       style={{ "--product-color": prod.color } as CSSProperties}
     >
       <div className="flex items-start justify-between gap-3">

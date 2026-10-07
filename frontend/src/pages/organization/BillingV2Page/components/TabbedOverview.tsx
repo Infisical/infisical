@@ -72,16 +72,18 @@ export const TabbedOverviewSkeleton = ({ orgFilter }: { orgFilter?: ReactNode })
       <Skeleton className="mb-2 h-4 w-14" />
     </div>
     <div className="flex flex-col gap-4">
-      <Card className="flex-row items-center justify-between px-5 py-4">
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-3 w-20" />
-          <Skeleton className="h-5 w-40" />
+      <Card>
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-5 w-40" />
+          </div>
+          <Skeleton className="h-4 w-28" />
         </div>
-        <Skeleton className="h-4 w-28" />
       </Card>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {SKELETON_PRODUCTS.map((key) => (
-          <Card key={key} className="gap-4">
+          <Card key={key}>
             <div className="flex items-center gap-3">
               <Skeleton className="size-9 rounded-md" />
               <div className="flex flex-col gap-1.5">
@@ -241,7 +243,6 @@ export const TabbedOverview = ({
         <Button
           variant="text"
           size="xs"
-          className="text-sm"
           onClick={() => (showPaymentTab ? onTabChange("payment") : onUpdatePayment())}
         >
           {`${overview.payment.brand.toUpperCase()} ···· ${overview.payment.last4}`}
@@ -273,29 +274,30 @@ export const TabbedOverview = ({
         tabIndex={visible.length > 0 ? -1 : 0}
         className="flex flex-col gap-4"
       >
-        <Card
-          className="flex-row flex-wrap items-center justify-between gap-4 px-5 py-4"
-          aria-label="Billing summary"
-        >
-          {summaryLeft}
-          <div className="flex items-center gap-3">
-            {summaryRight}
-            {!readOnly && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <IconButton
-                    aria-label="Refresh entitlements"
-                    variant="ghost-muted"
-                    size="xs"
-                    isDisabled={refreshEntitlements.isPending}
-                    onClick={handleRefresh}
-                  >
-                    <RefreshCw />
-                  </IconButton>
-                </TooltipTrigger>
-                <TooltipContent>Plan changes may take a few minutes to take effect.</TooltipContent>
-              </Tooltip>
-            )}
+        <Card aria-label="Billing summary">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {summaryLeft}
+            <div className="flex items-center gap-3">
+              {summaryRight}
+              {!readOnly && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <IconButton
+                      aria-label="Refresh entitlements"
+                      variant="ghost-muted"
+                      size="xs"
+                      isDisabled={refreshEntitlements.isPending}
+                      onClick={handleRefresh}
+                    >
+                      <RefreshCw />
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Plan changes may take a few minutes to take effect.
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </div>
         </Card>
 
