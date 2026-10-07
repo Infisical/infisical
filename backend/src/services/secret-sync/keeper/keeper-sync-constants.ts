@@ -3,7 +3,7 @@ import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { TSecretSyncListItem } from "@app/services/secret-sync/secret-sync-types";
 
 export const KEEPER_SYNC_LIST_OPTION: TSecretSyncListItem = {
-  name: "Keeper",
+  name: "Keeper Password Manager",
   destination: SecretSync.Keeper,
   connection: AppConnection.Keeper,
   canImportSecrets: true,

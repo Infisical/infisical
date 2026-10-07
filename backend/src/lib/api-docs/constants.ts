@@ -3415,8 +3415,8 @@ export const SecretSyncs = {
       valueLabel: "The label of the entry that holds the secret value."
     },
     KEEPER: {
-      folderUid: "The UID of the Keeper shared folder to sync secrets to.",
-      folderName: "The name of the Keeper shared folder to sync secrets to."
+      folderUid: "The UID of the Keeper Password Manager shared folder to sync secrets to.",
+      folderName: "The name of the Keeper Password Manager shared folder to sync secrets to."
     },
     HEROKU: {
       app: "The ID of the Heroku app to sync secrets to.",

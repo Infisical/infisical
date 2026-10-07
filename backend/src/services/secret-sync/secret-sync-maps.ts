@@ -56,7 +56,7 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Cloud66]: "Cloud 66",
   [SecretSync.Spacelift]: "Spacelift",
   [SecretSync.Daytona]: "Daytona",
-  [SecretSync.Keeper]: "Keeper"
+  [SecretSync.Keeper]: "Keeper Password Manager"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {

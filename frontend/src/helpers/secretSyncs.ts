@@ -314,10 +314,10 @@ export const SECRET_SYNC_MAP: Record<
     description: "Organization secrets for Daytona sandboxes."
   },
   [SecretSync.Keeper]: {
-    name: "Keeper",
+    name: "Keeper Password Manager",
     image: "Keeper.png",
     category: "PASSWORD MANAGER",
-    description: "Login records in a Keeper shared folder."
+    description: "Login records in a Keeper Password Manager shared folder."
   }
 };
 

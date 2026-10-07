@@ -295,7 +295,7 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       break;
     case SecretSync.Keeper:
       primaryText = destinationConfig.folderName || destinationConfig.folderUid;
-      secondaryText = "Keeper Shared Folder";
+      secondaryText = "Shared Folder";
       break;
     case SecretSync.Spacelift:
       primaryText = destinationConfig.contextName;

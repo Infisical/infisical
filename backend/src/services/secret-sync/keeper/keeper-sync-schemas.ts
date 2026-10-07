@@ -57,7 +57,7 @@ export const UpdateKeeperSyncSchema = GenericUpdateSecretSyncFieldsSchema(
 
 export const KeeperSyncListItemSchema = z
   .object({
-    name: z.literal("Keeper"),
+    name: z.literal("Keeper Password Manager"),
     connection: z.literal(AppConnection.Keeper),
     destination: z.literal(SecretSync.Keeper),
     canImportSecrets: z.literal(true),

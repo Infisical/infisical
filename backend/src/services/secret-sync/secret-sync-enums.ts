@@ -48,7 +48,7 @@ export enum SecretSync {
   Cloud66 = "cloud-66",
   Spacelift = "spacelift",
   Daytona = "daytona",
-  Keeper = "keeper"
+  Keeper = "keeper-password-manager"
 }
 
 export enum SecretSyncInitialSyncBehavior {

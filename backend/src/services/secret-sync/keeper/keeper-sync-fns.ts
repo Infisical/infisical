@@ -41,7 +41,7 @@ const listKeeperLoginRecords = async (credentials: TKeeperCredentials, folderUid
   if (!isAddressableKeeperUid(folderUid)) {
     throw new SecretSyncError({
       shouldRetry: false,
-      message: `Keeper shared folder UID '${folderUid}' cannot be addressed through Keeper Commander Service Mode. Choose a different shared folder.`
+      message: `Keeper Password Manager shared folder UID '${folderUid}' cannot be addressed through Keeper Commander Service Mode. Choose a different shared folder.`
     });
   }
 

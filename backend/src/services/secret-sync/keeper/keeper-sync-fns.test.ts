@@ -20,7 +20,7 @@ const FOLDER_UID = "FolderUid_123-abc";
 
 const syncWith = (syncOptions: { disableSecretDeletion?: boolean; keySchema?: string } = {}, folderUid = FOLDER_UID) =>
   ({
-    destination: "keeper",
+    destination: "keeper-password-manager",
     destinationConfig: { folderUid, folderName: "Shared" },
     environment: { slug: "dev" },
     syncOptions: { disableSecretDeletion: false, ...syncOptions },
