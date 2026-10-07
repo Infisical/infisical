@@ -1,7 +1,15 @@
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { logger } from "@app/lib/logger";
 
-const RECORD_LOCK_RETRY = { retryCount: 50, retryDelay: 2_000, retryJitter: 300 };
+const RECORD_LOCK_RETRY_DELAY_MS = 2_000;
+const RECORD_LOCK_MIN_RETRY_COUNT = 50;
+
+// a waiter must outlast the holder's lock TTL, or it gives up while the holder is still within bounds
+const getLockRetrySettings = (lockTtlMs: number) => ({
+  retryCount: Math.max(RECORD_LOCK_MIN_RETRY_COUNT, Math.ceil(lockTtlMs / RECORD_LOCK_RETRY_DELAY_MS)),
+  retryDelay: RECORD_LOCK_RETRY_DELAY_MS,
+  retryJitter: 300
+});
 
 export type TDnsRecordLockKeyStore = Pick<TKeyStoreFactory, "acquireLock">;
 
@@ -38,7 +46,11 @@ export const withDnsRecordLock = async <T>(
     if (!keyStore) return operation();
 
     const lock = await keyStore
-      .acquireLock([KeyStorePrefixes.AcmeDnsRecordLock(connectionId, zoneId, name)], lockTtlMs, RECORD_LOCK_RETRY)
+      .acquireLock(
+        [KeyStorePrefixes.AcmeDnsRecordLock(connectionId, zoneId, name)],
+        lockTtlMs,
+        getLockRetrySettings(lockTtlMs)
+      )
       .catch(() => null);
 
     if (!lock) {

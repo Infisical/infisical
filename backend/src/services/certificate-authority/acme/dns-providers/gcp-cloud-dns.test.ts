@@ -117,6 +117,12 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
       expect.any(Number),
       expect.anything()
     );
+    const [, lockTtlMs, retry] = acquireLock.mock.calls[0] as [
+      string[],
+      number,
+      { retryCount: number; retryDelay: number }
+    ];
+    expect(retry.retryCount * retry.retryDelay).toBeGreaterThanOrEqual(lockTtlMs);
     expect(postMock).toHaveBeenCalledTimes(1);
     expect(release).toHaveBeenCalledTimes(1);
   });
