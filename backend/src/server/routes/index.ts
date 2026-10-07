@@ -1381,6 +1381,7 @@ export const registerRoutes = async (
   const telemetryQueue = telemetryQueueServiceFactory({
     keyStore,
     telemetryDAL,
+    usageCounterDAL,
     cronJob,
     telemetryService
   });
@@ -4369,6 +4370,7 @@ export const registerRoutes = async (
   encryptionKeyRotationService.init();
   telemetryQueue.startTelemetryCheck();
   telemetryQueue.startAggregatedEventsJob();
+  telemetryQueue.startPkiOrgUsageJob();
   updateCheckService.init();
   dailyResourceCleanUp.init();
   projectEnvQueue.init();
