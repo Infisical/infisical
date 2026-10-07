@@ -132,6 +132,14 @@ export const TabbedOverview = ({
   const visible = [...catalog]
     .filter((prod) => !prod.deprecated || entitlements[prod.id]?.entitled)
     .sort(byDisplayOrder);
+  const isActiveProduct = (productId: string) =>
+    Boolean(entitlements[productId]?.entitled) && entitlements[productId]?.status !== "churned";
+  const expandedProduct =
+    expanded &&
+    visible.some((prod) => prod.id === expanded.productId) &&
+    isActiveProduct(expanded.productId)
+      ? expanded
+      : null;
   const hasTabs = showInvoicesTab || showPaymentTab;
   const activeTab =
     (tab === "invoices" && !showInvoicesTab) || (tab === "payment" && !showPaymentTab)
@@ -345,8 +353,8 @@ export const TabbedOverview = ({
           <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
             {visible.map((prod) => {
               const ent = entitlements[prod.id];
-              if (ent?.entitled && ent.status !== "churned") {
-                const isExpanded = expanded?.productId === prod.id;
+              if (ent && isActiveProduct(prod.id)) {
+                const isExpanded = expandedProduct?.productId === prod.id;
                 return (
                   <ProductOverviewCard
                     key={prod.id}
@@ -358,13 +366,13 @@ export const TabbedOverview = ({
                     breakdownOrgId={breakdownOrgId}
                     breakdownScope={breakdownScope}
                     isExpanded={isExpanded}
-                    isDimmed={Boolean(expanded) && !isExpanded}
-                    selectedDimensionKey={isExpanded ? expanded?.dimensionKey : undefined}
+                    isDimmed={Boolean(expandedProduct) && !isExpanded}
+                    selectedDimensionKey={isExpanded ? expandedProduct?.dimensionKey : undefined}
                     onExpand={(dimensionKey) =>
                       setExpanded({
                         productId: prod.id,
                         dimensionKey:
-                          dimensionKey ?? (isExpanded ? expanded?.dimensionKey : undefined)
+                          dimensionKey ?? (isExpanded ? expandedProduct?.dimensionKey : undefined)
                       })
                     }
                     onCollapse={() => setExpanded(null)}
@@ -377,7 +385,7 @@ export const TabbedOverview = ({
               return (
                 <InactiveProductCard
                   key={prod.id}
-                  isDimmed={Boolean(expanded)}
+                  isDimmed={Boolean(expandedProduct)}
                   prod={prod}
                   readOnly={readOnly}
                   isManaged={isManaged}
