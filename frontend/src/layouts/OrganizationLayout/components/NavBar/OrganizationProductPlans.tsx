@@ -25,7 +25,7 @@ export const OrganizationProductPlans = ({ plans, billingOrgId, isSubOrganizatio
           <ChevronDown />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" side="bottom" collisionPadding={16}>
+      <PopoverContent align="start" side="bottom" collisionPadding={16}>
         <div className="flex flex-col gap-4">
           <div>
             <p className="text-sm font-medium">Product Plans</p>

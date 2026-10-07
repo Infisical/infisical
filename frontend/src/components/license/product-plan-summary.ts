@@ -44,7 +44,11 @@ export const getProductPlanSummaries = (plans: SubscriptionPlan["productPlans"])
         PRODUCT_NAMES.get(productKey) ??
         productKey
           .split("_")
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .map((word) =>
+            ["kms", "ai"].includes(word.toLowerCase())
+              ? word.toUpperCase()
+              : word.charAt(0).toUpperCase() + word.slice(1)
+          )
           .join(" "),
       planLabel: PLAN_LABELS.get(planKey) ?? planKey.replace(/_/g, " "),
       isTrialing
