@@ -192,6 +192,19 @@ export const HOST_RANGE_SOURCES = {
     targetsPlaceholder: "192.168.1.10, db-primary.internal",
     targetsDescription:
       "IP addresses or hostnames of the instances to scan, one per line or comma-separated. CIDR ranges are not supported."
+  },
+  [PamDiscoveryType.MsSQL]: {
+    accountType: PamAccountType.MsSQL,
+    placeholder: "Select SQL Server accounts",
+    description:
+      "Accounts must use SQL Server authentication and hold VIEW ANY DEFINITION or ALTER ANY LOGIN to see every login. The account's database and TLS settings are reused for the connection.",
+    warning:
+      "The account password is sent to every instance scanned, including any you don't control. Only list hosts you trust.",
+    configKey: "hosts",
+    allowCidr: false,
+    targetsPlaceholder: "192.168.1.10, sql-primary.internal",
+    targetsDescription:
+      "IP addresses or hostnames of the instances to scan, one per line or comma-separated. CIDR ranges are not supported."
   }
 } as const;
 
