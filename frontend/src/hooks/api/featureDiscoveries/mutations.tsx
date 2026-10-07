@@ -25,8 +25,12 @@ export const useCreateFeatureDiscoveries = () => {
         ...releaseIds.map((releaseId) => ({ releaseId, createdAt }))
       ]);
     },
+    // Merge rather than replace: overlapping saves can resolve out of order.
     onSuccess: (featureDiscoveries) => {
-      queryClient.setQueryData(featureDiscoveryKeys.all, featureDiscoveries);
+      queryClient.setQueryData<TFeatureDiscovery[]>(featureDiscoveryKeys.all, (prev = []) => {
+        const saved = new Set(featureDiscoveries.map(({ releaseId }) => releaseId));
+        return [...featureDiscoveries, ...prev.filter(({ releaseId }) => !saved.has(releaseId))];
+      });
     },
     onError: () => {
       queryClient.invalidateQueries({ queryKey: featureDiscoveryKeys.all });
