@@ -16,9 +16,9 @@ export const useCreateFeatureDiscoveries = () => {
       );
       return data.featureDiscoveries;
     },
-    // The cache is only ever changed per release: added optimistically here, and removed again
-    // in onError if this save fails. Responses never overwrite it, so overlapping saves can't
-    // clobber each other.
+    // Releases are added optimistically and removed again only if their own save fails.
+    // Successful responses are merged in, never swapped in, so out-of-order saves can't drop
+    // each other and a cancelled initial load still ends up with the full saved list.
     onMutate: async (releaseIds) => {
       await queryClient.cancelQueries({ queryKey: featureDiscoveryKeys.all });
       const createdAt = new Date().toISOString();
@@ -26,6 +26,12 @@ export const useCreateFeatureDiscoveries = () => {
         ...prev,
         ...releaseIds.map((releaseId) => ({ releaseId, createdAt }))
       ]);
+    },
+    onSuccess: (featureDiscoveries) => {
+      queryClient.setQueryData<TFeatureDiscovery[]>(featureDiscoveryKeys.all, (prev = []) => {
+        const cached = new Set(prev.map(({ releaseId }) => releaseId));
+        return [...prev, ...featureDiscoveries.filter(({ releaseId }) => !cached.has(releaseId))];
+      });
     },
     onError: (_error, releaseIds) => {
       queryClient.setQueryData<TFeatureDiscovery[]>(featureDiscoveryKeys.all, (prev = []) =>
