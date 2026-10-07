@@ -773,6 +773,12 @@ export const approvalPolicyServiceFactory = ({
       policy.type as ApprovalPolicyType
     );
 
+    if (policy.type === ApprovalPolicyType.SecretAccess) {
+      throw new BadRequestError({
+        message: "This is a secret access policy. Update it from the access approval policies instead."
+      });
+    }
+
     const [steps, bypassers] = await Promise.all([
       approvalPolicyDAL.findStepsByPolicyId(policyId),
       approvalPolicyDAL.findBypassersByPolicyId(policyId)
