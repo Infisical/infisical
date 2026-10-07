@@ -23,19 +23,5 @@ export const agentVaultSessionLogConfigDALFactory = (db: TDbClient) => {
     }
   };
 
-  // One conditional UPDATE, never read-modify-write: its row lock keeps the ceiling exact under load, and a refused
-  // chunk doesn't count. False means the ceiling is reached.
-  const recordStoredChunk = async (id: string, ceiling: number, tx?: Knex): Promise<boolean> => {
-    try {
-      const result = await (tx || db).raw<{ rows: { id: string }[] }>(
-        `UPDATE ?? SET "storedChunkCount" = "storedChunkCount" + 1 WHERE "id" = ? AND "storedChunkCount" < ? RETURNING "id"`,
-        [TableName.AgentVaultSessionLogConfig, id, ceiling]
-      );
-      return result.rows.length > 0;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Record agent vault session log stored chunk" });
-    }
-  };
-
-  return { ...orm, findByProjectIdFromPrimary, recordStoredChunk };
+  return { ...orm, findByProjectIdFromPrimary };
 };

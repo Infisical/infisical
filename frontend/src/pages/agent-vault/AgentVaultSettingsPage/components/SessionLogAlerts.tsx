@@ -49,15 +49,6 @@ export const SessionLogAlerts = () => {
         </Alert>
       )}
 
-      {health?.isStorageFull && (
-        <Alert variant="danger">
-          <CircleAlertIcon />
-          <AlertDescription>
-            Session logs have reached their limit for this organization. Contact Infisical support.
-          </AlertDescription>
-        </Alert>
-      )}
-
       {isLapsed && (
         <Alert variant="warning">
           <TriangleAlertIcon />

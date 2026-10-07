@@ -7,7 +7,6 @@ import { BadRequestError, DatabaseError } from "@app/lib/errors";
 
 import {
   AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
-  AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS,
   AGENT_VAULT_SESSION_LOG_RANGE_SEAL_MARGIN_MS,
   AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
 } from "./agent-vault-session-log-constants";
@@ -21,8 +20,6 @@ import {
 } from "./agent-vault-session-log-fns";
 import { agentVaultSessionLogServiceFactory } from "./agent-vault-session-log-service";
 import { buildSessionLogStorage } from "./agent-vault-session-log-storage-fns";
-
-const CEILING = AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS;
 
 const PROJECT_ID = "c4a1e0d2-5b7f-4c1e-9a3d-2f6b8e0c7a11";
 const SESSION_ID = "5d2e9b41-0c3a-4f8e-b7d2-91a4c6e8f035";
@@ -69,8 +66,7 @@ const enabledConfig = () => ({
   appConnectionId: "conn-1",
   bucket: "my-bucket",
   region: "us-east-1",
-  keyPrefix: "logs",
-  storedChunkCount: 0
+  keyPrefix: "logs"
 });
 
 const validChunk = () => ({
@@ -93,7 +89,6 @@ type TOverrides = {
   proxy?: unknown;
   session?: unknown;
   config?: unknown;
-  isUnderCeiling?: boolean;
   feed?: TFeedEntry[];
   feedAddFails?: boolean;
   connection?: unknown;
@@ -104,7 +99,6 @@ type TOverrides = {
 };
 
 const build = (overrides: TOverrides = {}) => {
-  const recordStoredChunk = vi.fn(async () => overrides.isUnderCeiling ?? true);
   const validateConnection = vi.fn(async () => ({}));
   const findConnection = vi.fn(async () => overrides.connection);
   const config = "config" in overrides ? overrides.config : enabledConfig();
@@ -121,7 +115,6 @@ const build = (overrides: TOverrides = {}) => {
     agentVaultSessionLogConfigDAL: {
       findOne: vi.fn(async () => config),
       findByProjectIdFromPrimary: vi.fn(async () => config),
-      recordStoredChunk,
       updateById: updateConfig,
       create: vi.fn(async (values: Record<string, unknown>) => {
         if (overrides.configCreateThrows) return Promise.reject(overrides.configCreateThrows);
@@ -151,7 +144,7 @@ const build = (overrides: TOverrides = {}) => {
     keyStore: { streamAdd, streamRange } as never
   });
 
-  return { service, recordStoredChunk, validateConnection, findConnection, updateConfig, streamAdd, streamRange };
+  return { service, validateConnection, findConnection, updateConfig, streamAdd, streamRange };
 };
 
 const record = (service: ReturnType<typeof build>["service"], chunk = validChunk()) =>
@@ -169,14 +162,13 @@ beforeEach(() => {
 });
 
 describe("recordChunk: who is allowed to write", () => {
-  test("a happy path counts the chunk, signs its name and adds it to the live feed", async () => {
-    const { service, recordStoredChunk, streamAdd } = build();
+  test("a happy path signs the chunk's name and adds it to the live feed", async () => {
+    const { service, streamAdd } = build();
     const chunk = validChunk();
     const result = await record(service, chunk);
 
     expect(result.uploadUrl).toBe("https://bucket.s3.amazonaws.com/signed-put");
     expect(result.chunkId).toBe(chunk.chunkId);
-    expect(recordStoredChunk).toHaveBeenCalledWith("cfg-1", CEILING);
 
     const objectKey = buildSessionLogObjectKey({ folder: FOLDER, proxyId: PROXY_ID, chunkId: chunk.chunkId });
     expect(presignPut).toHaveBeenCalledWith({
@@ -267,9 +259,9 @@ describe("recordChunk: when session logs are off", () => {
     { why: "no bucket is set", config: { ...enabledConfig(), bucket: null } },
     { why: "the connection was detached", config: { ...enabledConfig(), appConnectionId: null } }
   ])("refuses with the named error when $why", async ({ config }) => {
-    const { service, recordStoredChunk } = build({ config });
+    const { service } = build({ config });
     await expect(record(service)).rejects.toMatchObject({ name: AgentVaultSessionLogErrorName.Disabled });
-    expect(recordStoredChunk).not.toHaveBeenCalled();
+    expect(presignPut).not.toHaveBeenCalled();
   });
 });
 
@@ -289,17 +281,17 @@ describe("recordChunk: semantic validation", () => {
       message: "Chunk is older than the maximum accepted age"
     }
   ])("rejects when $why", async ({ patch, message }) => {
-    const { service, recordStoredChunk } = build();
+    const { service } = build();
     await expect(record(service, { ...validChunk(), ...patch })).rejects.toMatchObject({ message });
-    expect(recordStoredChunk).not.toHaveBeenCalled();
+    expect(presignPut).not.toHaveBeenCalled();
   });
 
   test("a proxy clock too far ahead is refused with the named error, saying how far", async () => {
-    const { service, recordStoredChunk } = build();
+    const { service } = build();
     const refusal = record(service, { ...validChunk(), endedAt: new Date(Date.now() + 10 * 60_000) });
     await expect(refusal).rejects.toMatchObject({ name: AgentVaultSessionLogErrorName.ClockSkew });
     await expect(refusal).rejects.toThrow(/about 10 minutes ahead/);
-    expect(recordStoredChunk).not.toHaveBeenCalled();
+    expect(presignPut).not.toHaveBeenCalled();
   });
 
   test("a small clock skew forward is tolerated", async () => {
@@ -309,30 +301,16 @@ describe("recordChunk: semantic validation", () => {
   });
 
   test("refuses a chunk claiming more records than its bytes could hold", async () => {
-    const { service, recordStoredChunk } = build();
+    const { service } = build();
     await expect(record(service, { ...validChunk(), recordCount: 1000, ciphertextBytes: 64 })).rejects.toMatchObject({
       message: "Chunk is too small to hold the number of records it claims"
     });
-    expect(recordStoredChunk).not.toHaveBeenCalled();
+    expect(presignPut).not.toHaveBeenCalled();
   });
 
   test("accepts a chunk whose size is plausible for its record count", async () => {
     const { service } = build();
     await expect(record(service, { ...validChunk(), recordCount: 10, ciphertextBytes: 4096 })).resolves.toBeTruthy();
-  });
-});
-
-describe("recordChunk: the organization ceiling", () => {
-  test("refuses with the named error once the org is at the limit", async () => {
-    const { service } = build({ isUnderCeiling: false });
-    await expect(record(service)).rejects.toMatchObject({ name: AgentVaultSessionLogErrorName.CeilingReached });
-  });
-
-  test("no upload url is minted and nothing joins the feed for a refused chunk", async () => {
-    const { service, streamAdd } = build({ isUnderCeiling: false });
-    await expect(record(service)).rejects.toThrow();
-    expect(presignPut).not.toHaveBeenCalled();
-    expect(streamAdd).not.toHaveBeenCalled();
   });
 });
 
@@ -367,13 +345,13 @@ describe("recordChunk: the live feed", () => {
 describe("when the AWS connection can't be used", () => {
   const unusable = new BadRequestError({ message: "Couldn't use the AWS connection 'prod-logs': AccessDenied" });
 
-  test("a chunk is refused as a retryable 500 before it is counted, without the connection's details", async () => {
+  test("a chunk is refused as a retryable 500 before it is signed, without the connection's details", async () => {
     vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
-    const { service, recordStoredChunk } = build();
+    const { service } = build();
     const error = (await record(service).catch((err: unknown) => err)) as Error;
     expect(error.name).toBe("InternalServerError");
     expect(error.message).not.toContain("prod-logs");
-    expect(recordStoredChunk).not.toHaveBeenCalled();
+    expect(presignPut).not.toHaveBeenCalled();
   });
 
   test("a read returns no chunks and tells an admin why", async () => {
@@ -694,12 +672,12 @@ describe("without session logs on the plan", () => {
   });
 
   test("a chunk is refused with the error that tells the proxy logging is off", async () => {
-    const { service, recordStoredChunk } = build({ licensed: false });
+    const { service } = build({ licensed: false });
     await expect(record(service)).rejects.toMatchObject({
       name: AgentVaultSessionLogErrorName.Disabled,
       message: AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
     });
-    expect(recordStoredChunk).not.toHaveBeenCalled();
+    expect(presignPut).not.toHaveBeenCalled();
   });
 
   test("logs recorded while it was on can still be read, and read as not recording", async () => {
@@ -718,21 +696,21 @@ describe("while the License Server can't be reached", () => {
   const unreachable = { licensed: false, planFallback: true } as const;
 
   test("a chunk from a paid org is still accepted on its last known plan", async () => {
-    const { service, recordStoredChunk } = build({
+    const { service } = build({
       ...unreachable,
       lastKnownPlan: { plan: { agentVaultByoS3: true }, fetchedAt: Date.now() - 10 * 60_000 }
     });
     await record(service);
-    expect(recordStoredChunk).toHaveBeenCalledTimes(1);
+    expect(presignPut).toHaveBeenCalledTimes(1);
   });
 
   test("a chunk is held, not refused, when there is no recent real answer", async () => {
-    const { service, recordStoredChunk } = build({
+    const { service } = build({
       ...unreachable,
       lastKnownPlan: { plan: { agentVaultByoS3: true }, fetchedAt: Date.now() - 2 * 60 * 60_000 }
     });
     await expect(record(service)).rejects.toMatchObject({ name: "InternalServerError" });
-    expect(recordStoredChunk).not.toHaveBeenCalled();
+    expect(presignPut).not.toHaveBeenCalled();
   });
 
   test("a save that needs the plan says it couldn't be confirmed", async () => {

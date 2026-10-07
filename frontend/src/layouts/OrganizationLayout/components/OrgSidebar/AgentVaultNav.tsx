@@ -45,8 +45,7 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
       isAgentVaultSessionLogPlanLapsed(sessionLogSettings, subscription))
   )
     settingsDot = "warning";
-  else if (sessionLogHealth?.isStorageFull || sessionLogHealth?.connectionError)
-    settingsDot = "danger";
+  else if (sessionLogHealth?.connectionError) settingsDot = "danger";
 
   const administrationItems: NavItem[] = isAdmin
     ? [

@@ -311,7 +311,6 @@ export type TAgentVaultSessionLogSettings = {
 };
 
 export type TAgentVaultSessionLogHealth = {
-  isStorageFull: boolean;
   connectionError: string | null;
 };
 

@@ -192,18 +192,6 @@ export const AgentVaultSessionsPage = () => {
       />
 
       <div className="flex flex-col gap-8">
-        {sessionLogHealth?.isStorageFull &&
-          sessionLogSettings &&
-          areAgentVaultSessionLogsOn(sessionLogSettings) && (
-            <Alert variant="danger">
-              <CircleAlertIcon />
-              <AlertDescription>
-                Session logs have reached their limit for this organization. Contact Infisical
-                support.
-              </AlertDescription>
-            </Alert>
-          )}
-
         {sessionLogHealth?.connectionError &&
           sessionLogSettings &&
           areAgentVaultSessionLogsOn(sessionLogSettings) &&

@@ -95,7 +95,6 @@ tables:
       - id
       - projectId
       - enabled
-      - storedChunkCount
       - createdAt
       - updatedAt
 

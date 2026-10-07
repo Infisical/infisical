@@ -10,8 +10,7 @@ import { OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/s
 import { seedData1 } from "@app/db/seed-data";
 import {
   AGENT_VAULT_SESSION_LOG_FEED_MAX_ENTRIES,
-  AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
-  AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS
+  AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES
 } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-constants";
 import { AgentVaultSessionLogErrorName } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-enums";
 import {
@@ -209,7 +208,7 @@ describe("Agent Vault session logs", async () => {
 
       const health = await inject("GET", `${SETTINGS_URL}/health`);
       expect(health.statusCode).toBe(200);
-      expect(JSON.parse(health.payload).health).toMatchObject({ isStorageFull: false });
+      expect(JSON.parse(health.payload).health).toMatchObject({ connectionError: null });
 
       const probe = await inject("GET", `${SETTINGS_URL}/cors-probe`);
       expect(probe.statusCode).toBe(200);
@@ -397,8 +396,8 @@ describe("Agent Vault session logs", async () => {
         ...patch
       });
 
-    const storedChunkCount = async () =>
-      Number((await testDb("agent_vault_session_log_configs").where({ projectId }).first()).storedChunkCount);
+    const tailedChunks = async (sessionId: string) =>
+      (await inject("GET", `/api/v1/agent-vault/sessions/${sessionId}/logs/tail`)).json().chunks as unknown[];
 
     test("presigns an upload for exactly that many bytes, named under the session's folder", async () => {
       await configure();
@@ -418,19 +417,6 @@ describe("Agent Vault session logs", async () => {
       );
 
       expect(() => fakeS3Bucket.put(result.uploadUrl, Buffer.alloc(CHUNK_BYTES + 1))).toThrow();
-    });
-
-    test("counts every chunk it hands a link for, a re-send included", async () => {
-      await configure();
-      const bundle = await createAccessBundle(`session-logs-count-${Date.now()}`);
-      const session = await mintSession(bundle.name);
-      const proxy = await createProxy(`session-logs-count-${Date.now()}`);
-      const chunk = chunkBody();
-      await recordChunk(proxy, session.id, chunk);
-      await recordChunk(proxy, session.id, chunk);
-      await recordChunk(proxy, session.id);
-
-      expect(await storedChunkCount()).toBe(3);
     });
 
     test("a re-sent chunk gets a fresh link to the same name, which cannot replace what is already stored", async () => {
@@ -495,7 +481,7 @@ describe("Agent Vault session logs", async () => {
       expect(chunks.every((chunk) => chunk.chunkId === sharedId)).toBe(true);
     });
 
-    test("a connection that can't be used refuses the chunk as retryable and counts nothing", async () => {
+    test("a connection that can't be used refuses the chunk as retryable and records nothing", async () => {
       await configure();
       fakeAwsConnection.failsConfigWith("AWS refused to assume the role");
       const bundle = await createAccessBundle(`session-logs-unusable-${Date.now()}`);
@@ -504,7 +490,7 @@ describe("Agent Vault session logs", async () => {
 
       const res = await proxy.postChunk(session.id, chunkBody());
       expect(res.statusCode).toBe(500);
-      expect(await storedChunkCount()).toBe(0);
+      expect(await tailedChunks(session.id)).toEqual([]);
     });
 
     test("is refused with the named error while session logs are off", async () => {
@@ -516,21 +502,6 @@ describe("Agent Vault session logs", async () => {
       const res = await proxy.postChunk(session.id, chunkBody());
       expect(res.statusCode).toBe(400);
       expect(JSON.parse(res.payload).error).toBe(AgentVaultSessionLogErrorName.Disabled);
-    });
-
-    test("a chunk past the organization's limit is refused, and the count stays at the limit", async () => {
-      await configure();
-      const bundle = await createAccessBundle(`session-logs-full-${Date.now()}`);
-      const session = await mintSession(bundle.name);
-      const proxy = await createProxy(`session-logs-full-${Date.now()}`);
-      await testDb("agent_vault_session_log_configs")
-        .where({ projectId })
-        .update({ storedChunkCount: AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS });
-
-      const res = await proxy.postChunk(session.id, chunkBody());
-      expect(res.statusCode, res.payload).toBe(400);
-      expect(JSON.parse(res.payload).error).toBe(AgentVaultSessionLogErrorName.CeilingReached);
-      expect(await storedChunkCount()).toBe(AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS);
     });
 
     test("a session in another organization is a 404 that reads like a missing one", async () => {
@@ -564,7 +535,6 @@ describe("Agent Vault session logs", async () => {
 
         expect([foreign.statusCode, missing.statusCode]).toEqual([404, 404]);
         expect(JSON.parse(foreign.payload).message).toBe(JSON.parse(missing.payload).message);
-        expect(await storedChunkCount()).toBe(0);
       } finally {
         await testDb("organizations").where({ id: foreignOrg.id }).delete();
       }
@@ -706,8 +676,8 @@ describe("Agent Vault session logs", async () => {
 
       const res = await proxy.postChunk(session.id, chunkBody(patch));
       expect(res.statusCode).toBe(400);
-      const config = await testDb("agent_vault_session_log_configs").where({ projectId }).first();
-      expect(Number(config.storedChunkCount)).toBe(0);
+      const tailed = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs/tail`);
+      expect(tailed.json().chunks).toEqual([]);
     });
 
     test("refuses a session that retired more than a day ago", async () => {

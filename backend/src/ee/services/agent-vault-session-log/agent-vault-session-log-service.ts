@@ -34,7 +34,6 @@ import {
   AGENT_VAULT_SESSION_LOG_LATE_CHUNK_GRACE_MS,
   AGENT_VAULT_SESSION_LOG_MAX_CHUNK_AGE_MS,
   AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
-  AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS,
   AGENT_VAULT_SESSION_LOG_MIN_BYTES_PER_RECORD,
   AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS,
   AGENT_VAULT_SESSION_LOG_RANGE_SEAL_MARGIN_MS,
@@ -96,7 +95,6 @@ export const agentVaultSessionLogServiceFactory = ({
 }: TAgentVaultSessionLogServiceFactoryDep) => {
   const $storageDeps = { appConnectionDAL, kmsService };
 
-  const toCount = (value: number | string) => Number(value);
 
   const NO_SETTINGS = { enabled: false, appConnectionId: null, bucket: null, region: null, keyPrefix: null };
 
@@ -195,18 +193,6 @@ export const agentVaultSessionLogServiceFactory = ({
         });
       }
       throw error;
-    }
-
-    // After the connection check, so a broken connection, which the proxy retries forever, never counts.
-    const isCounted = await agentVaultSessionLogConfigDAL.recordStoredChunk(
-      config.id,
-      AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS
-    );
-    if (!isCounted) {
-      throw new BadRequestError({
-        name: AgentVaultSessionLogErrorName.CeilingReached,
-        message: "Session logs have reached their limit for this organization. Contact Infisical support."
-      });
     }
 
     const objectKey = buildSessionLogObjectKey({
@@ -476,7 +462,6 @@ export const agentVaultSessionLogServiceFactory = ({
 
     return {
       health: {
-        isStorageFull: config ? toCount(config.storedChunkCount) >= AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS : false,
         connectionError
       }
     };

@@ -23,11 +23,6 @@ export const AGENT_VAULT_SESSION_LOG_CLOCK_SKEW_MS = 5 * 60_000; // 5 minutes
 export const AGENT_VAULT_SESSION_LOG_LATE_CHUNK_GRACE_MS = 24 * 60 * 60_000; // 24 hours: after a session ends, its proxy has one more day to upload what it still holds
 export const AGENT_VAULT_SESSION_LOG_MAX_CHUNK_AGE_MS = 30 * 24 * 60 * 60_000; // 30 days: logs older than a month are never accepted, ended session or not
 
-// Each organization can store up to 100,000 chunks, which is up to about 100 million requests. Once it reaches
-// that, Infisical refuses new chunks and the error asks the customer to contact support. The limit isn't
-// published, so the error doesn't state it.
-export const AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS = 100_000;
-
 // While the License Server can't be reached, the last plan it returned decides for this long, so a downgrade
 // still lands within an hour of an outage starting.
 export const AGENT_VAULT_SESSION_LOG_LAST_KNOWN_PLAN_MAX_AGE_MS = 60 * 60_000; // 1 hour

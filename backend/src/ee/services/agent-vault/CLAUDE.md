@@ -265,9 +265,8 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   rather than fails while Redis is down. A tail with no cursor reads the stream from its start, so a chunk still
   uploading when the page opened arrives; the browser dedupes on `(chunkId, proxyId)` and refetches tail 404s
   while they may still be uploading. Bursts of more than 10 between polls show on reload.
-- **The org chunk limit is a lifetime counter of upload links**, re-sends included, and internal: no env var, not
-  documented, surfaced only as `isStorageFull`. Kept as abuse prevention until usage and plans are decided. At the
-  limit writes are refused, never drop-oldest, which would let flooding evict evidence.
+- **There's no per-org chunk limit.** Infisical stores nothing per chunk, and the customer's bucket is theirs; the
+  upload-link rate limit and the proxy cap per org bound the work a proxy can cause.
 - **Nothing deletes from the bucket**, so the IAM policy asks for no `s3:DeleteObject`.
 - **Session logs are a paid feature (`agentVaultByoS3`).** Without it, nothing new is recorded, but saved logs
   stay readable. That breaks the License Checks rule in `CODE_QUALITY.md` on purpose. Turning session logs off

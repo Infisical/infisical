@@ -6,9 +6,21 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 export async function up(knex: Knex): Promise<void> {
   await dropOnUpdateTrigger(knex, TableName.AgentVaultSessionLogChunk);
   await knex.schema.dropTableIfExists(TableName.AgentVaultSessionLogChunk);
+
+  if (await knex.schema.hasColumn(TableName.AgentVaultSessionLogConfig, "storedChunkCount")) {
+    await knex.schema.alterTable(TableName.AgentVaultSessionLogConfig, (t) => {
+      t.dropColumn("storedChunkCount");
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
+  if (!(await knex.schema.hasColumn(TableName.AgentVaultSessionLogConfig, "storedChunkCount"))) {
+    await knex.schema.alterTable(TableName.AgentVaultSessionLogConfig, (t) => {
+      t.bigint("storedChunkCount").notNullable().defaultTo(0);
+    });
+  }
+
   if (await knex.schema.hasTable(TableName.AgentVaultSessionLogChunk)) return;
 
   await knex.schema.createTable(TableName.AgentVaultSessionLogChunk, (t) => {

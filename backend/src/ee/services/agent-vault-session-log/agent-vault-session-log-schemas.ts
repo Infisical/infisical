@@ -109,7 +109,6 @@ export const AgentVaultSessionLogSettingsResponseSchema = z.object({
 
 export const AgentVaultSessionLogHealthResponseSchema = z.object({
   health: z.object({
-    isStorageFull: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.isStorageFull),
     connectionError: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.connectionError)
   })
 });
