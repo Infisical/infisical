@@ -21,6 +21,26 @@ export type TKeeperConnectionConfig = DiscriminativePick<TKeeperConnectionInput,
   orgId: string;
 };
 
-export type TKeeperExecuteCommandResponse = {
+export type TKeeperCredentials = {
+  apiKey: string;
+  instanceUrl: string;
+};
+
+export type TKeeperCommandResponse<T = unknown> = {
   status?: string;
+  command?: string;
+  data?: T;
+  error?: string;
+  message?: string;
+};
+
+export type TKeeperListSharedFoldersRow = {
+  shared_folder_uid: string;
+  name: string;
+  folder_type?: string;
+};
+
+export type TKeeperSharedFolder = {
+  uid: string;
+  name: string;
 };
