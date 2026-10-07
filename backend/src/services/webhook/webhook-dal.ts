@@ -14,7 +14,9 @@ export const webhookDALFactory = (db: TDbClient) => {
     tx(TableName.Webhook)
       .where(filter)
       .join(TableName.Environment, `${TableName.Webhook}.envId`, `${TableName.Environment}.id`)
+      .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       .whereNull(`${TableName.Environment}.deleteAfter`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .select(tx.ref("name").withSchema(TableName.Environment).as("envName"))
       .select(tx.ref("slug").withSchema(TableName.Environment).as("envSlug"))
       .select(tx.ref("id").withSchema(TableName.Environment).as("envId"))
@@ -70,14 +72,16 @@ export const webhookDALFactory = (db: TDbClient) => {
         .where(`${TableName.Environment}.projectId`, projectId)
         .where((qb) => {
           if (environment) {
-            void qb.where("slug", environment);
+            void qb.where(`${TableName.Environment}.slug`, environment);
           }
           if (secretPath) {
-            void qb.where("secretPath", secretPath);
+            void qb.where(`${TableName.Webhook}.secretPath`, secretPath);
           }
         })
         .join(TableName.Environment, `${TableName.Webhook}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .select(db.ref("name").withSchema(TableName.Environment).as("envName"))
         .select(db.ref("slug").withSchema(TableName.Environment).as("envSlug"))
         .select(db.ref("id").withSchema(TableName.Environment).as("envId"))
