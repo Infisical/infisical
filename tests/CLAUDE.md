@@ -1,52 +1,42 @@
 # CLAUDE.md
 
-How to write tests in `tests/`, the Go blackbox suite. It boots a real Infisical in
-Docker and talks to it over HTTP only.
+The Go blackbox suite. It boots a real Infisical in Docker and calls it over HTTP only.
+Its contract with the server is a Docker image, environment variables, and the OpenAPI
+spec, so the same tests run against any implementation of that contract.
 
-This file is conventions. How the harness works inside is in the code and its
-comments; you should not need any of it to write a test.
+## Read next
 
-## 1. The boundary
+| Task | Read |
+|---|---|
+| Writing or reviewing a test | [docs/writing-tests.md](docs/writing-tests.md) |
+| Using or adding a fake third party, App Connection, or mail | [docs/fakes.md](docs/fakes.md) |
+| Calling an endpoint the client does not have yet | [docs/client.md](docs/client.md) |
+| A failing, flaky, or CI-only test | [docs/debugging.md](docs/debugging.md) |
 
-**What belongs here:** anything a customer or an API client can observe. Requests,
-responses, status codes, error messages, emails, outbound calls to third parties, and
-behaviour that emerges from a queue or a cron after the response returns.
+## What belongs here
 
-**What does not:**
+Anything a customer or API client can observe: responses, status codes, error messages,
+mail, calls to third parties, and effects of queues or crons after the response.
 
-- Pure functions and arithmetic. Unit tests in `backend/` are cheaper and sharper.
-- Anything needing a database connection, an internal service handle or a mocked
-  module. There is no database client here on purpose. If you want one, the test
-  belongs in `backend/e2e-test/`.
-- Log lines, outside boot behaviour.
+Not here:
 
-**Why it exists separately.** `backend/e2e-test/` boots Fastify in-process and is
-compiled against the Node source tree, so it cannot survive a rewrite. `e2e/` is
-Playwright against a deployed environment and is deliberately smoke-level. This
-suite's only contract with the server is **a Docker image, a set of environment
-variables, and the OpenAPI spec**. Swap the image for a Go build and every test here
-still runs, which is the entire point.
+- Pure functions and arithmetic. Unit test them in `backend/`.
+- Anything needing direct access to Infisical's own Postgres or Redis, an internal
+  service handle, or a mocked module. Those belong in `backend/e2e-test/`.
+- Exhaustive input validation. Cover representative cases here; matrices go in unit
+  tests.
 
-Input validation is observable, so it *can* be tested here, but every test costs a
-tenant. Representative cases here; exhaustive matrices in unit tests.
-
-## 2. Running tests
+## Commands
 
 ```bash
-make test-suites   # product tests: ./suites/...
-make test-harness  # harness tests: ./harnesstest/...
+make test-suites   # product tests; starts and stops the stack
+make test-harness  # harness tests
 make test-all      # both
-make test-unit     # everything that needs no containers
+make test-unit     # no containers
 make lint          # gofmt, vet, staticcheck
 ```
 
-The first three bring the stack up and tear it down afterwards, including after a
-failure or a Ctrl-C.
-
-They are separate targets so a red line says *which thing* broke: `test-suites`
-failing means Infisical is broken, `test-harness` failing means the harness is.
-
-To iterate, keep the stack up and run one package:
+To iterate on one package, keep the stack up:
 
 ```bash
 make up
@@ -54,471 +44,43 @@ go test ./suites/secretmanager/secrets/... -count=1
 make down
 ```
 
-`-count=1` because Go caches results, and a cached pass tells you nothing about a live
-server. Run `make down` after changing anything about a container's configuration, or a
-stale one is adopted and your change does not take effect.
+`-count=1` disables Go's result cache. Run `make down` after changing a container's
+configuration, or the old container is reused.
 
-CI (`run-blackbox-tests.yml`, on PRs only) builds the same `backend/Dockerfile` with a
-layer cache and hands it over through `INFISICAL_TEST_IMAGE`, so the harness skips its
-own build.
-
-## 3. Where things go
+## Layout
 
 ```
-suites/          product behaviour: does Infisical do the right thing
-harnesstest/     harness behaviour: does our tooling do the right thing
-harness/         Stack, Profile, Tenant, Principal
-fixture/         platform resources: projects, app connections (one package, a file each)
-fixture/<product>/  one package per product: secretmanager, pki, pam (a file per resource)
-fakes/           one package per faked third party
-internal/        wait, mail, id, apierr, spec
-clients/api/     generated Infisical client, never hand-edit
+suites/             product behaviour, grouped by product (suites/secretmanager/secrets)
+harnesstest/        harness behaviour; only for failures the harness alone can cause
+harness/            Stack, Profile, Tenant, Principal
+fixture/            platform resources: projects, App Connections
+fixture/<product>/  one package per product: secretmanager, pki, pam
+fakes/              one package per external provider
+internal/           wait, mail, id, apierr, spec
+clients/api/        generated client; never edit by hand
 ```
 
-**`suites/` or `harnesstest/`?** A harness test earns its place only if **the harness
-is the only thing that can make it fail**. If a product change could break it, it is a
-product test and belongs in `suites/`, or it does not belong at all. A failing suite
-says Infisical is broken; a failing harnesstest says our tooling is. Mixing them sends
-people to debug the wrong codebase.
-
-Within `suites/`, group by product boundary, not URL version:
-`suites/secretmanager/secrets`, `suites/organization`. `identity` owns routes across v1
-and v2; `secrets` owns v4 and the v3 deprecations. That is what makes the grouping
-survive a version bump.
-
-**Fixtures are one package, split by file; products get their own package.**
-Platform resources live in `fixture` (`fixture.NewProject`, `fixture.NewAppConnection`).
-A product's resources live in `fixture/<product>` (`secretmanager.CreateSecret`). Add a
-file to the right package rather than a new package per resource. Since many resources
-share one package, names carry the resource: `NewProject`, `WithProjectType`,
-`AppConnectionOption`.
-
-**Helpers start local and move on the second caller.** An unexported function in the
-test package is the right home until a second package needs it; then it moves into the
-matching fixture package.
-
-**Import direction is one-way.** `fixture/*` may import `harness`; `harness` must never
-import a fixture. `fakes/*` import neither.
-
-## 4. Writing a test
-
-Every package needs a `main_test.go` declaring its profile. That is the only harness
-decision a test author makes:
-
-```go
-func TestMain(m *testing.M) { harness.Main(m, harness.Shared) }
-```
-
-```go
-func TestSecret_Create(t *testing.T) {
-	t.Parallel()
-	h := harness.From(t)
-
-	t.Run("should read back a created secret with its value", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
-
-		// Action
-		secretmanager.CreateSecret(t, proj, "dev", "DB_URL", "postgres://localhost/app")
-
-		// Assert
-		got := secretmanager.GetSecret(t, proj, "dev", "DB_URL")
-		require.Equal(t, "postgres://localhost/app", got.Value)
-	})
-}
-```
-
-### Setup, Action, Assert
-
-Every test body is three blocks marked with exactly these comments:
-
-```go
-// Setup
-// Action
-// Assert
-```
-
-Setup in under about eight lines, the Action as one call, Assert one to three claims.
-If Setup is longer, the missing helper belongs beside the test or in a fixture. Where
-the action and the assertion are one call (`ExpectEvent`), write `// Action + Assert`.
-
-These are the one place section-marker comments are allowed. The repository rule
-against them applies to production code; in tests they are the convention.
-
-### Assertions use `require`
-
-All assertions go through `github.com/stretchr/testify/require`, never `t.Error`,
-`t.Fatal` or hand-written comparisons. `require` stops the test at the first failure,
-which is what you want when later lines depend on earlier ones, and it prints both
-values without a format string.
-
-Add a message only when the values alone don't explain the failure:
-
-```go
-require.Equal(t, "first", got.Value, "the refused create still changed the value")
-```
-
-Never call `require` from a goroutine other than the test's own: it calls
-`t.FailNow`, which only works on the test goroutine. Collect results on a channel and
-assert after.
-
-### Profiles
-
-| profile | what it gives | when |
-|---|---|---|
-| `harness.Shared` | one instance for the whole run, a fresh organization per test | almost always |
-| `harness.Isolated` | the package's own Postgres, Redis and Infisical | only when the test writes instance-wide state |
-
-`Isolated` costs a full Infisical boot per package. Reach for it only when the test
-writes something not scoped to an organization: super-admin config, enabled login
-methods, the encryption strategy, run modes.
-
-### `t.Parallel()`
-
-**Mandatory under `Shared`**, on the test and every subtest. Each test gets its own
-tenant, so there is nothing to serialise. A `Shared` test that cannot be parallel is a
-test in the wrong package.
-
-**Do not call it under `Isolated`.** Those tests share one instance's global state.
-
-### Tenancy is the isolation unit
-
-`h.NewTenant(t)` creates an organization with its own administrator and registers its
-deletion on `t.Cleanup`. Everything a test touches lives under that organization.
-Choosing the org as the boundary is what makes `t.Parallel()` the default.
-
-`tn.Admin` signed up and created the organization the way a customer does, so it is
-the org's creator, not the instance root, and holds no super-admin flag.
-
-## 5. Naming
-
-Test function: `Test<Resource>_<Behaviour>`.
-
-Subtest: `should <outcome> [when <condition>]`, lowercase prose, no prefix.
-
-```go
-t.Run("should prune the destination when a synced secret is deleted", ...)
-t.Run("should refuse a write when the project belongs to another tenant", ...)
-t.Run("should read back a created secret with its value", ...)
-```
-
-The outcome comes first so a failure list reads as the broken claims. Add `when` only
-when there is a condition; the default case needs none.
-
-**A subtest name is a claim, not a label.**
-
-```
-should hold a separate value per environment when one name is created in two     yes
-should create secret in prod env                                                  no
-should refuse and keep the original when the same name is created twice           yes
-should handle duplicates                                                          no
-```
-
-Cover the failure outcomes, not only the happy path: refused, forbidden, another
-tenant's resource, not found, conflicting, unlicensed, repeated.
-
-**The subject is the operation whose behaviour is being claimed.** Operations used to
-set up or observe are not subjects, so "the same key in two environments" is a subtest
-of `TestSecret_Create` even though a read is how you see it. Something earns its own
-top-level function only when no single operation owns the claim.
-
-One file per resource or flow, named after it. Variants of one flow are subtests, not
-new files.
-
-## 6. Test outcomes, not coverage
-
-Line coverage means nothing here. The unit is **(operation, outcome)**.
-
-A test exists to pin a behaviour someone could break. If you cannot say what breaks
-when it fails, do not write it.
-
-**Assert what the caller depends on, not that a route responded.** A test that checks
-`StatusCode() == 200` and stops has tested that a URL is routed.
-
-**A rejection test must also check nothing changed.** A route can refuse *and* have
-already written.
-
-**Assert error bodies, not just statuses**, where the message is part of the contract.
-`backend/CODE_QUALITY.md` requires messages a user can understand and forbids pointless
-500s; a suite that only checks `== 400` never enforces that.
-
-**Use the right actor.** A test about what a member can do must use a member. Reaching
-for `tn.Admin` because it is convenient makes the claim vacuous.
-
-**Suspect a test that passes the first time.** Break the assertion on purpose, watch it
-fail, put it back. Then break *what it depends on*: a prune test that still passes when
-deletion is disabled is testing nothing.
-
-### `spec.Why`, sparingly
-
-When the name cannot carry the reason, add one line: an invariant the rest of the suite
-rests on, a past incident, a product constraint not visible in the test.
-
-```go
-spec.Why(t, `The set to delete is computed from what GitHub returns, not from anything
-	Infisical stored, so this is only a real claim if the destination holds real state.`)
-```
-
-It prints on failure and in verbose output. Most tests do not need one. If every subtest
-has one, they have stopped meaning anything.
-
-## 7. The API you write against
-
-```go
-h  := harness.From(t)              // the stack this package's TestMain built
-tn := h.NewTenant(t)               // fresh organization with its own admin
-tn.Admin                           // *Principal: .API, .Token, .Email, .Kind, .ID
-tn.Email("alice")                  // alice@<tenant-nonce>.test
-
-tn.NewUser(t, harness.WithName("alice"))        // real user, invited through mail
-tn.NewMachineIdentity(t, harness.OrgRole("admin"))
-tn.Mail(t).Expect(t, addr, smtp.Subject("x"))  // waits on this tenant's mail
-tn.SetPlan(t, license.Enterprise().Without(license.RBAC))
-tn.Client(t, token)                             // a client on this tenant's bucket
-
-h.InstanceAdmin(t)                 // super admin; refused outside Isolated
-```
-
-Fixtures take the resource they belong to:
-
-```go
-proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-proj.NewUser(t, fixture.WithPrincipalName("bob"), fixture.WithRoles("admin"))
-proj.Grant(t, principal, "developer")
-
-secretmanager.CreateSecret(t, proj, "dev", "DB_URL", "value",
-	secretmanager.WithPath("/svc"), secretmanager.As(member))
-secretmanager.GetSecret(t, proj, "dev", "DB_URL")
-secretmanager.DeleteSecret(t, proj, "dev", "DB_URL")
-
-conn := fixture.NewAppConnection(t, tn, fixture.GitHubPATAppConnection)
-```
-
-**Fixtures take required arguments positionally and everything else as options.** What
-the API refuses without is positional; what the schema marks optional is an option.
-That is what lets someone add metadata or a different actor without touching every call
-site. Do not add an option nothing uses yet; adding one later is a single line.
-
-**Never build your own API client.** Use `tn.Admin.API`, a principal's `.API`, or
-`tn.Client(t, token)`. A hand-built client loses the tenant's `X-Forwarded-For` address
-and starts drawing down a rate-limit bucket shared with every other test, so the symptom
-is a 429 in an unrelated package.
-
-Organization roles and project roles are separate types on purpose:
-`harness.OrgRole("admin")` and `fixture.WithRoles("viewer")`. Passing one where the other
-belongs does not compile.
-
-## 8. Third parties are faked, not stubbed
-
-The instance has **no access to the real internet**. Every hostname resolves to fakenet,
-which either answers as that service or refuses with a 501 naming the URL.
-
-A fake is a working implementation holding real state, so you assert on what the
-destination ended up holding rather than on which requests were sent:
-
-```go
-conn := fixture.NewAppConnection(t, tn, fixture.GitHubPATAppConnection)
-gh := github.Open(t, conn.FakenetAdmin(t), conn.Nonce())
-
-gh.Seed(t, github.RepoSecret("acme/app", "UNMANAGED", "keep"))
-// ... run a sync ...
-gh.Repo(t, "acme/app").Secrets            // what GitHub holds now
-gh.Fail(t, "PUT", "/repos/*", 500, fakenet.Times(1))
-gh.Received(t, "GET", "/user")
-```
-
-That difference is the point. A secret sync computes what to delete from what the
-destination *returns*, so stubbing that list would mean asserting against a fixture you
-invented.
-
-**Isolation is by credential.** Each connection invents a unique one and the product
-sends it on every outbound call, so parallel tenants never see each other and no org id
-is threaded anywhere.
-
-### Waiting on what a fake did
-
-Fakes publish events when their state changes, and a test waits on the event rather
-than polling state:
-
-```go
-mark := gh.Mark(t)
-secretmanager.DeleteSecret(t, proj, "dev", "DROP")
-s.trigger(t)
-
-gh.ExpectEvent[github.SecretDeleted](t, func(e github.SecretDeleted) bool {
-	return e.SecretName == "DROP"
-}, fakenet.Since(mark))
-
-gh.ExpectNoEvent[github.SecretCreated](t, nil)   // waits 3s by default
-```
-
-- **Events that already happened count**, so it works after a call that blocks.
-- **Each event satisfies one `ExpectEvent`.** Expecting the same thing twice needs
-  two occurrences; `ExpectNoEvent` ignores events already claimed.
-- **Order only when you ask** with `Mark` and `Since`.
-- **Absence needs `ExpectNoEvent`, never an immediate state read.** A read straight
-  after an async action passes before the action lands; the auto-sync-off test did
-  exactly that and could not fail.
-
-Mail works the same way: the SMTP fake publishes `smtp.message-received` once per
-recipient, scoped to the tenant's mail domain. `tn.Mail(t).Expect` covers the usual
-case; `tn.Mail(t).ExpectNoEvent[smtp.MessageReceived]` asserts nothing was sent.
-
-Waiting on Infisical itself, such as a sync's status, still polls its API, since that
-is where the product reports its own errors.
-
-An event is a type that names itself, `<service>.<resource>-<past-tense verb>`:
-
-```go
-type SecretDeleted struct{ SecretDetail }
-func (SecretDeleted) EventName() string { return "github.secret-deleted" }
-```
-
-Publish it from the fake with `a.events.Publish(...)` wherever state changes. Whatever
-mints a credential calls `fakenet.Track` before handing it to Infisical, which
-`fixture.NewAppConnection` already does.
-
-### Adding a fake
-
-One package under `fakes/<service>/`:
-
-1. **The state struct**, shaped like the service rather than like our code.
-2. **`ServeHTTP`**, routing with Go 1.22 patterns
-   (`PUT /repos/{owner}/{repo}/actions/secrets/{name}`).
-3. **`Host`, `Scope` and `New`**: the hostname, how to read the credential off a
-   request, and an empty state.
-
-Then one line in `cmd/fakenet/main.go`. The generic `fakenet.Scope[S]` gives the test
-side `State`, `Seed`, `Fail`, `Calls` and cleanup, so a fake adds only naming.
-
-The state struct is declared once and imported by both halves, so a field rename is a
-compile error rather than a silent zero value.
-
-**A fake is a plain `http.Handler`, so develop it in-process with no Docker at all**
-(`fakes/github/fake_test.go` does this).
-
-**One fake per service, never per feature.** GitHub is used by app connections, secret
-sync, rotation and scanning; they all talk to the same GitHub.
-
-**Model the service honestly.** Real pagination, real error shapes, real crypto. A fake
-that always answers on one page hides the bug where we never fetch page two.
-
-### Adding an App Connection kind
-
-A fake is the external service; a kind is how one Infisical resource connects to it.
-Add one file to `fixture`, `appconnection_<app>.go`, declaring an `AppConnectionKind`
-named after the app, auth method and resource (`GitHubPATAppConnection`). It carries the
-app slug, the host taken from the fake (`github.Service.Host()`, never a second copy),
-and how to call the create route. A different resource on the same service, such as a
-dynamic secret, gets its own kind type in its own product's fixture package and reuses
-the same fake.
-
-The host must be one the client hardcodes. If the app lets you configure a base URL and
-you point it at fakenet, the test proves the fake works and nothing about interception.
-
-A test about creating the connection itself, such as a refused credential, calls the
-route through the generated client rather than the fixture
-(`suites/appconnections/github_test.go`).
-
-## 9. Entitlements and rate limits
-
-Every tenant gets a full enterprise plan by default, resolved **per organization**.
-
-```go
-tn := h.NewTenant(t, harness.WithPlan(license.Enterprise().Without(license.RBAC)))
-tn.SetPlan(t, license.Enterprise())   // also verifies it took effect
-```
-
-Write `should ... when the plan does not include it` subtests to pin downgrade behaviour. `CODE_QUALITY.md` requires that a
-license check never changes a read path, and flipping entitlements is the only way to
-test that.
-
-The rate limiter is on. Only the plan-derived limits (`readLimit`, `writeLimit`,
-`secretsLimit`) can be raised; the rest are per source address, which is why every tenant
-and principal gets its own and why you must not build your own client.
-
-## 10. Time-dependent behaviour
-
-Separate two questions usually tested as one: does the scheduler decide correctly when to
-fire (pure arithmetic, unit test it), and does the right thing happen when it fires (this
-suite). Almost all the value is in the second, and it does not require waiting.
-
-**Interval-shaped features: use the product's own trigger.** Rotation and sync expose a
-manual endpoint, so the interval never enters the test.
-
-**Deadline-shaped features: move the deadline, not the clock.** Issue a certificate valid
-for 7 days and set the alert threshold to 30.
-
-**Async work is polled, never slept.** `internal/wait` exists for this. `time.Sleep` is
-how you get a suite that is slow *and* flaky.
-
-**Poll the thing that records the outcome, not the side effect.** A sync writes its status
-and message to its own row; waiting on the destination instead turns every failure into an
-identical timeout with nothing to explain it.
-
-**Budget:** no `Shared` test waits more than about 60 seconds. A test that needs longer is
-using the wrong lever.
-
-## 11. The generated client
-
-Every call goes through `clients/api`. There is no hand-written HTTP path: **a route the
-generated client cannot reach is a route missing an `operationId`, and the fix belongs in
-the router.**
-
-To add an endpoint:
-
-1. Add its `operationId` to `include-operation-ids` in `clients/api/oapi-codegen.yaml`.
-2. Regenerate against a **non-production** instance:
-
-```bash
-INFISICAL_OPENAPI_URL=http://localhost:8080 make generate-client
-```
-
-The non-production part is not optional. The full spec resolves as
-`NODE_ENV !== "production" && OPENAPI_FULL_SPEC`, and the harness container runs
-`NODE_ENV=production`, so generating against it **silently drops operations**. Use the dev
-stack, or a throwaway container from the harness image with `NODE_ENV=development`.
-
-**Union bodies.** Where a whole request body is a union, oapi-codegen declares it as a
-defined type, which does not inherit `MarshalJSON`, so it serialises as `{}`. Build the
-body, `json.Marshal` it yourself, and post through `...WithBodyWithResponse`. A union
-*field* inside an ordinary struct marshals fine.
-
-**Union responses need unwrapping.** `createSecretV4` returns a secret *or* an approval
-request. Call `AsCreateSecretV4200JSONResponseBody0()` and fail loudly on the other
-branch, rather than letting an approval request read as success.
-
-## 12. Debugging a failure
-
-1. **Container logs**: `.logs/<timestamp>/<container>.log`, written unconditionally.
-2. **The fakenet log**, one line per outbound call:
-   `GET api.github.com/user -> 200 scope=7116dd6caf34...`. It answers "did the call happen
-   at all, and under which credential" before anything else.
-3. **`GET /__fake/denied`** on fakenet's admin port lists calls that reached no fake.
-4. **`GET /__fake/events`** on fakenet's admin port streams every event, mail included.
-5. **`make status`** lists harness containers.
-
-If an outbound call is refused, the host has no fake: register its `Service` in
-`cmd/fakenet/main.go`, or add the missing route to the fake that owns it.
-
-## 13. Anti-patterns
-
-Each has bitten a suite like this before.
-
-- `time.Sleep` instead of polling.
-- Asserting on log lines instead of responses, outside boot tests.
-- Package-level mutable state shared between tests.
-- Using `tn.Admin` in a test about what a member can do.
-- Seeding more than the test needs, which hides an outbound call the code should not have
-  made.
-- A `Shared` test that cannot be `t.Parallel()`. It is in the wrong package.
-- Asserting only status codes where the message is part of the contract.
-- Reaching for the database. There is no client, deliberately.
-- A package, fixture or option created for one caller.
-
-## 14. Before you call it done
+- Platform fixtures live in `fixture`; each product's fixtures live in
+  `fixture/<product>`. A product owns its nouns: a secret in Secret Manager is not a
+  secret in Cert Manager. Within a package, add a file per resource.
+- Helpers start in the test package and move to a fixture on the second caller.
+- Imports go one way: `fixture` may import `harness` and `fakes`; `harness` never imports
+  a fixture; `fakes` import neither.
+
+## Rules
+
+- `t.Parallel()` on every test and subtest under `Shared`; never under `Isolated`.
+- Every test body is `// Setup`, `// Action`, `// Assert`.
+- Assert with `testify/require` only.
+- Every test creates its own tenant.
+- Never build an API client by hand; use a principal's `.API` or `tn.Client`.
+- Never sleep. Wait on the status the product records, then assert the outcome.
+- Test plumbing once, not per provider.
+- A rejection test also checks that nothing changed.
+- Use the actor the claim is about, not `tn.Admin` by default.
+- No package, fixture, or option for a single caller.
+
+## Before you call it done
 
 ```bash
 make lint
@@ -526,9 +88,5 @@ make test-all
 make up && go test -p 4 ./suites/... ./harnesstest/... -count=3; make down
 ```
 
-The last one is the flake gate, and it deliberately runs both trees at once: the bugs it
-catches are cross-package. **Anything failing it is shared state that escaped the tenant
-boundary.**
-
-Then do the thing that is easy to skip: break your new assertion on purpose, and break
-what it depends on, and watch both fail.
+The last command is the flake gate. A failure there is shared state leaking across
+tenants. Then break the new assertion, and what it depends on, and confirm both fail.
