@@ -42,7 +42,8 @@ If your server has iLO 7, use an HPE iLO connection, because Infisical can't rot
 ## Prerequisites
 
 - A [project with secrets configured](/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret)
-- An iLO local account for Infisical to sign in with, separate from the account you rotate and allowed to change that account's password (not needed if you use an SSH connection with **Login As Target**)
+- An iLO local account for the app connection, separate from the account you rotate
+- Permission for the app connection's account to change the rotated account's password (not needed if you use an SSH connection with **Login As Target**)
 - Network access from Infisical to the iLO, directly or through a [Gateway](/documentation/platform/gateways/overview), if network restrictions apply: HTTPS for an HPE iLO connection, or SSH for an SSH connection
 
 ## Create an HP iLO local account rotation
@@ -259,13 +260,20 @@ If your server has iLO 7, use an HPE iLO connection, because Infisical can't rot
 
 If a rotation uses an SSH connection with **Login As Target** and someone changes the target account's password outside Infisical, the next rotation can't sign in as the target account. To get the rotation working again, reconcile it:
 
-1. In your project's dashboard, select **Reconcile Secret** on the rotation
-2. In the confirmation dialog, select **Reconcile**
+<Steps>
+    <Step>
+        In your project's dashboard, select **Reconcile Secret** on the rotation.
+
+        ![Reconcile Option](/images/secret-rotations-v2/hp-ilo-local-account/hp-ilo-local-account-reconcile.png)
+    </Step>
+    <Step>
+        In the confirmation dialog, select **Reconcile**.
+
+        ![Reconcile Confirmation](/images/secret-rotations-v2/hp-ilo-local-account/hp-ilo-local-account-reconcile-confirm.png)
+    </Step>
+</Steps>
 
 Infisical signs in with the SSH connection's credentials, sets a new password on the target account, and saves the password to the mapped secrets.
-
-![Reconcile Option](/images/secret-rotations-v2/hp-ilo-local-account/hp-ilo-local-account-reconcile.png)
-![Reconcile Confirmation](/images/secret-rotations-v2/hp-ilo-local-account/hp-ilo-local-account-reconcile-confirm.png)
 
 A rotation that uses an HPE iLO connection or **Login As Root** always signs in with the connection's account, so a password change outside Infisical doesn't stop the next rotation.
 
