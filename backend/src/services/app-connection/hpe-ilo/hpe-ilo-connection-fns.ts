@@ -13,6 +13,7 @@ import { HpeIloConnectionMethod } from "./hpe-ilo-connection-enums";
 import { THpeIloConnectionConfig } from "./hpe-ilo-connection-types";
 
 export const HPE_ILO_DEFAULT_PORT = 443;
+const HPE_ILO_REQUEST_TIMEOUT_MS = 30_000;
 const HPE_ILO_ACCOUNTS_PATH = "/redfish/v1/AccountService/Accounts/";
 
 export const getHpeIloConnectionListItem = () => {
@@ -71,10 +72,12 @@ export const executeHpeIloRequest = async <T>(
     return withGatewayV2Proxy(
       async (proxyPort) => {
         const resp = await safeRequest.request<T>({
+          timeout: HPE_ILO_REQUEST_TIMEOUT_MS,
           ...requestCfg,
           ...tlsOptions,
           url: `https://localhost:${proxyPort}${requestCfg.url ?? ""}`,
-          headers: { ...headers, Host: toUrlHost(hostname) },
+          // safeRequest's cached agent keeps sockets alive, which would hold the tunnel open after the proxy closes
+          headers: { ...headers, Host: toUrlHost(hostname), Connection: "close" },
           // the hop is the local gateway proxy, and the iLO it reaches sits in the gateway's network
           allowPrivateIps: true
         });
@@ -88,6 +91,7 @@ export const executeHpeIloRequest = async <T>(
   }
 
   const resp = await safeRequest.request<T>({
+    timeout: HPE_ILO_REQUEST_TIMEOUT_MS,
     ...requestCfg,
     ...tlsOptions,
     url: `${getHpeIloBaseUrl(credentials)}${requestCfg.url ?? ""}`,
@@ -117,6 +121,11 @@ export const validateHpeIloConnectionCredentials = async (
     if (error instanceof BadRequestError) throw error;
 
     if (isAxiosError(error)) {
+      if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
+        throw new BadRequestError({
+          message: `Unable to validate connection: HPE iLO at '${hostname}' did not respond within ${HPE_ILO_REQUEST_TIMEOUT_MS / 1000} seconds.`
+        });
+      }
       if (error.response?.status === HttpStatusCode.Unauthorized) {
         throw new BadRequestError({
           message: `Unable to validate connection: HPE iLO at '${hostname}' rejected the username or password.`

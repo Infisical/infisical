@@ -235,7 +235,7 @@ export const HpeIloConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 name="credentials.port"
                 control={control}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <Field className="mb-4">
+                  <Field className="mb-4 w-24">
                     <FieldLabel htmlFor="port">
                       Port <span className="text-muted">(optional)</span>
                     </FieldLabel>
@@ -247,7 +247,6 @@ export const HpeIloConnectionForm = ({ appConnection, onSubmit }: Props) => {
                         onChange(e.target.value ? Number(e.target.value) : undefined)
                       }
                       placeholder="443"
-                      className="w-24"
                       isError={Boolean(error?.message)}
                     />
                     <FieldError errors={[error]} />
