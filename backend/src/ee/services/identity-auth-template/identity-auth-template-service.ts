@@ -18,6 +18,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
+import { sanitizeUrlForLog } from "@app/lib/logger";
 import { TOrgPermission } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -120,7 +121,7 @@ export const identityAuthTemplateServiceFactory = ({
     } catch (error) {
       if (error instanceof BadRequestError) throw error;
       throw new BadRequestError({
-        message: `Could not resolve the host of the ${fieldLabel} '${url}'. Check the URL and that the host resolves from Infisical.`
+        message: `Could not resolve the host of the ${fieldLabel} '${sanitizeUrlForLog(url)}'. Check the URL and that the host resolves from Infisical.`
       });
     }
   };

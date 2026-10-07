@@ -355,7 +355,7 @@ describe("identityAuthTemplateServiceFactory oidc templates", () => {
 
     expect(error).toBeInstanceOf(BadRequestError);
     expect((error as BadRequestError).message).toContain(
-      "Could not resolve the host of the OIDC discovery URL 'https://idp.invalid'"
+      "Could not resolve the host of the OIDC discovery URL 'https://idp.invalid/'"
     );
     expect(identityOidcAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
   });
@@ -602,6 +602,19 @@ describe("identityAuthTemplateServiceFactory ldap url validation", () => {
     const { service } = createLdapService();
 
     await expect(patchTemplate(service, { url: "not a url", bindPass: "pw" })).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  it("keeps credentials in an unresolvable LDAP URL out of the error message", async () => {
+    const { service } = createLdapService();
+
+    const error = await patchTemplate(service, {
+      url: "ldap://missing.invalid/?token=secret",
+      bindPass: "pw"
+    }).catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect((error as BadRequestError).message).toContain("ldap://missing.invalid/?token=[REDACTED]");
+    expect((error as BadRequestError).message).not.toContain("secret");
   });
 
   it("blocks a private LDAP URL on create", async () => {
