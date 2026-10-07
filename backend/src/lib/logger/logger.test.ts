@@ -15,6 +15,10 @@ const REDACTED = "[Redacted]";
 const valueAt = (obj: unknown, path: string) =>
   path.split(".").reduce<unknown>((node, key) => (node as Record<string, unknown> | undefined)?.[key], obj);
 
+// From Node 26, ClientRequest.path is a prototype getter, so the serializer never emits it; older
+// Node versions emit it as an own property, which the redact paths must cover.
+const expectRedactedOrAbsent = (value: unknown) => expect([REDACTED, undefined]).toContain(value);
+
 const createTestLogger = () => {
   const lines: string[] = [];
   const testLogger = pino({ redact: loggerRedactPaths }, { write: (line: string) => lines.push(line) });
@@ -69,9 +73,9 @@ describe("logger redaction of outgoing request internals", () => {
     expect(raw).not.toContain(BEARER_TOKEN);
     expect(raw).not.toContain("signature-secret-value");
     expect(valueAt(parsed, "err.request._header")).toBe(REDACTED);
-    expect(valueAt(parsed, "err.request.path")).toBe(REDACTED);
+    expectRedactedOrAbsent(valueAt(parsed, "err.request.path"));
     expect(valueAt(parsed, "err.response.request._header")).toBe(REDACTED);
-    expect(valueAt(parsed, "err.response.request.path")).toBe(REDACTED);
+    expectRedactedOrAbsent(valueAt(parsed, "err.response.request.path"));
     expect(valueAt(parsed, "err.code")).toBe("ERR_BAD_REQUEST");
     expect(valueAt(parsed, "err.response.status")).toBe(401);
     expect(valueAt(parsed, "err.request.method")).toBe("GET");
@@ -86,7 +90,7 @@ describe("logger redaction of outgoing request internals", () => {
     expect(raw).not.toContain(BEARER_TOKEN);
     expect(raw).not.toContain("signature-secret-value");
     expect(valueAt(parsed, "response.request._header")).toBe(REDACTED);
-    expect(valueAt(parsed, "response.request.path")).toBe(REDACTED);
+    expectRedactedOrAbsent(valueAt(parsed, "response.request.path"));
     expect(valueAt(parsed, "response.status")).toBe(401);
     expect(valueAt(parsed, "response.data")).toEqual({ kind: "Status", reason: "Unauthorized" });
   });
@@ -99,7 +103,7 @@ describe("logger redaction of outgoing request internals", () => {
     expect(raw).not.toContain(BEARER_TOKEN);
     expect(raw).not.toContain("signature-secret-value");
     expect(valueAt(parsed, "request._header")).toBe(REDACTED);
-    expect(valueAt(parsed, "request.path")).toBe(REDACTED);
+    expectRedactedOrAbsent(valueAt(parsed, "request.path"));
     expect(valueAt(parsed, "status")).toBe(401);
   });
 

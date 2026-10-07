@@ -218,6 +218,10 @@ export type TDNSMadeEasyConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.DNSMadeEasy;
 };
 
+export type TUltraDNSConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.UltraDNS;
+};
+
 export type TAzureDNSConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.AzureDNS;
 };
@@ -410,6 +414,7 @@ export type TAppConnectionOption =
   | TMongoDBConnectionOption
   | TChefConnectionOption
   | TDNSMadeEasyConnectionOption
+  | TUltraDNSConnectionOption
   | TAzureDNSConnectionOption
   | TPowerDnsConnectionOption
   | TOctopusDeployConnectionOption
@@ -479,6 +484,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.GitLab]: TGitlabConnectionOption;
   [AppConnection.Cloudflare]: TCloudflareConnectionOption;
   [AppConnection.DNSMadeEasy]: TDNSMadeEasyConnectionOption;
+  [AppConnection.UltraDNS]: TUltraDNSConnectionOption;
   [AppConnection.Bitbucket]: TBitbucketConnectionOption;
   [AppConnection.Zabbix]: TZabbixConnectionOption;
   [AppConnection.Railway]: TRailwayConnectionOption;

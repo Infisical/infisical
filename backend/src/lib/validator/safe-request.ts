@@ -13,6 +13,7 @@ import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { sanitizeUrlForLog } from "@app/lib/logger/sanitize-url";
 import { recordSafeRequestAgentEvictionMetric } from "@app/lib/telemetry/metrics";
+import { getTlsServerNameOptions } from "@app/lib/tls";
 
 import { BadRequestError } from "../errors";
 import { isPrivateIp } from "../ip/ipRange";
@@ -260,7 +261,7 @@ const constructAgent = (
       ...baseOpts,
       ...(opts.ca !== undefined && { ca: opts.ca }),
       ...(opts.rejectUnauthorized !== undefined && { rejectUnauthorized: opts.rejectUnauthorized }),
-      ...(opts.servername !== undefined && { servername: opts.servername }),
+      ...(opts.servername !== undefined && getTlsServerNameOptions(opts.servername)),
       ...(opts.checkServerIdentity !== undefined && { checkServerIdentity: opts.checkServerIdentity })
     };
     return new https.Agent(httpsOpts);
