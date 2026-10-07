@@ -15,7 +15,7 @@ import { TAlertChannelServiceFactory } from "./alert-channel-service";
 import { TAlertChannelDeps, TAlertRecipient } from "./alert-channel-types";
 import { TAlertDALFactory } from "./alert-dal";
 import { getRecipientScope } from "./alert-principal-scope-fns";
-import { getAlertResourceName, resolveAlertProjectId, TAlertProviderRegistry } from "./alert-provider-registry";
+import { resolveAlertProjectId, TAlertProviderRegistry } from "./alert-provider-registry";
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
 import { TTestAlertChannelDTO, TTestAlertChannelResponse, TTestAlertChannelResult } from "./alert-service-types";
 import { buildTestAlertPayload } from "./alert-test-payload-fns";
@@ -95,7 +95,7 @@ export const alertChannelTestServiceFactory = ({
 
     if (!dto.channelId) {
       assertChannelConfigValid(definition, dto.channelType, incoming);
-      return { config: incoming, channelName: null };
+      return incoming;
     }
 
     const channel = await alertChannelDAL.findById(dto.channelId);
@@ -118,7 +118,7 @@ export const alertChannelTestServiceFactory = ({
 
     const merged = mergeChannelConfigWithStored(dto.channelType, incoming, stored);
     assertChannelConfigValid(definition, dto.channelType, merged);
-    return { config: merged, channelName: channel.name };
+    return merged;
   };
 
   const $resolveRecipients = async (
@@ -209,7 +209,6 @@ export const alertChannelTestServiceFactory = ({
       resourceId: dto.resourceId
     });
 
-    let alertName: string | null = null;
     if (dto.alertId) {
       const alert = await alertDAL.findActiveById(dto.alertId);
       if (
@@ -221,7 +220,6 @@ export const alertChannelTestServiceFactory = ({
       ) {
         throw new NotFoundError({ message: `Alert with ID '${dto.alertId}' was not found in this scope` });
       }
-      alertName = alert.name;
     }
 
     await provider.assertPermission({
@@ -237,10 +235,9 @@ export const alertChannelTestServiceFactory = ({
       await provider.assertChannelTypesAllowed?.({ orgId: dto.actorOrgId, channelTypes: [dto.channelType] });
     }
 
-    const { config, channelName } = await $resolveConfig(dto, projectId);
-    const resourceName = await getAlertResourceName(provider, dto.actorOrgId, dto.resourceId);
+    const config = await $resolveConfig(dto, projectId);
     const result = await $sendTest(dto, projectId, provider, config);
-    return { ...result, projectId, resourceName, alertName, channelName };
+    return { ...result, projectId };
   };
 
   return { testChannel };

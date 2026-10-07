@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
 import { ShieldCheckIcon } from "lucide-react";
 import { z } from "zod";
 
@@ -14,7 +13,6 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Input,
   Sheet,
   SheetContent,
@@ -22,10 +20,15 @@ import {
   SheetTitle,
   TextArea
 } from "@app/components/v3";
-import { useListGatewayPools } from "@app/hooks/api/gateway-pools";
-import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
+import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker/GatewayPicker";
 import { THsmConnector, useUpdateHsmConnector } from "@app/hooks/api/hsmConnectors";
 import { slugSchema } from "@app/lib/schemas";
+
+import {
+  fromGatewayPickerValue,
+  isHsmCapableGateway,
+  toGatewayPickerValue
+} from "./CreateHsmConnectorWizard/HostStep";
 
 const editSchema = z.object({
   name: slugSchema({ min: 1, max: 32, field: "Name" }),
@@ -37,8 +40,6 @@ const editSchema = z.object({
 });
 type EditForm = z.infer<typeof editSchema>;
 
-type ReachedFromOption = { value: string; label: string; group: "gateway" | "pool" };
-
 type Props = {
   connector: THsmConnector | null;
   onClose: () => void;
@@ -47,46 +48,6 @@ type Props = {
 export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
   const isOpen = Boolean(connector);
   const updateMutation = useUpdateHsmConnector();
-
-  const { data: gateways = [] } = useQuery(gatewaysQueryKeys.list());
-  const { data: pools = [] } = useListGatewayPools();
-
-  const reachedFromOptions: ReachedFromOption[] = useMemo(() => {
-    const currentValue = (() => {
-      if (connector?.gatewayId) return `gateway:${connector.gatewayId}`;
-      if (connector?.gatewayPoolId) return `pool:${connector.gatewayPoolId}`;
-      return "";
-    })();
-    const gatewayOptions: ReachedFromOption[] = gateways
-      .filter((g) => g.capabilities?.pkcs11 === true)
-      .map((g) => ({ value: `gateway:${g.id}`, label: g.name, group: "gateway" as const }));
-    const poolOptions: ReachedFromOption[] = pools.map((p) => ({
-      value: `pool:${p.id}`,
-      label: p.name,
-      group: "pool" as const
-    }));
-    const options = [...gatewayOptions, ...poolOptions];
-    const currentIncluded = options.some((o) => o.value === currentValue);
-    if (!currentIncluded && connector && currentValue) {
-      let label = "";
-      if (connector.gatewayId) {
-        const g = gateways.find((x) => x.id === connector.gatewayId);
-        label = g?.name ? `${g.name} (offline)` : `${connector.gatewayId} (offline)`;
-      } else if (connector.gatewayPoolId) {
-        const p = pools.find((x) => x.id === connector.gatewayPoolId);
-        label = p?.name ?? connector.gatewayPoolId;
-      }
-      return [
-        {
-          value: currentValue,
-          label,
-          group: connector.gatewayId ? ("gateway" as const) : ("pool" as const)
-        },
-        ...options
-      ];
-    }
-    return options;
-  }, [gateways, pools, connector]);
 
   const form = useForm<EditForm>({
     resolver: zodResolver(editSchema),
@@ -238,24 +199,12 @@ export const EditHsmConnectorSheet = ({ connector, onClose }: Props) => {
                         Reached from <span className="text-danger">*</span>
                       </FieldLabel>
                       <FieldContent>
-                        <FilterableSelect<ReachedFromOption>
-                          options={reachedFromOptions}
-                          value={reachedFromOptions.find((o) => o.value === field.value) ?? null}
-                          onChange={(selected) => {
-                            const opt = selected as ReachedFromOption | null;
-                            field.onChange(opt?.value ?? "");
-                          }}
-                          getOptionLabel={(opt) => opt.label}
-                          getOptionValue={(opt) => opt.value}
-                          groupBy={reachedFromOptions.length > 0 ? "group" : undefined}
-                          getGroupHeaderLabel={
-                            reachedFromOptions.length > 0
-                              ? (group: ReachedFromOption["group"]) =>
-                                  group === "gateway" ? "Gateways" : "Gateway Pools"
-                              : undefined
-                          }
+                        <GatewayPicker
+                          isRequired
+                          value={toGatewayPickerValue(field.value)}
+                          onChange={(next) => field.onChange(fromGatewayPickerValue(next))}
+                          filterGateway={isHsmCapableGateway}
                           placeholder="Select a Gateway..."
-                          noOptionsMessage={() => "No PKCS#11-enabled Gateways found."}
                           isError={Boolean(error)}
                         />
                         <FieldDescription>

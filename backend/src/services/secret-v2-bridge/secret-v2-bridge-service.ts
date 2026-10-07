@@ -3271,7 +3271,8 @@ export const secretV2BridgeServiceFactory = ({
         secretApprovalRequestSecretDAL,
         secretQueueService,
         reminderDAL,
-        reminderService
+        reminderService,
+        secretValidationRuleService
       })
     );
 

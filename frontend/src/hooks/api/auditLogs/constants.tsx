@@ -120,10 +120,6 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.UPDATE_ALERT]: "Update alert",
   [EventType.DELETE_ALERT]: "Delete alert",
   [EventType.TEST_ALERT_CHANNEL]: "Test alert channel",
-  [EventType.CREATE_PKI_APPLICATION_ALERT]: "Create application alert",
-  [EventType.UPDATE_PKI_APPLICATION_ALERT]: "Update application alert",
-  [EventType.DELETE_PKI_APPLICATION_ALERT]: "Delete application alert",
-  [EventType.TEST_PKI_APPLICATION_ALERT_CHANNEL]: "Test application alert channel",
   [EventType.CREATE_PKI_COLLECTION]: "Create PKI collection",
   [EventType.GET_PKI_COLLECTION]: "Get PKI collection",
   [EventType.UPDATE_PKI_COLLECTION]: "Update PKI collection",
@@ -497,7 +493,9 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.AGENT_VAULT_PROXY_UPDATE]: "Update proxy",
   [EventType.AGENT_VAULT_PROXY_REVOKE]: "Revoke proxy access",
   [EventType.AGENT_VAULT_PROXY_DELETE]: "Delete proxy",
-  [EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE]: "Update session log settings"
+  [EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE]: "Update session log settings",
+  [EventType.PERMISSION_DENIED]: "Permission denied",
+  [EventType.UPDATE_AUDIT_LOG_SETTINGS]: "Update audit log settings"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

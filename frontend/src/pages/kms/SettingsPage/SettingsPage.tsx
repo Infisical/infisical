@@ -1,8 +1,9 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
-import { PageHeader, TabPanel, Tabs } from "@app/components/v2";
+import { TabPanel, Tabs } from "@app/components/v2";
 import { LookingForOrgPageLink } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
@@ -32,7 +33,7 @@ export const SettingsPage = () => {
         </PageHeader>
         <Tabs orientation="vertical" defaultValue={tabs[0].key}>
           {tabs.map(({ key, Component }) => (
-            <TabPanel value={key} key={key}>
+            <TabPanel className="pt-0" value={key} key={key}>
               <Component />
             </TabPanel>
           ))}

@@ -1577,6 +1577,8 @@ export const AUDIT_LOGS = {
     environment:
       "The environment to filter logs by. If not provided, logs from all environments will be returned. Note that the projectId parameter must also be provided.",
     eventType: "The type of the event to export.",
+    eventClass:
+      "Filter by event class, comma-separated for multiple values (management, authentication, authorization, data-access). Combined with eventType, only event types in both are returned. If the selected classes include secret events, the environment, secretPath, and secretKey filters drop every event whose metadata doesn't match, including events that aren't about secrets. If they don't, those filters are ignored.",
     secretPath:
       "The path of the secret to query audit logs for. Note that the projectId parameter must also be provided.",
     secretKey:
@@ -2081,6 +2083,27 @@ export const INTEGRATION = {
   }
 };
 
+export const AUDIT_LOG_SETTINGS = {
+  eventClass: "The audit log event class: management, authentication, data-access, or authorization.",
+  isEnabled: "Whether events of this class are recorded.",
+  shouldUseNewPrivilegeSystem:
+    "Whether the organization is on the new privilege system. Permission denials (the authorization class) are only recorded on the new privilege system.",
+  eventClasses:
+    "Every event class except management and data-access, each exactly once. The request replaces the current settings. Management and data-access events are always recorded, so a request that includes either class is rejected. The authorization class can only be turned on for organizations on the new privilege system; otherwise the request is rejected.",
+  UPDATE_ORG: {
+    isEnabled:
+      "Whether to record events of this class for the organization. This only covers organization-level events; each project has its own setting."
+  },
+  UPDATE_PROJECT: {
+    projectId: "The ID of the project to update the audit log settings for.",
+    isEnabled:
+      "Whether to record events of this class for the project. A project that has never saved a setting uses the default."
+  },
+  GET_PROJECT: {
+    projectId: "The ID of the project to get the audit log settings for."
+  }
+} as const;
+
 export const AUDIT_LOG_STREAMS = {
   CREATE: {
     url: "The HTTP URL to push logs to.",
@@ -2394,6 +2417,52 @@ export const CA_CRLS = {
   GET: {
     crlId: "The ID of the certificate revocation list (CRL) to get.",
     crl: "The certificate revocation list (CRL)."
+  }
+};
+
+export const ALERTING = {
+  CREATE: {
+    name: "The name of the alert.",
+    description: "The description of the alert.",
+    resourceType: "The type of resource the alert watches, for example `cert-manager.application`.",
+    resourceId:
+      "The ID of the resource the alert watches. Set to null to watch every resource of this type, where the resource type supports it.",
+    eventType: "The event that triggers the alert, for example `cert-manager.application.certificate.expiry`.",
+    condition:
+      "The settings of the alert's event, for example `alertBefore` on an expiry event. The accepted fields depend on `eventType`.",
+    enabled: "Whether the alert is enabled. Defaults to true.",
+    projectId: "The ID of the project to create the alert in. Optional when the resource belongs to a project.",
+    channels: "The channels the alert notifies. Each is email, Slack, webhook, or PagerDuty."
+  },
+  TEST_CHANNEL: {
+    resourceType: "The type of resource the alert watches.",
+    resourceId: "The ID of the resource the alert watches.",
+    projectId: "The ID of the project the alert belongs to.",
+    alertId: "The ID of the saved alert the channel belongs to.",
+    channelId: "The ID of the saved channel to test."
+  },
+  LIST: {
+    resourceType: "The type of resource to list alerts for.",
+    resourceId:
+      "The ID of the resource to list alerts for. If omitted, lists every alert on the resource type. For resource types that support alerts covering all of their resources, such as `cert-manager`, lists only those alerts.",
+    projectId: "The ID of the project to list alerts in.",
+    enabled: "Whether to list only enabled or only disabled alerts."
+  },
+  GET: {
+    alertId: "The ID of the alert to get.",
+    filters:
+      "The resources named in the alert's condition, such as applications and certificate profiles, each as `{ id, name }`. `name` is null for a deleted resource."
+  },
+  UPDATE: {
+    alertId: "The ID of the alert to update.",
+    name: "The new name of the alert.",
+    description: "The new description of the alert. Set to null to remove it.",
+    condition: "The new settings of the alert's event. The accepted fields depend on the alert's `eventType`.",
+    enabled: "Whether the alert is enabled.",
+    channels: "The alert's channels. Replaces the current channels, so channels left out are deleted."
+  },
+  DELETE: {
+    alertId: "The ID of the alert to delete."
   }
 };
 

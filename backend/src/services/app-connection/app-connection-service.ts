@@ -7,6 +7,7 @@ import { chefConnectionService } from "@app/ee/services/app-connections/chef/che
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
 import { ociConnectionService } from "@app/ee/services/app-connections/oci/oci-connection-service";
 import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/app-connections/oracledb";
+import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -43,6 +44,7 @@ import {
 import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { ValidateOnePassConnectionCredentialsSchema } from "./1password";
@@ -195,6 +197,8 @@ import { ValidateTravisCIConnectionCredentialsSchema } from "./travis-ci";
 import { travisCIConnectionService } from "./travis-ci/travis-ci-connection-service";
 import { ValidateTriggerDevConnectionCredentialsSchema } from "./trigger-dev";
 import { triggerDevConnectionService } from "./trigger-dev/trigger-dev-connection-service";
+import { ValidateUltraDNSConnectionCredentialsSchema } from "./ultradns/ultradns-connection-schema";
+import { ultraDNSConnectionService } from "./ultradns/ultradns-connection-service";
 import { ValidateVenafiConnectionCredentialsSchema } from "./venafi/venafi-connection-schema";
 import { venafiConnectionService } from "./venafi/venafi-connection-service";
 import { ValidateVenafiTppConnectionCredentialsSchema } from "./venafi-tpp/venafi-tpp-connection-schemas";
@@ -217,6 +221,7 @@ export type TAppConnectionServiceFactoryDep = {
     "resolveAttachableGatewayFromPool" | "resolveEffectiveGatewayId" | "runWithPoolFailover"
   >;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findProjectById">;
   appConnectionCredentialRotationService: TAppConnectionCredentialRotationServiceFactory;
   identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
@@ -266,6 +271,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.GitLab]: ValidateGitLabConnectionCredentialsSchema,
   [AppConnection.Cloudflare]: ValidateCloudflareConnectionCredentialsSchema,
   [AppConnection.DNSMadeEasy]: ValidateDNSMadeEasyConnectionCredentialsSchema,
+  [AppConnection.UltraDNS]: ValidateUltraDNSConnectionCredentialsSchema,
   [AppConnection.AzureDNS]: ValidateAzureDnsConnectionCredentialsSchema,
   [AppConnection.Zabbix]: ValidateZabbixConnectionCredentialsSchema,
   [AppConnection.Railway]: ValidateRailwayConnectionCredentialsSchema,
@@ -326,6 +332,7 @@ export const appConnectionServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   gatewayV2DAL,
+  orgDAL,
   projectDAL,
   appConnectionCredentialRotationService,
   identityUaDAL,
@@ -405,7 +412,7 @@ export const appConnectionServiceFactory = ({
     const appConnection = await appConnectionDAL.findById(connectionId);
 
     // Checked before any permission or app check, so a connection outside the scope reads exactly like a missing one.
-    if (!appConnection || (scope && appConnection.projectId !== scope.projectId))
+    if (!appConnection || appConnection.orgId !== actor.orgId || (scope && appConnection.projectId !== scope.projectId))
       throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     if (appConnection.projectId) {
@@ -593,6 +600,8 @@ export const appConnectionServiceFactory = ({
       if (!gatewayV2) {
         throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
       }
+
+      await assertIndividualGatewayAllowed({ orgDAL, orgId: actor.orgId, gatewayId });
     }
 
     if (gatewayPoolId) {
@@ -767,7 +776,7 @@ export const appConnectionServiceFactory = ({
 
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection || (scope && appConnection.projectId !== scope.projectId))
+    if (!appConnection || appConnection.orgId !== actor.orgId || (scope && appConnection.projectId !== scope.projectId))
       throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     await enterpriseAppCheck(
@@ -821,6 +830,8 @@ export const appConnectionServiceFactory = ({
         if (!gatewayV2) {
           throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
         }
+
+        await assertIndividualGatewayAllowed({ orgDAL, orgId: actor.orgId, gatewayId });
       }
     }
 
@@ -1131,7 +1142,7 @@ export const appConnectionServiceFactory = ({
   ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection || (scope && appConnection.projectId !== scope.projectId))
+    if (!appConnection || appConnection.orgId !== actor.orgId || (scope && appConnection.projectId !== scope.projectId))
       throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     if (appConnection.projectId) {
@@ -1200,7 +1211,8 @@ export const appConnectionServiceFactory = ({
     const allowedApps = Array.isArray(app) ? app : [app];
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+    if (!appConnection || appConnection.orgId !== actor.orgId)
+      throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     const connectionApp = appConnection.app as AppConnection;
 
@@ -1333,7 +1345,8 @@ export const appConnectionServiceFactory = ({
   const findAppConnectionUsageById = async (app: AppConnection, connectionId: string, actor: OrgServiceActor) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+    if (!appConnection || appConnection.orgId !== actor.orgId)
+      throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     const { permission } = await permissionService.getOrgPermission({
       actorId: actor.id,
@@ -1364,7 +1377,7 @@ export const appConnectionServiceFactory = ({
   ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection || (scope && appConnection.projectId !== scope.projectId))
+    if (!appConnection || appConnection.orgId !== actor.orgId || (scope && appConnection.projectId !== scope.projectId))
       throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     if (appConnection.app !== app)
@@ -1452,6 +1465,7 @@ export const appConnectionServiceFactory = ({
     adcs: adcsConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     ldap: ldapConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService, keyStore),
     dnsMadeEasy: dnsMadeEasyConnectionService(connectAppConnectionById),
+    ultraDNS: ultraDNSConnectionService(connectAppConnectionById),
     azureDns: azureDnsConnectionService(connectAppConnectionById),
     zabbix: zabbixConnectionService(connectAppConnectionById),
     railway: railwayConnectionService(connectAppConnectionById),

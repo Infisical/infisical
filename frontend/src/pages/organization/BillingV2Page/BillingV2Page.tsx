@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   OrgPermissionBillingActions,
   OrgPermissionSubjects,

@@ -220,6 +220,7 @@ I
 (?i)toolchain
 (?i)toolset
 (?i)tolerations
+(?i)truststore
 (?i)uncontained
 (?i)unconfigured
 (?i)uncredentialed

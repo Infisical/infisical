@@ -26,7 +26,7 @@ const DecryptedSecretSchema = z.object({
   original: SecretsSchema
 });
 
-const DecryptedIntegrationAuthsSchema = z.object({
+export const DecryptedIntegrationAuthsSchema = z.object({
   decrypted: z.object({
     id: z.string(),
     access: z.string(),

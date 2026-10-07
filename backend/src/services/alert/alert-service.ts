@@ -15,7 +15,12 @@ import { TAlertChannelEmbedded, TAlertChannelInput } from "./alert-channel-servi
 import { TAlertDALFactory } from "./alert-dal";
 import { TAlertHistoryDALFactory } from "./alert-history-dal";
 import { getRecipientScope } from "./alert-principal-scope-fns";
-import { getAlertResourceName, resolveAlertProjectId, TAlertProviderRegistry } from "./alert-provider-registry";
+import {
+  getAlertEvent,
+  getAlertResourceName,
+  resolveAlertProjectId,
+  TAlertProviderRegistry
+} from "./alert-provider-registry";
 import {
   TAlertLastRun,
   TAlertResponse,
@@ -33,6 +38,7 @@ import {
   IResourceAlertProvider,
   TAlertAuditInput,
   TAlertEventDefinition,
+  TAlertFilters,
   TAlertRecipientScope,
   toAlertActor
 } from "./alert-types";
@@ -52,7 +58,7 @@ export type TAlertServiceFactoryDep = {
 
 export type TAlertServiceFactory = ReturnType<typeof alertServiceFactory>;
 
-const buildGenericAlertAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
+const getAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
   if (input.action === AlertAuditAction.TestChannel) {
     const { test } = input;
     return {
@@ -113,19 +119,9 @@ export const alertServiceFactory = ({
       actor: toAlertActor(dto)
     });
 
-  const $getEvent = (provider: IResourceAlertProvider, eventType: string): TAlertEventDefinition => {
-    const event = provider.events.find((candidate) => candidate.key === eventType);
-    if (!event) {
-      throw new BadRequestError({
-        message: `Event type '${eventType}' is not supported by resource type '${provider.resourceType}'`
-      });
-    }
-    return event;
-  };
-
-  const $validateCondition = (event: TAlertEventDefinition, condition: unknown) => {
+  const $parseCondition = (event: TAlertEventDefinition, condition: unknown): unknown => {
     try {
-      event.conditionSchema.parse(condition);
+      return event.conditionSchema.parse(condition);
     } catch (err) {
       const message = err instanceof z.ZodError ? err.issues.map((i) => i.message).join(", ") : "Invalid condition";
       throw new BadRequestError({ message: `Invalid alert condition: ${message}` });
@@ -158,11 +154,23 @@ export const alertServiceFactory = ({
     );
   };
 
+  const $getFilters = async (
+    provider: IResourceAlertProvider,
+    scope: { orgId: string; projectId: string | null },
+    alerts: Pick<TAlerts, "id" | "condition">[]
+  ): Promise<Map<string, TAlertFilters>> => {
+    if (!provider.getFilters || alerts.length === 0) return new Map();
+    return provider.getFilters({
+      ...scope,
+      alerts: alerts.map((alert) => ({ id: alert.id, condition: alert.condition }))
+    });
+  };
+
   const $assembleResponse = (
     provider: IResourceAlertProvider,
     alert: TAlerts,
     channels: TAlertChannelEmbedded[],
-    extras: { resourceName: string | null; lastRun?: TAlertLastRun }
+    extras: { resourceName: string | null; lastRun?: TAlertLastRun; filters?: TAlertFilters }
   ): TAlertResponse => ({
     id: alert.id,
     name: alert.name,
@@ -176,6 +184,7 @@ export const alertServiceFactory = ({
     orgId: alert.orgId,
     projectId: alert.projectId ?? null,
     ...(provider.getResourceNames ? { resourceName: extras.resourceName } : {}),
+    ...(provider.getFilters ? { filters: extras.filters ?? {} } : {}),
     channels,
     ...(provider.includeLastRun ? { lastRun: extras.lastRun ?? null } : {}),
     createdAt: alert.createdAt,
@@ -183,22 +192,21 @@ export const alertServiceFactory = ({
   });
 
   const createAlert = async (dto: TCreateAlertDTO): Promise<TAlertResponse> => {
-    if (!dto.resourceId) {
+    const provider = $getProvider(dto.resourceType);
+    if (!dto.resourceId && !provider.supportsScopeWideAlerts) {
       throw new BadRequestError({
-        message:
-          "Alerts must be bound to a specific resource. Organization wide and project wide alerts are not supported yet."
+        message: `Alerts for resource type '${dto.resourceType}' must be bound to a specific resource. Pass resourceId.`
       });
     }
 
-    const provider = $getProvider(dto.resourceType);
     const projectId = await resolveAlertProjectId(provider, {
       orgId: dto.actorOrgId,
       projectId: dto.projectId,
       resourceId: dto.resourceId
     });
 
-    const event = $getEvent(provider, dto.eventType);
-    $validateCondition(event, dto.condition);
+    const event = getAlertEvent(provider, dto.eventType);
+    const condition = $parseCondition(event, dto.condition);
 
     await $assertAlertPermission(
       provider,
@@ -213,19 +221,19 @@ export const alertServiceFactory = ({
       resourceId: dto.resourceId
     });
 
-    const duplicate = await alertDAL.findScopedDuplicate({
-      orgId: dto.actorOrgId,
-      projectId,
-      resourceType: dto.resourceType,
-      resourceId: dto.resourceId,
-      eventType: dto.eventType
-    });
-    if (duplicate) {
-      throw new BadRequestError({
-        message: dto.resourceId
-          ? "An alert for this resource and event already exists"
-          : "An alert for this event already exists in this scope"
+    await provider.assertConditionInScope?.({ projectId, resourceId: dto.resourceId, condition });
+
+    if (dto.resourceId) {
+      const duplicate = await alertDAL.findScopedDuplicate({
+        orgId: dto.actorOrgId,
+        projectId,
+        resourceType: dto.resourceType,
+        resourceId: dto.resourceId,
+        eventType: dto.eventType
       });
+      if (duplicate) {
+        throw new BadRequestError({ message: "An alert for this resource and event already exists" });
+      }
     }
 
     if (!dto.channels || dto.channels.length === 0) {
@@ -249,7 +257,7 @@ export const alertServiceFactory = ({
           resourceId: dto.resourceId,
           eventType: dto.eventType,
           triggerType: event.triggerType,
-          condition: dto.condition != null ? JSON.stringify(dto.condition) : null,
+          condition: condition != null ? JSON.stringify(condition) : null,
           enabled: dto.enabled ?? true,
           orgId: dto.actorOrgId,
           projectId,
@@ -286,8 +294,10 @@ export const alertServiceFactory = ({
       return { created: createdAlert, channels: details };
     });
 
+    const filters = await $getFilters(provider, scope, [created]);
     return $assembleResponse(provider, created, channels, {
-      resourceName: await $getResourceName(provider, created)
+      resourceName: await $getResourceName(provider, created),
+      filters: filters.get(created.id)
     });
   };
 
@@ -307,9 +317,11 @@ export const alertServiceFactory = ({
     const cipher = await getAlertChannelCipher(kmsService, { orgId: alert.orgId, projectId: alert.projectId });
     const details = await alertChannelService.getDetailsForChannels(channels, cipher);
     const lastRuns = await $getLastRuns(provider, [alert.id]);
+    const filters = await $getFilters(provider, { orgId: alert.orgId, projectId: alert.projectId ?? null }, [alert]);
     return $assembleResponse(provider, alert, details, {
       resourceName: await $getResourceName(provider, alert),
-      lastRun: lastRuns.get(alert.id)
+      lastRun: lastRuns.get(alert.id),
+      filters: filters.get(alert.id)
     });
   };
 
@@ -330,7 +342,7 @@ export const alertServiceFactory = ({
     const alerts = await alertDAL.findActiveByScope({
       orgId: dto.actorOrgId,
       resourceType: dto.resourceType,
-      ...(dto.resourceId !== undefined ? { resourceId: dto.resourceId } : {}),
+      resourceId: dto.resourceId ?? (provider.supportsScopeWideAlerts ? null : undefined),
       projectId,
       ...(dto.enabled !== undefined ? { enabled: dto.enabled } : {})
     });
@@ -344,6 +356,7 @@ export const alertServiceFactory = ({
       provider,
       alerts.map((alert) => alert.id)
     );
+    const filters = await $getFilters(provider, { orgId: dto.actorOrgId, projectId }, alerts);
     const resourceNames = await $getResourceNames(
       provider,
       dto.actorOrgId,
@@ -367,7 +380,8 @@ export const alertServiceFactory = ({
           .filter((detail): detail is TAlertChannelEmbedded => Boolean(detail)),
         {
           resourceName: (alert.resourceId && resourceNames.get(alert.resourceId)) || null,
-          lastRun: lastRuns.get(alert.id)
+          lastRun: lastRuns.get(alert.id),
+          filters: filters.get(alert.id)
         }
       )
     );
@@ -450,19 +464,35 @@ export const alertServiceFactory = ({
       dto
     );
 
-    if (dto.condition !== undefined) $validateCondition($getEvent(provider, alert.eventType), dto.condition);
+    let condition: unknown;
+    if (dto.condition !== undefined) {
+      condition = $parseCondition(getAlertEvent(provider, alert.eventType), dto.condition);
+      await provider.assertConditionInScope?.({
+        projectId: alert.projectId,
+        resourceId: alert.resourceId,
+        condition,
+        previousCondition: alert.condition
+      });
+    }
     if (dto.channels !== undefined && dto.channels.length === 0) {
       throw new BadRequestError({ message: "At least one channel is required" });
     }
 
     if (dto.channels && provider.assertChannelTypesAllowed) {
-      const existingTypeById = new Map(
-        (await alertChannelDAL.findByAlertId(alert.id)).map((channel) => [channel.id, channel.channelType])
+      const existingById = new Map(
+        (await alertChannelDAL.findByAlertId(alert.id)).map((channel) => [channel.id, channel])
       );
       await provider.assertChannelTypesAllowed({
         orgId: alert.orgId,
         channelTypes: dto.channels
-          .filter((channel) => !channel.id || existingTypeById.get(channel.id) !== channel.channelType)
+          .filter((channel) => {
+            const existing = channel.id ? existingById.get(channel.id) : undefined;
+            return (
+              !existing ||
+              existing.channelType !== channel.channelType ||
+              (!existing.enabled && channel.enabled === true)
+            );
+          })
           .map((channel) => channel.channelType)
       });
     }
@@ -474,9 +504,7 @@ export const alertServiceFactory = ({
       const patch = {
         ...(dto.name !== undefined ? { name: dto.name } : {}),
         ...(dto.description !== undefined ? { description: dto.description } : {}),
-        ...(dto.condition !== undefined
-          ? { condition: dto.condition != null ? JSON.stringify(dto.condition) : null }
-          : {}),
+        ...(dto.condition !== undefined ? { condition: condition != null ? JSON.stringify(condition) : null } : {}),
         ...(dto.enabled !== undefined ? { enabled: dto.enabled } : {})
       };
 
@@ -492,9 +520,11 @@ export const alertServiceFactory = ({
     });
 
     const lastRuns = await $getLastRuns(provider, [alert.id]);
+    const filters = await $getFilters(provider, { orgId: alert.orgId, projectId: alert.projectId ?? null }, [updated]);
     return $assembleResponse(provider, updated, channels, {
       resourceName: await $getResourceName(provider, alert),
-      lastRun: lastRuns.get(alert.id)
+      lastRun: lastRuns.get(alert.id),
+      filters: filters.get(updated.id)
     });
   };
 
@@ -521,6 +551,8 @@ export const alertServiceFactory = ({
     resourceId: string | null;
     resourceName: string | null;
     eventType: string;
+    condition: unknown;
+    filters?: TAlertFilters;
     orgId: string;
     projectId: string | null;
   }> => {
@@ -536,6 +568,7 @@ export const alertServiceFactory = ({
     );
 
     const resourceName = await $getResourceName(provider, alert);
+    const filters = await $getFilters(provider, { orgId: alert.orgId, projectId: alert.projectId ?? null }, [alert]);
     await alertDAL.transaction((tx) => $deleteAlertsByFilter({ id: alert.id }, tx));
 
     return {
@@ -545,6 +578,8 @@ export const alertServiceFactory = ({
       resourceId: alert.resourceId ?? null,
       resourceName,
       eventType: alert.eventType,
+      condition: alert.condition ?? null,
+      ...(provider.getFilters ? { filters: filters.get(alert.id) ?? {} } : {}),
       orgId: alert.orgId,
       projectId: alert.projectId ?? null
     };
@@ -591,12 +626,6 @@ export const alertServiceFactory = ({
       resourceId: alert.resourceId,
       eventType: alert.eventType
     });
-
-  const getAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
-    const resourceType =
-      input.action === AlertAuditAction.TestChannel ? input.test.resourceType : input.alert.resourceType;
-    return alertProviderRegistry.get(resourceType)?.getAuditEvent?.(input) ?? buildGenericAlertAuditEvent(input);
-  };
 
   return {
     getTelemetryEvent,

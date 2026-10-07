@@ -4,7 +4,8 @@ import { useCallback, useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { Button, Card, CardTitle, ContentLoader } from "@app/components/v2";
+import { Button, Card, CardTitle } from "@app/components/v2";
+import { Loader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -153,7 +154,11 @@ export const SelectIntegrationAuthPage = () => {
     isLoadingIntegrationAuths ||
     (integrationAuths?.length === 0 && isLoadingIntegrationAuthsSuccess)
   ) {
-    return <ContentLoader />;
+    return (
+      <div className="container mx-auto flex h-screen w-full items-center justify-center px-8">
+        <Loader variant="brand" size="lg" className="h-32" />
+      </div>
+    );
   }
 
   return (

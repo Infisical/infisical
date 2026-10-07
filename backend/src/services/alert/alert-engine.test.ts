@@ -115,7 +115,7 @@ type TDelivery = { targetId: string; channelId: string; channelType: string; sta
 
 const buildEngine = (opts: {
   targets: TTarget[];
-  channels: Array<{ id: string; channelType: string; encryptedConfig: Buffer; enabled: boolean }>;
+  channels: Array<{ id: string; channelType: string; encryptedConfig: Buffer; enabled: boolean; createdAt?: Date }>;
   recentlyAlerted?: Array<{ channelId: string; targetId: string }>;
   deliveredForEvent?: string[];
   recipients?: Array<{ userId: string; email: string; firstName?: string | null }>;
@@ -152,9 +152,8 @@ const buildEngine = (opts: {
     alertChannelDAL: {
       findByAlertId: async (_alertId: string, filter?: { enabled?: boolean; readFromPrimary?: boolean }) => {
         channelLookups.push(filter);
-        return filter?.enabled === undefined
-          ? opts.channels
-          : opts.channels.filter((c) => c.enabled === filter.enabled);
+        const channels = opts.channels.map((c) => ({ createdAt: new Date(0), ...c }));
+        return filter?.enabled === undefined ? channels : channels.filter((c) => c.enabled === filter.enabled);
       }
     },
     alertChannelRecipientDAL: {
@@ -532,9 +531,44 @@ describe("alert engine, event path", () => {
   const EVENT = {
     eventId: "7",
     eventType: "test.resource.opened",
+    occurredAt: new Date(),
     targetIds: ["t1"],
     payload: { targetIds: ["t1"], note: "x" }
   };
+
+  test("a retried event skips channels created after the event happened", async () => {
+    const { engine, sentMail } = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [
+        { id: "c-old", channelType: "email", encryptedConfig: encConfig({}), enabled: true },
+        {
+          id: "c-new",
+          channelType: "email",
+          encryptedConfig: encConfig({}),
+          enabled: true,
+          createdAt: new Date(Date.now() + 60_000)
+        }
+      ]
+    });
+
+    await engine.runAlertForEvent(eventAlert(), EVENT);
+    expect(sentMail).toHaveLength(1);
+
+    const late = buildEngine({
+      targets: [{ id: "t1" }],
+      channels: [
+        {
+          id: "c-new",
+          channelType: "email",
+          encryptedConfig: encConfig({}),
+          enabled: true,
+          createdAt: new Date(Date.now() + 60_000)
+        }
+      ]
+    });
+    expect(await late.engine.runAlertForEvent(eventAlert(), EVENT)).toBe(AlertDispatchOutcome.NoChannels);
+    expect(late.sentMail).toHaveLength(0);
+  });
 
   test("delivers the targets the event named and files the run under the event id", async () => {
     const { engine, sentMail, historyWrites, eventPayloads } = buildEngine({

@@ -6,7 +6,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
+import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   DropdownMenu,
@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDeleteOrgRole, useGetOrgRole } from "@app/hooks/api";

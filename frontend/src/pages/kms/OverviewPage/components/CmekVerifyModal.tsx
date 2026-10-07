@@ -1,24 +1,34 @@
+import { useId } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faFileSignature, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CircleCheckIcon, CircleXIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { decodeBase64 } from "@app/components/utilities/cryptography/crypto";
 import {
-  Button,
   FormControl,
   Modal,
   ModalClose,
   ModalContent,
   Select,
-  SelectItem,
-  Switch,
-  TextArea,
-  Tooltip
+  SelectItem
 } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Button,
+  Field,
+  FieldError,
+  FieldLabel,
+  IconButton,
+  TextArea,
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { getAllowedSigningAlgorithms, getDefaultSigningAlgorithm } from "@app/helpers/kms";
 import { SigningAlgorithm, TCmek, useCmekVerify } from "@app/hooks/api/cmeks";
 import { isBase64 } from "@app/lib/fn/base64";
@@ -52,6 +62,7 @@ type FormProps = Pick<Props, "cmek">;
 
 const VerifyForm = ({ cmek }: FormProps) => {
   const cmekVerify = useCmekVerify();
+  const fieldId = useId();
 
   const {
     handleSubmit,
@@ -99,16 +110,18 @@ const VerifyForm = ({ cmek }: FormProps) => {
         <div className="mb-6 flex flex-col gap-2">
           <div className="flex items-center justify-between space-x-2">
             <span className="text-sm opacity-60">Signature Status:</span>
-            <Tooltip
-              content={
-                signatureValid
+            <Tooltip hoverable selectable={false} delayDuration={50}>
+              <TooltipTrigger asChild>
+                <Badge variant={signatureValid ? "success" : "danger"} tabIndex={0}>
+                  {signatureValid ? <CircleCheckIcon /> : <CircleXIcon />}
+                  {signatureValid ? "Valid" : "Invalid"}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs" sideOffset={5}>
+                {signatureValid
                   ? "The signature is valid. signature was created using the same signing algorithm and key as the one used to sign the data."
-                  : "The signature is invalid. The signature was not created using the same signing algorithm and key as the one used to sign the data. The data and signature may have been tampered with."
-              }
-            >
-              <Badge variant={signatureValid ? "success" : "danger"}>
-                {signatureValid ? "Valid" : "Invalid"}
-              </Badge>
+                  : "The signature is invalid. The signature was not created using the same signing algorithm and key as the one used to sign the data. The data and signature may have been tampered with."}
+              </TooltipContent>
             </Tooltip>
           </div>
 
@@ -118,40 +131,56 @@ const VerifyForm = ({ cmek }: FormProps) => {
           </div>
           <div className="mt-3">
             <span className="text-sm opacity-60">Signature:</span>{" "}
-            <div className="rounded-md border border-border-subtle bg-surface-base p-2 text-sm break-words whitespace-pre-wrap">
+            <div className="rounded-md border border-border bg-container p-2 font-mono text-sm break-words whitespace-pre-wrap">
               {signature}
             </div>
           </div>
           <div>
             <span className="text-sm opacity-60">Data:</span>{" "}
-            <div className="rounded-md border border-border-subtle bg-surface-base p-2 text-sm">
+            <div className="rounded-md border border-border bg-container p-2 text-sm">
               {isBase64Encoded ? decodeBase64(data).toString() : data}
             </div>
           </div>
         </div>
       ) : (
         <>
-          <FormControl
-            label="Data to Verify"
-            errorText={errors.data?.message}
-            isError={Boolean(errors.data)}
-          >
-            <TextArea {...register("data")} className="max-h-80 min-h-40 max-w-full min-w-full" />
-          </FormControl>
+          <Field className="mb-4" data-invalid={Boolean(errors.data)}>
+            <FieldLabel htmlFor={`${fieldId}-data`}>Data to Verify</FieldLabel>
+            <TextArea
+              {...register("data")}
+              rows={7}
+              id={`${fieldId}-data`}
+              isError={Boolean(errors.data)}
+              aria-describedby={errors.data ? `${fieldId}-data-error` : undefined}
+            />
+            <FieldError id={`${fieldId}-data-error`} errors={[errors.data]} />
+          </Field>
 
-          <FormControl
-            label="Signature of Data"
-            tooltipText="Must be base64-encoded, like the signature you received when you signed the data."
-            errorText={errors.signature?.message}
-            isError={Boolean(errors.signature)}
-          >
+          <Field className="mb-4" data-invalid={Boolean(errors.signature)}>
+            <div className="flex items-center gap-1">
+              <FieldLabel htmlFor={`${fieldId}-signature`}>Signature of Data</FieldLabel>
+              <Tooltip hoverable selectable={false} delayDuration={50}>
+                <TooltipTrigger asChild>
+                  <IconButton variant="ghost" size="2xs" aria-label="About signature encoding">
+                    <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs" sideOffset={5}>
+                  Must be base64-encoded, like the signature you received when you signed the data.
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <TextArea
               {...register("signature")}
-              className="max-h-80 min-h-40 max-w-full min-w-full"
+              rows={7}
+              id={`${fieldId}-signature`}
+              isError={Boolean(errors.signature)}
+              aria-describedby={errors.signature ? `${fieldId}-signature-error` : undefined}
             />
-          </FormControl>
+            <FieldError id={`${fieldId}-signature-error`} errors={[errors.signature]} />
+          </Field>
 
-          <div className="mb-6 flex w-full items-center justify-between gap-2">
+          <div className="mb-6 flex flex-col gap-2">
             <Controller
               control={control}
               name="signingAlgorithm"
@@ -172,35 +201,48 @@ const VerifyForm = ({ cmek }: FormProps) => {
               control={control}
               name="isBase64Encoded"
               render={({ field: { onChange, value } }) => (
-                <Switch id="encode-base-64" isChecked={value} onCheckedChange={onChange}>
-                  Data is Base64 encoded{" "}
-                  <Tooltip content="Toggle this switch on if your data is already Base64 encoded to avoid redundant encoding.">
-                    <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
+                <Field orientation="horizontal">
+                  <Toggle
+                    id={`${fieldId}-encode-base-64`}
+                    checked={value}
+                    onCheckedChange={onChange}
+                  />
+                  <FieldLabel htmlFor={`${fieldId}-encode-base-64`}>
+                    Data is Base64 encoded
+                  </FieldLabel>
+                  <Tooltip hoverable selectable={false} delayDuration={50}>
+                    <TooltipTrigger asChild>
+                      <IconButton variant="ghost" size="xs" aria-label="About Base64 encoding">
+                        <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
+                      </IconButton>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs" sideOffset={5}>
+                      Toggle this switch on if your data is already Base64 encoded to avoid
+                      redundant encoding.
+                    </TooltipContent>
                   </Tooltip>
-                </Switch>
+                </Field>
               )}
             />
           </div>
         </>
       )}
-      <div className="flex items-center">
+      <div className="flex flex-wrap items-center gap-4">
         {signatureValid === undefined && (
           <Button
-            className="mr-4 w-44"
+            className="w-44"
             size="sm"
-            leftIcon={<FontAwesomeIcon icon={faFileSignature} />}
+            variant="project"
             type="submit"
-            isLoading={isSubmitting}
+            isPending={isSubmitting}
             isDisabled={isSubmitting}
           >
+            <FontAwesomeIcon icon={faFileSignature} />
             Verify
           </Button>
         )}
         <ModalClose asChild>
-          <Button
-            colorSchema={signatureValid === undefined ? "secondary" : "primary"}
-            variant={signatureValid === undefined ? "plain" : undefined}
-          >
+          <Button variant={signatureValid === undefined ? "ghost" : "project"}>
             {signatureValid !== undefined ? "Close" : "Cancel"}
           </Button>
         </ModalClose>
