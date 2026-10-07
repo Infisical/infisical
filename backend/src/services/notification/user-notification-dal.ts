@@ -128,7 +128,7 @@ export const userNotificationDALFactory = (db: TDbClient) => {
   const deleteAllNotifications = async (userId: string, orgId: string) => {
     try {
       await db(TableName.UserNotifications)
-        .where({ userId })
+        .where({ userId, isRead: true })
         .andWhere((qb) => {
           void qb.where({ orgId }).orWhereNull("orgId");
         })

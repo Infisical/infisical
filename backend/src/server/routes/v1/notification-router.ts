@@ -47,7 +47,7 @@ export const registerNotificationRouter = async (server: FastifyZodProvider) => 
     schema: {
       operationId: "deleteUserNotifications",
       response: {
-        204: z.null()
+        204: z.string().length(0)
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
@@ -61,7 +61,7 @@ export const registerNotificationRouter = async (server: FastifyZodProvider) => 
         orgId: req.auth.orgId
       });
 
-      return reply.code(204).send(null);
+      return reply.code(204).send("");
     }
   });
 

@@ -177,13 +177,17 @@ export const NotificationDropdown = () => {
         <AlertDialogContent
           onCloseAutoFocus={(e) => {
             e.preventDefault();
-            clearAllButtonRef.current?.focus();
+            if (clearAllButtonRef.current && !clearAllButtonRef.current.disabled) {
+              clearAllButtonRef.current.focus();
+            } else {
+              clearAllButtonRef.current?.closest<HTMLElement>("[role='menu']")?.focus();
+            }
           }}
         >
           <AlertDialogHeader>
             <AlertDialogTitle>Clear All Notifications?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove all your notifications for this organization, including account
+              This will remove all your read notifications for this organization, including account
               notifications. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
