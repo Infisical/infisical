@@ -56,6 +56,7 @@ import { HasuraCloudConnectionForm } from "./HasuraCloudConnectionForm";
 import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 import { HerokuConnectionForm } from "./HerokuAppConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
+import { KeeperConnectionForm } from "./KeeperConnectionForm";
 import { KempLoadMasterConnectionForm } from "./KempLoadMasterConnectionForm";
 import { LaravelForgeConnectionForm } from "./LaravelForgeConnectionForm";
 import { LdapConnectionForm } from "./LdapConnectionForm";
@@ -343,6 +344,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <DopplerConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Keeper:
+        return <KeeperConnectionForm onSubmit={onSubmit} />;
       case AppConnection.KempLoadMaster:
         return <KempLoadMasterConnectionForm onSubmit={onSubmit} />;
       case AppConnection.OVH:
@@ -624,6 +627,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DopplerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Keeper:
+        return <KeeperConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.KempLoadMaster:
         return <KempLoadMasterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.OVH:

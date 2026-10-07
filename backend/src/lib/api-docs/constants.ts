@@ -3124,6 +3124,10 @@ export const AppConnections = {
       apiKey: "The LiteLLM API key used to authenticate with the LiteLLM instance.",
       instanceUrl: "The base URL of your LiteLLM instance (e.g. https://litellm.example.com)."
     },
+    KEEPER: {
+      apiKey: "The API key generated for Keeper Commander Service Mode.",
+      instanceUrl: "The base URL of your Keeper Commander Service Mode instance (e.g. https://keeper.company.com)."
+    },
     FIREWORKS: {
       apiKey: "The Fireworks API key used to authenticate with the Fireworks API.",
       accountId: "The Fireworks account ID used to identify the Fireworks account."

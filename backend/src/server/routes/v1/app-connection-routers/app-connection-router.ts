@@ -146,6 +146,10 @@ import {
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
 import {
+  KeeperConnectionListItemSchema,
+  SanitizedKeeperConnectionSchema
+} from "@app/services/app-connection/keeper";
+import {
   KempLoadMasterConnectionListItemSchema,
   SanitizedKempLoadMasterConnectionSchema
 } from "@app/services/app-connection/kemp-loadmaster";
@@ -357,7 +361,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedPowerDnsConnectionSchema.options,
   ...SanitizedSpaceliftConnectionSchema.options,
   ...SanitizedDaytonaConnectionSchema.options,
-  ...SanitizedStripeConnectionSchema.options
+  ...SanitizedStripeConnectionSchema.options,
+  ...SanitizedKeeperConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -446,7 +451,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   PowerDnsConnectionListItemSchema,
   SpaceliftConnectionListItemSchema,
   DaytonaConnectionListItemSchema,
-  StripeConnectionListItemSchema
+  StripeConnectionListItemSchema,
+  KeeperConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

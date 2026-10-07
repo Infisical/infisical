@@ -136,6 +136,7 @@ import { ValidateHerokuConnectionCredentialsSchema } from "./heroku";
 import { herokuConnectionService } from "./heroku/heroku-connection-service";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
+import { ValidateKeeperConnectionCredentialsSchema } from "./keeper";
 import { ValidateKempLoadMasterConnectionCredentialsSchema } from "./kemp-loadmaster";
 import { kempLoadMasterConnectionService } from "./kemp-loadmaster/kemp-loadmaster-connection-service";
 import { ValidateLaravelForgeConnectionCredentialsSchema } from "./laravel-forge";
@@ -318,7 +319,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.PowerDns]: ValidatePowerDnsConnectionCredentialsSchema,
   [AppConnection.Spacelift]: ValidateSpaceliftConnectionCredentialsSchema,
   [AppConnection.Daytona]: ValidateDaytonaConnectionCredentialsSchema,
-  [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema
+  [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema,
+  [AppConnection.Keeper]: ValidateKeeperConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

@@ -42,6 +42,7 @@ import { THasuraCloudConnection } from "./hasura-cloud-connection";
 import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
 import { THumanitecConnection } from "./humanitec-connection";
+import { TKeeperConnection } from "./keeper-connection";
 import { TKempLoadMasterConnection } from "./kemp-loadmaster-connection";
 import { TLaravelForgeConnection } from "./laravel-forge-connection";
 import { TLdapConnection } from "./ldap-connection";
@@ -126,6 +127,7 @@ export * from "./hasura-cloud-connection";
 export * from "./hc-vault-connection";
 export * from "./heroku-connection";
 export * from "./humanitec-connection";
+export * from "./keeper-connection";
 export * from "./kemp-loadmaster-connection";
 export * from "./laravel-forge-connection";
 export * from "./ldap-connection";
@@ -257,7 +259,8 @@ export type TAppConnection =
   | TPowerDnsConnection
   | TSpaceliftConnection
   | TDaytonaConnection
-  | TStripeConnection;
+  | TStripeConnection
+  | TKeeperConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 
