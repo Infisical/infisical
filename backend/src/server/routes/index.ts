@@ -4015,7 +4015,9 @@ export const registerRoutes = async (
     certificateProfileDAL,
     estEnrollmentConfigDAL,
     certificatePolicyDAL,
-    pkiApplicationProfileDAL
+    pkiApplicationProfileDAL,
+    pkiApplicationDAL,
+    auditLogService
   });
 
   const pkiScepService = pkiScepServiceFactory({

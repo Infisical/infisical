@@ -58,7 +58,7 @@ For automated issuance, configure an [enrollment method](/documentation/platform
 
 If Infisical creates a certificate request and then can't issue the certificate, the request shows a **Failed** status on the **Certificate Requests** tab. Hover over the status to see the reason.
 
-Some requests are rejected before Infisical creates a certificate request, such as a request for a TTL longer than the certificate policy allows, so they don't appear on the tab. Infisical records every failure, including these, as a `certificate-issuance-failed` event in the [audit logs](/documentation/platform/audit-logs#certificate-issuance-failures), with the reason and the certificate the request was for.
+Some requests are rejected before Infisical creates a certificate request, such as a request for a TTL longer than the certificate policy allows, so they don't appear on the tab. Infisical records these rejections and the failed requests as `certificate-issuance-failed` events in the [audit logs](/documentation/platform/audit-logs#certificate-issuance-failures), with the reason and the certificate the request was for. The audit logs page lists the failures that aren't recorded, such as EST requests whose client certificate is rejected.
 
 ## Importing certificates
 

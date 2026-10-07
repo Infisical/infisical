@@ -6,8 +6,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { ActorType } from "@app/services/auth/auth-type";
 import { CertStatus } from "@app/services/certificate/certificate-types";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
@@ -67,6 +70,10 @@ vi.mock("@app/services/certificate-authority/certificate-authority-fns", () => (
     ])
   ),
   assertCaInProfileProject: vi.fn()
+}));
+
+vi.mock("@app/services/certificate-common/certificate-csr-utils", () => ({
+  extractCertificateRequestFromCSR: vi.fn().mockReturnValue({ commonName: "different.example.com" })
 }));
 
 vi.mock("@app/services/project/project-fns", () => ({
@@ -162,6 +169,9 @@ describe("CertificateEstV3Service", () => {
     validity: { max: "90d" }
   };
 
+  const mockAuditLogService = { createCollapsedAuditLog: vi.fn() };
+  const mockPkiApplicationDAL = { findById: vi.fn() };
+
   beforeEach(async () => {
     service = certificateEstV3ServiceFactory({
       certificateV3Service: mockCertificateV3Service,
@@ -173,7 +183,9 @@ describe("CertificateEstV3Service", () => {
       licenseService: mockLicenseService,
       certificateProfileDAL: mockCertificateProfileDAL,
       estEnrollmentConfigDAL: mockEstEnrollmentConfigDAL,
-      certificatePolicyDAL: mockCertificatePolicyDAL
+      certificatePolicyDAL: mockCertificatePolicyDAL,
+      pkiApplicationDAL: mockPkiApplicationDAL as never,
+      auditLogService: mockAuditLogService
     });
 
     mockCertificateProfileDAL.findByIdWithConfigs.mockResolvedValue(mockProfile);
@@ -412,6 +424,39 @@ describe("CertificateEstV3Service", () => {
           sslClientCert: encodeURIComponent("-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----")
         })
       ).rejects.toThrow(BadRequestError);
+    });
+
+    it("records a renew failure when the CSR subject doesn't match the client certificate", async () => {
+      const { Pkcs10CertificateRequest } = await import("@peculiar/x509");
+      (Pkcs10CertificateRequest as any).mockImplementation(() => ({
+        subject: "CN=different.example.com",
+        extensions: []
+      }));
+
+      await expect(
+        service.simpleReenrollByProfile({
+          csr: "mock-csr",
+          profileId: "profile-123",
+          sslClientCert: encodeURIComponent("-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----"),
+          auditLogInfo: { ipAddress: "127.0.0.1", actor: { type: ActorType.PLATFORM, metadata: {} } }
+        })
+      ).rejects.toThrow("Subject mismatch");
+
+      expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: "project-123",
+          actor: { type: ActorType.EST_ACCOUNT, metadata: { profileId: "profile-123" } },
+          event: expect.objectContaining({
+            type: EventType.CERTIFICATE_ISSUANCE_FAILED,
+            metadata: expect.objectContaining({
+              operation: CertificateIssuanceOperation.RENEW,
+              enrollmentType: EnrollmentType.EST,
+              certificateProfileId: "profile-123",
+              error: "Subject mismatch"
+            })
+          })
+        })
+      );
     });
 
     it("should throw error when approval is required for re-enrollment", async () => {

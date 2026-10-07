@@ -1,6 +1,6 @@
 import * as x509 from "@peculiar/x509";
 
-import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
+import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -15,6 +15,8 @@ import {
   getCaCertChains
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
+import { recordCertificateIssuanceFailure } from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
@@ -22,6 +24,7 @@ import { resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -42,6 +45,8 @@ type TCertificateEstV3ServiceFactoryDep = {
   estEnrollmentConfigDAL: Pick<TEstEnrollmentConfigDALFactory, "findById">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
   pkiApplicationProfileDAL?: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
 };
 
 export type TCertificateEstV3ServiceFactory = ReturnType<typeof certificateEstV3ServiceFactory>;
@@ -57,7 +62,9 @@ export const certificateEstV3ServiceFactory = ({
   certificateProfileDAL,
   estEnrollmentConfigDAL,
   certificatePolicyDAL,
-  pkiApplicationProfileDAL
+  pkiApplicationProfileDAL,
+  pkiApplicationDAL,
+  auditLogService
 }: TCertificateEstV3ServiceFactoryDep) => {
   const resolveEstConfigId = async (
     profile: { estConfigId?: string | null },
@@ -303,11 +310,39 @@ export const certificateEstV3ServiceFactory = ({
       throw new UnauthorizedError({ message: "Client certificate has been revoked" });
     }
 
+    const $rejectReenrollCsr = async (message: string) => {
+      const error = new BadRequestError({ message });
+      if (auditLogInfo) {
+        let commonName: string | undefined;
+        try {
+          commonName = extractCertificateRequestFromCSR(csr).commonName;
+        } catch {
+          commonName = undefined;
+        }
+        await recordCertificateIssuanceFailure(
+          { auditLogService, certificateAuthorityDAL, pkiApplicationDAL },
+          {
+            auditLogInfo: { ...auditLogInfo, actor: { type: ActorType.EST_ACCOUNT, metadata: { profileId } } },
+            projectId: profile.projectId,
+            error,
+            metadata: {
+              operation: CertificateIssuanceOperation.RENEW,
+              enrollmentType: EnrollmentType.EST,
+              certificateProfileId: profileId,
+              profileName: profile.slug,
+              caId: profile.caId,
+              commonName,
+              applicationId
+            }
+          }
+        );
+      }
+      return error;
+    };
+
     const csrObj = new x509.Pkcs10CertificateRequest(csr);
     if (csrObj.subject !== cert.subject) {
-      throw new BadRequestError({
-        message: "Subject mismatch"
-      });
+      throw await $rejectReenrollCsr("Subject mismatch");
     }
 
     let csrSanSet: Set<string> = new Set();
@@ -325,9 +360,7 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     if (csrSanSet.size !== certSanSet.size || ![...csrSanSet].every((element) => certSanSet.has(element))) {
-      throw new BadRequestError({
-        message: "Subject alternative names mismatch"
-      });
+      throw await $rejectReenrollCsr("Subject alternative names mismatch");
     }
 
     const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);

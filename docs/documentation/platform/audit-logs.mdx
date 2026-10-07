@@ -590,7 +590,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
     Infisical records a `certificate-issuance-failed` event for certificates requested from a certificate profile through the API or the Infisical UI, ACME, EST, and SCEP, including renewals and certificates issued after an approval. The event is in the `management` class, so it's always recorded.
 
     <Note>
-      If an automatic renewal fails before Infisical sends it to an external CA, Infisical records an `automated-renew-certificate-failed` event instead. Infisical doesn't record `certificate-issuance-failed` for EST enrollment through a certificate template, for EST requests rejected before Infisical reads the CSR (such as a failed sign-in), or for requests the actor's role doesn't allow, which are recorded as [`permission-denied` events](#permission-denials).
+      If an automatic renewal fails before Infisical sends it to an external CA, Infisical records an `automated-renew-certificate-failed` event instead. Infisical doesn't record `certificate-issuance-failed` for EST enrollment through a certificate template, for EST requests rejected before Infisical reads the CSR (such as a failed sign-in or a rejected client certificate), or for requests the actor's role doesn't allow, which are recorded as [`permission-denied` events](#permission-denials).
     </Note>
 
     <Tabs>
