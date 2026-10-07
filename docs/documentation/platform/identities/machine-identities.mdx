@@ -74,7 +74,7 @@ A machine identity logs in to Infisical with an auth method. Pick the auth metho
 
 ## Identity lockout
 
-Lockout protects [Universal Auth](/documentation/platform/identities/universal-auth) and [LDAP Auth](/documentation/platform/identities/ldap-auth/general) from brute-force attacks. By default, if a login with one of these auth methods fails 3 times within 30 seconds, Infisical blocks logins with that auth method on the identity for 5 minutes.
+Lockout protects [Universal Auth](/documentation/platform/identities/universal-auth) and [LDAP Auth](/documentation/platform/identities/ldap-auth/general) from brute-force attacks. By default, after 3 consecutive failed login attempts within 30 seconds, Infisical blocks logins with that auth method on the identity for 5 minutes.
 
 To change these limits or turn lockout off, edit the auth method on the identity.
 
