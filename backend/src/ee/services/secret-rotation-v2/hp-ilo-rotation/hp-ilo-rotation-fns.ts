@@ -20,8 +20,10 @@ import {
 
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { generatePassword } from "../shared/utils";
+import { hpIloRedfishClientFactory } from "./hp-ilo-redfish-client";
 import { HpIloRotationMethod } from "./hp-ilo-rotation-schemas";
 import {
+  THpIloClient,
   THpIloRotationGeneratedCredentials,
   THpIloRotationInput,
   THpIloRotationWithConnection
@@ -212,45 +214,49 @@ export const hpIloRotationFactory: TRotationFactory<
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const { username, passwordRequirements, rotationMethod = HpIloRotationMethod.LoginAsRoot } = parameters;
 
-  const $getSshConnection = () => {
-    if (connection.app !== AppConnection.SSH)
-      throw new BadRequestError({
-        message: "HP iLO Local Account rotations do not support HPE iLO Connections yet. Use an SSH Connection instead."
-      });
-    return connection;
-  };
-
-  const getRotationSshConfig = async (): Promise<TSshConnectionConfig> => {
-    const sshConnection = $getSshConnection();
-    const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
-      gatewayId: sshConnection.gatewayId,
-      gatewayPoolId: sshConnection.gatewayPoolId
+  const $getIloClient = async (): Promise<THpIloClient> => {
+    const gatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: connection.gatewayId,
+      gatewayPoolId: connection.gatewayPoolId
     });
-    return {
-      method: sshConnection.method,
-      app: sshConnection.app,
-      orgId: sshConnection.orgId,
-      gatewayId: effectiveGatewayId,
-      credentials: sshConnection.credentials
+
+    if (connection.app === AppConnection.HpeIloRedFish) {
+      if (rotationMethod === HpIloRotationMethod.LoginAsTarget)
+        throw new BadRequestError({
+          message:
+            "The Login as Target rotation method requires an SSH Connection. HPE iLO Connections always rotate the password with the connection's credentials."
+        });
+
+      return hpIloRedfishClientFactory({ credentials: connection.credentials, gatewayId }, gatewayV2Service);
+    }
+
+    const sshConfig = {
+      method: connection.method,
+      app: connection.app,
+      orgId: connection.orgId,
+      gatewayId,
+      credentials: connection.credentials
     } as TSshConnectionConfig;
+
+    return {
+      changePassword: (targetUsername, newPassword, currentPassword) =>
+        rotationMethod === HpIloRotationMethod.LoginAsTarget && currentPassword
+          ? rotateIloPasswordAsTarget(sshConfig, gatewayV2Service, targetUsername, currentPassword, newPassword)
+          : rotateIloPasswordAsAdmin(sshConfig, gatewayV2Service, targetUsername, newPassword),
+      verifyPassword: (targetUsername, password) =>
+        verifyIloPassword(sshConfig, gatewayV2Service, targetUsername, password)
+    };
   };
 
   const $rotatePassword = async (currentPassword?: string): Promise<{ username: string; password: string }> => {
     const newPassword = generatePassword(passwordRequirements ?? HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS);
 
-    const isSelfRotation = rotationMethod === HpIloRotationMethod.LoginAsTarget;
-    if (username === $getSshConnection().credentials.username)
+    if (username === connection.credentials.username)
       throw new BadRequestError({ message: "Provided username is used in Infisical app connections." });
 
-    const sshConfig = await getRotationSshConfig();
-
-    if (isSelfRotation && currentPassword) {
-      await rotateIloPasswordAsTarget(sshConfig, gatewayV2Service, username, currentPassword, newPassword);
-    } else {
-      await rotateIloPasswordAsAdmin(sshConfig, gatewayV2Service, username, newPassword);
-    }
-
-    await verifyIloPassword(sshConfig, gatewayV2Service, username, newPassword);
+    const iloClient = await $getIloClient();
+    await iloClient.changePassword(username, newPassword, currentPassword);
+    await iloClient.verifyPassword(username, newPassword);
 
     return { username, password: newPassword };
   };
@@ -294,8 +300,8 @@ export const hpIloRotationFactory: TRotationFactory<
     username: activeUsername,
     password
   }) => {
-    const sshConfig = await getRotationSshConfig();
-    await verifyIloPassword(sshConfig, gatewayV2Service, activeUsername, password);
+    const iloClient = await $getIloClient();
+    await iloClient.verifyPassword(activeUsername, password);
   };
 
   return {

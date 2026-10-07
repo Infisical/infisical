@@ -21,3 +21,8 @@ export type THpIloRotationWithConnection = THpIloRotation & {
 };
 
 export type THpIloRotationGeneratedCredentials = z.infer<typeof HpIloRotationGeneratedCredentialsSchema>;
+
+export type THpIloClient = {
+  changePassword: (targetUsername: string, newPassword: string, currentPassword?: string) => Promise<void>;
+  verifyPassword: (username: string, password: string) => Promise<void>;
+};
