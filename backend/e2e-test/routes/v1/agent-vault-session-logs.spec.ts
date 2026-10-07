@@ -141,9 +141,7 @@ const CHUNK_SHA256 = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU";
 
 const chunkBody = (overrides: Record<string, unknown> = {}) => ({
   chunkId: nextChunkId(),
-  startedAt: new Date(Date.now() - 60_000),
   endedAt: new Date(Date.now() - 1_000),
-  recordCount: 10,
   ciphertextBytes: CHUNK_BYTES,
   ciphertextSha256: CHUNK_SHA256,
   ...overrides
@@ -655,8 +653,6 @@ describe("Agent Vault session logs", async () => {
     test.each([
       { why: "the chunk id is not a UUID", patch: { chunkId: "nope" } },
       { why: "the chunk id is a v4 UUID", patch: { chunkId: crypto.randomUUID() } },
-      { why: "the record count is over the slice size", patch: { recordCount: 1001 } },
-      { why: "the record count is zero", patch: { recordCount: 0 } },
       { why: "the digest is not a SHA-256", patch: { ciphertextSha256: "short" } },
       { why: "the ciphertext is smaller than an empty sealed array", patch: { ciphertextBytes: 4 } }
     ])("rejects a malformed chunk when $why", async ({ patch }) => {
@@ -668,9 +664,8 @@ describe("Agent Vault session logs", async () => {
     });
 
     test.each([
-      { why: "endedAt precedes startedAt", patch: { startedAt: new Date(), endedAt: new Date(Date.now() - 60_000) } },
       { why: "endedAt is far in the future", patch: { endedAt: new Date(Date.now() + 10 * 60_000) } },
-      { why: "the bytes are too few for the records", patch: { recordCount: 1000, ciphertextBytes: 64 } }
+      { why: "endedAt is more than 30 days ago", patch: { endedAt: new Date(Date.now() - 31 * 24 * 60 * 60_000) } }
     ])("rejects a chunk that cannot be true when $why", async ({ patch }) => {
       await configure();
       const { session, proxy } = await setup("semantic");

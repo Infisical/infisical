@@ -34,7 +34,6 @@ import {
   AGENT_VAULT_SESSION_LOG_LATE_CHUNK_GRACE_MS,
   AGENT_VAULT_SESSION_LOG_MAX_CHUNK_AGE_MS,
   AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
-  AGENT_VAULT_SESSION_LOG_MIN_BYTES_PER_RECORD,
   AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS,
   AGENT_VAULT_SESSION_LOG_RANGE_SEAL_MARGIN_MS,
   AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
@@ -161,9 +160,6 @@ export const agentVaultSessionLogServiceFactory = ({
       });
     }
 
-    if (chunk.startedAt > chunk.endedAt) {
-      throw new BadRequestError({ message: "Chunk startedAt is after its endedAt" });
-    }
     const aheadMs = chunk.endedAt.getTime() - now.getTime();
     if (aheadMs > AGENT_VAULT_SESSION_LOG_CLOCK_SKEW_MS) {
       throw new BadRequestError({
@@ -171,11 +167,11 @@ export const agentVaultSessionLogServiceFactory = ({
         message: `This proxy's clock is about ${Math.round(aheadMs / 60_000)} minutes ahead of Infisical's. Its clock must be within ${AGENT_VAULT_SESSION_LOG_CLOCK_SKEW_MS / 60_000} minutes for session logs to be recorded`
       });
     }
-    if (now.getTime() - chunk.startedAt.getTime() > AGENT_VAULT_SESSION_LOG_MAX_CHUNK_AGE_MS) {
-      throw new BadRequestError({ message: "Chunk is older than the maximum accepted age" });
-    }
-    if (chunk.ciphertextBytes < chunk.recordCount * AGENT_VAULT_SESSION_LOG_MIN_BYTES_PER_RECORD) {
-      throw new BadRequestError({ message: "Chunk is too small to hold the number of records it claims" });
+    if (-aheadMs > AGENT_VAULT_SESSION_LOG_MAX_CHUNK_AGE_MS) {
+      throw new BadRequestError({
+        name: AgentVaultSessionLogErrorName.ClockSkew,
+        message: `This proxy's clock is more than ${AGENT_VAULT_SESSION_LOG_MAX_CHUNK_AGE_MS / (24 * 60 * 60_000)} days behind Infisical's. Fix its clock for session logs to be recorded`
+      });
     }
 
     let sessionLogStorage: TAgentVaultSessionLogStorage;

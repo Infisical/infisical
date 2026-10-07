@@ -71,9 +71,7 @@ const enabledConfig = () => ({
 
 const validChunk = () => ({
   chunkId: uuidv7(),
-  startedAt: new Date(Date.now() - 60_000),
   endedAt: new Date(Date.now() - 1_000),
-  recordCount: 42,
   ciphertextBytes: 4096,
   ciphertextSha256: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU"
 });
@@ -265,27 +263,7 @@ describe("recordChunk: when session logs are off", () => {
   });
 });
 
-describe("recordChunk: semantic validation", () => {
-  test.each([
-    {
-      why: "startedAt is after endedAt",
-      patch: { startedAt: new Date(Date.now()), endedAt: new Date(Date.now() - 60_000) },
-      message: "Chunk startedAt is after its endedAt"
-    },
-    {
-      why: "the chunk is older than the maximum age",
-      patch: {
-        startedAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000),
-        endedAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000)
-      },
-      message: "Chunk is older than the maximum accepted age"
-    }
-  ])("rejects when $why", async ({ patch, message }) => {
-    const { service } = build();
-    await expect(record(service, { ...validChunk(), ...patch })).rejects.toMatchObject({ message });
-    expect(presignPut).not.toHaveBeenCalled();
-  });
-
+describe("recordChunk: the proxy's clock", () => {
   test("a proxy clock too far ahead is refused with the named error, saying how far", async () => {
     const { service } = build();
     const refusal = record(service, { ...validChunk(), endedAt: new Date(Date.now() + 10 * 60_000) });
@@ -297,20 +275,22 @@ describe("recordChunk: semantic validation", () => {
   test("a small clock skew forward is tolerated", async () => {
     const { service } = build();
     const soon = new Date(Date.now() + 60_000);
-    await expect(record(service, { ...validChunk(), startedAt: soon, endedAt: soon })).resolves.toBeTruthy();
+    await expect(record(service, { ...validChunk(), endedAt: soon })).resolves.toBeTruthy();
   });
 
-  test("refuses a chunk claiming more records than its bytes could hold", async () => {
+  test("a proxy clock more than 30 days behind is refused with the named error", async () => {
     const { service } = build();
-    await expect(record(service, { ...validChunk(), recordCount: 1000, ciphertextBytes: 64 })).rejects.toMatchObject({
-      message: "Chunk is too small to hold the number of records it claims"
-    });
+    const refusal = record(service, { ...validChunk(), endedAt: new Date(Date.now() - 31 * 24 * 60 * 60_000) });
+    await expect(refusal).rejects.toMatchObject({ name: AgentVaultSessionLogErrorName.ClockSkew });
+    await expect(refusal).rejects.toThrow(/more than 30 days behind/);
     expect(presignPut).not.toHaveBeenCalled();
   });
 
-  test("accepts a chunk whose size is plausible for its record count", async () => {
+  test("a proxy clock a few days behind is tolerated", async () => {
     const { service } = build();
-    await expect(record(service, { ...validChunk(), recordCount: 10, ciphertextBytes: 4096 })).resolves.toBeTruthy();
+    await expect(
+      record(service, { ...validChunk(), endedAt: new Date(Date.now() - 3 * 24 * 60 * 60_000) })
+    ).resolves.toBeTruthy();
   });
 });
 

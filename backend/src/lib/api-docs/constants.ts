@@ -4483,9 +4483,7 @@ export const AGENT_VAULT = {
   SESSION_LOGS: {
     chunkId: "The ID of the chunk.",
     proxyId: "The ID of the proxy that uploaded the chunk.",
-    startedAt: "The time of the first record in the chunk.",
     endedAt: "The time of the last record in the chunk.",
-    recordCount: "The number of records in the chunk.",
     sealedAt: "When the proxy sealed the chunk, after the last record in it.",
     ciphertextBytes: "The size of the encrypted chunk in bytes, including the 12-byte IV at its start.",
     ciphertextSha256:

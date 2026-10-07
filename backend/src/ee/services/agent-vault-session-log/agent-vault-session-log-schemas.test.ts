@@ -2,7 +2,6 @@ import { describe, expect, test } from "vitest";
 
 import {
   AGENT_VAULT_SESSION_LOG_MAX_CHUNK_BYTES,
-  AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS,
   AGENT_VAULT_SESSION_LOG_MIN_CHUNK_BYTES
 } from "./agent-vault-session-log-constants";
 import { encodeHistoryCursor, encodeTailCursor } from "./agent-vault-session-log-fns";
@@ -15,17 +14,15 @@ import {
 
 const validChunk = {
   chunkId: "01a0a9c5-231d-7abc-8def-0123456789ab",
-  startedAt: "2026-09-16T10:30:00.000Z",
   endedAt: "2026-09-16T10:31:00.000Z",
-  recordCount: 42,
   ciphertextBytes: 4096,
   ciphertextSha256: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU"
 };
 
 describe("the chunk create body", () => {
-  test("accepts a well-formed chunk and coerces the timestamps to dates", () => {
+  test("accepts a well-formed chunk and coerces the timestamp to a date", () => {
     const parsed = AgentVaultSessionLogChunkCreateSchema.parse(validChunk);
-    expect(parsed.startedAt).toBeInstanceOf(Date);
+    expect(parsed.endedAt).toBeInstanceOf(Date);
     expect(parsed.endedAt.toISOString()).toBe("2026-09-16T10:31:00.000Z");
   });
 
@@ -37,9 +34,6 @@ describe("the chunk create body", () => {
       value: "01A0A9C5-231D-7ABC-8DEF-0123456789AB",
       why: "the browser rebuilds the AAD from the lowercase id in the object name"
     },
-    { field: "recordCount", value: 0, why: "an empty chunk is never worth uploading" },
-    { field: "recordCount", value: AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS + 1, why: "over the slice size" },
-    { field: "recordCount", value: 1.5, why: "not an integer" },
     {
       field: "ciphertextBytes",
       value: AGENT_VAULT_SESSION_LOG_MIN_CHUNK_BYTES - 1,

@@ -6,7 +6,6 @@ import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import {
   AGENT_VAULT_SESSION_LOG_CHUNK_ID_REGEX,
   AGENT_VAULT_SESSION_LOG_MAX_CHUNK_BYTES,
-  AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS,
   AGENT_VAULT_SESSION_LOG_MIN_CHUNK_BYTES
 } from "./agent-vault-session-log-constants";
 import { AgentVaultSessionLogStorageUnavailableReason } from "./agent-vault-session-log-enums";
@@ -25,14 +24,7 @@ export const AgentVaultSessionLogChunkCreateSchema = z.object({
     .string()
     .regex(AGENT_VAULT_SESSION_LOG_CHUNK_ID_REGEX, "Must be a lowercase UUIDv7")
     .describe(AGENT_VAULT.SESSION_LOGS.chunkId),
-  startedAt: z.coerce.date().describe(AGENT_VAULT.SESSION_LOGS.startedAt),
   endedAt: z.coerce.date().describe(AGENT_VAULT.SESSION_LOGS.endedAt),
-  recordCount: z
-    .number()
-    .int()
-    .min(1)
-    .max(AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS)
-    .describe(AGENT_VAULT.SESSION_LOGS.recordCount),
   ciphertextBytes: z
     .number()
     .int()
