@@ -1,6 +1,7 @@
 import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
+import { ALERTING } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -29,6 +30,10 @@ const AlertResponseSchema = z.object({
   orgId: z.string(),
   projectId: z.string().nullable(),
   resourceName: z.string().nullable().optional(),
+  filters: z
+    .record(z.array(z.object({ id: z.string(), name: z.string().nullable() })))
+    .optional()
+    .describe(ALERTING.GET.filters),
   channels: z.array(
     z.object({
       id: z.string().uuid(),
@@ -68,16 +73,21 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "createAlert",
+      description: "Create an alert that notifies its channels when an event happens to a resource.",
       body: z.object({
-        name: z.string().min(1).max(255),
-        description: z.string().max(1000).optional(),
-        resourceType: z.string().min(1),
-        resourceId: z.string().nullable().optional(),
-        eventType: z.string().min(1),
-        condition: z.unknown().optional(),
-        enabled: z.boolean().optional(),
-        projectId: z.string().nullable().optional(),
-        channels: z.array(CreateChannelInputSchema).min(1).max(MAX_CHANNELS_PER_ALERT)
+        name: z.string().min(1).max(255).describe(ALERTING.CREATE.name),
+        description: z.string().max(1000).optional().describe(ALERTING.CREATE.description),
+        resourceType: z.string().trim().min(1).max(255).describe(ALERTING.CREATE.resourceType),
+        resourceId: z.string().uuid().nullable().optional().describe(ALERTING.CREATE.resourceId),
+        eventType: z.string().trim().min(1).max(255).describe(ALERTING.CREATE.eventType),
+        condition: z.unknown().optional().describe(ALERTING.CREATE.condition),
+        enabled: z.boolean().optional().describe(ALERTING.CREATE.enabled),
+        projectId: z.string().uuid().nullable().optional().describe(ALERTING.CREATE.projectId),
+        channels: z
+          .array(CreateChannelInputSchema)
+          .min(1)
+          .max(MAX_CHANNELS_PER_ALERT)
+          .describe(ALERTING.CREATE.channels)
       }),
       response: { 200: z.object({ alert: AlertResponseSchema }) }
     },
@@ -109,12 +119,13 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "testAlertChannel",
+      description: "Send a test notification through a saved channel or a channel described in the request.",
       body: z.object({
-        resourceType: z.string().min(1),
-        resourceId: z.string().nullable().optional(),
-        projectId: z.string().nullable().optional(),
-        alertId: z.string().uuid().optional(),
-        channelId: z.string().uuid().optional(),
+        resourceType: z.string().trim().min(1).max(255).describe(ALERTING.TEST_CHANNEL.resourceType),
+        resourceId: z.string().uuid().nullable().optional().describe(ALERTING.TEST_CHANNEL.resourceId),
+        projectId: z.string().uuid().nullable().optional().describe(ALERTING.TEST_CHANNEL.projectId),
+        alertId: z.string().uuid().optional().describe(ALERTING.TEST_CHANNEL.alertId),
+        channelId: z.string().uuid().optional().describe(ALERTING.TEST_CHANNEL.channelId),
         channelType: z.nativeEnum(AlertChannelType),
         config: z.record(z.unknown()).default({}),
         recipients: z.array(ChannelRecipientSchema).max(MAX_RECIPIENTS_PER_CHANNEL).optional()
@@ -129,14 +140,13 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId, resourceName, alertName, channelName, ...result } =
-        await server.services.alertChannelTest.testChannel({
-          ...req.body,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId
-        });
+      const { projectId, ...result } = await server.services.alertChannelTest.testChannel({
+        ...req.body,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -146,11 +156,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
           test: {
             resourceType: req.body.resourceType,
             resourceId: req.body.resourceId,
-            resourceName,
-            alertId: req.body.alertId,
-            alertName,
             channelId: req.body.channelId,
-            channelName,
             channelType: req.body.channelType,
             success: result.success,
             deliveredTo: result.deliveredTo,
@@ -169,14 +175,16 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     schema: {
       operationId: "listAlerts",
+      description: "List the alerts on a resource type.",
       querystring: z.object({
-        resourceType: z.string().min(1),
-        resourceId: z.string().optional(),
-        projectId: z.string().optional(),
+        resourceType: z.string().trim().min(1).max(255).describe(ALERTING.LIST.resourceType),
+        resourceId: z.string().uuid().optional().describe(ALERTING.LIST.resourceId),
+        projectId: z.string().uuid().optional().describe(ALERTING.LIST.projectId),
         enabled: z
           .enum(["true", "false"])
           .transform((value) => value === "true")
           .optional()
+          .describe(ALERTING.LIST.enabled)
       }),
       response: { 200: z.object({ alerts: AlertResponseSchema.array() }) }
     },
@@ -199,7 +207,8 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     schema: {
       operationId: "getAlertById",
-      params: z.object({ alertId: z.string().uuid() }),
+      description: "Get an alert by ID.",
+      params: z.object({ alertId: z.string().uuid().describe(ALERTING.GET.alertId) }),
       response: { 200: z.object({ alert: AlertResponseSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
@@ -221,13 +230,19 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "updateAlert",
-      params: z.object({ alertId: z.string().uuid() }),
+      description: "Update an alert.",
+      params: z.object({ alertId: z.string().uuid().describe(ALERTING.UPDATE.alertId) }),
       body: z.object({
-        name: z.string().min(1).max(255).optional(),
-        description: z.string().max(1000).nullable().optional(),
-        condition: z.unknown().optional(),
-        enabled: z.boolean().optional(),
-        channels: z.array(UpdateChannelInputSchema).min(1).max(MAX_CHANNELS_PER_ALERT).optional()
+        name: z.string().min(1).max(255).optional().describe(ALERTING.UPDATE.name),
+        description: z.string().max(1000).nullable().optional().describe(ALERTING.UPDATE.description),
+        condition: z.unknown().optional().describe(ALERTING.UPDATE.condition),
+        enabled: z.boolean().optional().describe(ALERTING.UPDATE.enabled),
+        channels: z
+          .array(UpdateChannelInputSchema)
+          .min(1)
+          .max(MAX_CHANNELS_PER_ALERT)
+          .optional()
+          .describe(ALERTING.UPDATE.channels)
       }),
       response: { 200: z.object({ alert: AlertResponseSchema }) }
     },
@@ -260,7 +275,8 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: writeLimit },
     schema: {
       operationId: "deleteAlert",
-      params: z.object({ alertId: z.string().uuid() }),
+      description: "Delete an alert and its channels.",
+      params: z.object({ alertId: z.string().uuid().describe(ALERTING.DELETE.alertId) }),
       response: { 200: z.object({ alert: z.object({ id: z.string().uuid() }) }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),

@@ -57,7 +57,7 @@ export const alertDALFactory = (db: TDbClient) => {
       orgId: string;
       projectId?: string | null;
       resourceType: string;
-      resourceId: string;
+      resourceId?: string | null;
       eventType: string;
     },
     tx?: Knex
@@ -67,7 +67,6 @@ export const alertDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.Project, `${TableName.Alert}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Alert}.orgId`, filter.orgId)
         .where(`${TableName.Alert}.resourceType`, filter.resourceType)
-        .where(`${TableName.Alert}.resourceId`, filter.resourceId)
         .where(`${TableName.Alert}.eventType`, filter.eventType)
         .where(`${TableName.Alert}.triggerType`, AlertTriggerType.Event)
         .where(`${TableName.Alert}.enabled`, true)
@@ -85,6 +84,9 @@ export const alertDALFactory = (db: TDbClient) => {
               .whereRaw(`"${TableName.AlertChannelMembership}"."alertId" = "${TableName.Alert}"."id"`)
               .where(`${TableName.AlertChannel}.enabled`, true)
         );
+
+      if (filter.resourceId) void query.where(`${TableName.Alert}.resourceId`, filter.resourceId);
+      else void query.whereNull(`${TableName.Alert}.resourceId`);
 
       if (filter.projectId) {
         void query.where(

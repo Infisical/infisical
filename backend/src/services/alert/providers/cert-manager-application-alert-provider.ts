@@ -2,70 +2,49 @@ import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
 import { ResourceType } from "@app/db/schemas";
-import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionActions } from "@app/ee/services/permission/project-permission";
 import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import {
   CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
-  CertificateAlertEvent
+  CertificateApplicationAlertEvent
 } from "@app/services/certificate/certificate-alert-events";
-import { getRevocationReasonLabel } from "@app/services/pki-alert-v2/pki-alert-v2-types";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { PkiAlertScope } from "@app/services/telemetry/telemetry-types";
 
-import { AlertChannelType, TAlertPayload, TAlertSeverity } from "../alert-channel-types";
-import { durationToDays, expirySeverity, formatUtcDate, humanizeDays } from "../alert-format-fns";
+import { durationToDays } from "../alert-format-fns";
 import {
   ALERT_SCAN_LEAD_INTERVAL,
-  AlertAuditAction,
-  AlertPermissionAction,
-  AlertTelemetryAction,
   AlertTriggerType,
-  DEFAULT_DEDUP_WINDOW_HOURS,
   IEventAlertProvider,
   IScheduledAlertProvider,
-  TAlertAuditInput,
   TAlertContext,
   TAlertPermissionInput,
-  TAlertTelemetryEvent,
   TAlertTelemetryInput,
   TFindEventTargetsInput,
   TFindScheduledTargetsInput
 } from "../alert-types";
 import {
-  TApplicationAlertCertificate,
-  TCertManagerApplicationAlertDALFactory
-} from "./cert-manager-application-alert-dal";
+  assertCertManagerAlertChannelTypesAllowed,
+  buildCertificateAlertPayload,
+  buildPkiAlertTelemetryEvent,
+  CERT_MANAGER_ALERT_PERMISSION_ACTIONS,
+  CERTIFICATE_ALERT_KIND_TELEMETRY_TYPES,
+  CertificateAlertKind,
+  expiryDedupWindowHours,
+  ExpiryFieldsSchema
+} from "./cert-manager-alert-fns";
+import { TAlertCertificate, TCertManagerCertificateAlertDALFactory } from "./cert-manager-certificate-alert-dal";
 
-const TELEMETRY_ALERT_TYPE_BY_EVENT: Record<CertificateAlertEvent, string> = {
-  [CertificateAlertEvent.Expiry]: "expiration",
-  [CertificateAlertEvent.Issuance]: "issuance",
-  [CertificateAlertEvent.Renewal]: "renewal",
-  [CertificateAlertEvent.Revocation]: "revocation"
+const ALERT_KIND_BY_EVENT: Record<CertificateApplicationAlertEvent, CertificateAlertKind> = {
+  [CertificateApplicationAlertEvent.Expiry]: CertificateAlertKind.Expiry,
+  [CertificateApplicationAlertEvent.Issuance]: CertificateAlertKind.Issuance,
+  [CertificateApplicationAlertEvent.Renewal]: CertificateAlertKind.Renewal,
+  [CertificateApplicationAlertEvent.Revocation]: CertificateAlertKind.Revocation
 };
 
-const MIN_CERTIFICATE_ALERT_BEFORE_DAYS = 1;
-const MAX_CERTIFICATE_ALERT_BEFORE_DAYS = 365;
-
-const isValidAlertBefore = (alertBefore: string): boolean => {
-  const days = durationToDays(alertBefore);
-  return days >= MIN_CERTIFICATE_ALERT_BEFORE_DAYS && days <= MAX_CERTIFICATE_ALERT_BEFORE_DAYS;
-};
-
-const ExpirationConditionSchema = z
-  .object({
-    alertBefore: z
-      .string()
-      .refine(
-        isValidAlertBefore,
-        `Must be a number of days, weeks, months or years adding up to ${MIN_CERTIFICATE_ALERT_BEFORE_DAYS} to ${MAX_CERTIFICATE_ALERT_BEFORE_DAYS} days, e.g. '30d' or '2w'`
-      ),
-    dailyReminder: z.boolean().optional()
-  })
-  .strict();
+const ExpirationConditionSchema = ExpiryFieldsSchema.strict();
 
 const EventConditionSchema = z.object({}).strict().nullish();
 
@@ -75,103 +54,31 @@ const assertValidApplicationId = (applicationId: string) => {
   }
 };
 
-const EVENT_LABELS: Record<CertificateAlertEvent, string> = {
-  [CertificateAlertEvent.Expiry]: "Expiration",
-  [CertificateAlertEvent.Issuance]: "Issuance",
-  [CertificateAlertEvent.Renewal]: "Renewal",
-  [CertificateAlertEvent.Revocation]: "Revocation"
-};
-
-const EVENT_VERBS: Record<CertificateAlertEvent, string> = {
-  [CertificateAlertEvent.Expiry]: "is expiring",
-  [CertificateAlertEvent.Issuance]: "was issued",
-  [CertificateAlertEvent.Renewal]: "was renewed",
-  [CertificateAlertEvent.Revocation]: "was revoked"
-};
-
-const PERMISSION_ACTIONS: Record<AlertPermissionAction, ProjectPermissionActions> = {
-  [AlertPermissionAction.Read]: ProjectPermissionActions.Read,
-  [AlertPermissionAction.Create]: ProjectPermissionActions.Create,
-  [AlertPermissionAction.Edit]: ProjectPermissionActions.Edit,
-  [AlertPermissionAction.Delete]: ProjectPermissionActions.Delete
-};
-
-const eventSeverity = (eventType: CertificateAlertEvent, targets: TApplicationAlertCertificate[]): TAlertSeverity => {
-  if (eventType === CertificateAlertEvent.Expiry) return expirySeverity(targets.map((target) => target.notAfter));
-  if (eventType === CertificateAlertEvent.Revocation) return "warning";
-  return "info";
-};
-
-const splitAltNames = (altNames: string | null): string[] =>
-  (altNames ?? "")
-    .split(",")
-    .map((name) => name.trim())
-    .filter(Boolean);
-
-const certificateDisplayName = (certificate: TApplicationAlertCertificate): string =>
-  certificate.commonName || splitAltNames(certificate.altNames)[0] || certificate.serialNumber;
-
-const buildSummary = (
-  eventType: CertificateAlertEvent,
-  targets: TApplicationAlertCertificate[],
-  alertBefore?: string
-): string => {
-  const applicationName = targets[0]?.applicationName;
-  const inApplication = applicationName ? ` in application '${applicationName}'` : "";
-  if (alertBefore) {
-    const certificates = `${targets.length} certificate${targets.length === 1 ? "" : "s"}`;
-    return `${certificates}${inApplication} expiring within ${humanizeDays(durationToDays(alertBefore))}`;
-  }
-  if (targets.length === 1) {
-    return `Certificate '${certificateDisplayName(targets[0])}' ${EVENT_VERBS[eventType]}${inApplication}`;
-  }
-  return `${targets.length} certificates ${EVENT_VERBS[eventType]}${inApplication}`;
-};
-
-const buildItemSummary = (eventType: CertificateAlertEvent, certificate: TApplicationAlertCertificate): string => {
-  const inApplication = certificate.applicationName ? ` in application '${certificate.applicationName}'` : "";
-  if (eventType === CertificateAlertEvent.Expiry) {
-    return `Certificate '${certificateDisplayName(certificate)}'${inApplication} expires on ${formatUtcDate(certificate.notAfter)}`;
-  }
-  return `Certificate '${certificateDisplayName(certificate)}' ${EVENT_VERBS[eventType]}${inApplication}`;
-};
-
-const DAILY_SCAN_DEDUP_MARGIN_HOURS = 4;
-
-const dayMultipleDedupWindowHours = (days: number): number => days * 24 - DAILY_SCAN_DEDUP_MARGIN_HOURS;
-
-const expirationDedupWindowHours = (days: number, dailyReminder?: boolean): number => {
-  if (dailyReminder || days <= 7) return dayMultipleDedupWindowHours(1);
-  if (days <= 30) return dayMultipleDedupWindowHours(2);
-  if (days <= 90) return dayMultipleDedupWindowHours(7);
-  return dayMultipleDedupWindowHours(30);
-};
-
 export type TCertManagerApplicationAlertProviderDep = {
-  certManagerApplicationAlertDAL: TCertManagerApplicationAlertDALFactory;
+  certManagerCertificateAlertDAL: TCertManagerCertificateAlertDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export const certManagerApplicationAlertProviderFactory = ({
-  certManagerApplicationAlertDAL,
+  certManagerCertificateAlertDAL,
   permissionService,
   licenseService
-}: TCertManagerApplicationAlertProviderDep): IScheduledAlertProvider<TApplicationAlertCertificate> &
-  IEventAlertProvider<TApplicationAlertCertificate> => {
+}: TCertManagerApplicationAlertProviderDep): IScheduledAlertProvider<TAlertCertificate> &
+  IEventAlertProvider<TAlertCertificate> => {
   const buildViewUrl = async (alert: TAlertContext): Promise<string> => {
     const base = `${getConfig().SITE_URL}/organizations/${alert.orgId}/projects/cert-manager/${alert.projectId}`;
     const application = alert.resourceId
-      ? await certManagerApplicationAlertDAL.findApplicationById(alert.resourceId)
+      ? await certManagerCertificateAlertDAL.findApplicationById(alert.resourceId)
       : undefined;
     return application ? `${base}/applications/${encodeURIComponent(application.name)}` : `${base}/applications`;
   };
 
-  const findScheduledTargets = async (input: TFindScheduledTargetsInput): Promise<TApplicationAlertCertificate[]> => {
-    if (!input.projectId || !input.resourceId) return [];
+  const findScheduledTargets = async (input: TFindScheduledTargetsInput): Promise<TAlertCertificate[]> => {
+    if (!input.projectId || !input.resourceId || !input.alreadyAlerted?.channelIds.length) return [];
     const { alertBefore } = ExpirationConditionSchema.parse(input.condition);
 
-    return certManagerApplicationAlertDAL.findExpiringCertificates({
+    return certManagerCertificateAlertDAL.findExpiringCertificates({
       projectId: input.projectId,
       applicationId: input.resourceId,
       alertBeforeInterval: `${durationToDays(alertBefore)} days`,
@@ -181,11 +88,11 @@ export const certManagerApplicationAlertProviderFactory = ({
     });
   };
 
-  const findEventTargets = async (input: TFindEventTargetsInput): Promise<TApplicationAlertCertificate[]> => {
+  const findEventTargets = async (input: TFindEventTargetsInput): Promise<TAlertCertificate[]> => {
     if (!input.projectId || !input.resourceId) return [];
     EventConditionSchema.parse(input.condition);
 
-    return certManagerApplicationAlertDAL.findCertificatesByIds({
+    return certManagerCertificateAlertDAL.findCertificatesByIds({
       projectId: input.projectId,
       applicationId: input.resourceId,
       certificateIds: input.targetIds
@@ -195,127 +102,25 @@ export const certManagerApplicationAlertProviderFactory = ({
   const getWebhookSource = ({ alertId, resourceId }: { alertId: string; resourceId?: string | null }) =>
     resourceId ? `/applications/${resourceId}/alerts/${alertId}` : undefined;
 
-  const getAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
-    if (input.action === AlertAuditAction.TestChannel) {
-      const { test } = input;
-      return {
-        type: EventType.TEST_PKI_APPLICATION_ALERT_CHANNEL,
-        metadata: {
-          applicationId: test.resourceId ?? null,
-          applicationName: test.resourceName ?? null,
-          alertId: test.alertId,
-          alertName: test.alertName ?? null,
-          channelId: test.channelId,
-          channelName: test.channelName ?? null,
-          channelType: test.channelType,
-          success: test.success,
-          deliveredTo: test.deliveredTo,
-          error: test.error
-        }
-      };
-    }
-
-    const metadata = {
-      applicationId: input.alert.resourceId,
-      applicationName: input.alert.resourceName ?? null,
-      alertId: input.alert.id,
-      name: input.alert.name,
-      eventType: input.alert.eventType
-    };
-    if (input.action === AlertAuditAction.Create) return { type: EventType.CREATE_PKI_APPLICATION_ALERT, metadata };
-    if (input.action === AlertAuditAction.Update) return { type: EventType.UPDATE_PKI_APPLICATION_ALERT, metadata };
-    return { type: EventType.DELETE_PKI_APPLICATION_ALERT, metadata };
-  };
-
-  const getTelemetryEvent = ({
-    action,
-    orgId,
-    projectId,
-    resourceId,
-    eventType
-  }: TAlertTelemetryInput): TAlertTelemetryEvent | undefined => {
+  const getTelemetryEvent = ({ action, orgId, projectId, resourceId, eventType }: TAlertTelemetryInput) => {
     if (!projectId || !resourceId) return undefined;
-    const properties = { orgId, projectId, applicationId: resourceId };
-    switch (action) {
-      case AlertTelemetryAction.Create:
-        return {
-          event: PostHogEventTypes.PkiAlertCreated,
-          properties: {
-            ...properties,
-            alertType: TELEMETRY_ALERT_TYPE_BY_EVENT[eventType as CertificateAlertEvent]
-          }
-        };
-      case AlertTelemetryAction.Update:
-        return { event: PostHogEventTypes.PkiAlertUpdated, properties };
-      default:
-        return { event: PostHogEventTypes.PkiAlertDeleted, properties };
-    }
+    return buildPkiAlertTelemetryEvent(
+      action,
+      { orgId, projectId, applicationId: resourceId, alertScope: PkiAlertScope.Application },
+      CERTIFICATE_ALERT_KIND_TELEMETRY_TYPES[ALERT_KIND_BY_EVENT[eventType as CertificateApplicationAlertEvent]]
+    );
   };
 
-  const buildPayload = (
-    alert: TAlertContext,
-    targets: TApplicationAlertCertificate[],
-    viewUrl: string
-  ): TAlertPayload => {
-    const eventType = alert.eventType as CertificateAlertEvent;
-    const isExpiration = eventType === CertificateAlertEvent.Expiry;
-    const alertBefore = isExpiration ? (alert.condition as { alertBefore?: string } | null)?.alertBefore : undefined;
-
-    return {
-      alert: {
-        id: alert.id,
-        name: alert.name,
-        orgId: alert.orgId,
-        ...(alert.projectId ? { projectId: alert.projectId } : {}),
-        resourceType: alert.resourceType,
-        ...(alert.resourceId ? { resourceId: alert.resourceId } : {}),
-        ...(alertBefore ? { condition: alertBefore } : {}),
-        viewUrl
-      },
-      eventKey: eventType,
-      eventLabel: EVENT_LABELS[eventType],
-      webhookType: `com.infisical.${eventType}`,
+  const buildPayload = (alert: TAlertContext, targets: TAlertCertificate[], viewUrl: string) =>
+    buildCertificateAlertPayload({
+      alert,
+      targets,
+      viewUrl,
+      kind: ALERT_KIND_BY_EVENT[alert.eventType as CertificateApplicationAlertEvent],
       webhookSource: getWebhookSource({ alertId: alert.id, resourceId: alert.resourceId }),
-      resourceKind: "Certificate",
       resourceOwnerKind: "Application",
-      severity: eventSeverity(eventType, targets),
-      summary: buildSummary(eventType, targets, alertBefore),
-      items: targets.map((certificate) => {
-        const revocationReason =
-          eventType === CertificateAlertEvent.Revocation
-            ? getRevocationReasonLabel(certificate.revocationReason)
-            : undefined;
-        const altNames = splitAltNames(certificate.altNames);
-        return {
-          id: certificate.id,
-          title: certificateDisplayName(certificate),
-          summary: buildItemSummary(eventType, certificate),
-          severity: eventSeverity(eventType, [certificate]),
-          fields: [
-            { label: "Serial Number", value: certificate.serialNumber },
-            ...(altNames.length ? [{ label: "SANs", value: altNames.join(", ") }] : []),
-            ...(certificate.profileName ? [{ label: "Profile", value: certificate.profileName }] : []),
-            { label: "Expires", value: formatUtcDate(certificate.notAfter) },
-            ...(revocationReason ? [{ label: "Revocation Reason", value: revocationReason }] : [])
-          ],
-          resource: {
-            id: certificate.id,
-            serialNumber: certificate.serialNumber,
-            commonName: certificate.commonName,
-            altNames,
-            status: certificate.status,
-            notBefore: certificate.notBefore.toISOString(),
-            notAfter: certificate.notAfter.toISOString(),
-            revokedAt: certificate.revokedAt?.toISOString() ?? null,
-            revocationReason: certificate.revocationReason,
-            profileName: certificate.profileName,
-            applicationId: certificate.applicationId,
-            applicationName: certificate.applicationName
-          }
-        };
-      })
-    };
-  };
+      applicationName: targets[0]?.applicationName ?? null
+    });
 
   const assertPermission = async ({ action, projectId, resourceId, actor }: TAlertPermissionInput): Promise<void> => {
     if (!projectId) {
@@ -336,7 +141,10 @@ export const certManagerApplicationAlertProviderFactory = ({
       actorAuthMethod: actor.actorAuthMethod,
       actorOrgId: actor.actorOrgId
     });
-    ForbiddenError.from(permission).throwUnlessCan(PERMISSION_ACTIONS[action], ResourcePermissionSub.PkiAlerts);
+    ForbiddenError.from(permission).throwUnlessCan(
+      CERT_MANAGER_ALERT_PERMISSION_ACTIONS[action],
+      ResourcePermissionSub.PkiAlerts
+    );
   };
 
   const assertResourceInScope = async (input: {
@@ -347,7 +155,7 @@ export const certManagerApplicationAlertProviderFactory = ({
     if (!input.resourceId) return;
     assertValidApplicationId(input.resourceId);
 
-    const application = await certManagerApplicationAlertDAL.findApplicationById(input.resourceId);
+    const application = await certManagerCertificateAlertDAL.findApplicationById(input.resourceId);
     if (!application || application.orgId !== input.orgId || application.projectId !== input.projectId) {
       throw new NotFoundError({
         message: `Application with ID '${input.resourceId}' not found in Certificate Manager`
@@ -355,42 +163,35 @@ export const certManagerApplicationAlertProviderFactory = ({
     }
   };
 
-  const resolveProjectId = async ({ orgId, resourceId }: { orgId: string; resourceId: string }) => {
+  const resolveProjectId = async ({ orgId, resourceId }: { orgId: string; resourceId?: string | null }) => {
+    if (!resourceId) {
+      throw new BadRequestError({ message: "Application alerts require an application ID" });
+    }
     assertValidApplicationId(resourceId);
-    const application = await certManagerApplicationAlertDAL.findApplicationById(resourceId);
+    const application = await certManagerCertificateAlertDAL.findApplicationById(resourceId);
     if (!application || application.orgId !== orgId) {
       throw new NotFoundError({ message: `Application with ID '${resourceId}' not found` });
     }
     return application.projectId;
   };
 
-  const assertChannelTypesAllowed = async ({ orgId, channelTypes }: { orgId: string; channelTypes: string[] }) => {
-    const gatedType = channelTypes.find((channelType) => channelType !== AlertChannelType.EMAIL);
-    if (!gatedType) return;
-
-    const plan = await licenseService.getPlan(orgId);
-    if (!plan.pkiEnterpriseAlerting) {
-      throw new BadRequestError({
-        message: `Failed to add a ${gatedType} channel due to plan restriction. Upgrade plan to alert on channels other than email.`
-      });
-    }
-  };
-
   return {
     resourceType: CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
     events: [
       {
-        key: CertificateAlertEvent.Expiry,
+        key: CertificateApplicationAlertEvent.Expiry,
         triggerType: AlertTriggerType.Scheduled,
         conditionSchema: ExpirationConditionSchema
       },
-      ...[CertificateAlertEvent.Issuance, CertificateAlertEvent.Renewal, CertificateAlertEvent.Revocation].map(
-        (key) => ({
-          key,
-          triggerType: AlertTriggerType.Event,
-          conditionSchema: EventConditionSchema
-        })
-      )
+      ...[
+        CertificateApplicationAlertEvent.Issuance,
+        CertificateApplicationAlertEvent.Renewal,
+        CertificateApplicationAlertEvent.Revocation
+      ].map((key) => ({
+        key,
+        triggerType: AlertTriggerType.Event,
+        conditionSchema: EventConditionSchema
+      }))
     ],
     findScheduledTargets,
     findEventTargets,
@@ -398,22 +199,17 @@ export const certManagerApplicationAlertProviderFactory = ({
     buildPayload,
     getTelemetryEvent,
     targetId: (certificate) => certificate.id,
-    dedupWindowHours: (condition) => {
-      const parsed = ExpirationConditionSchema.safeParse(condition);
-      if (!parsed.success) return DEFAULT_DEDUP_WINDOW_HOURS;
-      return expirationDedupWindowHours(durationToDays(parsed.data.alertBefore), parsed.data.dailyReminder);
-    },
+    dedupWindowHours: expiryDedupWindowHours,
     assertPermission,
     assertResourceInScope,
-    assertChannelTypesAllowed,
+    assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(licenseService, input),
     recipientPolicy: { atOrgScope: true, allowEmailAddresses: true },
     includeLastRun: true,
-    getAuditEvent,
     getWebhookSource,
     resolveProjectId,
     getResourceNames: async ({ orgId, resourceIds }) =>
       new Map(
-        (await certManagerApplicationAlertDAL.findApplicationNamesByIds(resourceIds, orgId)).map((app) => [
+        (await certManagerCertificateAlertDAL.findApplicationNamesByIds(resourceIds, orgId)).map((app) => [
           app.id,
           app.name
         ])
