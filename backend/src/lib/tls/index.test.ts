@@ -28,7 +28,8 @@ describe("getTlsServerNameOptions", () => {
 
   test.each(["10.0.0.5", "2001:db8::1", "[2001:db8::1]"])("never sets servername for the IP %s", (host) => {
     const options = getTlsServerNameOptions(host);
-    expect(options).not.toHaveProperty("servername");
+    // Present but undefined, so a driver that defaults a missing servername to the host leaves it alone.
+    expect(options).toHaveProperty("servername", undefined);
     expect(options.checkServerIdentity).toBeTypeOf("function");
   });
 
