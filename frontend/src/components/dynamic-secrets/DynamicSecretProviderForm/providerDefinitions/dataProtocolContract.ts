@@ -8,5 +8,6 @@ export const DATA_PROTOCOL_DYNAMIC_SECRET_PROVIDERS = [
   DynamicSecretProviders.Milvus,
   DynamicSecretProviders.RabbitMq,
   DynamicSecretProviders.IbmApiConnect,
-  DynamicSecretProviders.Totp
+  DynamicSecretProviders.Totp,
+  DynamicSecretProviders.Kafka
 ] as const;
