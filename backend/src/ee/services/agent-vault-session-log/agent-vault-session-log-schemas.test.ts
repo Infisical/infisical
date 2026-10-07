@@ -60,14 +60,14 @@ describe("the chunk create body", () => {
     expect(AgentVaultSessionLogChunkCreateSchema.safeParse({ ...validChunk, [field]: value }).success).toBe(false);
   });
 
-  test("rejects a body carrying anything the contract does not name", () => {
+  test("drops a field the contract does not name, so a caller can't choose the object key", () => {
     const parsed = AgentVaultSessionLogChunkCreateSchema.parse({ ...validChunk, objectKey: "attacker/controlled" });
     expect(parsed).not.toHaveProperty("objectKey");
   });
 });
 
 describe("the session logs history query", () => {
-  test("starts from the newest logs when no cursor is given", () => {
+  test("accepts a history query with no cursor", () => {
     expect(AgentVaultSessionLogHistoryQuerySchema.parse({})).toEqual({ cursor: undefined });
   });
 
@@ -93,7 +93,7 @@ describe("the session logs history query", () => {
 });
 
 describe("the session logs tail query", () => {
-  test("starts from the most recent chunks when no cursor is given", () => {
+  test("accepts a tail query with no cursor", () => {
     expect(AgentVaultSessionLogTailQuerySchema.parse({})).toEqual({ cursor: undefined });
   });
 

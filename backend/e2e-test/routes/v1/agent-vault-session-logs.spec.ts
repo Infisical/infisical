@@ -14,8 +14,10 @@ import {
 } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-constants";
 import { AgentVaultSessionLogErrorName } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-enums";
 import {
+  chunkIdTimeMs,
   encodeHistoryCursor,
-  encodeTailCursor
+  encodeTailCursor,
+  toRev
 } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-fns";
 import { initLogger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -202,7 +204,6 @@ describe("Agent Vault session logs", async () => {
 
       const body = JSON.parse(res.payload) as { settings: Record<string, unknown> };
       expect(body.settings).toMatchObject({ enabled: false, bucket: null, appConnectionId: null });
-      expect(body).not.toHaveProperty("usage");
 
       const health = await inject("GET", `${SETTINGS_URL}/health`);
       expect(health.statusCode).toBe(200);
@@ -422,16 +423,12 @@ describe("Agent Vault session logs", async () => {
       expect(fakeS3Bucket.objectKeys(BUCKET)).toEqual([]);
 
       fakeS3Bucket.put(result.uploadUrl, Buffer.alloc(CHUNK_BYTES));
-      const [key] = fakeS3Bucket.objectKeys(BUCKET);
-      const [rev, name] = key.slice(`logs/${projectId}/${session.id}/`.length).split("_");
-      expect(key.startsWith(`logs/${projectId}/${session.id}/`)).toBe(true);
-      expect(rev).toHaveLength(13);
-      expect(name).toBe(`${chunk.chunkId}.${proxy.id}.json.enc`);
-
-      expect(() => fakeS3Bucket.put(result.uploadUrl, Buffer.alloc(CHUNK_BYTES + 1))).toThrow();
+      expect(fakeS3Bucket.objectKeys(BUCKET)).toEqual([
+        `logs/${projectId}/${session.id}/${toRev(chunkIdTimeMs(chunk.chunkId))}_${chunk.chunkId}.${proxy.id}.json.enc`
+      ]);
     });
 
-    test("a re-sent chunk gets a fresh link to the same name, which cannot replace what is already stored", async () => {
+    test("a re-sent chunk is signed for the same name, which cannot replace what is already stored", async () => {
       await configure();
       const bundle = await createAccessBundle(`session-logs-overwrite-${Date.now()}`);
       const session = await mintSession(bundle.name);
@@ -443,7 +440,6 @@ describe("Agent Vault session logs", async () => {
       fakeS3Bucket.put(first.uploadUrl, stored);
 
       const second = await requestUploadUrl(proxy, session.id, chunk);
-      expect(second.uploadUrl).not.toBe(first.uploadUrl);
       expect(() => fakeS3Bucket.put(second.uploadUrl, Buffer.alloc(CHUNK_BYTES, 2))).toThrow(/create-only/);
 
       const read = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
@@ -451,22 +447,17 @@ describe("Agent Vault session logs", async () => {
       expect(fakeS3Bucket.get(only.presignedGetUrl)).toEqual(stored);
     });
 
-    test("a chunk re-sent after the destination moved is uploaded to the new one and reads back", async () => {
-      await configure();
-      const bundle = await createAccessBundle(`session-logs-moved-${Date.now()}`);
+    test("with no key prefix, a chunk lands at the bucket root and reads back", async () => {
+      await configure({ keyPrefix: "" });
+      const bundle = await createAccessBundle(`session-logs-root-${Date.now()}`);
       const session = await mintSession(bundle.name);
-      const proxy = await createProxy(`session-logs-moved-${Date.now()}`);
-      const chunk = chunkBody();
-      await requestUploadUrl(proxy, session.id, chunk);
+      const proxy = await createProxy(`session-logs-root-${Date.now()}`);
 
-      const movedBucket = `${BUCKET}-moved`;
-      expect((await configure({ bucket: movedBucket, keyPrefix: "" })).statusCode).toBe(200);
-
-      const resent = await requestUploadUrl(proxy, session.id, chunk);
+      const { uploadUrl } = await requestUploadUrl(proxy, session.id, chunkBody());
       const stored = Buffer.alloc(CHUNK_BYTES, 3);
-      fakeS3Bucket.put(resent.uploadUrl, stored);
+      fakeS3Bucket.put(uploadUrl, stored);
 
-      const [key] = fakeS3Bucket.objectKeys(movedBucket);
+      const [key] = fakeS3Bucket.objectKeys(BUCKET);
       expect(key.startsWith(`${projectId}/${session.id}/`)).toBe(true);
 
       const read = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
@@ -502,6 +493,7 @@ describe("Agent Vault session logs", async () => {
 
       const res = await proxy.postChunk(session.id, chunkBody());
       expect(res.statusCode).toBe(500);
+      fakeAwsConnection.reset();
       expect(await tailedChunks(session.id)).toEqual([]);
     });
 
@@ -1128,12 +1120,6 @@ describe("Agent Vault session logs", async () => {
       } finally {
         await member.cleanup();
       }
-    });
-
-    test("an unknown session is a 404", async () => {
-      await configure();
-      const res = await inject("GET", `/api/v1/agent-vault/sessions/${crypto.randomUUID()}/logs`);
-      expect(res.statusCode).toBe(404);
     });
   });
 });

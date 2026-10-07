@@ -42,6 +42,34 @@ const missing: TAgentVaultDecryptedChunk = {
 };
 
 describe("buildSessionLogTimeline", () => {
+  it("shows both proxies' requests when their chunks share an id", () => {
+    const chunkFor = (proxyId: string) => ({
+      chunkId,
+      proxyId,
+      ciphertextBytes: 64,
+      presignedGetUrl: `https://bucket.example/${proxyId}`
+    });
+    const opened = (proxyId: string): TAgentVaultDecryptedChunk => ({
+      records: [{ ...record, proxyId }],
+      gap: null,
+      arrivedAt: null
+    });
+    const timeline = buildSessionLogTimeline(
+      [
+        {
+          ...pageWith(missing),
+          chunks: [chunkFor("proxy-1"), chunkFor("proxy-2")],
+          decrypted: {
+            [`proxy-1/${chunkId}`]: opened("proxy-1"),
+            [`proxy-2/${chunkId}`]: opened("proxy-2")
+          }
+        }
+      ],
+      firstSeenAt
+    );
+    assert.deepEqual(timeline.records.map((entry) => entry.proxyId).sort(), ["proxy-1", "proxy-2"]);
+  });
+
   it("holds a chunk that isn't in the bucket yet as still uploading while it is recent", () => {
     const timeline = buildSessionLogTimeline([pageWith(missing)], firstSeenAt + 30_000);
     assert.deepEqual(timeline.gaps, []);

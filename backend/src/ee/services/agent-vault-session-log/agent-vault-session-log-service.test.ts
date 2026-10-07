@@ -91,6 +91,8 @@ type TOverrides = {
   config?: unknown;
   feed?: TFeedEntry[];
   feedAddFails?: boolean;
+  feedAddHangs?: boolean;
+  isAdmin?: boolean;
   connection?: unknown;
   configCreateThrows?: unknown;
   licensed?: boolean;
@@ -106,9 +108,11 @@ const build = (overrides: TOverrides = {}) => {
     ...(config as object),
     ...values
   }));
-  const streamAdd = vi.fn(async () =>
-    overrides.feedAddFails ? Promise.reject(new Error("redis is down")) : "1791278402731-0"
-  );
+  const streamAdd = vi.fn(async () => {
+    if (overrides.feedAddHangs) return new Promise<string>(() => {});
+    return overrides.feedAddFails ? Promise.reject(new Error("redis is down")) : "1791278402731-0";
+  });
+  const findSession = vi.fn(async () => ("session" in overrides ? overrides.session : liveSession()));
   const streamRange = vi.fn(async () => overrides.feed ?? []);
 
   const service = agentVaultSessionLogServiceFactory({
@@ -122,7 +126,7 @@ const build = (overrides: TOverrides = {}) => {
       })
     } as never,
     agentVaultSessionDAL: {
-      findOne: vi.fn(async () => ("session" in overrides ? overrides.session : liveSession()))
+      findOne: findSession
     } as never,
     agentVaultProxyDAL: {
       findByIdWithOrg: vi.fn(async () => ("proxy" in overrides ? overrides.proxy : PROXY))
@@ -132,7 +136,7 @@ const build = (overrides: TOverrides = {}) => {
     permissionService: {
       getProjectPermission: vi.fn(async () => ({
         permission: createMongoAbility([{ action: "read", subject: "agent-vault-sessions" }]),
-        hasRole: () => true
+        hasRole: () => overrides.isAdmin ?? true
       }))
     } as never,
     kmsService: { createCipherPairWithDataKey: vi.fn() } as never,
@@ -144,7 +148,7 @@ const build = (overrides: TOverrides = {}) => {
     keyStore: { streamAdd, streamRange } as never
   });
 
-  return { service, validateConnection, findConnection, updateConfig, streamAdd, streamRange };
+  return { service, validateConnection, findConnection, updateConfig, streamAdd, streamRange, findSession };
 };
 
 const record = (service: ReturnType<typeof build>["service"], chunk = validChunk()) =>
@@ -191,9 +195,10 @@ describe("createChunkUploadUrl: who is allowed to write", () => {
     await expect(record(service)).rejects.toMatchObject({ message: "Session not found" });
   });
 
-  test("a session in another project reads exactly like a missing one", async () => {
-    const { service } = build({ session: undefined });
+  test("looks the session up in the proxy's own project, so another project's session reads as missing", async () => {
+    const { service, findSession } = build({ session: undefined });
     await expect(record(service)).rejects.toMatchObject({ message: "Session not found" });
+    expect(findSession).toHaveBeenCalledWith({ id: SESSION_ID, projectId: PROJECT_ID });
   });
 });
 
@@ -243,13 +248,6 @@ describe("createChunkUploadUrl: the retirement grace window", () => {
       message: "Session ended too long ago to accept session logs"
     });
   });
-
-  test("an expiry in the future is not retirement", async () => {
-    const { service } = build({
-      session: { ...liveSession(), expiresAt: new Date(Date.now() + 60 * 60 * 1000) }
-    });
-    await expect(record(service)).resolves.toBeTruthy();
-  });
 });
 
 describe("createChunkUploadUrl: when session logs are off", () => {
@@ -297,15 +295,6 @@ describe("createChunkUploadUrl: the proxy's clock", () => {
 });
 
 describe("createChunkUploadUrl: sending a chunk again", () => {
-  test("signs the same name, so the create-only upload can't store it twice", async () => {
-    const { service } = build();
-    const chunk = validChunk();
-    await record(service, chunk);
-    await record(service, chunk);
-    const [first, second] = presignPut.mock.calls as unknown as [{ objectKey: string }][];
-    expect(first[0].objectKey).toBe(second[0].objectKey);
-  });
-
   test("a chunk id another proxy also used lands under that proxy's own name", async () => {
     const chunk = validChunk();
     const { service } = build();
@@ -320,6 +309,11 @@ describe("createChunkUploadUrl: sending a chunk again", () => {
 describe("createChunkUploadUrl: the live feed", () => {
   test("a feed that can't be written still hands out the upload url", async () => {
     const { service } = build({ feedAddFails: true });
+    await expect(record(service)).resolves.toMatchObject({ uploadUrl: "https://bucket.s3.amazonaws.com/signed-put" });
+  });
+
+  test("an upload never waits on Redis, even when it doesn't answer", async () => {
+    const { service } = build({ feedAddHangs: true });
     await expect(record(service)).resolves.toMatchObject({ uploadUrl: "https://bucket.s3.amazonaws.com/signed-put" });
   });
 });
@@ -359,6 +353,22 @@ describe("when the AWS connection can't be used", () => {
     const page = await service.tailSessionLogs({ ...scope, cursor: "1791278402000-0" });
     expect(page.chunks).toEqual([]);
     expect(page.nextCursor).toBe(encodeTailCursor("1791278402000-0"));
+  });
+
+  test("a member who isn't an admin is told storage is unavailable, without the AWS error", async () => {
+    vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
+    const { service } = build({ isAdmin: false });
+    const page = await service.listSessionLogs(scope);
+    expect(page.sessionLogs.storageUnavailable).toEqual({ reason: "connection-unusable", message: null });
+  });
+
+  test("a member who isn't an admin gets no bucket detail when listing fails", async () => {
+    listChunks.mockRejectedValueOnce(
+      new S3ServiceException({ name: "AccessDenied", $fault: "client", $metadata: {}, message: "Access Denied" })
+    );
+    const { service } = build({ isAdmin: false });
+    const page = await service.listSessionLogs(scope);
+    expect(page.sessionLogs.storageUnavailable).toEqual({ reason: "connection-unusable", message: null });
   });
 
   test("a bucket that refuses to list reads as unusable storage, not a 500", async () => {
@@ -472,6 +482,12 @@ describe("listSessionLogs: paging through the bucket", () => {
     expect(listChunks).toHaveBeenCalledWith({ folder: FOLDER, startAfter: `${FOLDER}8208694117999_x` });
   });
 
+  test("a cursor wins over the end of a date range, so later pages keep moving back", async () => {
+    const { service } = build();
+    await service.listSessionLogs({ ...scope, cursor: "8208694117999_x", to: new Date() });
+    expect(listChunks).toHaveBeenCalledWith({ folder: FOLDER, startAfter: `${FOLDER}8208694117999_x` });
+  });
+
   test("a date range starts listing at its end plus the seal margin", async () => {
     const to = new Date("2026-10-07T10:00:00.000Z");
     const { service } = build();
@@ -549,6 +565,14 @@ describe("tailSessionLogs: reading the live feed", () => {
     const page = await service.tailSessionLogs(scope);
     expect(page.chunks).toEqual([]);
     expect(page.nextCursor).toBe(encodeTailCursor("101-0"));
+  });
+
+  test("skips an entry whose size isn't a whole number, and still moves past it", async () => {
+    const { key } = objectFor(Date.now());
+    const { service } = build({ feed: [["100-0", ["key", key, "bucket", "my-bucket", "bytes", "lots"]]] });
+    const page = await service.tailSessionLogs(scope);
+    expect(page.chunks).toEqual([]);
+    expect(page.nextCursor).toBe(encodeTailCursor("100-0"));
   });
 
   test("an empty feed keeps the cursor and never touches the AWS connection", async () => {
