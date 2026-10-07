@@ -130,6 +130,18 @@ export const projectMembershipServiceFactory = ({
       }
     }
 
+    const secretAccessPolicies = await approvalPolicyDAL.findPoliciesWhereSubjectIsApprover({
+      projectId,
+      type: ApprovalPolicyType.SecretAccess,
+      userIds
+    });
+    if (secretAccessPolicies.length > 0) {
+      const policyNames = secretAccessPolicies.map((p) => p.name).join(", ");
+      throw new BadRequestError({
+        message: `${actionLabel}: user is an approver in access approval ${secretAccessPolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
+      });
+    }
+
     const secretApprovers = await secretApprovalPolicyApproverDAL.find({
       $in: { approverUserId: userIds }
     });

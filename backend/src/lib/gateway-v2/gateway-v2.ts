@@ -88,7 +88,7 @@ export const createRelayConnection = async ({
   const serverCAs = splitPemChain(serverCertificateChain);
   const tlsOptions: tls.ConnectionOptions = {
     host: targetHost,
-    servername: relayHost,
+    servername: net.isIP(relayHost) ? undefined : relayHost,
     port,
     cert: clientCertificate,
     key: clientPrivateKey,

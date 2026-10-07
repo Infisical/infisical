@@ -137,6 +137,17 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findPendingByPolicyIdForUpdate = async (policyId: string, tx: Knex) => {
+    try {
+      return await tx(TableName.ApprovalRequests)
+        .forUpdate()
+        .where({ policyId, status: ApprovalRequestStatus.Pending })
+        .orderBy("id", "asc");
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindPendingApprovalRequestsByPolicyIdForUpdate" });
+    }
+  };
+
   const markExpiredRequests = async (): Promise<number> => {
     try {
       const rows = await db(TableName.ApprovalRequests)
@@ -157,6 +168,7 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
     findStepsByRequestIds,
     findByProjectId,
     findByIdForUpdate,
+    findPendingByPolicyIdForUpdate,
     markExpiredRequests
   };
 };

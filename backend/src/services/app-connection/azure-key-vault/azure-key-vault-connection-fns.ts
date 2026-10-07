@@ -12,6 +12,7 @@ import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
+import { getTlsServerNameOptions } from "@app/lib/tls";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import {
   decryptAppConnectionCredentials,
@@ -99,7 +100,7 @@ export const requestWithAzureKeyVaultGateway = async <T>(
         },
         ...(isHttps && {
           httpsAgent: new https.Agent({
-            servername: targetHost
+            ...getTlsServerNameOptions(targetHost)
           })
         })
       };

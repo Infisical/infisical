@@ -122,7 +122,7 @@ const buildService = ({
     approvalPolicySecretEnvironmentDAL: {
       insertMany: vi.fn((rows_: unknown[]) => Promise.resolve(rows_)),
       delete: vi.fn().mockResolvedValue([]),
-      findPolicyByEnvIdAndSecretPath: vi.fn().mockResolvedValue(existingPolicy)
+      findSecretChangePolicyByEnvIdsAndSecretPath: vi.fn().mockResolvedValue(existingPolicy)
     },
     approvalRequestDAL: { update: vi.fn().mockResolvedValue([]) },
     secretChangePolicyBridgeDAL: {
@@ -286,7 +286,7 @@ describe("secretChangePolicyBridge createSecretChangePolicy", () => {
     });
 
     await expect(create(service)).rejects.toThrow("A policy for secret path '/' already exists in environment 'dev'");
-    expect(deps.approvalPolicySecretEnvironmentDAL.findPolicyByEnvIdAndSecretPath).toHaveBeenCalledWith(
+    expect(deps.approvalPolicySecretEnvironmentDAL.findSecretChangePolicyByEnvIdsAndSecretPath).toHaveBeenCalledWith(
       { envIds: [ENV_DEV.id], secretPath: "/" },
       undefined
     );
@@ -527,7 +527,7 @@ describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
     await expect(update(service, { secretPath: "/shared" })).rejects.toThrow(
       "A policy for secret path '/shared' already exists in environment 'dev'"
     );
-    expect(deps.approvalPolicySecretEnvironmentDAL.findPolicyByEnvIdAndSecretPath).toHaveBeenCalledWith(
+    expect(deps.approvalPolicySecretEnvironmentDAL.findSecretChangePolicyByEnvIdsAndSecretPath).toHaveBeenCalledWith(
       { envIds: [ENV_DEV.id], secretPath: "/shared", excludePolicyId: "policy-1" },
       TX
     );
@@ -578,7 +578,7 @@ describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
       deps.secretChangePolicyBridgeDAL.findSecretChangePolicies.mock.invocationCallOrder[stateRead]
     );
     expect(lockOrder).toBeLessThan(
-      deps.approvalPolicySecretEnvironmentDAL.findPolicyByEnvIdAndSecretPath.mock.invocationCallOrder[0]
+      deps.approvalPolicySecretEnvironmentDAL.findSecretChangePolicyByEnvIdsAndSecretPath.mock.invocationCallOrder[0]
     );
     expect(lockOrder).toBeLessThan(deps.approvalPolicyStepApproversDAL.delete.mock.invocationCallOrder[0]);
   });

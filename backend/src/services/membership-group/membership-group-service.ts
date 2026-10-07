@@ -415,6 +415,20 @@ export const membershipGroupServiceFactory = ({
       }
     }
 
+    const secretAccessPolicies = await approvalPolicyDAL.findPoliciesWhereSubjectIsApprover({
+      ...(existingMembership.scopeProjectId
+        ? { projectId: existingMembership.scopeProjectId }
+        : { organizationId: existingMembership.scopeOrgId }),
+      type: ApprovalPolicyType.SecretAccess,
+      groupId: dto.selector.groupId
+    });
+    if (secretAccessPolicies.length > 0) {
+      const policyNames = secretAccessPolicies.map((p) => p.name).join(", ");
+      throw new BadRequestError({
+        message: `Cannot remove group from ${existingMembership.scopeProjectId ? "project" : "organization"}: group is an approver in access approval ${secretAccessPolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
+      });
+    }
+
     // check if group is assigned to any secret approval policy
     const secretApprovalPolicyApprovers = await secretApprovalPolicyApproverDAL.find({
       approverGroupId: dto.selector.groupId

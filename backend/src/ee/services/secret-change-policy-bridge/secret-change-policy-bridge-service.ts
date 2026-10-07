@@ -7,6 +7,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import {
   TApprovalPolicyBypassersDALFactory,
   TApprovalPolicyDALFactory,
+  TApprovalPolicySecretEnvironmentDALFactory,
   TApprovalPolicyStepApproversDALFactory,
   TApprovalPolicyStepsDALFactory
 } from "@app/services/approval-policy/approval-policy-dal";
@@ -22,7 +23,6 @@ import { RequestState } from "../secret-approval-request/secret-approval-request
 import { TSecretChangePolicyBridgeDALFactory } from "./secret-change-policy-bridge-dal";
 import { secretChangePolicyFnsFactory, splitApprovers, toSecretChangePolicy } from "./secret-change-policy-bridge-fns";
 import { TSecretChangePolicyBridgeMethods, TSecretChangePolicyEnvironment } from "./secret-change-policy-bridge-types";
-import { TApprovalPolicySecretEnvironmentDALFactory } from "./secret-change-policy-environment-dal";
 
 type TSecretChangePolicyBridgeServiceFactoryDep = {
   approvalPolicyDAL: Pick<
@@ -34,7 +34,7 @@ type TSecretChangePolicyBridgeServiceFactoryDep = {
   approvalPolicyBypassersDAL: Pick<TApprovalPolicyBypassersDALFactory, "insertMany" | "delete">;
   approvalPolicySecretEnvironmentDAL: Pick<
     TApprovalPolicySecretEnvironmentDALFactory,
-    "insertMany" | "delete" | "findPolicyByEnvIdAndSecretPath"
+    "insertMany" | "delete" | "findSecretChangePolicyByEnvIdsAndSecretPath"
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "update">;
   secretChangePolicyBridgeDAL: Pick<TSecretChangePolicyBridgeDALFactory, "findSecretChangePolicies">;
