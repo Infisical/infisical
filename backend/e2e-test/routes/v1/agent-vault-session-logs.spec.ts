@@ -412,9 +412,10 @@ describe("Agent Vault session logs", async () => {
 
       fakeS3Bucket.put(result.uploadUrl, Buffer.alloc(CHUNK_BYTES));
       const [key] = fakeS3Bucket.objectKeys(BUCKET);
-      expect(key).toMatch(
-        new RegExp(`^logs/${projectId}/${session.id}/\\d{13}_${chunk.chunkId}\\.${proxy.id}\\.json\\.enc$`)
-      );
+      const [rev, name] = key.slice(`logs/${projectId}/${session.id}/`.length).split("_");
+      expect(key.startsWith(`logs/${projectId}/${session.id}/`)).toBe(true);
+      expect(rev).toHaveLength(13);
+      expect(name).toBe(`${chunk.chunkId}.${proxy.id}.json.enc`);
 
       expect(() => fakeS3Bucket.put(result.uploadUrl, Buffer.alloc(CHUNK_BYTES + 1))).toThrow();
     });
@@ -1066,7 +1067,7 @@ describe("Agent Vault session logs", async () => {
 
       const body = await read(session.id);
       expect(body.sessionLogs.storageUnavailable?.reason).toBe("connection-unusable");
-      expect(body.sessionLogs.storageUnavailable?.message).toMatch(/s3:ListBucket/);
+      expect(body.sessionLogs.storageUnavailable?.message).toContain("s3:ListBucket");
       expect(body.chunks).toEqual([]);
     });
 

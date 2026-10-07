@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import { z } from "zod";
 
 import { TAgentVaultSessionLogConfigs } from "@app/db/schemas";
@@ -38,8 +39,9 @@ export const buildSessionLogObjectKey = ({
   chunkId: string;
 }) => `${folder}${toRev(chunkIdTimeMs(chunkId))}_${chunkId}.${proxyId}.json.enc`;
 
-const SESSION_LOG_OBJECT_NAME_REGEX =
-  /^(\d{13})_([0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.json\.enc$/;
+const UUID_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+const UUIDV7_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
+const SESSION_LOG_OBJECT_NAME_REGEX = new RE2(`^(\\d{13})_(${UUIDV7_PATTERN})\\.(${UUID_PATTERN})\\.json\\.enc$`);
 
 // Anything else in the folder is skipped: only Infisical names objects there, through the links it signs.
 export const parseSessionLogObjectKey = (folder: string, key: string) => {
@@ -117,7 +119,7 @@ const HistoryCursorPayloadSchema = z.object({
 const TailCursorPayloadSchema = z.object({
   v: z.literal(CURSOR_VERSION),
   m: z.literal("t"),
-  id: z.string().regex(/^\d{1,16}-\d{1,16}$/)
+  id: z.string().regex(new RE2(/^\d{1,16}-\d{1,16}$/))
 });
 
 const encode = (payload: object) => Buffer.from(JSON.stringify(payload)).toString("base64url");

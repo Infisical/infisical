@@ -386,7 +386,7 @@ describe("when the AWS connection can't be used", () => {
     const { service } = build();
     const page = await service.listSessionLogs(scope);
     expect(page.sessionLogs.storageUnavailable).toMatchObject({ reason: "connection-unusable" });
-    expect(page.sessionLogs.storageUnavailable?.message).toMatch(/s3:ListBucket/);
+    expect(page.sessionLogs.storageUnavailable?.message).toContain("s3:ListBucket");
   });
 
   test("anything else that goes wrong while listing stays an error", async () => {
@@ -614,7 +614,7 @@ describe("updateSessionLogSettings: directory buckets", () => {
     const { service, updateConfig } = build();
     await expect(
       service.updateSessionLogSettings({ projectId: PROJECT_ID, ctx, actor, bucket: "logs--usw2-az1--x-s3" })
-    ).rejects.toThrow(/Directory buckets/);
+    ).rejects.toThrow("Directory buckets");
     expect(updateConfig).not.toHaveBeenCalled();
   });
 
