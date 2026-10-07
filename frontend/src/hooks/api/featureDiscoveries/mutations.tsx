@@ -16,7 +16,9 @@ export const useCreateFeatureDiscoveries = () => {
       );
       return data.featureDiscoveries;
     },
-    // Optimistic so the dots clear the moment the picker renders, not after the round trip.
+    // The cache is only ever changed per release: added optimistically here, and removed again
+    // in onError if this save fails. Responses never overwrite it, so overlapping saves can't
+    // clobber each other.
     onMutate: async (releaseIds) => {
       await queryClient.cancelQueries({ queryKey: featureDiscoveryKeys.all });
       const createdAt = new Date().toISOString();
@@ -25,15 +27,10 @@ export const useCreateFeatureDiscoveries = () => {
         ...releaseIds.map((releaseId) => ({ releaseId, createdAt }))
       ]);
     },
-    // Merge rather than replace: overlapping saves can resolve out of order.
-    onSuccess: (featureDiscoveries) => {
-      queryClient.setQueryData<TFeatureDiscovery[]>(featureDiscoveryKeys.all, (prev = []) => {
-        const saved = new Set(featureDiscoveries.map(({ releaseId }) => releaseId));
-        return [...featureDiscoveries, ...prev.filter(({ releaseId }) => !saved.has(releaseId))];
-      });
-    },
-    onError: () => {
-      queryClient.invalidateQueries({ queryKey: featureDiscoveryKeys.all });
+    onError: (_error, releaseIds) => {
+      queryClient.setQueryData<TFeatureDiscovery[]>(featureDiscoveryKeys.all, (prev = []) =>
+        prev.filter(({ releaseId }) => !releaseIds.includes(releaseId))
+      );
     }
   });
 };
