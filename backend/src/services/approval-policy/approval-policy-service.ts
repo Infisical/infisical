@@ -360,6 +360,14 @@ export const approvalPolicyServiceFactory = ({
     }
   };
 
+  const $assertPolicyType = (storedType: string, policyType: ApprovalPolicyType) => {
+    if (storedType !== policyType) {
+      throw new BadRequestError({
+        message: `Policy type mismatch: expected ${policyType}, got ${storedType}`
+      });
+    }
+  };
+
   const $verifyProjectUserMembership = async (userIds: string[], orgId: string, projectId: string) => {
     const uniqueUserIds = [...new Set(userIds)];
     if (uniqueUserIds.length === 0) return;
@@ -773,11 +781,7 @@ export const approvalPolicyServiceFactory = ({
       policy.type as ApprovalPolicyType
     );
 
-    if (policy.type !== policyType) {
-      throw new BadRequestError({
-        message: `Policy type mismatch: expected ${policyType}, got ${policy.type}`
-      });
-    }
+    $assertPolicyType(policy.type, policyType);
 
     const [steps, bypassers] = await Promise.all([
       approvalPolicyDAL.findStepsByPolicyId(policyId),
@@ -819,11 +823,7 @@ export const approvalPolicyServiceFactory = ({
       policy.type as ApprovalPolicyType
     );
 
-    if (policy.type !== policyType) {
-      throw new BadRequestError({
-        message: `Policy type mismatch: expected ${policyType}, got ${policy.type}`
-      });
-    }
+    $assertPolicyType(policy.type, policyType);
 
     if (
       !resources[policy.type as ApprovalPolicyType]?.isBreakGlassEligible &&
@@ -956,11 +956,7 @@ export const approvalPolicyServiceFactory = ({
       policy.type as ApprovalPolicyType
     );
 
-    if (policy.type !== policyType) {
-      throw new BadRequestError({
-        message: `Policy type mismatch: expected ${policyType}, got ${policy.type}`
-      });
-    }
+    $assertPolicyType(policy.type, policyType);
 
     const cancelled = await approvalPolicyDAL.transaction(async (tx) => {
       const rows = await approvalRequestDAL.update(
