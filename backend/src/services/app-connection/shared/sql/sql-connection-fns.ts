@@ -58,8 +58,7 @@ export const getConnectionConfig = ({
           ? {
               trustServerCertificate: !sslRejectUnauthorized,
               encrypt: true,
-              cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {},
-              servername: host
+              cryptoCredentialsDetails: sslCertificate ? { ca: sslCertificate } : {}
             }
           : { encrypt: false }
       };
@@ -69,8 +68,7 @@ export const getConnectionConfig = ({
         ssl: sslEnabled
           ? {
               rejectUnauthorized: sslRejectUnauthorized,
-              ca: sslCertificate,
-              serverName: host
+              ca: sslCertificate
             }
           : false
       };
