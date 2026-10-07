@@ -3414,6 +3414,10 @@ export const SecretSyncs = {
       vaultId: "The ID of the 1Password vault to sync secrets to.",
       valueLabel: "The label of the entry that holds the secret value."
     },
+    KEEPER: {
+      folderUid: "The UID of the Keeper shared folder to sync secrets to.",
+      folderName: "The name of the Keeper shared folder to sync secrets to."
+    },
     HEROKU: {
       app: "The ID of the Heroku app to sync secrets to.",
       appName: "The name of the Heroku app to sync secrets to."

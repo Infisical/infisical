@@ -17,6 +17,7 @@ import { CloudflarePagesSyncDestinationSchema } from "./cloudflare-pages-sync-de
 import { CloudflareWorkersSyncDestinationSchema } from "./cloudflare-workers-sync-destination-schema";
 import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-schema";
 import { DaytonaSyncDestinationSchema } from "./daytona-sync-destination-schema";
+import { KeeperSyncDestinationSchema } from "./keeper-sync-destination-schema";
 import { DevinSyncDestinationSchema } from "./devin-sync-destination-schema";
 import { DigitalOceanAppPlatformSyncDestinationSchema } from "./digital-ocean-app-platform-sync-destination-schema";
 import { ExternalInfisicalSyncDestinationSchema } from "./external-infisical-sync-destination-schema";
@@ -99,6 +100,7 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   QoverySyncDestinationSchema,
   Cloud66SyncDestinationSchema,
   DaytonaSyncDestinationSchema,
+  KeeperSyncDestinationSchema,
   SpaceliftSyncDestinationSchema
 ]);
 

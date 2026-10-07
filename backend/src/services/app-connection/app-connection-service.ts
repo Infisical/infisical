@@ -137,6 +137,7 @@ import { herokuConnectionService } from "./heroku/heroku-connection-service";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
 import { ValidateKeeperConnectionCredentialsSchema } from "./keeper";
+import { keeperConnectionService } from "./keeper/keeper-connection-service";
 import { ValidateKempLoadMasterConnectionCredentialsSchema } from "./kemp-loadmaster";
 import { kempLoadMasterConnectionService } from "./kemp-loadmaster/kemp-loadmaster-connection-service";
 import { ValidateLaravelForgeConnectionCredentialsSchema } from "./laravel-forge";
@@ -1452,6 +1453,7 @@ export const appConnectionServiceFactory = ({
     teamcity: teamcityConnectionService(connectAppConnectionById),
     oci: ociConnectionService(connectAppConnectionById, licenseService),
     onepass: onePassConnectionService(connectAppConnectionById),
+    keeper: keeperConnectionService(connectAppConnectionById),
     cloud66: cloud66ConnectionService(connectAppConnectionById),
     heroku: herokuConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     render: renderConnectionService(connectAppConnectionById),

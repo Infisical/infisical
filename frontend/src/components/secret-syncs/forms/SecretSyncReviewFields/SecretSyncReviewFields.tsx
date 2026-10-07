@@ -67,6 +67,7 @@ import { OvhSyncReviewFields } from "./OvhSyncReviewFields";
 import { QoverySyncReviewFields } from "./QoverySyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncOptionsReviewFields, RenderSyncReviewFields } from "./RenderSyncReviewFields";
+import { KeeperSyncReviewFields } from "./KeeperSyncReviewFields";
 import { RundeckSyncReviewFields } from "./RundeckSyncReviewFields";
 import { SnowflakeSyncReviewFields } from "./SnowflakeSyncReviewFields";
 import {
@@ -264,6 +265,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Daytona:
       // The connection is the whole destination; it is already shown above.
+      break;
+    case SecretSync.Keeper:
+      DestinationFieldsComponent = <KeeperSyncReviewFields />;
       break;
     case SecretSync.Spacelift:
       DestinationFieldsComponent = <SpaceliftSyncReviewFields />;
