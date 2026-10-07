@@ -29,7 +29,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { getDefaultSigningAlgorithm } from "@app/helpers/kms";
+import { getAllowedSigningAlgorithms, getDefaultSigningAlgorithm } from "@app/helpers/kms";
 import { SigningAlgorithm, TCmek, useCmekVerify } from "@app/hooks/api/cmeks";
 import { isBase64 } from "@app/lib/fn/base64";
 
@@ -102,11 +102,7 @@ const VerifyForm = ({ cmek }: FormProps) => {
   const signatureValid = cmekVerify.data?.signatureValid;
   const signingAlgorithm = cmekVerify.data?.signingAlgorithm;
 
-  const allowedSigningAlgorithms = Object.values(SigningAlgorithm).filter((a) => {
-    if (cmek?.algorithm?.startsWith("ML_DSA")) return (a as string) === (cmek.algorithm as string);
-    if (cmek?.algorithm?.startsWith("RSA")) return a.toLowerCase().startsWith("rsa");
-    return a.toLowerCase().startsWith("ecdsa");
-  });
+  const allowedSigningAlgorithms = getAllowedSigningAlgorithms(cmek);
 
   return (
     <form onSubmit={handleSubmit(handleVerifyData)}>
