@@ -4,74 +4,54 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/id"
-	"github.com/Infisical/infisical/tests/provider"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
+// AppConnectionKind is one app and auth method an App Connection can be created with.
+type AppConnectionKind struct {
+	// App is the name in errors and the /api/v1/app-connections/<app> segment.
+	App string
+
+	// Host is what the app's client has hardcoded, taken from its fake. It has to be
+	// hardcoded for the test to mean anything: a configurable base URL could be
+	// pointed straight at fakenet, which would prove the fake works and nothing about
+	// interception.
+	Host string
+
+	create func(ctx context.Context, c *api.ClientWithResponses, name, credential string) (uuid.UUID, error)
+}
+
 // AppConnection is one connection and the credential its fake state is keyed on.
 type AppConnection struct {
-	ID       uuid.UUID
-	Name     string
-	Provider provider.Provider
+	ID   uuid.UUID
+	Name string
 
 	nonce string
 	tn    *harness.Tenant
 }
 
-type AppConnectionOption func(*appConnectionConfig)
-
-type appConnectionConfig struct {
-	rejectWith int
-}
-
-// RejectCredentials makes the provider refuse the credential check, so the create
-// fails. Proves the check is load bearing rather than merely made.
-func RejectCredentials(status int) AppConnectionOption {
-	return func(c *appConnectionConfig) { c.rejectWith = status }
-}
-
-func NewAppConnection(tt *testing.T, tn *harness.Tenant, p provider.Provider, opts ...AppConnectionOption) *AppConnection {
+func NewAppConnection(tt *testing.T, tn *harness.Tenant, kind AppConnectionKind) *AppConnection {
 	tt.Helper()
-	conn, err := TryAppConnection(tt, tn, p, opts...)
-	require.NoErrorf(tt, err, "creating a %s connection\n%s", p.App, deniedHint(tt, tn))
-	return conn
-}
-
-// TryAppConnection is NewAppConnection without failing, for an expected refusal.
-func TryAppConnection(tt *testing.T, tn *harness.Tenant, p provider.Provider, opts ...AppConnectionOption) (*AppConnection, error) {
-	tt.Helper()
-
-	var cfg appConnectionConfig
-	for _, o := range opts {
-		o(&cfg)
-	}
 
 	conn := &AppConnection{
-		Name:     p.App + "-" + id.Short(),
-		Provider: p,
-		nonce:    id.Nonce(),
-		tn:       tn,
+		Name:  kind.App + "-" + id.Short(),
+		nonce: id.Nonce(),
+		tn:    tn,
 	}
 
 	// Before the credential reaches Infisical, so nothing published under it can
 	// arrive before its buffer exists.
-	fakenet.Track(tt, conn.FakenetAdmin(tt), p.Host, conn.nonce)
+	fakenet.Track(tt, FakenetAdmin(tt, tn), kind.Host, conn.nonce)
 
-	if cfg.rejectWith != 0 {
-		fakenet.Open[any](tt, conn.FakenetAdmin(tt), p.Host, conn.nonce).
-			Fail(tt, "", "*", cfg.rejectWith)
-	}
-
-	connID, err := p.Create(tt.Context(), tn.Admin.API, conn.Name, conn.nonce)
-	if err != nil {
-		return nil, err
-	}
+	connID, err := kind.create(tt.Context(), tn.Admin.API, conn.Name, conn.nonce)
+	require.NoErrorf(tt, err, "creating a %s connection\n%s", kind.App, deniedHint(tt, tn))
 	conn.ID = connID
-	return conn, nil
+	return conn
 }
 
 // deniedHint names the outbound calls that reached no fake, which the application's
@@ -94,8 +74,14 @@ func deniedHint(tt *testing.T, tn *harness.Tenant) string {
 
 func (c *AppConnection) Nonce() string { return c.nonce }
 
-// FakenetAdmin is a URL rather than a handle so fake packages never import fixtures.
 func (c *AppConnection) FakenetAdmin(tt *testing.T) string {
 	tt.Helper()
-	return c.tn.Module(tt, fakenet.Key, "harness.Shared").(*fakenet.Handle).AdminURL()
+	return FakenetAdmin(tt, c.tn)
+}
+
+// FakenetAdmin is fakenet's control URL, for a test that drives a fake before any
+// connection exists. A URL rather than a handle so fake packages never import fixtures.
+func FakenetAdmin(tt *testing.T, tn *harness.Tenant) string {
+	tt.Helper()
+	return tn.Module(tt, fakenet.Key, "harness.Shared").(*fakenet.Handle).AdminURL()
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/spec"
-	"github.com/Infisical/infisical/tests/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +18,7 @@ func TestIsolated_ReachesTheSharedFakenet(t *testing.T) {
 	tn := harness.From(t).NewTenant(t)
 
 	// Action
-	conn := fixture.NewAppConnection(t, tn, provider.GitHub)
+	conn := fixture.NewAppConnection(t, tn, fixture.GitHubPATAppConnection)
 
 	// Assert
 	gh := github.Open(t, conn.FakenetAdmin(t), conn.Nonce())

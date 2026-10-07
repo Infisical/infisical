@@ -2,7 +2,6 @@
 package secretmanager
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
@@ -70,14 +69,6 @@ func CreateSecret(tt *testing.T, p *fixture.Project, env, name, value string, op
 
 func GetSecret(tt *testing.T, p *fixture.Project, env, name string, opts ...SecretOption) Secret {
 	tt.Helper()
-	s, err := TryGetSecret(tt, p, env, name, opts...)
-	require.NoError(tt, err)
-	return s
-}
-
-// TryGetSecret is GetSecret without failing, for asserting a secret is absent.
-func TryGetSecret(tt *testing.T, p *fixture.Project, env, name string, opts ...SecretOption) (Secret, error) {
-	tt.Helper()
 	cfg, client := resolve(p, opts)
 
 	res, err := client.GetSecretByNameV4WithResponse(tt.Context(), name, &api.GetSecretByNameV4Params{
@@ -86,18 +77,14 @@ func TryGetSecret(tt *testing.T, p *fixture.Project, env, name string, opts ...S
 		SecretPath:      &cfg.path,
 		ViewSecretValue: new(api.GetSecretByNameV4ParamsViewSecretValue("true")),
 	})
-	if err != nil {
-		return Secret{}, err
-	}
-	if res.JSON200 == nil {
-		return Secret{}, fmt.Errorf("reading secret %s returned %d: %s", name, res.StatusCode(), apierr.Body(res.Body))
-	}
+	require.NoError(tt, err)
+	require.NotNilf(tt, res.JSON200, "reading secret %s returned %d: %s", name, res.StatusCode(), apierr.Body(res.Body))
 	return Secret{
 		Value:       res.JSON200.Secret.SecretValue,
 		ValueHidden: res.JSON200.Secret.SecretValueHidden,
 		Path:        res.JSON200.Secret.SecretPath,
 		Version:     res.JSON200.Secret.Version,
-	}, nil
+	}
 }
 
 func DeleteSecret(tt *testing.T, p *fixture.Project, env, name string, opts ...SecretOption) {

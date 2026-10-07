@@ -10,7 +10,6 @@ import (
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/spec"
-	"github.com/Infisical/infisical/tests/provider"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +18,7 @@ func setup(t *testing.T) (*fixture.Project, *fixture.AppConnection, *github.Cont
 	t.Helper()
 	tn := harness.From(t).NewTenant(t)
 	proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-	conn := fixture.NewAppConnection(t, tn, provider.GitHub)
+	conn := fixture.NewAppConnection(t, tn, fixture.GitHubPATAppConnection)
 	return proj, conn, github.Open(t, conn.FakenetAdmin(t), conn.Nonce())
 }
 

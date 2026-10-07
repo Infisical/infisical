@@ -71,7 +71,6 @@ harness/         Stack, Profile, Tenant, Principal
 fixture/         platform resources: projects, app connections (one package, a file each)
 fixture/<product>/  one package per product: secretmanager, pki, pam (a file per resource)
 fakes/           one package per faked third party
-provider/        what creating an app connection needs, per service
 internal/        wait, mail, id, apierr, spec
 clients/api/     generated Infisical client, never hand-edit
 ```
@@ -294,7 +293,7 @@ secretmanager.CreateSecret(t, proj, "dev", "DB_URL", "value",
 secretmanager.GetSecret(t, proj, "dev", "DB_URL")
 secretmanager.DeleteSecret(t, proj, "dev", "DB_URL")
 
-conn := fixture.NewAppConnection(t, tn, provider.GitHub)
+conn := fixture.NewAppConnection(t, tn, fixture.GitHubPATAppConnection)
 ```
 
 **Fixtures take required arguments positionally and everything else as options.** What
@@ -320,7 +319,7 @@ A fake is a working implementation holding real state, so you assert on what the
 destination ended up holding rather than on which requests were sent:
 
 ```go
-conn := fixture.NewAppConnection(t, tn, provider.GitHub)
+conn := fixture.NewAppConnection(t, tn, fixture.GitHubPATAppConnection)
 gh := github.Open(t, conn.FakenetAdmin(t), conn.Nonce())
 
 gh.Seed(t, github.RepoSecret("acme/app", "UNMANAGED", "keep"))
@@ -406,14 +405,22 @@ sync, rotation and scanning; they all talk to the same GitHub.
 **Model the service honestly.** Real pagination, real error shapes, real crypto. A fake
 that always answers on one page hides the bug where we never fetch page two.
 
-### Adding a provider
+### Adding an App Connection kind
 
-`provider/` carries only what *creating a connection* needs: the app slug, the hostname
-the client hardcodes, and a `Create` closure. How the service behaves lives in its fake.
+A fake is the external service; a kind is how one Infisical resource connects to it.
+Add one file to `fixture`, `appconnection_<app>.go`, declaring an `AppConnectionKind`
+named after the app, auth method and resource (`GitHubPATAppConnection`). It carries the
+app slug, the host taken from the fake (`github.Service.Host()`, never a second copy),
+and how to call the create route. A different resource on the same service, such as a
+dynamic secret, gets its own kind type in its own product's fixture package and reuses
+the same fake.
 
-The hostname must be one the client hardcodes. If the provider lets you configure a base
-URL and you point it at fakenet, the test proves the fake works and nothing about
-interception.
+The host must be one the client hardcodes. If the app lets you configure a base URL and
+you point it at fakenet, the test proves the fake works and nothing about interception.
+
+A test about creating the connection itself, such as a refused credential, calls the
+route through the generated client rather than the fixture
+(`suites/appconnections/github_test.go`).
 
 ## 9. Entitlements and rate limits
 
