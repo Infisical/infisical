@@ -5,6 +5,7 @@ import RE2 from "re2";
 
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { getTlsServerIdentityOptions } from "@app/lib/tls/server-identity";
 
 import { PamAccountType, PamPostgresAuthMethod } from "../../pam/pam-enums";
 import { executeWithGateway, sweepReachableTargets } from "../pam-discovery-fns";
@@ -115,7 +116,7 @@ export const postgresDiscoveryFactory: TPamDiscoveryFactory = ({
           ssl: account.sslEnabled
             ? {
                 rejectUnauthorized: account.sslRejectUnauthorized,
-                servername: host,
+                ...getTlsServerIdentityOptions(host),
                 ...(account.sslCertificate ? { ca: account.sslCertificate } : {})
               }
             : false

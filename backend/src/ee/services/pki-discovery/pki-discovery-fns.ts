@@ -196,12 +196,8 @@ export const scanEndpoint = async (
   return new Promise((resolve) => {
     const certificates: TScanCertificateResult[] = [];
 
-    let servername: string | undefined;
-    if (sniHostname) {
-      servername = sniHostname;
-    } else if (!isIpAddress(host)) {
-      servername = host;
-    }
+    const sniCandidate = sniHostname || host;
+    const servername = isIpAddress(sniCandidate) ? undefined : sniCandidate;
     const socket = tls.connect(
       {
         host,

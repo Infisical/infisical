@@ -4,6 +4,7 @@ import ldapjs from "@infisical/ldapjs";
 
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { getTlsServerIdentityOptions, TTlsServerIdentityOptions } from "@app/lib/tls/server-identity";
 
 import { TLDAPConfig, TTestLDAPConfigDTO } from "./ldap-config-types";
 
@@ -20,7 +21,7 @@ export const isValidLdapFilter = (filter: string) => {
 type TLdapTlsConfigInput = Pick<TLDAPConfig, "url" | "caCert" | "clientCertificate" | "clientKeyCertificate">;
 
 export const buildLdapTlsOptions = (cfg: TLdapTlsConfigInput) => {
-  const tlsOptions: { ca?: string[]; cert?: string; key?: string; servername?: string } = {};
+  const tlsOptions: { ca?: string[]; cert?: string; key?: string } & TTlsServerIdentityOptions = {};
 
   if (cfg.caCert) {
     try {
@@ -62,7 +63,7 @@ export const buildLdapTlsOptions = (cfg: TLdapTlsConfigInput) => {
   // changing TLS handshake behavior for existing non-mTLS configs.
   if (cfg.clientCertificate || cfg.clientKeyCertificate) {
     try {
-      tlsOptions.servername = new URL(cfg.url).hostname;
+      Object.assign(tlsOptions, getTlsServerIdentityOptions(new URL(cfg.url).hostname));
     } catch {
       // Malformed URL — connection itself will surface the error.
     }

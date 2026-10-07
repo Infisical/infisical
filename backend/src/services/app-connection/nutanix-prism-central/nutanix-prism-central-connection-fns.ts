@@ -7,6 +7,7 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
+import { getTlsServerIdentityOptions } from "@app/lib/tls/server-identity";
 import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -83,7 +84,7 @@ export const executeNutanixOperationWithGateway = async <T>(
     return withGatewayV2Proxy(
       async (proxyPort) => {
         const httpsAgent = new https.Agent({
-          servername: hostname,
+          ...getTlsServerIdentityOptions(hostname),
           rejectUnauthorized: credentials.sslRejectUnauthorized,
           ca: credentials.sslCertificate ? [credentials.sslCertificate] : undefined
         });

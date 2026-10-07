@@ -13,6 +13,7 @@ import { TDynamicSecrets } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
+import { getTlsServerIdentityOptions } from "@app/lib/tls/server-identity";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
@@ -52,7 +53,10 @@ export const SapHanaProvider = (): TDynamicProviderFns => {
       ...(providerInputs.ca
         ? {
             ca: providerInputs.ca,
-            rejectUnauthorized: providerInputs.sslRejectUnauthorized
+            rejectUnauthorized: providerInputs.sslRejectUnauthorized,
+            // hdb defaults servername to host only when the key is absent, so it has to be present
+            servername: undefined,
+            ...getTlsServerIdentityOptions(providerInputs.host)
           }
         : {})
     });

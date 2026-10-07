@@ -7,6 +7,7 @@ import { TDynamicSecrets } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
+import { getTlsServerIdentityOptions } from "@app/lib/tls/server-identity";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { verifyHostInputValidity } from "../dynamic-secret-fns";
@@ -79,7 +80,7 @@ export const RedisDatabaseProvider = (): TDynamicProviderFns => {
           tls: {
             ca: providerInputs.ca,
             rejectUnauthorized: providerInputs.sslRejectUnauthorized,
-            servername: providerInputs.host
+            ...getTlsServerIdentityOptions(providerInputs.host)
           }
         })
       });

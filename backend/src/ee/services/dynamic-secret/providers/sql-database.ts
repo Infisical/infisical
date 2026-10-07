@@ -11,6 +11,7 @@ import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
+import { getTlsServerIdentityOptions } from "@app/lib/tls/server-identity";
 import { generatePasswordWithConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-password-generator";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
@@ -158,7 +159,7 @@ export const SqlDatabaseProvider = ({
       ? {
           rejectUnauthorized: providerInputs.sslRejectUnauthorized,
           ca: providerInputs.ca,
-          servername: providerInputs.originalHost
+          ...getTlsServerIdentityOptions(providerInputs.originalHost)
         }
       : undefined;
 

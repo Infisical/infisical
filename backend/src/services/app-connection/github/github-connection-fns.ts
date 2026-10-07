@@ -13,6 +13,7 @@ import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
+import { getTlsServerIdentityOptions } from "@app/lib/tls/server-identity";
 import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
 import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
@@ -230,7 +231,7 @@ export const requestWithGitHubGateway = async <T>(
   return withGatewayV2Proxy(
     async (proxyPort) => {
       const httpsAgent = new https.Agent({
-        servername: targetHost
+        ...getTlsServerIdentityOptions(targetHost)
       });
 
       url.protocol = "https:";

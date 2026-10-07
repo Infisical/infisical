@@ -8,6 +8,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
 import { buildDomainBaseDN, getLdapAttribute, getLdapAttributeBuffer, searchLdap } from "@app/lib/ldap/ldap-search-fns";
 import { logger } from "@app/lib/logger";
+import { getTlsServerIdentityOptions } from "@app/lib/tls/server-identity";
 
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { PamAccountType } from "../../pam/pam-enums";
@@ -74,7 +75,7 @@ const runLdap = <T>(
       ...(conn.useLdaps && {
         tlsOptions: {
           rejectUnauthorized: conn.ldapRejectUnauthorized,
-          servername: conn.ldapTlsServerName || conn.dcAddress,
+          ...getTlsServerIdentityOptions(conn.ldapTlsServerName || conn.dcAddress),
           ...(conn.ldapCaCert && { ca: [conn.ldapCaCert] })
         }
       })

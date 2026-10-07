@@ -9,6 +9,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
+import { getTlsServerIdentityOptions } from "@app/lib/tls/server-identity";
 import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
@@ -177,7 +178,7 @@ export const requestWithChefGateway = async <T>(
           maxBodyLength: CHEF_MAX_RESPONSE_BYTES,
           ...(isHttps && {
             httpsAgent: new https.Agent({
-              servername: targetHost
+              ...getTlsServerIdentityOptions(targetHost)
             })
           })
         };

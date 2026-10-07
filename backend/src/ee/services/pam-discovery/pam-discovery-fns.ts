@@ -6,6 +6,7 @@ import { callPortSweep, callSshExec, SshExecCredentials } from "@app/lib/gateway
 import { GatewayFailureKind } from "@app/lib/gateway-v2/test-connection-rpc";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { callWinRmEndpoint, WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
+import { getTlsServerIdentityOptions } from "@app/lib/tls/server-identity";
 
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
@@ -140,7 +141,7 @@ export const ldapBindCheckViaGateway = async (
           ...(useLdaps && {
             tlsOptions: {
               rejectUnauthorized,
-              servername: tlsServerName || dcAddress,
+              ...getTlsServerIdentityOptions(tlsServerName || dcAddress),
               ...(caCert && { ca: [caCert] })
             }
           })

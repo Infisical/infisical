@@ -9,6 +9,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
+import { getTlsServerIdentityOptions } from "@app/lib/tls/server-identity";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -87,7 +88,7 @@ export const requestWithVenafiTppGateway = async <T>(
         },
         ...(isHttps && {
           httpsAgent: new https.Agent({
-            servername: targetHost
+            ...getTlsServerIdentityOptions(targetHost)
           })
         })
       };
