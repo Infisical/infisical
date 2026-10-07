@@ -176,7 +176,7 @@ Each alert sends notifications to between 1 and 10 channels:
 | Channel | Configuration |
 |---------|---------------|
 | **Email** | Users and groups in your organization, up to 20 per channel. If someone joins a group after you add the group, they also get the notifications. |
-| **Slack** | An [Incoming Webhook](https://api.slack.com/messaging/webhooks) URL that starts with `https://hooks.slack.com` |
+| **Slack** | An [Incoming Webhook](https://api.slack.com/messaging/webhooks) URL that uses HTTPS and has the exact hostname `hooks.slack.com` |
 | **PagerDuty** | An [Events API v2](https://developer.pagerduty.com/docs/events-api-v2-overview) integration key (a 32-character hex string). Infisical opens one incident per expiring credential, and adds repeated changes of the same kind to the same auth method to one open incident. |
 | **Webhook** | An HTTPS URL, with an optional [signing secret](#verify-webhook-signatures) |
 
