@@ -117,12 +117,6 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
       expect.any(Number),
       expect.anything()
     );
-    const [, lockTtlMs, retry] = acquireLock.mock.calls[0] as [
-      string[],
-      number,
-      { retryCount: number; retryDelay: number }
-    ];
-    expect(retry.retryCount * retry.retryDelay).toBeGreaterThanOrEqual(lockTtlMs);
     expect(postMock).toHaveBeenCalledTimes(1);
     expect(release).toHaveBeenCalledTimes(1);
   });
@@ -135,6 +129,45 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
         acquireLock
       } as unknown as TDnsRecordLockKeyStore)
     ).rejects.toThrow("Another certificate order is still using it.");
+    expect(getMock).not.toHaveBeenCalled();
+    expect(postMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps trying for at least as long as the holder's lock can live", async () => {
+    const acquireLock = vi.fn().mockRejectedValue(new Error("lock busy"));
+
+    await expect(
+      gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"', {
+        acquireLock
+      } as unknown as TDnsRecordLockKeyStore)
+    ).rejects.toThrow("Another certificate order is still using it.");
+
+    const lockTtlMs = acquireLock.mock.calls[0][1] as number;
+    expect(acquireLock.mock.calls.length * 2_000).toBeGreaterThanOrEqual(lockTtlMs);
+  });
+
+  it("stops waiting for the lock once the order is aborted", async () => {
+    const controller = new AbortController();
+    const release = vi.fn().mockResolvedValue(undefined);
+    const acquireLock = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        controller.abort();
+        return Promise.reject(new Error("lock busy"));
+      })
+      .mockResolvedValue({ release });
+
+    await expect(
+      gcpCloudDnsInsertTxtRecord(
+        connection,
+        ZONE,
+        RECORD,
+        '"token-a"',
+        { acquireLock } as unknown as TDnsRecordLockKeyStore,
+        controller.signal
+      )
+    ).rejects.toThrow("ACME order aborted after timeout");
+    expect(acquireLock).toHaveBeenCalledTimes(1);
     expect(getMock).not.toHaveBeenCalled();
     expect(postMock).not.toHaveBeenCalled();
   });

@@ -523,7 +523,8 @@ export const executeAcmeOrder = async (
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue,
-            keyStore
+            keyStore,
+            abortSignal
           );
           break;
         }

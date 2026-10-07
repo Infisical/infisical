@@ -134,7 +134,8 @@ const applyTxtRecordChange = async (
   hostedZoneId: string,
   recordName: string,
   buildChange: TBuildChange,
-  keyStore?: TDnsRecordLockKeyStore
+  keyStore?: TDnsRecordLockKeyStore,
+  abortSignal?: AbortSignal
 ) => {
   const zoneUrl = getZoneUrl(hostedZoneId);
   const fqdn = toFqdn(recordName);
@@ -145,7 +146,8 @@ const applyTxtRecordChange = async (
       zoneId: hostedZoneId,
       name: fqdn,
       providerName: "Google Cloud DNS",
-      lockTtlMs: RECORD_LOCK_TTL_MS
+      lockTtlMs: RECORD_LOCK_TTL_MS,
+      abortSignal
     },
     keyStore,
     () => submitWithRetry(connection, hostedZoneId, zoneUrl, fqdn, buildChange)
@@ -157,7 +159,8 @@ export const gcpCloudDnsInsertTxtRecord = async (
   hostedZoneId: string,
   recordName: string,
   value: string,
-  keyStore?: TDnsRecordLockKeyStore
+  keyStore?: TDnsRecordLockKeyStore,
+  abortSignal?: AbortSignal
 ) => {
   await applyTxtRecordChange(
     connection,
@@ -177,7 +180,8 @@ export const gcpCloudDnsInsertTxtRecord = async (
         additions: [{ ...existing, rrdatas: [...existing.rrdatas, value] }]
       };
     },
-    keyStore
+    keyStore,
+    abortSignal
   );
 };
 
