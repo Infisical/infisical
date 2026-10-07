@@ -21,14 +21,9 @@ shared between integration pages work.
 
 ## Before you write
 
-Ask the engineer for the facts before you draft anything. Only the engineer knows how the
-feature works. If you write a draft without those facts, the draft sounds plausible but tells
-the reader nothing useful.
-
-A model is useful for a page's structure: grouping and ordering the sections, and noticing a
-missing section. A model isn't good at writing the sentences. A page with a model-written
-outline and engineer-written sentences reads better than a page the model wrote entirely, so
-offer the engineer that split instead of assuming they want a full draft.
+Find the facts yourself, in the code and the running product, before you draft anything. Don't
+ask a question that the code can answer. Ask only about what the code can't tell you, such as
+why a feature exists or who it's for.
 
 Check every fact against the product, not against other docs pages, because other docs pages
 are often out of date:
@@ -40,9 +35,10 @@ are often out of date:
 
 ## Reviewing
 
-Review your own drafts the same way you review anyone else's. Work in the following order.
-Check the structure first, because rewriting a sentence is wasted work if the sentence is in
-the wrong section.
+Review your own drafts the same way you review anyone else's. Work in the following order:
+cut first, then check the structure, then check the sentences, then review the edited page
+again. Rewriting a sentence is wasted work if the sentence shouldn't be on the page, or if it's
+in the wrong section.
 
 **1. Run the linter.** Run `make lint-docs-branch` from the repository root. Every rule except
 `Infisical.EmDashes` reports at error level, so any other finding fails the command, including
@@ -52,31 +48,50 @@ warnings the command prints.
 
 Vale doesn't check text indented four or more spaces inside a Mintlify component, and about
 half of the text in this repository is indented that way. If Vale reports no problems on a
-page with nested components, the nested text still needs the checks in steps 3 and 4.
+page with nested components, the nested text still needs the checks in steps 2, 4, and 5.
 
-**2. Check the structure against sections 1, 4, 7, 8, and 10 of the guide.** Headings, section
-order, and section breaks are usually fine, whether a person or a model wrote the draft. If the
-structure passes those sections, keep the structure and go to step 3.
+**2. Cut what the reader won't act on.** Read the page one paragraph at a time. For each fact,
+ask what the reader would do differently after reading it, as "Leave out what the reader won't
+act on" in section 2 of the guide describes. If the answer is nothing, the fact is a finding,
+even if it's true and you checked it in the code.
 
-**3. Check every sentence against sections 3 and 5 of the guide.** Go through the sections one
+None of the other steps catches this. A sentence that shouldn't be on the page can still pass
+every rule in section 5, and if you restructure it instead of cutting it, the page gets more
+headings and lists without getting any shorter.
+
+Apply this step to everything on the page: content that was already there, content someone else
+wrote, and your own draft. Treat each cut like any other finding.
+
+**3. Check the structure against sections 1, 4, 6, 7, 8, and 10 of the guide.** Check every
+section of the page against each of those sections of the guide, including the page sections
+that look fine at first glance.
+
+**4. Check every sentence against sections 3 and 5 of the guide.** Go through the sections one
 `###` heading at a time. Each heading names one rule, so for each heading, read every sentence
 on the page and check whether the sentence breaks that rule. Then read every sentence out loud,
 as section 5 describes.
 
-**4. Check the formatting against section 11 of the guide.** No automated check covers any
+**5. Check the formatting against section 11 of the guide.** No automated check covers any
 rule in section 11, so check each rule by reading the page.
 
 Before you hand a draft back, check the draft for every mistake you've already been corrected
 on, including corrections earlier in the same conversation.
 
-**5. Report the findings, then offer to apply them.** Write one finding per line: the location
-as `path/to/file.mdx:12`, the sentence as written, the rule the sentence breaks, and your
-rewrite. Group the findings by file. Then, before you edit anything, ask once whether to apply
-the whole set of findings.
+**6. Apply the findings.** Edit the page to fix every finding. Don't commit anything.
 
-Don't rewrite an engineer's sentences without asking. An engineer's wording often sounds more
-natural than your rewrite does, so ask the engineer whether they would have written your
-version themselves.
+If the person you're working with wrote or edited the prose themselves in this conversation,
+don't change their sentences yet. Report those findings in the format in step 8, and ask once
+whether to apply them.
+
+**7. Review the edited page.** Run steps 1 to 5 again on the whole edited page, from the top.
+Your own edits create new problems. For example, turning part of a paragraph into a list can
+leave several short paragraphs in a row, and moving content can put a section out of order.
+Fix what you find before you hand the page back.
+
+**8. Report what you changed.** Write one change per line: the location as
+`path/to/file.mdx:12`, the rule the change fixes, the text before the change, and the text
+after it, or "cut" for a finding from step 2. Group the changes by file, and include the fixes
+from step 7.
 
 ## When Vale is wrong
 
