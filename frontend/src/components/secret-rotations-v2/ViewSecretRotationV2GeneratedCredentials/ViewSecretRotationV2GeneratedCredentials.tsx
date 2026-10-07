@@ -11,10 +11,7 @@ import { ViewLdapPasswordRotationGeneratedCredentials } from "@app/components/se
 import { Modal, ModalContent, Spinner } from "@app/components/v2";
 import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
-import {
-  IS_ROTATION_DUAL_CREDENTIALS,
-  SECRET_ROTATION_MAP
-} from "@app/helpers/secretRotationsV2";
+import { IS_ROTATION_DUAL_CREDENTIALS, SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import {
   SecretRotation,
   TSecretRotationV2,
