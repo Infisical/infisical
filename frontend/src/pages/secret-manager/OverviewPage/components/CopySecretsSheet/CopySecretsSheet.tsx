@@ -210,7 +210,8 @@ const CopySecretsSession = ({
             secretPath: group.destinationPath
           }
         }))
-      : []
+      : [],
+    { isCopy: true }
   );
   const destinationFolderPaths = getCopyDestinationFolderPaths({
     folderPaths: selectedFolderPaths,
@@ -346,6 +347,8 @@ const CopySecretsSession = ({
     if (isDestinationLoading) return "Loading destination secrets";
     if (!selectedItemCount) return "Select at least one secret or folder";
     if (secretSyncWarning.isChecking) return "Checking the destination for secret syncs";
+    if (secretSyncWarning.duplicatedSecretSyncs.length)
+      return "Choose a destination outside the source's secret syncs";
     if (secretSyncWarning.isBlockingSubmit) return "Confirm the secret sync warning to copy";
     if (
       destinationFolderSteps.some(

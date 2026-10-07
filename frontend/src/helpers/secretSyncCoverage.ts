@@ -35,6 +35,12 @@ export const isPathCoveredBySecretSync = (
   );
 };
 
+const isSamePath = (a: string, b: string) =>
+  toPathSegments(a).join("/") === toPathSegments(b).join("/");
+
+const sortByName = <T extends { name: string }>(syncs: T[]) =>
+  [...syncs].sort((a, b) => a.name.localeCompare(b.name));
+
 // The syncs that would start sending items to their destination if they were moved or copied as described.
 // A sync that already covers a move's source is left out for that move, since the items already reach it.
 export const getSecretSyncsNewlyCoveringPaths = <
@@ -43,12 +49,36 @@ export const getSecretSyncsNewlyCoveringPaths = <
   syncs: T[],
   moves: TItemMove[]
 ) =>
-  syncs
-    .filter((sync) =>
+  sortByName(
+    syncs.filter((sync) =>
       moves.some(
         (move) =>
           isPathCoveredBySecretSync(sync, move.destination) &&
           !isPathCoveredBySecretSync(sync, move.source)
       )
     )
-    .sort((a, b) => a.name.localeCompare(b.name));
+  );
+
+// The syncs a copy would give two secrets with the same name. A copy leaves the original in place, so
+// copying between two folders of one sync puts both in it, and since a sync's key schema cannot include
+// the folder, both map to one key in the destination and the sync fails on it. Two different folders can
+// only share a sync that includes subfolders, so a sync without them never matches.
+export const getSecretSyncsDuplicatedByCopies = <
+  T extends TCoverageSync & { id: string; name: string }
+>(
+  syncs: T[],
+  copies: TItemMove[]
+) =>
+  sortByName(
+    syncs.filter((sync) =>
+      copies.some(
+        (copy) =>
+          !(
+            copy.source.environment === copy.destination.environment &&
+            isSamePath(copy.source.secretPath, copy.destination.secretPath)
+          ) &&
+          isPathCoveredBySecretSync(sync, copy.source) &&
+          isPathCoveredBySecretSync(sync, copy.destination)
+      )
+    )
+  );
