@@ -14,6 +14,7 @@ import {
   TCloudflarePermissionGroup,
   TCloudflareR2Bucket,
   TCloudflareR2BucketsApiResponse,
+  TCloudflareSecretsStore,
   TCloudflareWorkersScript,
   TCloudflareZone
 } from "./cloudflare-connection-types";
@@ -43,8 +44,11 @@ export const getCloudflareErrorMessage = (error: unknown) => {
   return "Unknown error";
 };
 
-/** Walks a paginated Cloudflare list endpoint using the `result_info.total_pages` it reports. */
-const $paginateCloudflare = async <T>(
+/**
+ * Walks a paginated Cloudflare list endpoint using the `result_info.total_pages` it reports. The Secrets
+ * Store endpoints report only `total_count`, so the page count is derived from that when it is absent.
+ */
+export const paginateCloudflare = async <T>(
   url: string,
   { apiToken, params }: { apiToken: string; params?: Record<string, unknown> }
 ): Promise<T[]> => {
@@ -55,14 +59,17 @@ const $paginateCloudflare = async <T>(
 
   while (page <= totalPages && page <= CLOUDFLARE_MAX_PAGES) {
     // eslint-disable-next-line no-await-in-loop
-    const { data } = await safeRequest.get<{ result: T[]; result_info?: { total_pages?: number } }>(url, {
+    const { data } = await safeRequest.get<{
+      result: T[];
+      result_info?: { total_pages?: number; total_count?: number };
+    }>(url, {
       headers: getCloudflareAuthHeaders(apiToken),
       params: { ...params, page, per_page: CLOUDFLARE_PER_PAGE }
     });
 
     results.push(...data.result);
 
-    totalPages = data.result_info?.total_pages ?? 1;
+    totalPages = data.result_info?.total_pages ?? Math.ceil((data.result_info?.total_count ?? 0) / CLOUDFLARE_PER_PAGE);
     page += 1;
   }
 
@@ -112,12 +119,30 @@ export const listCloudflareWorkersScripts = async (
   }));
 };
 
+export const listCloudflareSecretsStores = async (
+  appConnection: TCloudflareConnection
+): Promise<TCloudflareSecretsStore[]> => {
+  const {
+    credentials: { apiToken, accountId }
+  } = appConnection;
+
+  const stores = await paginateCloudflare<{ id: string; name: string }>(
+    `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/secrets_store/stores`,
+    { apiToken }
+  );
+
+  return stores.map((a) => ({
+    id: a.id,
+    name: a.name
+  }));
+};
+
 export const listCloudflareZones = async (appConnection: TCloudflareConnection): Promise<TCloudflareZone[]> => {
   const {
     credentials: { apiToken }
   } = appConnection;
 
-  const zones = await $paginateCloudflare<{ id: string; name: string }>(
+  const zones = await paginateCloudflare<{ id: string; name: string }>(
     `${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/zones`,
     { apiToken }
   );
@@ -152,7 +177,7 @@ export const listCloudflarePermissionGroups = async (
 /**
  * Unlike the other list endpoints, `r2/buckets` returns its array under `result.buckets` and paginates
  * with an opaque cursor from `result_info.cursor` rather than reporting `result_info.total_pages`, so
- * it can't go through `$paginateCloudflare`.
+ * it can't go through `paginateCloudflare`.
  */
 const $listCloudflareR2BucketsForJurisdiction = async ({
   accountId,

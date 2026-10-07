@@ -18,6 +18,7 @@ import { ChefSyncDestinationSection } from "./ChefSyncDestinationSection";
 import { CircleCISyncDestinationSection } from "./CircleCISyncDestinationSection";
 import { Cloud66SyncDestinationSection } from "./Cloud66SyncDestinationSection";
 import { CloudflarePagesSyncDestinationSection } from "./CloudflarePagesSyncDestinationSection";
+import { CloudflareSecretsStoreSyncDestinationSection } from "./CloudflareSecretsStoreSyncDestinationSection";
 import { CloudflareWorkersSyncDestinationSection } from "./CloudflareWorkersSyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
 import { DevinSyncDestinationSection } from "./DevinSyncDestinationSection";
@@ -134,6 +135,11 @@ export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
       break;
     case SecretSync.CloudflareWorkers:
       DestinationComponents = <CloudflareWorkersSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.CloudflareSecretsStore:
+      DestinationComponents = (
+        <CloudflareSecretsStoreSyncDestinationSection secretSync={secretSync} />
+      );
       break;
     case SecretSync.Zabbix:
       DestinationComponents = <ZabbixSyncDestinationSection secretSync={secretSync} />;
