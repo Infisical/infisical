@@ -197,8 +197,8 @@ export const scanEndpoint = async (
     const certificates: TScanCertificateResult[] = [];
 
     let servername: string | undefined;
-    if (sniHostname && !isIpAddress(sniHostname)) {
-      servername = sniHostname;
+    if (sniHostname) {
+      if (!isIpAddress(sniHostname)) servername = sniHostname;
     } else if (!isIpAddress(host)) {
       servername = host;
     }
