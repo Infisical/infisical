@@ -1,3 +1,5 @@
+import RE2 from "re2";
+
 // A proxy uploads session logs in encrypted chunks. A record is one request an agent made. A chunk can't be bigger
 // than 8 MiB, or smaller than an empty one: 30 bytes, a 12-byte IV, 2 bytes of content and a 16-byte tag.
 export const AGENT_VAULT_SESSION_LOG_MIN_CHUNK_BYTES = 30; // the 12-byte IV, an empty "[]" and the 16-byte AES-GCM tag
@@ -5,8 +7,9 @@ export const AGENT_VAULT_SESSION_LOG_MAX_CHUNK_BYTES = 8 * 1024 * 1024; // 8 MiB
 
 // Lowercase because the browser rebuilds the AAD from the id in the object name. v7 because the name orders chunks
 // by the time in the id.
-export const AGENT_VAULT_SESSION_LOG_CHUNK_ID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+export const AGENT_VAULT_SESSION_LOG_CHUNK_ID_PATTERN =
+  "[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
+export const AGENT_VAULT_SESSION_LOG_CHUNK_ID_REGEX = new RE2(`^${AGENT_VAULT_SESSION_LOG_CHUNK_ID_PATTERN}$`);
 
 // Infisical checks when each chunk ended, which comes from the proxy's clock. If a chunk says it ended more than
 // 5 minutes in the future, Infisical refuses it, because the proxy's clock is ahead. A proxy holds chunks only in

@@ -6,7 +6,10 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { logger } from "@app/lib/logger";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
-import { AGENT_VAULT_SESSION_LOG_LAST_KNOWN_PLAN_MAX_AGE_MS } from "./agent-vault-session-log-constants";
+import {
+  AGENT_VAULT_SESSION_LOG_CHUNK_ID_PATTERN,
+  AGENT_VAULT_SESSION_LOG_LAST_KNOWN_PLAN_MAX_AGE_MS
+} from "./agent-vault-session-log-constants";
 import { TResolvedSessionLogStorageConfig } from "./agent-vault-session-log-types";
 
 export const withKeyPrefix = (keyPrefix: string | null | undefined, key: string) =>
@@ -40,8 +43,9 @@ export const buildSessionLogObjectKey = ({
 }) => `${folder}${toRev(chunkIdTimeMs(chunkId))}_${chunkId}.${proxyId}.json.enc`;
 
 const UUID_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
-const UUIDV7_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
-const SESSION_LOG_OBJECT_NAME_REGEX = new RE2(`^(\\d{13})_(${UUIDV7_PATTERN})\\.(${UUID_PATTERN})\\.json\\.enc$`);
+const SESSION_LOG_OBJECT_NAME_REGEX = new RE2(
+  `^(\\d{13})_(${AGENT_VAULT_SESSION_LOG_CHUNK_ID_PATTERN})\\.(${UUID_PATTERN})\\.json\\.enc$`
+);
 
 // Anything else in the folder is skipped: only Infisical names objects there, through the links it signs.
 export const parseSessionLogObjectKey = (folder: string, key: string) => {
