@@ -9,6 +9,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"log"
 	"net/http"
 	"os"
@@ -46,7 +47,7 @@ func main() {
 		log.Fatalf("fakenet: admin listener: %v", http.ListenAndServe(":8080", srv.Admin(ca)))
 	}()
 
-	ln, err := tlsListen(":443", ca)
+	ln, err := tls.Listen("tcp", ":443", ca.TLSConfig())
 	if err != nil {
 		log.Fatalf("fakenet: %v", err)
 	}

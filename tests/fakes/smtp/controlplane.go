@@ -43,7 +43,7 @@ func (in *Inbox) Expect(tt *testing.T, addr string, filters ...Filter) Message {
 			"Reading another tenant's mail would make the test order-dependent; use tn.Email(local)",
 			in.domain, addr)
 	}
-	return in.ExpectEvent[MessageReceived](tt, func(e MessageReceived) bool {
+	received := in.ExpectEvent[MessageReceived](tt, func(e MessageReceived) bool {
 		if e.Recipient != addr {
 			return false
 		}
@@ -53,5 +53,6 @@ func (in *Inbox) Expect(tt *testing.T, addr string, filters ...Filter) Message {
 			}
 		}
 		return true
-	}).Message
+	})
+	return received.Message
 }

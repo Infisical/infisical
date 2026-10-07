@@ -141,9 +141,9 @@ func Resolve(modules []Module, scopes map[ModuleKey]Scope) (Plan, error) {
 }
 
 // checkLifetimes rejects a module that depends on something shorter lived than
-// itself. This is not hypothetical: a Shared Infisical takes HTTP_PROXY at container
-// start, so pointing it at a Package-scoped WireMock breaks every other package the
-// moment that one finishes.
+// itself. A Shared Infisical takes fakenet's address and CA when its container is
+// created, so if fakenet were Package-scoped it would vanish when that package
+// finished and break every other package still using the instance.
 func checkLifetimes(m Module, scopes map[ModuleKey]Scope, byKey map[ModuleKey]Module) error {
 	mine, ok := scopes[m.Key()]
 	if !ok {

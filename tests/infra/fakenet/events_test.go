@@ -248,29 +248,43 @@ func TestEvents_ExpectNo(t *testing.T) {
 }
 
 func TestEvents_Failure(t *testing.T) {
-	cases := []struct {
-		name string
-		do   func(r *rig, t *testing.T)
-		want string
-	}{
-		{"should say nothing arrived when the scope is empty", func(*rig, *testing.T) {}, "no events arrived in this scope"},
-		{"should list other events when only a different type arrived", func(r *rig, t *testing.T) { r.call(t, http.MethodDelete, "f-a", "X") }, "no items.item-created arrived"},
-		{"should list near misses when the predicate rejected them", func(r *rig, t *testing.T) { r.call(t, http.MethodPost, "f-a", "WRONG") }, "none matched"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			r := newRig(t, "f")
-			sc := r.scope(t, "f-a")
-			tc.do(r, t)
+	t.Run("should say nothing arrived when the scope is empty", func(t *testing.T) {
+		// Setup
+		r := newRig(t, "f1")
+		sc := r.scope(t, "f1-a")
 
-			// Action
-			err := expectErr(t, sc, nameIs[ItemCreated]("RIGHT"), Within(500*time.Millisecond))
+		// Action
+		err := expectErr(t, sc, nameIs[ItemCreated]("RIGHT"), Within(500*time.Millisecond))
 
-			// Assert
-			require.ErrorContains(t, err, tc.want)
-		})
-	}
+		// Assert
+		require.ErrorContains(t, err, "no events arrived in this scope")
+	})
+
+	t.Run("should list other events when only a different type arrived", func(t *testing.T) {
+		// Setup
+		r := newRig(t, "f2")
+		sc := r.scope(t, "f2-a")
+		r.call(t, http.MethodDelete, "f2-a", "X")
+
+		// Action
+		err := expectErr(t, sc, nameIs[ItemCreated]("RIGHT"), Within(500*time.Millisecond))
+
+		// Assert
+		require.ErrorContains(t, err, "no items.item-created arrived")
+	})
+
+	t.Run("should list near misses when the predicate rejected them", func(t *testing.T) {
+		// Setup
+		r := newRig(t, "f3")
+		sc := r.scope(t, "f3-a")
+		r.call(t, http.MethodPost, "f3-a", "WRONG")
+
+		// Action
+		err := expectErr(t, sc, nameIs[ItemCreated]("RIGHT"), Within(500*time.Millisecond))
+
+		// Assert
+		require.ErrorContains(t, err, "none matched")
+	})
 }
 
 func TestEvents_Loss(t *testing.T) {
