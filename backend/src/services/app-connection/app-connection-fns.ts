@@ -12,7 +12,8 @@ import {
 import { getOracleDBConnectionListItem, OracleDBConnectionMethod } from "@app/ee/services/app-connections/oracledb";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { SECRET_ROTATION_CONNECTION_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
+import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
+import { getSecretRotationConnectionApps } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -322,7 +323,7 @@ const SECRET_SYNC_APP_CONNECTION_MAP = Object.fromEntries(
 );
 
 const SECRET_ROTATION_APP_CONNECTION_MAP = Object.fromEntries(
-  Object.entries(SECRET_ROTATION_CONNECTION_MAP).map(([key, value]) => [value, key])
+  Object.values(SecretRotation).flatMap((type) => getSecretRotationConnectionApps(type).map((app) => [app, type]))
 );
 
 const SECRET_SCANNING_APP_CONNECTION_MAP = Object.fromEntries(
@@ -358,18 +359,13 @@ const PKI_APP_CONNECTIONS = [
 
 const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
 
-// connections a Secret Manager feature will use but that no sync or rotation map references yet;
-// drop an entry once its rotation registers in SECRET_ROTATION_CONNECTION_MAP
-const PENDING_SECRET_MANAGER_APP_CONNECTIONS = [AppConnection.HpeIloRedFish];
-
 export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?: ProjectType) => {
   switch (projectType) {
     case ProjectType.SecretManager:
       return (
         Boolean(SECRET_SYNC_APP_CONNECTION_MAP[app]) ||
         Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[app]) ||
-        EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(app) ||
-        PENDING_SECRET_MANAGER_APP_CONNECTIONS.includes(app)
+        EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(app)
       );
     case ProjectType.SecretScanning:
       return Boolean(SECRET_SCANNING_APP_CONNECTION_MAP[app]);

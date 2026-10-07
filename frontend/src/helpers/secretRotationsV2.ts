@@ -190,6 +190,15 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.GcpServiceAccountKey]: AppConnection.GCP
 };
 
+const SECRET_ROTATION_ADDITIONAL_CONNECTION_MAP: Partial<Record<SecretRotation, AppConnection[]>> = {
+  [SecretRotation.HpIloLocalAccount]: [AppConnection.HpeIloRedFish]
+};
+
+export const getSecretRotationConnectionApps = (type: SecretRotation): AppConnection[] => [
+  SECRET_ROTATION_CONNECTION_MAP[type],
+  ...(SECRET_ROTATION_ADDITIONAL_CONNECTION_MAP[type] ?? [])
+];
+
 // if a rotation can potentially have downtime due to rotating a single credential set this to false
 export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.PostgresCredentials]: true,

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { THpeIloConnection } from "@app/services/app-connection/hpe-ilo";
 import { TSshConnection } from "@app/services/app-connection/ssh";
 
 import {
@@ -16,7 +17,7 @@ export type THpIloRotationInput = z.infer<typeof CreateHpIloRotationSchema>;
 export type THpIloRotationListItem = z.infer<typeof HpIloRotationListItemSchema>;
 
 export type THpIloRotationWithConnection = THpIloRotation & {
-  connection: TSshConnection;
+  connection: TSshConnection | THpeIloConnection;
 };
 
 export type THpIloRotationGeneratedCredentials = z.infer<typeof HpIloRotationGeneratedCredentialsSchema>;

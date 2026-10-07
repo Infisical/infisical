@@ -10,6 +10,7 @@ import {
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { BadRequestError } from "@app/lib/errors";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   executeWithPotentialGateway,
   getSshConnectionClient,
@@ -211,17 +212,26 @@ export const hpIloRotationFactory: TRotationFactory<
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const { username, passwordRequirements, rotationMethod = HpIloRotationMethod.LoginAsRoot } = parameters;
 
+  const $getSshConnection = () => {
+    if (connection.app !== AppConnection.SSH)
+      throw new BadRequestError({
+        message: "HP iLO Local Account rotations do not support HPE iLO Connections yet. Use an SSH Connection instead."
+      });
+    return connection;
+  };
+
   const getRotationSshConfig = async (): Promise<TSshConnectionConfig> => {
+    const sshConnection = $getSshConnection();
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
-      gatewayId: connection.gatewayId,
-      gatewayPoolId: connection.gatewayPoolId
+      gatewayId: sshConnection.gatewayId,
+      gatewayPoolId: sshConnection.gatewayPoolId
     });
     return {
-      method: connection.method,
-      app: connection.app,
-      orgId: connection.orgId,
+      method: sshConnection.method,
+      app: sshConnection.app,
+      orgId: sshConnection.orgId,
       gatewayId: effectiveGatewayId,
-      credentials: connection.credentials
+      credentials: sshConnection.credentials
     } as TSshConnectionConfig;
   };
 
@@ -229,7 +239,7 @@ export const hpIloRotationFactory: TRotationFactory<
     const newPassword = generatePassword(passwordRequirements ?? HP_ILO_DEFAULT_PASSWORD_REQUIREMENTS);
 
     const isSelfRotation = rotationMethod === HpIloRotationMethod.LoginAsTarget;
-    if (username === connection.credentials.username)
+    if (username === $getSshConnection().credentials.username)
       throw new BadRequestError({ message: "Provided username is used in Infisical app connections." });
 
     const sshConfig = await getRotationSshConfig();

@@ -13,7 +13,6 @@ import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   IS_ROTATION_DUAL_CREDENTIALS,
-  SECRET_ROTATION_CONNECTION_MAP,
   SECRET_ROTATION_MAP
 } from "@app/helpers/secretRotationsV2";
 import {
@@ -272,7 +271,7 @@ const Content = ({ secretRotation }: ContentProps) => {
       throw new Error("Unhandled View Generated Credential Rotation Type");
   }
 
-  const appName = APP_CONNECTION_MAP[SECRET_ROTATION_CONNECTION_MAP[type]].name;
+  const appName = APP_CONNECTION_MAP[secretRotation.connection.app].name;
 
   return (
     <div className="flex flex-col gap-y-4">

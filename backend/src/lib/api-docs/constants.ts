@@ -1,7 +1,7 @@
 import { AGENT_VAULT_MAX_REFERENCES_PER_FIELD } from "@app/ee/services/agent-vault/agent-vault-variable-fns";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
-  SECRET_ROTATION_CONNECTION_MAP,
+  getSecretRotationConnectionApps,
   SECRET_ROTATION_NAME_MAP
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
@@ -3565,9 +3565,9 @@ export const SecretRotations = {
       projectId: "The ID of the project to create the rotation in.",
       environment: `The slug of the project environment to create the rotation in.`,
       secretPath: `The secret path of the project to create the rotation in.`,
-      connectionId: `The ID of the ${
-        APP_CONNECTION_NAME_MAP[SECRET_ROTATION_CONNECTION_MAP[type]]
-      } Connection to use for rotation.`,
+      connectionId: `The ID of the ${getSecretRotationConnectionApps(type)
+        .map((app) => APP_CONNECTION_NAME_MAP[app])
+        .join(" or ")} Connection to use for rotation.`,
       isAutoRotationEnabled: `Whether secrets should be automatically rotated when the specified rotation interval has elapsed.`,
       rotationInterval: `The interval, in days, to automatically rotate secrets.`,
       rotateAtUtc: `The hours and minutes rotation should occur at in UTC. Defaults to Midnight (00:00) UTC.`
