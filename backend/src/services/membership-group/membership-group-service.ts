@@ -3,7 +3,6 @@ import { Knex } from "knex";
 import {
   AccessScope,
   ProjectMembershipRole,
-  ProjectType,
   TableName,
   TemporaryPermissionMode,
   TMembershipRolesInsert
@@ -303,21 +302,15 @@ export const membershipGroupServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membershipDoc = await membershipGroupDAL.transaction(async (tx) => {
-      const newRolesHavePermanentAdmin = data.roles.some(
-        (r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary
-      );
-      if (scopeData.scope === AccessScope.Project) {
-        const project = await projectDAL.findById(scopeData.projectId, tx);
-        const newIsActive = data.isActive ?? existingMembership.isActive;
-        if (
-          !newRolesHavePermanentAdmin ||
-          (!newIsActive &&
-            (project?.type === ProjectType.CertificateManager ||
-              project?.type === ProjectType.PAM ||
-              project?.type === ProjectType.AgentVault))
-        ) {
-          await assertProductWillRetainAdmin({ project, excludeMembershipIds: [existingMembership.id], tx });
-        }
+      const newIsActive = data.isActive ?? existingMembership.isActive;
+      const newRolesHavePermanentAdmin =
+        newIsActive && data.roles.some((r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary);
+      if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Project) {
+        await assertProductWillRetainAdmin({
+          project: await projectDAL.findById(scopeData.projectId, tx),
+          excludeMembershipIds: [existingMembership.id],
+          tx
+        });
       }
 
       const doc =

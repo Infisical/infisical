@@ -1,12 +1,6 @@
 import { Knex } from "knex";
 
-import {
-  AccessScope,
-  ProjectMembershipRole,
-  ProjectType,
-  TemporaryPermissionMode,
-  TMembershipRolesInsert
-} from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -318,21 +312,15 @@ export const membershipIdentityServiceFactory = ({
     const membershipDoc = await membershipIdentityDAL.transaction(async (tx) => {
       // The project advisory lock before the row lock, the order every other caller takes: a product-route
       // change holding the advisory lock needs KEY SHARE on this row, so the reverse order deadlocks.
-      const newRolesHavePermanentAdmin = data.roles.some(
-        (r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary
-      );
-      if (scopeData.scope === AccessScope.Project) {
-        const project = await projectDAL.findById(scopeData.projectId, tx);
-        const newIsActive = data.isActive ?? existingMembership.isActive;
-        if (
-          !newRolesHavePermanentAdmin ||
-          (!newIsActive &&
-            (project?.type === ProjectType.CertificateManager ||
-              project?.type === ProjectType.PAM ||
-              project?.type === ProjectType.AgentVault))
-        ) {
-          await assertProductWillRetainAdmin({ project, excludeMembershipIds: [existingMembership.id], tx });
-        }
+      const newIsActive = data.isActive ?? existingMembership.isActive;
+      const newRolesHavePermanentAdmin =
+        newIsActive && data.roles.some((r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary);
+      if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Project) {
+        await assertProductWillRetainAdmin({
+          project: await projectDAL.findById(scopeData.projectId, tx),
+          excludeMembershipIds: [existingMembership.id],
+          tx
+        });
       }
       const currentMembership = await membershipIdentityDAL.findByIdForUpdate(existingMembership.id, tx);
       if (!currentMembership) {
