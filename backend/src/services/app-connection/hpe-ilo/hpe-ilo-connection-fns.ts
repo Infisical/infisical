@@ -1,4 +1,5 @@
 import { AxiosRequestConfig, HttpStatusCode, isAxiosError } from "axios";
+import net from "net";
 
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError } from "@app/lib/errors";
@@ -22,8 +23,11 @@ export const getHpeIloConnectionListItem = () => {
   };
 };
 
+// IPv6 literals must be bracketed in URLs and Host headers
+const toUrlHost = (hostname: string) => (net.isIPv6(hostname) ? `[${hostname}]` : hostname);
+
 const getHpeIloBaseUrl = (credentials: THpeIloConnectionConfig["credentials"]) =>
-  `https://${credentials.hostname}:${credentials.port ?? HPE_ILO_DEFAULT_PORT}`;
+  `https://${toUrlHost(credentials.hostname)}:${credentials.port ?? HPE_ILO_DEFAULT_PORT}`;
 
 const getHpeIloAuthHeaders = ({ username, password }: THpeIloConnectionConfig["credentials"]) => ({
   Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`,
@@ -70,7 +74,7 @@ export const executeHpeIloRequest = async <T>(
           ...requestCfg,
           ...tlsOptions,
           url: `https://localhost:${proxyPort}${requestCfg.url ?? ""}`,
-          headers: { ...headers, Host: hostname },
+          headers: { ...headers, Host: toUrlHost(hostname) },
           // the hop is the local gateway proxy, and the iLO it reaches sits in the gateway's network
           allowPrivateIps: true
         });

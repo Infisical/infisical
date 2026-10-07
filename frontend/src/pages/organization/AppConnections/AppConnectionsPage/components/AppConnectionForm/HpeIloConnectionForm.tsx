@@ -33,6 +33,7 @@ import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { OrgPermissionSubjects } from "@app/context";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { isIPv4, isIPv6 } from "@app/helpers/ip";
 import { useScopeVariant } from "@app/hooks";
 import { HpeIloConnectionMethod, THpeIloConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -48,6 +49,12 @@ type Props = {
   onSubmit: (formData: FormData) => Promise<void>;
 };
 
+const isValidHostname = (value: string) =>
+  value.length <= 253 &&
+  /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/.test(
+    value
+  );
+
 const rootSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.HpeIloRedFish)
 });
@@ -61,9 +68,12 @@ const formSchema = z.discriminatedUnion("method", [
         .trim()
         .min(1, "Hostname is required")
         .max(512, "Hostname cannot exceed 512 characters")
-        .refine((val) => !/[/@?:#]/.test(val), {
-          message: "Enter a hostname or IP address without a scheme, port, or path"
-        }),
+        .refine(
+          (val) => isValidHostname(val) || isIPv4(val) || (isIPv6(val) && !val.includes("%")),
+          {
+            message: "Enter a hostname or IP address without a scheme, port, brackets, or path"
+          }
+        ),
       port: z
         .union([z.coerce.number().int().min(1).max(65535), z.literal("")])
         .optional()
@@ -95,16 +105,24 @@ export const HpeIloConnectionForm = ({ appConnection, onSubmit }: Props) => {
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: appConnection ?? {
-      app: AppConnection.HpeIloRedFish,
-      method: HpeIloConnectionMethod.BasicAuth,
-      gatewayId: null,
-      gatewayPoolId: null,
-      credentials: {
-        sslRejectUnauthorized: true,
-        sslCertificate: undefined
-      }
-    }
+    defaultValues: appConnection
+      ? {
+          ...appConnection,
+          credentials: {
+            ...appConnection.credentials,
+            sslRejectUnauthorized: appConnection.credentials.sslRejectUnauthorized ?? true
+          }
+        }
+      : {
+          app: AppConnection.HpeIloRedFish,
+          method: HpeIloConnectionMethod.BasicAuth,
+          gatewayId: null,
+          gatewayPoolId: null,
+          credentials: {
+            sslRejectUnauthorized: true,
+            sslCertificate: undefined
+          }
+        }
   });
 
   const { handleSubmit, control, setValue, watch } = form;
@@ -285,7 +303,6 @@ export const HpeIloConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   </FieldLabel>
                   <TextArea
                     id="ssl-certificate"
-                    className="h-[3.6rem] resize-none!"
                     {...field}
                     placeholder="-----BEGIN CERTIFICATE----- ... -----END CERTIFICATE-----"
                     isError={Boolean(error?.message)}

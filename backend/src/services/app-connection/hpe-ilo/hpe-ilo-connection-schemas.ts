@@ -1,6 +1,8 @@
 import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
+import { isValidIp } from "@app/lib/ip";
+import { isValidHostname } from "@app/lib/validator/validate-hostname";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   BaseAppConnectionSchema,
@@ -17,13 +19,10 @@ export const HpeIloConnectionBasicAuthCredentialsSchema = z.object({
     .trim()
     .min(1, "Hostname is required")
     .max(512, "Hostname cannot exceed 512 characters")
-    .refine(
-      (val) =>
-        !val.includes("/") && !val.includes("@") && !val.includes("?") && !val.includes(":") && !val.includes("#"),
-      {
-        message: "Hostname must be a hostname or IP address without a scheme, port, or path"
-      }
-    )
+    // IPv6 zone IDs (fe80::1%eth0) are rejected because they cannot be placed in the request URL
+    .refine((val) => isValidHostname(val) || (isValidIp(val) && !val.includes("%")), {
+      message: "Hostname must be a hostname or IP address without a scheme, port, brackets, or path"
+    })
     .describe(AppConnections.CREDENTIALS.HPE_ILO.hostname),
   port: z.number().int().min(1).max(65535).optional().describe(AppConnections.CREDENTIALS.HPE_ILO.port),
   username: z
