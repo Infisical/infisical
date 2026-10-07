@@ -99,9 +99,9 @@ Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in
 
 9 layout components in `src/layouts/` — `AdminLayout`, `OrganizationLayout`, `SecretManagerLayout`, `PkiManagerLayout`, `KmsLayout`, `PamLayout`, etc. Layouts handle sidebar navigation and page chrome for their product area.
 
-### Highlighting new integrations
+### Highlighting new features
 
-To promote a newly shipped secret sync, add an entry to `SECRET_SYNC_RELEASES` in `src/helpers/featureReleases.ts` in the same PR. For 30 days it gets a New badge and a Recently Added slot in the Add Sync picker, and users who have not opened the picker yet see info dots on the Integrations nav item, the Secret Syncs tab, and Add Sync (`useSecretSyncDiscovery`). Each user's seen releases are stored server-side through `/api/v1/feature-discoveries`. Keep `releaseId` stable once shipped.
+To promote a newly shipped feature, add an entry to `FEATURE_RELEASES` in `src/helpers/featureReleases.ts` in the same PR, with its `FeatureArea` and the `item` it promotes (for secret syncs, the destination). For 30 days the item is treated as new: `useFeatureDiscovery(area, availableItems)` returns it and whether the user still has unseen releases in that area, and each area decides where its New badges and discovery dots render. Secret Syncs is the first area (`useSecretSyncDiscovery`): Recently Added in the Add Sync picker, plus dots on the Integrations nav item, the Secret Syncs tab, and Add Sync. Dots clear when the user picks a promoted item or selects Mark as Seen. Seen releases are stored per user through `/api/v1/feature-discoveries`. Keep `releaseId` stable once shipped.
 
 ### Org-scoped products
 

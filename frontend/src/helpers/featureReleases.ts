@@ -2,12 +2,25 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const FEATURE_RELEASE_NEW_WINDOW_DAYS = 30;
 
-// Add an entry in the PR that ships a new sync to promote it for FEATURE_RELEASE_NEW_WINDOW_DAYS.
-// releaseId must stay stable once shipped: it is the key users' discovery state is stored under.
-export const SECRET_SYNC_RELEASES: {
+export enum FeatureArea {
+  SecretSyncs = "secret-syncs"
+}
+
+// item identifies the release within its area, e.g. the SecretSync destination for FeatureArea.SecretSyncs.
+export type TFeatureRelease = {
   releaseId: string;
-  destination: SecretSync;
+  area: FeatureArea;
+  item: string;
   releasedAt: string;
-}[] = [
-  { releaseId: "secret-sync-daytona", destination: SecretSync.Daytona, releasedAt: "2026-09-03" }
+};
+
+// Add an entry in the PR that ships a feature to promote it for FEATURE_RELEASE_NEW_WINDOW_DAYS.
+// releaseId must stay stable once shipped: it is the key users' discovery state is stored under.
+export const FEATURE_RELEASES: TFeatureRelease[] = [
+  {
+    releaseId: "secret-sync-daytona",
+    area: FeatureArea.SecretSyncs,
+    item: SecretSync.Daytona,
+    releasedAt: "2026-09-03"
+  }
 ];

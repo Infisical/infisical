@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2Icon, Search } from "lucide-react";
+import { CheckIcon, Loader2Icon, Search } from "lucide-react";
 
 import {
   Badge,
+  Button,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -77,21 +78,16 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const { newSecretSyncReleases, markSecretSyncsSeen } = useSecretSyncDiscovery();
+  const { newSecretSyncReleases, hasUnseenSecretSyncs, markSecretSyncsSeen } =
+    useSecretSyncDiscovery();
   const { isPending, data: secretSyncOptions } = useSecretSyncOptions();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
   const [search, setSearch] = useState("");
 
   const handleSelect = (option: SyncOption) => {
-    if (option.enterprise && !subscription.enterpriseSecretSyncs) {
-      handlePopUpOpen("upgradePlan", {
-        isEnterpriseFeature: true,
-        text: "All Secret Syncs can be unlocked if you switch to Infisical Enterprise plan."
-      });
-      return;
-    }
     const release = newSecretSyncReleases.find((r) => r.destination === option.destination);
     if (release) {
+      markSecretSyncsSeen([release.releaseId]);
       analytics.captureForOrganization(
         AnalyticsEvent.SecretSyncRecentlyAddedSelected,
         currentOrg.id,
@@ -100,6 +96,13 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
           releaseId: release.releaseId
         }
       );
+    }
+    if (option.enterprise && !subscription.enterpriseSecretSyncs) {
+      handlePopUpOpen("upgradePlan", {
+        isEnterpriseFeature: true,
+        text: "All Secret Syncs can be unlocked if you switch to Infisical Enterprise plan."
+      });
+      return;
     }
     onSelect(option.destination);
   };
@@ -157,7 +160,6 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
     if (isPending || isSearching || !recentlyAddedReleases.length || hasRecordedView.current)
       return;
     hasRecordedView.current = true;
-    markSecretSyncsSeen();
     analytics.captureForOrganization(AnalyticsEvent.SecretSyncRecentlyAddedViewed, currentOrg.id, {
       projectId: currentProject.id,
       releaseIds: recentlyAddedReleases.map(({ releaseId }) => releaseId)
@@ -215,7 +217,17 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
         <>
           {recentlyAddedReleases.length > 0 && (
             <section>
-              <SectionLabel>Recently Added</SectionLabel>
+              <div className="mb-3 flex min-h-7 items-center justify-between">
+                <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
+                  Recently Added
+                </p>
+                {hasUnseenSecretSyncs && (
+                  <Button variant="ghost" size="xs" onClick={() => markSecretSyncsSeen()}>
+                    <CheckIcon />
+                    Mark as Seen
+                  </Button>
+                )}
+              </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {recentlyAddedReleases.map(({ destination }) => (
                   <ProviderCard
