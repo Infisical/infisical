@@ -758,7 +758,7 @@ export const approvalPolicyServiceFactory = ({
     return { policies, projectId };
   };
 
-  const getById = async (policyId: string, actor: TApprovalActor) => {
+  const getById = async (policyId: string, actor: TApprovalActor, policyType: ApprovalPolicyType) => {
     const policy = await approvalPolicyDAL.findById(policyId);
     if (!policy) {
       throw new ForbiddenRequestError({ message: "Policy not found" });
@@ -773,9 +773,9 @@ export const approvalPolicyServiceFactory = ({
       policy.type as ApprovalPolicyType
     );
 
-    if (policy.type === ApprovalPolicyType.SecretAccess) {
+    if (policy.type !== policyType) {
       throw new BadRequestError({
-        message: "This is a secret access policy. Get it from the access approval endpoint instead."
+        message: `Policy type mismatch: expected ${policyType}, got ${policy.type}`
       });
     }
 
@@ -799,7 +799,8 @@ export const approvalPolicyServiceFactory = ({
       enforcementLevel,
       bypassers
     }: TUpdatePolicyDTO,
-    actor: TApprovalActor
+    actor: TApprovalActor,
+    policyType: ApprovalPolicyType
   ) => {
     const policy = await approvalPolicyDAL.findById(policyId);
     if (!policy) {
@@ -818,9 +819,9 @@ export const approvalPolicyServiceFactory = ({
       policy.type as ApprovalPolicyType
     );
 
-    if (policy.type === ApprovalPolicyType.SecretAccess) {
+    if (policy.type !== policyType) {
       throw new BadRequestError({
-        message: "This is a secret access policy. Update it from the access approval policies instead."
+        message: `Policy type mismatch: expected ${policyType}, got ${policy.type}`
       });
     }
 
@@ -940,7 +941,7 @@ export const approvalPolicyServiceFactory = ({
     };
   };
 
-  const deleteById = async (policyId: string, actor: TApprovalActor) => {
+  const deleteById = async (policyId: string, actor: TApprovalActor, policyType: ApprovalPolicyType) => {
     const policy = await approvalPolicyDAL.findById(policyId);
     if (!policy) {
       throw new ForbiddenRequestError({ message: "Policy not found" });
@@ -955,9 +956,9 @@ export const approvalPolicyServiceFactory = ({
       policy.type as ApprovalPolicyType
     );
 
-    if (policy.type === ApprovalPolicyType.SecretAccess) {
+    if (policy.type !== policyType) {
       throw new BadRequestError({
-        message: "This is a secret access policy. Delete it from the access approval policies instead."
+        message: `Policy type mismatch: expected ${policyType}, got ${policy.type}`
       });
     }
 
@@ -2387,7 +2388,7 @@ export const approvalPolicyServiceFactory = ({
 
     const hasApprovers = steps.some((step) => step.approvers.length > 0);
     if (!hasApprovers) {
-      if (existing) await deleteById(existing.id, actor);
+      if (existing) await deleteById(existing.id, actor, policyType);
       return { policyId: existing?.id ?? null };
     }
 
@@ -2395,7 +2396,7 @@ export const approvalPolicyServiceFactory = ({
     const bypassFields = bypassers ? { bypassers } : {};
 
     if (existing) {
-      const { policy } = await updateById(existing.id, { steps: policySteps, ...bypassFields }, actor);
+      const { policy } = await updateById(existing.id, { steps: policySteps, ...bypassFields }, actor, policyType);
       return { policyId: policy.id };
     }
 

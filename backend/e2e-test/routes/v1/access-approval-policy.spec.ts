@@ -319,11 +319,11 @@ describe("Access approval policy router", async () => {
 
       const asMember = await deletePolicyThroughGenericEndpoint(policy.id, member.token);
       expect(asMember.statusCode).toBe(403);
-      expect(asMember.json().message).not.toContain("secret access policy");
+      expect(asMember.json().message).not.toContain("secret-access");
 
       const asAdmin = await deletePolicyThroughGenericEndpoint(policy.id, jwtAuthToken);
       expect(asAdmin.statusCode).toBe(400);
-      expect(asAdmin.json().message).toContain("secret access policy");
+      expect(asAdmin.json().message).toContain("expected pam-access, got secret-access");
 
       const stillThere = await db(TableName.ApprovalPolicies).where({ id: policy.id }).first();
       expect(stillThere).toBeDefined();
