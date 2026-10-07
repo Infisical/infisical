@@ -22,7 +22,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import {
-  CertificateAlertEvent,
+  CertificateApplicationAlertEvent,
   TCertificateAlertEventEmitter
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
@@ -775,7 +775,7 @@ export const certificateServiceFactory = ({
       certificateId: revokedCertId,
       projectId: ca.projectId,
       orgId: actorOrgId,
-      eventType: CertificateAlertEvent.Revocation,
+      eventType: CertificateApplicationAlertEvent.Revocation,
       applicationId: revokedCertApplicationId
     });
 

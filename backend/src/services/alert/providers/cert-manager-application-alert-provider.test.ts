@@ -1,15 +1,15 @@
 import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AlertChannelType } from "../alert-channel-types";
-import { AlertAuditAction, AlertPermissionAction, AlertTelemetryAction, TAlertContext } from "../alert-types";
-import { TApplicationAlertCertificate } from "./cert-manager-application-alert-dal";
+import { AlertPermissionAction, AlertTelemetryAction, TAlertContext } from "../alert-types";
 import {
   certManagerApplicationAlertProviderFactory,
   TCertManagerApplicationAlertProviderDep
 } from "./cert-manager-application-alert-provider";
+import { TAlertCertificate } from "./cert-manager-certificate-alert-dal";
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({ SITE_URL: "https://app.infisical.com" })
@@ -19,14 +19,17 @@ const RESOURCE_TYPE = "cert-manager.application";
 const EXPIRY_EVENT = "cert-manager.application.certificate.expiry";
 const ISSUANCE_EVENT = "cert-manager.application.certificate.issuance";
 const REVOCATION_EVENT = "cert-manager.application.certificate.revocation";
+const APPLICATION_ID = "7b0a6b54-3c1e-4f3a-9d5e-2f1b8c4d6e90";
+const PROFILE_ID = "7d9f5b2a-0c3e-4a4d-9f8b-3c4d5e6f7081";
 
 const futureDate = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
-const sampleCertificate = (overrides: Partial<TApplicationAlertCertificate> = {}): TApplicationAlertCertificate => ({
+const sampleCertificate = (overrides: Partial<TAlertCertificate> = {}): TAlertCertificate => ({
   id: "cert-1",
   serialNumber: "105d3b4c",
   commonName: "api.example.com",
   altNames: "api.example.com, www.api.example.com",
+  profileId: "profile-1",
   profileName: "tls-server",
   status: "active",
   notBefore: new Date("2026-09-01T00:00:00.000Z"),
@@ -52,11 +55,11 @@ const alertContext = (overrides: Partial<TAlertContext> = {}): TAlertContext => 
 
 const buildProvider = (opts?: {
   application?: { id: string; name: string; projectId: string; orgId: string };
-  certificates?: TApplicationAlertCertificate[];
+  certificates?: TAlertCertificate[];
   onFindExpiring?: (args: Record<string, unknown>) => void;
   onFindByIds?: (args: Record<string, unknown>) => void;
   onFindNames?: (ids: string[], orgId: string) => void;
-  abilityRules?: { action: string; subject: string }[];
+  abilityRules?: { action: string; subject: string; inverted?: boolean; conditions?: unknown }[];
   pkiEnterpriseAlerting?: boolean;
 }) => {
   const application = opts?.application ?? {
@@ -69,7 +72,7 @@ const buildProvider = (opts?: {
     findApplicationById: async (id: string) => (id === application.id ? application : undefined),
     findApplicationNamesByIds: async (ids: string[], orgId: string) => {
       opts?.onFindNames?.(ids, orgId);
-      return ids.includes(application.id) && orgId === application.orgId
+      return ids.some((id) => id.toLowerCase() === application.id) && orgId === application.orgId
         ? [{ id: application.id, name: application.name }]
         : [];
     },
@@ -82,7 +85,8 @@ const buildProvider = (opts?: {
       return opts?.certificates ?? [];
     }
   };
-  const ability = () => createMongoAbility(opts?.abilityRules ?? [{ action: "read", subject: "pki-alerts" }]);
+  const ability = () =>
+    createMongoAbility((opts?.abilityRules ?? [{ action: "read", subject: "pki-alerts" }]) as never);
   const permissionService = {
     getResourcePermission: vi.fn(async () => ({ permission: ability() }))
   };
@@ -90,7 +94,7 @@ const buildProvider = (opts?: {
     getPlan: async () => ({ pkiEnterpriseAlerting: opts?.pkiEnterpriseAlerting ?? false })
   };
   const provider = certManagerApplicationAlertProviderFactory({
-    certManagerApplicationAlertDAL: dal,
+    certManagerCertificateAlertDAL: dal,
     permissionService,
     licenseService
   } as unknown as TCertManagerApplicationAlertProviderDep);
@@ -114,16 +118,26 @@ describe("cert manager application alert provider", () => {
     expect(schema.safeParse({ alertBefore: "30d", filters: [] }).success).toBe(false);
   });
 
-  test("issuance, renewal and revocation are event-triggered and take no condition", () => {
-    const { provider } = buildProvider();
-    const eventKeys = provider.events.filter((event) => event.key !== EXPIRY_EVENT).map((event) => event.key);
-    expect(eventKeys).toEqual([ISSUANCE_EVENT, "cert-manager.application.certificate.renewal", REVOCATION_EVENT]);
-    provider.events
-      .filter((event) => event.key !== EXPIRY_EVENT)
-      .forEach((event) => {
-        expect(event.conditionSchema.safeParse(null).success).toBe(true);
-        expect(event.conditionSchema.safeParse({ alertBefore: "30d" }).success).toBe(false);
-      });
+  test("findScheduledTargets scans nothing when the alert has no channel to deliver to", async () => {
+    let scanned = false;
+    const { provider } = buildProvider({
+      onFindExpiring: () => {
+        scanned = true;
+      }
+    });
+
+    const targets = await provider.findScheduledTargets({
+      orgId: "org-1",
+      projectId: "proj-1",
+      resourceId: null,
+      eventType: EXPIRY_EVENT,
+      condition: { alertBefore: "2w" },
+      asOf: new Date(),
+      alreadyAlerted: { alertId: "alert-1", channelIds: [], since: new Date() }
+    });
+
+    expect(targets).toEqual([]);
+    expect(scanned).toBe(false);
   });
 
   test("findScheduledTargets converts alertBefore to days and scopes the scan to the alert's application", async () => {
@@ -139,35 +153,14 @@ describe("cert manager application alert provider", () => {
       resourceId: "7b0a6b54-3c1e-4f3a-9d5e-2f1b8c4d6e90",
       eventType: EXPIRY_EVENT,
       condition: { alertBefore: "2w" },
-      asOf: new Date()
+      asOf: new Date(),
+      alreadyAlerted: { alertId: "alert-1", channelIds: ["channel-1"], since: new Date() }
     });
     expect(args).toMatchObject({
       projectId: "proj-1",
       applicationId: "7b0a6b54-3c1e-4f3a-9d5e-2f1b8c4d6e90",
       alertBeforeInterval: "14 days"
     });
-  });
-
-  test("findScheduledTargets and findEventTargets return nothing for an alert with no application", async () => {
-    const { provider } = buildProvider({ certificates: [sampleCertificate()] });
-    await expect(
-      provider.findScheduledTargets({
-        orgId: "org-1",
-        projectId: "proj-1",
-        eventType: EXPIRY_EVENT,
-        condition: { alertBefore: "30d" },
-        asOf: new Date()
-      })
-    ).resolves.toEqual([]);
-    await expect(
-      provider.findEventTargets({
-        orgId: "org-1",
-        projectId: "proj-1",
-        eventType: ISSUANCE_EVENT,
-        condition: null,
-        targetIds: ["cert-1"]
-      } as never)
-    ).resolves.toEqual([]);
   });
 
   test("dedup window tightens as the lead time shrinks and a daily reminder forces 24h", () => {
@@ -189,7 +182,9 @@ describe("cert manager application alert provider", () => {
     expect(payload.summary).toBe("1 certificate in application 'payments-api' expiring within 1 day");
     expect(payload.alert.condition).toBe("1d");
     expect(payload.webhookType).toBe(`com.infisical.${EXPIRY_EVENT}`);
+    expect(payload.eventKey).toBe(EXPIRY_EVENT);
     expect(payload.webhookSource).toBe(`/applications/${alertContext().resourceId}/alerts/alert-1`);
+    expect(payload.alert.resourceType).toBe(RESOURCE_TYPE);
     expect(payload.alert.resourceId).toBe(alertContext().resourceId);
     expect(payload.severity).toBe("critical");
     expect(payload.items[0]).toMatchObject({ id: "cert-1", title: "api.example.com" });
@@ -209,6 +204,7 @@ describe("cert manager application alert provider", () => {
       notAfter: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) as string,
       revokedAt: null,
       revocationReason: null,
+      profileId: "profile-1",
       profileName: "tls-server",
       applicationId: "app-1",
       applicationName: "payments-api"
@@ -246,69 +242,6 @@ describe("cert manager application alert provider", () => {
     ]);
   });
 
-  test("emits application-specific audit events carrying the application", () => {
-    const { provider } = buildProvider();
-    const alert = {
-      id: "alert-1",
-      name: "tls-expiry",
-      resourceType: "cert-manager.application",
-      resourceId: "app-1",
-      resourceName: "payments-api",
-      eventType: EXPIRY_EVENT
-    };
-    const metadata = {
-      applicationId: "app-1",
-      applicationName: "payments-api",
-      alertId: "alert-1",
-      name: "tls-expiry",
-      eventType: EXPIRY_EVENT
-    };
-
-    expect(provider.getAuditEvent?.({ action: AlertAuditAction.Create, alert })).toEqual({
-      type: "create-pki-application-alert",
-      metadata
-    });
-    expect(provider.getAuditEvent?.({ action: AlertAuditAction.Update, alert })).toEqual({
-      type: "update-pki-application-alert",
-      metadata
-    });
-    expect(provider.getAuditEvent?.({ action: AlertAuditAction.Delete, alert })).toEqual({
-      type: "delete-pki-application-alert",
-      metadata
-    });
-    expect(
-      provider.getAuditEvent?.({
-        action: AlertAuditAction.TestChannel,
-        test: {
-          resourceType: "cert-manager.application",
-          resourceId: "app-1",
-          resourceName: "payments-api",
-          alertId: "alert-1",
-          alertName: "tls-expiry",
-          channelId: "channel-1",
-          channelName: "Email",
-          channelType: "email",
-          success: true,
-          deliveredTo: 1
-        }
-      })
-    ).toEqual({
-      type: "test-pki-application-alert-channel",
-      metadata: {
-        applicationId: "app-1",
-        applicationName: "payments-api",
-        alertId: "alert-1",
-        alertName: "tls-expiry",
-        channelId: "channel-1",
-        channelName: "Email",
-        channelType: "email",
-        success: true,
-        deliveredTo: 1,
-        error: undefined
-      }
-    });
-  });
-
   test("buildViewUrl deep-links to the application and falls back to the applications list", async () => {
     const { provider } = buildProvider();
     await expect(provider.buildViewUrl(alertContext())).resolves.toBe(
@@ -342,12 +275,8 @@ describe("cert manager application alert provider", () => {
     expect(permissionService.getResourcePermission).toHaveBeenCalled();
   });
 
-  test("assertPermission requires a project and an application", async () => {
-    const { provider, permissionService } = buildProvider();
-    await expect(
-      provider.assertPermission({ action: AlertPermissionAction.Read, orgId: "org-1", projectId: "proj-1", actor })
-    ).rejects.toThrow("Application alerts require an application ID");
-    expect(permissionService.getResourcePermission).not.toHaveBeenCalled();
+  test("assertPermission requires a project", async () => {
+    const { provider } = buildProvider();
     await expect(
       provider.assertPermission({ action: AlertPermissionAction.Read, orgId: "org-1", actor })
     ).rejects.toThrow("Certificate alerts must be created in Certificate Manager");
@@ -462,6 +391,7 @@ describe("cert manager application alert provider", () => {
         orgId: "org-1",
         projectId: "proj-1",
         applicationId: "7b0a6b54-3c1e-4f3a-9d5e-2f1b8c4d6e90",
+        alertScope: PkiAlertScope.Application,
         alertType: "expiration"
       }
     });
@@ -474,5 +404,27 @@ describe("cert manager application alert provider", () => {
         eventType: ISSUANCE_EVENT
       })?.event
     ).toBe(PostHogEventTypes.PkiAlertDeleted);
+  });
+
+  test("only takes alerts bound to an application, with no filters", async () => {
+    const { provider } = buildProvider({ abilityRules: [{ action: "create", subject: "pki-alerts" }] });
+    expect(provider.supportsScopeWideAlerts).toBeUndefined();
+    await expect(
+      provider.assertPermission({
+        action: AlertPermissionAction.Create,
+        orgId: "org-1",
+        projectId: "proj-1",
+        resourceId: null,
+        actor
+      })
+    ).rejects.toThrow("Application alerts require an application ID");
+    await expect(provider.resolveProjectId?.({ orgId: "org-1", resourceId: null })).rejects.toThrow(
+      "Application alerts require an application ID"
+    );
+    const eventSchema = provider.events.find((event) => event.key === ISSUANCE_EVENT)!.conditionSchema;
+    expect(eventSchema.safeParse({ applicationIds: [APPLICATION_ID] }).success).toBe(false);
+    expect(expiryConditionSchema(provider).safeParse({ alertBefore: "30d", profileIds: [PROFILE_ID] }).success).toBe(
+      false
+    );
   });
 });

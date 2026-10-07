@@ -1,10 +1,12 @@
-import { AlertTriggerType, IResourceAlertProvider } from "./alert-types";
+import { BadRequestError } from "@app/lib/errors";
+
+import { AlertTriggerType, IResourceAlertProvider, TAlertEventDefinition, TAlertEventRef } from "./alert-types";
 
 export const resolveAlertProjectId = async (
   provider: IResourceAlertProvider,
   { orgId, projectId, resourceId }: { orgId: string; projectId?: string | null; resourceId?: string | null }
 ): Promise<string | null> => {
-  if (projectId || !resourceId || !provider.resolveProjectId) return projectId ?? null;
+  if (projectId || !provider.resolveProjectId) return projectId ?? null;
   return provider.resolveProjectId({ orgId, resourceId });
 };
 
@@ -15,6 +17,16 @@ export const getAlertResourceName = async (
 ): Promise<string | null> => {
   if (!resourceId || !provider.getResourceNames) return null;
   return (await provider.getResourceNames({ orgId, resourceIds: [resourceId] })).get(resourceId) ?? null;
+};
+
+export const getAlertEvent = (provider: IResourceAlertProvider, eventType: string): TAlertEventDefinition => {
+  const event = provider.events.find((candidate) => candidate.key === eventType);
+  if (!event) {
+    throw new BadRequestError({
+      message: `Event type '${eventType}' is not supported by resource type '${provider.resourceType}'`
+    });
+  }
+  return event;
 };
 
 export type TAlertProviderRegistry = ReturnType<typeof alertProviderRegistryFactory>;
@@ -58,5 +70,17 @@ export const alertProviderRegistryFactory = () => {
     return eventTriggeredKeyCache;
   };
 
-  return { register, get, resourceTypes, eventTriggeredKeys };
+  const findEventsBySource = (source: TAlertEventRef): TAlertEventRef[] =>
+    [...providers.values()].flatMap((provider) =>
+      provider.events
+        .filter(
+          (event) =>
+            event.triggerType === AlertTriggerType.Event &&
+            event.sourceEvent?.resourceType === source.resourceType &&
+            event.sourceEvent.eventKey === source.eventKey
+        )
+        .map((event) => ({ resourceType: provider.resourceType, eventKey: event.key }))
+    );
+
+  return { register, get, resourceTypes, eventTriggeredKeys, findEventsBySource };
 };

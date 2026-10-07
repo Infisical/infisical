@@ -136,10 +136,6 @@ export enum EventType {
   UPDATE_ALERT = "update-alert",
   DELETE_ALERT = "delete-alert",
   TEST_ALERT_CHANNEL = "test-alert-channel",
-  CREATE_PKI_APPLICATION_ALERT = "create-pki-application-alert",
-  UPDATE_PKI_APPLICATION_ALERT = "update-pki-application-alert",
-  DELETE_PKI_APPLICATION_ALERT = "delete-pki-application-alert",
-  TEST_PKI_APPLICATION_ALERT_CHANNEL = "test-pki-application-alert-channel",
   CREATE_PKI_COLLECTION = "create-pki-collection",
   GET_PKI_COLLECTION = "get-pki-collection",
   UPDATE_PKI_COLLECTION = "update-pki-collection",
@@ -369,10 +365,6 @@ export enum EventType {
   PAM_ACCOUNT_SSH_CA_CREATE = "pam-account-ssh-ca-create",
   PAM_ACCOUNT_CREDENTIALS_VIEW = "pam-account-credentials-view",
   PAM_APPROVAL_CONFIG_UPDATE = "pam-approval-config-update",
-  PAM_FOLDER_ALERT_CREATE = "pam-folder-alert-create",
-  PAM_FOLDER_ALERT_UPDATE = "pam-folder-alert-update",
-  PAM_FOLDER_ALERT_DELETE = "pam-folder-alert-delete",
-  PAM_FOLDER_ALERT_CHANNEL_TEST = "pam-folder-alert-channel-test",
   PAM_DISCOVERY_SOURCE_CREATE = "pam-discovery-source-create",
   PAM_DISCOVERY_SOURCE_UPDATE = "pam-discovery-source-update",
   PAM_DISCOVERY_SOURCE_DELETE = "pam-discovery-source-delete",
@@ -499,5 +491,7 @@ export enum EventType {
   AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
   AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
   AGENT_VAULT_PROXY_DELETE = "agent-vault-proxy-delete",
-  AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE = "agent-vault-session-log-settings-update"
+  AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE = "agent-vault-session-log-settings-update",
+  PERMISSION_DENIED = "permission-denied",
+  UPDATE_AUDIT_LOG_SETTINGS = "update-audit-log-settings"
 }

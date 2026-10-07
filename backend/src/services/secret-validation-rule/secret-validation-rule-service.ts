@@ -409,9 +409,10 @@ export const secretValidationRuleServiceFactory = ({
       environment,
       secretPath,
       secrets,
+      excludedSecretIds: otherExcludedSecretIds = [],
       scope,
       generateSecretBlindIndex
-    }: Pick<TValidateSecretsDTO, "projectId" | "environment" | "secretPath" | "secrets"> & {
+    }: Pick<TValidateSecretsDTO, "projectId" | "environment" | "secretPath" | "secrets" | "excludedSecretIds"> & {
       scope: { envId?: string | null; secretPath: string };
       generateSecretBlindIndex: (value: Buffer) => Promise<string>;
     },
@@ -437,7 +438,10 @@ export const secretValidationRuleServiceFactory = ({
       else seenInBatch.set(blindIndexes[idx], { key: secret.key, environment, secretPath });
     });
 
-    const excludedSecretIds = candidates.map((secret) => secret.secretId).filter(Boolean) as string[];
+    const excludedSecretIds = [
+      ...(candidates.map((secret) => secret.secretId).filter(Boolean) as string[]),
+      ...otherExcludedSecretIds
+    ];
     const existing = await secretDAL.findExistingSecretsWithMatchingValues(
       projectId,
       [...new Set(blindIndexes)],
@@ -477,7 +481,7 @@ export const secretValidationRuleServiceFactory = ({
   };
 
   const validateSecrets = async (
-    { projectId, environment, envId, secretPath, secrets }: TValidateSecretsDTO,
+    { projectId, environment, envId, secretPath, secrets, excludedSecretIds }: TValidateSecretsDTO,
     tx?: Knex
   ) => {
     if (!secrets.length) return;
@@ -486,11 +490,12 @@ export const secretValidationRuleServiceFactory = ({
       { projectId, isActive: true, type: SecretValidationRuleType.StaticSecrets },
       { tx }
     );
-    if (!rules.length) return;
+    const rulesInScope = findRulesCoveringScope(rules, { envId, secretPath });
+    if (!rulesInScope.length) return;
 
     const { decryptor, generateSecretBlindIndex } = await $getCipher(projectId, tx);
 
-    const coveringRules = findRulesCoveringScope(rules, { envId, secretPath }).map((rule) => ({
+    const coveringRules = rulesInScope.map((rule) => ({
       name: rule.name,
       scope: { envId: rule.envId, secretPath: rule.secretPath },
       config: parseSecretValidationRuleConfig(
@@ -498,7 +503,6 @@ export const secretValidationRuleServiceFactory = ({
         JSON.parse(decryptor({ cipherTextBlob: rule.encryptedInputs }).toString()) as unknown
       ) as TStaticSecretsRuleConfig
     }));
-    if (!coveringRules.length) return;
 
     // reading version history is only worth it when a covering rule actually forbids reuse
     const versionsToCheck = Math.max(
@@ -536,6 +540,7 @@ export const secretValidationRuleServiceFactory = ({
             environment,
             secretPath,
             secrets,
+            excludedSecretIds,
             scope: reuseAcrossSecretsRule.scope,
             generateSecretBlindIndex
           },

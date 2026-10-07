@@ -1,6 +1,6 @@
+import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { PamAccessType } from "@app/ee/services/pam/pam-enums";
 import { checkFolderPermission, verifyProductMembership } from "@app/ee/services/pam/pam-permission";
@@ -14,17 +14,15 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { formatDuration } from "@app/lib/ms";
 import { ApprovalRequestApprovalDecision } from "@app/services/approval-policy/approval-policy-enums";
 
 import { AlertChannelType, TAlertPayload, TAlertSeverity } from "../alert-channel-types";
 import {
-  AlertAuditAction,
   AlertPermissionAction,
   AlertTriggerType,
   IEventAlertProvider,
-  TAlertAuditInput,
   TAlertContext,
   TAlertPermissionInput,
   TFindEventTargetsInput
@@ -244,19 +242,16 @@ export const pamFolderAlertProviderFactory = ({
     await assertResourceInScope({ orgId, projectId, resourceId });
 
     const { permission } = await checkFolderPermission(permissionService, resourceId, projectId, actor);
-    const isRead = action === AlertPermissionAction.Read;
     if (
-      permission.can(ResourcePermissionPamResourceActions.ManagePolicies, ResourcePermissionSub.PamResource) ||
-      (isRead && permission.can(ResourcePermissionPamResourceActions.ViewAuditLogs, ResourcePermissionSub.PamResource))
+      action === AlertPermissionAction.Read &&
+      permission.can(ResourcePermissionPamResourceActions.ViewAuditLogs, ResourcePermissionSub.PamResource)
     ) {
       return;
     }
-
-    throw new ForbiddenRequestError({
-      message: isRead
-        ? "You need permission to manage approvals or view audit logs on this folder to see its alerts"
-        : "You need permission to manage approvals on this folder to change its alerts"
-    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionPamResourceActions.ManagePolicies,
+      ResourcePermissionSub.PamResource
+    );
   };
 
   const assertChannelTypesAllowed = async ({ orgId, channelTypes }: { orgId: string; channelTypes: string[] }) => {
@@ -269,38 +264,6 @@ export const pamFolderAlertProviderFactory = ({
         message: `Failed to add a ${gatedType} channel due to plan restriction. Upgrade plan to send PAM alerts to channels other than email.`
       });
     }
-  };
-
-  const getAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
-    if (input.action === AlertAuditAction.TestChannel) {
-      const { test } = input;
-      return {
-        type: EventType.PAM_FOLDER_ALERT_CHANNEL_TEST,
-        metadata: {
-          ...(test.resourceId ? { folderId: test.resourceId } : {}),
-          folderName: test.resourceName ?? null,
-          alertId: test.alertId,
-          alertName: test.alertName ?? null,
-          channelId: test.channelId,
-          channelName: test.channelName ?? null,
-          channelType: test.channelType,
-          success: test.success,
-          deliveredTo: test.deliveredTo,
-          error: test.error
-        }
-      };
-    }
-
-    const metadata = {
-      ...(input.alert.resourceId ? { folderId: input.alert.resourceId } : {}),
-      folderName: input.alert.resourceName ?? null,
-      alertId: input.alert.id,
-      name: input.alert.name,
-      eventType: input.alert.eventType
-    };
-    if (input.action === AlertAuditAction.Create) return { type: EventType.PAM_FOLDER_ALERT_CREATE, metadata };
-    if (input.action === AlertAuditAction.Update) return { type: EventType.PAM_FOLDER_ALERT_UPDATE, metadata };
-    return { type: EventType.PAM_FOLDER_ALERT_DELETE, metadata };
   };
 
   return {
@@ -316,14 +279,6 @@ export const pamFolderAlertProviderFactory = ({
     targetId: (target) => target.requestId,
     assertPermission,
     assertResourceInScope,
-    assertChannelTypesAllowed,
-    getAuditEvent,
-    getResourceNames: async ({ orgId, resourceIds }) =>
-      new Map(
-        (await pamFolderAlertDAL.findFolderNamesByIds({ orgId, folderIds: resourceIds })).map((folder) => [
-          folder.id,
-          folder.name
-        ])
-      )
+    assertChannelTypesAllowed
   };
 };

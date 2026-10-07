@@ -120,10 +120,6 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.UPDATE_ALERT]: "Update alert",
   [EventType.DELETE_ALERT]: "Delete alert",
   [EventType.TEST_ALERT_CHANNEL]: "Test alert channel",
-  [EventType.CREATE_PKI_APPLICATION_ALERT]: "Create application alert",
-  [EventType.UPDATE_PKI_APPLICATION_ALERT]: "Update application alert",
-  [EventType.DELETE_PKI_APPLICATION_ALERT]: "Delete application alert",
-  [EventType.TEST_PKI_APPLICATION_ALERT_CHANNEL]: "Test application alert channel",
   [EventType.CREATE_PKI_COLLECTION]: "Create PKI collection",
   [EventType.GET_PKI_COLLECTION]: "Get PKI collection",
   [EventType.UPDATE_PKI_COLLECTION]: "Update PKI collection",
@@ -380,10 +376,6 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.PAM_ACCOUNT_SSH_CA_CREATE]: "Create PAM Account SSH CA",
   [EventType.PAM_ACCOUNT_CREDENTIALS_VIEW]: "View PAM Account Credentials",
   [EventType.PAM_APPROVAL_CONFIG_UPDATE]: "Update PAM Approval Configuration",
-  [EventType.PAM_FOLDER_ALERT_CREATE]: "Create PAM Folder Alert",
-  [EventType.PAM_FOLDER_ALERT_UPDATE]: "Update PAM Folder Alert",
-  [EventType.PAM_FOLDER_ALERT_DELETE]: "Delete PAM Folder Alert",
-  [EventType.PAM_FOLDER_ALERT_CHANNEL_TEST]: "Test PAM Folder Alert Channel",
   [EventType.PAM_DISCOVERY_SOURCE_CREATE]: "Create PAM Discovery Source",
   [EventType.PAM_DISCOVERY_SOURCE_UPDATE]: "Update PAM Discovery Source",
   [EventType.PAM_DISCOVERY_SOURCE_DELETE]: "Delete PAM Discovery Source",
@@ -501,7 +493,9 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.AGENT_VAULT_PROXY_UPDATE]: "Update proxy",
   [EventType.AGENT_VAULT_PROXY_REVOKE]: "Revoke proxy access",
   [EventType.AGENT_VAULT_PROXY_DELETE]: "Delete proxy",
-  [EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE]: "Update session log settings"
+  [EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE]: "Update session log settings",
+  [EventType.PERMISSION_DENIED]: "Permission denied",
+  [EventType.UPDATE_AUDIT_LOG_SETTINGS]: "Update audit log settings"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
@@ -549,10 +543,6 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.PAM_ACCOUNT_SSH_CA_CREATE,
     EventType.PAM_ACCOUNT_CREDENTIALS_VIEW,
     EventType.PAM_APPROVAL_CONFIG_UPDATE,
-    EventType.PAM_FOLDER_ALERT_CREATE,
-    EventType.PAM_FOLDER_ALERT_UPDATE,
-    EventType.PAM_FOLDER_ALERT_DELETE,
-    EventType.PAM_FOLDER_ALERT_CHANNEL_TEST,
     EventType.PAM_DISCOVERY_SOURCE_CREATE,
     EventType.PAM_DISCOVERY_SOURCE_UPDATE,
     EventType.PAM_DISCOVERY_SOURCE_DELETE,

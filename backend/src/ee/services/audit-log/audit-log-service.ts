@@ -4,32 +4,58 @@ import { requestContext } from "@fastify/request-context";
 import { ActionProjectType, OrganizationActionScope, TUsers } from "@app/db/schemas";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
+import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TClickHouseAuditLogDALFactory } from "./audit-log-clickhouse-dal";
 import { TAuditLogDALFactory, TPamAuditLogScope } from "./audit-log-dal";
+import { getAuditLogEventClass, resolveEventClassFilter } from "./audit-log-event-classes";
 import { TAuditLogQueueServiceFactory } from "./audit-log-queue";
-import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, TAuditLogServiceFactory } from "./audit-log-types";
+import { isAuditLogEventEnabled, TAuditLogSettingsServiceFactory } from "./audit-log-settings-service";
+import {
+  ACTOR_TYPE_TO_METADATA_ID_KEY,
+  Event,
+  EventType,
+  TAuditLogCollapsedFlushJobData,
+  TAuditLogCollapseSummary,
+  TAuditLogServiceFactory,
+  TCreateAuditLogDTO
+} from "./audit-log-types";
 
 const AUDIT_LOG_ROW_WARNING_THRESHOLD = 350_000_000;
 const AUDIT_LOG_ALERT_ROW_INCREMENT = 10_000_000;
+const DEFAULT_COLLAPSE_WINDOW_SECONDS = 60;
+// Flush lands after the window key expires, so it only counts repeats from that window.
+const COLLAPSE_FLUSH_GRACE_MS = 2_000;
+const COLLAPSE_FLUSH_ATTEMPTS = 5;
+const COLLAPSE_FLUSH_BACKOFF_MS = 3_000;
 
 type TAuditLogServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
   clickhouseAuditLogDAL?: TClickHouseAuditLogDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   auditLogQueue: TAuditLogQueueServiceFactory;
-  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
+  auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "getEffectiveSettings">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  queueService: Pick<TQueueServiceFactory, "queue" | "start">;
+  keyStore: Pick<
+    TKeyStoreFactory,
+    "getItem" | "setItemWithExpiry" | "setItemWithExpiryNX" | "incrementByWithExpiry" | "deleteItem"
+  >;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "getUsersByFilter">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -46,7 +72,10 @@ export const auditLogServiceFactory = ({
   auditLogDAL,
   clickhouseAuditLogDAL,
   auditLogQueue,
+  auditLogSettingsService,
+  licenseService,
   permissionService,
+  queueService,
   keyStore,
   smtpService,
   userDAL,
@@ -115,12 +144,19 @@ export const auditLogServiceFactory = ({
     const appCfg = getConfig();
     const useClickHouse = appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED && clickhouseAuditLogDAL;
 
+    let eventTypeFilter: { eventType?: EventType[]; excludeEventType?: EventType[] } = { eventType: filter.eventType };
+    if (filter.eventClass?.length) {
+      const resolved = resolveEventClassFilter(filter.eventClass, filter.eventType);
+      if (!resolved) return [];
+      eventTypeFilter = resolved;
+    }
+
     const findArgs = {
       startDate: filter.startDate,
       endDate: filter.endDate,
       limit: filter.limit,
       offset: filter.offset,
-      eventType: filter.eventType,
+      ...eventTypeFilter,
       userAgentType: filter.userAgentType,
       actorId: filter.auditLogActorId,
       actorType: filter.actorType,
@@ -146,7 +182,7 @@ export const auditLogServiceFactory = ({
       ...el,
       updatedAt: el.createdAt,
       expiresAt: el.expiresAt,
-      event: { type: logEventType, metadata: eventMetadata },
+      event: { type: logEventType, class: getAuditLogEventClass(logEventType), metadata: eventMetadata },
       actor: { type: eActor, metadata: actorMetadata }
     }));
   };
@@ -167,6 +203,136 @@ export const auditLogServiceFactory = ({
       el.actor.metadata.permission = permissionMetadata;
     }
     return auditLogQueue.pushToLog(el);
+  };
+
+  // No request here, so skip createAuditLog (payload already has the actor's permission metadata).
+  // Let a failed push throw so the job retries instead of losing the window's repeats.
+  const flushCollapsedRepeats = async ({
+    collapseKey,
+    windowStart,
+    windowEnd,
+    ...auditLog
+  }: TAuditLogCollapsedFlushJobData) => {
+    const suppressedRepeats =
+      Number(await keyStore.getItem(KeyStorePrefixes.AuditLogCollapseCount(collapseKey, windowStart))) || 0;
+    if (!suppressedRepeats) return;
+
+    const summary: TAuditLogCollapseSummary = {
+      suppressedRepeats,
+      suppressedFrom: windowStart,
+      suppressedUntil: windowEnd
+    };
+    await auditLogQueue.pushToLogOrThrow({
+      ...auditLog,
+      event: { ...auditLog.event, metadata: { ...auditLog.event.metadata, ...summary } } as Event
+    });
+  };
+
+  queueService.start(QueueName.AuditLogCollapsedFlush, async (job) => {
+    await flushCollapsedRepeats(job.data);
+  });
+
+  // Counter is keyed by the window start, so a late flush never picks up the next window's repeats.
+  const collapseAuditLog = async (
+    data: TCreateAuditLogDTO,
+    collapseKey: string,
+    collapseWindowSeconds: number,
+    isRetry = false
+  ): Promise<void> => {
+    const windowKey = KeyStorePrefixes.AuditLogCollapseWindow(collapseKey);
+    const windowStart = new Date().toISOString();
+    const acquired = await keyStore.setItemWithExpiryNX(windowKey, collapseWindowSeconds, windowStart);
+    if (!acquired) {
+      const openWindowStart = await keyStore.getItem(windowKey);
+      if (!openWindowStart) {
+        if (!isRetry) return collapseAuditLog(data, collapseKey, collapseWindowSeconds, true);
+        await createAuditLog(data);
+        return;
+      }
+      await keyStore.incrementByWithExpiry(
+        KeyStorePrefixes.AuditLogCollapseCount(collapseKey, openWindowStart),
+        1,
+        collapseWindowSeconds * 10
+      );
+      return;
+    }
+
+    await createAuditLog(data);
+
+    const windowEnd = new Date(Date.parse(windowStart) + collapseWindowSeconds * 1000).toISOString();
+    try {
+      await queueService.queue(
+        QueueName.AuditLogCollapsedFlush,
+        QueueJobs.AuditLogCollapsedFlush,
+        { ...data, collapseKey, windowStart, windowEnd },
+        {
+          jobId: `audit-log-collapse-${collapseKey}-${Date.parse(windowStart)}`,
+          delay: collapseWindowSeconds * 1000 + COLLAPSE_FLUSH_GRACE_MS,
+          attempts: COLLAPSE_FLUSH_ATTEMPTS,
+          backoff: { type: "exponential", delay: COLLAPSE_FLUSH_BACKOFF_MS },
+          removeOnComplete: true,
+          removeOnFail: true
+        }
+      );
+    } catch (error) {
+      await keyStore.deleteItem(windowKey);
+      throw error;
+    }
+  };
+
+  const createCollapsedAuditLog: TAuditLogServiceFactory["createCollapsedAuditLog"] = async ({
+    collapseKeyParts,
+    collapseWindowSeconds = DEFAULT_COLLAPSE_WINDOW_SECONDS,
+    ...data
+  }) => {
+    const appCfg = getConfig();
+    if (appCfg.DISABLE_AUDIT_LOG_GENERATION) return;
+
+    const collapseKey = generateCacheKeyFromData([data.event.type, ...collapseKeyParts]);
+    await collapseAuditLog(data, collapseKey, collapseWindowSeconds);
+  };
+
+  // Runs in onError, so never throw or block the response.
+  const recordPermissionDenied: TAuditLogServiceFactory["recordPermissionDenied"] = async ({
+    orgId,
+    projectId,
+    metadata,
+    ...auditLogInfo
+  }) => {
+    const appCfg = getConfig();
+    if (appCfg.DISABLE_AUDIT_LOG_GENERATION) return;
+
+    try {
+      const settings = await requestMemoize(requestMemoKeys.auditLogSettings(orgId, projectId), () =>
+        auditLogSettingsService.getEffectiveSettings(orgId, projectId)
+      );
+      if (!settings?.shouldUseNewPrivilegeSystem) return;
+
+      if (!isAuditLogEventEnabled(settings, EventType.PERMISSION_DENIED, projectId)) return;
+
+      const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => licenseService.getPlan(orgId));
+      if (!plan?.auditLogsRetentionDays) return;
+
+      const actorIdKey = ACTOR_TYPE_TO_METADATA_ID_KEY[auditLogInfo.actor.type];
+      const actorId = actorIdKey ? (auditLogInfo.actor.metadata as Record<string, unknown>)[actorIdKey] : undefined;
+      await createCollapsedAuditLog({
+        ...auditLogInfo,
+        orgId,
+        projectId,
+        event: { type: EventType.PERMISSION_DENIED, metadata },
+        collapseKeyParts: [
+          orgId,
+          projectId ?? null,
+          actorId ?? null,
+          metadata.permissionAction ?? null,
+          metadata.permissionSubject ?? null,
+          metadata.route ?? null,
+          metadata.method
+        ]
+      });
+    } catch (error) {
+      logger.warn(error, `audit-log: failed to record permission denial [orgId=${orgId}] [route=${metadata.route}]`);
+    }
   };
 
   const getAuditLogPostgresStorageStatus: TAuditLogServiceFactory["getAuditLogPostgresStorageStatus"] = async ({
@@ -285,6 +451,8 @@ export const auditLogServiceFactory = ({
 
   return {
     createAuditLog,
+    createCollapsedAuditLog,
+    recordPermissionDenied,
     listAuditLogs,
     getAuditLogPostgresStorageStatus,
     checkPostgresAuditLogVolumeMigrationAlert

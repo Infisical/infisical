@@ -26,6 +26,7 @@ import { TReminderDALFactory } from "../reminder/reminder-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
+import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TSecretValueBlindIndexes } from "./secret-blind-index-fns";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
@@ -315,6 +316,7 @@ export type TFnSecretMove = {
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
   reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
   reminderService: Pick<TReminderServiceFactory, "batchCreateReminders">;
+  secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
 };
 
 export type TFnSecretMoveResult = {

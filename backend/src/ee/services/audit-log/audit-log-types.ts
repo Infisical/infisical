@@ -77,11 +77,13 @@ import { WorkflowIntegration } from "@app/services/workflow-integration/workflow
 import { KmipPermission } from "../kmip/kmip-enum";
 import { AcmeChallengeType, AcmeIdentifierType } from "../pki-acme/pki-acme-schemas";
 import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
+import type { AuditLogEventClass } from "./audit-log-event-classes";
 
 export type TListProjectAuditLogDTO = {
   filter: {
     userAgentType?: UserAgentType;
     eventType?: EventType[];
+    eventClass?: AuditLogEventClass[];
     offset?: number;
     limit: number;
     endDate: string;
@@ -120,6 +122,32 @@ export type TCreateAuditLogDTO = {
 
 export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
 
+// Lands in the summary event's metadata when a collapse window closes. Add it to the metadata
+// type of any event you pass to createCollapsedAuditLog.
+export type TAuditLogCollapseSummary = {
+  suppressedRepeats?: number;
+  suppressedFrom?: string;
+  suppressedUntil?: string;
+};
+
+export type TCreateCollapsedAuditLogDTO = TCreateAuditLogDTO & {
+  // Same event type + same parts inside the window = repeat.
+  collapseKeyParts: unknown[];
+  collapseWindowSeconds?: number;
+};
+
+export type TAuditLogCollapsedFlushJobData = TCreateAuditLogDTO & {
+  collapseKey: string;
+  windowStart: string;
+  windowEnd: string;
+};
+
+export type TRecordPermissionDeniedDTO = AuditLogInfo & {
+  orgId: string;
+  projectId?: string;
+  metadata: Omit<PermissionDeniedEvent["metadata"], keyof TAuditLogCollapseSummary>;
+};
+
 // What `pushToLog` writes to the Redis ingest stream. We pin `id` and `createdAt` at
 // push time so a consumer retry (reprocessing the same batch after a failed insert)
 // re-inserts byte-identical rows instead of regenerating ids and creating duplicates.
@@ -139,10 +167,13 @@ export type TAuditLogStreamEntry = TCreateAuditLogDTO & {
 
 export type TAuditLogServiceFactory = {
   createAuditLog: (data: TCreateAuditLogDTO) => Promise<void>;
+  createCollapsedAuditLog: (data: TCreateCollapsedAuditLogDTO) => Promise<void>;
+  recordPermissionDenied: (data: TRecordPermissionDeniedDTO) => Promise<void>;
   listAuditLogs: (arg: TListProjectAuditLogDTO) => Promise<
     {
       event: {
         type: string;
+        class: AuditLogEventClass;
         metadata: unknown;
       };
       actor: {
@@ -774,10 +805,6 @@ export enum EventType {
   PAM_ACCESS_REQUEST_REVIEW = "pam-access-request-review",
   PAM_ACCESS_GRANT_REVOKE = "pam-access-grant-revoke",
   PAM_APPROVAL_CONFIG_UPDATE = "pam-approval-config-update",
-  PAM_FOLDER_ALERT_CREATE = "pam-folder-alert-create",
-  PAM_FOLDER_ALERT_UPDATE = "pam-folder-alert-update",
-  PAM_FOLDER_ALERT_DELETE = "pam-folder-alert-delete",
-  PAM_FOLDER_ALERT_CHANNEL_TEST = "pam-folder-alert-channel-test",
   AGENT_VAULT_ACCESS_BUNDLE_CREATE = "agent-vault-access-bundle-create",
   AGENT_VAULT_ACCESS_BUNDLE_UPDATE = "agent-vault-access-bundle-update",
   AGENT_VAULT_ACCESS_BUNDLE_DELETE = "agent-vault-access-bundle-delete",
@@ -966,10 +993,12 @@ export enum EventType {
   UPDATE_ALERT = "update-alert",
   DELETE_ALERT = "delete-alert",
   TEST_ALERT_CHANNEL = "test-alert-channel",
-  CREATE_PKI_APPLICATION_ALERT = "create-pki-application-alert",
-  UPDATE_PKI_APPLICATION_ALERT = "update-pki-application-alert",
-  DELETE_PKI_APPLICATION_ALERT = "delete-pki-application-alert",
-  TEST_PKI_APPLICATION_ALERT_CHANNEL = "test-pki-application-alert-channel"
+
+  // Authorization
+  PERMISSION_DENIED = "permission-denied",
+
+  // Audit Log Settings
+  UPDATE_AUDIT_LOG_SETTINGS = "update-audit-log-settings"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -5681,8 +5710,9 @@ interface SecretScanningDataSourceScanEvent {
   metadata: {
     scanId: string;
     resourceId: string;
-    resourceType: string;
+    resourceName: string;
     dataSourceId: string;
+    dataSourceName: string;
     dataSourceType: string;
     scanStatus: SecretScanningScanStatus;
     scanType: SecretScanningScanType;
@@ -6000,6 +6030,27 @@ interface DeleteOrgAuditReportEvent {
 interface ViewAuditLogsEvent {
   type: EventType.VIEW_AUDIT_LOGS;
   metadata?: Record<string, unknown>;
+}
+
+interface PermissionDeniedEvent {
+  type: EventType.PERMISSION_DENIED;
+  metadata: TAuditLogCollapseSummary & {
+    permissionAction?: string;
+    permissionSubject?: string;
+    permissionSubjectDetails?: Record<string, unknown>;
+    errorName: string;
+    route?: string;
+    method: string;
+  };
+}
+
+interface UpdateAuditLogSettingsEvent {
+  type: EventType.UPDATE_AUDIT_LOG_SETTINGS;
+  metadata: {
+    scope: "organization" | "project";
+    eventClasses?: { eventClass: string; isEnabled: boolean }[];
+    auditLogsRetentionDays?: number;
+  };
 }
 
 interface ProjectRoleCreateEvent {
@@ -6742,45 +6793,6 @@ interface PamApprovalConfigUpdateEvent {
     stepCount: number;
     notificationConfigCount?: number;
     breakGlassUserCount?: number;
-  };
-}
-
-type TPamFolderAlertEventMetadata = {
-  folderId?: string;
-  folderName: string | null;
-  alertId: string;
-  name: string;
-  eventType: string;
-};
-
-interface PamFolderAlertCreateEvent {
-  type: EventType.PAM_FOLDER_ALERT_CREATE;
-  metadata: TPamFolderAlertEventMetadata;
-}
-
-interface PamFolderAlertUpdateEvent {
-  type: EventType.PAM_FOLDER_ALERT_UPDATE;
-  metadata: TPamFolderAlertEventMetadata;
-}
-
-interface PamFolderAlertDeleteEvent {
-  type: EventType.PAM_FOLDER_ALERT_DELETE;
-  metadata: TPamFolderAlertEventMetadata;
-}
-
-interface PamFolderAlertChannelTestEvent {
-  type: EventType.PAM_FOLDER_ALERT_CHANNEL_TEST;
-  metadata: {
-    folderId?: string;
-    folderName: string | null;
-    alertId?: string;
-    alertName?: string | null;
-    channelId?: string;
-    channelName?: string | null;
-    channelType: string;
-    success: boolean;
-    deliveredTo?: number;
-    error?: string;
   };
 }
 
@@ -7966,49 +7978,11 @@ interface TestAlertChannelEvent {
   };
 }
 
-type TPkiApplicationAlertEventMetadata = {
-  applicationId: string | null;
-  applicationName: string | null;
-};
-
-interface CreatePkiApplicationAlertEvent {
-  type: EventType.CREATE_PKI_APPLICATION_ALERT;
-  metadata: TPkiApplicationAlertEventMetadata & { alertId: string; name: string; eventType: string };
-}
-
-interface UpdatePkiApplicationAlertEvent {
-  type: EventType.UPDATE_PKI_APPLICATION_ALERT;
-  metadata: TPkiApplicationAlertEventMetadata & { alertId: string; name: string; eventType: string };
-}
-
-interface DeletePkiApplicationAlertEvent {
-  type: EventType.DELETE_PKI_APPLICATION_ALERT;
-  metadata: TPkiApplicationAlertEventMetadata & { alertId: string; name: string; eventType: string };
-}
-
-interface TestPkiApplicationAlertEvent {
-  type: EventType.TEST_PKI_APPLICATION_ALERT_CHANNEL;
-  metadata: TPkiApplicationAlertEventMetadata & {
-    alertId?: string;
-    alertName?: string | null;
-    channelId?: string;
-    channelName?: string | null;
-    channelType: string;
-    success: boolean;
-    deliveredTo?: number;
-    error?: string;
-  };
-}
-
 export type Event =
   | CreateAlertEvent
   | UpdateAlertEvent
   | DeleteAlertEvent
   | TestAlertChannelEvent
-  | CreatePkiApplicationAlertEvent
-  | UpdatePkiApplicationAlertEvent
-  | DeletePkiApplicationAlertEvent
-  | TestPkiApplicationAlertEvent
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
   | DeleteSubOrganizationEvent
@@ -8491,6 +8465,8 @@ export type Event =
   | GetOrgAuditReportsEvent
   | DeleteOrgAuditReportEvent
   | ViewAuditLogsEvent
+  | PermissionDeniedEvent
+  | UpdateAuditLogSettingsEvent
   | ProjectRoleCreateEvent
   | ProjectRoleUpdateEvent
   | ProjectRoleDeleteEvent
@@ -8562,10 +8538,6 @@ export type Event =
   | PamAccessRequestReviewEvent
   | PamAccessGrantRevokeEvent
   | PamApprovalConfigUpdateEvent
-  | PamFolderAlertCreateEvent
-  | PamFolderAlertUpdateEvent
-  | PamFolderAlertDeleteEvent
-  | PamFolderAlertChannelTestEvent
   | UpdateCertificateRenewalConfigEvent
   | UpdateCertificateMetadataEvent
   | DisableCertificateRenewalConfigEvent

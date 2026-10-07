@@ -1,5 +1,6 @@
 ---
 title: "Session logs"
+sidebarTitle: "Logs"
 description: "Keep an encrypted record of every request an AI agent makes, stored in your own Amazon S3 bucket."
 ---
 
@@ -19,7 +20,9 @@ The proxy encrypts the records before they leave your network and uploads them t
 
 ## Setting up session logs
 
-You'll switch between Infisical and AWS during setup. Infisical generates the AWS policy and CORS rule for your bucket, you add them in AWS, and then you finish in Infisical.
+Infisical reaches your bucket through an [AWS app connection](/integrations/app-connections/aws/), which signs in to AWS by assuming an IAM role you create.
+
+You'll switch between Infisical and AWS during setup: Infisical generates the AWS policy for your bucket, you set up the bucket and role in AWS, and then you create the connection in Infisical with the role's ARN.
 
 ### Prerequisites
 
@@ -44,9 +47,11 @@ You'll switch between Infisical and AWS during setup. Infisical generates the AW
   </Step>
 </Steps>
 
-Leave the **Session Logs** dialog open, and open AWS in another browser tab.
+Leave the **Session Logs** dialog open. You'll fill in **AWS Connection** in [Step 3](#step-3-finish-in-infisical), after you create the role it uses. Open AWS in another browser tab.
 
-### Step 2: Add a CORS rule to the bucket
+### Step 2: Set up in AWS
+
+#### Add a CORS rule to the bucket
 
 Your browser downloads session logs directly from your bucket, so the bucket has to accept requests from Infisical. Add a CORS rule for Infisical to the bucket.
 
@@ -54,13 +59,13 @@ Your browser downloads session logs directly from your bucket, so the bucket has
   <AgentVaultSessionLogsCorsRule />
 </Steps>
 
-### Step 3: Create an IAM role for Infisical
-
-Infisical assumes this role to write session logs to the bucket.
+#### Create an IAM role for Infisical
 
 <Note>
-  If you already have an AWS app connection you want to use, skip to [Step 4](#step-4-attach-the-iam-policy).
+  If you already have an AWS app connection you want to use, skip to [Attach the IAM policy](#attach-the-iam-policy).
 </Note>
+
+Infisical assumes this role to write session logs to the bucket.
 
 <SelfHostedInstance />
 
@@ -68,7 +73,7 @@ Infisical assumes this role to write session logs to the bucket.
   <CreateIamRole externalId="organization" />
 </Steps>
 
-### Step 4: Attach the IAM policy
+#### Attach the IAM policy
 
 Attach the **IAM policy** from [Step 1](#step-1-start-in-infisical) to the IAM role, or to the role or user your existing connection signs in as.
 
@@ -80,13 +85,13 @@ Attach the **IAM policy** from [Step 1](#step-1-start-in-infisical) to the IAM r
     Select **Next**, enter a **Policy name**, then select **Create policy**.
   </Step>
   <Step>
-    If you created a new role in Step 3, copy its **ARN** from the **Summary** section.
+    If you created a new role, copy its **ARN** from the **Summary** section.
 
     ![Copy IAM Role ARN](/images/integrations/aws/integration-aws-iam-assume-arn.png)
   </Step>
 </Steps>
 
-### Step 5: Finish in Infisical
+### Step 3: Finish in Infisical
 
 Go back to the **Session Logs** dialog.
 
@@ -258,7 +263,7 @@ You can't delete a connection while session logs use it. To delete the connectio
 
 Infisical doesn't copy existing records when you change the bucket. You can't view the records in the old bucket in Infisical until you switch back to that bucket.
 
-If you change only the key prefix, earlier records stay readable as long as the IAM role or user can still read the old prefix. The policy you [attached during setup](#step-4-attach-the-iam-policy) covers only the prefix you entered then, so add the new prefix to it instead of replacing it:
+If you change only the key prefix, earlier records stay readable as long as the IAM role or user can still read the old prefix. The policy you [attached during setup](#attach-the-iam-policy) covers only the prefix you entered then, so add the new prefix to it instead of replacing it:
 
 <Steps>
   <Step>

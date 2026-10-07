@@ -51,6 +51,7 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
@@ -312,10 +313,13 @@ export const secretScanningV2ServiceFactory = ({
 
       if (payload.isAutoScanEnabled) {
         try {
-          await secretScanningV2Queue.queueDataSourceFullScan({
-            ...createdDataSource,
-            connection
-          } as TSecretScanningDataSourceWithConnection);
+          await secretScanningV2Queue.queueDataSourceFullScan(
+            {
+              ...createdDataSource,
+              connection
+            } as TSecretScanningDataSourceWithConnection,
+            { triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined }
+          );
         } catch (error) {
           // Deliberately non-fatal — a scan that can't be queued shouldn't block creating the data source.
           logger.error(
@@ -550,7 +554,7 @@ export const secretScanningV2ServiceFactory = ({
         ...dataSource,
         connection
       } as TSecretScanningDataSourceWithConnection,
-      resourceExternalId
+      { resourceExternalId, triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined }
     );
 
     return dataSource as TSecretScanningDataSource;
@@ -753,15 +757,9 @@ export const secretScanningV2ServiceFactory = ({
       ProjectPermissionSub.SecretScanningFindings
     );
 
-    const [finding] = await secretScanningV2DAL.findings.find(
-      {
-        projectId,
-        status: SecretScanningFindingStatus.Unresolved
-      },
-      { count: true }
-    );
-
-    return Number(finding?.count ?? 0);
+    return secretScanningV2DAL.findings.countByProjectId(projectId, {
+      status: SecretScanningFindingStatus.Unresolved
+    });
   };
 
   const listSecretScanningFindingsByProjectId = async (projectId: string, actor: OrgServiceActor) => {
@@ -787,15 +785,13 @@ export const secretScanningV2ServiceFactory = ({
       ProjectPermissionSub.SecretScanningFindings
     );
 
-    const findings = await secretScanningV2DAL.findings.find({
-      projectId
-    });
+    const findings = await secretScanningV2DAL.findings.findByProjectId(projectId);
 
     return findings as TSecretScanningFinding[];
   };
 
   const updateSecretScanningFindingById = async (
-    { findingId, remarks, status }: TUpdateSecretScanningFindingDTO,
+    { findingId, triageComment, status }: TUpdateSecretScanningFindingDTO,
     actor: OrgServiceActor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -806,7 +802,7 @@ export const secretScanningV2ServiceFactory = ({
           "Failed to access Secret Scanning Findings due to plan restriction. Upgrade plan to enable Secret Scanning."
       });
 
-    const finding = await secretScanningV2DAL.findings.findById(findingId);
+    const finding = await secretScanningV2DAL.findings.findByIdWithDetails(findingId);
 
     if (!finding)
       throw new NotFoundError({
@@ -827,9 +823,25 @@ export const secretScanningV2ServiceFactory = ({
       ProjectPermissionSub.SecretScanningFindings
     );
 
-    const updatedFinding = await secretScanningV2DAL.findings.updateById(findingId, {
-      remarks,
-      status
+    const isStatusChange = status !== undefined && status !== finding.status;
+    const now = new Date();
+
+    const updatedFinding = await secretScanningV2DAL.findings.transaction(async (tx) => {
+      await secretScanningV2DAL.findings.updateById(
+        findingId,
+        {
+          triageComment,
+          status,
+          ...(isStatusChange || triageComment !== undefined
+            ? { triagedAt: now, triagedByUserId: actor.type === ActorType.USER ? actor.id : null }
+            : {}),
+          ...(isStatusChange ? { resolvedAt: status === SecretScanningFindingStatus.Resolved ? now : null } : {})
+        },
+        tx
+      );
+
+      // read back in the same transaction: a replica may not have the write yet
+      return secretScanningV2DAL.findings.findByIdWithDetails(findingId, tx);
     });
 
     return { finding: updatedFinding as TSecretScanningFinding, projectId: finding.projectId };

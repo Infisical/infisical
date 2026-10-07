@@ -317,6 +317,21 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
               projectId: z.string(),
               projectName: z.string()
             })
+          ),
+          pamAccounts: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              accountType: z.string(),
+              folderName: z.string().nullable()
+            })
+          ),
+          pamAccountTemplates: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              type: z.string()
+            })
           )
         })
       }

@@ -32,20 +32,6 @@ export const pamFolderAlertDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findFolderNamesByIds = async ({ orgId, folderIds }: { orgId: string; folderIds: string[] }, tx?: Knex) => {
-    try {
-      const folders = (await (tx || db.replicaNode())(TableName.PamFolder)
-        .join(TableName.Project, `${TableName.PamFolder}.projectId`, `${TableName.Project}.id`)
-        .whereIn(`${TableName.PamFolder}.id`, folderIds)
-        .where(`${TableName.Project}.orgId`, orgId)
-        .select(`${TableName.PamFolder}.id`, `${TableName.PamFolder}.name`)) as { id: string; name: string }[];
-
-      return folders;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "FindPamAlertFolderNamesByIds" });
-    }
-  };
-
   const findAccessRequestsByIds = async (
     { orgId, projectId, requestIds }: { orgId: string; projectId: string; requestIds: string[] },
     tx?: Knex
@@ -125,7 +111,6 @@ export const pamFolderAlertDALFactory = (db: TDbClient) => {
 
   return {
     findFolderById,
-    findFolderNamesByIds,
     findAccessRequestsByIds,
     findAccountNamesByIds,
     findDecisionCommentsByRequestIds,
