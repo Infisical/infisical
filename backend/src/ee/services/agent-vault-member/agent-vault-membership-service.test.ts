@@ -32,7 +32,10 @@ const buildTx = (adminCount: number) => {
       return chain;
     });
   });
-  chain.first = vi.fn().mockResolvedValue({ count: String(adminCount) });
+  chain.first = vi
+    .fn()
+    .mockResolvedValueOnce({ count: String(adminCount) })
+    .mockResolvedValue({ count: "1" });
 
   const tx = vi.fn(() => chain) as unknown as { raw: ReturnType<typeof vi.fn> };
   tx.raw = vi.fn();
