@@ -9,7 +9,7 @@ import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { delay } from "@app/lib/delay";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, GatewayTransportError, NotFoundError } from "@app/lib/errors";
 import { callCertificateScan, TCertificateScanRequest } from "@app/lib/gateway-v2/certificate-scan-rpc";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
@@ -113,6 +113,10 @@ const canScanCertificates = (capabilities: unknown) =>
   (capabilities as Record<string, unknown> | null)?.certificateScan === true;
 
 export const toHostScanErrorMessage = (error: unknown, logContext: string): string => {
+  if (error instanceof GatewayTransportError) {
+    logger.warn(`${logContext} [error=${error.message}]`);
+    return "Could not reach the gateway through its relay. Check that the gateway and its relay are running.";
+  }
   if (error instanceof BadRequestError || error instanceof NotFoundError) {
     logger.warn(`${logContext} [error=${error.message}]`);
     return error.message;

@@ -1,7 +1,7 @@
 import * as x509 from "@peculiar/x509";
 import { webcrypto } from "crypto";
 
-import { NotFoundError } from "@app/lib/errors";
+import { GatewayTransportError, NotFoundError } from "@app/lib/errors";
 
 import { computeCertFingerprint, parseCertificateDer } from "./pki-discovery-fns";
 import { scanHost, THostScanDeps, toHostScanErrorMessage, writeHostFile } from "./pki-discovery-host-scan-fns";
@@ -59,6 +59,9 @@ describe("scanHost", () => {
 
 test("unexpected errors are hidden behind a product message", () => {
   expect(toHostScanErrorMessage(new NotFoundError({ message: "Gateway not found" }), "ctx")).toBe("Gateway not found");
+  expect(
+    toHostScanErrorMessage(new GatewayTransportError({ message: "TLS connection error: connect ECONNREFUSED" }), "ctx")
+  ).toBe("Could not reach the gateway through its relay. Check that the gateway and its relay are running.");
   expect(toHostScanErrorMessage(new Error('relation "x" does not exist'), "ctx")).toBe(
     "The scan failed unexpectedly. Try again later."
   );
