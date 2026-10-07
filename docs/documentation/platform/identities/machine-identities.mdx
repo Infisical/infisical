@@ -33,7 +33,11 @@ You can create a machine identity either in an organization or in a project. Bot
         In your project, go to **Access Control** > **Machine Identities** and create an identity with a name and a [role](/documentation/platform/access-controls/role-based-access-controls).
       </Step>
       <Step>
-        Add an [auth method](#authentication-methods) to the identity.
+        Create a client secret for the identity.
+
+        <Note>
+          Infisical adds [Universal Auth](/documentation/platform/identities/universal-auth#guide) to each new identity, and your workload logs in with the client ID and client secret. To log in a different way, add another [auth method](#authentication-methods) instead.
+        </Note>
       </Step>
       <Step>
         From your workload, log in with the auth method to get a short-lived access token.
@@ -49,7 +53,11 @@ You can create a machine identity either in an organization or in a project. Bot
         In your organization, go to **Access Control** > **Machine Identities** and create an identity with a name and a [role](/documentation/platform/access-controls/role-based-access-controls).
       </Step>
       <Step>
-        Add an [auth method](#authentication-methods) to the identity.
+        Create a client secret for the identity.
+
+        <Note>
+          Infisical adds [Universal Auth](/documentation/platform/identities/universal-auth#guide) to each new identity, and your workload logs in with the client ID and client secret. To log in a different way, add another [auth method](#authentication-methods) instead.
+        </Note>
       </Step>
       <Step>
         Add the identity to each project it needs to access.
