@@ -96,7 +96,6 @@ import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
 import { SessionCreatedDialog } from "./components/SessionCreatedDialog";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
-import { SessionLogLossIndicator } from "./components/SessionLogLossIndicator";
 import { SESSION_STATUS_PRESENTATION, SessionStatusBadge } from "./components/SessionStatusBadge";
 
 const STATUS_OPTIONS = [
@@ -472,7 +471,6 @@ export const AgentVaultSessionsPage = () => {
                       </TableCell>
                       <TableCell variant="action">
                         <div className="flex items-center justify-end gap-1">
-                          <SessionLogLossIndicator counts={session.recentSessionLogCounts} />
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <IconButton

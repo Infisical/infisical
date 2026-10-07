@@ -3,7 +3,6 @@ import { Link } from "@tanstack/react-router";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { format } from "date-fns";
 import { SearchIcon, TriangleAlertIcon, XIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
 
 import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
 import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
@@ -42,6 +41,7 @@ import {
   useAgentVaultSessionLogTimeline,
   useGetAgentVaultSessionLogs
 } from "@app/hooks/api/agentVault";
+import { sessionLogChunkKey } from "@app/hooks/api/agentVault/sessionLogDecrypt";
 import {
   TAgentVaultSession,
   TAgentVaultSessionLogGapReason
@@ -49,25 +49,20 @@ import {
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { LiveState, LiveStateBadge, LiveStatusRow } from "./LiveStatusRow";
+import { DECISION_PRESENTATION, hostPatternFor, SessionLogRow } from "./SessionLogRow";
 import {
-  DECISION_PRESENTATION,
-  hostPatternFor,
-  SessionLogDropRow,
-  SessionLogRow
-} from "./SessionLogRow";
-import {
-  chunkIdTime,
   groupSessionLogGaps,
-  interleaveSessionLogDrops,
   matchesSessionLogSearch,
   sessionLogSearchTerm
 } from "./SessionLogsPanel.utils";
 import { useNewRequestsCounter } from "./useNewRequestsCounter";
 import { useSessionLogsLiveTail } from "./useSessionLogsLiveTail";
 
-const ALL_PROXIES = "all";
-
 const FILTER_SEARCH_STEP = 5000;
+
+// A walk back that finds nothing readable this many pages in a row pauses, so a bucket that refuses older
+// chunks can't pull the whole session.
+const EMPTY_PAGE_STEP = 5;
 
 const UPLOAD_RECHECK_MS = 15_000;
 
@@ -76,17 +71,12 @@ const SESSION_LOG_ROW_HEIGHT = 41;
 type DecisionFilter = "all" | AgentVaultSessionLogDecision;
 
 const GAP_EXPLANATION: Record<TAgentVaultSessionLogGapReason, { one: string; many: string }> = {
-  repointed: {
-    one: "is stored in a bucket this project no longer uses",
-    many: "are stored in a bucket this project no longer uses"
-  },
   fetch: { one: "could not be read from the bucket", many: "could not be read from the bucket" },
-  missing: { one: "is no longer in the bucket", many: "are no longer in the bucket" },
+  missing: { one: "isn't in the bucket", many: "aren't in the bucket" },
   refused: { one: "was refused by the bucket", many: "were refused by the bucket" },
-  size: { one: "is stored at the wrong size", many: "are stored at the wrong size" },
-  altered: {
-    one: "was changed after it was uploaded",
-    many: "were changed after they were uploaded"
+  size: {
+    one: "doesn't match what the proxy uploaded",
+    many: "don't match what the proxy uploaded"
   },
   gcm: { one: "could not be decrypted", many: "could not be decrypted" },
   json: {
@@ -94,32 +84,12 @@ const GAP_EXPLANATION: Record<TAgentVaultSessionLogGapReason, { one: string; man
     many: "were decrypted but could not be read"
   },
   mismatch: {
-    one: "doesn't match the proxy and batch that sent it",
-    many: "don't match the proxy and batch that sent them"
+    one: "holds requests from a different proxy",
+    many: "hold requests from a different proxy"
   }
 };
 
-// Every proxy that has sent this session a chunk, kept once seen so the proxy filter doesn't lose
-// options when a time range reloads the pages.
-const useSeenProxyNames = (
-  sessionId: string,
-  pages: { chunks: { proxyId: string; proxyName: string }[] }[] | undefined
-) => {
-  const [seen, setSeen] = useState({ sessionId, names: new Map<string, string>() });
-  const names = seen.sessionId === sessionId ? seen.names : new Map<string, string>();
-  const unseen = (pages ?? [])
-    .flatMap((page) => page.chunks)
-    .filter((chunk) => !names.has(chunk.proxyId));
-  if (seen.sessionId !== sessionId || unseen.length) {
-    const next = new Map(names);
-    unseen.forEach((chunk) => {
-      if (!next.has(chunk.proxyId)) next.set(chunk.proxyId, chunk.proxyName);
-    });
-    setSeen({ sessionId, names: next });
-    return next;
-  }
-  return names;
-};
+const COLUMN_COUNT = 7;
 
 type Props = {
   session: TAgentVaultSession;
@@ -143,7 +113,6 @@ export const SessionLogsPanel = ({ session }: Props) => {
 
   const [search, setSearch] = useState("");
   const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>("all");
-  const [proxyFilter, setProxyFilter] = useState(ALL_PROXIES);
   const { range, applyRange, isActive, canTail, isLive, isPausedForBudget, pauseForBudget } =
     useSessionLogsLiveTail(session);
   const { history, live, arrived } = useGetAgentVaultSessionLogs(session.id, {
@@ -176,30 +145,23 @@ export const SessionLogsPanel = ({ session }: Props) => {
     return arrived ? [arrived, ...data.pages] : data.pages;
   }, [data, arrived]);
   const [now, setNow] = useState(() => Date.now());
-  const { records, gaps, drops, arrivals, isTruncated, isOverByteBudget, hasUploadingChunks } =
+  const { records, gaps, arrivals, isTruncated, isOverByteBudget, hasUploadingChunks } =
     useAgentVaultSessionLogTimeline(pages, now);
   // While a chunk may still be uploading, the clock keeps moving so it turns into a missing gap once its
-  // grace runs out. The live tail already rereads recent chunks; otherwise nothing would, so history reloads.
+  // grace runs out. The live tail fetches it again on each poll.
   useEffect(() => {
     if (!hasUploadingChunks) return undefined;
-    const timer = setTimeout(() => {
-      setNow(Date.now());
-      if (!isLive) refetch({ cancelRefetch: false }).catch(() => {});
-    }, UPLOAD_RECHECK_MS);
+    const timer = setTimeout(() => setNow(Date.now()), UPLOAD_RECHECK_MS);
     return () => clearTimeout(timer);
-  }, [hasUploadingChunks, isLive, now, refetch]);
+  }, [hasUploadingChunks, now]);
   if (isOverByteBudget && !isPlaceholderData && !isPausedForBudget) pauseForBudget();
   const isLoadError = isError && !data;
 
   const isEnabled = pages?.[0]?.sessionLogs.enabled ?? false;
   const isRecordable = pages?.[0]?.sessionLogs.isRecordable ?? true;
   const hasChunks = (pages ?? []).some((page) => page.chunks.length > 0);
-  const storageUnavailable =
-    data?.pages.find((page) => page.sessionLogs.storageUnavailable)?.sessionLogs
-      .storageUnavailable ?? null;
-
-  const proxyNames = useSeenProxyNames(session.id, pages);
-  const proxies = [...proxyNames.entries()].map(([id, name]) => ({ id, name }));
+  // Only the first page: a later one that can't be read fails as a page, so the rows above it stay.
+  const storageUnavailable = data?.pages[0]?.sessionLogs.storageUnavailable ?? null;
 
   const visible = useMemo(
     () =>
@@ -209,83 +171,67 @@ export const SessionLogsPanel = ({ session }: Props) => {
           if (at < range.startDate.getTime() || at > range.endDate.getTime()) return false;
         }
         if (decisionFilter !== "all" && record.decision !== decisionFilter) return false;
-        if (proxyFilter !== ALL_PROXIES && record.proxyId !== proxyFilter) return false;
         return matchesSessionLogSearch(record, search);
       }),
-    [records, search, decisionFilter, proxyFilter, range]
+    [records, search, decisionFilter, range]
   );
 
-  const rows = useMemo(
-    () =>
-      interleaveSessionLogDrops(
-        visible,
-        drops.filter((drop) => {
-          if (range) {
-            const at = Date.parse(drop.startedAt);
-            if (at < range.startDate.getTime() || at > range.endDate.getTime()) return false;
-          }
-          return proxyFilter === ALL_PROXIES || drop.proxyId === proxyFilter;
-        })
-      ),
-    [visible, drops, proxyFilter, range]
-  );
-
-  const hasBrowserFilter =
-    Boolean(sessionLogSearchTerm(search)) ||
-    decisionFilter !== "all" ||
-    proxyFilter !== ALL_PROXIES;
+  const hasBrowserFilter = Boolean(sessionLogSearchTerm(search)) || decisionFilter !== "all";
   const isFiltered = hasBrowserFilter || Boolean(range);
 
-  const { searched, searchedUnreadable } = useMemo(
+  // Counted once opened: a chunk's request count isn't known until it is decrypted.
+  const { searched, emptyRun, oldestSealedAt } = useMemo(
     () =>
       (data?.pages ?? []).reduce(
         (totals, page) => {
-          const pageRecords = page.chunks.reduce((sum, chunk) => sum + chunk.recordCount, 0);
-          const isReadable = page.chunks.some(
-            (chunk) => (page.decrypted[chunk.chunkId]?.records.length ?? 0) > 0
+          const opened = page.chunks.reduce(
+            (sum, chunk) => sum + (page.decrypted[sessionLogChunkKey(chunk)]?.records.length ?? 0),
+            0
           );
+          const sealed = page.chunks.map((chunk) => Date.parse(chunk.sealedAt));
           return {
-            searched: totals.searched + pageRecords,
-            searchedUnreadable: totals.searchedUnreadable + (isReadable ? 0 : pageRecords)
+            searched: totals.searched + opened,
+            emptyRun: opened ? 0 : totals.emptyRun + 1,
+            oldestSealedAt: sealed.length
+              ? Math.min(totals.oldestSealedAt ?? Infinity, ...sealed)
+              : totals.oldestSealedAt
           };
         },
-        { searched: 0, searchedUnreadable: 0 }
+        { searched: 0, emptyRun: 0, oldestSealedAt: null as number | null }
       ),
     [data]
   );
+  const loadedPages = data?.pages.length ?? 0;
 
   const filterKey = [
     sessionLogSearchTerm(search),
     decisionFilter,
-    proxyFilter,
     range?.startDate.getTime(),
     range?.endDate.getTime()
   ].join("|");
   const nextAllowance = () => ({
     filterKey,
     until: searched + FILTER_SEARCH_STEP,
-    unreadableUntil: searchedUnreadable + FILTER_SEARCH_STEP
+    pagesAt: loadedPages
   });
   const [allowance, setAllowance] = useState(nextAllowance);
   if (allowance.filterKey !== filterKey) setAllowance(nextAllowance());
   const searchOlder = () => setAllowance(nextAllowance());
-  // Pages that add no readable rows walk back in the same steps as a filtered search, so a bucket
-  // that refuses or has expired older chunks can't pull the whole session.
+  // Empty pages only count since the last allowance, so Search Older Requests always walks further.
   const isSearchPaused =
     Boolean(hasNextPage) &&
     !isTruncated &&
-    (hasBrowserFilter
-      ? searched >= allowance.until
-      : searchedUnreadable >= allowance.unreadableUntil);
+    ((hasBrowserFilter && searched >= allowance.until) ||
+      Math.min(emptyRun, loadedPages - allowance.pagesAt) >= EMPTY_PAGE_STEP);
   const isFirstPageLoaded = Boolean(data?.pages.length) && !isPlaceholderData;
 
   const lastPage = data?.pages[data.pages.length - 1];
-  const oldestChunkId = lastPage?.nextCursor ? lastPage.chunks.at(-1)?.chunkId : undefined;
-  const searchedBackTo = oldestChunkId ? chunkIdTime(oldestChunkId) : null;
+  const searchedBackTo =
+    lastPage?.nextCursor && oldestSealedAt !== null ? new Date(oldestSealedAt) : null;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({
-    count: rows.length,
+    count: visible.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => SESSION_LOG_ROW_HEIGHT,
     overscan: 16
@@ -304,11 +250,11 @@ export const SessionLogsPanel = ({ session }: Props) => {
     )
       return;
     // Not cancelRefetch, so this walk can't cancel a Reload in flight.
-    if (isFirstPageLoaded && lastVisibleIndex >= rows.length - 30)
+    if (isFirstPageLoaded && lastVisibleIndex >= visible.length - 30)
       fetchNextPage({ cancelRefetch: false }).catch(() => {});
   }, [
     lastVisibleIndex,
-    rows.length,
+    visible.length,
     isFirstPageLoaded,
     hasNextPage,
     isFetchingNextPage,
@@ -318,11 +264,10 @@ export const SessionLogsPanel = ({ session }: Props) => {
     isSearchPaused,
     fetchNextPage
   ]);
-  const columnCount = proxies.length > 1 ? 8 : 7;
   const overflows = rowVirtualizer.getTotalSize() > (rowVirtualizer.scrollRect?.height ?? Infinity);
   const { newRequestCount, showNewRequests } = useNewRequestsCounter({
     scrollRef,
-    visible: rows,
+    visible,
     arrivals,
     resetKey: `${session.id}|${filterKey}`,
     rowHeight: SESSION_LOG_ROW_HEIGHT
@@ -374,6 +319,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
       "MMM d, h:mm a"
     )}`;
     noRecordsDescription = "Older requests have not been searched yet.";
+  } else if (isSearchPaused) {
+    noRecordsTitle = `No ${hasBrowserFilter ? "matching" : "readable"} requests found yet`;
+    noRecordsDescription = "Older requests have not been searched yet.";
   } else if (range && (!hasChunks || !hasBrowserFilter)) {
     noRecordsTitle = "No requests in this range";
     noRecordsDescription = `This session recorded nothing between ${format(
@@ -382,7 +330,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
     )} and ${format(range.endDate, "MMM d, yyyy HH:mm")}.`;
   } else if (isFiltered) {
     noRecordsTitle = "No requests match these filters";
-    noRecordsDescription = "Try a different search term, outcome, proxy or time range.";
+    noRecordsDescription = "Try a different search term, outcome or time range.";
   } else if (liveState === "live") {
     noRecordsLiveState = liveState;
     noRecordsTitle = "Waiting for requests";
@@ -396,10 +344,10 @@ export const SessionLogsPanel = ({ session }: Props) => {
     noRecordsTitle = "Nothing recorded yet";
     noRecordsDescription = "Its last requests can take up to a minute to show up.";
   } else {
-    noRecordsTitle = isActive ? "Nothing recorded yet" : "No requests recorded";
+    noRecordsTitle = isActive ? "Nothing recorded yet" : "No requests found";
     noRecordsDescription = isActive
       ? "Requests this session makes through a proxy will appear here shortly after."
-      : "This session ended without making any requests through a proxy.";
+      : "Logs written before a bucket or prefix change don't show here.";
   }
 
   const isUnreachable =
@@ -575,19 +523,6 @@ export const SessionLogsPanel = ({ session }: Props) => {
           onChange={(result) => applyRange(result)}
           onClear={() => applyRange(null)}
         />
-        <Select value={proxyFilter} onValueChange={setProxyFilter}>
-          <SelectTrigger aria-label="Filter by proxy">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent position="popper">
-            <SelectItem value={ALL_PROXIES}>All Proxies</SelectItem>
-            {proxies.map((proxy) => (
-              <SelectItem key={proxy.id} value={proxy.id}>
-                {proxy.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {isUnreachable && (
@@ -626,10 +561,10 @@ export const SessionLogsPanel = ({ session }: Props) => {
           <TriangleAlertIcon />
           <AlertDescription>
             <div className="flex flex-col gap-1">
-              {groupSessionLogGaps(gaps).map(({ reason, recordCount }) => (
+              {groupSessionLogGaps(gaps).map(({ reason, chunkCount }) => (
                 <span key={reason}>
-                  {recordCount.toLocaleString()} {recordCount === 1 ? "request" : "requests"}{" "}
-                  {GAP_EXPLANATION[reason][recordCount === 1 ? "one" : "many"]}.
+                  {chunkCount.toLocaleString()} {chunkCount === 1 ? "batch" : "batches"} of requests{" "}
+                  {GAP_EXPLANATION[reason][chunkCount === 1 ? "one" : "many"]}.
                 </span>
               ))}
             </div>
@@ -685,13 +620,12 @@ export const SessionLogsPanel = ({ session }: Props) => {
           ref={scrollRef}
           // Auto layout sizes columns from only the rows the virtualizer has mounted, so they
           // would shift as rows scroll in and out
-          className={twMerge("w-full table-fixed", proxies.length > 1 ? "min-w-280" : "min-w-240")}
+          className="w-full min-w-240 table-fixed"
           containerClassName="min-h-0 thin-scrollbar overflow-auto [overflow-anchor:none]"
         >
           <TableHeader sticky>
             <TableRow>
               <TableHead className="w-48">Time</TableHead>
-              {proxies.length > 1 && <TableHead className="w-40">Proxy</TableHead>}
               <TableHead className="w-24">Method</TableHead>
               <TableHead>Host</TableHead>
               <TableHead>Path</TableHead>
@@ -702,7 +636,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
             {liveState && (
               <LiveStatusRow
                 state={liveState}
-                columnCount={columnCount}
+                columnCount={COLUMN_COUNT}
                 recordCount={records.length}
                 isRetrying={live.isFetching}
                 onRetry={retryLive}
@@ -714,17 +648,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
           <TableBody>
             {padTop > 0 && <tr style={{ height: padTop }} />}
             {virtualRows.map((virtualRow) => {
-              const row = rows[virtualRow.index];
-              if (row.kind === "drop") {
-                return (
-                  <SessionLogDropRow
-                    key={row.key}
-                    droppedCount={row.droppedCount}
-                    columnCount={columnCount}
-                  />
-                );
-              }
-              const { record } = row;
+              const record = visible[virtualRow.index];
               const isAddable =
                 canAddService &&
                 !record.service &&
@@ -736,8 +660,6 @@ export const SessionLogsPanel = ({ session }: Props) => {
                   key={sessionLogRecordKey(record)}
                   record={record}
                   arrivedAt={arrivals.get(sessionLogRecordKey(record))}
-                  proxyName={proxyNames.get(record.proxyId)}
-                  showProxy={proxies.length > 1}
                   accessBundleName={accessBundle?.name}
                   onAddService={
                     isAddable
@@ -756,7 +678,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
               isSearchPaused ||
               (!hasNextPage && overflows)) && (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={columnCount} className="text-center text-xs text-muted">
+                <TableCell colSpan={COLUMN_COUNT} className="text-center text-xs text-muted">
                   {isFetchingNextPage && (
                     <span className="flex items-center justify-center gap-2">
                       <Spinner size="xs" />

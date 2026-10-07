@@ -20,15 +20,13 @@ export type TRecordChunkDTO = {
 };
 
 export type TListSessionLogsDTO = TAgentVaultSessionScoped & {
-  limit: number;
-  before?: string;
+  after?: string;
   from?: Date;
   to?: Date;
 };
 
 export type TTailSessionLogsDTO = TAgentVaultSessionScoped & {
-  limit: number;
-  receivedAfter?: Date;
+  feedEntryId?: string;
 };
 
 export type TUpdateSessionLogSettingsDTO = TAgentVaultSessionLogScoped & {

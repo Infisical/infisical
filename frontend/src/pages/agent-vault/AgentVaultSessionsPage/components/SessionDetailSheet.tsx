@@ -26,7 +26,6 @@ import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
 import { SessionExpiry } from "./SessionExpiry";
-import { SessionLogLossIndicator } from "./SessionLogLossIndicator";
 import { SessionLogsPanel } from "./SessionLogsPanel";
 import { SessionStatusBadge } from "./SessionStatusBadge";
 
@@ -157,7 +156,6 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke }: Pro
                     <SessionStatusBadge status={session.status} />
                   </Detail>
                 </div>
-                <SessionLogLossIndicator counts={session.recentSessionLogCounts} side="left" />
                 {session.status === AgentVaultSessionStatus.Active && (
                   <Button
                     variant="danger"

@@ -5,32 +5,51 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { logger } from "@app/lib/logger";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
-import {
-  AGENT_VAULT_SESSION_LOG_CHUNK_ID_REGEX,
-  AGENT_VAULT_SESSION_LOG_LAST_KNOWN_PLAN_MAX_AGE_MS
-} from "./agent-vault-session-log-constants";
+import { AGENT_VAULT_SESSION_LOG_LAST_KNOWN_PLAN_MAX_AGE_MS } from "./agent-vault-session-log-constants";
 import { TResolvedSessionLogStorageConfig } from "./agent-vault-session-log-types";
 
 export const withKeyPrefix = (keyPrefix: string | null | undefined, key: string) =>
   keyPrefix ? `${keyPrefix}/${key}` : key;
 
-export const buildSessionLogObjectKey = ({
+const MAX_REV = 9_999_999_999_999;
+
+export const chunkIdTimeMs = (chunkId: string) => parseInt(chunkId.slice(0, 8) + chunkId.slice(9, 13), 16);
+
+// S3 lists names in ascending order only, so names start with the time counted down: newest first.
+export const toRev = (ms: number) => String(MAX_REV - Math.min(Math.max(Math.floor(ms), 0), MAX_REV)).padStart(13, "0");
+
+export const buildSessionLogFolder = ({
   keyPrefix,
   projectId,
-  sessionId,
-  proxyId,
-  startedAt,
-  chunkId
+  sessionId
 }: {
   keyPrefix?: string | null;
   projectId: string;
   sessionId: string;
+}) => withKeyPrefix(keyPrefix, `${projectId}/${sessionId}/`);
+
+export const buildSessionLogObjectKey = ({
+  folder,
+  proxyId,
+  chunkId
+}: {
+  folder: string;
   proxyId: string;
-  startedAt: Date;
   chunkId: string;
-}) => {
-  const day = startedAt.toISOString().slice(0, 10);
-  return withKeyPrefix(keyPrefix, `${projectId}/${sessionId}/${proxyId}/${day}/${chunkId}.json.enc`);
+}) => `${folder}${toRev(chunkIdTimeMs(chunkId))}_${chunkId}.${proxyId}.json.enc`;
+
+const SESSION_LOG_OBJECT_NAME_REGEX =
+  /^(\d{13})_([0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.json\.enc$/;
+
+// Anything else in the folder is skipped: only Infisical names objects there, through the links it signs.
+export const parseSessionLogObjectKey = (folder: string, key: string) => {
+  if (!key.startsWith(folder)) return null;
+  const match = SESSION_LOG_OBJECT_NAME_REGEX.exec(key.slice(folder.length));
+  if (!match) return null;
+  const [, rev, chunkId, proxyId] = match;
+  const sealedAtMs = chunkIdTimeMs(chunkId);
+  if (rev !== toRev(sealedAtMs)) return null;
+  return { chunkId, proxyId, sealedAt: new Date(sealedAtMs) };
 };
 
 export const resolveStorageConfig = (
@@ -83,19 +102,22 @@ export const getSessionLogEntitlement = async (
   return entitlement;
 };
 
-const CURSOR_VERSION = 1;
-const MAX_CURSOR_LENGTH = 256;
+const CURSOR_VERSION = 2;
+// Large enough for any S3 key, which can be up to 1,024 bytes, after JSON and base64.
+const MAX_CURSOR_LENGTH = 8192;
+
+export const SESSION_LOG_FEED_START = "0-0";
 
 const HistoryCursorPayloadSchema = z.object({
   v: z.literal(CURSOR_VERSION),
   m: z.literal("h"),
-  id: z.string().regex(AGENT_VAULT_SESSION_LOG_CHUNK_ID_REGEX)
+  after: z.string().min(1).max(1024)
 });
 
 const TailCursorPayloadSchema = z.object({
   v: z.literal(CURSOR_VERSION),
   m: z.literal("t"),
-  at: z.string().datetime()
+  id: z.string().regex(/^\d{1,16}-\d{1,16}$/)
 });
 
 const encode = (payload: object) => Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -108,9 +130,10 @@ const decode = (cursor: string): unknown => {
   }
 };
 
-export const encodeHistoryCursor = (chunkId: string) => encode({ v: CURSOR_VERSION, m: "h", id: chunkId });
+// The name relative to the session folder, so a cursor can't point a list outside it.
+export const encodeHistoryCursor = (after: string) => encode({ v: CURSOR_VERSION, m: "h", after });
 
-export const encodeTailCursor = (at: Date) => encode({ v: CURSOR_VERSION, m: "t", at: at.toISOString() });
+export const encodeTailCursor = (feedEntryId: string) => encode({ v: CURSOR_VERSION, m: "t", id: feedEntryId });
 
 const modeOf = (payload: unknown) =>
   payload && typeof payload === "object" && "m" in payload ? (payload as { m: unknown }).m : undefined;
@@ -132,7 +155,7 @@ export const HistoryCursorSchema = z
       });
       return z.NEVER;
     }
-    return parsed.data.id;
+    return parsed.data.after;
   });
 
 export const TailCursorSchema = z
@@ -148,9 +171,9 @@ export const TailCursorSchema = z
         message:
           modeOf(payload) === "h"
             ? "This cursor is for paging back through logs. Pass it to the session logs endpoint instead"
-            : "Invalid cursor. Pass the liveCursor or nextCursor of a previous response unchanged"
+            : "Invalid cursor. Pass the nextCursor of a previous response unchanged"
       });
       return z.NEVER;
     }
-    return new Date(parsed.data.at);
+    return parsed.data.id;
   });

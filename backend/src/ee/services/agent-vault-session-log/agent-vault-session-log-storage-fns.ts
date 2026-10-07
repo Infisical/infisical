@@ -10,7 +10,10 @@ import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-con
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import { AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS } from "./agent-vault-session-log-constants";
+import {
+  AGENT_VAULT_SESSION_LOG_MAX_PAGE_CHUNKS,
+  AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS
+} from "./agent-vault-session-log-constants";
 import { withKeyPrefix } from "./agent-vault-session-log-fns";
 import { TResolvedSessionLogStorageConfig } from "./agent-vault-session-log-types";
 
@@ -73,13 +76,16 @@ export const buildSessionLogStorage = async (
     s3.presignCreateOnlyPut({
       key: objectKey,
       contentLength: ciphertextBytes,
-      // Stored unpadded; S3 wants the padded form
+      // The proxy sends it unpadded; S3 wants the padded form
       sha256Base64: `${ciphertextSha256}=`,
       expiresInSeconds: AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS
     });
 
   const presignGet = async (objectKey: string) =>
     s3.presignGet(objectKey, AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS);
+
+  const listChunks = async ({ folder, startAfter }: { folder: string; startAfter?: string }) =>
+    s3.listPage({ prefix: folder, startAfter, maxKeys: AGENT_VAULT_SESSION_LOG_MAX_PAGE_CHUNKS });
 
   const mintCorsProbeUrl = async () => presignGet(withKeyPrefix(keyPrefix, ".cors-probe"));
 
@@ -95,10 +101,10 @@ export const buildSessionLogStorage = async (
     throw new BadRequestError({
       message:
         access.failure === "unreachable"
-          ? `Unable to reach bucket '${bucket}'. Check the bucket name, the region, and that the connection's credentials can access it`
+          ? `Unable to reach bucket '${bucket}'. Check the bucket name, the region, and that the connection's credentials allow s3:ListBucket on it`
           : `Bucket '${bucket}' is reachable but writing to it failed. Grant s3:PutObject on the configured key prefix`
     });
   };
 
-  return { presignPut, presignGet, mintCorsProbeUrl, validate };
+  return { presignPut, presignGet, listChunks, mintCorsProbeUrl, validate };
 };

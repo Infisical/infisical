@@ -1,14 +1,15 @@
+import { S3ServiceException } from "@aws-sdk/client-s3";
 import { ForbiddenError } from "@casl/ability";
 
-import { TAgentVaultSessionLogChunks, TAgentVaultSessionLogConfigs } from "@app/db/schemas";
+import { TAgentVaultSessionLogConfigs } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import {
   BadRequestError,
-  ConflictError,
   ForbiddenRequestError,
   InternalServerError,
   NotFoundError,
@@ -25,18 +26,18 @@ import { getAgentVaultPermission } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultProxyDALFactory } from "../agent-vault-proxy/agent-vault-proxy-dal";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { isOwnerlessSession, isSessionOwnedBy } from "../agent-vault-session/agent-vault-session-fns";
-import { TAgentVaultSessionLogChunkDALFactory } from "./agent-vault-session-log-chunk-dal";
 import { TAgentVaultSessionLogConfigDALFactory } from "./agent-vault-session-log-config-dal";
 import {
   AGENT_VAULT_SESSION_LOG_CLOCK_SKEW_MS,
+  AGENT_VAULT_SESSION_LOG_FEED_MAX_ENTRIES,
+  AGENT_VAULT_SESSION_LOG_FEED_TTL_SECONDS,
   AGENT_VAULT_SESSION_LOG_LATE_CHUNK_GRACE_MS,
   AGENT_VAULT_SESSION_LOG_MAX_CHUNK_AGE_MS,
   AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
-  AGENT_VAULT_SESSION_LOG_MAX_PAGE_CHUNKS,
   AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS,
   AGENT_VAULT_SESSION_LOG_MIN_BYTES_PER_RECORD,
   AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS,
-  AGENT_VAULT_SESSION_LOG_RECEIVE_OVERLAP_MS,
+  AGENT_VAULT_SESSION_LOG_RANGE_SEAL_MARGIN_MS,
   AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
 } from "./agent-vault-session-log-constants";
 import {
@@ -44,12 +45,16 @@ import {
   AgentVaultSessionLogStorageUnavailableReason
 } from "./agent-vault-session-log-enums";
 import {
+  buildSessionLogFolder,
   buildSessionLogObjectKey,
   encodeHistoryCursor,
   encodeTailCursor,
   getSessionLogEntitlement,
   isSessionLogIngestEnabled,
+  parseSessionLogObjectKey,
   resolveStorageConfig,
+  SESSION_LOG_FEED_START,
+  toRev,
   TSessionLogLicenseService
 } from "./agent-vault-session-log-fns";
 import { unwrapSessionLogKey } from "./agent-vault-session-log-secrets";
@@ -65,21 +70,20 @@ import {
 } from "./agent-vault-session-log-types";
 
 type TAgentVaultSessionLogServiceFactoryDep = {
-  agentVaultSessionLogChunkDAL: TAgentVaultSessionLogChunkDALFactory;
   agentVaultSessionLogConfigDAL: TAgentVaultSessionLogConfigDALFactory;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findOne">;
-  agentVaultProxyDAL: Pick<TAgentVaultProxyDALFactory, "findByIdWithOrg" | "find">;
+  agentVaultProxyDAL: Pick<TAgentVaultProxyDALFactory, "findByIdWithOrg">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "decryptWithInputKey">;
   licenseService: TSessionLogLicenseService;
+  keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamRange">;
 };
 
 export type TAgentVaultSessionLogServiceFactory = ReturnType<typeof agentVaultSessionLogServiceFactory>;
 
 export const agentVaultSessionLogServiceFactory = ({
-  agentVaultSessionLogChunkDAL,
   agentVaultSessionLogConfigDAL,
   agentVaultSessionDAL,
   agentVaultProxyDAL,
@@ -87,28 +91,12 @@ export const agentVaultSessionLogServiceFactory = ({
   appConnectionService,
   permissionService,
   kmsService,
-  licenseService
+  licenseService,
+  keyStore
 }: TAgentVaultSessionLogServiceFactoryDep) => {
   const $storageDeps = { appConnectionDAL, kmsService };
 
   const toCount = (value: number | string) => Number(value);
-
-  const toChunkView = (row: TAgentVaultSessionLogChunks, proxyName: string, presignedGetUrl: string | null) => ({
-    chunkId: row.chunkId,
-    proxyId: row.proxyId,
-    proxyName,
-    startedAt: row.startedAt,
-    endedAt: row.endedAt,
-    firstSeq: toCount(row.firstSeq),
-    lastSeq: toCount(row.lastSeq),
-    recordCount: row.recordCount,
-    droppedCount: toCount(row.droppedCount),
-    ciphertextBytes: row.ciphertextBytes,
-    iv: row.iv,
-    ciphertextSha256: row.ciphertextSha256,
-    presignedGetUrl,
-    createdAt: row.createdAt
-  });
 
   const NO_SETTINGS = { enabled: false, appConnectionId: null, bucket: null, region: null, keyPrefix: null };
 
@@ -189,12 +177,6 @@ export const agentVaultSessionLogServiceFactory = ({
     if (now.getTime() - chunk.startedAt.getTime() > AGENT_VAULT_SESSION_LOG_MAX_CHUNK_AGE_MS) {
       throw new BadRequestError({ message: "Chunk is older than the maximum accepted age" });
     }
-    if (chunk.firstSeq > chunk.lastSeq) {
-      throw new BadRequestError({ message: "Chunk firstSeq is greater than its lastSeq" });
-    }
-    if (chunk.lastSeq - chunk.firstSeq + 1 < chunk.recordCount) {
-      throw new BadRequestError({ message: "Chunk holds more records than its sequence range allows" });
-    }
     if (chunk.ciphertextBytes < chunk.recordCount * AGENT_VAULT_SESSION_LOG_MIN_BYTES_PER_RECORD) {
       throw new BadRequestError({ message: "Chunk is too small to hold the number of records it claims" });
     }
@@ -215,84 +197,50 @@ export const agentVaultSessionLogServiceFactory = ({
       throw error;
     }
 
+    // After the connection check, so a broken connection, which the proxy retries forever, never counts.
+    const isCounted = await agentVaultSessionLogConfigDAL.recordStoredChunk(
+      config.id,
+      AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS
+    );
+    if (!isCounted) {
+      throw new BadRequestError({
+        name: AgentVaultSessionLogErrorName.CeilingReached,
+        message: "Session logs have reached their limit for this organization. Contact Infisical support."
+      });
+    }
+
     const objectKey = buildSessionLogObjectKey({
-      keyPrefix: storage.keyPrefix,
-      projectId: proxy.projectId,
-      sessionId: session.id,
+      folder: buildSessionLogFolder({
+        keyPrefix: storage.keyPrefix,
+        projectId: proxy.projectId,
+        sessionId: session.id
+      }),
       proxyId,
-      startedAt: chunk.startedAt,
       chunkId: chunk.chunkId
     });
+    const uploadUrl = await sessionLogStorage.presignPut({
+      objectKey,
+      ciphertextBytes: chunk.ciphertextBytes,
+      ciphertextSha256: chunk.ciphertextSha256
+    });
 
-    const row = await agentVaultSessionLogChunkDAL.transaction(async (tx) => {
-      const created = await agentVaultSessionLogChunkDAL.createIfAbsent(
-        {
-          ...chunk,
-          sessionId: session.id,
-          projectId: proxy.projectId,
-          proxyId,
-          proxyName: proxy.name,
-          bucket: storage.bucket,
-          objectKey
-        },
-        tx
+    // Not awaited: the Redis client queues commands while Redis is down instead of failing, and an upload must
+    // never wait on the live view. Started before returning, so the entry is sent ahead of the response.
+    void keyStore
+      .streamAdd(
+        KeyStorePrefixes.AgentVaultSessionLogFeed(session.id),
+        "*",
+        { key: objectKey, bucket: storage.bucket, bytes: String(chunk.ciphertextBytes) },
+        AGENT_VAULT_SESSION_LOG_FEED_MAX_ENTRIES,
+        AGENT_VAULT_SESSION_LOG_FEED_TTL_SECONDS,
+        true
+      )
+      .catch((error) =>
+        logger.warn(error, `agentVaultSessionLog: could not add a chunk to the live feed [sessionId=${session.id}]`)
       );
 
-      if (!created) {
-        const existing = await agentVaultSessionLogChunkDAL.findOne(
-          { sessionId: session.id, chunkId: chunk.chunkId },
-          tx
-        );
-        if (!existing) {
-          throw new InternalServerError({ message: "Session log chunk vanished between insert and read" });
-        }
-        if (existing.proxyId !== proxyId) {
-          throw new ConflictError({ message: "This chunk ID was already recorded by another proxy" });
-        }
-        // A proxy only re-sends a chunk it never confirmed uploading, so after a move it belongs at the new destination.
-        if (existing.bucket !== storage.bucket || existing.objectKey !== objectKey) {
-          const moved = await agentVaultSessionLogChunkDAL.moveToDestinationIfCurrent(
-            {
-              id: existing.id,
-              projectId: proxy.projectId,
-              bucket: storage.bucket,
-              keyPrefix: storage.keyPrefix,
-              objectKey
-            },
-            tx
-          );
-          if (!moved) {
-            logger.warn(
-              `agentVaultSessionLog: session log destination changed while moving a re-sent chunk [sessionId=${session.id}] [chunkId=${chunk.chunkId}] [proxyId=${proxyId}]`
-            );
-            throw new InternalServerError({
-              message:
-                "The session log bucket or key prefix changed while this chunk was being recorded. The proxy sends it again automatically."
-            });
-          }
-          return moved;
-        }
-        return existing;
-      }
-
-      const stored = await agentVaultSessionLogConfigDAL.recordStoredChunk(config.id, tx);
-      if (stored > AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS) {
-        throw new BadRequestError({
-          name: AgentVaultSessionLogErrorName.CeilingReached,
-          message: "Session logs have reached their limit for this organization. Contact Infisical support."
-        });
-      }
-      return created;
-    });
-
-    const uploadUrl = await sessionLogStorage.presignPut({
-      objectKey: row.objectKey,
-      ciphertextBytes: row.ciphertextBytes,
-      ciphertextSha256: row.ciphertextSha256
-    });
-
     return {
-      chunkId: row.chunkId,
+      chunkId: chunk.chunkId,
       uploadUrl,
       expiresInSeconds: AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS
     };
@@ -311,143 +259,193 @@ export const agentVaultSessionLogServiceFactory = ({
     }
 
     const config = await agentVaultSessionLogConfigDAL.findOne({ projectId });
-    return { session, config, isAdmin };
-  };
-
-  const $openSessionLogs = async ({
-    projectId,
-    ctx,
-    sessionId,
-    session,
-    config,
-    isAdmin,
-    rows
-  }: TAgentVaultSessionScoped &
-    Awaited<ReturnType<typeof $loadSessionLogs>> & { rows: TAgentVaultSessionLogChunks[] }) => {
-    const unreadSessionLogs = {
+    const sessionLogs = {
       enabled:
         isSessionLogIngestEnabled(config) &&
         (await getSessionLogEntitlement(licenseService, ctx.actorOrgId)) !== "unlicensed",
       isRecordable: Boolean(session.encryptedSessionLogKey),
-      sessionKey: null,
-      storageUnavailable: null
+      sessionKey: null as string | null,
+      storageUnavailable: null as TAgentVaultSessionLogStorageUnavailable | null
     };
+    return { session, config, isAdmin, sessionLogs };
+  };
 
-    if (!config || !rows.length) return { sessionLogs: unreadSessionLogs, chunks: [], isReadable: true };
+  type TLoadedSessionLogs = Awaited<ReturnType<typeof $loadSessionLogs>>;
 
-    if (!session.encryptedSessionLogKey) {
-      logger.warn(`agentVaultSessionLog: session has chunks but no session log key [sessionId=${sessionId}]`);
-      return { sessionLogs: unreadSessionLogs, chunks: [], isReadable: true };
-    }
-
-    // The current name, so a renamed proxy reads the same across its history; a deleted one keeps its stored name.
-    const proxyIds = [...new Set(rows.map((row) => row.proxyId))];
-    const currentProxyNames = new Map(
-      (await agentVaultProxyDAL.find({ projectId, $in: { id: proxyIds } })).map((proxy) => [proxy.id, proxy.name])
-    );
-    const proxyNameOf = (row: TAgentVaultSessionLogChunks) => currentProxyNames.get(row.proxyId) ?? row.proxyName;
-
-    const unreadable = (storageUnavailable: TAgentVaultSessionLogStorageUnavailable) => ({
-      sessionLogs: { ...unreadSessionLogs, storageUnavailable },
-      chunks: rows.map((row) => toChunkView(row, proxyNameOf(row), null)),
-      isReadable: false
-    });
-
+  // Never gated on the plan or on session logs being on: what was recorded stays readable.
+  const $openStorage = async ({
+    ctx,
+    config,
+    isAdmin
+  }: Pick<TLoadedSessionLogs, "config" | "isAdmin"> & { ctx: TAgentVaultSessionScoped["ctx"] }): Promise<
+    | { storage: TAgentVaultSessionLogStorage; bucket: string; keyPrefix: string | null }
+    | { unavailable: TAgentVaultSessionLogStorageUnavailable }
+  > => {
     const storage = resolveStorageConfig(config);
     if (!storage) {
-      return unreadable({ reason: AgentVaultSessionLogStorageUnavailableReason.NoConnection, message: null });
+      return { unavailable: { reason: AgentVaultSessionLogStorageUnavailableReason.NoConnection, message: null } };
     }
-
-    let sessionLogStorage: TAgentVaultSessionLogStorage;
     try {
-      sessionLogStorage = await buildSessionLogStorage(storage, ctx.actorOrgId, $storageDeps);
+      return {
+        storage: await buildSessionLogStorage(storage, ctx.actorOrgId, $storageDeps),
+        bucket: storage.bucket,
+        keyPrefix: storage.keyPrefix
+      };
     } catch (error) {
       if (!(error instanceof BadRequestError)) throw error;
+      return {
+        unavailable: {
+          reason: AgentVaultSessionLogStorageUnavailableReason.ConnectionUnusable,
+          message: isAdmin ? error.message : null
+        }
+      };
+    }
+  };
+
+  const $presignChunks = async (
+    keyScope: { projectId: string; sessionId: string; encryptedSessionLogKey: Buffer },
+    storage: TAgentVaultSessionLogStorage,
+    found: { key: string; chunkId: string; proxyId: string; sealedAt: Date; ciphertextBytes: number }[]
+  ) => {
+    const chunks = await Promise.all(
+      found.map(async ({ key, chunkId, proxyId, sealedAt, ciphertextBytes }) => ({
+        chunkId,
+        proxyId,
+        sealedAt,
+        ciphertextBytes,
+        presignedGetUrl: await storage.presignGet(key)
+      }))
+    );
+    const sessionKey = await unwrapSessionLogKey(keyScope, kmsService);
+    return { chunks, sessionKey: sessionKey.toString("base64") };
+  };
+
+  // S3 errors and network failures; anything else is a bug and stays a 500.
+  const isStorageError = (error: unknown) =>
+    error instanceof S3ServiceException ||
+    (error instanceof Error && ("code" in error || error.name === "TimeoutError"));
+
+  const listSessionLogs = async ({ after, from, to, ...scope }: TListSessionLogsDTO) => {
+    if (from && to && from > to) {
+      throw new BadRequestError({ message: "The 'from' time must be before the 'to' time" });
+    }
+
+    const { session, config, isAdmin, sessionLogs } = await $loadSessionLogs(scope);
+    if (!config || !session.encryptedSessionLogKey) return { sessionLogs, chunks: [], nextCursor: null };
+
+    // Unreadable storage keeps the cursor, so a retry continues from the same place.
+    const unreadable = (storageUnavailable: TAgentVaultSessionLogStorageUnavailable) => ({
+      sessionLogs: { ...sessionLogs, storageUnavailable },
+      chunks: [],
+      nextCursor: after === undefined ? null : encodeHistoryCursor(after)
+    });
+
+    const opened = await $openStorage({ ctx: scope.ctx, config, isAdmin });
+    if ("unavailable" in opened) return unreadable(opened.unavailable);
+
+    const folder = buildSessionLogFolder({
+      keyPrefix: opened.keyPrefix,
+      projectId: scope.projectId,
+      sessionId: scope.sessionId
+    });
+    let startAfter: string | undefined;
+    if (after !== undefined) startAfter = `${folder}${after}`;
+    else if (to) startAfter = `${folder}${toRev(to.getTime() + AGENT_VAULT_SESSION_LOG_RANGE_SEAL_MARGIN_MS)}`;
+
+    let listed: Awaited<ReturnType<TAgentVaultSessionLogStorage["listChunks"]>>;
+    try {
+      listed = await opened.storage.listChunks({ folder, startAfter });
+    } catch (error) {
+      if (!isStorageError(error)) throw error;
+      logger.warn(error, `agentVaultSessionLog: could not list session logs [sessionId=${scope.sessionId}]`);
       return unreadable({
         reason: AgentVaultSessionLogStorageUnavailableReason.ConnectionUnusable,
-        message: isAdmin ? error.message : null
+        message: isAdmin
+          ? `Infisical couldn't list session logs in bucket '${opened.bucket}' (${(error as Error).name}). Check that the connection's credentials allow s3:ListBucket on it`
+          : null
       });
     }
 
-    const sessionKey = await unwrapSessionLogKey(
-      { projectId, sessionId, encryptedSessionLogKey: session.encryptedSessionLogKey },
-      kmsService
-    );
-
-    const chunks = await Promise.all(
-      rows.map(async (row) =>
-        toChunkView(
-          row,
-          proxyNameOf(row),
-          row.bucket === config.bucket ? await sessionLogStorage.presignGet(row.objectKey) : null
-        )
-      )
-    );
-
-    return {
-      sessionLogs: { ...unreadSessionLogs, sessionKey: sessionKey.toString("base64") },
-      chunks,
-      isReadable: true
-    };
-  };
-
-  const $caughtUpTo = (readAt: number) => new Date(readAt - AGENT_VAULT_SESSION_LOG_RECEIVE_OVERLAP_MS);
-
-  const listSessionLogs = async ({ limit, before, from, to, ...scope }: TListSessionLogsDTO) => {
-    const readAt = Date.now();
-    const loaded = await $loadSessionLogs(scope);
-
-    const { chunks: rows, hasMore } = loaded.config
-      ? await agentVaultSessionLogChunkDAL.findForSessionPage({
-          sessionId: scope.sessionId,
-          recordBudget: limit,
-          byteBudget: AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
-          maxChunks: AGENT_VAULT_SESSION_LOG_MAX_PAGE_CHUNKS,
-          before,
-          from,
-          to
-        })
-      : { chunks: [], hasMore: false };
-
-    const { sessionLogs, chunks } = await $openSessionLogs({ ...scope, ...loaded, rows });
-
-    return {
-      sessionLogs,
-      chunks,
-      nextCursor: hasMore && chunks.length ? encodeHistoryCursor(rows[rows.length - 1].chunkId) : null,
-      liveCursor: encodeTailCursor($caughtUpTo(readAt))
-    };
-  };
-
-  const tailSessionLogs = async ({ limit, receivedAfter, ...scope }: TTailSessionLogsDTO) => {
-    const readAt = Date.now();
-    const since = receivedAfter ?? $caughtUpTo(readAt);
-    const loaded = await $loadSessionLogs(scope);
-
-    const { chunks: rows, hasMore } = loaded.config
-      ? await agentVaultSessionLogChunkDAL.findReceivedForSession({
-          sessionId: scope.sessionId,
-          receivedAfter: since,
-          recordBudget: limit,
-          byteBudget: AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
-          maxChunks: AGENT_VAULT_SESSION_LOG_MAX_PAGE_CHUNKS
-        })
-      : { chunks: [], hasMore: false };
-
-    const { sessionLogs, chunks, isReadable } = await $openSessionLogs({ ...scope, ...loaded, rows });
-
-    // Holding the cursor rather than skipping rows it could not hand links for, so they still arrive once
-    // the connection is back.
-    if (!isReadable) {
-      return { sessionLogs, chunks: [], nextCursor: encodeTailCursor(since), hasMore: false };
+    const found: Parameters<typeof $presignChunks>[2] = [];
+    let pageBytes = 0;
+    let consumed = 0;
+    let isBeforeRange = false;
+    for (const object of listed.objects) {
+      if (found.length && pageBytes + object.size > AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES) break;
+      const parsed = parseSessionLogObjectKey(folder, object.key);
+      if (parsed && from && parsed.sealedAt < from) {
+        isBeforeRange = true;
+        break;
+      }
+      consumed += 1;
+      if (parsed) {
+        found.push({ ...parsed, key: object.key, ciphertextBytes: object.size });
+        pageBytes += object.size;
+      }
     }
 
-    return {
-      sessionLogs,
-      chunks,
-      nextCursor: encodeTailCursor(hasMore ? rows[rows.length - 1].createdAt : $caughtUpTo(readAt)),
-      hasMore
-    };
+    const hasMore = !isBeforeRange && (consumed < listed.objects.length || listed.isTruncated);
+    const nextCursor = hasMore ? encodeHistoryCursor(listed.objects[consumed - 1].key.slice(folder.length)) : null;
+    if (!found.length) return { sessionLogs, chunks: [], nextCursor };
+
+    const { chunks, sessionKey } = await $presignChunks(
+      {
+        projectId: scope.projectId,
+        sessionId: scope.sessionId,
+        encryptedSessionLogKey: session.encryptedSessionLogKey
+      },
+      opened.storage,
+      found
+    );
+    return { sessionLogs: { ...sessionLogs, sessionKey }, chunks, nextCursor };
+  };
+
+  const tailSessionLogs = async ({ feedEntryId = SESSION_LOG_FEED_START, ...scope }: TTailSessionLogsDTO) => {
+    const { session, config, isAdmin, sessionLogs } = await $loadSessionLogs(scope);
+    const unchanged = { sessionLogs, chunks: [], nextCursor: encodeTailCursor(feedEntryId) };
+    if (!config || !session.encryptedSessionLogKey) return unchanged;
+
+    const entries = await keyStore.streamRange(
+      KeyStorePrefixes.AgentVaultSessionLogFeed(scope.sessionId),
+      `(${feedEntryId}`,
+      "+"
+    );
+    if (!entries.length) return unchanged;
+
+    // Held rather than advanced, so these chunks still arrive once the connection is back.
+    const opened = await $openStorage({ ctx: scope.ctx, config, isAdmin });
+    if ("unavailable" in opened)
+      return { ...unchanged, sessionLogs: { ...sessionLogs, storageUnavailable: opened.unavailable } };
+
+    const folder = buildSessionLogFolder({
+      keyPrefix: opened.keyPrefix,
+      projectId: scope.projectId,
+      sessionId: scope.sessionId
+    });
+    const found = new Map<string, Parameters<typeof $presignChunks>[2][number]>();
+    entries.forEach(([, fieldValues]) => {
+      const fields = new Map<string, string>();
+      for (let i = 0; i + 1 < fieldValues.length; i += 2) fields.set(fieldValues[i], fieldValues[i + 1]);
+      const key = fields.get("key");
+      if (!key || fields.get("bucket") !== opened.bucket) return;
+      const parsed = parseSessionLogObjectKey(folder, key);
+      const ciphertextBytes = Number(fields.get("bytes"));
+      if (parsed && Number.isSafeInteger(ciphertextBytes)) found.set(key, { ...parsed, key, ciphertextBytes });
+    });
+
+    const nextCursor = encodeTailCursor(entries[entries.length - 1][0]);
+    if (!found.size) return { sessionLogs, chunks: [], nextCursor };
+
+    const { chunks, sessionKey } = await $presignChunks(
+      {
+        projectId: scope.projectId,
+        sessionId: scope.sessionId,
+        encryptedSessionLogKey: session.encryptedSessionLogKey
+      },
+      opened.storage,
+      [...found.values()]
+    );
+    return { sessionLogs: { ...sessionLogs, sessionKey }, chunks, nextCursor };
   };
 
   const getSessionLogSettings = async ({ projectId, ctx }: TAgentVaultSessionLogScoped) => {
@@ -522,6 +520,14 @@ export const agentVaultSessionLogServiceFactory = ({
       next.region !== (current.region ?? null) ||
       next.keyPrefix !== (current.keyPrefix ?? null) ||
       (next.appConnectionId !== null && next.appConnectionId !== (current.appConnectionId ?? null));
+    // Only on a change, so a saved directory bucket can still be turned off.
+    if (next.bucket !== (current.bucket ?? null) && next.bucket?.endsWith("--x-s3")) {
+      throw new BadRequestError({
+        message:
+          "Session logs need a general purpose S3 bucket. Directory buckets (names ending in --x-s3) aren't supported."
+      });
+    }
+
     const entitlement = needsLicence ? await getSessionLogEntitlement(licenseService, ctx.actorOrgId) : "licensed";
     if (entitlement === "unknown") {
       throw new BadRequestError({

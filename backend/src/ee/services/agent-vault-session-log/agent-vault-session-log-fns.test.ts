@@ -3,38 +3,68 @@ import { describe, expect, test, vi } from "vitest";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
 import {
+  buildSessionLogFolder,
   buildSessionLogObjectKey,
+  chunkIdTimeMs,
   getSessionLogEntitlement,
+  parseSessionLogObjectKey,
   resolveStorageConfig,
+  toRev,
   TSessionLogLicenseService
 } from "./agent-vault-session-log-fns";
 
 vi.mock("@app/lib/logger", () => ({ logger: { warn: () => {} } }));
 
-describe("buildSessionLogObjectKey", () => {
-  const base = {
-    projectId: "proj-1",
-    sessionId: "sess-1",
-    proxyId: "proxy-1",
-    startedAt: new Date("2026-09-16T10:31:04.221Z"),
-    chunkId: "01a0a9c5-231d-7abc-8def-0123456789ab"
-  };
+describe("session log object names", () => {
+  const projectId = "c4a1e0d2-5b7f-4c1e-9a3d-2f6b8e0c7a11";
+  const sessionId = "5d2e9b41-0c3a-4f8e-b7d2-91a4c6e8f035";
+  const proxyId = "e91f3c20-7d4b-4a8e-9f1c-3b5d7e2a6c48";
+  const chunkId = "01a11226-9990-7a3f-8c21-4e6f9b2d1a07";
+  const folder = buildSessionLogFolder({ keyPrefix: "agent-vault-1", projectId, sessionId });
 
-  test("lays out prefix, project, session, proxy, date and chunk", () => {
-    expect(buildSessionLogObjectKey({ ...base, keyPrefix: "logs" })).toBe(
-      "logs/proj-1/sess-1/proxy-1/2026-09-16/01a0a9c5-231d-7abc-8def-0123456789ab.json.enc"
+  test("lays out prefix, project, session, then rev, chunk and proxy", () => {
+    expect(buildSessionLogObjectKey({ folder, proxyId, chunkId })).toBe(
+      `agent-vault-1/${projectId}/${sessionId}/8208694117999_${chunkId}.${proxyId}.json.enc`
     );
   });
 
   test("omits the prefix segment entirely when there is no prefix", () => {
-    expect(buildSessionLogObjectKey({ ...base, keyPrefix: null })).toBe(
-      "proj-1/sess-1/proxy-1/2026-09-16/01a0a9c5-231d-7abc-8def-0123456789ab.json.enc"
-    );
+    expect(buildSessionLogFolder({ keyPrefix: null, projectId, sessionId })).toBe(`${projectId}/${sessionId}/`);
   });
 
-  test("dates by UTC, so a chunk near midnight does not land in the reader's day", () => {
-    const key = buildSessionLogObjectKey({ ...base, startedAt: new Date("2026-09-16T23:59:59.999Z") });
-    expect(key).toContain("/2026-09-16/");
+  test("reads the time out of the chunk id", () => {
+    expect(chunkIdTimeMs(chunkId)).toBe(1791305882000);
+  });
+
+  test("a newer chunk sorts first, which is the only order S3 lists in", () => {
+    expect(toRev(2_000) < toRev(1_000)).toBe(true);
+    expect(toRev(1_000)).toHaveLength(13);
+  });
+
+  test("clamps a time outside what 13 digits can hold", () => {
+    expect(toRev(-5)).toBe("9999999999999");
+    expect(toRev(1e14)).toBe("0000000000000");
+  });
+
+  test("parses a name it built", () => {
+    expect(parseSessionLogObjectKey(folder, buildSessionLogObjectKey({ folder, proxyId, chunkId }))).toEqual({
+      chunkId,
+      proxyId,
+      sealedAt: new Date(1791305882000)
+    });
+  });
+
+  test.each([
+    {
+      why: "another session's folder",
+      key: `agent-vault-1/${projectId}/other/8208694117999_${chunkId}.${proxyId}.json.enc`
+    },
+    { why: "a nested folder", key: `${folder}${proxyId}/2026-09-16/${chunkId}.json.enc` },
+    { why: "a rev that disagrees with the chunk id", key: `${folder}8208694117998_${chunkId}.${proxyId}.json.enc` },
+    { why: "a proxy that is not a uuid", key: `${folder}8208694117999_${chunkId}.proxy-1.json.enc` },
+    { why: "a file someone else put there", key: `${folder}notes.txt` }
+  ])("skips $why", ({ key }) => {
+    expect(parseSessionLogObjectKey(folder, key)).toBeNull();
   });
 });
 

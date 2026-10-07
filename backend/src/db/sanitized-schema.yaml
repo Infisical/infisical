@@ -89,20 +89,6 @@ tables:
       - accessBundleId
       - createdAt
 
-  - name: agent_vault_session_log_chunks
-    source: public.agent_vault_session_log_chunks
-    columns:
-      - id
-      - sessionId
-      - projectId
-      - proxyId
-      - startedAt
-      - endedAt
-      - recordCount
-      - droppedCount
-      - ciphertextBytes
-      - createdAt
-
   - name: agent_vault_session_log_configs
     source: public.agent_vault_session_log_configs
     columns:

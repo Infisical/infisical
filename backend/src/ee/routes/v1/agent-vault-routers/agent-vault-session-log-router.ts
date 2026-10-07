@@ -24,7 +24,7 @@ export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvi
       hide: false,
       operationId: "listAgentVaultSessionLogs",
       description:
-        "Lists a session's logs in chunks, newest first. A chunk is an encrypted batch of [records](/documentation/platform/agent-vault/session-logs#what-gets-recorded) that a proxy uploaded. To decrypt the chunks, follow [Reading session logs through the API](/documentation/platform/agent-vault/session-logs#reading-session-logs-through-the-api). To keep receiving new logs, pass `liveCursor` to [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail).",
+        "Lists a session's logs in chunks, newest first. A chunk is an encrypted batch of [records](/documentation/platform/agent-vault/session-logs#what-gets-recorded) that a proxy uploaded. To decrypt the chunks, follow [Reading session logs through the API](/documentation/platform/agent-vault/session-logs#reading-session-logs-through-the-api). To keep receiving new logs, call [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail).",
       tags: [ApiDocsTags.AgentVaultSessionLogs],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
       querystring: AgentVaultSessionLogHistoryQuerySchema,
@@ -37,8 +37,7 @@ export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvi
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         sessionId: req.params.sessionId,
-        limit: req.query.limit,
-        before: req.query.cursor,
+        after: req.query.cursor,
         from: req.query.from,
         to: req.query.to
       });
@@ -53,7 +52,7 @@ export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvi
       hide: false,
       operationId: "tailAgentVaultSessionLogs",
       description:
-        "Lists a session's new logs since your last call, oldest first. The same chunk can appear in more than one response, so skip any `chunkId` you've already read. The chunks decrypt the same way as the ones from [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list).",
+        "Lists the chunks proxies have started uploading since your last call, in the order they started. The first call also returns the most recent chunks, which can repeat ones you already have, so skip any chunk whose `chunkId` and `proxyId` you've already read. The chunks decrypt the same way as the ones from [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list).",
       tags: [ApiDocsTags.AgentVaultSessionLogs],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
       querystring: AgentVaultSessionLogTailQuerySchema,
@@ -66,8 +65,7 @@ export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvi
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         sessionId: req.params.sessionId,
-        limit: req.query.limit,
-        receivedAfter: req.query.cursor
+        feedEntryId: req.query.cursor
       });
     }
   });

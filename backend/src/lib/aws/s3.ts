@@ -1,4 +1,10 @@
-import { GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  GetObjectCommand,
+  HeadBucketCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -59,6 +65,26 @@ export const createS3Bucket = ({
   const presignGet = (key: string, expiresInSeconds: number) =>
     getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: expiresInSeconds });
 
+  // One page only: callers that page do so across requests, so one request can't walk an unbounded listing.
+  const listPage = async ({
+    prefix,
+    startAfter,
+    maxKeys
+  }: {
+    prefix: string;
+    startAfter?: string;
+    maxKeys: number;
+  }) => {
+    const res = await client.send(
+      new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, StartAfter: startAfter, MaxKeys: maxKeys })
+    );
+    const objects: { key: string; size: number }[] = [];
+    (res.Contents ?? []).forEach(({ Key, Size }) => {
+      if (Key !== undefined && Size !== undefined) objects.push({ key: Key, size: Size });
+    });
+    return { objects, isTruncated: Boolean(res.IsTruncated) };
+  };
+
   const checkAccess = async (testKey: string): Promise<TS3AccessCheck> => {
     try {
       await client.send(new HeadBucketCommand({ Bucket: bucket }));
@@ -80,5 +106,5 @@ export const createS3Bucket = ({
     return { ok: true };
   };
 
-  return { presignCreateOnlyPut, presignGet, checkAccess };
+  return { presignCreateOnlyPut, presignGet, listPage, checkAccess };
 };

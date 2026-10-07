@@ -139,22 +139,16 @@ You can view a session's logs if you created the session or you're an Agent Vaul
   <Steps>
     <Step>
       Call [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list). It returns the newest chunks first. To get older chunks, call it again with the response's `nextCursor` as `cursor`.
-    </Step>
-    <Step>
-      Download each chunk from its `presignedGetUrl` within 5 minutes, before the URL expires.
-      
+
       <Note>
-        If `presignedGetUrl` is null, it could be for either of the following two reasons:
-        
-        - The chunk is in a bucket that session logs no longer use
-        - Storage is unavailable. Read `sessionLogs.storageUnavailable` to find the reason why
+        If Infisical can't read the bucket, the response has no chunks, and `sessionLogs.storageUnavailable` holds the reason.
       </Note>
     </Step>
     <Step>
-      Check that the SHA-256 digest of the downloaded bytes, as base64 without padding, matches `ciphertextSha256`. If the digests differ, the chunk was changed after the proxy uploaded it.
+      Download each chunk from its `presignedGetUrl` within 5 minutes, before the URL expires.
     </Step>
     <Step>
-      Decrypt the chunk with AES-256-GCM. The key is `sessionLogs.sessionKey` and the IV is the chunk's `iv`, both base64 decoded. The associated data is the SHA-256 digest of `<sessionId>|<chunkId>|v1`. The last 16 bytes of the chunk are the authentication tag.
+      Decrypt the chunk with AES-256-GCM. The key is `sessionLogs.sessionKey`, base64 decoded. The first 12 bytes of the chunk are the IV, and the last 16 bytes are the authentication tag. The associated data is the SHA-256 digest of `<sessionId>|<chunkId>|v1`.
     </Step>
     <Step>
       Parse the decrypted bytes as JSON. Each chunk holds an array of records, and `decision` holds the [outcome](#what-gets-recorded) in lowercase:
@@ -191,21 +185,17 @@ You can view a session's logs if you created the session or you're an Agent Vaul
   const { sessionLogs, chunks } = await res.json();
 
   for (const chunk of chunks) {
-    if (!chunk.presignedGetUrl) continue;
     const body = Buffer.from(await (await fetch(chunk.presignedGetUrl)).arrayBuffer());
-
-    const digest = createHash("sha256").update(body).digest("base64").replace(/=+$/, "");
-    if (digest !== chunk.ciphertextSha256) throw new Error(`Chunk ${chunk.chunkId} was changed`);
 
     const aad = createHash("sha256").update(`${sessionId}|${chunk.chunkId}|v1`).digest();
     const decipher = createDecipheriv(
       "aes-256-gcm",
       Buffer.from(sessionLogs.sessionKey, "base64"),
-      Buffer.from(chunk.iv, "base64")
+      body.subarray(0, 12)
     );
     decipher.setAAD(aad);
     decipher.setAuthTag(body.subarray(-16));
-    const plaintext = Buffer.concat([decipher.update(body.subarray(0, -16)), decipher.final()]);
+    const plaintext = Buffer.concat([decipher.update(body.subarray(12, -16)), decipher.final()]);
 
     console.log(JSON.parse(plaintext.toString("utf8")));
   }
@@ -215,7 +205,9 @@ You can view a session's logs if you created the session or you're an Agent Vaul
   The script runs outside a browser, so the bucket's CORS rule doesn't apply to it.
   </Note>
 
-  To receive new logs as they arrive, pass the response's `liveCursor` as `cursor` to [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail), then keep calling it with each response's `nextCursor`. If `hasMore` is true, call again right away. Otherwise, wait a few seconds before the next call. The same chunk can appear in more than one response, so skip any `chunkId` you've already read.
+  To receive new logs as they arrive, call [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail) without a cursor, then call it every few seconds with the previous response's `nextCursor`. The first response can repeat chunks you already read from [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list), so skip any chunk whose `chunkId` and `proxyId` you've already read. If a chunk's download returns 404, the proxy hasn't finished uploading it, so try again a few seconds later.
+
+  If many chunks arrive between two calls, the tail endpoint can skip some of them. To read every chunk, call the endpoint that lists session logs instead.
 </Tab>
 </Tabs>
 
@@ -226,7 +218,6 @@ Each request produces one record with:
 | Field | What it holds |
 | --- | --- |
 | **Time** | When the request was made |
-| **Proxy** | The proxy that handled the request |
 | **Method**, **Host**, **Path** | Where the request went, for example `POST api.github.com/repos/acme/web/issues` |
 | **Upstream status** | The HTTP status code the API returned, such as `201`. For **Blocked** and **Error** requests, it's the status code the proxy returned, such as `403` or `502` |
 | **Outcome** | What the proxy did with the request |
@@ -261,54 +252,12 @@ You can't delete a connection while session logs use it. To delete the connectio
 
 ### Changing the bucket or prefix
 
-Infisical doesn't copy existing records when you change the bucket. You can't view the records in the old bucket in Infisical until you switch back to that bucket.
-
-If you change only the key prefix, earlier records stay readable as long as the IAM role or user can still read the old prefix. The policy you [attached during setup](#attach-the-iam-policy) covers only the prefix you entered then, so add the new prefix to it instead of replacing it:
-
-<Steps>
-  <Step>
-    In the **Session Logs** dialog, enter the new **Key Prefix** and select **View AWS Setup**.
-  </Step>
-  <Step>
-    In the policy it shows, copy the object ARN from the first statement's `Resource`, the one that ends in `/*`.
-  </Step>
-  <Step>
-    In the IAM console, open the inline policy you attached during setup. Turn the first statement's `Resource` into a list that holds both ARNs:
-
-    ```json highlight={7-10}
-    {
-      "Version": "2012-10-17",
-      "Statement": [
-        {
-          "Effect": "Allow",
-          "Action": ["s3:PutObject", "s3:GetObject"],
-          "Resource": [
-            "arn:aws:s3:::<bucket>/<old-prefix>/*",
-            "arn:aws:s3:::<bucket>/<new-prefix>/*"
-          ]
-        },
-        {
-          "Effect": "Allow",
-          "Action": ["s3:ListBucket"],
-          "Resource": "arn:aws:s3:::<bucket>"
-        }
-      ]
-    }
-    ```
-
-    Then, save the policy.
-  </Step>
-  <Step>
-    In the **Session Logs** dialog, select **Save**.
-  </Step>
-</Steps>
+Infisical doesn't copy existing records when you change the bucket or the key prefix. Records written before the change don't show in Infisical until you switch back to that bucket and prefix.
 
 ### Retention
 
 Infisical never deletes sessions or their session logs. To delete older logs automatically, add an [S3 Lifecycle rule](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html) to the bucket.
 
 ## Troubleshooting
-
-If a proxy couldn't upload some records, the session's logs show a row that says how many requests are missing. Those requests still reached their destination, but they aren't in the session log. To find out why the upload failed, check the output of each proxy the agent used.
 
 If the AWS connection returns an error or session logs reach their storage limit, a red dot appears next to **Settings** in the Agent Vault sidebar, and the **Settings** page shows the error.

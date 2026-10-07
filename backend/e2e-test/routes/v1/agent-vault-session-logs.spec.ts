@@ -8,7 +8,11 @@ import { v7 as uuidv7 } from "uuid";
 
 import { OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-constants";
+import {
+  AGENT_VAULT_SESSION_LOG_FEED_MAX_ENTRIES,
+  AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
+  AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS
+} from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-constants";
 import { AgentVaultSessionLogErrorName } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-enums";
 import {
   encodeHistoryCursor,
@@ -140,12 +144,8 @@ const chunkBody = (overrides: Record<string, unknown> = {}) => ({
   chunkId: nextChunkId(),
   startedAt: new Date(Date.now() - 60_000),
   endedAt: new Date(Date.now() - 1_000),
-  firstSeq: 0,
-  lastSeq: 9,
   recordCount: 10,
-  droppedCount: 0,
   ciphertextBytes: CHUNK_BYTES,
-  iv: "qrvM3e7/ABEiM0RV",
   ciphertextSha256: CHUNK_SHA256,
   ...overrides
 });
@@ -182,7 +182,6 @@ describe("Agent Vault session logs", async () => {
 
   // This file sorts before agent-vault.spec.ts, which asserts the Agent Vault project bootstraps with no members.
   afterAll(async () => {
-    await testDb("agent_vault_session_log_chunks").where({ projectId }).del();
     await testDb("agent_vault_session_log_configs").where({ projectId }).del();
     await testDb("agent_vault_sessions").where({ projectId }).del();
     await testDb("agent_vault_proxies").where({ projectId }).del();
@@ -194,7 +193,6 @@ describe("Agent Vault session logs", async () => {
   beforeEach(async () => {
     fakeS3Bucket.reset();
     fakeAwsConnection.reset();
-    await testDb("agent_vault_session_log_chunks").where({ projectId }).del();
     await testDb("agent_vault_session_log_configs").where({ projectId }).del();
     // Tests create their own proxies, and an org can hold only AGENT_VAULT_MAX_PROXIES_PER_ORG.
     await testDb("agent_vault_proxies").where({ projectId }).del();
@@ -399,7 +397,10 @@ describe("Agent Vault session logs", async () => {
         ...patch
       });
 
-    test("writes the row before the object exists, then presigns an upload for exactly that many bytes", async () => {
+    const storedChunkCount = async () =>
+      Number((await testDb("agent_vault_session_log_configs").where({ projectId }).first()).storedChunkCount);
+
+    test("presigns an upload for exactly that many bytes, named under the session's folder", async () => {
       await configure();
       const bundle = await createAccessBundle(`session-logs-write-${Date.now()}`);
       const session = await mintSession(bundle.name);
@@ -408,50 +409,31 @@ describe("Agent Vault session logs", async () => {
       const chunk = chunkBody();
       const result = await recordChunk(proxy, session.id, chunk);
 
-      const row = await testDb("agent_vault_session_log_chunks").where({ sessionId: session.id }).first();
-      expect(row).toMatchObject({ chunkId: chunk.chunkId, proxyId: proxy.id, proxyName: proxy.name, recordCount: 10 });
-      expect(row.objectKey).toMatch(/^logs\/.+\/\d{4}-\d{2}-\d{2}\/.+\.json\.enc$/);
-
       expect(fakeS3Bucket.objectKeys(BUCKET)).toEqual([]);
 
       fakeS3Bucket.put(result.uploadUrl, Buffer.alloc(CHUNK_BYTES));
-      expect(fakeS3Bucket.objectKeys(BUCKET)).toEqual([row.objectKey]);
+      const [key] = fakeS3Bucket.objectKeys(BUCKET);
+      expect(key).toMatch(
+        new RegExp(`^logs/${projectId}/${session.id}/\\d{13}_${chunk.chunkId}\\.${proxy.id}\\.json\\.enc$`)
+      );
 
       expect(() => fakeS3Bucket.put(result.uploadUrl, Buffer.alloc(CHUNK_BYTES + 1))).toThrow();
     });
 
-    test("counts each chunk once against the org, whatever it holds", async () => {
+    test("counts every chunk it hands a link for, a re-send included", async () => {
       await configure();
       const bundle = await createAccessBundle(`session-logs-count-${Date.now()}`);
       const session = await mintSession(bundle.name);
       const proxy = await createProxy(`session-logs-count-${Date.now()}`);
-      await recordChunk(proxy, session.id);
-      await recordChunk(proxy, session.id, chunkBody({ firstSeq: 10, lastSeq: 19 }));
-
-      const config = await testDb("agent_vault_session_log_configs").where({ projectId }).first();
-      expect(Number(config.storedChunkCount)).toBe(2);
-    });
-
-    test("re-sending a chunk replays the same row and counts nothing twice", async () => {
-      await configure();
-      const bundle = await createAccessBundle(`session-logs-replay-${Date.now()}`);
-      const session = await mintSession(bundle.name);
-      const proxy = await createProxy(`session-logs-replay-${Date.now()}`);
       const chunk = chunkBody();
-      const first = await recordChunk(proxy, session.id, chunk);
-      const second = await recordChunk(proxy, session.id, chunk);
+      await recordChunk(proxy, session.id, chunk);
+      await recordChunk(proxy, session.id, chunk);
+      await recordChunk(proxy, session.id);
 
-      expect(second.chunkId).toBe(first.chunkId);
-      expect(second.uploadUrl).not.toBe(first.uploadUrl);
-      expect(await testDb("agent_vault_session_log_chunks").where({ sessionId: session.id }).count()).toEqual([
-        { count: "1" }
-      ]);
-      expect(
-        Number((await testDb("agent_vault_session_log_configs").where({ projectId }).first()).storedChunkCount)
-      ).toBe(1);
+      expect(await storedChunkCount()).toBe(3);
     });
 
-    test("a re-sent chunk gets a fresh upload link that cannot replace what is already stored", async () => {
+    test("a re-sent chunk gets a fresh link to the same name, which cannot replace what is already stored", async () => {
       await configure();
       const bundle = await createAccessBundle(`session-logs-overwrite-${Date.now()}`);
       const session = await mintSession(bundle.name);
@@ -463,6 +445,7 @@ describe("Agent Vault session logs", async () => {
       fakeS3Bucket.put(first.uploadUrl, stored);
 
       const second = await recordChunk(proxy, session.id, chunk);
+      expect(second.uploadUrl).not.toBe(first.uploadUrl);
       expect(() => fakeS3Bucket.put(second.uploadUrl, Buffer.alloc(CHUNK_BYTES, 2))).toThrow(/create-only/);
 
       const read = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
@@ -479,63 +462,40 @@ describe("Agent Vault session logs", async () => {
       await recordChunk(proxy, session.id, chunk);
 
       const movedBucket = `${BUCKET}-moved`;
-      await configure({ bucket: movedBucket, keyPrefix: "moved" });
+      expect((await configure({ bucket: movedBucket, keyPrefix: "" })).statusCode).toBe(200);
 
       const resent = await recordChunk(proxy, session.id, chunk);
       const stored = Buffer.alloc(CHUNK_BYTES, 3);
       fakeS3Bucket.put(resent.uploadUrl, stored);
 
-      const row = await testDb("agent_vault_session_log_chunks").where({ sessionId: session.id }).first();
-      expect(row.bucket).toBe(movedBucket);
-      expect(row.objectKey).toMatch(/^moved\//);
-      expect(fakeS3Bucket.objectKeys(movedBucket)).toEqual([row.objectKey]);
+      const [key] = fakeS3Bucket.objectKeys(movedBucket);
+      expect(key.startsWith(`${projectId}/${session.id}/`)).toBe(true);
 
       const read = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
-      const [only] = (JSON.parse(read.payload) as { chunks: { presignedGetUrl: string | null }[] }).chunks;
-      expect(fakeS3Bucket.get(only.presignedGetUrl as string)).toEqual(stored);
+      const [only] = (JSON.parse(read.payload) as { chunks: { presignedGetUrl: string }[] }).chunks;
+      expect(fakeS3Bucket.get(only.presignedGetUrl)).toEqual(stored);
     });
 
-    test("a chunk re-sent after the destination moved to a bucket with no prefix is uploaded to its root", async () => {
-      await configure();
-      const bundle = await createAccessBundle(`session-logs-moved-bare-${Date.now()}`);
-      const session = await mintSession(bundle.name);
-      const proxy = await createProxy(`session-logs-moved-bare-${Date.now()}`);
-      const chunk = chunkBody();
-      await recordChunk(proxy, session.id, chunk);
-
-      const movedBucket = `${BUCKET}-bare`;
-      expect((await configure({ bucket: movedBucket, keyPrefix: "" })).statusCode).toBe(200);
-
-      const resent = await recordChunk(proxy, session.id, chunk);
-      fakeS3Bucket.put(resent.uploadUrl, Buffer.alloc(CHUNK_BYTES));
-
-      const row = await testDb("agent_vault_session_log_chunks").where({ sessionId: session.id }).first();
-      expect(row.bucket).toBe(movedBucket);
-      expect(row.objectKey.startsWith(`${projectId}/${session.id}/${proxy.id}/`)).toBe(true);
-      expect(fakeS3Bucket.objectKeys(movedBucket)).toEqual([row.objectKey]);
-    });
-
-    test("two proxies can write to one session, and a chunk id is only unique within it", async () => {
+    test("two proxies can send the same chunk id to one session, and each lands under its own name", async () => {
       await configure();
       const bundle = await createAccessBundle(`session-logs-two-${Date.now()}`);
-      const sessionA = await mintSession(bundle.name);
-      const sessionB = await mintSession(bundle.name);
+      const session = await mintSession(bundle.name);
       const proxyOne = await createProxy(`session-logs-two-a-${Date.now()}`);
       const proxyTwo = await createProxy(`session-logs-two-b-${Date.now()}`);
       const sharedId = nextChunkId();
-      await recordChunk(proxyOne, sessionA.id, chunkBody({ chunkId: sharedId }));
-      await recordChunk(proxyTwo, sessionA.id);
-      await recordChunk(proxyTwo, sessionB.id, chunkBody({ chunkId: sharedId }));
 
-      const claimed = await proxyTwo.postChunk(sessionA.id, chunkBody({ chunkId: sharedId }));
-      expect(claimed.statusCode, claimed.payload).toBe(409);
-      await recordChunk(proxyOne, sessionA.id, chunkBody({ chunkId: sharedId }));
+      const one = await recordChunk(proxyOne, session.id, chunkBody({ chunkId: sharedId }));
+      const two = await recordChunk(proxyTwo, session.id, chunkBody({ chunkId: sharedId }));
+      fakeS3Bucket.put(one.uploadUrl, Buffer.alloc(CHUNK_BYTES));
+      fakeS3Bucket.put(two.uploadUrl, Buffer.alloc(CHUNK_BYTES));
 
-      expect(await testDb("agent_vault_session_log_chunks").where({ sessionId: sessionA.id })).toHaveLength(2);
-      expect(await testDb("agent_vault_session_log_chunks").where({ sessionId: sessionB.id })).toHaveLength(1);
+      const read = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
+      const { chunks } = JSON.parse(read.payload) as { chunks: { chunkId: string; proxyId: string }[] };
+      expect(chunks.map((chunk) => chunk.proxyId).sort()).toEqual([proxyOne.id, proxyTwo.id].sort());
+      expect(chunks.every((chunk) => chunk.chunkId === sharedId)).toBe(true);
     });
 
-    test("a connection that can't be used refuses the chunk as retryable and writes no row", async () => {
+    test("a connection that can't be used refuses the chunk as retryable and counts nothing", async () => {
       await configure();
       fakeAwsConnection.failsConfigWith("AWS refused to assume the role");
       const bundle = await createAccessBundle(`session-logs-unusable-${Date.now()}`);
@@ -544,7 +504,7 @@ describe("Agent Vault session logs", async () => {
 
       const res = await proxy.postChunk(session.id, chunkBody());
       expect(res.statusCode).toBe(500);
-      expect(await testDb("agent_vault_session_log_chunks").where({ sessionId: session.id })).toHaveLength(0);
+      expect(await storedChunkCount()).toBe(0);
     });
 
     test("is refused with the named error while session logs are off", async () => {
@@ -558,7 +518,7 @@ describe("Agent Vault session logs", async () => {
       expect(JSON.parse(res.payload).error).toBe(AgentVaultSessionLogErrorName.Disabled);
     });
 
-    test("a chunk past the organization's limit is refused, and neither the row nor the count is kept", async () => {
+    test("a chunk past the organization's limit is refused, and the count stays at the limit", async () => {
       await configure();
       const bundle = await createAccessBundle(`session-logs-full-${Date.now()}`);
       const session = await mintSession(bundle.name);
@@ -570,10 +530,7 @@ describe("Agent Vault session logs", async () => {
       const res = await proxy.postChunk(session.id, chunkBody());
       expect(res.statusCode, res.payload).toBe(400);
       expect(JSON.parse(res.payload).error).toBe(AgentVaultSessionLogErrorName.CeilingReached);
-
-      expect(await testDb("agent_vault_session_log_chunks").where({ sessionId: session.id })).toHaveLength(0);
-      const config = await testDb("agent_vault_session_log_configs").where({ projectId }).first();
-      expect(Number(config.storedChunkCount)).toBe(AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS);
+      expect(await storedChunkCount()).toBe(AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS);
     });
 
     test("a session in another organization is a 404 that reads like a missing one", async () => {
@@ -607,7 +564,7 @@ describe("Agent Vault session logs", async () => {
 
         expect([foreign.statusCode, missing.statusCode]).toEqual([404, 404]);
         expect(JSON.parse(foreign.payload).message).toBe(JSON.parse(missing.payload).message);
-        expect(await testDb("agent_vault_session_log_chunks").where({ sessionId: foreignSession.id })).toHaveLength(0);
+        expect(await storedChunkCount()).toBe(0);
       } finally {
         await testDb("organizations").where({ id: foreignOrg.id }).delete();
       }
@@ -729,7 +686,6 @@ describe("Agent Vault session logs", async () => {
       { why: "the chunk id is a v4 UUID", patch: { chunkId: crypto.randomUUID() } },
       { why: "the record count is over the slice size", patch: { recordCount: 1001 } },
       { why: "the record count is zero", patch: { recordCount: 0 } },
-      { why: "the IV is the wrong width", patch: { iv: "short" } },
       { why: "the digest is not a SHA-256", patch: { ciphertextSha256: "short" } },
       { why: "the ciphertext is smaller than an empty sealed array", patch: { ciphertextBytes: 4 } }
     ])("rejects a malformed chunk when $why", async ({ patch }) => {
@@ -743,14 +699,15 @@ describe("Agent Vault session logs", async () => {
     test.each([
       { why: "endedAt precedes startedAt", patch: { startedAt: new Date(), endedAt: new Date(Date.now() - 60_000) } },
       { why: "endedAt is far in the future", patch: { endedAt: new Date(Date.now() + 10 * 60_000) } },
-      { why: "the sequence range cannot hold the records", patch: { firstSeq: 0, lastSeq: 2, recordCount: 10 } }
+      { why: "the bytes are too few for the records", patch: { recordCount: 1000, ciphertextBytes: 64 } }
     ])("rejects a chunk that cannot be true when $why", async ({ patch }) => {
       await configure();
       const { session, proxy } = await setup("semantic");
 
       const res = await proxy.postChunk(session.id, chunkBody(patch));
       expect(res.statusCode).toBe(400);
-      expect(await testDb("agent_vault_session_log_chunks").where({ sessionId: session.id })).toHaveLength(0);
+      const config = await testDb("agent_vault_session_log_configs").where({ projectId }).first();
+      expect(Number(config.storedChunkCount)).toBe(0);
     });
 
     test("refuses a session that retired more than a day ago", async () => {
@@ -806,59 +763,100 @@ describe("Agent Vault session logs", async () => {
         keyPrefix: "logs"
       });
 
-    const seedChunks = async (count: number) => {
-      const bundle = await createAccessBundle(
-        `session-logs-read-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-      );
+    const uniqueLabel = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    const seedSession = async () => {
+      const bundle = await createAccessBundle(`session-logs-read-${uniqueLabel()}`);
       const session = await mintSession(bundle.name);
-      const proxy = await createProxy(`session-logs-read-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
-      for (let i = 0; i < count; i += 1) {
-        // eslint-disable-next-line no-await-in-loop
-        const { uploadUrl } = await recordChunk(
-          proxy,
-          session.id,
-          chunkBody({ firstSeq: i * 10, lastSeq: i * 10 + 9 })
-        );
-        fakeS3Bucket.put(uploadUrl, Buffer.alloc(CHUNK_BYTES));
-      }
+      const proxy = await createProxy(`session-logs-read-${uniqueLabel()}`);
       return { session, proxy };
+    };
+
+    // A millisecond apart, oldest first, so the order they list in is fixed.
+    const upload = async (
+      proxy: Awaited<ReturnType<typeof createProxy>>,
+      sessionId: string,
+      count: number,
+      { sealedFrom = Date.now() - count, bytes = CHUNK_BYTES }: { sealedFrom?: number; bytes?: number } = {}
+    ) => {
+      const chunkIds: string[] = [];
+      for (let i = 0; i < count; i += 1) {
+        const chunkId = uuidv7({ msecs: sealedFrom + i });
+        // eslint-disable-next-line no-await-in-loop
+        const { uploadUrl } = await recordChunk(proxy, sessionId, chunkBody({ chunkId, ciphertextBytes: bytes }));
+        fakeS3Bucket.put(uploadUrl, Buffer.alloc(bytes));
+        chunkIds.push(chunkId);
+      }
+      return chunkIds;
+    };
+
+    const seedChunks = async (count: number) => {
+      const { session, proxy } = await seedSession();
+      const chunkIds = await upload(proxy, session.id, count);
+      return { session, proxy, chunkIds };
+    };
+
+    type TPage = {
+      sessionLogs: {
+        enabled: boolean;
+        isRecordable: boolean;
+        sessionKey: string | null;
+        storageUnavailable: { reason: string; message: string | null } | null;
+      };
+      chunks: {
+        chunkId: string;
+        proxyId: string;
+        sealedAt: string;
+        ciphertextBytes: number;
+        presignedGetUrl: string;
+      }[];
+      nextCursor: string | null;
+    };
+
+    const read = async (sessionId: string, query = "") => {
+      const res = await inject("GET", `/api/v1/agent-vault/sessions/${sessionId}/logs${query}`);
+      expect(res.statusCode, res.payload).toBe(200);
+      return JSON.parse(res.payload) as TPage;
+    };
+
+    const tail = async (sessionId: string, cursor?: string) => {
+      const res = await inject(
+        "GET",
+        `/api/v1/agent-vault/sessions/${sessionId}/logs/tail${cursor ? `?cursor=${cursor}` : ""}`
+      );
+      expect(res.statusCode, res.payload).toBe(200);
+      return JSON.parse(res.payload) as Omit<TPage, "nextCursor"> & { nextCursor: string };
     };
 
     test("returns the newest chunks first, each with a presigned url and the key to open them, and is never cached", async () => {
       await configure();
-      const { session, proxy } = await seedChunks(3);
+      const { session, proxy, chunkIds } = await seedChunks(3);
 
       const res = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
       expect(res.statusCode).toBe(200);
       expect(res.headers["cache-control"]).toBe("no-store, no-cache, must-revalidate, proxy-revalidate");
 
-      const body = JSON.parse(res.payload) as {
-        sessionLogs: { enabled: boolean; isRecordable: boolean; sessionKey: string };
-        chunks: {
-          chunkId: string;
-          proxyId: string;
-          presignedGetUrl: string | null;
-          recordCount: number;
-          ciphertextSha256: string;
-          createdAt: string;
-        }[];
-        nextCursor: string | null;
-      };
-
+      const body = JSON.parse(res.payload) as TPage;
       expect(body.sessionLogs.enabled).toBe(true);
       expect(body.sessionLogs.isRecordable).toBe(true);
-      expect(body.chunks.every((chunk) => Math.abs(Date.parse(chunk.createdAt) - Date.now()) < 60_000)).toBe(true);
-      expect(body.chunks.every((chunk) => chunk.ciphertextSha256 === CHUNK_SHA256)).toBe(true);
-      expect(Buffer.from(body.sessionLogs.sessionKey, "base64")).toHaveLength(32);
-      expect(body.chunks).toHaveLength(3);
+      expect(Buffer.from(body.sessionLogs.sessionKey as string, "base64")).toHaveLength(32);
+      expect(body.chunks.map((chunk) => chunk.chunkId)).toEqual([...chunkIds].reverse());
       expect(body.chunks.every((chunk) => chunk.proxyId === proxy.id)).toBe(true);
-
-      const ids = body.chunks.map((chunk) => chunk.chunkId);
-      expect([...ids].sort().reverse()).toEqual(ids);
+      expect(body.chunks.every((chunk) => chunk.ciphertextBytes === CHUNK_BYTES)).toBe(true);
+      expect(body.chunks.every((chunk) => Math.abs(Date.parse(chunk.sealedAt) - Date.now()) < 60_000)).toBe(true);
+      expect(body.nextCursor).toBeNull();
 
       body.chunks.forEach((chunk) => {
-        expect(fakeS3Bucket.get(chunk.presignedGetUrl!)).toHaveLength(CHUNK_BYTES);
+        expect(fakeS3Bucket.get(chunk.presignedGetUrl)).toHaveLength(CHUNK_BYTES);
       });
+    });
+
+    test("a chunk that was registered but never uploaded is not listed", async () => {
+      await configure();
+      const { session, proxy } = await seedSession();
+      await recordChunk(proxy, session.id);
+
+      expect((await read(session.id)).chunks).toEqual([]);
     });
 
     test("a session created before session logs reads as not recordable, on the list and the tail", async () => {
@@ -867,269 +865,174 @@ describe("Agent Vault session logs", async () => {
       const session = await mintSession(bundle.name);
       await testDb("agent_vault_sessions").where({ id: session.id }).update({ encryptedSessionLogKey: null });
 
-      const listed = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
-      expect(listed.statusCode, listed.payload).toBe(200);
-      expect(JSON.parse(listed.payload).sessionLogs).toMatchObject({ enabled: true, isRecordable: false });
-
-      const tailed = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs/tail`);
-      expect(tailed.statusCode, tailed.payload).toBe(200);
-      expect(JSON.parse(tailed.payload).sessionLogs).toMatchObject({ enabled: true, isRecordable: false });
+      expect((await read(session.id)).sessionLogs).toMatchObject({ enabled: true, isRecordable: false });
+      expect((await tail(session.id)).sessionLogs).toMatchObject({ enabled: true, isRecordable: false });
     });
 
-    test("a time window narrows the chunks without disturbing the cursor", async () => {
+    test("a time window lists the chunks sealed in it, and those sealed shortly after its end", async () => {
       await configure();
-      const bundle = await createAccessBundle(`session-logs-range-${Date.now()}`);
-      const session = await mintSession(bundle.name);
-      const proxy = await createProxy(`session-logs-range-${Date.now()}`);
+      const { session, proxy } = await seedSession();
 
       const hour = 60 * 60 * 1000;
-      const startedAts = [new Date(Date.now() - 3 * hour), new Date(Date.now() - 2 * hour), new Date()];
-      for (const startedAt of startedAts) {
-        // eslint-disable-next-line no-await-in-loop
-        const { uploadUrl } = await recordChunk(proxy, session.id, chunkBody({ startedAt, endedAt: startedAt }));
-        fakeS3Bucket.put(uploadUrl, Buffer.alloc(CHUNK_BYTES));
-      }
+      const [threeHoursAgo] = await upload(proxy, session.id, 1, { sealedFrom: Date.now() - 3 * hour });
+      const [twoHoursAgo] = await upload(proxy, session.id, 1, { sealedFrom: Date.now() - 2 * hour });
+      const [justAfter] = await upload(proxy, session.id, 1, { sealedFrom: Date.now() - 1.5 * hour + 60_000 });
+      await upload(proxy, session.id, 1, { sealedFrom: Date.now() });
 
-      const windowed = await inject(
-        "GET",
-        `/api/v1/agent-vault/sessions/${session.id}/logs` +
-          `?from=${new Date(Date.now() - 2.5 * hour).toISOString()}` +
-          `&to=${new Date(Date.now() - 1.5 * hour).toISOString()}`
-      );
-      expect(windowed.statusCode).toBe(200);
-      const body = JSON.parse(windowed.payload) as { chunks: { startedAt: string }[] };
-      expect(body.chunks).toHaveLength(1);
-      expect(new Date(body.chunks[0].startedAt).getTime()).toBe(startedAts[1].getTime());
-
-      const straddling = await recordChunk(
-        proxy,
+      const windowed = await read(
         session.id,
-        chunkBody({
-          startedAt: new Date(Date.now() - 5 * hour),
-          endedAt: new Date(Date.now() - 2 * hour)
-        })
+        `?from=${new Date(Date.now() - 2.5 * hour).toISOString()}&to=${new Date(Date.now() - 1.5 * hour).toISOString()}`
       );
-      fakeS3Bucket.put(straddling.uploadUrl, Buffer.alloc(CHUNK_BYTES));
+      expect(windowed.chunks.map((chunk) => chunk.chunkId)).toEqual([justAfter, twoHoursAgo]);
+      expect(windowed.chunks.map((chunk) => chunk.chunkId)).not.toContain(threeHoursAgo);
+      expect(windowed.nextCursor).toBeNull();
 
-      const overlapping = await inject(
-        "GET",
-        `/api/v1/agent-vault/sessions/${session.id}/logs` +
-          `?from=${new Date(Date.now() - 2.5 * hour).toISOString()}` +
-          `&to=${new Date(Date.now() - 1.5 * hour).toISOString()}`
-      );
-      expect((JSON.parse(overlapping.payload) as { chunks: unknown[] }).chunks).toHaveLength(2);
-
-      const all = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
-      expect((JSON.parse(all.payload) as { chunks: unknown[] }).chunks).toHaveLength(4);
+      expect((await read(session.id)).chunks).toHaveLength(4);
     });
 
-    test("pages with a cursor, and the last page reports no more", async () => {
+    test("refuses a time window that ends before it starts", async () => {
       await configure();
-      const { session } = await seedChunks(5);
-
-      const budget = 20;
-
-      const first = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs?limit=${budget}`);
-      const firstBody = JSON.parse(first.payload) as { chunks: { chunkId: string }[]; nextCursor: string | null };
-      expect(firstBody.chunks).toHaveLength(2);
-      expect(firstBody.nextCursor).toBe(encodeHistoryCursor(firstBody.chunks[1].chunkId));
-
-      const second = await inject(
+      const { session } = await seedSession();
+      const res = await inject(
         "GET",
-        `/api/v1/agent-vault/sessions/${session.id}/logs?limit=${budget}&cursor=${firstBody.nextCursor}`
+        `/api/v1/agent-vault/sessions/${session.id}/logs?from=${new Date().toISOString()}&to=${new Date(Date.now() - 60_000).toISOString()}`
       );
-      const secondBody = JSON.parse(second.payload) as { chunks: { chunkId: string }[]; nextCursor: string | null };
-      expect(secondBody.chunks).toHaveLength(2);
-      expect(secondBody.chunks.map((c) => c.chunkId)).not.toContain(firstBody.chunks[1].chunkId);
-
-      const third = await inject(
-        "GET",
-        `/api/v1/agent-vault/sessions/${session.id}/logs?limit=${budget}&cursor=${secondBody.nextCursor}`
-      );
-      const thirdBody = JSON.parse(third.payload) as { chunks: unknown[]; nextCursor: string | null };
-      expect(thirdBody.chunks).toHaveLength(1);
-      expect(thirdBody.nextCursor).toBeNull();
+      expect(res.statusCode).toBe(400);
     });
 
-    test("a page stops at its byte budget as well as its record budget", async () => {
+    test("pages by size with a cursor, newest first, and the last page reports no more", async () => {
       await configure();
-      const bundle = await createAccessBundle(`session-logs-bytes-${Date.now()}`);
-      const session = await mintSession(bundle.name);
-      const proxy = await createProxy(`session-logs-bytes-${Date.now()}`);
-
-      for (let i = 0; i < 3; i += 1) {
-        // eslint-disable-next-line no-await-in-loop
-        await recordChunk(
-          proxy,
-          session.id,
-          chunkBody({ firstSeq: i, lastSeq: i, recordCount: 1, ciphertextBytes: 8 * 1024 * 1024 })
-        );
-      }
-
-      const res = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
-      expect(res.statusCode).toBe(200);
-      const body = JSON.parse(res.payload) as { chunks: unknown[]; nextCursor: string | null };
-      expect(body.chunks).toHaveLength(2);
-      expect(body.nextCursor).not.toBeNull();
-    });
-
-    test("pages cover every chunk when seal order and record order disagree", async () => {
-      await configure();
-      const bundle = await createAccessBundle(`session-logs-order-${Date.now()}`);
-      const session = await mintSession(bundle.name);
-      const slow = await createProxy(`session-logs-order-slow-${Date.now()}`);
-      const quick = await createProxy(`session-logs-order-quick-${Date.now()}`);
-
-      const hoursAgo = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000);
-
-      const written: string[] = [];
-      for (let i = 0; i < 6; i += 1) {
-        const startedAt = hoursAgo(i + 1);
-        // eslint-disable-next-line no-await-in-loop
-        const { chunkId } = await recordChunk(
-          i % 2 === 0 ? slow : quick,
-          session.id,
-          chunkBody({ startedAt, endedAt: startedAt, firstSeq: i * 10, lastSeq: i * 10 + 9 })
-        );
-        written.push(chunkId);
-      }
+      const { session, proxy } = await seedSession();
+      const bytes = Math.floor(AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES * 0.6);
+      const chunkIds = await upload(proxy, session.id, 3, { bytes });
 
       const seen: string[] = [];
-      let cursor: string | undefined;
-      for (let page = 0; page < 6; page += 1) {
+      let cursor: string | null = null;
+      let pages = 0;
+      do {
         // eslint-disable-next-line no-await-in-loop
-        const res = await inject(
-          "GET",
-          `/api/v1/agent-vault/sessions/${session.id}/logs?limit=1${cursor ? `&cursor=${cursor}` : ""}`
-        );
-        const body = JSON.parse(res.payload) as { chunks: { chunkId: string }[]; nextCursor: string | null };
-        seen.push(...body.chunks.map((chunk) => chunk.chunkId));
-        if (!body.nextCursor) break;
-        cursor = body.nextCursor;
-      }
+        const page: TPage = await read(session.id, cursor ? `?cursor=${cursor}` : "");
+        expect(page.chunks).toHaveLength(1);
+        seen.push(...page.chunks.map((chunk) => chunk.chunkId));
+        cursor = page.nextCursor;
+        pages += 1;
+      } while (cursor && pages < 5);
 
-      expect(seen.sort()).toEqual([...written].sort());
-      expect(new Set(seen).size).toBe(written.length);
+      expect(pages).toBe(3);
+      expect(seen).toEqual([...chunkIds].reverse());
     });
 
-    type THistoryBody = {
-      chunks: { chunkId: string }[];
-      nextCursor: string | null;
-      liveCursor: string;
-    };
-
-    type TTailBody = {
-      chunks: { chunkId: string }[];
-      nextCursor: string;
-      hasMore: boolean;
-    };
-
-    test("the tail returns a late chunk that a page would sort among old ones", async () => {
+    test("files someone else put in the session's folder are skipped", async () => {
       await configure();
-      const { session, proxy } = await seedChunks(3);
+      const { session, chunkIds } = await seedChunks(1);
+      fakeS3Bucket.putDirect(BUCKET, `logs/${projectId}/${session.id}/0000000000000_notes.txt`, Buffer.from("hi"));
 
-      const first = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs?limit=20`);
-      const firstBody = JSON.parse(first.payload) as THistoryBody;
-      expect(firstBody.chunks).toHaveLength(2);
-      expect(typeof firstBody.liveCursor).toBe("string");
+      expect((await read(session.id)).chunks.map((chunk) => chunk.chunkId)).toEqual(chunkIds);
+    });
 
+    test("the tail starts from the recent feed, so a chunk registered before the page opened still arrives", async () => {
+      await configure();
+      const { session, proxy } = await seedSession();
+      const registered = await recordChunk(proxy, session.id);
+
+      expect((await read(session.id)).chunks).toEqual([]);
+
+      fakeS3Bucket.put(registered.uploadUrl, Buffer.alloc(CHUNK_BYTES));
+      const first = await tail(session.id);
+      expect(first.chunks.map((chunk) => chunk.chunkId)).toEqual([registered.chunkId]);
+      expect(fakeS3Bucket.get(first.chunks[0].presignedGetUrl)).toHaveLength(CHUNK_BYTES);
+      expect(Buffer.from(first.sessionLogs.sessionKey as string, "base64")).toHaveLength(32);
+    });
+
+    test("each tail continues after the last entry it returned", async () => {
+      await configure();
+      const { session, proxy } = await seedSession();
+      await recordChunk(proxy, session.id);
+
+      const first = await tail(session.id);
+      expect(first.chunks).toHaveLength(1);
+
+      const quiet = await tail(session.id, first.nextCursor);
+      expect(quiet.chunks).toEqual([]);
+      expect(quiet.nextCursor).toBe(first.nextCursor);
+
+      const next = await recordChunk(proxy, session.id);
+      const later = await tail(session.id, quiet.nextCursor);
+      expect(later.chunks.map((chunk) => chunk.chunkId)).toEqual([next.chunkId]);
+    });
+
+    test("the tail returns a chunk sealed long ago but registered now", async () => {
+      await configure();
+      const { session, proxy } = await seedSession();
       const late = await recordChunk(
         proxy,
         session.id,
         chunkBody({ chunkId: uuidv7({ msecs: Date.now() - 60 * 60_000 }) })
       );
-      fakeS3Bucket.put(late.uploadUrl, Buffer.alloc(CHUNK_BYTES));
 
-      const newest = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs?limit=20`);
-      expect((JSON.parse(newest.payload) as THistoryBody).chunks.map((c) => c.chunkId)).not.toContain(late.chunkId);
-
-      const received = await inject(
-        "GET",
-        `/api/v1/agent-vault/sessions/${session.id}/logs/tail?cursor=${firstBody.liveCursor}`
-      );
-      expect(received.statusCode).toBe(200);
-      const body = JSON.parse(received.payload) as TTailBody;
-      const ids = body.chunks.map((c) => c.chunkId);
-
-      expect(ids[ids.length - 1]).toBe(late.chunkId);
-      expect(ids).toEqual(expect.arrayContaining(firstBody.chunks.map((c) => c.chunkId)));
-      expect(typeof body.nextCursor).toBe("string");
-      expect(body.hasMore).toBe(false);
+      expect((await tail(session.id)).chunks.map((chunk) => chunk.chunkId)).toEqual([late.chunkId]);
     });
 
-    test("a tail read cut short resumes after its last chunk, so a backlog is worked through", async () => {
+    test("the feed keeps only the most recent chunks", async () => {
       await configure();
-      const { session } = await seedChunks(3);
-
-      let cursor = encodeTailCursor(new Date(Date.now() - 60 * 60 * 1000));
-      const seen = new Set<string>();
-      let reads = 0;
-      let hasMore = true;
-      while (hasMore && reads < 10) {
+      const { session, proxy } = await seedSession();
+      for (let i = 0; i < AGENT_VAULT_SESSION_LOG_FEED_MAX_ENTRIES + 2; i += 1) {
         // eslint-disable-next-line no-await-in-loop
-        const res = await inject(
-          "GET",
-          `/api/v1/agent-vault/sessions/${session.id}/logs/tail?limit=10&cursor=${cursor}`
-        );
-        const body = JSON.parse(res.payload) as TTailBody;
-        body.chunks.forEach((chunk) => seen.add(chunk.chunkId));
-        ({ hasMore } = body);
-        cursor = body.nextCursor;
-        reads += 1;
+        await recordChunk(proxy, session.id);
       }
 
-      expect(hasMore).toBe(false);
-      expect(seen.size).toBe(3);
-      expect(reads).toBeLessThan(10);
-    });
-
-    test("the tail can start without a cursor", async () => {
-      await configure();
-      const { session } = await seedChunks(1);
-
-      const res = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs/tail`);
-      expect(res.statusCode).toBe(200);
-      expect(typeof (JSON.parse(res.payload) as TTailBody).nextCursor).toBe("string");
+      expect((await tail(session.id)).chunks).toHaveLength(AGENT_VAULT_SESSION_LOG_FEED_MAX_ENTRIES);
     });
 
     test.each([
-      { why: "a live cursor passed to history", path: "logs", cursor: () => encodeTailCursor(new Date()) },
+      { why: "a live cursor passed to history", path: "logs", cursor: () => encodeTailCursor("1791278402731-0") },
       {
         why: "a history cursor passed to the tail",
         path: "logs/tail",
-        cursor: () => encodeHistoryCursor(nextChunkId())
+        cursor: () => encodeHistoryCursor("8208694117999_x")
       },
       { why: "a garbage cursor passed to history", path: "logs", cursor: () => "not-a-cursor" },
       { why: "a garbage cursor passed to the tail", path: "logs/tail", cursor: () => "not-a-cursor" }
     ])("rejects $why", async ({ path, cursor }) => {
       await configure();
-      const { session } = await seedChunks(1);
+      const { session } = await seedSession();
       const res = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/${path}?cursor=${cursor()}`);
       expect(res.statusCode).toBe(422);
     });
 
-    const readLink = async (sessionId: string) => {
-      const res = await inject("GET", `/api/v1/agent-vault/sessions/${sessionId}/logs`);
-      return (JSON.parse(res.payload) as { chunks: { presignedGetUrl: string | null }[] }).chunks[0].presignedGetUrl;
-    };
-
-    test("a chunk in a bucket the project no longer uses is not presigned, and is again once the bucket is switched back", async () => {
+    test("after a bucket change, older logs don't show until the bucket is switched back", async () => {
       await configure();
-      const { session } = await seedChunks(1);
+      const { session, chunkIds } = await seedChunks(1);
 
       expect((await saveConfig({ bucket: "a-different-bucket" })).statusCode).toBe(200);
-      expect(await readLink(session.id)).toBeNull();
+      expect((await read(session.id)).chunks).toEqual([]);
 
       expect((await saveConfig({ bucket: BUCKET })).statusCode).toBe(200);
-      expect(fakeS3Bucket.get((await readLink(session.id)) as string)).toEqual(Buffer.alloc(CHUNK_BYTES));
+      const page = await read(session.id);
+      expect(page.chunks.map((chunk) => chunk.chunkId)).toEqual(chunkIds);
+      expect(fakeS3Bucket.get(page.chunks[0].presignedGetUrl)).toEqual(Buffer.alloc(CHUNK_BYTES));
     });
 
-    test("a chunk keeps its link after only the prefix changes", async () => {
+    test("after a prefix change, older logs don't show until the prefix is switched back", async () => {
       await configure();
-      const { session } = await seedChunks(1);
+      const { session, chunkIds } = await seedChunks(1);
 
       expect((await saveConfig({ keyPrefix: "other" })).statusCode).toBe(200);
-      expect(fakeS3Bucket.get((await readLink(session.id)) as string)).toEqual(Buffer.alloc(CHUNK_BYTES));
+      expect((await read(session.id)).chunks).toEqual([]);
+
+      expect((await saveConfig({ keyPrefix: "logs" })).statusCode).toBe(200);
+      expect((await read(session.id)).chunks.map((chunk) => chunk.chunkId)).toEqual(chunkIds);
+    });
+
+    test("the tail skips chunks registered before a bucket change, and still moves past them", async () => {
+      await configure();
+      const { session, proxy } = await seedSession();
+      await recordChunk(proxy, session.id);
+
+      expect((await saveConfig({ bucket: "a-different-bucket" })).statusCode).toBe(200);
+      const body = await tail(session.id);
+      expect(body.chunks).toEqual([]);
+      expect(body.nextCursor).not.toBe(encodeTailCursor("0-0"));
     });
 
     test("a key copied from another session is refused rather than handed out", async () => {
@@ -1151,62 +1054,50 @@ describe("Agent Vault session logs", async () => {
 
       expect((await saveConfig({ enabled: false })).statusCode).toBe(200);
 
-      const res = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
-      const body = JSON.parse(res.payload) as { sessionLogs: { enabled: boolean }; chunks: unknown[] };
+      const body = await read(session.id);
       expect(body.sessionLogs.enabled).toBe(false);
       expect(body.chunks).toHaveLength(2);
     });
 
-    test("without a connection, a session lists what it recorded as unreadable rather than as nothing", async () => {
+    test("without a connection, a read says why and the tail holds its place", async () => {
       await configure();
       const { session } = await seedChunks(2);
 
       expect((await saveConfig({ enabled: false, appConnectionId: null })).statusCode).toBe(200);
 
-      const res = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
-      expect(res.statusCode).toBe(200);
-      const body = JSON.parse(res.payload) as {
-        sessionLogs: {
-          sessionKey: string | null;
-          storageUnavailable: { reason: string; message: string | null } | null;
-        };
-        chunks: { presignedGetUrl: string | null }[];
-      };
+      const body = await read(session.id);
       expect(body.sessionLogs.storageUnavailable).toEqual({ reason: "no-connection", message: null });
       expect(body.sessionLogs.sessionKey).toBeNull();
-      expect(body.chunks.map((chunk) => chunk.presignedGetUrl)).toEqual([null, null]);
+      expect(body.chunks).toEqual([]);
 
-      const since = new Date(Date.now() - 60 * 60_000);
-      const live = await inject(
-        "GET",
-        `/api/v1/agent-vault/sessions/${session.id}/logs/tail?cursor=${encodeTailCursor(since)}`
-      );
-      const liveBody = JSON.parse(live.payload) as {
-        sessionLogs: { storageUnavailable: { reason: string } | null };
-        chunks: unknown[];
-        nextCursor: string;
-      };
-      expect(liveBody.chunks).toEqual([]);
-      expect(liveBody.nextCursor).toBe(encodeTailCursor(since));
-      expect(liveBody.sessionLogs.storageUnavailable?.reason).toBe("no-connection");
+      const live = await tail(session.id);
+      expect(live.chunks).toEqual([]);
+      expect(live.nextCursor).toBe(encodeTailCursor("0-0"));
+      expect(live.sessionLogs.storageUnavailable?.reason).toBe("no-connection");
     });
 
-    test("when the connection can't be used, a session lists what it recorded and says why", async () => {
+    test("when the connection can't be used, a read says why", async () => {
       await configure();
       const { session } = await seedChunks(1);
       fakeAwsConnection.failsConfigWith("AWS refused to assume the role");
 
-      const res = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
-      expect(res.statusCode).toBe(200);
-      const body = JSON.parse(res.payload) as {
-        sessionLogs: { storageUnavailable: { reason: string; message: string | null } | null };
-        chunks: { presignedGetUrl: string | null }[];
-      };
+      const body = await read(session.id);
       expect(body.sessionLogs.storageUnavailable).toEqual({
         reason: "connection-unusable",
         message: `Couldn't use the AWS connection '${connectionName}' for session logs: AWS refused to assume the role`
       });
-      expect(body.chunks.map((chunk) => chunk.presignedGetUrl)).toEqual([null]);
+      expect(body.chunks).toEqual([]);
+    });
+
+    test("when the bucket refuses to list, a read says so instead of failing", async () => {
+      await configure();
+      const { session } = await seedChunks(1);
+      fakeS3Bucket.failsListWith(true);
+
+      const body = await read(session.id);
+      expect(body.sessionLogs.storageUnavailable?.reason).toBe("connection-unusable");
+      expect(body.sessionLogs.storageUnavailable?.message).toMatch(/s3:ListBucket/);
+      expect(body.chunks).toEqual([]);
     });
 
     test("a session with no logs comes back empty rather than erroring", async () => {
@@ -1214,9 +1105,7 @@ describe("Agent Vault session logs", async () => {
       const bundle = await createAccessBundle(`session-logs-empty-${Date.now()}`);
       const session = await mintSession(bundle.name);
 
-      const res = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
-      expect(res.statusCode).toBe(200);
-      expect(JSON.parse(res.payload)).toMatchObject({
+      expect(await read(session.id)).toMatchObject({
         chunks: [],
         nextCursor: null,
         sessionLogs: { sessionKey: null }
@@ -1268,18 +1157,6 @@ describe("Agent Vault session logs", async () => {
       await configure();
       const res = await inject("GET", `/api/v1/agent-vault/sessions/${crypto.randomUUID()}/logs`);
       expect(res.statusCode).toBe(404);
-    });
-
-    test.each([
-      { limit: "0", why: "below the floor" },
-      { limit: "5001", why: "above the ceiling" },
-      { limit: "abc", why: "not a number" }
-    ])("rejects a limit that is $why", async ({ limit }) => {
-      await configure();
-      const bundle = await createAccessBundle(`session-logs-limit-${Date.now()}-${limit}`);
-      const session = await mintSession(bundle.name);
-      const res = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs?limit=${limit}`);
-      expect(res.statusCode).toBe(422);
     });
   });
 });

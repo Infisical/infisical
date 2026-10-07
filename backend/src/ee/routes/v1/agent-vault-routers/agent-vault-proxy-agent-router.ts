@@ -212,7 +212,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       hide: true,
       operationId: "createAgentVaultSessionLogChunk",
       description:
-        "Records an encrypted session log chunk and returns a presigned URL to upload the chunk to. If you send the same `chunkId` again, you get a new URL for the same chunk.",
+        "Returns a presigned URL to upload an encrypted session log chunk to. If you send the same `chunkId` again, you get a new URL for the same object.",
       tags: [ApiDocsTags.AgentVaultSessionLogs],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
       body: AgentVaultSessionLogChunkCreateSchema,

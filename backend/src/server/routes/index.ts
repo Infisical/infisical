@@ -40,7 +40,6 @@ import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/
 import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-access-bundle-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
-import { agentVaultSessionLogChunkDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-chunk-dal";
 import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
 import { agentVaultSessionLogServiceFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-service";
 import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
@@ -1936,7 +1935,6 @@ export const registerRoutes = async (
   const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
   const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
   const agentVaultResolveDAL = agentVaultResolveDALFactory(db);
-  const agentVaultSessionLogChunkDAL = agentVaultSessionLogChunkDALFactory(db);
   const agentVaultSessionLogConfigDAL = agentVaultSessionLogConfigDALFactory(db);
 
   const agentVaultAccessBundleService = agentVaultAccessBundleServiceFactory({
@@ -1961,8 +1959,7 @@ export const registerRoutes = async (
     agentVaultAccessBundleDAL,
     membershipDAL,
     permissionService,
-    kmsService,
-    agentVaultSessionLogChunkDAL
+    kmsService
   });
 
   const agentVaultProjectResolver = agentVaultProjectResolverFactory({
@@ -3162,7 +3159,6 @@ export const registerRoutes = async (
   });
 
   const agentVaultSessionLogService = agentVaultSessionLogServiceFactory({
-    agentVaultSessionLogChunkDAL,
     agentVaultSessionLogConfigDAL,
     agentVaultSessionDAL,
     agentVaultProxyDAL,
@@ -3170,7 +3166,8 @@ export const registerRoutes = async (
     appConnectionService,
     permissionService,
     kmsService,
-    licenseService
+    licenseService,
+    keyStore
   });
 
   const hsmConnectorService = hsmConnectorServiceFactory({

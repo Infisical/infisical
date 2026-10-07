@@ -8,7 +8,10 @@ import { AgentVaultMemberType } from "./enums";
 import {
   createSessionLogChunkCache,
   decryptSessionLogPage,
+  isRetryableResult,
   mergeSessionLogPages,
+  SESSION_LOG_UPLOAD_GRACE_MS,
+  sessionLogChunkKey,
   TAgentVaultSessionLogChunkCache
 } from "./sessionLogDecrypt";
 import {
@@ -38,12 +41,6 @@ export const fetchAgentVaultProjectId = async () => {
   const { data } = await apiRequest.get<{ projectId: string }>("/api/v1/agent-vault/project");
   return data.projectId;
 };
-
-const SESSION_LOG_PAGE_RECORDS = 200;
-
-const SESSION_LOG_LIVE_RECORDS = 1000;
-
-const SESSION_LOG_LIVE_MAX_READS = 10;
 
 export const AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS = 15_000;
 
@@ -376,13 +373,16 @@ export const useGetAgentVaultSessionLogs = (
       const cache = chunkCache.current as TAgentVaultSessionLogChunkCache;
       const { data } = await apiRequest.get<TAgentVaultSessionLogHistoryPage>(url, {
         params: {
-          limit: SESSION_LOG_PAGE_RECORDS,
           ...(pageParam ? { cursor: pageParam } : {}),
           ...(range.from ? { from: range.from } : {}),
           ...(range.to ? { to: range.to } : {})
         },
         signal
       });
+      // Past the first page, rows are already on screen: fail the page so they stay, with a Retry.
+      if (pageParam && data.sessionLogs.storageUnavailable) {
+        throw new Error("Session logs can't be read right now");
+      }
       return decryptSessionLogPage(data, cache, signal);
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
@@ -393,33 +393,53 @@ export const useGetAgentVaultSessionLogs = (
     gcTime: 0
   });
 
-  const liveFrom = history.isPlaceholderData ? undefined : history.data?.pages[0]?.liveCursor;
+  const isHistoryLoaded = Boolean(history.data) && !history.isPlaceholderData;
   const isRecordable = history.data?.pages[0]?.sessionLogs.isRecordable !== false;
   const liveKey = agentVaultKeys.sessionLogsLive(currentOrg.id, sessionId ?? "", range);
 
   const live = useQuery({
     queryKey: liveKey,
-    enabled: enabled && isLive && isRecordable && Boolean(sessionId) && Boolean(liveFrom),
+    enabled: enabled && isLive && isRecordable && Boolean(sessionId) && isHistoryLoaded,
     queryFn: async ({ signal }) => {
       const cache = chunkCache.current as TAgentVaultSessionLogChunkCache;
       let arrived =
         queryClient.getQueryData<TAgentVaultDecryptedSessionLogPage<TAgentVaultSessionLogTailPage>>(
           liveKey
         );
-      let cursor = arrived?.nextCursor ?? liveFrom;
-      let hasMore = true;
-      for (let read = 0; hasMore && read < SESSION_LOG_LIVE_MAX_READS; read += 1) {
-        // eslint-disable-next-line no-await-in-loop
-        const { data } = await apiRequest.get<TAgentVaultSessionLogTailPage>(tailUrl, {
-          params: { limit: SESSION_LOG_LIVE_RECORDS, cursor },
-          signal
-        });
-        // eslint-disable-next-line no-await-in-loop
-        arrived = mergeSessionLogPages(arrived, await decryptSessionLogPage(data, cache, signal));
-        cursor = data.nextCursor;
-        ({ hasMore } = data);
+
+      // The feed hands each chunk over once, so a chunk that hadn't landed yet is fetched again here, for as
+      // long as it may still be uploading.
+      const now = Date.now();
+      const uploading = (arrived?.chunks ?? []).filter((chunk) => {
+        const result = arrived?.decrypted[sessionLogChunkKey(chunk)];
+        const firstSeenAt = result?.gap?.firstSeenAt;
+        return (
+          result &&
+          isRetryableResult(result) &&
+          firstSeenAt != null &&
+          now < firstSeenAt + SESSION_LOG_UPLOAD_GRACE_MS
+        );
+      });
+      if (arrived && uploading.length) {
+        arrived = mergeSessionLogPages(
+          arrived,
+          await decryptSessionLogPage({ ...arrived, chunks: uploading }, cache, signal, {
+            isTail: true
+          })
+        );
       }
-      return arrived as TAgentVaultDecryptedSessionLogPage<TAgentVaultSessionLogTailPage>;
+
+      const { data } = await apiRequest.get<TAgentVaultSessionLogTailPage>(tailUrl, {
+        params: arrived ? { cursor: arrived.nextCursor } : {},
+        signal
+      });
+      if (data.sessionLogs.storageUnavailable) {
+        throw new Error("Session logs can't be read right now");
+      }
+      return mergeSessionLogPages(
+        arrived,
+        await decryptSessionLogPage(data, cache, signal, { isTail: true })
+      );
     },
     refetchInterval: AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
     staleTime: 0,
