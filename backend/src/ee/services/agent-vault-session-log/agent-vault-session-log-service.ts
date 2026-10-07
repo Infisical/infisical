@@ -95,7 +95,6 @@ export const agentVaultSessionLogServiceFactory = ({
 }: TAgentVaultSessionLogServiceFactoryDep) => {
   const $storageDeps = { appConnectionDAL, kmsService };
 
-
   const NO_SETTINGS = { enabled: false, appConnectionId: null, bucket: null, region: null, keyPrefix: null };
 
   const toSettingsView = (config: TAgentVaultSessionLogConfigs) => ({
@@ -370,7 +369,7 @@ export const agentVaultSessionLogServiceFactory = ({
       }
     }
 
-    const hasMore = !isBeforeRange && (consumed < listed.objects.length || listed.isTruncated);
+    const hasMore = !isBeforeRange && consumed > 0 && (consumed < listed.objects.length || listed.isTruncated);
     const nextCursor = hasMore ? encodeHistoryCursor(listed.objects[consumed - 1].key.slice(folder.length)) : null;
     if (!found.length) return { sessionLogs, chunks: [], nextCursor };
 
@@ -398,7 +397,8 @@ export const agentVaultSessionLogServiceFactory = ({
     );
     if (!entries.length) return unchanged;
 
-    // Held rather than advanced, so these chunks still arrive once the connection is back.
+    // Held rather than advanced, so a short outage loses nothing. After a longer one the feed has moved on, and
+    // the chunks show on the next full read.
     const opened = await $openStorage({ ctx: scope.ctx, config, isAdmin });
     if ("unavailable" in opened)
       return { ...unchanged, sessionLogs: { ...sessionLogs, storageUnavailable: opened.unavailable } };

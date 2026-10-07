@@ -461,6 +461,14 @@ describe("listSessionLogs: paging through the bucket", () => {
     expect(page.nextCursor).toBe(encodeHistoryCursor("notes.txt"));
   });
 
+  test("an empty page that says more remain ends the listing instead of failing", async () => {
+    listChunks.mockResolvedValueOnce({ objects: [], isTruncated: true });
+    const { service } = build();
+    const page = await service.listSessionLogs(scope);
+    expect(page.chunks).toEqual([]);
+    expect(page.nextCursor).toBeNull();
+  });
+
   test("a cursor continues after the name it carries", async () => {
     const { service } = build();
     await service.listSessionLogs({ ...scope, after: "8208694117999_x" });

@@ -31,8 +31,8 @@ export const AGENT_VAULT_SESSION_LOG_LAST_KNOWN_PLAN_MAX_AGE_MS = 60 * 60_000; /
 export const AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS = 300; // 5 minutes
 
 // A page of session logs ends once it holds 48 KiB of chunks or 200 chunks, whichever comes first, and always holds
-// at least one. 48 KiB is about 200 requests, the page size before chunks moved out of Postgres. Each page is one
-// S3 list call plus one browser download per chunk, and the next page starts after the last name it read.
+// at least one. 48 KiB is about 200 requests. Each page is one S3 list call plus one browser download per chunk,
+// so a small page keeps opening the logs cheap. The next page starts after the last name it read.
 export const AGENT_VAULT_SESSION_LOG_MAX_PAGE_CHUNKS = 200;
 export const AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES = 48 * 1024; // 48 KiB of ciphertext
 

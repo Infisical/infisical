@@ -147,13 +147,17 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const [now, setNow] = useState(() => Date.now());
   const { records, gaps, arrivals, isTruncated, isOverByteBudget, hasUploadingChunks } =
     useAgentVaultSessionLogTimeline(pages, now);
-  // While a chunk may still be uploading, the clock keeps moving so it turns into a missing gap once its
-  // grace runs out. The live tail fetches it again on each poll.
+  // While a chunk from the live tail may still be uploading, the clock keeps moving so it turns into a missing
+  // gap once its grace runs out, and history reloads: the tail hands a chunk over only once and stops polling in
+  // a hidden tab or after the session ends, while the bucket listing has the chunk with a fresh link once it lands.
   useEffect(() => {
     if (!hasUploadingChunks) return undefined;
-    const timer = setTimeout(() => setNow(Date.now()), UPLOAD_RECHECK_MS);
+    const timer = setTimeout(() => {
+      setNow(Date.now());
+      refetch({ cancelRefetch: false }).catch(() => {});
+    }, UPLOAD_RECHECK_MS);
     return () => clearTimeout(timer);
-  }, [hasUploadingChunks, now]);
+  }, [hasUploadingChunks, now, refetch]);
   if (isOverByteBudget && !isPlaceholderData && !isPausedForBudget) pauseForBudget();
   const isLoadError = isError && !data;
 
