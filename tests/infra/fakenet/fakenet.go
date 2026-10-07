@@ -124,9 +124,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mu.Unlock()
 
 	// Every hostname resolves here, so an unfaked one arrives as a normal request
-	// rather than failing to connect. Answering it with a 501 naming the URL is what
-	// replaces WireMock's deny-all: a forgotten fake has to fail loudly, or a test
-	// passes without exercising anything.
+	// rather than failing to connect. Answering it with a 501 naming the URL makes a
+	// forgotten fake fail loudly, instead of letting a test pass without exercising
+	// anything.
 	if !known {
 		s.refuse(w, r, host, "no fake is registered for this host")
 		return

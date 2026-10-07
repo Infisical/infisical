@@ -171,13 +171,10 @@ func bringUp(ctx context.Context, profile Profile, cfg *config, pkg string) (*St
 		return nil, nil, err
 	}
 
-	// One network for everything, including Isolated packages.
-	//
-	// Isolated used to take its own, because two WireMocks on one network both
-	// claimed api.github.com and Docker DNS round-robined between them. fakenet holds
-	// no aliases -- it is reached as a resolver at a fixed address -- so that reason
-	// is gone. Isolation for an Isolated package is about instance state, not the
-	// network, and its containers are package-qualified by name anyway.
+	// One network for everything, including Isolated packages. fakenet is reached at
+	// a fixed address on it, and an Isolated package's containers are
+	// package-qualified by name, so isolation is about instance state rather than the
+	// network.
 	stackNet := infra.NetworkName
 
 	handles := map[infra.ModuleKey]infra.Handle{}

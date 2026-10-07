@@ -36,7 +36,7 @@ func (p Profile) String() string {
 //
 // A profile fixes the set completely, and that is load-bearing rather than tidy. A
 // shared container is adopted by name and takes its environment at creation, so if
-// one package declared WireMock and another did not, whichever started the instance
+// one package declared fakenet and another did not, whichever started the instance
 // first would silently decide whether it runs in cloud mode for everyone.
 func (p Profile) modules(img infisical.Image, fnImg fakenet.Image, caFile string, extra ...infra.Module) ([]infra.Module, map[infra.ModuleKey]infra.Scope) {
 	own := infra.Shared

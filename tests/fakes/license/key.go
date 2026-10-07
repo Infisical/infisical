@@ -16,7 +16,7 @@ import (
 // that grants nothing.
 //
 // It deliberately does NOT need to be stable across processes, unlike AUTH_SECRET.
-// WireMock never verifies the signature, so a second test binary adopting a running
+// The license fake never verifies the signature, so a second test binary adopting a running
 // instance can hold a different key and every call still succeeds. The only real
 // constraint is that the client can parse it: it fails before sending anything if it
 // cannot.

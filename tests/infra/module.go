@@ -88,7 +88,7 @@ func (d Deps) Log() Logger { return d.log }
 // Get returns a typed handle, or false when the module was not declared.
 //
 // A generic method rather than a package function, which Go 1.27 allows. Modules
-// still wrap it (wiremock.From, postgres.MustFrom) so call sites read as prose.
+// still wrap it (fakenet.From, postgres.MustFrom) so call sites read as prose.
 func (d Deps) Get[H Handle](k ModuleKey) (H, bool) {
 	h, ok := d.handles[k]
 	if !ok {
