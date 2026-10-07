@@ -1,5 +1,6 @@
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
+import { computeLocationFingerprint } from "./pki-discovery-fns";
 import { describeHostFileError } from "./pki-discovery-host-fns";
 import {
   buildScanRequest,
@@ -12,7 +13,12 @@ import {
 } from "./pki-discovery-host-scan-fns";
 import { DB_SHORT_VARCHAR_LIMIT, truncateString } from "./pki-discovery-scan-run-fns";
 import { LinuxServerTargetConfigSchema } from "./pki-discovery-schemas";
-import { HostCertificateFileStatus, TLinuxServerTargetConfig, TPkiInstallationMetadata } from "./pki-discovery-types";
+import {
+  HostCertificateFileStatus,
+  PkiInstallationLocationType,
+  TLinuxServerTargetConfig,
+  TPkiInstallationMetadata
+} from "./pki-discovery-types";
 
 const recordInstallationError = async (installationId: string, message: string, deps: THostScanDeps) => {
   const installation = await deps.pkiCertificateInstallationDAL.findById(
@@ -53,6 +59,19 @@ export const rescanInstallation = async (installationId: string, deps: THostScan
 
     const connection = await deps.appConnectionDAL.findById(details.connectionId);
     const host = await resolveHost(connection, project.orgId, deps);
+    const currentFingerprint = computeLocationFingerprint(
+      installation.locationType as PkiInstallationLocationType,
+      { hostIdentifier: host.hostIdentifier, filePath: details.filePath },
+      host.fingerprintGatewayKey
+    );
+    if (currentFingerprint !== installation.locationFingerprint) {
+      await recordInstallationError(
+        installation.id,
+        "The SSH connection now points to a different server or gateway. Run the discovery job again to scan this file.",
+        deps
+      );
+      return;
+    }
     const keystorePasswords = await loadKeystorePasswords(installation.projectId, host, deps);
 
     const response = await scanHost(host, buildScanRequest(targetConfig, keystorePasswords, [details.filePath]), deps);

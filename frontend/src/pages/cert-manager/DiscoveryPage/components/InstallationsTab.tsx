@@ -56,7 +56,11 @@ import {
 import { DiscoveryTypeIcon } from "./DiscoveryJobSheet/DiscoveryTypeIcon";
 import { DeleteInstallationModal } from "./DeleteInstallationModal";
 import { EditInstallationModal } from "./EditInstallationModal";
-import { SetKeystorePasswordDialog } from "./SetKeystorePasswordDialog";
+import {
+  RESCAN_POLL_INTERVAL_MS,
+  RESCAN_POLL_TIMEOUT_MS,
+  SetKeystorePasswordDialog
+} from "./SetKeystorePasswordDialog";
 
 type Props = {
   projectId: string;
@@ -79,12 +83,34 @@ export const InstallationsTab = ({ projectId }: Props) => {
     "setKeystorePassword"
   ] as const);
 
-  const { data, isPending } = useListPkiInstallations({
-    projectId,
-    offset: (page - 1) * PAGE_SIZE,
-    limit: PAGE_SIZE,
-    search: debouncedSearch || undefined
-  });
+  const [pendingRescan, setPendingRescan] = useState<{
+    installationId: string;
+    previousCheckedAt?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!pendingRescan) return undefined;
+    const timeout = setTimeout(() => setPendingRescan(null), RESCAN_POLL_TIMEOUT_MS);
+    return () => clearTimeout(timeout);
+  }, [pendingRescan]);
+
+  const { data, isPending } = useListPkiInstallations(
+    {
+      projectId,
+      offset: (page - 1) * PAGE_SIZE,
+      limit: PAGE_SIZE,
+      search: debouncedSearch || undefined
+    },
+    { refetchInterval: pendingRescan ? RESCAN_POLL_INTERVAL_MS : false }
+  );
+
+  useEffect(() => {
+    if (!pendingRescan) return;
+    const rescanned = data?.installations.find((item) => item.id === pendingRescan.installationId);
+    if (rescanned && rescanned.metadata?.lastCheckedAt !== pendingRescan.previousCheckedAt) {
+      setPendingRescan(null);
+    }
+  }, [data, pendingRescan]);
 
   useEffect(() => {
     setPage(1);
@@ -275,6 +301,15 @@ export const InstallationsTab = ({ projectId }: Props) => {
         onOpenChange={(isOpen) => handlePopUpToggle("setKeystorePassword", isOpen)}
         projectId={projectId}
         installation={popUp.setKeystorePassword.data as TPkiInstallation | undefined}
+        onSaved={() => {
+          const saved = popUp.setKeystorePassword.data as TPkiInstallation | undefined;
+          if (saved) {
+            setPendingRescan({
+              installationId: saved.id,
+              previousCheckedAt: saved.metadata?.lastCheckedAt
+            });
+          }
+        }}
       />
 
       <DeleteInstallationModal

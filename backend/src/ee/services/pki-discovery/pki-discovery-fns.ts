@@ -290,21 +290,7 @@ export const scanEndpoint = async (
   });
 };
 
-const parseDistinguishedName = (value: string): Record<string, string> => {
-  const fields: Record<string, string[]> = {};
-  value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .forEach((line) => {
-      const separator = line.indexOf("=");
-      if (separator <= 0) return;
-      const key = line.substring(0, separator);
-      const fieldValue = line.substring(separator + 1);
-      fields[key] = [...(fields[key] ?? []), fieldValue];
-    });
-  return Object.fromEntries(Object.entries(fields).map(([key, values]) => [key, values.join(", ")]));
-};
+const getNameField = (name: x509.Name, field: string) => name.getField(field).join(", ") || undefined;
 
 export const parseCertificateDer = (derBuffer: Buffer): TScanCertificateResult | null => {
   try {
@@ -338,8 +324,8 @@ export const parseCertificateDer = (derBuffer: Buffer): TScanCertificateResult |
     }
 
     const basicConstraints = x509Cert.getExtension(x509.BasicConstraintsExtension);
-    const subject = parseDistinguishedName(nodeCert.subject);
-    const issuer = parseDistinguishedName(nodeCert.issuer);
+    const subject = x509Cert.subjectName;
+    const issuer = x509Cert.issuerName;
 
     return {
       pemChain: [x509Cert.toString("pem")],
@@ -347,16 +333,16 @@ export const parseCertificateDer = (derBuffer: Buffer): TScanCertificateResult |
       fingerprint: computeCertFingerprint(derBuffer),
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
       fingerprintSha1: computeCertFingerprintSha1(derBuffer),
-      commonName: subject.CN || "",
+      commonName: getNameField(subject, "CN") || "",
       altNames: altNames || undefined,
       notBefore: new Date(nodeCert.validFrom),
       notAfter: new Date(nodeCert.validTo),
       serialNumber: nodeCert.serialNumber,
-      subjectOrganization: subject.O,
-      subjectOrganizationalUnit: subject.OU,
-      subjectCountry: subject.C,
-      subjectState: subject.ST,
-      subjectLocality: subject.L,
+      subjectOrganization: getNameField(subject, "O"),
+      subjectOrganizationalUnit: getNameField(subject, "OU"),
+      subjectCountry: getNameField(subject, "C"),
+      subjectState: getNameField(subject, "ST"),
+      subjectLocality: getNameField(subject, "L"),
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
       keyAlgorithm: extractKeyAlgorithm(x509Cert),
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -365,8 +351,8 @@ export const parseCertificateDer = (derBuffer: Buffer): TScanCertificateResult |
       extendedKeyUsages,
       isCA: basicConstraints ? basicConstraints.ca : nodeCert.ca,
       pathLength: basicConstraints?.pathLength,
-      issuerCommonName: issuer.CN,
-      issuerOrganization: issuer.O
+      issuerCommonName: getNameField(issuer, "CN"),
+      issuerOrganization: getNameField(issuer, "O")
     };
   } catch (error) {
     logger.error(error, "Failed to parse discovered certificate");

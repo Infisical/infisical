@@ -19,6 +19,9 @@ import {
 } from "@app/components/v3";
 import { TPkiInstallation, useUpdatePkiInstallation } from "@app/hooks/api";
 
+export const RESCAN_POLL_INTERVAL_MS = 3000;
+export const RESCAN_POLL_TIMEOUT_MS = 2 * 60 * 1000;
+
 const MAX_PASSWORD_LENGTH = 1024;
 
 type Props = {

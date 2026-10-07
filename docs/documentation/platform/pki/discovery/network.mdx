@@ -11,27 +11,36 @@ Network discovery scans network endpoints over TLS to discover certificates serv
 
 <Tabs>
   <Tab title="Infisical UI">
-    1. In **Certificate Manager**, go to **Discovery** and select **Add Job**, then select **Network**.
-
-    2. Under **Targets**, set what to scan:
-        - **Targets**: Domains, IP addresses, or CIDR ranges to scan (e.g., `example.com`, `192.168.1.1`, `10.0.0.0/24`).
+    <Steps>
+      <Step>
+        In **Certificate Manager**, go to **Discovery** and select **Add Job**, then select **Network**.
+      </Step>
+      <Step>
+        Under **Targets**, set what to scan:
+        - **Targets**: Domains, IP addresses, or CIDR ranges to scan, such as `example.com`, `192.168.1.1`, or `10.0.0.0/24`.
         - **Ports**: Ports to scan for TLS certificates. Defaults to common TLS ports if not specified.
         - **Gateway** (optional): The Infisical Gateway for scanning private networks.
 
         <Note>
           At least one target (domain or IP) must be specified.
         </Note>
-
-    3. Enter a **Name** and an optional **Description**. To run the job on a schedule, turn on **Scan on a Schedule** and pick a **Scan Interval**.
-
-    4. Review the job and select **Create Job**.
-
-    5. Open the job and select **Trigger Scan**, or wait for the next scheduled scan.
-
-    6. After a scan completes, view the results:
+      </Step>
+      <Step>
+        Enter a **Name** and an optional **Description**. To run the job on a schedule, turn on **Scan on a Schedule** and pick a **Scan Interval**.
+      </Step>
+      <Step>
+        Review the job and select **Create Job**.
+      </Step>
+      <Step>
+        Open the job and select **Trigger Scan**, or wait for the next scheduled scan.
+      </Step>
+      <Step>
+        After a scan completes, view the results:
         - **Installations**: Unique locations where certificates were found.
         - **Certificates**: Details including common name, issuer, and expiration date.
         - **Scan History**: Log of all scans with status and timestamps.
+      </Step>
+    </Steps>
   </Tab>
   <Tab title="API">
     To create a **Network** discovery job, make an API request to the [Create Discovery](/api-reference/endpoints/pki-discovery/create) API endpoint.

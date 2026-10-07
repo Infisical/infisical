@@ -246,7 +246,7 @@ export type TGetPkiInstallationDTO = {
 export type TUpdatePkiInstallationDTO = {
   installationId: string;
   name?: string;
-  keystorePassword?: string | null;
+  keystorePassword?: string;
 };
 
 export type TDeletePkiInstallationDTO = {

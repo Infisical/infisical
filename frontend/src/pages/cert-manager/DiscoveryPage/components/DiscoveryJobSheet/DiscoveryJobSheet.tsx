@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeftIcon } from "lucide-react";
 
 import {
@@ -42,11 +42,22 @@ export const DiscoveryJobSheet = ({ isOpen, onClose, projectId, discovery }: Pro
     onClose();
   };
 
+  const returnToTypeSelect = () => {
+    setIsDirty(false);
+    setSelectedType(null);
+  };
+
+  const discardActionRef = useRef<VoidFunction>(closeSheet);
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
-    useDiscardChangesGuard({ isDirty, onDiscard: closeSheet });
+    useDiscardChangesGuard({ isDirty, onDiscard: () => discardActionRef.current() });
+
+  const requestDiscardAction = (action: VoidFunction) => {
+    discardActionRef.current = action;
+    requestDiscard();
+  };
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) requestDiscard();
+    if (!nextOpen) requestDiscardAction(closeSheet);
   };
 
   const showBack = !discovery && Boolean(selectedType);
@@ -60,7 +71,7 @@ export const DiscoveryJobSheet = ({ isOpen, onClose, projectId, discovery }: Pro
           projectId={projectId}
           discovery={discovery}
           onComplete={closeSheet}
-          onCancel={() => (discovery ? requestDiscard() : setSelectedType(null))}
+          onCancel={() => requestDiscardAction(discovery ? closeSheet : returnToTypeSelect)}
           onDirtyChange={setIsDirty}
         />
       );
@@ -84,10 +95,7 @@ export const DiscoveryJobSheet = ({ isOpen, onClose, projectId, discovery }: Pro
                     variant="link"
                     size="xs"
                     className="mb-1 w-fit px-0"
-                    onClick={() => {
-                      setSelectedType(null);
-                      setIsDirty(false);
-                    }}
+                    onClick={() => requestDiscardAction(returnToTypeSelect)}
                   >
                     <ArrowLeftIcon />
                     Select Another Type

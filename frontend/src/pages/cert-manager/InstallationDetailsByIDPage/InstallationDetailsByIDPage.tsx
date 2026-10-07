@@ -42,11 +42,12 @@ import {
   useCanRescanPkiInstallations
 } from "@app/pages/cert-manager/pki-discovery-utils";
 
-import { SetKeystorePasswordDialog } from "../DiscoveryPage/components/SetKeystorePasswordDialog";
+import {
+  RESCAN_POLL_INTERVAL_MS,
+  RESCAN_POLL_TIMEOUT_MS,
+  SetKeystorePasswordDialog
+} from "../DiscoveryPage/components/SetKeystorePasswordDialog";
 import { InstallationCertificatesSection, InstallationDetailsSection } from "./components";
-
-const RESCAN_POLL_INTERVAL_MS = 3000;
-const RESCAN_POLL_TIMEOUT_MS = 2 * 60 * 1000;
 
 const Page = () => {
   const { currentProject } = useProject();

@@ -3,7 +3,7 @@ import { webcrypto } from "crypto";
 
 import { NotFoundError } from "@app/lib/errors";
 
-import { computeCertFingerprint } from "./pki-discovery-fns";
+import { computeCertFingerprint, parseCertificateDer } from "./pki-discovery-fns";
 import { scanHost, THostScanDeps, toHostScanErrorMessage, writeHostFile } from "./pki-discovery-host-scan-fns";
 import { HostCertificateChainKind, HostCertificateFileStatus } from "./pki-discovery-types";
 
@@ -65,7 +65,10 @@ test("unexpected errors are hidden behind a product message", () => {
 });
 
 test("writeHostFile names a new installation after the hostname and links its certificate", async () => {
-  const keys = await webcrypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+  const keys = (await webcrypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
+    "sign",
+    "verify"
+  ])) as CryptoKeyPair;
   const der = Buffer.from(
     (
       await x509.X509CertificateGenerator.createSelfSigned({
@@ -109,4 +112,35 @@ test("writeHostFile names a new installation after the hostname and links its ce
 
   expect(create).toHaveBeenCalledWith(expect.objectContaining({ name: "web-01:/etc/ssl/a.pem" }), tx);
   expect(upsertCertLink).toHaveBeenCalledWith("installation-1", "cert-1", { lastSeenAt: ctx.scanTime }, tx);
+});
+
+test("parseCertificateDer reads subject and issuer fields without escaping", async () => {
+  const keys = (await webcrypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
+    "sign",
+    "verify"
+  ])) as CryptoKeyPair;
+  const cert = await x509.X509CertificateGenerator.createSelfSigned({
+    serialNumber: "0d0e0f",
+    name: [{ CN: ["ca.example.com"] }, { O: ["Example, Inc."] }, { OU: ["one"] }, { OU: ["two"] }],
+    notBefore: new Date("2026-01-01T00:00:00Z"),
+    notAfter: new Date("2027-01-01T00:00:00Z"),
+    keys,
+    signingAlgorithm: { name: "ECDSA", hash: "SHA-256" },
+    extensions: [
+      new x509.BasicConstraintsExtension(true, 1, true),
+      new x509.SubjectAlternativeNameExtension([{ type: "dns", value: "ca.example.com" }])
+    ]
+  });
+
+  expect(parseCertificateDer(Buffer.from(cert.rawData))).toMatchObject({
+    commonName: "ca.example.com",
+    subjectOrganization: "Example, Inc.",
+    subjectOrganizationalUnit: "one, two",
+    issuerCommonName: "ca.example.com",
+    issuerOrganization: "Example, Inc.",
+    altNames: "ca.example.com",
+    isCA: true,
+    pathLength: 1
+  });
+  expect(parseCertificateDer(Buffer.from("not a certificate"))).toBeNull();
 });

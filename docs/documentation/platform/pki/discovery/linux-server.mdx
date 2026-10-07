@@ -33,7 +33,7 @@ Scans only open files with these extensions: `.pem`, `.crt`, `.cer`, `.cert`, `.
 
 ## Give the SSH user read access
 
-Certificate files are often readable only by root. Give the SSH user read access in one of two ways.
+Certificate files are often readable only by root. Give the SSH user read access through a group or ACL where you can, and use `sudo` only with a dedicated scan account.
 
 <Tabs>
   <Tab title="Group or ACL">
@@ -54,6 +54,10 @@ Certificate files are often readable only by root. Give the SSH user read access
     ```
 
     The gateway tries every folder and file as the SSH user first, and uses `sudo` only for the ones it can't read.
+
+    <Warning>
+      This rule lets the SSH user read any file on the server and run commands as root through `find`. Use it only for a dedicated scan account that nothing else can sign in with, and prefer a group or ACL.
+    </Warning>
   </Tab>
 </Tabs>
 
