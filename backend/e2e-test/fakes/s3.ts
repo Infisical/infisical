@@ -120,6 +120,13 @@ export const createS3Bucket = ({ bucket }: Parameters<typeof RealS3.createS3Buck
       return Promise.resolve({ objects: matching.slice(0, maxKeys), isTruncated: matching.length > maxKeys });
     },
 
+    checkReachable: (): Promise<{ ok: true } | { ok: false; error: unknown }> =>
+      Promise.resolve(
+        state.accessFailure === "unreachable"
+          ? { ok: false, error: new Error("fake bucket is unreachable") }
+          : { ok: true }
+      ),
+
     checkAccess: (): Promise<RealS3.TS3AccessCheck> =>
       Promise.resolve(
         state.accessFailure
@@ -135,5 +142,6 @@ export const assertFakeBucketShapeMatches: { [K in keyof RealS3.TS3Bucket]: unkn
   presignCreateOnlyPut: null,
   presignGet: null,
   listPage: null,
+  checkReachable: null,
   checkAccess: null
 };

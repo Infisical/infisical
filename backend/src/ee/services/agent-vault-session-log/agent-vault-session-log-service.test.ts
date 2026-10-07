@@ -32,6 +32,7 @@ const listChunks = vi.fn(async () => ({
   objects: [] as { key: string; size: number }[],
   isTruncated: false
 }));
+const assertReachable = vi.fn(async () => {});
 vi.mock("@app/lib/logger", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() } }));
 vi.mock("./agent-vault-session-log-secrets", () => ({ unwrapSessionLogKey: vi.fn(async () => Buffer.alloc(32, 7)) }));
 vi.mock("./agent-vault-session-log-storage-fns", () => {
@@ -40,6 +41,7 @@ vi.mock("./agent-vault-session-log-storage-fns", () => {
       presignPut,
       presignGet,
       listChunks,
+      assertReachable,
       mintCorsProbeUrl: vi.fn(async () => "https://bucket.s3.amazonaws.com/probe"),
       validate: vi.fn(async () => {})
     }))
@@ -367,6 +369,22 @@ describe("when the AWS connection can't be used", () => {
     const page = await service.listSessionLogs(scope);
     expect(page.sessionLogs.storageUnavailable).toMatchObject({ reason: "connection-unusable" });
     expect(page.sessionLogs.storageUnavailable?.message).toContain("s3:ListBucket");
+  });
+
+  test("a bucket that can't be found points the admin at its name and region, not its permissions", async () => {
+    listChunks.mockRejectedValueOnce(
+      new S3ServiceException({
+        name: "NoSuchBucket",
+        $fault: "client",
+        $metadata: {},
+        message: "The specified bucket does not exist"
+      })
+    );
+    const { service } = build();
+    const page = await service.listSessionLogs(scope);
+    expect(page.sessionLogs.storageUnavailable?.message).toBe(
+      "Infisical couldn't list session logs in bucket 'my-bucket' (NoSuchBucket). Check the bucket name and region in Settings"
+    );
   });
 
   test("anything else that goes wrong while listing stays an error", async () => {
@@ -712,5 +730,23 @@ describe("while the License Server can't be reached", () => {
     const { service } = build({ ...unreachable });
     const page = await service.listSessionLogs({ projectId: PROJECT_ID, ctx, sessionId: SESSION_ID });
     expect(page.sessionLogs.enabled).toBe(true);
+  });
+});
+
+describe("getSessionLogHealth", () => {
+  test("reports a bucket the connection can't reach", async () => {
+    const unreachable =
+      "Unable to reach bucket 'my-bucket'. Check the bucket name, the region, and that the connection's credentials allow s3:ListBucket on it";
+    assertReachable.mockRejectedValueOnce(new BadRequestError({ message: unreachable }));
+    const { service } = build();
+    const { health } = await service.getSessionLogHealth({ projectId: PROJECT_ID, ctx: scope.ctx });
+    expect(health.connectionError).toBe(unreachable);
+  });
+
+  test("is clear once the connection works and the bucket answers", async () => {
+    const { service } = build();
+    const { health } = await service.getSessionLogHealth({ projectId: PROJECT_ID, ctx: scope.ctx });
+    expect(health.connectionError).toBeNull();
+    expect(assertReachable).toHaveBeenCalledTimes(1);
   });
 });

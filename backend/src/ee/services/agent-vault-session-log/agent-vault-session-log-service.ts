@@ -61,8 +61,8 @@ import {
   TAgentVaultSessionLogScoped,
   TAgentVaultSessionLogStorageUnavailable,
   TAgentVaultSessionScoped,
-  TListSessionLogsDTO,
   TCreateChunkUploadUrlDTO,
+  TListSessionLogsDTO,
   TTailSessionLogsDTO,
   TUpdateSessionLogSettingsDTO
 } from "./agent-vault-session-log-types";
@@ -338,11 +338,14 @@ export const agentVaultSessionLogServiceFactory = ({
     } catch (error) {
       if (!isStorageError(error)) throw error;
       logger.warn(error, `agentVaultSessionLog: could not list session logs [sessionId=${scope.sessionId}]`);
+      const { name } = error as Error;
+      const hint =
+        name === "AccessDenied"
+          ? "Check that the connection's credentials allow s3:ListBucket on it"
+          : "Check the bucket name and region in Settings";
       return unreadable({
         reason: AgentVaultSessionLogStorageUnavailableReason.ConnectionUnusable,
-        message: isAdmin
-          ? `Infisical couldn't list session logs in bucket '${opened.bucket}' (${(error as Error).name}). Check that the connection's credentials allow s3:ListBucket on it`
-          : null
+        message: isAdmin ? `Infisical couldn't list session logs in bucket '${opened.bucket}' (${name}). ${hint}` : null
       });
     }
 
@@ -447,7 +450,8 @@ export const agentVaultSessionLogServiceFactory = ({
     let connectionError: string | null = null;
     if (storage) {
       try {
-        await buildSessionLogStorage(storage, ctx.actorOrgId, $storageDeps);
+        const sessionLogStorage = await buildSessionLogStorage(storage, ctx.actorOrgId, $storageDeps);
+        await sessionLogStorage.assertReachable();
       } catch (error) {
         logger.warn(error, `agentVaultSessionLog: could not use the session log connection [projectId=${projectId}]`);
         connectionError =

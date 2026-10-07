@@ -89,6 +89,8 @@ export const buildSessionLogStorage = async (
 
   const mintCorsProbeUrl = async () => presignGet(withKeyPrefix(keyPrefix, ".cors-probe"));
 
+  const unreachableMessage = `Unable to reach bucket '${bucket}'. Check the bucket name, the region, and that the connection's credentials allow s3:ListBucket on it`;
+
   const validate = async () => {
     const testKey = withKeyPrefix(keyPrefix, ".test/write-check");
     const access = await s3.checkAccess(testKey);
@@ -101,10 +103,19 @@ export const buildSessionLogStorage = async (
     throw new BadRequestError({
       message:
         access.failure === "unreachable"
-          ? `Unable to reach bucket '${bucket}'. Check the bucket name, the region, and that the connection's credentials allow s3:ListBucket on it`
+          ? unreachableMessage
           : `Bucket '${bucket}' is reachable but writing to it failed. Grant s3:PutObject on the configured key prefix`
     });
   };
 
-  return { presignPut, presignGet, listChunks, mintCorsProbeUrl, validate };
+  // Read-only, so it is safe to call often: it can't tell whether writes still work.
+  const assertReachable = async () => {
+    const reachable = await s3.checkReachable();
+    if (reachable.ok) return;
+
+    logger.warn({ err: reachable.error, bucket }, `Agent Vault session logs bucket is unreachable [bucket=${bucket}]`);
+    throw new BadRequestError({ message: unreachableMessage });
+  };
+
+  return { presignPut, presignGet, listChunks, mintCorsProbeUrl, validate, assertReachable };
 };

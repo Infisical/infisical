@@ -282,6 +282,19 @@ describe("Agent Vault session logs", async () => {
       expect(JSON.parse(save.payload).message).toBe(refused);
     });
 
+    test("a bucket the connection can't reach shows as a connection error", async () => {
+      expect(
+        (await saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1" }))
+          .statusCode
+      ).toBe(200);
+      fakeS3Bucket.failsAccessCheckWith("unreachable");
+
+      const health = await inject("GET", `${SETTINGS_URL}/health`);
+      expect(JSON.parse(health.payload).health.connectionError).toBe(
+        `Unable to reach bucket '${BUCKET}'. Check the bucket name, the region, and that the connection's credentials allow s3:ListBucket on it`
+      );
+    });
+
     test("turning session logs on without a complete destination names what is missing", async () => {
       const res = await saveConfig({ enabled: true });
       expect(res.statusCode).toBe(400);

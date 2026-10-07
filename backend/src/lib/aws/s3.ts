@@ -85,12 +85,18 @@ export const createS3Bucket = ({
     return { objects, isTruncated: Boolean(res.IsTruncated) };
   };
 
-  const checkAccess = async (testKey: string): Promise<TS3AccessCheck> => {
+  const checkReachable = async (): Promise<{ ok: true } | { ok: false; error: unknown }> => {
     try {
       await client.send(new HeadBucketCommand({ Bucket: bucket }));
+      return { ok: true };
     } catch (error) {
-      return { ok: false, failure: "unreachable", error };
+      return { ok: false, error };
     }
+  };
+
+  const checkAccess = async (testKey: string): Promise<TS3AccessCheck> => {
+    const reachable = await checkReachable();
+    if (!reachable.ok) return { ok: false, failure: "unreachable", error: reachable.error };
     try {
       await client.send(
         new PutObjectCommand({
@@ -106,5 +112,5 @@ export const createS3Bucket = ({
     return { ok: true };
   };
 
-  return { presignCreateOnlyPut, presignGet, listPage, checkAccess };
+  return { presignCreateOnlyPut, presignGet, listPage, checkReachable, checkAccess };
 };
