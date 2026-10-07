@@ -4,17 +4,29 @@ import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionPkiCertificateInstallationActions,
+  ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TPkiCertificateInstallationDALFactory } from "./pki-certificate-installation-dal";
 import {
+  PkiCertificateFileFormat,
+  PkiInstallationLocationType,
   TDeletePkiInstallationDTO,
   TGetPkiInstallationDTO,
   TListPkiInstallationsDTO,
+  TPkiInstallationLocationDetails,
   TUpdatePkiInstallationDTO
 } from "./pki-discovery-types";
+import { encryptPkiInstallationCredentials } from "./pki-installation-credentials-fns";
+
+export const sanitizePkiInstallation = <T extends { encryptedCredentials?: Buffer | null }>(installation: T) => {
+  const { encryptedCredentials, ...rest } = installation;
+  return { ...rest, hasKeystorePassword: Boolean(encryptedCredentials) };
+};
 
 type TPkiInstallationServiceFactoryDep = {
   pkiCertificateInstallationDAL: Pick<
@@ -22,13 +34,19 @@ type TPkiInstallationServiceFactoryDep = {
     "findById" | "findByProjectId" | "countByProjectId" | "findByIdWithCertificates" | "updateById" | "deleteById"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  queueInstallationRescan: (installationId: string) => Promise<void>;
 };
 
 export type TPkiInstallationServiceFactory = ReturnType<typeof pkiInstallationServiceFactory>;
 
 export const pkiInstallationServiceFactory = ({
   pkiCertificateInstallationDAL,
-  permissionService
+  permissionService,
+  kmsService,
+  appConnectionDAL,
+  queueInstallationRescan
 }: TPkiInstallationServiceFactoryDep) => {
   const listInstallations = async ({
     projectId,
@@ -69,7 +87,7 @@ export const pkiInstallationServiceFactory = ({
       search
     });
 
-    return { installations, totalCount };
+    return { installations: installations.map(sanitizePkiInstallation), totalCount };
   };
 
   const getInstallation = async ({
@@ -98,12 +116,19 @@ export const pkiInstallationServiceFactory = ({
       ProjectPermissionSub.PkiCertificateInstallations
     );
 
-    return installation;
+    const { connectionId } = (installation.locationDetails as TPkiInstallationLocationDetails | null) ?? {};
+    const connection = connectionId ? await appConnectionDAL.findById(connectionId) : undefined;
+
+    return {
+      ...sanitizePkiInstallation(installation),
+      connection: connection && connection.orgId === actorOrgId ? { id: connection.id, name: connection.name } : null
+    };
   };
 
   const updateInstallation = async ({
     installationId,
     name,
+    keystorePassword,
     actor,
     actorId,
     actorAuthMethod,
@@ -128,12 +153,47 @@ export const pkiInstallationServiceFactory = ({
       ProjectPermissionSub.PkiCertificateInstallations
     );
 
-    const updateData: { name?: string } = {};
+    const isSettingPassword = typeof keystorePassword === "string";
+    if (isSettingPassword) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionPkiDiscoveryActions.RunScan,
+        ProjectPermissionSub.PkiDiscovery
+      );
+    }
+
+    if (keystorePassword !== undefined && installation.locationType !== PkiInstallationLocationType.Keystore) {
+      throw new BadRequestError({
+        message: `Installation '${installation.name ?? installationId}' is not a keystore, so it has no password to set`
+      });
+    }
+
+    const installationFormat = (installation.locationDetails as TPkiInstallationLocationDetails | null)?.format;
+    if (isSettingPassword && installationFormat && installationFormat !== PkiCertificateFileFormat.Pkcs12) {
+      throw new BadRequestError({
+        message: `Installation '${installation.name ?? installationId}' is a ${installationFormat.toUpperCase()} keystore, which is read without a password`
+      });
+    }
+
+    const updateData: { name?: string; encryptedCredentials?: Buffer | null } = {};
     if (name !== undefined) updateData.name = name;
+    if (keystorePassword !== undefined) {
+      updateData.encryptedCredentials =
+        keystorePassword === null
+          ? null
+          : await encryptPkiInstallationCredentials({
+              projectId: installation.projectId,
+              credentials: { keystorePassword },
+              kmsService
+            });
+    }
 
     const updatedInstallation = await pkiCertificateInstallationDAL.updateById(installationId, updateData);
 
-    return updatedInstallation;
+    if (isSettingPassword) {
+      await queueInstallationRescan(installationId);
+    }
+
+    return sanitizePkiInstallation(updatedInstallation);
   };
 
   const deleteInstallation = async ({
@@ -164,7 +224,7 @@ export const pkiInstallationServiceFactory = ({
 
     await pkiCertificateInstallationDAL.deleteById(installationId);
 
-    return installation;
+    return sanitizePkiInstallation(installation);
   };
 
   return {

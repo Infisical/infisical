@@ -34,7 +34,7 @@ import {
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { DiscoveryJobModal } from "../DiscoveryPage/components/DiscoveryJobModal";
+import { DiscoveryJobSheet } from "../DiscoveryPage/components/DiscoveryJobSheet";
 import {
   DiscoveryDetailsSection,
   DiscoveryInstallationsSection,
@@ -190,7 +190,7 @@ const Page = () => {
         </div>
       </div>
 
-      <DiscoveryJobModal
+      <DiscoveryJobSheet
         isOpen={popUp.editJob.isOpen}
         onClose={() => handlePopUpClose("editJob")}
         projectId={projectId}

@@ -110,6 +110,12 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
             ])
             .orWhereRaw(`"${TableName.PkiCertificateInstallation}"."locationDetails"->>'ipAddress' ILIKE ?`, [
               `%${sanitizedSearch}%`
+            ])
+            .orWhereRaw(`"${TableName.PkiCertificateInstallation}"."locationDetails"->>'hostIdentifier' ILIKE ?`, [
+              `%${sanitizedSearch}%`
+            ])
+            .orWhereRaw(`"${TableName.PkiCertificateInstallation}"."locationDetails"->>'filePath' ILIKE ?`, [
+              `%${sanitizedSearch}%`
             ]);
         });
       }
@@ -176,6 +182,12 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
               `%${sanitizedSearch}%`
             ])
             .orWhereRaw(`"${TableName.PkiCertificateInstallation}"."locationDetails"->>'ipAddress' ILIKE ?`, [
+              `%${sanitizedSearch}%`
+            ])
+            .orWhereRaw(`"${TableName.PkiCertificateInstallation}"."locationDetails"->>'hostIdentifier' ILIKE ?`, [
+              `%${sanitizedSearch}%`
+            ])
+            .orWhereRaw(`"${TableName.PkiCertificateInstallation}"."locationDetails"->>'filePath' ILIKE ?`, [
               `%${sanitizedSearch}%`
             ]);
         });
@@ -286,8 +298,30 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findKeystoreCredentialsByHost = async (projectId: string, hostIdentifier: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.PkiCertificateInstallation)
+        .select("id", "locationDetails", "locationFingerprint", "encryptedCredentials")
+        .where({ projectId })
+        .whereNotNull("encryptedCredentials")
+        .whereRaw(`"locationDetails"->>'hostIdentifier' = ?`, [hostIdentifier])
+        .orderBy("updatedAt", "desc");
+
+      return docs as Pick<
+        TPkiCertificateInstallations,
+        "id" | "locationDetails" | "locationFingerprint" | "encryptedCredentials"
+      >[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find PKI keystore credentials by host" });
+    }
+  };
+
+  const primaryNode = () => db.primaryNode();
+
   return {
     ...pkiCertificateInstallationOrm,
+    primaryNode,
+    findKeystoreCredentialsByHost,
     findByProjectId,
     countByProjectId,
     findByIdWithCertificates,

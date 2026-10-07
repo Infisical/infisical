@@ -1,4 +1,5 @@
 /* eslint-disable no-nested-ternary */
+import { ReactNode } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 
@@ -27,9 +28,10 @@ import { getCertValidUntilBadgeDetails } from "../../CertificatesPage/components
 
 type Props = {
   certificates: TPkiInstallationCert[];
+  emptyState?: ReactNode;
 };
 
-export const InstallationCertificatesSection = ({ certificates }: Props) => {
+export const InstallationCertificatesSection = ({ certificates, emptyState }: Props) => {
   const navigate = useNavigate();
   const { orgId, projectId } = useParams({
     from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/installations/$installationId"
@@ -42,7 +44,9 @@ export const InstallationCertificatesSection = ({ certificates }: Props) => {
         <CardDescription>Certificates found on this installation</CardDescription>
       </CardHeader>
       <CardContent className="p-0">
-        {certificates.length === 0 ? (
+        {certificates.length === 0 && emptyState ? (
+          emptyState
+        ) : certificates.length === 0 ? (
           <Empty>
             <EmptyHeader>
               <EmptyTitle>No certificates found on this installation</EmptyTitle>

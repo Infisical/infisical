@@ -977,6 +977,8 @@ EE routes register before community routes so they can override/extend endpoints
 
 **PAM**: Before working on any `pam-*` service or router, read [`src/ee/services/pam/CLAUDE.md`](src/ee/services/pam/CLAUDE.md) for a high-level map of the PAM backend — module layout, permission model, and non-obvious invariants. It is intentionally a concept map, not a spec: read the referenced code for implementation detail. If you add a feature, keep any addition there brief (a concept or invariant, not code mechanics).
 
+**Certificate discovery**: before working on `pki-discovery-*` or `pki-installation-*`, read [`src/ee/services/pki-discovery/CLAUDE.md`](src/ee/services/pki-discovery/CLAUDE.md). Linux Server discovery splits work between the backend and the gateway's certificate scanner in the CLI repo, and keystore passwords live on installations, not jobs.
+
 **Agent Vault**: the same applies to the `agent-vault-*` services and routers; the concept map is [`src/ee/services/agent-vault/CLAUDE.md`](src/ee/services/agent-vault/CLAUDE.md). PAM and Agent Vault are the two **org-scoped products**: one implicit project per org, resolved lazily, whose roles collapse to admin or member. Anything that branches on `ProjectType.PAM` (metering emits, predefined roles, the billable-project count, invite grants) almost always needs an Agent Vault arm too.
 
 **Gateways: there is only one generation.** Gateway v1 (`ee/services/gateway`, `lib/gateway`, the QUIC

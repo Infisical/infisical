@@ -135,7 +135,10 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
         multiple
         items={NO_ITEMS}
         value={tags}
-        onValueChange={onValueChange}
+        onValueChange={(next, details) => {
+          if (details.reason === "escape-key") return;
+          onValueChange(next);
+        }}
         // No popup is rendered, but the open state still drives aria-expanded and makes Base UI swallow Enter.
         open={false}
         onOpenChange={() => {}}

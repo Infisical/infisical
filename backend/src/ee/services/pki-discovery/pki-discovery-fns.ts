@@ -19,7 +19,7 @@ import {
 import {
   PkiInstallationLocationType,
   ScanEndpointFailureReason,
-  TPkiDiscoveryTargetConfig,
+  TNetworkTargetConfig,
   TPkiInstallationLocationDetails,
   TScanCertificateResult,
   TScanEndpointResult,
@@ -224,7 +224,7 @@ export const scanEndpoint = async (
               seenFingerprints.add(currentCert.fingerprint256);
 
               // eslint-disable-next-line @typescript-eslint/no-use-before-define
-              const certResult = parsePeerCertificate(currentCert);
+              const certResult = parseCertificateDer(currentCert.raw);
               if (certResult) {
                 if (certResult.pemChain.length > 0) {
                   chainPems.push(certResult.pemChain[0]);
@@ -290,34 +290,35 @@ export const scanEndpoint = async (
   });
 };
 
-const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertificateResult | null => {
+const parseDistinguishedName = (value: string): Record<string, string> => {
+  const fields: Record<string, string[]> = {};
+  value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .forEach((line) => {
+      const separator = line.indexOf("=");
+      if (separator <= 0) return;
+      const key = line.substring(0, separator);
+      const fieldValue = line.substring(separator + 1);
+      fields[key] = [...(fields[key] ?? []), fieldValue];
+    });
+  return Object.fromEntries(Object.entries(fields).map(([key, values]) => [key, values.join(", ")]));
+};
+
+export const parseCertificateDer = (derBuffer: Buffer): TScanCertificateResult | null => {
   try {
-    const derBuffer = cert.raw;
-
+    const nodeCert = new crypto.X509Certificate(derBuffer);
     const x509Cert = new x509.X509Certificate(derBuffer);
-    const pem = x509Cert.toString("pem");
 
-    let altNames: string | undefined;
-    if (cert.subjectaltname) {
-      altNames = cert.subjectaltname
-        .split(", ")
-        .map((entry) => {
-          const colonIdx = entry.indexOf(":");
-          return colonIdx >= 0 ? entry.substring(colonIdx + 1) : entry;
-        })
-        .filter(Boolean)
-        .join(", ");
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
-    const fingerprint = computeCertFingerprint(derBuffer);
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
-    const fingerprintSha1 = computeCertFingerprintSha1(derBuffer);
-
-    const subject = cert.subject || {};
-    // In Node 22, cert subject/issuer fields can be string | string[] for multi-valued attributes
-    const certField = (val: string | string[] | undefined): string | undefined =>
-      Array.isArray(val) ? val.join(", ") : val;
+    const altNames = nodeCert.subjectAltName
+      ?.split(", ")
+      .map((entry) => {
+        const colonIdx = entry.indexOf(":");
+        return colonIdx >= 0 ? entry.substring(colonIdx + 1) : entry;
+      })
+      .filter(Boolean)
+      .join(", ");
 
     let keyUsages: CertKeyUsage[] = [];
     const keyUsagesExt = x509Cert.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
@@ -336,41 +337,39 @@ const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertifica
         .filter(Boolean);
     }
 
-    const certBasicConstraints = cert as { ca?: boolean; pathlen?: number };
-    const isCA = certBasicConstraints.ca;
-    const pathLength = certBasicConstraints.pathlen;
-
-    const issuer = cert.issuer || {};
-
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
-    const signatureAlgorithm = extractSignatureAlgorithm(x509Cert);
+    const basicConstraints = x509Cert.getExtension(x509.BasicConstraintsExtension);
+    const subject = parseDistinguishedName(nodeCert.subject);
+    const issuer = parseDistinguishedName(nodeCert.issuer);
 
     return {
-      pemChain: [pem],
-      fingerprint,
-      fingerprintSha1,
-      commonName: certField(subject.CN) || "",
-      altNames,
-      notBefore: new Date(cert.valid_from),
-      notAfter: new Date(cert.valid_to),
-      serialNumber: cert.serialNumber,
-      subjectOrganization: certField(subject.O),
-      subjectOrganizationalUnit: certField(subject.OU),
-      subjectCountry: certField(subject.C),
-      subjectState: certField(subject.ST),
-      subjectLocality: certField(subject.L),
+      pemChain: [x509Cert.toString("pem")],
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      fingerprint: computeCertFingerprint(derBuffer),
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      fingerprintSha1: computeCertFingerprintSha1(derBuffer),
+      commonName: subject.CN || "",
+      altNames: altNames || undefined,
+      notBefore: new Date(nodeCert.validFrom),
+      notAfter: new Date(nodeCert.validTo),
+      serialNumber: nodeCert.serialNumber,
+      subjectOrganization: subject.O,
+      subjectOrganizationalUnit: subject.OU,
+      subjectCountry: subject.C,
+      subjectState: subject.ST,
+      subjectLocality: subject.L,
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
       keyAlgorithm: extractKeyAlgorithm(x509Cert),
-      signatureAlgorithm,
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      signatureAlgorithm: extractSignatureAlgorithm(x509Cert),
       keyUsages,
       extendedKeyUsages,
-      isCA,
-      pathLength,
-      issuerCommonName: certField(issuer.CN),
-      issuerOrganization: certField(issuer.O)
+      isCA: basicConstraints ? basicConstraints.ca : nodeCert.ca,
+      pathLength: basicConstraints?.pathLength,
+      issuerCommonName: issuer.CN,
+      issuerOrganization: issuer.O
     };
   } catch (error) {
-    logger.error(error, "Failed to parse peer certificate");
+    logger.error(error, "Failed to parse discovered certificate");
     return null;
   }
 };
@@ -572,7 +571,7 @@ export const resolveDomain = async (domain: string): Promise<string[]> => {
 };
 
 export const resolveTargets = async (
-  targetConfig: TPkiDiscoveryTargetConfig,
+  targetConfig: TNetworkTargetConfig,
   hasGateway = false
 ): Promise<TScanTarget[]> => {
   const targets: TScanTarget[] = [];
@@ -660,6 +659,7 @@ export const computeLocationFingerprint = (
   if (locationDetails.ipAddress) parts.push(`ip:${locationDetails.ipAddress}`);
   if (locationDetails.fqdn) parts.push(`fqdn:${locationDetails.fqdn}`);
   if (locationDetails.port) parts.push(`port:${locationDetails.port}`);
+  if (locationDetails.hostIdentifier) parts.push(`host:${locationDetails.hostIdentifier}`);
   if (locationDetails.filePath) parts.push(`path:${locationDetails.filePath}`);
   if (gatewayId) parts.push(`gw:${gatewayId}`);
 

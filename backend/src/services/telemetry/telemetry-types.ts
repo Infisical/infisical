@@ -1730,6 +1730,7 @@ export type TPkiDiscoveryScanCompletedEvent = {
   properties: {
     orgId: string;
     projectId: string;
+    discoveryType: string;
     status: string;
     certificatesFound: number;
     installationsFound: number;
