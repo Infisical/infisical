@@ -3661,6 +3661,7 @@ describe("CertificateV3Service", () => {
           validity: { ttl: "30d" },
           enrollmentType: EnrollmentType.EST,
           issuanceOperation: CertificateIssuanceOperation.RENEW,
+          originalCertificateId: "cert-old",
           actor: ActorType.USER,
           actorId: "user-123",
           actorAuthMethod: AuthMethod.EMAIL,
@@ -3674,7 +3675,8 @@ describe("CertificateV3Service", () => {
           event: expect.objectContaining({
             metadata: expect.objectContaining({
               operation: CertificateIssuanceOperation.RENEW,
-              enrollmentType: EnrollmentType.EST
+              enrollmentType: EnrollmentType.EST,
+              originalCertificateId: "cert-old"
             })
           })
         })

@@ -67,6 +67,7 @@ export type TSignCertificateFromProfileDTO = {
   acmeOrderId?: string;
   auditLogInfo?: AuditLogInfo;
   issuanceOperation?: CertificateIssuanceOperation;
+  originalCertificateId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TOrderCertificateFromProfileDTO = {

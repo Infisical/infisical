@@ -301,12 +301,11 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     // Transaction forces primary (not replica) so a just-revoked cert cannot slip through replica lag.
-    const isRevoked = await certificateDAL.transaction(async (tx) => {
-      const storedCert = await certificateDAL.findOne({ serialNumber: cert.serialNumber, caId: profile.caId }, tx);
-      return storedCert?.status === CertStatus.REVOKED;
-    });
+    const storedCert = await certificateDAL.transaction(async (tx) =>
+      certificateDAL.findOne({ serialNumber: cert.serialNumber, caId: profile.caId }, tx)
+    );
 
-    if (isRevoked) {
+    if (storedCert?.status === CertStatus.REVOKED) {
       throw new UnauthorizedError({ message: "Client certificate has been revoked" });
     }
 
@@ -332,6 +331,7 @@ export const certificateEstV3ServiceFactory = ({
               profileName: profile.slug,
               caId: profile.caId,
               commonName,
+              originalCertificateId: storedCert?.id,
               applicationId
             }
           }
@@ -382,6 +382,7 @@ export const certificateEstV3ServiceFactory = ({
       enrollmentType: EnrollmentType.EST,
       applicationId,
       issuanceOperation: CertificateIssuanceOperation.RENEW,
+      originalCertificateId: storedCert?.id,
       auditLogInfo: auditLogInfo && {
         ...auditLogInfo,
         actor: { type: ActorType.EST_ACCOUNT, metadata: { profileId } }

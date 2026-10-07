@@ -432,6 +432,7 @@ describe("CertificateEstV3Service", () => {
         subject: "CN=different.example.com",
         extensions: []
       }));
+      mockCertificateDAL.findOne.mockResolvedValue({ id: "cert-old", status: CertStatus.ACTIVE });
 
       await expect(
         service.simpleReenrollByProfile({
@@ -452,6 +453,7 @@ describe("CertificateEstV3Service", () => {
               operation: CertificateIssuanceOperation.RENEW,
               enrollmentType: EnrollmentType.EST,
               certificateProfileId: "profile-123",
+              originalCertificateId: "cert-old",
               error: "Subject mismatch"
             })
           })
