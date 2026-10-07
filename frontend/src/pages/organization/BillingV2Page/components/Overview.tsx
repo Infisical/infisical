@@ -100,7 +100,7 @@ export const Overview = ({
     );
   }
 
-  const { mode, checkoutFrozen, selfServe } = overview;
+  const { mode, checkoutFrozen } = overview;
   const isManaged = mode === "managed";
   // Managed plans and read-only billing roles cannot mutate the subscription. A frozen checkout
   // (server DISABLE_CHECKOUT) disables every mutation path too, so treat it as read-only for the
@@ -116,18 +116,6 @@ export const Overview = ({
           <AlertDescription>
             Purchases and plan changes are unavailable right now. Your current subscription is
             unaffected; please check back shortly.
-          </AlertDescription>
-        </Alert>
-      )}
-      {/* An enterprise-managed org (billing_method enterprise_*) sees the surface but self-serve is
-          off; the per-product controls are hidden and this points them to sales. */}
-      {!selfServe && !isManaged && (
-        <Alert variant="info">
-          <TriangleAlert />
-          <AlertTitle>Managed Billing</AlertTitle>
-          <AlertDescription>
-            Contact your Infisical account manager to adjust products, commitments, or your
-            subscription.
           </AlertDescription>
         </Alert>
       )}

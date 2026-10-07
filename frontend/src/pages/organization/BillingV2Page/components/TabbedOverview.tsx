@@ -142,6 +142,20 @@ export const TabbedOverview = ({
       ? ACCOUNT_STATUS[overview.subState as keyof typeof ACCOUNT_STATUS]
       : null;
   const { nextCharge } = billing;
+  let accountTeamNote: { label: string; detail: string } | null = null;
+  if (isManaged) {
+    accountTeamNote = {
+      label: "Managed by your account team",
+      detail:
+        "Products and limits on this organization are set by contract. Contact your account manager to make changes."
+    };
+  } else if (!overview.selfServe) {
+    accountTeamNote = {
+      label: "Managed Billing",
+      detail:
+        "Contact your Infisical account manager to adjust products, commitments, or your subscription."
+    };
+  }
 
   useEffect(() => {
     onTabChange(activeTab);
@@ -277,7 +291,24 @@ export const TabbedOverview = ({
         <Card aria-label="Billing summary">
           <div className="flex flex-wrap items-center justify-between gap-4">
             {summaryLeft}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              {accountTeamNote && (
+                <span className="flex items-center gap-1 text-xs text-muted">
+                  {accountTeamNote.label}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <IconButton
+                        size="2xs"
+                        variant="ghost-muted"
+                        aria-label={`About ${accountTeamNote.label.toLowerCase()}`}
+                      >
+                        <InfoIcon />
+                      </IconButton>
+                    </TooltipTrigger>
+                    <TooltipContent>{accountTeamNote.detail}</TooltipContent>
+                  </Tooltip>
+                </span>
+              )}
               {summaryRight}
               {!readOnly && (
                 <Tooltip>
@@ -311,7 +342,7 @@ export const TabbedOverview = ({
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-flow-row-dense grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
             {visible.map((prod) => {
               const ent = entitlements[prod.id];
               if (ent?.entitled && ent.status !== "churned") {
@@ -327,6 +358,7 @@ export const TabbedOverview = ({
                     breakdownOrgId={breakdownOrgId}
                     breakdownScope={breakdownScope}
                     isExpanded={isExpanded}
+                    isDimmed={Boolean(expanded) && !isExpanded}
                     selectedDimensionKey={isExpanded ? expanded?.dimensionKey : undefined}
                     onExpand={(dimensionKey) =>
                       setExpanded({
@@ -345,6 +377,7 @@ export const TabbedOverview = ({
               return (
                 <InactiveProductCard
                   key={prod.id}
+                  isDimmed={Boolean(expanded)}
                   prod={prod}
                   readOnly={readOnly}
                   isManaged={isManaged}

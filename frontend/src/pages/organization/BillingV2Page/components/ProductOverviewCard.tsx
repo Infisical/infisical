@@ -1,4 +1,4 @@
-import { CSSProperties, ReactNode, useRef, useState } from "react";
+import { CSSProperties, ReactNode, useEffect, useRef, useState } from "react";
 import { ChevronDownIcon, ChevronRightIcon, ChevronUpIcon, EllipsisIcon } from "lucide-react";
 
 import {
@@ -543,6 +543,7 @@ type ProductOverviewCardProps = {
   breakdownOrgId: string;
   breakdownScope: BillingV2BreakdownScopeKind;
   isExpanded: boolean;
+  isDimmed: boolean;
   selectedDimensionKey?: string;
   onExpand: (dimensionKey?: string) => void;
   onCollapse: () => void;
@@ -560,6 +561,7 @@ export const ProductOverviewCard = ({
   breakdownOrgId,
   breakdownScope,
   isExpanded,
+  isDimmed,
   selectedDimensionKey,
   onExpand,
   onCollapse,
@@ -581,13 +583,26 @@ export const ProductOverviewCard = ({
   const prices = priceParts(ent);
   const trial = trialLine(ent);
   const detailsId = `billing-product-details-${prod.id}`;
+  const headerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isExpanded) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    headerRef.current
+      ?.closest("[data-slot=card]")
+      ?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+  }, [isExpanded]);
 
   return (
     <Card
-      className={cn("product-color @container", isExpanded && "lg:col-span-2")}
+      className={cn(
+        "product-color @container scroll-mt-6 transition-opacity",
+        isExpanded && "lg:col-span-2",
+        isDimmed && "opacity-50 focus-within:opacity-100 hover:opacity-100"
+      )}
       style={{ "--product-color": prod.color } as CSSProperties}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div ref={headerRef} className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <ProductIcon product={prod} size={36} />
           <div className="flex min-w-0 flex-col gap-1.5">
@@ -700,6 +715,7 @@ export const ProductOverviewCard = ({
 
 export const InactiveProductCard = ({
   prod,
+  isDimmed,
   readOnly,
   isManaged,
   selfServe,
@@ -707,6 +723,7 @@ export const InactiveProductCard = ({
   onContact
 }: {
   prod: BillingV2CatalogProduct;
+  isDimmed: boolean;
   readOnly: boolean;
   isManaged: boolean;
   selfServe: boolean;
@@ -733,7 +750,10 @@ export const InactiveProductCard = ({
 
   return (
     <Card
-      className="product-color @container"
+      className={cn(
+        "product-color @container transition-opacity",
+        isDimmed && "opacity-50 focus-within:opacity-100 hover:opacity-100"
+      )}
       style={{ "--product-color": prod.color } as CSSProperties}
     >
       <div className="flex items-start justify-between gap-3">
