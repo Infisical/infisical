@@ -11,6 +11,8 @@ import { getGcpConnectionAuthToken } from "@app/services/app-connection/gcp/gcp-
 import { TGcpConnection } from "@app/services/app-connection/gcp/gcp-connection-types";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
+import { TDnsRecordLockKeyStore, withDnsRecordLock } from "./dns-record-lock";
+
 type TGcpResourceRecordSet = {
   name: string;
   type: string;
@@ -18,10 +20,15 @@ type TGcpResourceRecordSet = {
   rrdatas: string[];
 };
 
+type TRecordSetChange = { additions?: TGcpResourceRecordSet[]; deletions?: TGcpResourceRecordSet[] };
+
+type TBuildChange = (fqdn: string, existing: TGcpResourceRecordSet | null) => TRecordSetChange | null;
+
 const TXT_RECORD_TTL_SECONDS = 60;
 const MAX_CHANGE_ATTEMPTS = 5;
 const CHANGE_RETRY_DELAY_MS = 1000;
 const REQUEST_TIMEOUT_MS = 30_000;
+const RECORD_LOCK_TTL_MS = MAX_CHANGE_ATTEMPTS * (REQUEST_TIMEOUT_MS * 2 + CHANGE_RETRY_DELAY_MS) + 30_000;
 const QUOTES_REGEX = new RE2('"', "g");
 
 export const validateGcpCloudDnsZone = (hostedZoneId: string) => {
@@ -84,28 +91,20 @@ const getTxtRecordSet = async (zoneUrl: string, accessToken: string, fqdn: strin
   }
 };
 
-const submitChange = async (
-  zoneUrl: string,
-  accessToken: string,
-  change: { additions?: TGcpResourceRecordSet[]; deletions?: TGcpResourceRecordSet[] }
-) => {
+const submitChange = async (zoneUrl: string, accessToken: string, change: TRecordSetChange) => {
   await request.post(`${zoneUrl}/changes`, change, {
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", Accept: "application/json" },
     timeout: REQUEST_TIMEOUT_MS
   });
 };
 
-const applyTxtRecordChange = async (
+const submitWithRetry = async (
   connection: TGcpConnection,
   hostedZoneId: string,
-  recordName: string,
-  buildChange: (
-    fqdn: string,
-    existing: TGcpResourceRecordSet | null
-  ) => { additions?: TGcpResourceRecordSet[]; deletions?: TGcpResourceRecordSet[] } | null
+  zoneUrl: string,
+  fqdn: string,
+  buildChange: TBuildChange
 ) => {
-  const zoneUrl = getZoneUrl(hostedZoneId);
-  const fqdn = toFqdn(recordName);
   const accessToken = await getGcpConnectionAuthToken(connection);
 
   for (let attempt = 1; attempt <= MAX_CHANGE_ATTEMPTS; attempt += 1) {
@@ -130,48 +129,85 @@ const applyTxtRecordChange = async (
   }
 };
 
+const applyTxtRecordChange = async (
+  connection: TGcpConnection,
+  hostedZoneId: string,
+  recordName: string,
+  buildChange: TBuildChange,
+  keyStore?: TDnsRecordLockKeyStore
+) => {
+  const zoneUrl = getZoneUrl(hostedZoneId);
+  const fqdn = toFqdn(recordName);
+
+  await withDnsRecordLock(
+    {
+      connectionId: connection.id,
+      zoneId: hostedZoneId,
+      name: fqdn,
+      providerName: "Google Cloud DNS",
+      lockTtlMs: RECORD_LOCK_TTL_MS
+    },
+    keyStore,
+    () => submitWithRetry(connection, hostedZoneId, zoneUrl, fqdn, buildChange)
+  );
+};
+
 export const gcpCloudDnsInsertTxtRecord = async (
   connection: TGcpConnection,
   hostedZoneId: string,
   recordName: string,
-  value: string
+  value: string,
+  keyStore?: TDnsRecordLockKeyStore
 ) => {
-  await applyTxtRecordChange(connection, hostedZoneId, recordName, (fqdn, existing) => {
-    if (!existing) {
-      return { additions: [{ name: fqdn, type: "TXT", ttl: TXT_RECORD_TTL_SECONDS, rrdatas: [value] }] };
-    }
+  await applyTxtRecordChange(
+    connection,
+    hostedZoneId,
+    recordName,
+    (fqdn, existing) => {
+      if (!existing) {
+        return { additions: [{ name: fqdn, type: "TXT", ttl: TXT_RECORD_TTL_SECONDS, rrdatas: [value] }] };
+      }
 
-    if (existing.rrdatas.some((rrdata) => normalizeTxtValue(rrdata) === normalizeTxtValue(value))) {
-      return null;
-    }
+      if (existing.rrdatas.some((rrdata) => normalizeTxtValue(rrdata) === normalizeTxtValue(value))) {
+        return null;
+      }
 
-    return {
-      deletions: [existing],
-      additions: [{ ...existing, ttl: TXT_RECORD_TTL_SECONDS, rrdatas: [...existing.rrdatas, value] }]
-    };
-  });
+      return {
+        deletions: [existing],
+        additions: [{ ...existing, rrdatas: [...existing.rrdatas, value] }]
+      };
+    },
+    keyStore
+  );
 };
 
 export const gcpCloudDnsDeleteTxtRecord = async (
   connection: TGcpConnection,
   hostedZoneId: string,
   recordName: string,
-  value: string
+  value: string,
+  keyStore?: TDnsRecordLockKeyStore
 ) => {
-  await applyTxtRecordChange(connection, hostedZoneId, recordName, (fqdn, existing) => {
-    const remaining = existing?.rrdatas.filter((rrdata) => normalizeTxtValue(rrdata) !== normalizeTxtValue(value));
+  await applyTxtRecordChange(
+    connection,
+    hostedZoneId,
+    recordName,
+    (fqdn, existing) => {
+      const remaining = existing?.rrdatas.filter((rrdata) => normalizeTxtValue(rrdata) !== normalizeTxtValue(value));
 
-    if (!existing || !remaining || remaining.length === existing.rrdatas.length) {
-      logger.warn(
-        { hostedZoneId, recordName: fqdn },
-        `Google Cloud DNS TXT record not found for deletion [hostedZoneId=${hostedZoneId}] [recordName=${fqdn}]`
-      );
-      return null;
-    }
+      if (!existing || !remaining || remaining.length === existing.rrdatas.length) {
+        logger.warn(
+          { hostedZoneId, recordName: fqdn },
+          `Google Cloud DNS TXT record not found for deletion [hostedZoneId=${hostedZoneId}] [recordName=${fqdn}]`
+        );
+        return null;
+      }
 
-    return {
-      deletions: [existing],
-      ...(remaining.length ? { additions: [{ ...existing, rrdatas: remaining }] } : {})
-    };
-  });
+      return {
+        deletions: [existing],
+        ...(remaining.length ? { additions: [{ ...existing, rrdatas: remaining }] } : {})
+      };
+    },
+    keyStore
+  );
 };

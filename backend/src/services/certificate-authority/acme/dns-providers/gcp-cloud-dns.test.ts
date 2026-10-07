@@ -20,9 +20,11 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 // eslint-disable-next-line import/first
+import { TDnsRecordLockKeyStore } from "./dns-record-lock";
+// eslint-disable-next-line import/first
 import { gcpCloudDnsDeleteTxtRecord, gcpCloudDnsInsertTxtRecord, validateGcpCloudDnsZone } from "./gcp-cloud-dns";
 
-const connection = {} as TGcpConnection;
+const connection = { id: "connection-id" } as TGcpConnection;
 const ZONE = "projects/my-project/managedZones/example-zone";
 const ZONE_URL = `https://dns.googleapis.com/dns/v1/${ZONE}`;
 const RECORD = "_acme-challenge.example.com";
@@ -37,7 +39,7 @@ const axiosError = (status: number, message = `status ${status}`, extra: Record<
     data: { error: { message, ...extra } }
   });
 
-const existingRecordSet = (rrdatas: string[]) => ({ data: { name: FQDN, type: "TXT", ttl: 60, rrdatas } });
+const existingRecordSet = (rrdatas: string[], ttl = 60) => ({ data: { name: FQDN, type: "TXT", ttl, rrdatas } });
 
 describe("validateGcpCloudDnsZone", () => {
   it("accepts a managed zone resource name", () => {
@@ -82,6 +84,82 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
         deletions: [{ name: FQDN, type: "TXT", ttl: 60, rrdatas: ['"token-a"'] }],
         additions: [{ name: FQDN, type: "TXT", ttl: 60, rrdatas: ['"token-a"', '"token-b"'] }]
       },
+      expect.anything()
+    );
+  });
+
+  it("keeps the TTL of a record set it did not create", async () => {
+    getMock.mockResolvedValueOnce(existingRecordSet(['"customer-value"'], 3600));
+
+    await gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"');
+
+    expect(postMock).toHaveBeenCalledWith(
+      `${ZONE_URL}/changes`,
+      {
+        deletions: [{ name: FQDN, type: "TXT", ttl: 3600, rrdatas: ['"customer-value"'] }],
+        additions: [{ name: FQDN, type: "TXT", ttl: 3600, rrdatas: ['"customer-value"', '"token-a"'] }]
+      },
+      expect.anything()
+    );
+  });
+
+  it("holds a per-record lock while it updates the record set", async () => {
+    const release = vi.fn().mockResolvedValue(undefined);
+    const acquireLock = vi.fn().mockResolvedValue({ release });
+    getMock.mockRejectedValueOnce(axiosError(404));
+
+    await gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"', {
+      acquireLock
+    } as unknown as TDnsRecordLockKeyStore);
+
+    expect(acquireLock).toHaveBeenCalledWith(
+      [`acme-dns-record-mutex-connection-id-${ZONE.toLowerCase()}-${FQDN}`],
+      expect.any(Number),
+      expect.anything()
+    );
+    expect(postMock).toHaveBeenCalledTimes(1);
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails without touching the record when another order holds the lock", async () => {
+    const acquireLock = vi.fn().mockRejectedValue(new Error("lock busy"));
+
+    await expect(
+      gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"', {
+        acquireLock
+      } as unknown as TDnsRecordLockKeyStore)
+    ).rejects.toThrow("Another certificate order is still using it.");
+    expect(getMock).not.toHaveBeenCalled();
+    expect(postMock).not.toHaveBeenCalled();
+  });
+
+  it("serializes concurrent updates to the same record in one process", async () => {
+    let releaseFirstRead: (value: unknown) => void = () => {};
+    getMock
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            releaseFirstRead = resolve;
+          })
+      )
+      .mockResolvedValueOnce(existingRecordSet(['"token-a"']));
+
+    const first = gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"');
+    const second = gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-b"');
+    await new Promise((resolve) => {
+      setImmediate(resolve);
+    });
+    expect(getMock).toHaveBeenCalledTimes(1);
+
+    releaseFirstRead(Promise.reject(axiosError(404)));
+    await Promise.all([first, second]);
+
+    expect(postMock).toHaveBeenCalledTimes(2);
+    expect(postMock).toHaveBeenLastCalledWith(
+      `${ZONE_URL}/changes`,
+      expect.objectContaining({
+        additions: [expect.objectContaining({ rrdatas: ['"token-a"', '"token-b"'] })]
+      }),
       expect.anything()
     );
   });

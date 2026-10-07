@@ -522,7 +522,8 @@ export const executeAcmeOrder = async (
             connection as TGcpConnection,
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
-            recordValue
+            recordValue,
+            keyStore
           );
           break;
         }
@@ -601,7 +602,8 @@ export const executeAcmeOrder = async (
             connection as TGcpConnection,
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
-            recordValue
+            recordValue,
+            keyStore
           );
           break;
         }

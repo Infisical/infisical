@@ -154,7 +154,9 @@ export const GcpCloudDnsZoneFields = ({ control, connectionId }: Props) => {
                     ? "No matching projects"
                     : "No projects found. Grant the connection's service account the DNS Administrator and Service Usage Viewer roles on your project and enable the Cloud DNS API there."
                 }
-                getOptionLabel={(option) => option.name}
+                getOptionLabel={(option) =>
+                  option.name === option.id ? option.id : `${option.name} (${option.id})`
+                }
                 getOptionValue={(option) => option.id}
                 isError={Boolean(projectsErrorMessage)}
               />
