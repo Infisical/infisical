@@ -148,16 +148,17 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const { records, gaps, arrivals, isTruncated, isOverByteBudget, hasUploadingChunks } =
     useAgentVaultSessionLogTimeline(pages, now);
   // While a chunk from the live tail may still be uploading, the clock keeps moving so it turns into a missing
-  // gap once its grace runs out, and history reloads: the tail hands a chunk over only once and stops polling in
-  // a hidden tab or after the session ends, while the bucket listing has the chunk with a fresh link once it lands.
+  // gap once its grace runs out. A live poll retries the chunk itself, but polling stops in a hidden tab and after
+  // the session ends; then history reloads instead, since the bucket listing has the chunk once it lands.
   useEffect(() => {
     if (!hasUploadingChunks) return undefined;
     const timer = setTimeout(() => {
       setNow(Date.now());
-      refetch({ cancelRefetch: false }).catch(() => {});
+      if (!isLive || document.visibilityState === "hidden")
+        refetch({ cancelRefetch: false }).catch(() => {});
     }, UPLOAD_RECHECK_MS);
     return () => clearTimeout(timer);
-  }, [hasUploadingChunks, now, refetch]);
+  }, [hasUploadingChunks, isLive, now, refetch]);
   if (isOverByteBudget && !isPlaceholderData && !isPausedForBudget) pauseForBudget();
   const isLoadError = isError && !data;
 
@@ -219,7 +220,8 @@ export const SessionLogsPanel = ({ session }: Props) => {
     pagesAt: loadedPages
   });
   const [allowance, setAllowance] = useState(nextAllowance);
-  if (allowance.filterKey !== filterKey) setAllowance(nextAllowance());
+  // Not while a new range's placeholder still shows the old range's pages, or the counts start from those.
+  if (!isPlaceholderData && allowance.filterKey !== filterKey) setAllowance(nextAllowance());
   const searchOlder = () => setAllowance(nextAllowance());
   // Empty pages only count since the last allowance, so Search Older Requests always walks further.
   const isSearchPaused =
