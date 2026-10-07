@@ -40,7 +40,9 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
         `${TableName.SecretApprovalPolicy}.id`
       )
       .join(TableName.Environment, `${TableName.SecretApprovalPolicyEnvironment}.envId`, `${TableName.Environment}.id`)
+      .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       .whereNull(`${TableName.Environment}.deleteAfter`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .where((qb) => {
         if (customFilter?.envId) {
           void qb.where(`${TableName.SecretApprovalPolicyEnvironment}.envId`, "=", customFilter.envId);
@@ -282,6 +284,8 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
             `${TableName.Environment}.deleteAfter`
           );
         })
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where(
           // eslint-disable-next-line @typescript-eslint/no-misused-promises
           buildFindFilter(
