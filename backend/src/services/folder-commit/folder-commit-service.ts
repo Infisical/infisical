@@ -835,12 +835,16 @@ export const folderCommitServiceFactory = ({
   const compareSecretVersions = async (
     version1: TSecretVersionsV2 & { tags: { id: string }[] },
     version2: TSecretVersionsV2 & { tags: { id: string }[] },
-    projectId: string
+    projectId: string,
+    tx?: Knex
   ) => {
-    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
+    const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey(
+      {
+        type: KmsDataKey.SecretManager,
+        projectId
+      },
+      tx
+    );
     const objectsEqual = (o1: unknown, o2: unknown): boolean => {
       if (typeof o1 !== "object" || o1 === null || typeof o2 !== "object" || o2 === null) {
         return o1 === o2;
@@ -904,7 +908,7 @@ export const folderCommitServiceFactory = ({
     for (const change of changes) {
       if (change.type === ChangeType.ADD && change.isUpdate && change.secretVersionId) {
         const secretVersions = await secretVersionV2BridgeDAL.findByIdAndPreviousVersion(change.secretVersionId, tx);
-        const comparison = await compareSecretVersions(secretVersions[0], secretVersions[1], projectId);
+        const comparison = await compareSecretVersions(secretVersions[0], secretVersions[1], projectId, tx);
         if (comparison) {
           filteredChanges = filteredChanges.filter(
             (filteredChange) => filteredChange.secretVersionId !== change.secretVersionId
