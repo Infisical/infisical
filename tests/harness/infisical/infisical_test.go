@@ -8,6 +8,7 @@ import (
 
 	"github.com/Infisical/infisical/tests/harness/infisical"
 	"github.com/Infisical/infisical/tests/infra"
+	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/infra/postgres"
 	"github.com/Infisical/infisical/tests/infra/redis"
 	"github.com/Infisical/infisical/tests/internal/spec"
@@ -31,8 +32,13 @@ func bootStack(t *testing.T, opts ...infisical.Option) *infisical.Handle {
 	require.NoError(t, err)
 	img, err := infisical.ResolveImage(ctx, root, log)
 	require.NoError(t, err)
+	fnImg, err := fakenet.ResolveImage(ctx, root, log)
+	require.NoError(t, err)
+	caFile, err := fakenet.PrepareCA(root)
+	require.NoError(t, err)
 
 	mods := []infra.Module{postgres.Module(), redis.Module(),
+		fakenet.Module(fakenet.WithImage(fnImg), fakenet.WithCAFile(caFile)),
 		infisical.Module(append([]infisical.Option{infisical.WithImage(img)}, opts...)...)}
 	scopes := map[infra.ModuleKey]infra.Scope{}
 	for _, m := range mods {
@@ -46,15 +52,22 @@ func bootStack(t *testing.T, opts ...infisical.Option) *infisical.Handle {
 
 	handles := map[infra.ModuleKey]infra.Handle{}
 	for _, m := range plan.Modules() {
+		shared := m.Key() == fakenet.Key
 		name := m.Name()
-		name.Scope = infra.Test
-		name.ScopeID = "m2boot"
+		if shared {
+			name.Scope = infra.Shared
+		} else {
+			name.Scope = infra.Test
+			name.ScopeID = "m2boot"
+		}
 
 		began := time.Now()
 		h, err := m.Start(ctx, infra.NewDeps(handles, infra.NetworkName, infra.Workspace(), name, runner, log))
 		require.NoErrorf(t, err, "starting %s", m.Key())
 		handles[m.Key()] = h
-		t.Cleanup(func() { _ = h.Stop(context.WithoutCancel(ctx)) })
+		if !shared {
+			t.Cleanup(func() { _ = h.Stop(context.WithoutCancel(ctx)) })
+		}
 		log.Decision("ready", infra.ContainerName(name), h.Endpoint(infra.External), time.Since(began), "")
 	}
 	return handles[infisical.Key].(*infisical.Handle)

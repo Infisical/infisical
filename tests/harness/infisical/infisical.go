@@ -67,13 +67,11 @@ func (m *module) Key() infra.ModuleKey { return Key }
 
 // Requires is the hard floor. env.ts enforces Redis with a zod refine, and the
 // database URI has a default that resolves to a literal "undefined" host, so both
-// fail at connect time rather than parse time if absent.
-func (m *module) Requires() []infra.ModuleKey { return []infra.ModuleKey{postgres.Key, redis.Key} }
-
-// Optional is consumed if declared. fakenet is what makes outbound calls, mail and
-// entitlements controllable, and mail is what makes user creation possible at all.
-func (m *module) Optional() []infra.ModuleKey {
-	return []infra.ModuleKey{fakenet.Key}
+// fail at connect time rather than parse time if absent. fakenet is what makes
+// outbound calls, mail and entitlements controllable, and mail is what makes creating
+// a user possible at all.
+func (m *module) Requires() []infra.ModuleKey {
+	return []infra.ModuleKey{postgres.Key, redis.Key, fakenet.Key}
 }
 
 func (m *module) Name() infra.NameParts {
@@ -104,43 +102,36 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		env["INFISICAL_RUN_MODES"] = m.runModes
 	}
 
-	_, wantSMTP := fakenet.From(d)
-	var files []infra.File
-	var dns []string
-
 	// Outbound interception is DNS, not a proxy. Every hostname resolves to fakenet,
 	// which answers as the service or refuses by name, so no HTTP client has to
 	// honour HTTP_PROXY. Docker's embedded resolver still answers container names
 	// first, so Postgres and Redis are unaffected.
-	if fn, ok := fakenet.From(d); ok {
-		if err := fn.VerifyCA(ctx); err != nil {
-			return nil, err
-		}
-		dns = append(dns, fn.Resolver())
-		files = append(files, infra.File{Src: fn.CAPEMFile(), Dst: fakenet.CAPath})
-		env["NODE_EXTRA_CA_CERTS"] = fakenet.CAPath
-
-		// fakenet answers for public hostnames from a private address, which the
-		// SSRF guard would otherwise refuse. Node also warns about a missing
-		// NODE_EXTRA_CA_CERTS and carries on, so the file above is not optional:
-		// without it HTTP keeps working and every real provider breaks.
-		env["ALLOW_INTERNAL_IP_CONNECTIONS"] = "true"
-
-		// The License Server is one more fake, reached the same way as any other
-		// third party: by name, over TLS fakenet terminates. It is what makes
-		// entitlements resolve per organization rather than per instance.
-		for k, v := range license.Env() {
-			env[k] = v
-		}
-
-		env["SMTP_HOST"] = fakenet.IP
-		env["SMTP_PORT"] = fmt.Sprint(smtp.Port)
-		env["SMTP_FROM_ADDRESS"] = "harness@infisical.test"
-		env["SMTP_FROM_NAME"] = "Infisical Harness"
-		// Defaults to true in env.ts, and the fake offers no STARTTLS, so leaving it
-		// on makes every send fail.
-		env["SMTP_REQUIRE_TLS"] = "false"
+	fn := fakenet.MustFrom(d)
+	if err := fn.VerifyCA(ctx); err != nil {
+		return nil, err
 	}
+	env["NODE_EXTRA_CA_CERTS"] = fakenet.CAPath
+
+	// fakenet answers for public hostnames from a private address, which the SSRF
+	// guard would otherwise refuse. Node also warns about a missing
+	// NODE_EXTRA_CA_CERTS and carries on, so the mounted CA is not optional: without
+	// it HTTP keeps working and every real provider breaks.
+	env["ALLOW_INTERNAL_IP_CONNECTIONS"] = "true"
+
+	// The License Server is one more fake, reached the same way as any other third
+	// party: by name, over TLS fakenet terminates. It is what makes entitlements
+	// resolve per organization rather than per instance.
+	for k, v := range license.Env() {
+		env[k] = v
+	}
+
+	env["SMTP_HOST"] = fakenet.IP
+	env["SMTP_PORT"] = fmt.Sprint(smtp.Port)
+	env["SMTP_FROM_ADDRESS"] = "harness@infisical.test"
+	env["SMTP_FROM_NAME"] = "Infisical Harness"
+	// Defaults to true in env.ts, and the fake offers no STARTTLS, so leaving it on
+	// makes every send fail.
+	env["SMTP_REQUIRE_TLS"] = "false"
 
 	for k, v := range m.env {
 		env[k] = v
@@ -150,14 +141,14 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		Image: m.image.Ref,
 		Env:   env,
 		Ports: []int{port},
-		Files: files,
-		DNS:   dns,
+		Files: []infra.File{{Src: fn.CAPEMFile(), Dst: fakenet.CAPath}},
+		DNS:   []string{fn.Resolver()},
 		// /api/status is registered before the run-mode guard, so it answers even on
 		// a pod that serves no product routes. It also reports emailConfigured and
 		// redisConfigured, which the harness asserts so a misconfigured SMTP is a
 		// boot failure rather than a mysterious timeout twenty tests later.
 		Ready: readyStrategy(),
-		Check: checkStatus(wantSMTP),
+		Check: checkStatus,
 	})
 	if err != nil {
 		return nil, err

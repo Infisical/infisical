@@ -27,9 +27,6 @@ type Module interface {
 	// connection timeout ninety seconds later.
 	Requires() []ModuleKey
 
-	// Optional lists modules this one consumes if present and ignores if not.
-	Optional() []ModuleKey
-
 	Start(context.Context, Deps) (Handle, error)
 }
 
@@ -88,7 +85,7 @@ func (d Deps) Log() Logger { return d.log }
 // Get returns a typed handle, or false when the module was not declared.
 //
 // A generic method rather than a package function, which Go 1.27 allows. Modules
-// still wrap it (fakenet.From, postgres.MustFrom) so call sites read as prose.
+// still wrap it (fakenet.MustFrom, postgres.MustFrom) so call sites read as prose.
 func (d Deps) Get[H Handle](k ModuleKey) (H, bool) {
 	h, ok := d.handles[k]
 	if !ok {
@@ -128,7 +125,7 @@ func Resolve(modules []Module, scopes map[ModuleKey]Scope) (Plan, error) {
 				return Plan{}, fmt.Errorf("infra: %s requires %s, which was not declared", m.Key(), dep)
 			}
 		}
-		if err := checkLifetimes(m, scopes, byKey); err != nil {
+		if err := checkLifetimes(m, scopes); err != nil {
 			return Plan{}, err
 		}
 	}
@@ -144,15 +141,12 @@ func Resolve(modules []Module, scopes map[ModuleKey]Scope) (Plan, error) {
 // itself. A Shared Infisical takes fakenet's address and CA when its container is
 // created, so if fakenet were Package-scoped it would vanish when that package
 // finished and break every other package still using the instance.
-func checkLifetimes(m Module, scopes map[ModuleKey]Scope, byKey map[ModuleKey]Module) error {
+func checkLifetimes(m Module, scopes map[ModuleKey]Scope) error {
 	mine, ok := scopes[m.Key()]
 	if !ok {
 		return fmt.Errorf("infra: no scope declared for %s", m.Key())
 	}
-	for _, dep := range append(append([]ModuleKey{}, m.Requires()...), m.Optional()...) {
-		if _, declared := byKey[dep]; !declared {
-			continue // optional and absent
-		}
+	for _, dep := range m.Requires() {
 		theirs := scopes[dep]
 		if theirs.LongerLivedThan(mine) || theirs == mine {
 			continue
@@ -187,7 +181,7 @@ func topoSort(modules []Module, byKey map[ModuleKey]Module) ([]Module, error) {
 		state[m.Key()] = inProgress
 		path = append(path, m.Key())
 
-		deps := append(append([]ModuleKey{}, m.Requires()...), m.Optional()...)
+		deps := append([]ModuleKey{}, m.Requires()...)
 		sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
 		for _, k := range deps {
 			if dep, ok := byKey[k]; ok {

@@ -143,19 +143,7 @@ func bringUp(ctx context.Context, profile Profile, cfg *config, pkg string) (*St
 		return nil, nil, err
 	}
 
-	// Generated once and kept, because Infisical is handed this certificate when its
-	// container is created and adopted by later binaries. Editing a fake rebuilds
-	// fakenet; a CA minted per boot would leave the running Infisical trusting an
-	// authority that no longer exists.
-	caFile := filepath.Join(root, "tests", fakenet.CAFile)
-	// Serialized because every package binary starts here at once, and two that each
-	// found no file would write different CAs.
-	releaseCA, err := infra.Lock("fakenet-ca")
-	if err != nil {
-		return nil, nil, err
-	}
-	_, err = fakenet.LoadOrCreateCA(caFile)
-	releaseCA()
+	caFile, err := fakenet.PrepareCA(root)
 	if err != nil {
 		return nil, nil, err
 	}

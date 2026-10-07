@@ -11,7 +11,6 @@ import (
 type fakeModule struct {
 	key      ModuleKey
 	requires []ModuleKey
-	optional []ModuleKey
 }
 
 func (f fakeModule) Key() ModuleKey { return f.key }
@@ -19,7 +18,6 @@ func (f fakeModule) Name() NameParts {
 	return NameParts{Module: string(f.key)}
 }
 func (f fakeModule) Requires() []ModuleKey { return f.requires }
-func (f fakeModule) Optional() []ModuleKey { return f.optional }
 func (f fakeModule) Start(context.Context, Deps) (Handle, error) {
 	return nil, nil
 }
@@ -48,19 +46,6 @@ func TestResolve(t *testing.T) {
 		require.Equal(t, ModuleKey("infisical"), got[len(got)-1], "infisical must start last")
 	})
 
-	t.Run("should accept an optional dependency that is absent", func(t *testing.T) {
-		t.Parallel()
-
-		// Action
-		_, err := Resolve(
-			mods(fakeModule{key: "infisical", optional: []ModuleKey{"fakenet"}}),
-			map[ModuleKey]Scope{"infisical": Shared},
-		)
-
-		// Assert
-		require.NoError(t, err)
-	})
-
 	t.Run("should fail before any container starts when a required dependency is missing", func(t *testing.T) {
 		t.Parallel()
 
@@ -82,7 +67,7 @@ func TestResolve(t *testing.T) {
 		// Action
 		_, err := Resolve(
 			mods(
-				fakeModule{key: "infisical", optional: []ModuleKey{"fakenet"}},
+				fakeModule{key: "infisical", requires: []ModuleKey{"fakenet"}},
 				fakeModule{key: "fakenet"},
 			),
 			map[ModuleKey]Scope{"infisical": Shared, "fakenet": Package},
@@ -101,7 +86,7 @@ func TestResolve(t *testing.T) {
 		// Action
 		_, err := Resolve(
 			mods(
-				fakeModule{key: "infisical", optional: []ModuleKey{"fakenet"}},
+				fakeModule{key: "infisical", requires: []ModuleKey{"fakenet"}},
 				fakeModule{key: "fakenet"},
 			),
 			map[ModuleKey]Scope{"infisical": Package, "fakenet": Shared},

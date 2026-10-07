@@ -146,7 +146,6 @@ func Module(opts ...Option) infra.Module {
 
 func (m *module) Key() infra.ModuleKey        { return Key }
 func (m *module) Requires() []infra.ModuleKey { return nil }
-func (m *module) Optional() []infra.ModuleKey { return nil }
 
 func (m *module) Name() infra.NameParts {
 	return infra.NameParts{Module: "fakenet", Fingerprint: m.image.ShortID()}
@@ -260,7 +259,35 @@ func (h *Handle) fetchCA(ctx context.Context) ([]byte, error) {
 	return io.ReadAll(res.Body)
 }
 
-func From(d infra.Deps) (*Handle, bool) { return d.Get[*Handle](Key) }
+// MustFrom is for a module that requires fakenet. Unreachable when Resolve has run,
+// since it rejects a missing requirement before any container starts.
+func MustFrom(d infra.Deps) *Handle {
+	h, ok := d.Get[*Handle](Key)
+	if !ok {
+		panic("infra/fakenet: MustFrom called for a module that was not declared")
+	}
+	return h
+}
+
+// PrepareCA creates the CA under the repository root if absent and returns its path.
+//
+// Generated once and kept, because Infisical is handed this certificate when its
+// container is created and adopted by later binaries. Editing a fake rebuilds
+// fakenet; a CA minted per boot would leave the running Infisical trusting an
+// authority that no longer exists. Serialized because every package binary starts at
+// once, and two that each found no file would write different CAs.
+func PrepareCA(repoRoot string) (string, error) {
+	caFile := filepath.Join(repoRoot, "tests", CAFile)
+	release, err := infra.Lock("fakenet-ca")
+	if err != nil {
+		return "", err
+	}
+	defer release()
+	if _, err := LoadOrCreateCA(caFile); err != nil {
+		return "", err
+	}
+	return caFile, nil
+}
 
 // Denied is every outbound call that reached no fake, newest last.
 func (h *Handle) Denied(ctx context.Context) ([]Denied, error) {

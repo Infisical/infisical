@@ -57,7 +57,6 @@ func (m *module) Key() infra.ModuleKey {
 }
 
 func (m *module) Requires() []infra.ModuleKey { return nil }
-func (m *module) Optional() []infra.ModuleKey { return nil }
 
 func (m *module) Name() infra.NameParts {
 	return infra.NameParts{Module: "postgres", Instance: m.instance}
@@ -100,15 +99,10 @@ func (h *Handle) DSN(m infra.Mode) string {
 	return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", user, password, e.HostPort(), h.database)
 }
 
-// From is for other MODULES during Start: an optional dependency.
-func From(d infra.Deps, instance ...string) (*Handle, bool) {
-	return d.Get[*Handle](key(instance...))
-}
-
 // MustFrom is for a required dependency. Unreachable when Resolve has run, since it
 // rejects a missing requirement before any container starts.
 func MustFrom(d infra.Deps, instance ...string) *Handle {
-	h, ok := From(d, instance...)
+	h, ok := d.Get[*Handle](key(instance...))
 	if !ok {
 		panic("infra/postgres: MustFrom called for a module that was not declared")
 	}

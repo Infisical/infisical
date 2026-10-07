@@ -39,7 +39,6 @@ func (m *module) Key() infra.ModuleKey {
 }
 
 func (m *module) Requires() []infra.ModuleKey { return nil }
-func (m *module) Optional() []infra.ModuleKey { return nil }
 func (m *module) Name() infra.NameParts {
 	return infra.NameParts{Module: "redis", Instance: m.instance}
 }
@@ -69,10 +68,8 @@ func (h *Handle) URL(m infra.Mode) string {
 	return fmt.Sprintf("redis://%s", h.Endpoint(m).HostPort())
 }
 
-func From(d infra.Deps) (*Handle, bool) { return d.Get[*Handle](Key) }
-
 func MustFrom(d infra.Deps) *Handle {
-	h, ok := From(d)
+	h, ok := d.Get[*Handle](Key)
 	if !ok {
 		panic("infra/redis: MustFrom called for a module that was not declared")
 	}
