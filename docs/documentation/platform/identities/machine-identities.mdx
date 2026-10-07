@@ -4,13 +4,12 @@ sidebarTitle: "Overview"
 description: "Give applications and other workloads access to Infisical without a user account."
 ---
 
+import { CatalogBrowser } from "/snippets/CatalogBrowser.jsx";
+import { machineAuthMethods, machineAuthCategories } from "/snippets/catalogs/machine-authentication.jsx";
+
 A machine identity lets an application, script, or other workload use Infisical without a user account. A machine identity works like an IAM user in AWS or a service account in Google Cloud.
 
 Each machine identity has a [role](/documentation/platform/access-controls/role-based-access-controls) that controls what the identity can access, and one or more [auth methods](#authentication-methods). Your workload logs in with an auth method, gets a short-lived access token, and sends the token with each request to the Infisical API.
-
-<Note>
-You can set up [alerts](#alerts) that notify your team before the identity's credentials expire or when someone changes its auth methods.
-</Note>
 
 ![Organization Identities](/images/platform/organization/organization-machine-identities.png)
 
@@ -30,13 +29,13 @@ You can create a machine identity either in an organization or in a project. Bot
   <Tab title="Project identity">
     <Steps>
       <Step>
-        In your project, go to **Access Control** > **Machine Identities** and create an identity with a name and a [role](/documentation/platform/access-controls/role-based-access-controls).
+        In your project, go to **Access Control** > **Machine Identities** and create an identity with a name and a [role](/documentation/platform/access-controls/role-based-access-controls). You can pick a role that Infisical includes, such as **Viewer** for read-only access, or a custom role.
       </Step>
       <Step>
-        Create a client secret for the identity.
+        Set up the [auth method](#authentication-methods) that matches where your workload runs, such as AWS Auth for a workload on AWS.
 
         <Note>
-          Infisical adds [Universal Auth](/documentation/platform/identities/universal-auth#guide) to each new identity, and your workload logs in with the client ID and client secret. To log in a different way, add another [auth method](#authentication-methods) instead.
+          Infisical adds [Universal Auth](/documentation/platform/identities/universal-auth#guide) to each new identity. To log in with Universal Auth, create a client secret. If you use a different auth method, you can remove Universal Auth from the identity.
         </Note>
       </Step>
       <Step>
@@ -50,13 +49,13 @@ You can create a machine identity either in an organization or in a project. Bot
   <Tab title="Organization identity">
     <Steps>
       <Step>
-        In your organization, go to **Access Control** > **Machine Identities** and create an identity with a name and a [role](/documentation/platform/access-controls/role-based-access-controls).
+        In your organization, go to **Access Control** > **Machine Identities** and create an identity with a name and a [role](/documentation/platform/access-controls/role-based-access-controls). You can pick a role that Infisical includes, such as **Member**, or a custom role.
       </Step>
       <Step>
-        Create a client secret for the identity.
+        Set up the [auth method](#authentication-methods) that matches where your workload runs, such as AWS Auth for a workload on AWS.
 
         <Note>
-          Infisical adds [Universal Auth](/documentation/platform/identities/universal-auth#guide) to each new identity, and your workload logs in with the client ID and client secret. To log in a different way, add another [auth method](#authentication-methods) instead.
+          Infisical adds [Universal Auth](/documentation/platform/identities/universal-auth#guide) to each new identity. To log in with Universal Auth, create a client secret. If you use a different auth method, you can remove Universal Auth from the identity.
         </Note>
       </Step>
       <Step>
@@ -76,9 +75,12 @@ You can create a machine identity either in an organization or in a project. Bot
 
 A machine identity logs in to Infisical with an auth method. Pick the auth method that matches where your workload runs:
 
-<Card title="Explore options" icon="search" href="/integrations/machine-authentication">
-  Browse and search every auth method that a machine identity can use.
-</Card>
+<CatalogBrowser
+  id="machine-authentication"
+  items={machineAuthMethods}
+  categories={machineAuthCategories}
+  noun="authentication method"
+/>
 
 ## Identity lockout
 
@@ -88,7 +90,7 @@ To change these limits or turn lockout off, edit the auth method on the identity
 
 ## Revoke access tokens
 
-You can revoke a machine identity's access token before it expires. Infisical revokes an access token when you:
+An access token expires after the Access Token TTL set on the auth method, which is 30 days by default. You can revoke the token before it expires. Infisical revokes an access token when you:
 
 - Revoke the token through the API, such as with [Revoke access token](/api-reference/endpoints/universal-auth/revoke-access-token) for Universal Auth or [Revoke token](/api-reference/endpoints/token-auth/revoke-token) for Token Auth
 - Delete the identity, which revokes all of its access tokens
@@ -119,11 +121,9 @@ This alert notifies your team before a credential on the identity expires, so yo
 | Credential | Expiry date the alert checks |
 |------------|------------------------------|
 | Universal Auth client secret | The time the secret was created plus its TTL. If the TTL is `0` (the default), the secret never expires, and the alert ignores it. |
-| Token Auth access token | The time the token was created plus its access token TTL. If the TTL is `0` or longer than the maximum token lifetime (90 days by default), the token expires at the maximum lifetime instead. |
+| Token Auth access token | The time the token was created plus its access token TTL. If the TTL is `0`, the alert ignores the token. |
 
 If you renew a Token Auth token, the alert still checks the token's original expiry date, and doesn't fire again after that date passes. Removing the alert and creating it again doesn't change the date. To get alerts for a later expiry date, create a new token.
-
-If you self-host Infisical, you can change the maximum token lifetime with the `MAX_MACHINE_IDENTITY_TOKEN_AGE` environment variable.
 
 <Note>
   For Universal Auth, the alert checks the client secret, not the access tokens that an identity
@@ -134,12 +134,15 @@ If you self-host Infisical, you can change the maximum token lifetime with the `
 
 ### Auth method change
 
-This alert tells your team when someone changes how the identity can log in. The alert fires each time someone adds, updates, or removes any auth method on the identity, or changes one of these credentials:
+This alert tells your team when someone changes how the identity can log in. The alert fires each time:
 
-- A Universal Auth client secret is created or revoked
-- A Token Auth token is created, renamed, or revoked
+- Someone adds, updates, or removes an auth method on the identity
+- Someone creates or revokes a Universal Auth client secret
+- Someone creates, renames, or revokes a Token Auth token
 
-If the identity logs in and gets an access token, the alert doesn't fire.
+<Note>
+Logging in doesn't count as a change, so the alert doesn't fire each time your workload gets an access token.
+</Note>
 
 Each notification names the auth method, the kind of change, the credential if one changed, who made the change (a user's email or a machine identity's name), and when the change happened.
 
@@ -161,7 +164,7 @@ An identity can have one alert for each event.
     | **Name** | A name for the alert, such as `ua-secret-expiry` |
     | **Description** | Optional notes about what the alert is for |
     | **Event** | **Credential Expiration** or **Auth Method Change** (you can't change the event later) |
-    | **Enabled** | Turns the alert off without removing it |
+    | **Enabled** | Whether Infisical sends notifications for the alert (on by default) |
     | **Condition** | For **Credential Expiration** only: how many days before a credential expires to send the notification, from `1` to `90` |
     | **Repeat daily until the secret is rotated** | For **Credential Expiration** only: if selected, Infisical sends the notification every day until the credential expires or is replaced, instead of once |
   </Step>
