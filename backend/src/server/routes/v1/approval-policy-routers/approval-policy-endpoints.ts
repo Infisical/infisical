@@ -202,11 +202,7 @@ export const registerApprovalPolicyEndpoints = ({
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { policy } = await server.services.approvalPolicy.getById(
-        req.params.policyId,
-        req.permission,
-        policyType
-      );
+      const { policy } = await server.services.approvalPolicy.getById(req.params.policyId, req.permission, policyType);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
