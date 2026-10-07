@@ -37,7 +37,7 @@ export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvi
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         sessionId: req.params.sessionId,
-        after: req.query.cursor,
+        cursor: req.query.cursor,
         from: req.query.from,
         to: req.query.to
       });
@@ -65,7 +65,7 @@ export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvi
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         sessionId: req.params.sessionId,
-        feedEntryId: req.query.cursor
+        cursor: req.query.cursor
       });
     }
   });

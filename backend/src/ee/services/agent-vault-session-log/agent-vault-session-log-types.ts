@@ -13,20 +13,20 @@ export type TAgentVaultSessionLogScoped = { projectId: string; ctx: TGenericPerm
 
 export type TAgentVaultSessionScoped = TAgentVaultSessionLogScoped & { sessionId: string };
 
-export type TRecordChunkDTO = {
+export type TCreateChunkUploadUrlDTO = {
   proxyId: string;
   sessionId: string;
   chunk: z.infer<typeof AgentVaultSessionLogChunkCreateSchema>;
 };
 
 export type TListSessionLogsDTO = TAgentVaultSessionScoped & {
-  after?: string;
+  cursor?: string;
   from?: Date;
   to?: Date;
 };
 
 export type TTailSessionLogsDTO = TAgentVaultSessionScoped & {
-  feedEntryId?: string;
+  cursor?: string;
 };
 
 export type TUpdateSessionLogSettingsDTO = TAgentVaultSessionLogScoped & {

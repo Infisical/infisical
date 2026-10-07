@@ -147,7 +147,7 @@ const chunkBody = (overrides: Record<string, unknown> = {}) => ({
   ...overrides
 });
 
-const recordChunk = async (
+const requestUploadUrl = async (
   proxy: Awaited<ReturnType<typeof createProxy>>,
   sessionId: string,
   chunk: Record<string, unknown> = chunkBody()
@@ -404,7 +404,7 @@ describe("Agent Vault session logs", async () => {
       const proxy = await createProxy(`session-logs-write-${Date.now()}`);
 
       const chunk = chunkBody();
-      const result = await recordChunk(proxy, session.id, chunk);
+      const result = await requestUploadUrl(proxy, session.id, chunk);
 
       expect(fakeS3Bucket.objectKeys(BUCKET)).toEqual([]);
 
@@ -425,11 +425,11 @@ describe("Agent Vault session logs", async () => {
       const proxy = await createProxy(`session-logs-overwrite-${Date.now()}`);
       const chunk = chunkBody();
 
-      const first = await recordChunk(proxy, session.id, chunk);
+      const first = await requestUploadUrl(proxy, session.id, chunk);
       const stored = Buffer.alloc(CHUNK_BYTES, 1);
       fakeS3Bucket.put(first.uploadUrl, stored);
 
-      const second = await recordChunk(proxy, session.id, chunk);
+      const second = await requestUploadUrl(proxy, session.id, chunk);
       expect(second.uploadUrl).not.toBe(first.uploadUrl);
       expect(() => fakeS3Bucket.put(second.uploadUrl, Buffer.alloc(CHUNK_BYTES, 2))).toThrow(/create-only/);
 
@@ -444,12 +444,12 @@ describe("Agent Vault session logs", async () => {
       const session = await mintSession(bundle.name);
       const proxy = await createProxy(`session-logs-moved-${Date.now()}`);
       const chunk = chunkBody();
-      await recordChunk(proxy, session.id, chunk);
+      await requestUploadUrl(proxy, session.id, chunk);
 
       const movedBucket = `${BUCKET}-moved`;
       expect((await configure({ bucket: movedBucket, keyPrefix: "" })).statusCode).toBe(200);
 
-      const resent = await recordChunk(proxy, session.id, chunk);
+      const resent = await requestUploadUrl(proxy, session.id, chunk);
       const stored = Buffer.alloc(CHUNK_BYTES, 3);
       fakeS3Bucket.put(resent.uploadUrl, stored);
 
@@ -469,8 +469,8 @@ describe("Agent Vault session logs", async () => {
       const proxyTwo = await createProxy(`session-logs-two-b-${Date.now()}`);
       const sharedId = nextChunkId();
 
-      const one = await recordChunk(proxyOne, session.id, chunkBody({ chunkId: sharedId }));
-      const two = await recordChunk(proxyTwo, session.id, chunkBody({ chunkId: sharedId }));
+      const one = await requestUploadUrl(proxyOne, session.id, chunkBody({ chunkId: sharedId }));
+      const two = await requestUploadUrl(proxyTwo, session.id, chunkBody({ chunkId: sharedId }));
       fakeS3Bucket.put(one.uploadUrl, Buffer.alloc(CHUNK_BYTES));
       fakeS3Bucket.put(two.uploadUrl, Buffer.alloc(CHUNK_BYTES));
 
@@ -749,7 +749,7 @@ describe("Agent Vault session logs", async () => {
       for (let i = 0; i < count; i += 1) {
         const chunkId = uuidv7({ msecs: sealedFrom + i });
         // eslint-disable-next-line no-await-in-loop
-        const { uploadUrl } = await recordChunk(proxy, sessionId, chunkBody({ chunkId, ciphertextBytes: bytes }));
+        const { uploadUrl } = await requestUploadUrl(proxy, sessionId, chunkBody({ chunkId, ciphertextBytes: bytes }));
         fakeS3Bucket.put(uploadUrl, Buffer.alloc(bytes));
         chunkIds.push(chunkId);
       }
@@ -820,7 +820,7 @@ describe("Agent Vault session logs", async () => {
     test("a chunk that was registered but never uploaded is not listed", async () => {
       await configure();
       const { session, proxy } = await seedSession();
-      await recordChunk(proxy, session.id);
+      await requestUploadUrl(proxy, session.id);
 
       expect((await read(session.id)).chunks).toEqual([]);
     });
@@ -899,7 +899,7 @@ describe("Agent Vault session logs", async () => {
     test("the tail starts from the recent feed, so a chunk registered before the page opened still arrives", async () => {
       await configure();
       const { session, proxy } = await seedSession();
-      const registered = await recordChunk(proxy, session.id);
+      const registered = await requestUploadUrl(proxy, session.id);
 
       expect((await read(session.id)).chunks).toEqual([]);
 
@@ -913,7 +913,7 @@ describe("Agent Vault session logs", async () => {
     test("each tail continues after the last entry it returned", async () => {
       await configure();
       const { session, proxy } = await seedSession();
-      await recordChunk(proxy, session.id);
+      await requestUploadUrl(proxy, session.id);
 
       const first = await tail(session.id);
       expect(first.chunks).toHaveLength(1);
@@ -922,7 +922,7 @@ describe("Agent Vault session logs", async () => {
       expect(quiet.chunks).toEqual([]);
       expect(quiet.nextCursor).toBe(first.nextCursor);
 
-      const next = await recordChunk(proxy, session.id);
+      const next = await requestUploadUrl(proxy, session.id);
       const later = await tail(session.id, quiet.nextCursor);
       expect(later.chunks.map((chunk) => chunk.chunkId)).toEqual([next.chunkId]);
     });
@@ -930,7 +930,7 @@ describe("Agent Vault session logs", async () => {
     test("the tail returns a chunk sealed long ago but registered now", async () => {
       await configure();
       const { session, proxy } = await seedSession();
-      const late = await recordChunk(
+      const late = await requestUploadUrl(
         proxy,
         session.id,
         chunkBody({ chunkId: uuidv7({ msecs: Date.now() - 60 * 60_000 }) })
@@ -944,7 +944,7 @@ describe("Agent Vault session logs", async () => {
       const { session, proxy } = await seedSession();
       for (let i = 0; i < AGENT_VAULT_SESSION_LOG_FEED_MAX_ENTRIES + 2; i += 1) {
         // eslint-disable-next-line no-await-in-loop
-        await recordChunk(proxy, session.id);
+        await requestUploadUrl(proxy, session.id);
       }
 
       expect((await tail(session.id)).chunks).toHaveLength(AGENT_VAULT_SESSION_LOG_FEED_MAX_ENTRIES);
@@ -993,7 +993,7 @@ describe("Agent Vault session logs", async () => {
     test("the tail skips chunks registered before a bucket change, and still moves past them", async () => {
       await configure();
       const { session, proxy } = await seedSession();
-      await recordChunk(proxy, session.id);
+      await requestUploadUrl(proxy, session.id);
 
       expect((await saveConfig({ bucket: "a-different-bucket" })).statusCode).toBe(200);
       const body = await tail(session.id);
@@ -1107,7 +1107,7 @@ describe("Agent Vault session logs", async () => {
         const ownSession = minted.json().session as { id: string };
 
         const proxy = await createProxy(`session-logs-reader-${Date.now()}`);
-        const { uploadUrl } = await recordChunk(proxy, ownSession.id);
+        const { uploadUrl } = await requestUploadUrl(proxy, ownSession.id);
         fakeS3Bucket.put(uploadUrl, Buffer.alloc(CHUNK_BYTES));
 
         const own = await member.as("GET", `/api/v1/agent-vault/sessions/${ownSession.id}/logs`);

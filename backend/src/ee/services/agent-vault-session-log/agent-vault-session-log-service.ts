@@ -62,7 +62,7 @@ import {
   TAgentVaultSessionLogStorageUnavailable,
   TAgentVaultSessionScoped,
   TListSessionLogsDTO,
-  TRecordChunkDTO,
+  TCreateChunkUploadUrlDTO,
   TTailSessionLogsDTO,
   TUpdateSessionLogSettingsDTO
 } from "./agent-vault-session-log-types";
@@ -113,7 +113,7 @@ export const agentVaultSessionLogServiceFactory = ({
     }
   };
 
-  const recordChunk = async ({ proxyId, sessionId, chunk }: TRecordChunkDTO) => {
+  const createChunkUploadUrl = async ({ proxyId, sessionId, chunk }: TCreateChunkUploadUrlDTO) => {
     const sessionNotFound = () => new NotFoundError({ message: "Session not found" });
 
     const proxy = await agentVaultProxyDAL.findByIdWithOrg(proxyId);
@@ -306,7 +306,7 @@ export const agentVaultSessionLogServiceFactory = ({
     error instanceof S3ServiceException ||
     (error instanceof Error && ("code" in error || error.name === "TimeoutError"));
 
-  const listSessionLogs = async ({ after, from, to, ...scope }: TListSessionLogsDTO) => {
+  const listSessionLogs = async ({ cursor, from, to, ...scope }: TListSessionLogsDTO) => {
     if (from && to && from > to) {
       throw new BadRequestError({ message: "The 'from' time must be before the 'to' time" });
     }
@@ -318,7 +318,7 @@ export const agentVaultSessionLogServiceFactory = ({
     const unreadable = (storageUnavailable: TAgentVaultSessionLogStorageUnavailable) => ({
       sessionLogs: { ...sessionLogs, storageUnavailable },
       chunks: [],
-      nextCursor: after === undefined ? null : encodeHistoryCursor(after)
+      nextCursor: cursor === undefined ? null : encodeHistoryCursor(cursor)
     });
 
     const opened = await $openStorage({ ctx: scope.ctx, config, isAdmin });
@@ -330,7 +330,7 @@ export const agentVaultSessionLogServiceFactory = ({
       sessionId: scope.sessionId
     });
     let startAfter: string | undefined;
-    if (after !== undefined) startAfter = `${folder}${after}`;
+    if (cursor !== undefined) startAfter = `${folder}${cursor}`;
     else if (to) startAfter = `${folder}${toRev(to.getTime() + AGENT_VAULT_SESSION_LOG_RANGE_SEAL_MARGIN_MS)}`;
 
     let listed: Awaited<ReturnType<TAgentVaultSessionLogStorage["listChunks"]>>;
@@ -381,14 +381,14 @@ export const agentVaultSessionLogServiceFactory = ({
     return { sessionLogs: { ...sessionLogs, sessionKey }, chunks, nextCursor };
   };
 
-  const tailSessionLogs = async ({ feedEntryId = SESSION_LOG_FEED_START, ...scope }: TTailSessionLogsDTO) => {
+  const tailSessionLogs = async ({ cursor = SESSION_LOG_FEED_START, ...scope }: TTailSessionLogsDTO) => {
     const { session, config, isAdmin, sessionLogs } = await $loadSessionLogs(scope);
-    const unchanged = { sessionLogs, chunks: [], nextCursor: encodeTailCursor(feedEntryId) };
+    const unchanged = { sessionLogs, chunks: [], nextCursor: encodeTailCursor(cursor) };
     if (!config || !session.encryptedSessionLogKey) return unchanged;
 
     const entries = await keyStore.streamRange(
       KeyStorePrefixes.AgentVaultSessionLogFeed(scope.sessionId),
-      `(${feedEntryId}`,
+      `(${cursor}`,
       "+"
     );
     if (!entries.length) return unchanged;
@@ -587,7 +587,7 @@ export const agentVaultSessionLogServiceFactory = ({
   };
 
   return {
-    recordChunk,
+    createChunkUploadUrl,
     listSessionLogs,
     tailSessionLogs,
     getSessionLogSettings,

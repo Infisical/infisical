@@ -146,7 +146,7 @@ const build = (overrides: TOverrides = {}) => {
 };
 
 const record = (service: ReturnType<typeof build>["service"], chunk = validChunk()) =>
-  service.recordChunk({ proxyId: PROXY_ID, sessionId: SESSION_ID, chunk });
+  service.createChunkUploadUrl({ proxyId: PROXY_ID, sessionId: SESSION_ID, chunk });
 
 const scope = {
   projectId: PROJECT_ID,
@@ -159,7 +159,7 @@ beforeEach(() => {
   listChunks.mockResolvedValue({ objects: [], isTruncated: false });
 });
 
-describe("recordChunk: who is allowed to write", () => {
+describe("createChunkUploadUrl: who is allowed to write", () => {
   test("a happy path signs the chunk's name and adds it to the live feed", async () => {
     const { service, streamAdd } = build();
     const chunk = validChunk();
@@ -195,7 +195,7 @@ describe("recordChunk: who is allowed to write", () => {
   });
 });
 
-describe("recordChunk: the retirement grace window", () => {
+describe("createChunkUploadUrl: the retirement grace window", () => {
   const hoursAgo = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000);
 
   test.each([
@@ -250,7 +250,7 @@ describe("recordChunk: the retirement grace window", () => {
   });
 });
 
-describe("recordChunk: when session logs are off", () => {
+describe("createChunkUploadUrl: when session logs are off", () => {
   test.each([
     { why: "there is no config row", config: undefined },
     { why: "the switch is off", config: { ...enabledConfig(), enabled: false } },
@@ -263,7 +263,7 @@ describe("recordChunk: when session logs are off", () => {
   });
 });
 
-describe("recordChunk: the proxy's clock", () => {
+describe("createChunkUploadUrl: the proxy's clock", () => {
   test("a proxy clock too far ahead is refused with the named error, saying how far", async () => {
     const { service } = build();
     const refusal = record(service, { ...validChunk(), endedAt: new Date(Date.now() + 10 * 60_000) });
@@ -294,7 +294,7 @@ describe("recordChunk: the proxy's clock", () => {
   });
 });
 
-describe("recordChunk: sending a chunk again", () => {
+describe("createChunkUploadUrl: sending a chunk again", () => {
   test("signs the same name, so the create-only upload can't store it twice", async () => {
     const { service } = build();
     const chunk = validChunk();
@@ -309,13 +309,13 @@ describe("recordChunk: sending a chunk again", () => {
     const { service } = build();
     await record(service, chunk);
     const { service: other } = build({ proxy: { ...PROXY, id: "0b5c8f2a-3d1e-4c7b-9a6f-2e8d4b1c7f30" } });
-    await other.recordChunk({ proxyId: "0b5c8f2a-3d1e-4c7b-9a6f-2e8d4b1c7f30", sessionId: SESSION_ID, chunk });
+    await other.createChunkUploadUrl({ proxyId: "0b5c8f2a-3d1e-4c7b-9a6f-2e8d4b1c7f30", sessionId: SESSION_ID, chunk });
     const [first, second] = presignPut.mock.calls as unknown as [{ objectKey: string }][];
     expect(first[0].objectKey).not.toBe(second[0].objectKey);
   });
 });
 
-describe("recordChunk: the live feed", () => {
+describe("createChunkUploadUrl: the live feed", () => {
   test("a feed that can't be written still hands out the upload url", async () => {
     const { service } = build({ feedAddFails: true });
     await expect(record(service)).resolves.toMatchObject({ uploadUrl: "https://bucket.s3.amazonaws.com/signed-put" });
@@ -346,7 +346,7 @@ describe("when the AWS connection can't be used", () => {
   test("a read further back keeps its cursor, so a retry continues from the same place", async () => {
     vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
     const { service } = build();
-    const page = await service.listSessionLogs({ ...scope, after: "some-name" });
+    const page = await service.listSessionLogs({ ...scope, cursor: "some-name" });
     expect(page.nextCursor).toBe(encodeHistoryCursor("some-name"));
   });
 
@@ -354,7 +354,7 @@ describe("when the AWS connection can't be used", () => {
     vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
     const { key } = objectFor(Date.now());
     const { service } = build({ feed: [["1791278402731-0", ["key", key, "bucket", "my-bucket", "bytes", "4096"]]] });
-    const page = await service.tailSessionLogs({ ...scope, feedEntryId: "1791278402000-0" });
+    const page = await service.tailSessionLogs({ ...scope, cursor: "1791278402000-0" });
     expect(page.chunks).toEqual([]);
     expect(page.nextCursor).toBe(encodeTailCursor("1791278402000-0"));
   });
@@ -451,7 +451,7 @@ describe("listSessionLogs: paging through the bucket", () => {
 
   test("a cursor continues after the name it carries", async () => {
     const { service } = build();
-    await service.listSessionLogs({ ...scope, after: "8208694117999_x" });
+    await service.listSessionLogs({ ...scope, cursor: "8208694117999_x" });
     expect(listChunks).toHaveBeenCalledWith({ folder: FOLDER, startAfter: `${FOLDER}8208694117999_x` });
   });
 
@@ -511,7 +511,7 @@ describe("tailSessionLogs: reading the live feed", () => {
     const second = objectFor(Date.now() - 1_000);
     const { service } = build({ feed: [entry("100-0", first.key), entry("101-0", second.key)] });
 
-    const page = await service.tailSessionLogs({ ...scope, feedEntryId: "99-0" });
+    const page = await service.tailSessionLogs({ ...scope, cursor: "99-0" });
     expect(page.chunks.map((chunk) => chunk.chunkId)).toEqual([first.chunkId, second.chunkId]);
     expect(page.chunks[0]).toMatchObject({ proxyId: PROXY_ID, ciphertextBytes: 4096 });
     expect(page.nextCursor).toBe(encodeTailCursor("101-0"));
@@ -536,7 +536,7 @@ describe("tailSessionLogs: reading the live feed", () => {
 
   test("an empty feed keeps the cursor and never touches the AWS connection", async () => {
     const { service } = build();
-    const page = await service.tailSessionLogs({ ...scope, feedEntryId: "99-0" });
+    const page = await service.tailSessionLogs({ ...scope, cursor: "99-0" });
     expect(page.chunks).toEqual([]);
     expect(page.nextCursor).toBe(encodeTailCursor("99-0"));
     expect(buildSessionLogStorage).not.toHaveBeenCalled();
