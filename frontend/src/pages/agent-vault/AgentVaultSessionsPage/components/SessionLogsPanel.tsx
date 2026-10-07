@@ -348,10 +348,10 @@ export const SessionLogsPanel = ({ session }: Props) => {
     noRecordsTitle = "Nothing recorded yet";
     noRecordsDescription = "Its last requests can take up to a minute to show up.";
   } else {
-    noRecordsTitle = isActive ? "Nothing recorded yet" : "No requests found";
+    noRecordsTitle = isActive ? "Nothing recorded yet" : "No requests recorded";
     noRecordsDescription = isActive
       ? "Requests this session makes through a proxy will appear here shortly after."
-      : "Logs written before a bucket or prefix change don't show here.";
+      : "";
   }
 
   const isUnreachable =
@@ -401,7 +401,16 @@ export const SessionLogsPanel = ({ session }: Props) => {
     );
   }
 
-  if (!isPending && !isPlaceholderData && !isLoadError && !isEnabled && !hasChunks && !range) {
+  // Only a running session is offered Settings or an upgrade; turning logs on can't record one that ended.
+  if (
+    !isPending &&
+    !isPlaceholderData &&
+    !isLoadError &&
+    isActive &&
+    !isEnabled &&
+    !hasChunks &&
+    !range
+  ) {
     if (!subscription.agentVaultByoS3) {
       return (
         <Empty className="border">
@@ -451,6 +460,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
     !isPending &&
     !isPlaceholderData &&
     !isLoadError &&
+    isActive &&
     isEnabled &&
     !isRecordable &&
     !hasChunks
