@@ -26,6 +26,28 @@ export const identityUaClientSecretDALFactory = (db: TDbClient) => {
     }
   };
 
+  // The limit is in the WHERE so the check and the increment are one statement: concurrent
+  // callers serialize on the row and only numUsesLimit of them can claim a use. The revoked
+  // flag rides along so a secret revoked after the caller's lookup cannot still claim one.
+  const tryClaimUsage = async (id: string, tx?: Knex): Promise<boolean> => {
+    try {
+      const claimed = await (tx || db)(TableName.IdentityUaClientSecret)
+        .where({ id, isClientSecretRevoked: false })
+        .where("clientSecretNumUsesLimit", ">", 0)
+        .andWhere(
+          "clientSecretNumUses",
+          "<",
+          db.ref("clientSecretNumUsesLimit").withSchema(TableName.IdentityUaClientSecret)
+        )
+        .update({ clientSecretLastUsedAt: new Date() })
+        .increment("clientSecretNumUses", 1)
+        .returning("id");
+      return claimed.length > 0;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "TryClaimUsage" });
+    }
+  };
+
   const removeExpiredClientSecrets = async (tx?: Knex) => {
     const BATCH_SIZE = 10000;
     const MAX_RETRY_ON_FAILURE = 3;
@@ -81,5 +103,5 @@ export const identityUaClientSecretDALFactory = (db: TDbClient) => {
     logger.info(`daily-resource-cleanup: remove expired universal auth client secret completed`);
   };
 
-  return { ...uaClientSecretOrm, incrementUsage, removeExpiredClientSecrets };
+  return { ...uaClientSecretOrm, incrementUsage, tryClaimUsage, removeExpiredClientSecrets };
 };
