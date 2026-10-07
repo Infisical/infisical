@@ -1,6 +1,12 @@
-import { createMongoAbility } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  OrgPermissionIdentityActions,
+  OrgPermissionMachineIdentityAuthTemplateActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 
@@ -37,16 +43,24 @@ const baseBlobFields = {
 
 const NO_GATEWAY = { gatewayV2Id: null, gatewayPoolId: null };
 
+const ADMIN_RULES: RawRuleOf<MongoAbility>[] = [{ action: "manage", subject: "all" }];
+
 const createService = ({
   authMethod = IdentityAuthTemplateMethod.KUBERNETES,
   blobFields = baseBlobFields,
   gatewayColumns = { gatewayV2Id: GATEWAY_V2_ID, gatewayPoolId: null },
-  liveGatewayV2Ids = [GATEWAY_V2_ID]
+  liveGatewayV2Ids = [GATEWAY_V2_ID],
+  orgRules = ADMIN_RULES,
+  projectRules = ADMIN_RULES,
+  linkedIdentities = [{ identityId: "identity-id", identityName: "identity", identityProjectId: null }]
 }: {
   authMethod?: IdentityAuthTemplateMethod;
   blobFields?: Record<string, unknown>;
   gatewayColumns?: { gatewayV2Id: string | null; gatewayPoolId: string | null };
   liveGatewayV2Ids?: string[];
+  orgRules?: RawRuleOf<MongoAbility>[];
+  projectRules?: RawRuleOf<MongoAbility>[];
+  linkedIdentities?: { identityId: string; identityName: string; identityProjectId: string | null }[];
 } = {}) => {
   const identityKubernetesAuthDAL = {
     updateByTemplateId: vi.fn().mockResolvedValue([{ identityId: "identity-id" }])
@@ -67,13 +81,14 @@ const createService = ({
 
   const identityAuthTemplateDAL = {
     findByIdAndOrgId: vi.fn().mockResolvedValue(templateRow),
-    findTemplateUsages: vi.fn().mockResolvedValue([{ identityId: "identity-id", identityName: "identity" }]),
+    findTemplateUsages: vi.fn().mockResolvedValue(linkedIdentities),
     updateById: vi.fn().mockImplementation((id: string, data: Record<string, unknown>) => ({
       ...templateRow,
       id,
       ...data
     })),
     delete: vi.fn().mockResolvedValue([templateRow]),
+    create: vi.fn().mockImplementation((data: Record<string, unknown>) => ({ ...templateRow, ...data })),
     transaction: vi.fn().mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => cb({}))
   };
 
@@ -82,19 +97,21 @@ const createService = ({
   };
   const gatewayPoolDAL = { findById: vi.fn().mockResolvedValue(null) };
   const auditLogCreate = vi.fn();
+  const identityLdapAuthDAL = { updateByTemplateId: vi.fn().mockResolvedValue([{ identityId: "identity-id" }]) };
+  const getProjectPermission = vi.fn().mockResolvedValue({ permission: createMongoAbility(projectRules) });
 
   const service = identityAuthTemplateServiceFactory({
     identityAuthTemplateDAL,
-    identityLdapAuthDAL: { updateByTemplateId: vi.fn().mockResolvedValue([]) },
+    identityLdapAuthDAL,
     identityKubernetesAuthDAL,
     identityOidcAuthDAL,
     gatewayV2DAL,
     gatewayPoolDAL,
-    orgDAL: { findById: vi.fn().mockResolvedValue({ requireGatewayPools: false }) },
+    orgDAL: { findById: vi.fn().mockResolvedValue({ requireGatewayPools: false, shouldUseNewPrivilegeSystem: true }) },
     permissionService: {
-      getOrgPermission: vi
-        .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
+      getOrgPermission: vi.fn().mockResolvedValue({ permission: createMongoAbility(orgRules) }),
+      getProjectPermission,
+      getActorGrantAbilities: vi.fn().mockResolvedValue([])
     },
     kmsService: {
       createCipherPairWithDataKey: vi.fn().mockResolvedValue({
@@ -108,7 +125,15 @@ const createService = ({
     auditLogService: { createAuditLog: auditLogCreate }
   } as unknown as Parameters<typeof identityAuthTemplateServiceFactory>[0]);
 
-  return { service, identityKubernetesAuthDAL, identityOidcAuthDAL, identityAuthTemplateDAL, auditLogCreate };
+  return {
+    service,
+    identityKubernetesAuthDAL,
+    identityOidcAuthDAL,
+    identityLdapAuthDAL,
+    identityAuthTemplateDAL,
+    auditLogCreate,
+    getProjectPermission
+  };
 };
 
 const patchTemplate = (service: ReturnType<typeof createService>["service"], templateFields: Record<string, unknown>) =>
@@ -415,5 +440,184 @@ describe("identityAuthTemplateServiceFactory field patch method guard", () => {
       "Template fields [oidcDiscoveryUrl, tokenReviewMode] are not valid for a 'ldap' auth template"
     );
     expect(identityAuthTemplateDAL.updateById).not.toHaveBeenCalled();
+  });
+});
+
+const LDAP_BLOB_FIELDS = { url: "ldap://8.8.8.8", bindDN: "cn=admin", bindPass: "pw", searchBase: "dc=example" };
+
+const TEMPLATE_EDITOR_RULES: RawRuleOf<MongoAbility>[] = [
+  {
+    action: OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates,
+    subject: OrgPermissionSubjects.MachineIdentityAuthTemplate
+  },
+  {
+    action: OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates,
+    subject: OrgPermissionSubjects.MachineIdentityAuthTemplate
+  }
+];
+
+const ORG_IDENTITY_EDIT_AUTH_RULE: RawRuleOf<MongoAbility> = {
+  action: OrgPermissionIdentityActions.EditAuth,
+  subject: OrgPermissionSubjects.Identity
+};
+
+const PROJECT_ID = "project-id";
+const PROJECT_IDENTITY = {
+  identityId: "project-identity-id",
+  identityName: "deploy-bot",
+  identityProjectId: PROJECT_ID
+};
+
+const createLdapService = (overrides: Parameters<typeof createService>[0] = {}) =>
+  createService({
+    authMethod: IdentityAuthTemplateMethod.LDAP,
+    blobFields: LDAP_BLOB_FIELDS,
+    gatewayColumns: NO_GATEWAY,
+    ...overrides
+  });
+
+describe("identityAuthTemplateServiceFactory linked identity authorization", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("refuses a field patch when the editor cannot edit auth on a linked org identity", async () => {
+    const { service, identityAuthTemplateDAL, identityLdapAuthDAL, auditLogCreate } = createLdapService({
+      orgRules: TEMPLATE_EDITOR_RULES
+    });
+
+    await expect(patchTemplate(service, { url: "ldap://8.8.4.4", bindPass: "attacker" })).rejects.toBeInstanceOf(
+      ForbiddenError
+    );
+    expect(identityAuthTemplateDAL.updateById).not.toHaveBeenCalled();
+    expect(identityLdapAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
+    expect(auditLogCreate).not.toHaveBeenCalled();
+  });
+
+  it("propagates when the editor also holds edit-auth on linked org identities", async () => {
+    const { service, identityLdapAuthDAL } = createLdapService({
+      orgRules: [...TEMPLATE_EDITOR_RULES, ORG_IDENTITY_EDIT_AUTH_RULE]
+    });
+
+    await patchTemplate(service, { searchBase: "dc=other" });
+
+    expect(identityLdapAuthDAL.updateByTemplateId).toHaveBeenCalledTimes(1);
+  });
+
+  it("checks a project identity against the project's edit-auth, not the org's", async () => {
+    const { service, identityLdapAuthDAL, getProjectPermission } = createLdapService({
+      orgRules: [...TEMPLATE_EDITOR_RULES, ORG_IDENTITY_EDIT_AUTH_RULE],
+      projectRules: [],
+      linkedIdentities: [PROJECT_IDENTITY]
+    });
+
+    await expect(patchTemplate(service, { searchBase: "dc=other" })).rejects.toBeInstanceOf(ForbiddenError);
+    expect(getProjectPermission).toHaveBeenCalledWith(expect.objectContaining({ projectId: PROJECT_ID }));
+    expect(identityLdapAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
+  });
+
+  it("honors a project edit-auth grant scoped to the linked identity", async () => {
+    const { service, identityLdapAuthDAL } = createLdapService({
+      orgRules: TEMPLATE_EDITOR_RULES,
+      projectRules: [
+        {
+          action: ProjectPermissionIdentityActions.EditAuth,
+          subject: ProjectPermissionSub.Identity,
+          conditions: { identityId: PROJECT_IDENTITY.identityId }
+        }
+      ],
+      linkedIdentities: [PROJECT_IDENTITY]
+    });
+
+    await patchTemplate(service, { searchBase: "dc=other" });
+
+    expect(identityLdapAuthDAL.updateByTemplateId).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets a rename through without edit-auth, since nothing propagates", async () => {
+    const { service, identityAuthTemplateDAL, identityLdapAuthDAL } = createLdapService({
+      orgRules: TEMPLATE_EDITOR_RULES
+    });
+
+    await service.updateTemplate({
+      templateId: TEMPLATE_ID,
+      name: "renamed",
+      actorId: "actor-id",
+      actor: "user",
+      actorAuthMethod: undefined,
+      actorOrgId: ORG_ID
+    } as unknown as Parameters<typeof service.updateTemplate>[0]);
+
+    expect(identityAuthTemplateDAL.updateById).toHaveBeenCalledTimes(1);
+    expect(identityLdapAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
+  });
+
+  it("records the editor, not the platform, on the per-identity audit entries", async () => {
+    const { service, auditLogCreate } = createLdapService();
+    const auditLogInfo = {
+      ipAddress: "203.0.113.7",
+      userAgent: "test-agent",
+      actor: { type: "user", metadata: { userId: "actor-id", email: "editor@example.com" } }
+    };
+
+    await service.updateTemplate({
+      templateId: TEMPLATE_ID,
+      templateFields: { searchBase: "dc=other" },
+      actorId: "actor-id",
+      actor: "user",
+      actorAuthMethod: undefined,
+      actorOrgId: ORG_ID,
+      auditLogInfo
+    } as unknown as Parameters<typeof service.updateTemplate>[0]);
+
+    expect(auditLogCreate).toHaveBeenCalledWith(expect.objectContaining({ actor: auditLogInfo.actor }));
+  });
+});
+
+describe("identityAuthTemplateServiceFactory ldap url validation", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("blocks a private LDAP URL on update before anything propagates", async () => {
+    const { service, identityLdapAuthDAL } = createLdapService();
+
+    await expect(patchTemplate(service, { url: "ldap://10.0.0.1", bindPass: "pw" })).rejects.toThrow(
+      "Local IPs not allowed as URL"
+    );
+    expect(identityLdapAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
+  });
+
+  it("does not re-vet a stored URL the patch leaves alone, since LDAP propagates only patched keys", async () => {
+    const { service, identityLdapAuthDAL } = createLdapService({
+      blobFields: { ...LDAP_BLOB_FIELDS, url: "ldap://10.0.0.1" }
+    });
+
+    await patchTemplate(service, { searchBase: "dc=other" });
+
+    expect(identityLdapAuthDAL.updateByTemplateId).toHaveBeenCalledWith(
+      { templateId: TEMPLATE_ID },
+      { searchBase: "dc=other" },
+      expect.anything()
+    );
+  });
+
+  it("reports an unparseable LDAP URL as a client error rather than a 500", async () => {
+    const { service } = createLdapService();
+
+    await expect(patchTemplate(service, { url: "not a url", bindPass: "pw" })).rejects.toBeInstanceOf(BadRequestError);
+  });
+
+  it("blocks a private LDAP URL on create", async () => {
+    const { service, identityAuthTemplateDAL } = createLdapService();
+
+    await expect(
+      service.createTemplate({
+        name: "ldap-template",
+        authMethod: IdentityAuthTemplateMethod.LDAP,
+        templateFields: { ...LDAP_BLOB_FIELDS, url: "ldap://10.0.0.1" },
+        actorId: "actor-id",
+        actor: "user",
+        actorAuthMethod: undefined,
+        actorOrgId: ORG_ID
+      } as unknown as Parameters<typeof service.createTemplate>[0])
+    ).rejects.toThrow("Local IPs not allowed as URL");
+    expect(identityAuthTemplateDAL.create).not.toHaveBeenCalled();
   });
 });

@@ -59,7 +59,8 @@ export const identityAuthTemplateDALFactory = (db: TDbClient) => {
           .where(buildFindFilter({ templateId }, TableName.IdentityLdapAuth))
           .select(
             db.ref("identityId").withSchema(TableName.IdentityLdapAuth),
-            db.ref("name").withSchema(TableName.Identity).as("identityName")
+            db.ref("name").withSchema(TableName.Identity).as("identityName"),
+            db.ref("projectId").withSchema(TableName.Identity).as("identityProjectId")
           );
         const docs = await query;
         return docs;
@@ -70,7 +71,8 @@ export const identityAuthTemplateDALFactory = (db: TDbClient) => {
           .where(buildFindFilter({ templateId }, TableName.IdentityKubernetesAuth))
           .select(
             db.ref("identityId").withSchema(TableName.IdentityKubernetesAuth),
-            db.ref("name").withSchema(TableName.Identity).as("identityName")
+            db.ref("name").withSchema(TableName.Identity).as("identityName"),
+            db.ref("projectId").withSchema(TableName.Identity).as("identityProjectId")
           );
         const kubernetesDocs = await kubernetesQuery;
         return kubernetesDocs;
@@ -81,7 +83,8 @@ export const identityAuthTemplateDALFactory = (db: TDbClient) => {
           .where(buildFindFilter({ templateId }, TableName.IdentityOidcAuth))
           .select(
             db.ref("identityId").withSchema(TableName.IdentityOidcAuth),
-            db.ref("name").withSchema(TableName.Identity).as("identityName")
+            db.ref("name").withSchema(TableName.Identity).as("identityName"),
+            db.ref("projectId").withSchema(TableName.Identity).as("identityProjectId")
           );
         const oidcDocs = await oidcQuery;
         return oidcDocs;
