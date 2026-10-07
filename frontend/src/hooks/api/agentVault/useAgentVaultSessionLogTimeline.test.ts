@@ -27,7 +27,6 @@ const pageWith = (result: TAgentVaultDecryptedChunk): TAgentVaultDecryptedSessio
     {
       chunkId,
       proxyId: "proxy-1",
-      sealedAt: record.ts,
       ciphertextBytes: 64,
       presignedGetUrl: "https://bucket.example/chunk"
     }

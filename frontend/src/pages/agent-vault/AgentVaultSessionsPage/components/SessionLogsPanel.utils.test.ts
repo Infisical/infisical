@@ -5,6 +5,7 @@ import { AgentVaultSessionLogDecision } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultSessionLogRecord } from "@app/hooks/api/agentVault/types";
 
 import {
+  chunkIdTime,
   findRowShift,
   groupSessionLogGaps,
   matchesSessionLogSearch
@@ -49,6 +50,15 @@ describe("findRowShift", () => {
 
   it("has nothing to hold past the end of what was shown", () => {
     assert.equal(findRowShift(rows(9, 8), rows(10, 9, 8), 5), null);
+  });
+});
+
+describe("chunkIdTime", () => {
+  it("reads the time from the example UUIDv7 in RFC 9562", () => {
+    assert.equal(
+      chunkIdTime("017f22e2-79b0-7cc3-98c4-dc0c0c07398f").toISOString(),
+      "2022-02-22T19:22:22.000Z"
+    );
   });
 });
 

@@ -72,7 +72,6 @@ describe("decryptSessionLogPage", () => {
       {
         chunkId,
         proxyId: "proxy-1",
-        sealedAt: "2026-09-23T10:00:05.000Z",
         ciphertextBytes: 64,
         presignedGetUrl: "https://bucket.example/chunk"
       }
@@ -195,7 +194,6 @@ describe("decryptSessionLogPage", () => {
       chunks: [
         {
           ...page.chunks[0],
-          sealedAt: "2026-09-16T10:31:04.221Z",
           ciphertextBytes: sealed.length
         }
       ]

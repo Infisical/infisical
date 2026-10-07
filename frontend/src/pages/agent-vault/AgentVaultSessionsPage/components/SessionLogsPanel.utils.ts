@@ -85,6 +85,10 @@ const HTTP_STATUS_TEXT: Record<number, string> = {
 export const httpStatusLabel = (status: number) =>
   HTTP_STATUS_TEXT[status] ? `${status} ${HTTP_STATUS_TEXT[status]}` : String(status);
 
+// A chunk ID is a UUIDv7, whose first 48 bits are the time the proxy created the chunk.
+export const chunkIdTime = (chunkId: string) =>
+  new Date(parseInt(chunkId.replace(/-/g, "").slice(0, 12), 16));
+
 // Counts unreadable chunks by reason; how many requests each held is unknown until it is opened.
 export const groupSessionLogGaps = (gaps: TAgentVaultSessionLogGap[]) => {
   const byReason = new Map<TAgentVaultSessionLogGapReason, number>();

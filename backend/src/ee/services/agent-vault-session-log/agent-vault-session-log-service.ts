@@ -286,13 +286,12 @@ export const agentVaultSessionLogServiceFactory = ({
   const $presignChunks = async (
     keyScope: { projectId: string; sessionId: string; encryptedSessionLogKey: Buffer },
     storage: TAgentVaultSessionLogStorage,
-    found: { key: string; chunkId: string; proxyId: string; sealedAt: Date; ciphertextBytes: number }[]
+    found: { key: string; chunkId: string; proxyId: string; ciphertextBytes: number }[]
   ) => {
     const chunks = await Promise.all(
-      found.map(async ({ key, chunkId, proxyId, sealedAt, ciphertextBytes }) => ({
+      found.map(async ({ key, chunkId, proxyId, ciphertextBytes }) => ({
         chunkId,
         proxyId,
-        sealedAt,
         ciphertextBytes,
         presignedGetUrl: await storage.presignGet(key)
       }))

@@ -384,7 +384,7 @@ describe("listSessionLogs: paging through the bucket", () => {
     expect(listChunks).not.toHaveBeenCalled();
   });
 
-  test("returns each chunk with its proxy, seal time, size and a download link", async () => {
+  test("returns each chunk with its proxy, size and a download link", async () => {
     const sealedAt = Date.now() - 60_000;
     const { chunkId, key } = objectFor(sealedAt);
     listChunks.mockResolvedValueOnce({ objects: [{ key, size: 4096 }], isTruncated: false });
@@ -395,7 +395,6 @@ describe("listSessionLogs: paging through the bucket", () => {
       {
         chunkId,
         proxyId: PROXY_ID,
-        sealedAt: new Date(sealedAt),
         ciphertextBytes: 4096,
         presignedGetUrl: `https://bucket.s3.amazonaws.com/${key}`
       }

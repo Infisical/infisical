@@ -772,7 +772,6 @@ describe("Agent Vault session logs", async () => {
       chunks: {
         chunkId: string;
         proxyId: string;
-        sealedAt: string;
         ciphertextBytes: number;
         presignedGetUrl: string;
       }[];
@@ -809,7 +808,6 @@ describe("Agent Vault session logs", async () => {
       expect(body.chunks.map((chunk) => chunk.chunkId)).toEqual([...chunkIds].reverse());
       expect(body.chunks.every((chunk) => chunk.proxyId === proxy.id)).toBe(true);
       expect(body.chunks.every((chunk) => chunk.ciphertextBytes === CHUNK_BYTES)).toBe(true);
-      expect(body.chunks.every((chunk) => Math.abs(Date.parse(chunk.sealedAt) - Date.now()) < 60_000)).toBe(true);
       expect(body.nextCursor).toBeNull();
 
       body.chunks.forEach((chunk) => {

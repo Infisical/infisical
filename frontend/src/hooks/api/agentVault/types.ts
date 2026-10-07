@@ -341,7 +341,6 @@ export type TUpdateAgentVaultSessionLogSettingsDTO = {
 export type TAgentVaultSessionLogChunk = {
   chunkId: string;
   proxyId: string;
-  sealedAt: string;
   ciphertextBytes: number;
   presignedGetUrl: string;
 };

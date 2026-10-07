@@ -51,6 +51,7 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { LiveState, LiveStateBadge, LiveStatusRow } from "./LiveStatusRow";
 import { DECISION_PRESENTATION, hostPatternFor, SessionLogRow } from "./SessionLogRow";
 import {
+  chunkIdTime,
   groupSessionLogGaps,
   matchesSessionLogSearch,
   sessionLogSearchTerm
@@ -185,7 +186,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const isFiltered = hasBrowserFilter || Boolean(range);
 
   // Counted once opened: a chunk's request count isn't known until it is decrypted.
-  const { searched, emptyRun, oldestSealedAt } = useMemo(
+  const { searched, emptyRun, oldestChunkAt } = useMemo(
     () =>
       (data?.pages ?? []).reduce(
         (totals, page) => {
@@ -193,16 +194,16 @@ export const SessionLogsPanel = ({ session }: Props) => {
             (sum, chunk) => sum + (page.decrypted[sessionLogChunkKey(chunk)]?.records.length ?? 0),
             0
           );
-          const sealed = page.chunks.map((chunk) => Date.parse(chunk.sealedAt));
+          const created = page.chunks.map((chunk) => chunkIdTime(chunk.chunkId).getTime());
           return {
             searched: totals.searched + opened,
             emptyRun: opened ? 0 : totals.emptyRun + 1,
-            oldestSealedAt: sealed.length
-              ? Math.min(totals.oldestSealedAt ?? Infinity, ...sealed)
-              : totals.oldestSealedAt
+            oldestChunkAt: created.length
+              ? Math.min(totals.oldestChunkAt ?? Infinity, ...created)
+              : totals.oldestChunkAt
           };
         },
-        { searched: 0, emptyRun: 0, oldestSealedAt: null as number | null }
+        { searched: 0, emptyRun: 0, oldestChunkAt: null as number | null }
       ),
     [data]
   );
@@ -233,7 +234,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
 
   const lastPage = data?.pages[data.pages.length - 1];
   const searchedBackTo =
-    lastPage?.nextCursor && oldestSealedAt !== null ? new Date(oldestSealedAt) : null;
+    lastPage?.nextCursor && oldestChunkAt !== null ? new Date(oldestChunkAt) : null;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({

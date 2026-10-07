@@ -53,7 +53,6 @@ export const AgentVaultSessionLogTailQuerySchema = z.object({
 export const AgentVaultSessionLogChunkViewSchema = z.object({
   chunkId: z.string().describe(AGENT_VAULT.SESSION_LOGS.chunkId),
   proxyId: z.string().describe(AGENT_VAULT.SESSION_LOGS.proxyId),
-  sealedAt: z.date().describe(AGENT_VAULT.SESSION_LOGS.sealedAt),
   ciphertextBytes: z.number().describe(AGENT_VAULT.SESSION_LOGS.ciphertextBytes),
   presignedGetUrl: z.string().describe(AGENT_VAULT.SESSION_LOGS.presignedGetUrl)
 });
