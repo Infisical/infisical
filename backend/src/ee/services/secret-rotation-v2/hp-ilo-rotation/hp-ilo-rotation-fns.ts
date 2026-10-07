@@ -239,10 +239,15 @@ export const hpIloRotationFactory: TRotationFactory<
     } as TSshConnectionConfig;
 
     return {
-      changePassword: (targetUsername, newPassword, currentPassword) =>
-        rotationMethod === HpIloRotationMethod.LoginAsTarget && currentPassword
-          ? rotateIloPasswordAsTarget(sshConfig, gatewayV2Service, targetUsername, currentPassword, newPassword)
-          : rotateIloPasswordAsAdmin(sshConfig, gatewayV2Service, targetUsername, newPassword),
+      changePassword: async (targetUsername, newPassword, currentPassword) => {
+        if (rotationMethod === HpIloRotationMethod.LoginAsTarget && currentPassword) {
+          await rotateIloPasswordAsTarget(sshConfig, gatewayV2Service, targetUsername, currentPassword, newPassword);
+        } else {
+          await rotateIloPasswordAsAdmin(sshConfig, gatewayV2Service, targetUsername, newPassword);
+        }
+        // We still verify if the password works by running a SSH login
+        return { isNewPasswordVerified: false };
+      },
       verifyPassword: (targetUsername, password) =>
         verifyIloPassword(sshConfig, gatewayV2Service, targetUsername, password)
     };
@@ -255,8 +260,8 @@ export const hpIloRotationFactory: TRotationFactory<
       throw new BadRequestError({ message: "Provided username is used in Infisical app connections." });
 
     const iloClient = await $getIloClient();
-    await iloClient.changePassword(username, newPassword, currentPassword);
-    await iloClient.verifyPassword(username, newPassword);
+    const { isNewPasswordVerified } = await iloClient.changePassword(username, newPassword, currentPassword);
+    if (!isNewPasswordVerified) await iloClient.verifyPassword(username, newPassword);
 
     return { username, password: newPassword };
   };

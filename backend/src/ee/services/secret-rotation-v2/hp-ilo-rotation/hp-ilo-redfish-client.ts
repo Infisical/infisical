@@ -317,12 +317,14 @@ export const hpIloRedfishClientFactory = (
         data: { Password: newPassword },
         headers: { Authorization: authorization, "Content-Type": "application/json" }
       });
+      return { isNewPasswordVerified: false };
     } catch (error) {
       // A failed PATCH may still have been applied: its response can be lost (gateway transport failures arrive as
       // non-Axios errors) and firmware can apply the change and still answer with an error. The rotation only stores
       // the new password on success, so failing here while the iLO already accepts it would leave Infisical holding a
       // password that no longer works
-      if (isPatchSent && (await isPasswordAccepted(targetUsername, newPassword))) return;
+      if (isPatchSent && (await isPasswordAccepted(targetUsername, newPassword)))
+        return { isNewPasswordVerified: true };
 
       throw new Error(`HP iLO password change failed: ${describeRedfishError(error)}`);
     }
