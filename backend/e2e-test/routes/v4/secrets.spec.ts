@@ -696,3 +696,39 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
     });
   }
 );
+
+describe("Secret V4 - concurrent creation in a root folder", () => {
+  // More concurrent creates than the e2e connection pool holds (10, initDbConnection's default),
+  // so a request that needs a second connection inside its transaction exhausts the pool.
+  const CONCURRENT_CREATES = 30;
+  const secretKeys = Array.from(Array(CONCURRENT_CREATES)).map((_e, i) => `CONCURRENT-ROOT-SEC-${i + 1}`);
+  let createdKeys: string[] = [];
+
+  afterAll(async () => {
+    await Promise.all(createdKeys.map((key) => deleteSecret({ path: "/", key })));
+  });
+
+  test("Create secrets in parallel at the root path", async () => {
+    const responses = await Promise.all(
+      secretKeys.map((key) =>
+        testServer.inject({
+          method: "POST",
+          url: `/api/v4/secrets/${key}`,
+          headers: {
+            authorization: `Bearer ${jwtAuthToken}`
+          },
+          body: {
+            projectId: seedData1.projectV3.id,
+            environment: seedData1.environment.slug,
+            secretPath: "/",
+            secretValue: "something-secret"
+          }
+        })
+      )
+    );
+
+    createdKeys = secretKeys.filter((_key, i) => responses[i].statusCode === 200);
+
+    expect(responses.map((res) => res.statusCode)).toEqual(secretKeys.map(() => 200));
+  }, 120_000);
+});

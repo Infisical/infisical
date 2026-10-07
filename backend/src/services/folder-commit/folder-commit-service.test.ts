@@ -422,6 +422,68 @@ describe("folderCommitServiceFactory", () => {
       );
     });
 
+    it("should read the latest tree checkpoint inside the caller's transaction for a root folder", async () => {
+      // Arrange
+      const tx = { isTransaction: true } as unknown as Knex;
+      const folderData = { id: "root-folder-id", envId: "env-id", parentId: null };
+      const commitData = { id: "commit-id", folderId: folderData.id };
+
+      mockFolderDAL.findById.mockResolvedValue(folderData);
+      mockFolderCommitDAL.create.mockResolvedValue(commitData);
+      mockFolderCheckpointDAL.findLatestByFolderId.mockResolvedValue(null);
+      mockFolderDAL.findByParentId.mockResolvedValue([]);
+      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
+      mockFolderTreeCheckpointDAL.findLatestByEnvId.mockResolvedValue(undefined);
+
+      // Act
+      await folderCommitService.createCommit(
+        {
+          actor: { type: ActorType.PLATFORM },
+          folderId: folderData.id,
+          changes: [{ type: CommitType.ADD, secretVersionId: "secret-version-1" }],
+          omitIgnoreFilter: true
+        },
+        tx
+      );
+
+      // Assert
+      expect(mockFolderTreeCheckpointDAL.findLatestByEnvId).toHaveBeenCalledWith(folderData.envId, tx);
+      expect(mockFolderCommitQueueService.createFolderTreeCheckpoint).toHaveBeenCalledWith(
+        folderData.envId,
+        commitData.id,
+        tx
+      );
+    });
+
+    it("should not look up the tree checkpoint for a subfolder", async () => {
+      // Arrange
+      const tx = { isTransaction: true } as unknown as Knex;
+      const folderData = { id: "sub-folder-id", envId: "env-id", parentId: "root-folder-id" };
+      const commitData = { id: "commit-id", folderId: folderData.id };
+
+      mockFolderDAL.findById.mockResolvedValue(folderData);
+      mockFolderCommitDAL.create.mockResolvedValue(commitData);
+      mockFolderCheckpointDAL.findLatestByFolderId.mockResolvedValue(null);
+      mockFolderDAL.findByParentId.mockResolvedValue([]);
+      mockSecretVersionV2BridgeDAL.findLatestVersionByFolderId.mockResolvedValue([]);
+
+      // Act
+      await folderCommitService.createCommit(
+        {
+          actor: { type: ActorType.PLATFORM },
+          folderId: folderData.id,
+          changes: [{ type: CommitType.ADD, secretVersionId: "secret-version-1" }],
+          omitIgnoreFilter: true
+        },
+        tx
+      );
+
+      // Assert
+      expect(mockFolderTreeCheckpointDAL.findLatestByEnvId).not.toHaveBeenCalled();
+      expect(mockFolderCommitQueueService.createFolderTreeCheckpoint).not.toHaveBeenCalled();
+      expect(mockFolderCommitQueueService.scheduleTreeCheckpoint).toHaveBeenCalledWith(folderData.envId);
+    });
+
     it("should throw NotFoundError when folder does not exist", async () => {
       // Arrange
       mockFolderDAL.findById.mockResolvedValue(null);
