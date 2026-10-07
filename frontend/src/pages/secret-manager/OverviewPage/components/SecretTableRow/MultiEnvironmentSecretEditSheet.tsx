@@ -53,7 +53,9 @@ export const MultiEnvironmentSecretEditSheet = ({
   const { permission } = useProjectPermission();
   const [isDirty, setIsDirty] = useState(false);
   const [selectedEnvironments, setSelectedEnvironments] = useState(environments);
-  const completedUpdates = useRef(new Map<string, string>());
+  const completedUpdates = useRef(
+    new Map<string, { changes: string; requiresApproval: boolean | undefined }>()
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [initialSecrets] = useState(() =>
     environments
@@ -304,7 +306,8 @@ export const MultiEnvironmentSecretEditSheet = ({
       })
       .filter(
         (plan) =>
-          completedUpdates.current.get(plan.environment.slug) !== JSON.stringify(plan.changes)
+          completedUpdates.current.get(plan.environment.slug)?.changes !==
+          JSON.stringify(plan.changes)
       );
     if (!plans.length) {
       if (selected.length) onClose();
@@ -317,7 +320,7 @@ export const MultiEnvironmentSecretEditSheet = ({
     }
     setIsSaving(true);
     try {
-      const updateResults: boolean[] = [];
+      const updateResults = new Map<string, boolean>();
       const results = await Promise.allSettled(
         plans.map(({ environment: env, changes: targetChanges }) => {
           const secret = getSecretByKey(env.slug, secretKey)!;
@@ -329,16 +332,16 @@ export const MultiEnvironmentSecretEditSheet = ({
             secretValueHidden: secret.secretValueHidden,
             type: SecretType.Shared,
             ...targetChanges,
-            onUpdateResult: (requiresApproval) => updateResults.push(requiresApproval)
+            onUpdateResult: (requiresApproval) => updateResults.set(env.slug, requiresApproval)
           });
         })
       );
       results.forEach((result, index) => {
         if (result.status === "fulfilled")
-          completedUpdates.current.set(
-            plans[index].environment.slug,
-            JSON.stringify(plans[index].changes)
-          );
+          completedUpdates.current.set(plans[index].environment.slug, {
+            changes: JSON.stringify(plans[index].changes),
+            requiresApproval: updateResults.get(plans[index].environment.slug)
+          });
       });
       const failedEnvironments = plans.filter((_, index) => results[index].status === "rejected");
       if (failedEnvironments.length) {
@@ -349,8 +352,11 @@ export const MultiEnvironmentSecretEditSheet = ({
         setConfirmation(undefined);
         return;
       }
-      if (updateResults.length) {
-        const requiresApproval = updateResults.includes(true);
+      const selectedResults = selected
+        .map((environment) => completedUpdates.current.get(environment.slug)?.requiresApproval)
+        .filter((result) => result !== undefined);
+      if (selectedResults.length) {
+        const requiresApproval = selectedResults.includes(true);
         createNotification({
           type: requiresApproval ? "info" : "success",
           text: requiresApproval
