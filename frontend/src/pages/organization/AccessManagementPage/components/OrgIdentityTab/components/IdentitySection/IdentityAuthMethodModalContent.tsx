@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { z } from "zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { Badge, Combobox, Field, FieldError, FieldLabel, ProviderIcon } from "@app/components/v3";
 import { MAX_IDENTITY_ACCESS_TOKEN_TTL_FALLBACK } from "@app/helpers/identityAuthSchemas";
 import { IdentityAuthMethod } from "@app/hooks/api/identities";
@@ -33,7 +32,6 @@ import { IdentityTokenAuthForm } from "./IdentityTokenAuthForm";
 import { IdentityUniversalAuthForm } from "./IdentityUniversalAuthForm";
 
 type Props = {
-  popUp: UsePopUpState<["identityAuthMethod", "upgradePlan"]>;
   handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
   handlePopUpToggle: (
     popUpName: keyof UsePopUpState<["identityAuthMethod", "upgradePlan"]>,
@@ -155,7 +153,6 @@ const schema = z
 export type FormData = z.infer<typeof schema>;
 
 export const IdentityAuthMethodModalContent = ({
-  popUp,
   handlePopUpOpen,
   handlePopUpToggle,
   identity,
@@ -447,13 +444,6 @@ export const IdentityAuthMethodModalContent = ({
         }}
       />
       {selectedMethodItem?.render ? selectedMethodItem.render() : <div />}
-      <UpgradePlanModal
-        paywallKey="organization.identity-auth-method-modal"
-        isOpen={popUp?.upgradePlan?.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={`Your current plan does not include access to ${popUp.upgradePlan.data?.featureName}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`}
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-      />
     </>
   );
 };

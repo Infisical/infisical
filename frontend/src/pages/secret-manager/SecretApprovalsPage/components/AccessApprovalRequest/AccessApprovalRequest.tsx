@@ -19,7 +19,10 @@ import {
   TimerIcon
 } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  SecretAccessRequestsUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import {
   Badge,
   Button,
@@ -139,13 +142,13 @@ export const AccessApprovalRequest = ({
 
   const { handlePopUpOpen, popUp, handlePopUpClose } = usePopUp([
     "requestAccess",
-    "reviewRequest",
-    "upgradePlan"
+    "reviewRequest"
   ] as const);
   const { permission } = useProjectPermission();
   const { user } = useUser();
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const canReadMembers = permission.can(
     ProjectPermissionMemberActions.Read,
     ProjectPermissionSub.Member
@@ -551,8 +554,9 @@ export const AccessApprovalRequest = ({
                 <Button
                   onClick={() => {
                     if (subscription && !subscription?.secretApproval) {
-                      handlePopUpOpen("upgradePlan", {
-                        text: "Access requests feature can be unlocked if you upgrade to Infisical Pro plan."
+                      openUpgradeGate({
+                        intent: SecretAccessRequestsUpgradeIntent,
+                        paywallKey: "secret-manager.access-approval-request"
                       });
                       return;
                     }
@@ -994,12 +998,7 @@ export const AccessApprovalRequest = ({
         />
       )}
 
-      <UpgradePlanModal
-        paywallKey="secret-manager.access-approval-request"
-        text={popUp.upgradePlan.data?.text}
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={() => handlePopUpClose("upgradePlan")}
-      />
+      {upgradeGate}
     </>
   );
 };

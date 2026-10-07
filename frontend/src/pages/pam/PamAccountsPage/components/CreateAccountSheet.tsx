@@ -5,6 +5,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, ArrowUpRight, Plus, Search } from "lucide-react";
 
+import {
+  EnterprisePamAccountsUpgradeIntent,
+  PamAccountLimitUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
@@ -47,7 +52,7 @@ import {
   SheetTitle
 } from "@app/components/v3/generic/Sheet";
 import { TextArea } from "@app/components/v3/generic/TextArea";
-import { useOrganization } from "@app/context";
+import { useOrganization, useSubscription } from "@app/context";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import {
   accountTypeRequiresRecording,
@@ -118,6 +123,8 @@ export const CreateAccountSheet = ({
   const createAccount = useCreatePamAccount();
 
   const { currentOrg } = useOrganization();
+  const { subscription } = useSubscription();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const { data: capabilities } = useGetPamAccessCapabilities();
   const isProductAdmin = Boolean(capabilities?.isProductAdmin);
 
@@ -246,6 +253,22 @@ export const CreateAccountSheet = ({
       !templateUnusableReason(selectedTemplate)
   );
 
+  const handleContinue = () => {
+    const isEnterpriseAccount =
+      selectedTemplate?.type === PamAccountType.Windows ||
+      selectedTemplate?.type === PamAccountType.WindowsAd;
+
+    if (isEnterpriseAccount && subscription.enterprisePamAccount === false) {
+      openUpgradeGate({
+        intent: EnterprisePamAccountsUpgradeIntent,
+        paywallKey: "pam.enterprise-account"
+      });
+      return;
+    }
+
+    setStep(2);
+  };
+
   const onSubmit = (values: TAccountFormValues) => {
     if (!selectedMetadata) return;
 
@@ -309,6 +332,19 @@ export const CreateAccountSheet = ({
           onCreated?.(account.id);
         },
         onError: (error) => {
+          const serverError = (
+            error as { response?: { data?: { message?: string; error?: string } } }
+          ).response?.data;
+          if (
+            serverError?.error === "PAM_ACCOUNT_LIMIT_REACHED" ||
+            serverError?.message?.includes("plan limit reached")
+          ) {
+            openUpgradeGate({
+              intent: PamAccountLimitUpgradeIntent,
+              paywallKey: "pam.account-limit"
+            });
+            return;
+          }
           const unmapped = applyServerValidationErrors(error, setError, knownFields);
           if (unmapped.length) {
             createNotification({
@@ -521,7 +557,7 @@ export const CreateAccountSheet = ({
                   type="button"
                   variant="pam"
                   isDisabled={!canProceed}
-                  onClick={() => setStep(2)}
+                  onClick={handleContinue}
                 >
                   Next
                 </Button>
@@ -693,6 +729,7 @@ export const CreateAccountSheet = ({
         onOpenChange={setCreateFolderOpen}
         onCreated={(folderId) => setValue("folderId", folderId, { shouldDirty: true })}
       />
+      {upgradeGate}
     </>
   );
 };

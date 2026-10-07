@@ -134,7 +134,7 @@ export const useCreatePamAccount = () => {
   const queryClient = useQueryClient();
   return useMutation({
     // Validation errors are mapped onto the form fields
-    meta: { skipValidationToast: true },
+    meta: { skipValidationToast: true, handledErrorCodes: ["PAM_ACCOUNT_LIMIT_REACHED"] },
     mutationFn: async ({ accountType, ...params }: TCreatePamAccountDTO) => {
       const { data } = await apiRequest.post(`/api/v1/pam/accounts/${accountType}`, params);
       return { ...data.account, corsProbeUrl: data.corsProbeUrl as string | null | undefined };

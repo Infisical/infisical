@@ -2,7 +2,7 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { AuditRetentionUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -136,11 +136,14 @@ export const AuditLogsRetentionSection = () => {
           </CardFooter>
         </Card>
       </form>
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="project.audit-logs-retention"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={popUp.upgradePlan?.data?.text}
+        intent={{
+          ...AuditRetentionUpgradeIntent,
+          isEnterpriseFeature: false
+        }}
       />
     </>
   );
