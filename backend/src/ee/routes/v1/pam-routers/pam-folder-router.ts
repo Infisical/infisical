@@ -2,6 +2,7 @@ import z from "zod";
 
 import { PamFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { PamFolderCallerAccess } from "@app/ee/services/pam/pam-enums";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -37,13 +38,26 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         filterByAction: z
           .nativeEnum(ResourcePermissionPamResourceActions)
           .optional()
-          .describe("Filter folders to only those where the caller has this specific permission action")
+          .describe("Filter folders to only those where the caller has this specific permission action"),
+        includeNonMemberFolders: z
+          .enum(["true", "false"])
+          .optional()
+          .transform((v) => v === "true")
+          .describe(
+            "For product admins, also return the folders they hold no membership on, so they can join one as admin. Ignored for everyone else and when filterByAction is set."
+          )
       }),
       response: {
         200: z.object({
           folders: z.array(
             SanitizedFolderSchema.extend({
-              accountCount: z.number()
+              accountCount: z.number(),
+              callerAccess: z
+                .nativeEnum(PamFolderCallerAccess)
+                .optional()
+                .describe(
+                  "The caller's own access to the folder. Returned only when a product admin sets includeNonMemberFolders."
+                )
             })
           )
         })
@@ -57,12 +71,58 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         search: req.query.search,
         onlyAccessible: req.query.onlyAccessible,
         filterByAction: req.query.filterByAction,
+        includeNonMemberFolders: req.query.includeNonMemberFolders,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
       return { folders };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:folderId/grant-admin-access",
+    schema: {
+      operationId: "grantPamFolderAdminAccess",
+      description:
+        "Make the calling product admin an admin of a PAM folder, replacing any role they already hold on it. Only product admins can call this, and every call is recorded in the audit log.",
+      tags: [ApiDocsTags.PamFolders],
+      params: z.object({
+        folderId: z.string().uuid().describe("The ID of the folder")
+      }),
+      response: {
+        200: z.object({ folder: SanitizedFolderSchema })
+      }
+    },
+    config: { rateLimit: writeLimit },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { folder, previousRole } = await server.services.pamFolder.grantAdminAccess({
+        folderId: req.params.folderId,
+        projectId: req.internalPamProjectId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
+        event: {
+          type: EventType.PAM_PRODUCT_ADMIN_ACCESS_FOLDER,
+          metadata: {
+            folderId: folder.id,
+            folderName: folder.name,
+            previousRole
+          }
+        }
+      });
+
+      return { folder };
     }
   });
 

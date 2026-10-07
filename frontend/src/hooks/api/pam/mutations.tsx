@@ -112,6 +112,26 @@ export const useDeletePamFolder = () => {
   });
 };
 
+export const useGrantPamFolderAdminAccess = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ folderId }: { folderId: string }) => {
+      const { data } = await apiRequest.post<{ folder: TPamFolder }>(
+        `/api/v1/pam/folders/${folderId}/grant-admin-access`
+      );
+
+      return data.folder;
+    },
+    onSuccess: (_, { folderId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
+      queryClient.invalidateQueries({ queryKey: pamKeys.folder() });
+      queryClient.invalidateQueries({ queryKey: pamKeys.folderPermissions(folderId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.folderMembers(folderId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.accessCapabilities() });
+    }
+  });
+};
+
 export const useTerminatePamSession = () => {
   const queryClient = useQueryClient();
   return useMutation({

@@ -48,6 +48,7 @@ import {
   TPamAccountListItem,
   useDeletePamAccount,
   useDeletePamFolder,
+  useGrantPamFolderAdminAccess,
   useGetPamAccessCapabilities,
   useListPamAccounts,
   useListPamFolders
@@ -69,6 +70,7 @@ import { DeleteAccountModal } from "./components/DeleteAccountModal";
 import { DeleteFolderModal } from "./components/DeleteFolderModal";
 import { FolderAccountRows } from "./components/FolderAccountRows";
 import { FolderDetailSheet } from "./components/FolderDetailSheet";
+import { JoinFolderAsAdminModal } from "./components/JoinFolderAsAdminModal";
 import { ViewCredentialsModal } from "./components/ViewCredentialsModal";
 
 const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5"];
@@ -85,8 +87,11 @@ export const PamAccountsPage = () => {
   // never hide it. Capabilities just drive the create affordances and the empty-state copy.
   const { data: capabilities } = useGetPamAccessCapabilities();
 
-  // Backed by ReadAccounts/ReadFolder, so every role gets its visible subset (not a 403).
-  const { data: folders = [], isLoading: isLoadingFolders } = useListPamFolders();
+  // Backed by ReadAccounts/ReadFolder, so every role gets its visible subset (not a 403). Product admins
+  // also get the folders they aren't a member of, marked so they can join one as admin.
+  const { data: folders = [], isLoading: isLoadingFolders } = useListPamFolders({
+    includeNonMemberFolders: true
+  });
 
   // Folders where the user can create accounts — gates the "Add Account" affordance.
   const { data: creatableFolders = [] } = useListPamFolders({
@@ -97,6 +102,7 @@ export const PamAccountsPage = () => {
 
   const deleteAccount = useDeletePamAccount();
   const deleteFolder = useDeletePamFolder();
+  const grantFolderAdminAccess = useGrantPamFolderAdminAccess();
 
   // For regular users - request access flow
   const [requestAccount, setRequestAccount] = useState<TAccessiblePamAccount | null>(null);
@@ -117,7 +123,8 @@ export const PamAccountsPage = () => {
     "createAccount",
     "deleteAccount",
     "createFolder",
-    "deleteFolder"
+    "deleteFolder",
+    "joinFolderAsAdmin"
   ] as const);
 
   const accountSheet = usePamSheetState("accountId");
@@ -184,6 +191,23 @@ export const PamAccountsPage = () => {
         onSuccess: () => {
           createNotification({ text: "Account deleted", type: "success" });
           handlePopUpClose("deleteAccount");
+        }
+      }
+    );
+  };
+
+  const handleJoinFolderAsAdmin = () => {
+    const { folderId, folderName } = popUp.joinFolderAsAdmin.data as {
+      folderId: string;
+      folderName: string;
+    };
+
+    grantFolderAdminAccess.mutate(
+      { folderId },
+      {
+        onSuccess: () => {
+          createNotification({ text: `You're now an admin of ${folderName}`, type: "success" });
+          handlePopUpClose("joinFolderAsAdmin");
         }
       }
     );
@@ -369,6 +393,12 @@ export const PamAccountsPage = () => {
                       accountCount: folder.accountCount
                     })
                   }
+                  onFolderJoinAsAdmin={() =>
+                    handlePopUpOpen("joinFolderAsAdmin", {
+                      folderId: folder.id,
+                      folderName: folder.name
+                    })
+                  }
                 />
               ))}
             </TableBody>
@@ -439,6 +469,18 @@ export const PamAccountsPage = () => {
         onConfirm={handleDeleteFolder}
         onOpenChange={(open) => {
           if (!open) handlePopUpClose("deleteFolder");
+        }}
+      />
+
+      <JoinFolderAsAdminModal
+        isOpen={popUp.joinFolderAsAdmin.isOpen}
+        folderName={
+          (popUp.joinFolderAsAdmin.data as { folderName: string } | undefined)?.folderName ?? ""
+        }
+        isLoading={grantFolderAdminAccess.isPending}
+        onConfirm={handleJoinFolderAsAdmin}
+        onOpenChange={(open) => {
+          if (!open) handlePopUpClose("joinFolderAsAdmin");
         }}
       />
 
