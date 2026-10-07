@@ -317,6 +317,7 @@ export const MultiEnvironmentSecretEditSheet = ({
     }
     setIsSaving(true);
     try {
+      const updateResults: boolean[] = [];
       const results = await Promise.allSettled(
         plans.map(({ environment: env, changes: targetChanges }) => {
           const secret = getSecretByKey(env.slug, secretKey)!;
@@ -327,7 +328,8 @@ export const MultiEnvironmentSecretEditSheet = ({
             secretId: secret.id,
             secretValueHidden: secret.secretValueHidden,
             type: SecretType.Shared,
-            ...targetChanges
+            ...targetChanges,
+            onUpdateResult: (requiresApproval) => updateResults.push(requiresApproval)
           });
         })
       );
@@ -346,6 +348,15 @@ export const MultiEnvironmentSecretEditSheet = ({
         });
         setConfirmation(undefined);
         return;
+      }
+      if (updateResults.length) {
+        const requiresApproval = updateResults.includes(true);
+        createNotification({
+          type: requiresApproval ? "info" : "success",
+          text: requiresApproval
+            ? "Secret changes submitted. Updates requiring approval have been sent for review."
+            : "Successfully updated secret"
+        });
       }
       onClose();
     } finally {

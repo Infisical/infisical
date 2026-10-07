@@ -84,6 +84,7 @@ export type SecretTableRowProps = {
     secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
     skipMultilineEncoding?: boolean | null;
     originalValue?: string;
+    onUpdateResult?: (requiresApproval: boolean) => void;
   }) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string, type?: SecretType) => Promise<void>;
   isImportedSecretPresentInEnv: (env: string, secretName: string) => boolean;
