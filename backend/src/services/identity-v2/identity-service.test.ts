@@ -133,7 +133,7 @@ describe("deleteIdentity alert cleanup", () => {
     "refuses deleting the last project admin identity in %s",
     async (projectType) => {
       const query = knex({ client: "pg" }).queryBuilder();
-      vi.spyOn(query, "first").mockResolvedValue({ count: "0" });
+      vi.spyOn(query, "first").mockResolvedValueOnce({ count: "0" }).mockResolvedValue({ count: "1" });
       const tx = Object.assign(
         vi.fn(() => query),
         { raw: vi.fn().mockResolvedValue(undefined) }

@@ -153,7 +153,7 @@ describe("project admin identity deactivation", () => {
     "refuses disabling the last admin while retaining its Admin role in %s",
     async (projectType) => {
       const query = knex({ client: "pg" }).queryBuilder();
-      vi.spyOn(query, "first").mockResolvedValue({ count: "0" });
+      vi.spyOn(query, "first").mockResolvedValueOnce({ count: "0" }).mockResolvedValue({ count: "1" });
       const tx = Object.assign(
         vi.fn(() => query),
         { raw: vi.fn().mockResolvedValue(undefined) }

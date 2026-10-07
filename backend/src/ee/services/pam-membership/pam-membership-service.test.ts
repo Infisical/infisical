@@ -24,7 +24,9 @@ const user = (id: string, username: string) => ({ id, username, isGhost: false }
 describe("pamMembership product admin retention", () => {
   const buildRemovalService = (adminCount: number) => {
     const query = knex({ client: "pg" }).queryBuilder();
-    vi.spyOn(query, "first").mockResolvedValue({ count: String(adminCount) });
+    vi.spyOn(query, "first")
+      .mockResolvedValueOnce({ count: String(adminCount) })
+      .mockResolvedValue({ count: "1" });
     const tx = Object.assign(
       vi.fn(() => query),
       { raw: vi.fn().mockResolvedValue(undefined) }

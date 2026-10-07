@@ -7,10 +7,13 @@ import { PgSqlLock } from "@app/keystore/keystore";
 import { assertProductWillRetainAdmin, resolveMembershipRoleSlugs } from "./membership-fns";
 
 describe("product admin retention", () => {
-  const buildTx = (adminCount: number) => {
+  const buildTx = (adminCount: number, removingAdmins = 1) => {
     const db = knex({ client: "pg" });
     const query = db.queryBuilder();
-    const first = vi.spyOn(query, "first").mockResolvedValue({ count: String(adminCount) });
+    const first = vi
+      .spyOn(query, "first")
+      .mockResolvedValueOnce({ count: String(adminCount) })
+      .mockResolvedValue({ count: String(removingAdmins) });
     const tx = Object.assign(
       vi.fn(() => query),
       { raw: vi.fn().mockResolvedValue(undefined) }
@@ -46,6 +49,15 @@ describe("product admin retention", () => {
     expect(bindings).toContain("admin");
     expect(bindings).toContain("admin-1");
     expect(sql).not.toMatch(/actorUserId|actorGroupId|actorIdentityId|customRoleId/);
+  });
+
+  test("allows changing a non-admin in an already adminless project", async () => {
+    const { tx } = buildTx(0, 0);
+    await assertProductWillRetainAdmin({
+      project: { id: "project-1", type: ProjectType.CertificateManager },
+      excludeMembershipIds: ["member-1"],
+      tx
+    });
   });
 
   test.each([ProjectType.SecretManager, ProjectType.KMS, ProjectType.SecretScanning, null])(
