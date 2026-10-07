@@ -80,6 +80,7 @@ import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TTravisCIConnection } from "./travis-ci-connection";
 import { TTriggerDevConnection } from "./trigger-dev-connection";
+import { TUltraDNSConnection } from "./ultradns-connection";
 import { TVenafiConnection } from "./venafi-connection";
 import { TVenafiTppConnection } from "./venafi-tpp-connection";
 import { TVercelConnection } from "./vercel-connection";
@@ -164,6 +165,7 @@ export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
 export * from "./travis-ci-connection";
 export * from "./trigger-dev-connection";
+export * from "./ultradns-connection";
 export * from "./venafi-connection";
 export * from "./venafi-tpp-connection";
 export * from "./vercel-connection";
@@ -218,6 +220,7 @@ export type TAppConnection =
   | TMongoDBConnection
   | TChefConnection
   | TDNSMadeEasyConnection
+  | TUltraDNSConnection
   | TAzureDNSConnection
   | TSshConnection
   | TDbtConnection

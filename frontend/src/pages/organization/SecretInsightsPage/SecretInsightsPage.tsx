@@ -9,7 +9,6 @@ import {
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -21,6 +20,7 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   OrgPermissionSubjects,
   useOrganization,
