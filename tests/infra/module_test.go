@@ -9,17 +9,17 @@ import (
 )
 
 type fakeModule struct {
-	key      Key
-	requires []Key
-	optional []Key
+	key      ModuleKey
+	requires []ModuleKey
+	optional []ModuleKey
 }
 
-func (f fakeModule) Key() Key { return f.key }
+func (f fakeModule) Key() ModuleKey { return f.key }
 func (f fakeModule) Name() NameParts {
 	return NameParts{Module: string(f.key)}
 }
-func (f fakeModule) Requires() []Key { return f.requires }
-func (f fakeModule) Optional() []Key { return f.optional }
+func (f fakeModule) Requires() []ModuleKey { return f.requires }
+func (f fakeModule) Optional() []ModuleKey { return f.optional }
 func (f fakeModule) Start(context.Context, Deps) (Handle, error) {
 	return nil, nil
 }
@@ -35,17 +35,17 @@ func TestResolve(t *testing.T) {
 		// Action
 		plan, err := Resolve(
 			mods(
-				fakeModule{key: "infisical", requires: []Key{"postgres", "redis"}},
+				fakeModule{key: "infisical", requires: []ModuleKey{"postgres", "redis"}},
 				fakeModule{key: "postgres"},
 				fakeModule{key: "redis"},
 			),
-			map[Key]Scope{"infisical": Shared, "postgres": Shared, "redis": Shared},
+			map[ModuleKey]Scope{"infisical": Shared, "postgres": Shared, "redis": Shared},
 		)
 
 		// Assert
 		require.NoError(t, err)
 		got := keysOf(plan.Modules())
-		require.Equal(t, Key("infisical"), got[len(got)-1], "infisical must start last")
+		require.Equal(t, ModuleKey("infisical"), got[len(got)-1], "infisical must start last")
 	})
 
 	t.Run("should accept an optional dependency that is absent", func(t *testing.T) {
@@ -53,8 +53,8 @@ func TestResolve(t *testing.T) {
 
 		// Action
 		_, err := Resolve(
-			mods(fakeModule{key: "infisical", optional: []Key{"fakenet"}}),
-			map[Key]Scope{"infisical": Shared},
+			mods(fakeModule{key: "infisical", optional: []ModuleKey{"fakenet"}}),
+			map[ModuleKey]Scope{"infisical": Shared},
 		)
 
 		// Assert
@@ -66,8 +66,8 @@ func TestResolve(t *testing.T) {
 
 		// Action
 		_, err := Resolve(
-			mods(fakeModule{key: "infisical", requires: []Key{"postgres"}}),
-			map[Key]Scope{"infisical": Shared},
+			mods(fakeModule{key: "infisical", requires: []ModuleKey{"postgres"}}),
+			map[ModuleKey]Scope{"infisical": Shared},
 		)
 
 		// Assert
@@ -82,10 +82,10 @@ func TestResolve(t *testing.T) {
 		// Action
 		_, err := Resolve(
 			mods(
-				fakeModule{key: "infisical", optional: []Key{"fakenet"}},
+				fakeModule{key: "infisical", optional: []ModuleKey{"fakenet"}},
 				fakeModule{key: "fakenet"},
 			),
-			map[Key]Scope{"infisical": Shared, "fakenet": Package},
+			map[ModuleKey]Scope{"infisical": Shared, "fakenet": Package},
 		)
 
 		// Assert
@@ -101,10 +101,10 @@ func TestResolve(t *testing.T) {
 		// Action
 		_, err := Resolve(
 			mods(
-				fakeModule{key: "infisical", optional: []Key{"fakenet"}},
+				fakeModule{key: "infisical", optional: []ModuleKey{"fakenet"}},
 				fakeModule{key: "fakenet"},
 			),
-			map[Key]Scope{"infisical": Package, "fakenet": Shared},
+			map[ModuleKey]Scope{"infisical": Package, "fakenet": Shared},
 		)
 
 		// Assert
@@ -117,7 +117,7 @@ func TestResolve(t *testing.T) {
 		// Action
 		_, err := Resolve(
 			mods(fakeModule{key: "postgres"}, fakeModule{key: "postgres"}),
-			map[Key]Scope{"postgres": Shared},
+			map[ModuleKey]Scope{"postgres": Shared},
 		)
 
 		// Assert
@@ -130,10 +130,10 @@ func TestResolve(t *testing.T) {
 		// Action
 		_, err := Resolve(
 			mods(
-				fakeModule{key: "a", requires: []Key{"b"}},
-				fakeModule{key: "b", requires: []Key{"a"}},
+				fakeModule{key: "a", requires: []ModuleKey{"b"}},
+				fakeModule{key: "b", requires: []ModuleKey{"a"}},
 			),
-			map[Key]Scope{"a": Shared, "b": Shared},
+			map[ModuleKey]Scope{"a": Shared, "b": Shared},
 		)
 
 		// Assert
@@ -145,7 +145,7 @@ func TestDepsGet(t *testing.T) {
 	t.Parallel()
 
 	type pgHandle struct{ Handle }
-	deps := Deps{handles: map[Key]Handle{"postgres": pgHandle{}}}
+	deps := Deps{handles: map[ModuleKey]Handle{"postgres": pgHandle{}}}
 
 	t.Run("should return a declared module typed", func(t *testing.T) {
 		t.Parallel()
@@ -160,8 +160,8 @@ func TestDepsGet(t *testing.T) {
 	})
 }
 
-func keysOf(ms []Module) []Key {
-	out := make([]Key, len(ms))
+func keysOf(ms []Module) []ModuleKey {
+	out := make([]ModuleKey, len(ms))
 	for i, m := range ms {
 		out[i] = m.Key()
 	}

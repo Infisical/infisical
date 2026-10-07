@@ -14,11 +14,11 @@ import (
 // startAll resolves and starts a module set the way the harness will, so this
 // exercises the graph, the runner and every module together rather than one at a
 // time.
-func startAll(t *testing.T, mods []infra.Module, scope infra.Scope) map[infra.Key]infra.Handle {
+func startAll(t *testing.T, mods []infra.Module, scope infra.Scope) map[infra.ModuleKey]infra.Handle {
 	t.Helper()
 	ctx := t.Context()
 
-	scopes := make(map[infra.Key]infra.Scope, len(mods))
+	scopes := make(map[infra.ModuleKey]infra.Scope, len(mods))
 	for _, m := range mods {
 		scopes[m.Key()] = scope
 	}
@@ -29,7 +29,7 @@ func startAll(t *testing.T, mods []infra.Module, scope infra.Scope) map[infra.Ke
 	runner := infra.NewRunner(infra.Workspace(), log)
 	require.NoError(t, runner.Network(ctx, infra.NetworkName))
 
-	handles := map[infra.Key]infra.Handle{}
+	handles := map[infra.ModuleKey]infra.Handle{}
 	for _, m := range plan.Modules() {
 		name := m.Name()
 		name.Scope = infra.Test

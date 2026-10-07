@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	Key = infra.Key("infisical")
+	Key = infra.ModuleKey("infisical")
 
 	// backend/Dockerfile: ENV HOST=0.0.0.0, EXPOSE 4000. The standalone image uses
 	// 8080; this is not that image.
@@ -63,17 +63,17 @@ func Module(opts ...Option) infra.Module {
 	return m
 }
 
-func (m *module) Key() infra.Key { return Key }
+func (m *module) Key() infra.ModuleKey { return Key }
 
 // Requires is the hard floor. env.ts enforces Redis with a zod refine, and the
 // database URI has a default that resolves to a literal "undefined" host, so both
 // fail at connect time rather than parse time if absent.
-func (m *module) Requires() []infra.Key { return []infra.Key{postgres.Key, redis.Key} }
+func (m *module) Requires() []infra.ModuleKey { return []infra.ModuleKey{postgres.Key, redis.Key} }
 
 // Optional is consumed if declared. fakenet is what makes outbound calls, mail and
 // entitlements controllable, and mail is what makes user creation possible at all.
-func (m *module) Optional() []infra.Key {
-	return []infra.Key{fakenet.Key}
+func (m *module) Optional() []infra.ModuleKey {
+	return []infra.ModuleKey{fakenet.Key}
 }
 
 func (m *module) Name() infra.NameParts {

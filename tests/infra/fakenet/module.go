@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	Key = infra.Key("fakenet")
+	Key = infra.ModuleKey("fakenet")
 
 	adminPort = 8080
 	httpsPort = 443
@@ -144,9 +144,9 @@ func Module(opts ...Option) infra.Module {
 	return m
 }
 
-func (m *module) Key() infra.Key        { return Key }
-func (m *module) Requires() []infra.Key { return nil }
-func (m *module) Optional() []infra.Key { return nil }
+func (m *module) Key() infra.ModuleKey        { return Key }
+func (m *module) Requires() []infra.ModuleKey { return nil }
+func (m *module) Optional() []infra.ModuleKey { return nil }
 
 func (m *module) Name() infra.NameParts {
 	return infra.NameParts{Module: "fakenet", Fingerprint: m.image.ShortID()}

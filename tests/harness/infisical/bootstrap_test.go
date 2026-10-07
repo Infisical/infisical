@@ -20,8 +20,8 @@ func TestBootstrap(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("should yield an instance admin identity token", func(t *testing.T) {
-		require.NotEmpty(t, root.IdentityToken, "instance-level suites have no principal")
-		require.NotEqual(t, uuid.Nil, root.IdentityID)
+		require.NotEmpty(t, root.MachineIdentityToken, "instance-level suites have no principal")
+		require.NotEqual(t, uuid.Nil, root.MachineIdentityID)
 	})
 
 	t.Run("should keep the root user credentials", func(t *testing.T) {

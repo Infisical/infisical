@@ -38,7 +38,7 @@ func (p Profile) String() string {
 // shared container is adopted by name and takes its environment at creation, so if
 // one package declared WireMock and another did not, whichever started the instance
 // first would silently decide whether it runs in cloud mode for everyone.
-func (p Profile) modules(img infisical.Image, fnImg fakenet.Image, caFile string, extra ...infra.Module) ([]infra.Module, map[infra.Key]infra.Scope) {
+func (p Profile) modules(img infisical.Image, fnImg fakenet.Image, caFile string, extra ...infra.Module) ([]infra.Module, map[infra.ModuleKey]infra.Scope) {
 	own := infra.Shared
 	if p == Isolated {
 		own = infra.Package
@@ -50,7 +50,7 @@ func (p Profile) modules(img infisical.Image, fnImg fakenet.Image, caFile string
 		fakenet.Module(fakenet.WithImage(fnImg), fakenet.WithCAFile(caFile)),
 		infisical.Module(infisical.WithImage(img)),
 	}
-	scopes := map[infra.Key]infra.Scope{
+	scopes := map[infra.ModuleKey]infra.Scope{
 		postgres.Key: own,
 		redis.Key:    own,
 		// Shared even under Isolated: it holds a fixed address on the network, and

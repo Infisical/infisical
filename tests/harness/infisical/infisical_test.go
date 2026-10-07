@@ -34,7 +34,7 @@ func bootStack(t *testing.T, opts ...infisical.Option) *infisical.Handle {
 
 	mods := []infra.Module{postgres.Module(), redis.Module(),
 		infisical.Module(append([]infisical.Option{infisical.WithImage(img)}, opts...)...)}
-	scopes := map[infra.Key]infra.Scope{}
+	scopes := map[infra.ModuleKey]infra.Scope{}
 	for _, m := range mods {
 		scopes[m.Key()] = infra.Shared
 	}
@@ -44,7 +44,7 @@ func bootStack(t *testing.T, opts ...infisical.Option) *infisical.Handle {
 	runner := infra.NewRunner(infra.Workspace(), log)
 	require.NoError(t, runner.Network(ctx, infra.NetworkName))
 
-	handles := map[infra.Key]infra.Handle{}
+	handles := map[infra.ModuleKey]infra.Handle{}
 	for _, m := range plan.Modules() {
 		name := m.Name()
 		name.Scope = infra.Test

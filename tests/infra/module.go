@@ -7,15 +7,15 @@ import (
 	"strings"
 )
 
-// Key identifies a module for lookup. A module that can appear more than once
+// ModuleKey identifies a module for lookup. A module that can appear more than once
 // qualifies its key with the instance name, so postgres.Module(postgres.Named(
 // "rotation")) is "postgres:rotation" and does not collide with "postgres".
-type Key string
+type ModuleKey string
 
 // Module is a container the harness can start. Implementations live in
 // infra/<name> and are about thirty lines each, because Deps.Run does the work.
 type Module interface {
-	Key() Key
+	Key() ModuleKey
 
 	// Name is the identity-bearing part of the container name. The harness supplies
 	// scope and scope id; a module supplies its own module name, instance, and a
@@ -25,10 +25,10 @@ type Module interface {
 	// Requires lists modules this one cannot start without. Validated before
 	// anything starts, so a missing dependency fails immediately rather than as a
 	// connection timeout ninety seconds later.
-	Requires() []Key
+	Requires() []ModuleKey
 
 	// Optional lists modules this one consumes if present and ignores if not.
-	Optional() []Key
+	Optional() []ModuleKey
 
 	Start(context.Context, Deps) (Handle, error)
 }
@@ -42,7 +42,7 @@ type Handle interface {
 // Deps is what a module sees during Start: every module that has already started,
 // plus the network they share.
 type Deps struct {
-	handles   map[Key]Handle
+	handles   map[ModuleKey]Handle
 	network   string
 	workspace string
 	name      NameParts
@@ -76,7 +76,7 @@ func (d Deps) Run(ctx context.Context, spec ContainerSpec) (Container, error) {
 }
 
 // NewDeps builds the Deps handed to one module's Start.
-func NewDeps(handles map[Key]Handle, network, workspace string, name NameParts, r Runner, log Logger) Deps {
+func NewDeps(handles map[ModuleKey]Handle, network, workspace string, name NameParts, r Runner, log Logger) Deps {
 	if log == nil {
 		log = NewLogger()
 	}
@@ -89,7 +89,7 @@ func (d Deps) Log() Logger { return d.log }
 //
 // A generic method rather than a package function, which Go 1.27 allows. Modules
 // still wrap it (wiremock.From, postgres.MustFrom) so call sites read as prose.
-func (d Deps) Get[H Handle](k Key) (H, bool) {
+func (d Deps) Get[H Handle](k ModuleKey) (H, bool) {
 	h, ok := d.handles[k]
 	if !ok {
 		var zero H
@@ -102,19 +102,19 @@ func (d Deps) Get[H Handle](k Key) (H, bool) {
 // Plan is a validated, ordered set of modules ready to start.
 type Plan struct {
 	modules []Module
-	scopes  map[Key]Scope
+	scopes  map[ModuleKey]Scope
 }
 
-func (p Plan) Modules() []Module   { return p.modules }
-func (p Plan) Scope(k Key) Scope   { return p.scopes[k] }
-func (p Plan) Declared(k Key) bool { _, ok := p.scopes[k]; return ok }
+func (p Plan) Modules() []Module         { return p.modules }
+func (p Plan) Scope(k ModuleKey) Scope   { return p.scopes[k] }
+func (p Plan) Declared(k ModuleKey) bool { _, ok := p.scopes[k]; return ok }
 
 // Resolve validates a module set and returns it in dependency order.
 //
 // Everything here runs before a single container starts, so every failure below is
 // instant and names the fix.
-func Resolve(modules []Module, scopes map[Key]Scope) (Plan, error) {
-	byKey := make(map[Key]Module, len(modules))
+func Resolve(modules []Module, scopes map[ModuleKey]Scope) (Plan, error) {
+	byKey := make(map[ModuleKey]Module, len(modules))
 	for _, m := range modules {
 		if _, dup := byKey[m.Key()]; dup {
 			return Plan{}, fmt.Errorf("infra: module %q declared twice; use Named() to run a second instance", m.Key())
@@ -144,12 +144,12 @@ func Resolve(modules []Module, scopes map[Key]Scope) (Plan, error) {
 // itself. This is not hypothetical: a Shared Infisical takes HTTP_PROXY at container
 // start, so pointing it at a Package-scoped WireMock breaks every other package the
 // moment that one finishes.
-func checkLifetimes(m Module, scopes map[Key]Scope, byKey map[Key]Module) error {
+func checkLifetimes(m Module, scopes map[ModuleKey]Scope, byKey map[ModuleKey]Module) error {
 	mine, ok := scopes[m.Key()]
 	if !ok {
 		return fmt.Errorf("infra: no scope declared for %s", m.Key())
 	}
-	for _, dep := range append(append([]Key{}, m.Requires()...), m.Optional()...) {
+	for _, dep := range append(append([]ModuleKey{}, m.Requires()...), m.Optional()...) {
 		if _, declared := byKey[dep]; !declared {
 			continue // optional and absent
 		}
@@ -166,15 +166,15 @@ func checkLifetimes(m Module, scopes map[Key]Scope, byKey map[Key]Module) error 
 	return nil
 }
 
-func topoSort(modules []Module, byKey map[Key]Module) ([]Module, error) {
+func topoSort(modules []Module, byKey map[ModuleKey]Module) ([]Module, error) {
 	const (
 		unvisited = iota
 		inProgress
 		done
 	)
-	state := make(map[Key]int, len(modules))
+	state := make(map[ModuleKey]int, len(modules))
 	out := make([]Module, 0, len(modules))
-	var path []Key
+	var path []ModuleKey
 
 	var visit func(m Module) error
 	visit = func(m Module) error {
@@ -187,7 +187,7 @@ func topoSort(modules []Module, byKey map[Key]Module) ([]Module, error) {
 		state[m.Key()] = inProgress
 		path = append(path, m.Key())
 
-		deps := append(append([]Key{}, m.Requires()...), m.Optional()...)
+		deps := append(append([]ModuleKey{}, m.Requires()...), m.Optional()...)
 		sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
 		for _, k := range deps {
 			if dep, ok := byKey[k]; ok {
@@ -213,7 +213,7 @@ func topoSort(modules []Module, byKey map[Key]Module) ([]Module, error) {
 	return out, nil
 }
 
-func joinKeys(ks []Key) string {
+func joinKeys(ks []ModuleKey) string {
 	s := make([]string, len(ks))
 	for i, k := range ks {
 		s[i] = string(k)

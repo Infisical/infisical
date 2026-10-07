@@ -15,7 +15,7 @@ import (
 )
 
 // setup returns a project, a GitHub connection, and a handle on the account it uses.
-func setup(t *testing.T) (*fixture.Project, *fixture.AppConnection, *github.Handle) {
+func setup(t *testing.T) (*fixture.Project, *fixture.AppConnection, *github.ControlPlane) {
 	t.Helper()
 	tn := harness.From(t).NewTenant(t)
 	proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))

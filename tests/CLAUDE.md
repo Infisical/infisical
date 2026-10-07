@@ -271,10 +271,10 @@ has one, they have stopped meaning anything.
 h  := harness.From(t)              // the stack this package's TestMain built
 tn := h.NewTenant(t)               // fresh organization with its own admin
 tn.Admin                           // *Principal: .API, .Token, .Email, .Kind, .ID
-tn.Address("alice")                // alice@<tenant-nonce>.test
+tn.Email("alice")                  // alice@<tenant-nonce>.test
 
 tn.NewUser(t, harness.WithName("alice"))        // real user, invited through mail
-tn.NewIdentity(t, harness.OrgRole("admin"))     // machine identity
+tn.NewMachineIdentity(t, harness.OrgRole("admin"))
 tn.Mail(t).Expect(t, addr, smtp.Subject("x"))  // waits on this tenant's mail
 tn.SetPlan(t, license.Enterprise().Without(license.RBAC))
 tn.Client(t, token)                             // a client on this tenant's bucket

@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	Key  = infra.Key("redis")
+	Key  = infra.ModuleKey("redis")
 	port = 6379
 )
 
@@ -31,15 +31,15 @@ func Module(opts ...Option) infra.Module {
 	return m
 }
 
-func (m *module) Key() infra.Key {
+func (m *module) Key() infra.ModuleKey {
 	if m.instance == "" {
 		return Key
 	}
-	return Key + infra.Key(":"+m.instance)
+	return Key + infra.ModuleKey(":"+m.instance)
 }
 
-func (m *module) Requires() []infra.Key { return nil }
-func (m *module) Optional() []infra.Key { return nil }
+func (m *module) Requires() []infra.ModuleKey { return nil }
+func (m *module) Optional() []infra.ModuleKey { return nil }
 func (m *module) Name() infra.NameParts {
 	return infra.NameParts{Module: "redis", Instance: m.instance}
 }

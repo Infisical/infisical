@@ -40,7 +40,7 @@ func (in *Inbox) Expect(tt *testing.T, addr string, filters ...Filter) Message {
 	addr = strings.ToLower(addr)
 	if !strings.HasSuffix(addr, "@"+in.domain) {
 		tt.Fatalf("smtp: this inbox is scoped to @%s but was asked for %s.\n"+
-			"Reading another tenant's mail would make the test order-dependent; use tn.Address(local)",
+			"Reading another tenant's mail would make the test order-dependent; use tn.Email(local)",
 			in.domain, addr)
 	}
 	return in.ExpectEvent[MessageReceived](tt, func(e MessageReceived) bool {

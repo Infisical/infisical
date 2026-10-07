@@ -35,12 +35,12 @@ const (
 //     level suites get.
 //   - The organization it creates is incidental. Tenants make their own.
 type Root struct {
-	UserID        uuid.UUID
-	Email         string
-	Password      string
-	OrgID         uuid.UUID
-	IdentityID    uuid.UUID
-	IdentityToken string
+	UserID               uuid.UUID
+	Email                string
+	Password             string
+	OrgID                uuid.UUID
+	MachineIdentityID    uuid.UUID
+	MachineIdentityToken string
 }
 
 // Bootstrap prepares a freshly migrated instance.
@@ -68,31 +68,31 @@ func Bootstrap(ctx context.Context, baseURL string) (Root, error) {
 	case alreadyBootstrapped(res.StatusCode(), res.Body):
 		// An adopted instance. The credentials are constants, so this is recoverable
 		// rather than fatal: log in and carry on with what the first caller created.
-		return adopt(ctx, c)
+		return loginAsRoot(ctx, c)
 	default:
 		return Root{}, apiError("bootstrap", res.StatusCode(), res.Body)
 	}
 
 	body := res.JSON200
 	root := Root{
-		UserID:        body.User.Id,
-		Email:         RootEmail,
-		Password:      RootPassword,
-		OrgID:         body.Organization.Id,
-		IdentityID:    body.Identity.Id,
-		IdentityToken: body.Identity.Credentials.Token,
+		UserID:               body.User.Id,
+		Email:                RootEmail,
+		Password:             RootPassword,
+		OrgID:                body.Organization.Id,
+		MachineIdentityID:    body.Identity.Id,
+		MachineIdentityToken: body.Identity.Credentials.Token,
 	}
 
 	// bootstrapInstance sets allowSignUp:false whenever the instance is not cloud.
 	// Without turning it back on, creating a second real user is impossible, and that
 	// is the only path to a non-administrator principal.
-	if err := allowSignUp(ctx, baseURL, root.IdentityToken); err != nil {
+	if err := allowSignUp(ctx, baseURL, root.MachineIdentityToken); err != nil {
 		return Root{}, err
 	}
 	return root, nil
 }
 
-func adopt(ctx context.Context, c *api.ClientWithResponses) (Root, error) {
+func loginAsRoot(ctx context.Context, c *api.ClientWithResponses) (Root, error) {
 	res, err := c.LoginV3WithResponse(ctx, api.LoginV3JSONRequestBody{
 		Email:    RootEmail,
 		Password: RootPassword,

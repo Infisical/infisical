@@ -6,11 +6,11 @@ import (
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 )
 
-// Handle is a test's view of one GitHub account inside fakenet.
+// ControlPlane is a test's view of one GitHub account inside fakenet.
 //
 // Everything generic comes from the embedded Scope: State, Seed, Fail, Calls,
 // Received, and cleanup. Only the naming below is specific to GitHub.
-type Handle struct {
+type ControlPlane struct {
 	*fakenet.Scope[Account]
 }
 
@@ -18,28 +18,28 @@ type Handle struct {
 //
 // The caller passes the credential rather than the fixture, so this package stays
 // independent of how a connection was created.
-func Open(tt *testing.T, adminURL, credential string) *Handle {
+func Open(tt *testing.T, adminURL, credential string) *ControlPlane {
 	tt.Helper()
-	return &Handle{fakenet.Open[Account](tt, adminURL, Service.Host(), credential)}
+	return &ControlPlane{fakenet.Open[Account](tt, adminURL, Service.Host(), credential)}
 }
 
 // Repo is a repository's secrets. Nil when the sync has never touched it, which is
 // itself the assertion in a test about a sync that should not have run.
-func (h *Handle) Repo(tt *testing.T, full string) *Store {
+func (cp *ControlPlane) Repo(tt *testing.T, full string) *Store {
 	tt.Helper()
-	return h.State(tt).Stores["repos/"+full]
+	return cp.State(tt).Stores["repos/"+full]
 }
 
 // OrgSecrets is an organization's secrets.
-func (h *Handle) OrgSecrets(tt *testing.T, org string) *Store {
+func (cp *ControlPlane) OrgSecrets(tt *testing.T, org string) *Store {
 	tt.Helper()
-	return h.State(tt).Stores["orgs/"+org]
+	return cp.State(tt).Stores["orgs/"+org]
 }
 
 // Env is a repository environment's secrets.
-func (h *Handle) Env(tt *testing.T, full, env string) *Store {
+func (cp *ControlPlane) Env(tt *testing.T, full, env string) *Store {
 	tt.Helper()
-	return h.State(tt).Stores["repos/"+full+"/envs/"+env]
+	return cp.State(tt).Stores["repos/"+full+"/envs/"+env]
 }
 
 // RepoSecret seeds a secret that is already at the destination before Infisical

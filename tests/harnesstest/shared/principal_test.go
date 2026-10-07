@@ -18,7 +18,7 @@ func TestIdentity_HonoursItsOrgRole(t *testing.T) {
 
 	// Setup
 	tn := harness.From(t).NewTenant(t)
-	identity := tn.NewIdentity(t, harness.OrgRole("no-access"))
+	identity := tn.NewMachineIdentity(t, harness.OrgRole("no-access"))
 
 	// Action
 	res, err := identity.API.CreateProjectWithResponse(t.Context(), api.CreateProjectJSONRequestBody{
@@ -46,7 +46,7 @@ func TestUser_IsInvitedThroughMail(t *testing.T) {
 		alice := tn.NewUser(t, harness.WithName("alice"))
 
 		// Assert
-		require.Equal(t, tn.Address("alice"), alice.Email)
+		require.Equal(t, tn.Email("alice"), alice.Email)
 		res, err := alice.API.GetOrganizationPlanWithResponse(t.Context(), tn.OrgID.String(), nil)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, res.StatusCode(), "an invited user cannot reach the organization")

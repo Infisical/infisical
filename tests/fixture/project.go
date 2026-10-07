@@ -95,7 +95,7 @@ func newPrincipalConfig(opts []PrincipalOption) principalConfig {
 	return cfg
 }
 
-func (p *Project) NewIdentity(tt *testing.T, opts ...PrincipalOption) *harness.Principal {
+func (p *Project) NewMachineIdentity(tt *testing.T, opts ...PrincipalOption) *harness.Principal {
 	tt.Helper()
 
 	cfg := newPrincipalConfig(opts)
@@ -119,7 +119,7 @@ func (p *Project) NewIdentity(tt *testing.T, opts ...PrincipalOption) *harness.P
 	require.NoErrorf(tt, err, "creating identity %s in %s", cfg.name, p.Slug)
 	require.NotNilf(tt, res.JSON200, "creating identity %s in %s returned %d: %s",
 		cfg.name, p.Slug, res.StatusCode(), apierr.Body(res.Body))
-	return p.tn.LoginIdentity(tt, res.JSON200.Identity.Id, cfg.name)
+	return p.tn.LoginWithUniversalAuth(tt, res.JSON200.Identity.Id, cfg.name)
 }
 
 func (p *Project) NewUser(tt *testing.T, opts ...PrincipalOption) *harness.Principal {
@@ -159,7 +159,7 @@ func (p *Project) Grant(tt *testing.T, pr *harness.Principal, roles ...string) {
 		require.Equalf(tt, http.StatusOK, res.StatusCode(), "adding %s to %s: %s",
 			pr.Email, p.Slug, apierr.Body(res.Body))
 
-	case harness.Identity:
+	case harness.MachineIdentity:
 		items := make([]api.CreateProjectIdentityMembershipJSONBody_Roles_Item, 0, len(roles))
 		for _, slug := range roles {
 			var item api.CreateProjectIdentityMembershipJSONBody_Roles_Item

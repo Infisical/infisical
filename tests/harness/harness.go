@@ -32,7 +32,7 @@ var current *Stack
 // Stack is a running Infisical and everything around it.
 type Stack struct {
 	profile  Profile
-	modules  map[infra.Key]infra.Handle
+	modules  map[infra.ModuleKey]infra.Handle
 	log      infra.Logger
 	pkg      string
 	mainFile string
@@ -180,7 +180,7 @@ func bringUp(ctx context.Context, profile Profile, cfg *config, pkg string) (*St
 	// network, and its containers are package-qualified by name anyway.
 	stackNet := infra.NetworkName
 
-	handles := map[infra.Key]infra.Handle{}
+	handles := map[infra.ModuleKey]infra.Handle{}
 	var owned []infra.Handle
 
 	for _, mod := range plan.Modules() {
@@ -233,7 +233,7 @@ func From(t *testing.T) *Stack {
 func (s *Stack) App() *infisical.Handle { return s.app }
 
 // Require returns a module handle, or fails the test naming the option to add.
-func (s *Stack) Require(t *testing.T, key infra.Key, option string) infra.Handle {
+func (s *Stack) Require(t *testing.T, key infra.ModuleKey, option string) infra.Handle {
 	t.Helper()
 	h, ok := s.modules[key]
 	if !ok {
@@ -281,19 +281,19 @@ func (s *Stack) InstanceAdmin(t *testing.T) *Principal {
 
 	s.adminOnce.Do(func() {
 		ip := newIP()
-		token := s.root.IdentityToken
+		token := s.root.MachineIdentityToken
 		if token == "" {
 			token = s.rootToken(t, ip)
 		}
 		s.instanceAdmin = &Principal{
-			Kind:  Identity,
-			ID:    s.root.IdentityID,
+			Kind:  MachineIdentity,
+			ID:    s.root.MachineIdentityID,
 			Name:  "instance-admin",
 			Token: token,
 			API:   s.client(t, token, ip),
 			ip:    ip,
 		}
-		if s.root.IdentityToken == "" {
+		if s.root.MachineIdentityToken == "" {
 			s.instanceAdmin.Kind = User
 			s.instanceAdmin.ID = s.root.UserID
 			s.instanceAdmin.Email = s.root.Email

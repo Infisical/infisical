@@ -79,7 +79,7 @@ func (t *Tenant) NewUser(tt *testing.T, opts ...PrincipalOption) *Principal {
 	tt.Helper()
 	cfg := newPrincipalConfig("u", opts)
 	ctx := tt.Context()
-	addr := t.Address(cfg.name)
+	addr := t.Email(cfg.name)
 
 	// The new user's own bucket, not the tenant's: the invite goes through
 	// smtpRateLimit, which is a hardcoded two per forty seconds keyed on the source
@@ -173,11 +173,11 @@ func (s *Stack) completeAccount(tt *testing.T, verifiedToken, ip string, body ap
 	return res.JSON200.User.Id, res.JSON200.Token
 }
 
-// NewIdentity creates a machine identity with universal auth and logs it in.
+// NewMachineIdentity creates a machine identity with universal auth and logs it in.
 //
 // Four calls and no mail, so it is much cheaper than a user. Reach for this unless
 // the behaviour under test is specific to a human actor.
-func (t *Tenant) NewIdentity(tt *testing.T, opts ...PrincipalOption) *Principal {
+func (t *Tenant) NewMachineIdentity(tt *testing.T, opts ...PrincipalOption) *Principal {
 	tt.Helper()
 	cfg := newPrincipalConfig("i", opts)
 
@@ -187,20 +187,20 @@ func (t *Tenant) NewIdentity(tt *testing.T, opts ...PrincipalOption) *Principal 
 		Role:           &cfg.orgRole,
 	})
 	if err != nil {
-		tt.Fatalf("harness: creating identity %s: %v", cfg.name, err)
+		tt.Fatalf("harness: creating machine identity %s: %v", cfg.name, err)
 	}
 	if res.JSON200 == nil {
-		tt.Fatalf("harness: creating identity %s returned %d: %s", cfg.name, res.StatusCode(), apierr.Body(res.Body))
+		tt.Fatalf("harness: creating machine identity %s returned %d: %s", cfg.name, res.StatusCode(), apierr.Body(res.Body))
 	}
-	return t.LoginIdentity(tt, res.JSON200.Identity.Id, cfg.name)
+	return t.LoginWithUniversalAuth(tt, res.JSON200.Identity.Id, cfg.name)
 }
 
-// LoginIdentity attaches universal auth to an existing identity and exchanges the
-// credentials for an access token.
+// LoginWithUniversalAuth attaches universal auth to an existing machine identity and
+// exchanges the credentials for an access token.
 //
-// Exported for fixture packages that create an identity through a product route --
-// a project, say -- and still need it to be able to authenticate.
-func (t *Tenant) LoginIdentity(tt *testing.T, id uuid.UUID, name string) *Principal {
+// Exported for fixture packages that create a machine identity through a product
+// route -- a project, say -- and still need it to be able to authenticate.
+func (t *Tenant) LoginWithUniversalAuth(tt *testing.T, id uuid.UUID, name string) *Principal {
 	tt.Helper()
 	ctx := tt.Context()
 
@@ -243,7 +243,7 @@ func (t *Tenant) LoginIdentity(tt *testing.T, id uuid.UUID, name string) *Princi
 	}
 
 	return &Principal{
-		Kind:  Identity,
+		Kind:  MachineIdentity,
 		ID:    id,
 		Name:  name,
 		Token: login.JSON200.AccessToken,

@@ -53,12 +53,12 @@ type Kind int
 
 const (
 	User Kind = iota
-	Identity
+	MachineIdentity
 )
 
 func (k Kind) String() string {
-	if k == Identity {
-		return "identity"
+	if k == MachineIdentity {
+		return "machine identity"
 	}
 	return "user"
 }
@@ -79,9 +79,9 @@ type Principal struct {
 	ip string
 }
 
-// Address returns a mailbox inside this tenant's own domain, so two parallel tests
+// Email returns a mailbox inside this tenant's own domain, so two parallel tests
 // inviting "alice" never collide.
-func (t *Tenant) Address(local string) string {
+func (t *Tenant) Email(local string) string {
 	return local + "@" + t.mailDomain
 }
 
@@ -135,7 +135,7 @@ func (s *Stack) NewTenant(t *testing.T, opts ...TenantOption) *Tenant {
 func (t *Tenant) signUpAdmin(tt *testing.T, orgName string) *Principal {
 	tt.Helper()
 	ctx := tt.Context()
-	addr := t.Address("admin")
+	addr := t.Email("admin")
 
 	// Its own bucket: the signup mail goes through smtpRateLimit.
 	ip := newIP()
@@ -344,7 +344,7 @@ func (t *Tenant) Client(tt *testing.T, token string) *api.ClientWithResponses {
 // Module returns a container handle, or fails the test naming the profile to use.
 //
 // A fixture that stubs or reads mail needs this; option is what to put in TestMain.
-func (t *Tenant) Module(tt *testing.T, key infra.Key, option string) infra.Handle {
+func (t *Tenant) Module(tt *testing.T, key infra.ModuleKey, option string) infra.Handle {
 	tt.Helper()
 	return t.stack.Require(tt, key, option)
 }

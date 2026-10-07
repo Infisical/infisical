@@ -12,7 +12,7 @@ const (
 	// Key is the default instance. A Named() instance qualifies it, so
 	// postgres.Module(postgres.Named("rotation")) is "postgres:rotation" and cannot
 	// collide with the app's own database.
-	Key = infra.Key("postgres")
+	Key = infra.ModuleKey("postgres")
 
 	port     = 5432
 	user     = "infisical"
@@ -49,15 +49,15 @@ func Module(opts ...Option) infra.Module {
 	return m
 }
 
-func (m *module) Key() infra.Key {
+func (m *module) Key() infra.ModuleKey {
 	if m.instance == "" {
 		return Key
 	}
-	return Key + infra.Key(":"+m.instance)
+	return Key + infra.ModuleKey(":"+m.instance)
 }
 
-func (m *module) Requires() []infra.Key { return nil }
-func (m *module) Optional() []infra.Key { return nil }
+func (m *module) Requires() []infra.ModuleKey { return nil }
+func (m *module) Optional() []infra.ModuleKey { return nil }
 
 func (m *module) Name() infra.NameParts {
 	return infra.NameParts{Module: "postgres", Instance: m.instance}
@@ -115,9 +115,9 @@ func MustFrom(d infra.Deps, instance ...string) *Handle {
 	return h
 }
 
-func key(instance ...string) infra.Key {
+func key(instance ...string) infra.ModuleKey {
 	if len(instance) == 0 || instance[0] == "" {
 		return Key
 	}
-	return Key + infra.Key(":"+instance[0])
+	return Key + infra.ModuleKey(":"+instance[0])
 }
