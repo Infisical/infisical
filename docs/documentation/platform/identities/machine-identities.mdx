@@ -283,9 +283,17 @@ x-infisical-signature: t=1786924804512,v1=9f8c1d...e3
 
 To verify a request before you trust its payload:
 
-1. Compute the HMAC over the raw request body, not over a copy you parsed and serialized again
-2. Compare the result with `v1`
-3. Reject the request if `t` is older than you allow, such as five minutes
+<Steps>
+  <Step>
+    Compute the HMAC over the raw request body, not over a copy you parsed and serialized again.
+  </Step>
+  <Step>
+    Compare the result with `v1`.
+  </Step>
+  <Step>
+    Reject the request if `t` is older than you allow, such as five minutes.
+  </Step>
+</Steps>
 
 ## FAQ
 
