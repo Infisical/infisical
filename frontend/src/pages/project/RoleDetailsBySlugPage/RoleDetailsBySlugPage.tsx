@@ -99,7 +99,7 @@ const Page = () => {
   return (
     <div className="mx-auto flex flex-col justify-between text-foreground">
       {data && (
-        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <PageHeader
             scope={currentProject.type}
             title={displayName}

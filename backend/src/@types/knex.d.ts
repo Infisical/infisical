@@ -108,6 +108,9 @@ import {
   TApprovalRequestStepsUpdate,
   TApprovalRequestsUpdate,
   TAuditLogs,
+  TAuditLogSettings,
+  TAuditLogSettingsInsert,
+  TAuditLogSettingsUpdate,
   TAuditLogsInsert,
   TAuditLogStreams,
   TAuditLogStreamsInsert,
@@ -719,9 +722,6 @@ import {
   TUserSecretActivationUpdate,
   TUsersInsert,
   TUsersUpdate,
-  TVaultExternalMigrationConfigs,
-  TVaultExternalMigrationConfigsInsert,
-  TVaultExternalMigrationConfigsUpdate,
   TWebauthnCredentials,
   TWebauthnCredentialsInsert,
   TWebauthnCredentialsUpdate,
@@ -1398,6 +1398,11 @@ declare module "knex/types/tables" {
       TAuditLogStreamsInsert,
       TAuditLogStreamsUpdate
     >;
+    [TableName.AuditLogSettings]: KnexOriginal.CompositeTableType<
+      TAuditLogSettings,
+      TAuditLogSettingsInsert,
+      TAuditLogSettingsUpdate
+    >;
     [TableName.AuditReport]: KnexOriginal.CompositeTableType<TAuditReports, TAuditReportsInsert, TAuditReportsUpdate>;
     [TableName.GitAppInstallSession]: KnexOriginal.CompositeTableType<
       TGitAppInstallSessions,
@@ -2018,11 +2023,6 @@ declare module "knex/types/tables" {
       TSecretValidationRules,
       TSecretValidationRulesInsert,
       TSecretValidationRulesUpdate
-    >;
-    [TableName.VaultExternalMigrationConfig]: KnexOriginal.CompositeTableType<
-      TVaultExternalMigrationConfigs,
-      TVaultExternalMigrationConfigsInsert,
-      TVaultExternalMigrationConfigsUpdate
     >;
   }
 }

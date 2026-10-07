@@ -2,6 +2,7 @@ import { TGenericPermission } from "@app/lib/types";
 
 import { TAlertChannelEmbedded, TAlertChannelInput, TChannelRecipientInput } from "./alert-channel-service-types";
 import { AlertChannelType } from "./alert-channel-types";
+import { AlertRunStatus, TAlertFilters } from "./alert-types";
 
 export type TCreateAlertDTO = TGenericPermission & {
   name: string;
@@ -41,6 +42,7 @@ export type TTestAlertChannelDTO = TGenericPermission & {
   resourceType: string;
   resourceId?: string | null;
   projectId?: string | null;
+  alertId?: string;
   channelId?: string;
   channelType: AlertChannelType;
   config?: Record<string, unknown>;
@@ -51,6 +53,10 @@ export type TTestAlertChannelResponse = {
   success: boolean;
   deliveredTo?: number;
   error?: string;
+};
+
+export type TTestAlertChannelResult = TTestAlertChannelResponse & {
+  projectId: string | null;
 };
 
 export type TAlertResponse = {
@@ -65,7 +71,15 @@ export type TAlertResponse = {
   enabled: boolean;
   orgId: string;
   projectId: string | null;
+  resourceName?: string | null;
+  filters?: TAlertFilters;
   channels: TAlertChannelEmbedded[];
+  lastRun?: TAlertLastRun | null;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type TAlertLastRun = {
+  timestamp: Date;
+  status: AlertRunStatus;
 };

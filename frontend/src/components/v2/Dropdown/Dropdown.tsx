@@ -92,7 +92,7 @@ export const DropdownMenuItem = <T extends ElementType = "button">({
   <DropdownMenuPrimitive.Item
     {...props}
     className={twMerge(
-      "block cursor-pointer rounded-xs px-4 py-2 font-inter text-xs text-foreground-secondary outline-hidden data-highlighted:bg-surface-hover",
+      "block cursor-pointer rounded-xs px-4 py-2 font-sans text-xs text-foreground-secondary outline-hidden data-highlighted:bg-surface-hover",
       className,
       isDisabled ? "pointer-events-none cursor-not-allowed opacity-50" : ""
     )}
@@ -126,7 +126,7 @@ export const DropdownSubMenuTrigger = <T extends ElementType = "button">({
   <DropdownMenuPrimitive.SubTrigger
     {...props}
     className={twMerge(
-      "block cursor-pointer rounded-xs px-4 py-2 font-inter text-xs text-foreground-secondary outline-hidden data-highlighted:bg-surface-hover",
+      "block cursor-pointer rounded-xs px-4 py-2 font-sans text-xs text-foreground-secondary outline-hidden data-highlighted:bg-surface-hover",
       className
     )}
   >

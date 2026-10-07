@@ -12,11 +12,32 @@ The backend code quality guide is imported below, so it is always in context for
 
 All commands run from the `backend/` directory:
 
-- `npm run dev` — start dev server with tsx watch + pino-pretty logging
-- `npm run build` — production build via tsup with sourcemaps
+- `npm run dev` — start dev server with tsx watch + pino-pretty logging (`dev:docker` is the same with the debugger on 9229)
+- `npm run build` — production build via tsdown (`tsdown.config.ts`) with sourcemaps
 - `npm run lint:fix` — ESLint autofix
 - `npm run type:check` — TypeScript check (uses 8GB heap)
 - `make reviewable-api` (from repo root) — runs `lint:fix` + `type:check` (run before PRs)
+
+The backend runs on Node 26. TypeScript files run directly through tsx (dev server, scripts, the
+`*-dev` knex commands, and the e2e environment's migration loading); there is no ts-node.
+
+### Build (tsdown)
+
+`tsdown` compiles every module to its own `dist/**/*.mjs` (unbundled ESM) and rewrites `@app/*` to
+relative paths itself. Invariants that a config change can silently break:
+
+- **The output extension stays `.mjs`.** knex records each migration's file name, extension included, in
+  `infisical_migrations`, so production rows are `*.mjs`. A different extension makes every applied
+  migration look unknown and the boot check refuses to start.
+- **`main` stays the first entry, and entry paths stay absolute.** Rolldown orders each file's imports by
+  execution order, walking entries in order; a glob that sorts another entry ahead of `main` hoists its
+  imports above the telemetry instrumentation. Object entries ignore `root`, so relative paths nest every
+  other module under `dist/src/`.
+- **Rolldown reorders imports, even within one file.** Never rely on import order for a global side effect
+  that another package needs; import it explicitly where it is needed (see `reflect-metadata` in
+  `lib/crypto/pqc/pqc-algorithm.ts`).
+- **`deps.onlyBundle: []` fails the build if a `node_modules` package would be inlined.** That means
+  `src/` imports a package that `package.json` does not declare; declare it instead of loosening the guard.
 
 ### Testing
 
@@ -558,6 +579,8 @@ Built-in roles: `Admin`, `Member`, `Viewer`, `NoAccess`. For PAM and Agent Vault
 
 **Identity auth-method access goes through `assertIdentityAuthAccessAllowed`** (`src/services/identity/identity-auth-permission-fns.ts`), because repointing an identity's auth trust lets the caller authenticate as that identity. All 13 auth services call it once per attach/update/revoke, after the `throwUnlessCan` gate and outside the `identity.projectId` branch so both scopes are covered. A new auth method calls it too. Credential issuance (`createTokenAuthToken`, `createUniversalAuthClientSecret`) goes through it under `create-token`, since minting a credential is the same escalation as repointing the trust, and so do the per-credential paths: `updateTokenAuthToken` under `create-token`, `getUniversalAuthClientSecrets` / `getUniversalAuthClientSecretById` under `get-token`, and `revokeUniversalAuthClientSecret` under `delete-token`. **`PROJECT_ACTION_BY_ORG_ACTION` must map the org action to the same project action the route's own `throwUnlessCan` already checks** — that identity is what keeps the helper a no-op for new-system orgs, so a new entry is only safe once you have confirmed the pair matches. `revokeTokenAuthToken` and `clearUniversalAuthLockouts` are still unbounded in both scopes (and the former gates on `edit` where its UA counterpart gates on `delete-token`); that predates the helper and is a deliberate gap, not an oversight to copy. The target's grants come from `permissionService.getActorGrantAbilities`, not from a membership lookup, and it returns one ability per grant rather than per role. Two things a role-slug resolver misses: a group-derived membership carries a NULL `actorIdentityId`, so `membershipIdentityDAL.getIdentityById` never sees it, and an additional privilege carries a raw permission blob with no slug at all, so no `*PermissionByRoles` path can express it. Either omission clears an actor that out-ranks the target's direct roles but not its effective access. `getActorGrantAbilities` reads the same `permissionDAL.getPermission` query the ability itself is built from, so the bounded set cannot drift from the effective one.
 
+**Deny an RBAC check by throwing through CASL, never with `ForbiddenRequestError`.** `audit-log-permission-denied.ts` records a permission-denied audit event for every CASL `ForbiddenError` and `PermissionBoundaryError` a request throws, and skips plain `ForbiddenRequestError` because most of those are auth-mode, plan and ownership refusals. A service that calls `permission.can()` and throws `ForbiddenRequestError` itself therefore produces no denial event, and nothing fails to tell you. When the check has a fallback (a second action, an approver, an application grant), test the fallbacks first and make `ForbiddenError.from(permission).throwUnlessCan(...)` the last check, so the denial is recorded with a real action and subject. Keep `ForbiddenRequestError` for refusals that are not about a permission.
+
 **Project permission caching** uses a fingerprint-based two-tier cache (`withCacheFingerprint` in `src/lib/cache/with-cache.ts`):
 - **Short-lived marker** (10s TTL) in Redis — while present, cached data is served with 0 DB reads.
 - **Long-lived data payload** (10m TTL) in Redis — holds the full permission blob plus a fingerprint hash.
@@ -678,7 +701,7 @@ See `src/services/health-alert/health-alert-queue.ts` for a minimal example, `sr
 
 `src/services/alert/` is **the** alerting module: one `alerts` table, one channel stack (email, Slack, webhook, PagerDuty), one recipient resolver, one encryption story for channel configs, one dedup + history + retention path, one cron tick that fans out into the `AlertDispatch` queue, and one set of routes (`src/server/routes/v1/alert-router.ts`, including `POST /channels/test`).
 
-**Any new "notify someone when X happens" capability belongs here as a provider.** Do not write a per-domain alert service, per-domain channel table, or per-domain notification cron — that path produces N half-featured implementations (only one of which gets PagerDuty, or dedup, or a test button). `src/services/pki-alert-v2/` predates this module and is the thing we are converging away from, not a template to copy.
+**Any new "notify someone when X happens" capability belongs here as a provider.** Do not write a per-domain alert service, per-domain channel table, or per-domain notification cron — that path produces N half-featured implementations (only one of which gets PagerDuty, or dedup, or a test button). `src/services/pki-alert-v2/` predates this module and is legacy. New PKI application alerts live here (`cert-manager.application`); existing PKI Alerts V2 rows were not migrated and keep firing, both project-wide and application-scoped, and can still be read and deleted through the deprecated routes. Creating and editing them is refused by `LEGACY_ALERT_WRITES_BLOCKED` (`pki-alert-v2-constants.ts`). Certificate code paths still queue it directly through `pkiAlertV2Queue`, next to the `certificateAlertEventEmitter` call that feeds this module (`emit` inside the issuance and renewal transactions, `notify` where there is none and after a revocation commits, so a failed event insert can never roll back a revocation the upstream CA already made). Don't add features to it or copy it.
 
 Adding a new alertable resource type:
 
@@ -689,14 +712,16 @@ That's it — CRUD routes, channel creation/rotation, recipient resolution, KMS 
 
 **Each event declares how it fires**, and the trigger decides which discovery method the provider owes:
 
-- `AlertTriggerType.Scheduled` → **`findDueTargets`**. The daily cron asks what is currently due, and the engine dedups per `(channel, target)` so a target rediscovered tomorrow is not alerted on twice.
-- `AlertTriggerType.Event` → **`findTargetsByIds`**. The target is already known, so nothing is scanned for and **nothing is deduped**: an event that fired is one the customer asked to hear about, and unlike a daily scan it is never rediscovered. These reach the engine from the event outbox (below), never from the cron. The input carries the outbox row's whole `payload` next to `targetIds`: the module only reads `targetIds`, so an emitter can add the facts the notification needs (which auth method, who changed it) and the provider validates them with its own schema at delivery. Encoding facts into the target id is the wrong tool for that.
+- `AlertTriggerType.Scheduled` → **`findScheduledTargets`**. The daily cron asks what is currently due, and the engine dedups per `(channel, target)` so a target rediscovered tomorrow is not alerted on twice.
+- `AlertTriggerType.Event` → **`findEventTargets`**. The target is already known, so nothing is scanned for and **nothing is deduped**: an event that fired is one the customer asked to hear about, and unlike a daily scan it is never rediscovered. These reach the engine from the event outbox (below), never from the cron. The input carries the outbox row's whole `payload` next to `targetIds`: the module only reads `targetIds`, so an emitter can add the facts the notification needs (which auth method, who changed it) and the provider validates them with its own schema at delivery. Encoding facts into the target id is the wrong tool for that.
 
 **`findEnabledForEvent` with no `projectId` matches every alert bound to the resource, any scope.** A resource that has no project of its own (an org-level identity) can still be watched from a project it is a member of, and `assertResourceInScope` already checked that binding at create. Given a `projectId`, it matches that project's alerts plus org-scoped ones.
 
-`alertProviderRegistry.register` asserts that pairing at boot, so a provider that declares an event trigger without `findTargetsByIds` fails the process rather than silently no-op'ing in production. `triggerType` is derived from the provider's event definition inside `createAlert` and is never accepted from a request.
+`alertProviderRegistry.register` asserts that pairing at boot, so a provider that declares an event trigger without `findEventTargets` fails the process rather than silently no-op'ing in production. `triggerType` is derived from the provider's event definition inside `createAlert` and is never accepted from a request.
 
-**Event-path reads go to the primary, `findTargetsByIds` included.** An empty read there is terminal (the event is marked delivered and never asked about again), so a replica that hasn't seen the commit loses the notification. `findEnabledForEvent` and the engine's channel lookup already do this; a provider's `findTargetsByIds` must too, since the target usually commits in the same transaction as the event. The scheduled path keeps the replica because tomorrow's scan asks again.
+**Event-path reads go to the primary, `findEventTargets` included.** An empty read there is terminal (the event is marked delivered and never asked about again), so a replica that hasn't seen the commit loses the notification. `findEnabledForEvent` and the engine's channel lookup already do this; a provider's `findEventTargets` must too, since the target usually commits in the same transaction as the event. The scheduled path keeps the replica because tomorrow's scan asks again.
+
+**An event only reaches channels that existed when it occurred.** `runAlertForEvent` drops channels created after `occurredAt`, because the outbox retries an event for up to an hour while any channel on any matching alert keeps failing, and each retry looks the alerts up again. Without it, an alert created (or a channel added) during that window is notified about something that happened before it existed.
 
 **The history write is retried, then logged, never thrown.** The channels have already sent by then, so a throw can't undo anything and would re-notify on the event path.
 
@@ -705,8 +730,11 @@ Invariants worth knowing before extending it:
 - **The alert module owns no CASL subject.** Each provider reuses its own resource's existing permissions inside `assertPermission`, so authorization stays with the domain that owns the resource.
 - **New delivery mediums are channel definitions**, not providers: add one under `src/services/alert/channels/` and register it in `ALERT_CHANNEL_REGISTRY`. `directed: true` means the channel addresses principals and needs recipients (email); undirected channels carry their destination in config. `secretFields` drives masking on read and merge-from-stored on update.
 - **Channel configs are encrypted** with the org/project KMS cipher (`alert-channel-crypto-fns.ts`) — never store or return them in plaintext.
-- **`findDueTargets` must return most-urgent-first.** The engine's per-channel `maxTargetsPerRun` cap keeps the head of the list and defers the tail, so ordering is what guarantees the closest-to-expiry targets are never the dropped ones.
-- **Deleting an alertable resource does NOT delete its alerts. You have to reap them yourself.** `alerts.resourceId` is a plain string column with **no foreign key** to the resource's table (a provider's `resourceType` can point at anything), so nothing cascades. Skip the reap and the row survives as a dangling alert whose `findDueTargets` matches nothing and whose "view" link 404s. Two helpers on `alertService`, and picking the wrong one is the bug:
+- **One alert per `(scope, resource, event)` for resource-bound alerts**, enforced by the partial `alert_unique_scope_resource_event_bound` index. A provider that sets `supportsScopeWideAlerts` also accepts alerts with no `resourceId`: such an alert watches every resource of its type in scope, several can watch the same event because they differ by condition, and `assertConditionInScope` is where the provider checks the IDs inside a condition, on create and on update (newly added IDs only). `findEnabledForEvent` matches exactly: the bound alerts for a `resourceId`, or the resource-less ones when it is null. To let a scope-wide provider hear another provider's events without a second outbox write, an event definition can declare `sourceEvent: { resourceType, eventKey }`; the consumer then runs the source resource's alerts plus the resource-less alerts of every event sourced from it (`alertProviderRegistry.findEventsBySource`), each under its own `eventType`. Certificate Manager-wide (`cert-manager`) and signer (`cert-manager.signer`) alerts are scope-wide providers, and creating or editing either requires the project Admin role, since PKI permissions are admin or member, not granular. **Every provider hook is opt-in, and its absence must reproduce the behaviour identity alerts had before any other provider existed.** `recipientPolicy` decides who can receive: `atOrgScope` validates and resolves user and group recipients against the org instead of the alert's project, and `allowEmailAddresses` accepts plain `EMAIL` recipients and makes test sends validate recipients like create and update do, instead of silently dropping out-of-scope ones (application alerts set both). `includeLastRun` adds `lastRun` to alert responses, and `resourceName` is only returned by providers that implement `getResourceNames`, and `filters` (read-only `{ id, name }` lists for the IDs inside a condition, keyed by kind, such as `applications` and `profiles` on a Certificate Manager-wide alert, with a null name for deleted IDs, matching how approval policies return approvers) only by providers that implement `getFilters`. Resolve such names there rather than adding ID filters to another domain's list endpoint. `assertChannelTypesAllowed` is where a provider gates paid channel types on create and on update (new, retyped, or re-enabled channels only, so a downgraded org can still edit the alert). `getResourceNames` (batched) supplies the resource's display name for alert responses. `resolveProjectId` lets create, list and test sends omit `projectId` when the resource already belongs to one project (`resolveAlertProjectId` in `alert-provider-registry.ts`). `getTelemetryEvent` lets a provider map alert create, update and delete to its own PostHog event, so the shared router never branches on a resource type. Audit logs are not a provider hook: every alert, whatever its resource type, logs the generic `create-alert`, `update-alert`, `delete-alert` and `test-alert-channel` events (`getAuditEvent` in `alert-service.ts`), which carry `resourceType` so admins can tell them apart. Do not add per-provider audit event types. The deprecated `pki/alerts` and `applications/:applicationId/alerts` routes only serve legacy PKI Alerts V2 rows. Add features to `/api/v1/alerts`, not to them.
+- **Email channels accept plain addresses as `EMAIL` recipients when the provider opts in** (`recipientPolicy.allowEmailAddresses`), with the address as `principalId`, besides users and groups. Every address must be on one of the org's verified email domains, checked on create, update and test sends (`alert-channel-service.ts`), and again at send time, so an address on a domain the org has since removed stops receiving alerts. The resolver sends to them directly and skips an address that a user recipient on the same channel already covers.
+- **`findScheduledTargets` must return most-urgent-first.** The engine's per-channel `maxTargetsPerRun` cap keeps the head of the list and defers the tail, so ordering is what guarantees the closest-to-expiry targets are never the dropped ones.
+- **A `findScheduledTargets` that caps its own row count must honour `alreadyAlerted`.** The engine passes `{ alertId, channelIds, since }` (the alert's enabled channels and its dedup cutoff), and the provider drops targets every one of those channels already delivered since then, in SQL before the limit. Dedup otherwise runs after the fetch, so once more targets are due than the cap, the same head of the list comes back every run, is deduped, and nothing past it is ever alerted. For dedup windows shorter than the scan interval (daily reminders), also order least-recently-notified first. `scanExpiringCertificates` (`cert-manager-expiring-certificates-fns.ts`) does both.
+- **Deleting an alertable resource does NOT delete its alerts. You have to reap them yourself.** `alerts.resourceId` is a plain string column with **no foreign key** to the resource's table (a provider's `resourceType` can point at anything), so nothing cascades. Skip the reap and the row survives as a dangling alert whose `findScheduledTargets` matches nothing and whose "view" link 404s. Two helpers on `alertService`, and picking the wrong one is the bug:
   - **`deleteAlertsForDeletedResource({ resourceType, resourceId })`** when the resource **row is gone**. It has **no scope filter** and reaps across every org and project. This is required, not just tidier: the same resource can be watched from another org (a root-org identity invited into a child org), so an `orgId`-filtered reap leaves those rows orphaned.
   - **`deleteAlertsForResource({ orgId, projectId?, resourceType, resourceId })`** when the resource merely **left a scope** (removed from a project, removed from an org) but still exists. Narrow on purpose: leaving one project must not drop the org-level alert, and leaving one org must not touch another org's alerts. Omitting `projectId` reaps the whole org, which is what org-membership removal wants since it cascades the project memberships.
 
@@ -727,7 +755,7 @@ at-least-once delivery of a domain event registers next to it.
 `EventOutboxStatus`, `TOutboxFlushKey`) describe the mechanism and stay inside the module and its
 wiring. A dependency field for the emitter is `eventEmitter`, not `eventOutboxService`.
 
-**Emitting:** `eventEmitter.emit(event, tx)`. `tx` is required on purpose.
+**Emitting:** `eventEmitter.emit(event, tx)`. Pass the transaction of the write the event describes, so the event is exactly as durable as that write. Omit `tx` only when there is no such write left to be atomic with (for example after it already committed); the insert then runs on its own.
 
 ```ts
 await someDAL.transaction(async (tx) => {
@@ -801,7 +829,7 @@ stuck claim alike. `lag` and `exhausted.count` are recorded by the outbox, label
 new consumer gets them for free.
 
 **Adding an event-triggered alert** needs no outbox code: declare the event with
-`triggerType: AlertTriggerType.Event`, implement `findTargetsByIds`, and emit with
+`triggerType: AlertTriggerType.Event`, implement `findEventTargets`, and emit with
 `payload: { orgId, projectId, resourceType, resourceId, targetIds, ...facts }` where `resourceType` is the
 provider's. A
 `resourceType` that doesn't declare the `eventType` fails the row terminally with both named, so a bad
@@ -977,6 +1005,8 @@ EE routes register before community routes so they can override/extend endpoints
 
 **Agent Vault**: the same applies to the `agent-vault-*` services and routers; the concept map is [`src/ee/services/agent-vault/CLAUDE.md`](src/ee/services/agent-vault/CLAUDE.md). PAM and Agent Vault are the two **org-scoped products**: one implicit project per org, resolved lazily, whose roles collapse to admin or member. Anything that branches on `ProjectType.PAM` (metering emits, predefined roles, the billable-project count, invite grants) almost always needs an Agent Vault arm too.
 
+**Dynamic secret lease secrets needed at revoke time go in `dynamic_secret_leases.encryptedLeaseData`**, never in `externalEntityId` or `config` (both plaintext, and `externalEntityId` is returned by every lease route and logged in audit events). A provider opts in by listing the `create()` `data` keys in `persistedLeaseFields`; the lease service encrypts them with the project's SecretManager key and every revoke path passes them back as `metadata.leaseData`. Lease routes return `SanitizedDynamicSecretLeaseSchema` so the column never reaches a response. Secret *config* fields are listed separately in `DYNAMIC_SECRET_SECRET_FIELDS` (`providers/redact.ts`), as dotted paths so nested secrets work (`clientAuth.clientSecret`): reads strip them via `redactStoredInputs`, and an update that omits one keeps the stored value via `restoreOmittedSecretFields`, because the update merge is shallow.
+
 **Gateways: there is only one generation.** Gateway v1 (`ee/services/gateway`, `lib/gateway`, the QUIC
 transport over `@infisical/quic`, and `/api/v1/gateways`) is gone; `gateway-v2` and `gateway-pool` are the
 whole story, and `lib/gateway-v2/types.ts` owns `GatewayProxyProtocol` / `GatewayHttpProxyActions`. What
@@ -992,6 +1022,64 @@ these call sites sits in front of an `if (gatewayId)` guard whose else-branch di
 directly, so falling through turns a dangling gateway reference into a silent bypass of the network
 boundary the gateway exists to enforce. And `app_connections.gatewayId` is **not** a v1 column — unlike the
 three above it never grew a `gatewayV2Id`, so that one column carries v2 ids and must stay.
+
+**Any new path that attaches an individual gateway must call `assertIndividualGatewayAllowed`**
+(`ee/services/gateway-pool/gateway-pool-policy-fns.ts`) next to its `AttachGateways` check. It enforces the
+org-level `requireGatewayPools` setting. Pass the gateway the resource already had as `previousGatewayId`,
+because clients re-send unchanged values on every save and resources created before the setting was turned
+on must stay editable. The check reads the setting, not the plan, so it keeps applying after a downgrade.
+Only exempt a mode that refuses pools outright, the way gateway Kubernetes auth in Gateway review mode does
+(`$assertCanAttachProxy` in `resource-auth-method-service.ts`), or the policy removes that mode entirely.
+
+### Audit Log Event Classes and Settings
+
+Every `EventType` belongs to exactly one class in
+`src/ee/services/audit-log/audit-log-event-classes.ts`: `management`, `authentication`,
+`authorization` (only `PERMISSION_DENIED`), or `data-access`. The class is derived from the event
+type at write and read time, so stored rows carry no class column. **A new event type is
+`management` unless you add it to one of the explicit lists**, and `audit-log-event-classes.test.ts`
+fails if a type lands in two lists. Reads, lists, dashboards, insights views, CMEK use operations
+and the dynamic secret lease lifecycle are data access; VIEW_AUDIT_LOGS and privileged session
+lifecycle are management on purpose.
+
+Every class but management can be turned off per scope, and scopes do not inherit: an org (root or sub-org) has its own
+rows for org-level events, each project has its own rows for its events, and a scope without a row uses
+the default in `AUDIT_LOG_EVENT_CLASS_DEFAULTS` (data access on, authorization off). The rows live in
+`audit_log_settings` (one per scope and class, `projectId` null for the org scope) behind
+`audit-log-settings-service.ts`. `getEffectiveSettings(orgId, projectId?)` caches per scope, not per
+org: one key for the org's rows plus `shouldUseNewPrivilegeSystem`, one key per org and project
+(`{}` when it has no rows), read together in one `MGET` for 10 minutes. Never build a value that
+holds every project in an org, since every event would fetch and parse it. Each write clears only its own scope's key, and
+the lookup never throws: a failure records everything.
+Enforcement is `isAuditLogEventEnabled` in the settings service, called from `buildStreamEntry` in
+`audit-log-queue.ts` with the settings memoized per request so a batch of events costs one read.
+Suppressed events are dropped silently and do not count on the dropped counter. Management is
+always on: the helper returns true for it before looking at any row, `toSettings` reports it as
+enabled, and the update methods reject any request that names it, so the change that turns a
+class off is itself always recorded. An update is a full replacement: `PUT` must name every class in
+`CONFIGURABLE_AUDIT_LOG_EVENT_CLASSES` exactly once, and the service deletes the scope's rows and
+inserts the new set, so there is no merge with what was stored before.
+
+`PERMISSION_DENIED` is recorded by the `onError` hook in
+`src/server/plugins/audit-log-permission-denied.ts` for every CASL `ForbiddenError` and
+`PermissionBoundaryError` (not `ForbiddenRequestError`, which verifyAuth and plan gates also throw),
+only for orgs on the new privilege system whose plan has audit log retention, and collapsed per
+actor, project, action, subject, route and method for one minute. `recordPermissionDenied` on the
+audit log service never throws to the request. Because a legacy org can never record a denial, the
+settings update methods reject a request that turns the authorization class on for one
+(`assertAuthorizationClassAllowed`), and the UI locks the toggle with a link to the upgrade, so the
+restriction is surfaced in the API error, the response's `shouldUseNewPrivilegeSystem`, the UI, and
+the docs rather than stored as a setting that does nothing.
+
+The collapse itself is generic. `createCollapsedAuditLog` on the audit log service takes any
+`TCreateAuditLogDTO` plus `collapseKeyParts` (the event type is always part of the key) and an
+optional `collapseWindowSeconds` (default 60). The first event per key is written at once and
+schedules a delayed `AuditLogCollapsedFlush` job; repeats inside the window only bump a keystore
+counter scoped to that window's start (which the window key holds as its value, so consecutive
+windows and a late flush never share a counter), and the job writes one summary event with `suppressedRepeats`, `suppressedFrom` and
+`suppressedUntil` in its metadata when the window closes, so a burst that stops is still accounted
+for. To collapse another event, call it instead of `createAuditLog` and add
+`TAuditLogCollapseSummary` to that event's metadata type so the summary fields are typed.
 
 ### Server Plugins
 

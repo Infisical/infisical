@@ -6,7 +6,6 @@ import { FileTextIcon, LockIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -18,6 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   OrgPermissionSubjects,
   useOrganization,
@@ -45,6 +45,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import {
   AuthMethodsCard,
+  DuplicatedSecretsCard,
   InsightsCard,
   RequestOrgAuditReportModal,
   SecretAccessVolumeCard,
@@ -252,6 +253,7 @@ export const SecretInsightsPage = withPermission(
                   isPlanRestricted={!hasInsightsPlan}
                 />
               )}
+              <DuplicatedSecretsCard isPlanRestricted={!hasInsightsPlan} />
               <div
                 className={
                   showAuthMethodsSlot ? "grid gap-4 xl:grid-cols-[1fr_1.35fr]" : "grid gap-4"

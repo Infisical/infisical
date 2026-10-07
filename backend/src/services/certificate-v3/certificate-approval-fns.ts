@@ -1,5 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { randomUUID } from "crypto";
+import { Knex } from "knex";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -13,6 +14,11 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import {
+  CertificateApplicationAlertEvent,
+  TCertificateAlertEventEmitter,
+  TCertificateAlertEventInput
+} from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -111,6 +117,7 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit">;
 };
 
 export type TCertificateApprovalService = {
@@ -226,8 +233,12 @@ export const certificateApprovalServiceFactory = (
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
     pkiSyncQueue,
-    pkiAlertV2Queue
+    pkiAlertV2Queue,
+    certificateAlertEventEmitter
   } = deps;
+
+  const $emitIssuanceAlert = (input: Omit<TCertificateAlertEventInput, "eventType">, tx: Knex) =>
+    certificateAlertEventEmitter.emit({ ...input, eventType: CertificateApplicationAlertEvent.Issuance }, tx);
 
   const $queueIssuanceAlert = async (certificateId: string, projectId: string, applicationId?: string | null) => {
     try {
@@ -681,6 +692,16 @@ export const certificateApprovalServiceFactory = (
           certificateId: newCert.id,
           tx
         });
+
+        await $emitIssuanceAlert(
+          {
+            certificateId: newCert.id,
+            projectId: profile.projectId,
+            orgId: profile.project?.orgId,
+            applicationId: certRequest.applicationId
+          },
+          tx
+        );
       }
     });
 
@@ -938,6 +959,16 @@ export const certificateApprovalServiceFactory = (
         await certificateDAL.updateById(processResult.certificateData.id, { applicationId }, tx);
       }
 
+      await $emitIssuanceAlert(
+        {
+          certificateId: processResult.certificateData.id,
+          projectId: profile.projectId,
+          orgId: profile.project?.orgId,
+          applicationId
+        },
+        tx
+      );
+
       return processResult;
     });
 
@@ -1096,6 +1127,16 @@ export const certificateApprovalServiceFactory = (
           certificateId: certResult.certificateId,
           tx
         });
+
+        await $emitIssuanceAlert(
+          {
+            certificateId: certificateRecord.id,
+            projectId: profile.projectId,
+            orgId: profile.project?.orgId,
+            applicationId
+          },
+          tx
+        );
 
         return { ...certResult, cert: certificateRecord };
       });

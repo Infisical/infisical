@@ -825,7 +825,7 @@ export const ReviewAccessRequestModal = ({
             </div>
 
             <section className="flex flex-col gap-3">
-              <h3 className="text-sm font-medium text-foreground">Requested Permissions</h3>
+              <h3 className="text-sm font-normal text-foreground">Requested Permissions</h3>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -909,7 +909,7 @@ export const ReviewAccessRequestModal = ({
             </section>
 
             <section className="flex flex-col gap-3">
-              <h3 className="text-sm font-medium text-foreground">Approvers</h3>
+              <h3 className="text-sm font-normal text-foreground">Approvers</h3>
               {approvers.length === 1 ? (
                 <ItemGroup className="gap-0 rounded-lg border border-border bg-container">
                   <Item className="flex-nowrap items-start rounded-none border-0">

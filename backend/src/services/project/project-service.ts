@@ -27,6 +27,7 @@ import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/servi
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
+  ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionMemberActions,
@@ -86,6 +87,7 @@ import { TProjectMembershipDALFactory } from "../project-membership/project-memb
 import { getPredefinedRoles } from "../project-role/project-role-fns";
 import { TRoleDALFactory } from "../role/role-dal";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretValueTrackingServiceFactory } from "../secret-value-tracking/secret-value-tracking-service";
 import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal";
 import { validateSlackChannelsField } from "../slack/slack-auth-validators";
 import { TSlackIntegrationDALFactory } from "../slack/slack-integration-dal";
@@ -135,6 +137,7 @@ export const DEFAULT_PROJECT_ENVS = [
 type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
   projectQueue: TProjectQueueFactory;
+  secretValueTrackingService: Pick<TSecretValueTrackingServiceFactory, "enableForProject" | "getProjectStatus">;
   userDAL: TUserDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "insertMany" | "findByProjectId">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "insertMany" | "find">;
@@ -216,6 +219,7 @@ const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>
 export const projectServiceFactory = ({
   projectDAL,
   projectQueue,
+  secretValueTrackingService,
   permissionService,
   orgDAL,
   userDAL,
@@ -1016,11 +1020,10 @@ export const projectServiceFactory = ({
     }
 
     if (update.auditLogsRetentionDays !== undefined) {
-      if (!hasRole(ProjectMembershipRole.Admin)) {
-        throw new ForbiddenRequestError({
-          message: "Only project admins can update the audit logs retention period"
-        });
-      }
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAuditLogsActions.Edit,
+        ProjectPermissionSub.AuditLogs
+      );
 
       if (appCfg.isCloud) {
         throw new BadRequestError({
@@ -1178,7 +1181,7 @@ export const projectServiceFactory = ({
       });
     }
 
-    const { hasRole } = await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -1186,12 +1189,10 @@ export const projectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-
-    if (!hasRole(ProjectMembershipRole.Admin)) {
-      throw new ForbiddenRequestError({
-        message: "Insufficient privileges, only admins are allowed to take this action"
-      });
-    }
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAuditLogsActions.Edit,
+      ProjectPermissionSub.AuditLogs
+    );
 
     const plan = await licenseService.getPlan(project.orgId);
     if (!plan.auditLogs || auditLogsRetentionDays > plan.auditLogsRetentionDays) {
@@ -2358,55 +2359,11 @@ export const projectServiceFactory = ({
     return { requests };
   };
 
-  const enableSecretBlindIndex = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    projectId
-  }: TEnableSecretBlindIndexDTO) => {
-    const project = await projectDAL.findById(projectId);
-    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+  const enableSecretBlindIndex = async (dto: TEnableSecretBlindIndexDTO) =>
+    secretValueTrackingService.enableForProject(dto);
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: project.id,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
-
-    if (project.secretBlindIndexEnabled) {
-      throw new BadRequestError({ message: "Secret blind indexing is already enabled for this project" });
-    }
-
-    await projectQueue.startSecretBlindIndexMigration(project.id);
-  };
-
-  const getSecretBlindIndexMigrationStatus = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    projectId
-  }: TEnableSecretBlindIndexDTO) => {
-    const project = await projectDAL.findById(projectId);
-    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: project.id,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
-
-    return projectQueue.getJobState(project.id);
-  };
+  const getSecretBlindIndexMigrationStatus = async (dto: TEnableSecretBlindIndexDTO) =>
+    secretValueTrackingService.getProjectStatus(dto);
 
   return {
     createProject,

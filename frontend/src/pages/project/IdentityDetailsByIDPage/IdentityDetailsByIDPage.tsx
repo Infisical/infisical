@@ -215,7 +215,7 @@ const Page = () => {
     currentOrg.rootOrgId !== identityMembershipDetails?.identity.orgId;
 
   return (
-    <div className="@container mx-auto flex max-w-8xl flex-col gap-8">
+    <div className="@container mx-auto flex max-w-8xl flex-col">
       {identityMembershipDetails ? (
         <>
           <PageHeader

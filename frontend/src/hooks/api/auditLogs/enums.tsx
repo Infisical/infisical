@@ -132,6 +132,10 @@ export enum EventType {
   GET_PKI_ALERT = "get-pki-alert",
   UPDATE_PKI_ALERT = "update-pki-alert",
   DELETE_PKI_ALERT = "delete-pki-alert",
+  CREATE_ALERT = "create-alert",
+  UPDATE_ALERT = "update-alert",
+  DELETE_ALERT = "delete-alert",
+  TEST_ALERT_CHANNEL = "test-alert-channel",
   CREATE_PKI_COLLECTION = "create-pki-collection",
   GET_PKI_COLLECTION = "get-pki-collection",
   UPDATE_PKI_COLLECTION = "update-pki-collection",
@@ -273,6 +277,7 @@ export enum EventType {
   AUTOMATED_RENEW_SUBSCRIBER_CERT = "automated-renew-subscriber-cert",
   LIST_PKI_SUBSCRIBER_CERTS = "list-pki-subscriber-certs",
   UPDATE_ORG = "update-org",
+  ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING = "enable-org-wide-secret-value-tracking",
 
   CREATE_PROJECT = "create-project",
   UPDATE_PROJECT = "update-project",
@@ -284,6 +289,7 @@ export enum EventType {
 
   DASHBOARD_LIST_SECRETS = "dashboard-list-secrets",
   DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
+  SEARCH_SECRETS_BY_VALUE = "search-secrets-by-value",
   DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value",
 
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR = "view-insights-secrets-management-calendar",
@@ -293,6 +299,7 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
   VIEW_INSIGHTS_AUTH_METHODS = "view-insights-auth-methods",
   VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
+  VIEW_INSIGHTS_ORG_SECRETS_DUPLICATION = "view-insights-org-secrets-duplication",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS = "view-insights-secrets-management-counts",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE = "view-insights-secrets-management-usage",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_PROJECT_WARNINGS = "view-insights-secrets-management-project-warnings",
@@ -484,5 +491,7 @@ export enum EventType {
   AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
   AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
   AGENT_VAULT_PROXY_DELETE = "agent-vault-proxy-delete",
-  AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE = "agent-vault-session-log-settings-update"
+  AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE = "agent-vault-session-log-settings-update",
+  PERMISSION_DENIED = "permission-denied",
+  UPDATE_AUDIT_LOG_SETTINGS = "update-audit-log-settings"
 }

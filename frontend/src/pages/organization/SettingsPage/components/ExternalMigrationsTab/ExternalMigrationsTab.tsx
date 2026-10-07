@@ -19,7 +19,7 @@ export const ExternalMigrationsTab = () => {
     <div className="flex flex-col gap-6">
       <div className="rounded-lg border border-border bg-card p-4">
         <div className="mb-4">
-          <h2 className="text-xl font-medium text-foreground">Bulk Data Import</h2>
+          <h2 className="text-xl font-normal text-foreground">Bulk Data Import</h2>
           <p className="mt-1 mb-6 text-sm text-muted">
             Perform one-time bulk imports of data from external platforms.
           </p>

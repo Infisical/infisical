@@ -6,6 +6,7 @@ import { PkiSyncStatus } from "./pki-sync-enums";
 import { PemCertificateExtension, PkiSyncExportFormat } from "./pki-sync-export-fns";
 import {
   applyHealthCheckCommandUpdate,
+  assertHealthCheckCommandIsTestable,
   buildHealthCheckCommandFailureMessage,
   buildHealthCheckCommandPlan,
   buildHealthCheckFailureMessageFor,
@@ -449,5 +450,13 @@ describe("applyHealthCheckCommandUpdate", () => {
     const input = { healthCheckCommand: "" };
     applyHealthCheckCommandUpdate(input, stored);
     expect(input).toEqual({ healthCheckCommand: "" });
+  });
+});
+
+describe("assertHealthCheckCommandIsTestable", () => {
+  test.each(["{{exportPassword}}", "{{pkcs12Password}}"])("rejects %s because tests have no password", (variable) => {
+    expect(() => assertHealthCheckCommandIsTestable({ healthCheckCommand: `test -n ${variable}` })).toThrow(
+      BadRequestError
+    );
   });
 });

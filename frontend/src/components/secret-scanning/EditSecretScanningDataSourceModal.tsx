@@ -3,6 +3,10 @@ import { TSecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 
 import { SecretScanningDataSourceForm } from "./forms";
 import { SecretScanningDataSourceModalHeader } from "./SecretScanningDataSourceModalHeader";
+import {
+  SecretScanningDataSourcePopupContext,
+  useSecretScanningDataSourcePopupRegistry
+} from "./SecretScanningDataSourcePopupContext";
 
 type Props = {
   isOpen: boolean;
@@ -15,21 +19,25 @@ export const EditSecretScanningDataSourceModal = ({
   onOpenChange,
   ...props
 }: Props) => {
+  const popupRegistry = useSecretScanningDataSourcePopupRegistry();
   if (!dataSource) return null;
 
   return (
     <Modal {...props} onOpenChange={onOpenChange}>
       <ModalContent
+        onEscapeKeyDown={popupRegistry.onEscapeKeyDown}
         title={<SecretScanningDataSourceModalHeader isConfigured type={dataSource.type} />}
         className="max-w-2xl"
         bodyClassName="overflow-visible"
       >
-        <SecretScanningDataSourceForm
-          onComplete={() => onOpenChange(false)}
-          onCancel={() => onOpenChange(false)}
-          dataSource={dataSource}
-          type={dataSource.type}
-        />
+        <SecretScanningDataSourcePopupContext.Provider value={popupRegistry.onPopupOpenChange}>
+          <SecretScanningDataSourceForm
+            onComplete={() => onOpenChange(false)}
+            onCancel={() => onOpenChange(false)}
+            dataSource={dataSource}
+            type={dataSource.type}
+          />
+        </SecretScanningDataSourcePopupContext.Provider>
       </ModalContent>
     </Modal>
   );

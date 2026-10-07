@@ -1,8 +1,3 @@
-import { z } from "zod";
-
-// Sentinel value for masked secrets in edit mode (signing secret, integration key, etc.)
-export const SECRET_MASK = "*****";
-
 export enum PkiAlertEventTypeV2 {
   EXPIRATION = "expiration",
   RENEWAL = "renewal",
@@ -76,10 +71,6 @@ export interface TPkiAlertChannelV2 {
   updatedAt: string;
 }
 
-export type TPkiAlertChannelInput = Omit<TPkiAlertChannelV2, "createdAt" | "updatedAt" | "id"> & {
-  id?: string;
-};
-
 export interface TLastRun {
   timestamp: string;
   status: "success" | "failed";
@@ -133,30 +124,6 @@ export interface TGetPkiAlertV2ById {
   alertId: string;
 }
 
-export interface TCreatePkiAlertV2 {
-  applicationId?: string;
-  name: string;
-  description?: string;
-  eventType: PkiAlertEventTypeV2;
-  alertBefore?: string;
-  filters: TPkiFilterRuleV2[];
-  enabled?: boolean;
-  notificationConfig?: { enableDailyNotification: boolean } | null;
-  channels: TPkiAlertChannelInput[];
-}
-
-export interface TUpdatePkiAlertV2 {
-  alertId: string;
-  name?: string;
-  description?: string;
-  eventType?: PkiAlertEventTypeV2;
-  alertBefore?: string;
-  filters?: TPkiFilterRuleV2[];
-  enabled?: boolean;
-  notificationConfig?: { enableDailyNotification: boolean } | null;
-  channels?: TPkiAlertChannelInput[];
-}
-
 export interface TDeletePkiAlertV2 {
   alertId: string;
 }
@@ -187,130 +154,3 @@ export interface TGetPkiAlertV2CurrentMatchingCertificatesResponse {
   limit: number;
   offset: number;
 }
-
-export const pkiFilterRuleV2Schema = z.object({
-  field: z.nativeEnum(PkiFilterFieldV2),
-  operator: z.nativeEnum(PkiFilterOperatorV2),
-  value: z.union([z.string(), z.array(z.string()), z.boolean()])
-});
-
-const emailChannelConfigSchema = z.object({
-  recipients: z
-    .array(z.string())
-    .transform((emails) => emails.filter(Boolean).map((email) => email.trim().toLowerCase()))
-    .refine((emails) => emails.length > 0, "At least one email recipient is required")
-    .refine((emails) => emails.length <= 10, "Maximum 10 email recipients allowed")
-    .refine(
-      (emails) => emails.every((email) => z.string().email().safeParse(email).success),
-      "All recipients must be valid email addresses"
-    )
-    .refine(
-      (emails) => new Set(emails).size === emails.length,
-      "Duplicate email addresses are not allowed"
-    )
-});
-
-const webhookChannelConfigSchema = z.object({
-  url: z
-    .string()
-    .url("Must be a valid URL")
-    .refine((url) => url.startsWith("https://"), "Webhook URL must use HTTPS"),
-  signingSecret: z.string().max(256).nullable().optional()
-});
-
-const emailChannelSchema = z.object({
-  id: z.string().uuid().optional(),
-  channelType: z.literal(PkiAlertChannelTypeV2.EMAIL),
-  config: emailChannelConfigSchema,
-  enabled: z.boolean().default(true)
-});
-
-const webhookChannelSchema = z.object({
-  id: z.string().uuid().optional(),
-  channelType: z.literal(PkiAlertChannelTypeV2.WEBHOOK),
-  config: webhookChannelConfigSchema,
-  enabled: z.boolean().default(true)
-});
-
-const slackChannelConfigSchema = z.object({
-  webhookUrl: z
-    .string()
-    .url("Must be a valid URL")
-    .refine((url) => url.startsWith("https://"), "Slack webhook URL must use HTTPS")
-    .refine((url) => {
-      try {
-        const parsed = new URL(url);
-        return parsed.hostname === "hooks.slack.com";
-      } catch {
-        return false;
-      }
-    }, "Slack webhook URL must be from hooks.slack.com")
-});
-
-const slackChannelSchema = z.object({
-  id: z.string().uuid().optional(),
-  channelType: z.literal(PkiAlertChannelTypeV2.SLACK),
-  config: slackChannelConfigSchema,
-  enabled: z.boolean().default(true)
-});
-
-const pagerdutyChannelConfigSchema = z.object({
-  integrationKey: z
-    .string()
-    .refine(
-      (val) => /^[a-f0-9]{32}$/i.test(val),
-      "Integration key must be a 32-character hex string"
-    )
-});
-
-const pagerdutyChannelSchema = z.object({
-  id: z.string().uuid().optional(),
-  channelType: z.literal(PkiAlertChannelTypeV2.PAGERDUTY),
-  config: pagerdutyChannelConfigSchema,
-  enabled: z.boolean().default(true)
-});
-
-export const pkiAlertChannelV2Schema = z.discriminatedUnion("channelType", [
-  emailChannelSchema,
-  webhookChannelSchema,
-  slackChannelSchema,
-  pagerdutyChannelSchema
-]);
-
-const basePkiAlertV2Schema = z.object({
-  applicationId: z.string().uuid().optional(),
-  name: z
-    .string()
-    .min(1)
-    .max(255)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Must be a valid name (lowercase, numbers, hyphens only)"),
-  description: z.string().max(1000).optional(),
-  eventType: z.nativeEnum(PkiAlertEventTypeV2),
-  alertBefore: z
-    .string()
-    .regex(/^\d+[dwmy]$/, "Must be in format like '30d', '1w', '3m', '1y'")
-    .refine((val) => val.length <= 32, "Alert timing too long")
-    .optional(),
-  filters: z.array(pkiFilterRuleV2Schema),
-  enabled: z.boolean().default(true),
-  notificationConfig: z.object({ enableDailyNotification: z.boolean() }).nullable().optional(),
-  channels: z
-    .array(pkiAlertChannelV2Schema)
-    .min(1, "At least one notification channel is required")
-    .refine(
-      (channels) => channels.some((ch) => ch.enabled),
-      "At least one notification channel must be enabled"
-    )
-});
-
-export const createPkiAlertV2Schema = basePkiAlertV2Schema.superRefine((data, ctx) => {
-  if (data.eventType === PkiAlertEventTypeV2.EXPIRATION && !data.alertBefore) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Alert Before is required for expiration alerts",
-      path: ["alertBefore"]
-    });
-  }
-});
-
-export const updatePkiAlertV2Schema = basePkiAlertV2Schema.partial();
