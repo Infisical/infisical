@@ -4484,13 +4484,12 @@ export const AGENT_VAULT = {
     chunkId: "The ID of the chunk.",
     proxyId: "The ID of the proxy that uploaded the chunk.",
     endedAt: "The time of the last record in the chunk.",
-    ciphertextBytes: "The size of the encrypted chunk in bytes, including the 12-byte IV at its start.",
+    ciphertextBytes: "The size of the encrypted chunk in bytes.",
     ciphertextSha256:
       "The SHA-256 digest of the encrypted chunk, including its IV, as base64 without padding. The bucket refuses an upload with a different digest.",
     uploadUrl:
       "The URL to upload the encrypted chunk to with a PUT request. The body must be exactly `ciphertextBytes` bytes.",
-    presignedGetUrl:
-      "The URL to download the chunk from. A chunk from the tail endpoint can return 404 for a few seconds, until the proxy finishes uploading it.",
+    presignedGetUrl: "The URL to download the chunk from.",
     expiresInSeconds: "The number of seconds before the URL expires.",
     isRecordable: "False if this session's requests can't be recorded.",
     sessionKey: "The key that decrypts every chunk in this response, as base64. Null if the response has no chunks.",
@@ -4508,8 +4507,8 @@ export const AGENT_VAULT = {
     tailCursor:
       "The `nextCursor` from your last call. Leave it out on the first call to start from the most recent chunks.",
     tailNextCursor: "Pass this as `cursor` on your next call, a few seconds later.",
-    from: "Return only chunks sealed at or after this time. A chunk can also hold records from before it, so filter records by `ts`.",
-    to: "Return only chunks that can hold records from at or before this time. A chunk can also hold later records, so filter records by `ts`.",
+    from: "Return only chunks with records at or after this time. A chunk can also hold earlier records, so filter records by `ts`.",
+    to: "Return only chunks with records at or before this time. A chunk can also hold later records, so filter records by `ts`.",
     enabled: "Whether session logs are on.",
     configEnabled: "Whether session logs are on. Turning them off stops recording but keeps what's already recorded.",
     appConnectionId: "The ID of the AWS connection Infisical uses to write to and read from the bucket.",

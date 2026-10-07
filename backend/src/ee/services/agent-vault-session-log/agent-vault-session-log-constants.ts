@@ -28,18 +28,22 @@ export const AGENT_VAULT_SESSION_LOG_LAST_KNOWN_PLAN_MAX_AGE_MS = 60 * 60_000; /
 // A link to upload or download a chunk expires after 5 minutes.
 export const AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS = 300; // 5 minutes
 
-// A page of session logs ends once it holds 48 KiB of chunks or 200 chunks, whichever comes first, and always holds
-// at least one. 48 KiB is about 200 requests. Each page is one S3 list call plus one browser download per chunk,
-// so a small page keeps opening the logs cheap. The next page starts after the last name it read.
+// Reading a session's logs (the logs panel, or GET .../logs) returns them a page at a time. For each page,
+// Infisical lists the session's folder in S3 once and adds chunks until the page holds 48 KiB of them (about 200
+// requests) or 200 chunks, but always at least one. The browser then downloads every chunk on the page, so a small
+// page keeps opening the logs fast and cheap. The next page continues after the last file this one read.
 export const AGENT_VAULT_SESSION_LOG_MAX_PAGE_CHUNKS = 200;
 export const AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES = 48 * 1024; // 48 KiB of ciphertext
 
-// A chunk is named by when it was sealed, which can be about 2 minutes after its first record, so a date range
-// starts listing that much past its end.
+// When someone reads logs for a date range, Infisical has to find the chunks holding requests from it. A chunk's
+// file name carries the time the proxy closed it, not the time of its requests, and a proxy can close a chunk up to
+// about 2 minutes after its first request. So the listing starts 3 minutes past the end of the range.
 export const AGENT_VAULT_SESSION_LOG_RANGE_SEAL_MARGIN_MS = 3 * 60_000; // 3 minutes
 
-// The live view reads a short Redis stream per session holding the names of the newest chunks. It keeps the last
-// 10 and disappears 2 minutes after the last one; anything it misses shows on the next full read.
+// The live view (new requests appearing while the logs panel is open) doesn't list S3. Each time a proxy asks for
+// an upload link, Infisical adds the chunk's file name to a small Redis list for that session, and the panel reads
+// the names added since its last check. The list keeps the newest 10 names and is deleted 2 minutes after the last
+// one was added. A chunk that drops off before the panel reads it shows when the logs are reloaded.
 export const AGENT_VAULT_SESSION_LOG_FEED_MAX_ENTRIES = 10;
 export const AGENT_VAULT_SESSION_LOG_FEED_TTL_SECONDS = 120; // 2 minutes
 

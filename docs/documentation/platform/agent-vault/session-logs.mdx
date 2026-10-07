@@ -206,8 +206,6 @@ You can view a session's logs if you created the session or you're an Agent Vaul
   </Note>
 
   To receive new logs as they arrive, call [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail) without a cursor, then call it every few seconds with the previous response's `nextCursor`. The first response can repeat chunks you already read from [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list), so skip any chunk whose `chunkId` and `proxyId` you've already read. If a chunk's download returns 404, the proxy hasn't finished uploading it, so try again a few seconds later.
-
-  If many chunks arrive between two calls, the tail endpoint can skip some of them. To read every chunk, call the endpoint that lists session logs instead.
 </Tab>
 </Tabs>
 

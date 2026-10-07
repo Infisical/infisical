@@ -253,7 +253,8 @@ export const agentVaultSessionLogServiceFactory = ({
 
   type TLoadedSessionLogs = Awaited<ReturnType<typeof $loadSessionLogs>>;
 
-  // Never gated on the plan or on session logs being on: what was recorded stays readable.
+  // Reading doesn't check the plan or whether session logs are on, so logs recorded before a downgrade or before they
+  // were turned off can still be read.
   const $openStorage = async ({
     ctx,
     config,

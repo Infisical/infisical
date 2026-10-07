@@ -166,6 +166,7 @@ export const KeyStorePrefixes = {
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
   PamDefaultProject: (orgId: string) => `pam-default-project:${orgId}` as const,
   AgentVaultDefaultProject: (orgId: string) => `agent-vault-default-project:${orgId}` as const,
+  // The live view's Redis stream for a session: the newest chunk file names, with their bucket and size.
   AgentVaultSessionLogFeed: (sessionId: string) => `agent-vault-session-log-feed:${sessionId}` as const,
 
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
@@ -778,7 +779,8 @@ export const keyStoreFactory = (
     fieldValue: Record<string, string>,
     maxLen = 1_000_000,
     expiryInSeconds?: number,
-    // "~" lets Redis trim in whole blocks of about 100 entries, so a short cap needs the exact form.
+    // With "~", Redis only trims whole internal blocks of about 100 entries, so a cap of 10 could still hold around
+    // 100. Small caps need exact trimming.
     isExactTrim = false
   ) => {
     const args: string[] = [];
