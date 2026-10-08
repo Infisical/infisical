@@ -12,6 +12,7 @@ import {
   HexagonIcon,
   ImportIcon,
   KeyIcon,
+  MessageSquareIcon,
   RefreshCcwIcon,
   RefreshCwIcon
 } from "lucide-react";
@@ -22,10 +23,6 @@ import {
   Badge,
   Button,
   Checkbox,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
   IconButton,
   Table,
   TableBody,
@@ -49,6 +46,7 @@ import { useUpdateSecretV3 } from "@app/hooks/api";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { ProjectEnv } from "@app/hooks/api/types";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
 import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
@@ -60,11 +58,11 @@ import {
   TABLE_ROW_NAME_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
+import { MultiEnvironmentSecretEditSheet } from "./MultiEnvironmentSecretEditSheet";
 import { SecretEditTableRow } from "./SecretEditTableRow";
 import { SecretOverrideRow } from "./SecretOverrideRow";
-import SecretRenameForm from "./SecretRenameForm";
 
-type Props = {
+export type SecretTableRowProps = {
   secretKey: string;
   secretPath: string;
   tableWidth: number;
@@ -86,6 +84,7 @@ type Props = {
     secretMetadata?: { key: string; value: string; isEncrypted?: boolean }[];
     skipMultilineEncoding?: boolean | null;
     originalValue?: string;
+    onUpdateResult?: (requiresApproval: boolean) => void;
   }) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string, type?: SecretType) => Promise<void>;
   isImportedSecretPresentInEnv: (env: string, secretName: string) => boolean;
@@ -150,7 +149,7 @@ export const SecretTableRow = ({
   onAccessInsightsUpgrade,
   activityId,
   onActivityChange
-}: Props) => {
+}: SecretTableRowProps) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 2; // secret key row + icon
   const [isSecretVisible, setIsSecretVisible] = useToggle();
@@ -244,6 +243,29 @@ export const SecretTableRow = ({
   };
 
   const { permission } = useProjectPermission();
+
+  const commentPreviews = isSingleEnvView
+    ? []
+    : environments.flatMap((environment) => {
+        const secret = getSecretByKey(environment.slug, secretKey);
+        if (
+          !secret?.comment ||
+          isImportedSecretPresentInEnv(environment.slug, secretKey) ||
+          secret.revokedProjectFolderGrant ||
+          !hasSecretReadValueOrDescribePermission(
+            permission,
+            ProjectPermissionSecretActions.DescribeSecret,
+            {
+              environment: environment.slug,
+              secretPath,
+              secretName: secretKey,
+              secretTags: secret.tags?.map(({ slug }) => slug) ?? []
+            }
+          )
+        )
+          return [];
+        return [{ environment, comment: secret.comment }];
+      });
 
   const getDefaultValue = (
     secret: SecretV3RawSanitized | undefined,
@@ -468,7 +490,12 @@ export const SecretTableRow = ({
                   isFormExpanded && "relative flex min-h-10 min-w-0 flex-1 items-center px-1 py-1.5"
                 )}
               >
-                <div className="flex min-w-0 items-center gap-2">
+                <div
+                  className={twMerge(
+                    "flex min-w-0 items-center gap-2",
+                    commentPreviews.length > 0 && "pr-16"
+                  )}
+                >
                   <Tooltip delayDuration={1000} skipDelayDuration={0}>
                     <TooltipTrigger asChild>
                       <span
@@ -485,6 +512,36 @@ export const SecretTableRow = ({
                       {secretKey}
                     </TooltipContent>
                   </Tooltip>
+                  {commentPreviews.length > 0 && (
+                    <Tooltip open={isEditSecretNameOpen ? false : undefined}>
+                      <TooltipTrigger asChild>
+                        <IconButton
+                          aria-label="Preview secret comments"
+                          variant="ghost-muted"
+                          size="xs"
+                          className="size-3.5 rounded-none border-0 [&>svg]:size-3.5 [&>svg]:stroke-2"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setIsEditSecretNameOpen(true);
+                          }}
+                        >
+                          <MessageSquareIcon className="size-3.5" />
+                        </IconButton>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-72">
+                        <div className="flex flex-col gap-3">
+                          {commentPreviews.map(({ environment, comment }) => (
+                            <div key={environment.slug} className="space-y-1">
+                              <p className="text-2xs text-muted">{environment.name}</p>
+                              <p className="line-clamp-2 break-words whitespace-pre-wrap">
+                                {comment}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                   {!isFormExpanded &&
                     environments.some(
                       ({ slug }) => getSecretByKey(slug, secretKey)?.revokedProjectFolderGrant
@@ -522,9 +579,9 @@ export const SecretTableRow = ({
                     <TooltipContent>Copy Secret Name</TooltipContent>
                   </Tooltip>
                   <Tooltip>
-                    <TooltipTrigger>
+                    <TooltipTrigger asChild>
                       <IconButton
-                        aria-label="Edit secret name"
+                        aria-label="Edit secret"
                         variant="ghost"
                         size="xs"
                         onClick={(e) => {
@@ -536,7 +593,7 @@ export const SecretTableRow = ({
                         <EditIcon />
                       </IconButton>
                     </TooltipTrigger>
-                    <TooltipContent>Edit Secret Name</TooltipContent>
+                    <TooltipContent>Edit Secret</TooltipContent>
                   </Tooltip>
                 </div>
               </div>
@@ -622,20 +679,22 @@ export const SecretTableRow = ({
           </TableCell>
         </TableRow>
       )}
-      {!isSingleEnvView && (
-        <Dialog open={isEditSecretNameOpen} onOpenChange={setIsEditSecretNameOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Edit Secret Name</DialogTitle>
-            </DialogHeader>
-            <SecretRenameForm
-              secretKey={secretKey}
-              environments={environments}
-              secretPath={secretPath}
-              getSecretByKey={getSecretByKey}
-            />
-          </DialogContent>
-        </Dialog>
+      {!isSingleEnvView && isEditSecretNameOpen && (
+        <MultiEnvironmentSecretEditSheet
+          key={JSON.stringify([
+            projectId,
+            secretPath,
+            secretKey,
+            environments.map((env) => env.slug)
+          ])}
+          secretKey={secretKey}
+          environments={environments}
+          secretPath={secretPath}
+          getSecretByKey={getSecretByKey}
+          onSecretUpdate={onSecretUpdate}
+          importedBy={importedBy}
+          onClose={() => setIsEditSecretNameOpen(false)}
+        />
       )}
       {!isSingleEnvView && isFormExpanded && (
         <TableRow
@@ -677,7 +736,12 @@ export const SecretTableRow = ({
                     </TableHead>
                     <TableHead>Value</TableHead>
                     <TableHead variant="action" className="w-px">
-                      <Button variant="ghost" size="xs" onClick={() => setIsSecretVisible.toggle()}>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        className="font-normal"
+                        onClick={() => setIsSecretVisible.toggle()}
+                      >
                         {isSecretVisible ? (
                           <>
                             <EyeOffIcon />

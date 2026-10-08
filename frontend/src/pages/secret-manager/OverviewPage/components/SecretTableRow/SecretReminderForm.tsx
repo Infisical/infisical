@@ -11,12 +11,12 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Calendar,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input,
   Popover,
   PopoverContent,
@@ -418,15 +418,17 @@ export const SecretReminderForm = ({
             control={control}
             name="recipients"
             render={({ field }) => (
-              <FilterableSelect
-                menuPlacement="top"
+              <Combobox
                 className="w-full"
                 placeholder="Select recipients..."
-                isMulti
+                multiple
+                searchAriaLabel="Search recipients"
+                getOptionValue={(option) => option.value}
+                getOptionLabel={(option) => option.label}
                 name="recipients"
                 options={memberOptions}
                 value={field.value}
-                onChange={field.onChange}
+                onValueChange={field.onChange}
                 isDisabled={!canEditSecret}
               />
             )}
