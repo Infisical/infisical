@@ -82,19 +82,6 @@ export const useGetSecretScanningInstanceState = (orgId: string) =>
     enabled: Boolean(orgId)
   });
 
-export const useGetSecretScanningProjectId = (
-  orgId: string,
-  options?: Omit<
-    UseQueryOptions<string, unknown, string, ReturnType<typeof secretScanningV2Keys.activeProjectId>>,
-    "queryKey" | "queryFn"
-  >
-) =>
-  useQuery({
-    queryKey: secretScanningV2Keys.activeProjectId(orgId),
-    queryFn: fetchSecretScanningProjectId,
-    ...options
-  });
-
 export const useSecretScanningDataSourceOptions = (
   options?: Omit<
     UseQueryOptions<

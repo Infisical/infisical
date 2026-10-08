@@ -4383,7 +4383,8 @@ export const registerRoutes = async (
 
   const secretScanningV2InstanceService = secretScanningV2InstanceServiceFactory({
     projectDAL,
-    permissionService
+    permissionService,
+    secretScanningV2ProjectResolver
   });
 
   const secretScanningV2Service = secretScanningV2ServiceFactory({
@@ -4654,7 +4655,6 @@ export const registerRoutes = async (
     agentProxyCa: agentProxyCaService,
     folderCommit: folderCommitService,
     secretScanningV2: secretScanningV2Service,
-    secretScanningV2ProjectResolver,
     secretScanningV2Instance: secretScanningV2InstanceService,
     reminder: reminderService,
     eventBus: eventBusService,

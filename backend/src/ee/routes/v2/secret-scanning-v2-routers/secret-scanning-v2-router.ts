@@ -49,7 +49,12 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const projectId = await server.services.secretScanningV2ProjectResolver.resolve(req.permission.orgId);
+      const projectId = await server.services.secretScanningV2Instance.resolveActiveProjectId({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
       return { projectId };
     }
   });

@@ -106,7 +106,6 @@ import {
   ProjectVersion,
   SearchProjectSortBy
 } from "@app/hooks/api/projects/types";
-import { useGetSecretScanningProjectId } from "@app/hooks/api/secretScanningV2/queries";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import {
@@ -254,25 +253,6 @@ export const ProjectTypePage = () => {
     }
   }, [projectType, certManagerInstance, orgId, navigate]);
 
-  // Secret Scanning has one active project per org, so members skip the list and land in it. The list
-  // stays the fallback for non-members, where they can request access.
-  const isSecretScanning = projectType === ProjectType.SecretScanning;
-  const { data: secretScanningProjectId, isPending: isSecretScanningProjectPending } =
-    useGetSecretScanningProjectId(orgId, { enabled: isSecretScanning });
-  const { data: userProjects = [], isPending: isUserProjectsPending } = useGetUserProjects();
-  const isSecretScanningMember = Boolean(
-    secretScanningProjectId && userProjects.some((p) => p.id === secretScanningProjectId)
-  );
-
-  useEffect(() => {
-    if (isSecretScanning && secretScanningProjectId && isSecretScanningMember) {
-      navigate({
-        to: "/organizations/$orgId/projects/secret-scanning/$projectId/data-sources",
-        params: { orgId, projectId: secretScanningProjectId }
-      });
-    }
-  }, [isSecretScanning, secretScanningProjectId, isSecretScanningMember, orgId, navigate]);
-
   useEffect(() => {
     if (projectType === ProjectType.PAM) {
       navigate({
@@ -311,13 +291,6 @@ export const ProjectTypePage = () => {
   }
 
   if (projectType === ProjectType.PAM || projectType === ProjectType.AgentVault) {
-    return null;
-  }
-
-  if (
-    isSecretScanning &&
-    (isSecretScanningProjectPending || isUserProjectsPending || isSecretScanningMember)
-  ) {
     return null;
   }
 
