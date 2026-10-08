@@ -93,15 +93,17 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       autoCapitalization,
       warning,
       autoComplete,
+      onChange,
       ...props
     },
     ref
   ): JSX.Element => {
-    const handleInput = (event: ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
       if (autoCapitalization) {
         // eslint-disable-next-line no-param-reassign
         event.target.value = event.target.value.toUpperCase();
       }
+      onChange?.(event);
     };
 
     return (
@@ -122,7 +124,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           readOnly={isReadOnly}
           disabled={isDisabled}
-          onInput={handleInput}
+          onChange={handleChange}
           autoComplete={autoComplete}
           data-1p-ignore={data1pIgnore(autoComplete)}
           className={twMerge(
