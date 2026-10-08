@@ -912,6 +912,10 @@ export const ORGANIZATIONS = {
   },
   LIST_GROUPS: {
     organizationId: "The ID of the organization to list groups for."
+  },
+  GET_PRODUCT_STATS: {
+    secretScanningFindingsCount:
+      "The number of findings across the organization's Secret Scanning projects, in any status. Cached for up to 5 minutes."
   }
 } as const;
 

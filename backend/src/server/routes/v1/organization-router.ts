@@ -790,7 +790,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           secretScanning: z.object({
             dataSourcesCount: z.number(),
             resourcesCount: z.number(),
-            findingsCount: z.number(),
+            findingsCount: z.number().describe(ORGANIZATIONS.GET_PRODUCT_STATS.secretScanningFindingsCount),
             projectsCount: z.number()
           }),
           pam: z.object({
