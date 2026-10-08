@@ -1,22 +1,18 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useState } from "react";
 import { ChevronRightIcon, InfoIcon, RefreshCw } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
-  Button,
   Card,
   CardContent,
   IconButton,
   Skeleton,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import { useOrganization } from "@app/context";
 import {
   BillingV2BreakdownScopeKind,
@@ -31,15 +27,11 @@ import {
   fmtMoneyCents,
   nextChargeProductLabel
 } from "../billing-v2-format";
-import { DetailsCard } from "./cards/DetailsCard";
-import { InvoicesCard } from "./cards/InvoicesCard";
-import { PaymentCard } from "./cards/PaymentCard";
+import { DetailsSheet, InvoicesSheet, PaymentSheet } from "./BillingSheets";
 import { InactiveProductCard, ProductOverviewCard } from "./ProductOverviewCard";
 import { CardEmpty } from "./shared";
 
 type TabbedOverviewProps = {
-  tab: string;
-  onTabChange: (tab: string) => void;
   overview: BillingV2Overview;
   catalog: BillingV2CatalogProduct[];
   readOnly: boolean;
@@ -65,11 +57,6 @@ const SKELETON_PRODUCTS = ["product-a", "product-b", "product-c", "product-d"];
 export const TabbedOverviewSkeleton = ({ orgFilter }: { orgFilter?: ReactNode }) => (
   <div className="flex flex-col gap-6">
     {orgFilter && <div className="flex justify-end">{orgFilter}</div>}
-    <div className="flex h-9 items-end gap-6 border-b border-border">
-      <Skeleton className="mb-2 h-4 w-16" />
-      <Skeleton className="mb-2 h-4 w-14" />
-      <Skeleton className="mb-2 h-4 w-14" />
-    </div>
     <div className="flex flex-col gap-4">
       <Card>
         <div className="flex items-center justify-between">
@@ -98,9 +85,29 @@ export const TabbedOverviewSkeleton = ({ orgFilter }: { orgFilter?: ReactNode })
   </div>
 );
 
+const SummaryBlock = ({
+  label,
+  onClick,
+  children
+}: {
+  label: string;
+  onClick: () => void;
+  children: ReactNode;
+}) => (
+  <button
+    type="button"
+    className="flex min-w-36 cursor-pointer flex-col gap-1 rounded-md bg-container px-3 py-2.5 text-left outline-0 transition-colors hover:bg-container-hover focus-visible:ring-2 focus-visible:ring-ring"
+    onClick={onClick}
+  >
+    <span className="text-xs text-accent">{label}</span>
+    <span className="flex min-w-0 items-center justify-between gap-2 text-sm">
+      <span className="flex min-w-0 items-baseline gap-1.5 truncate">{children}</span>
+      <ChevronRightIcon className="size-3.5 shrink-0 text-muted" />
+    </span>
+  </button>
+);
+
 export const TabbedOverview = ({
-  tab,
-  onTabChange,
   overview,
   catalog,
   readOnly,
@@ -120,14 +127,15 @@ export const TabbedOverview = ({
   const [expanded, setExpanded] = useState<{ productId: string; dimensionKey?: string } | null>(
     null
   );
+  const [openSheet, setOpenSheet] = useState<"payment" | "invoices" | "details" | null>(null);
   const { billing, entitlements } = overview;
   const isManaged = overview.mode === "managed";
   const isSubscribed = overview.subState !== "no-subscription";
   const hasBillingHistory =
     Boolean(overview.payment) || Boolean(overview.billingDetails) || overview.invoices.length > 0;
   const showPayment = overview.isCloud && !isManaged;
-  const showInvoicesTab = showPayment && (isSubscribed || overview.invoices.length > 0);
-  const showPaymentTab = !isManaged && (isSubscribed || hasBillingHistory);
+  const showInvoices = showPayment && (isSubscribed || overview.invoices.length > 0);
+  const showBillingInfo = !isManaged && (isSubscribed || hasBillingHistory);
   const visible = [...catalog]
     .filter((prod) => !prod.deprecated || entitlements[prod.id]?.entitled)
     .sort(byDisplayOrder);
@@ -139,11 +147,6 @@ export const TabbedOverview = ({
     isActiveProduct(expanded.productId)
       ? expanded
       : null;
-  const hasTabs = showInvoicesTab || showPaymentTab;
-  const activeTab =
-    (tab === "invoices" && !showInvoicesTab) || (tab === "payment" && !showPaymentTab)
-      ? "overview"
-      : tab;
   const accountStatus =
     overview.subState in ACCOUNT_STATUS
       ? ACCOUNT_STATUS[overview.subState as keyof typeof ACCOUNT_STATUS]
@@ -178,10 +181,6 @@ export const TabbedOverview = ({
         "Contact your Infisical account manager to adjust products, commitments, or your subscription."
     };
   }
-
-  useEffect(() => {
-    onTabChange(activeTab);
-  }, [activeTab, onTabChange]);
 
   const handleRefresh = () => {
     refreshEntitlements.mutate(
@@ -273,172 +272,172 @@ export const TabbedOverview = ({
         {billing.activeProductCount === 1 ? "product" : "products"}
       </span>
     );
-  } else if (showPayment && overview.payment) {
-    summaryRight = (
-      <div className="flex flex-col items-start gap-1 sm:items-end">
-        <span className="text-xs text-accent">Card on File</span>
-        <Button
-          variant="text"
-          size="xs"
-          onClick={() => (showPaymentTab ? onTabChange("payment") : onUpdatePayment())}
-        >
-          {`${overview.payment.brand.toUpperCase()} ···· ${overview.payment.last4}`}
-          <ChevronRightIcon />
-        </Button>
-      </div>
-    );
-  } else if (showPayment && isSubscribed && canManageBilling) {
-    summaryRight = (
-      <Button variant="outline" size="xs" onClick={onUpdatePayment}>
-        Add Payment Method
-      </Button>
-    );
   }
+  const latestInvoice = overview.invoices[0];
 
   return (
-    <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {orgFilter && <div className="flex justify-end">{orgFilter}</div>}
-      {hasTabs && (
-        <TabsList variant="org">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          {showInvoicesTab && <TabsTrigger value="invoices">Invoices</TabsTrigger>}
-          {showPaymentTab && <TabsTrigger value="payment">Payment</TabsTrigger>}
-        </TabsList>
-      )}
-
-      <TabsContent
-        value="overview"
-        tabIndex={visible.length > 0 ? -1 : 0}
-        className="flex flex-col gap-4"
-      >
-        <Card aria-label="Billing summary">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            {summaryLeft}
-            <div className="flex flex-wrap items-center gap-3">
-              {accountTeamNote && (
-                <span className="flex items-center gap-1 text-xs text-muted">
-                  {accountTeamNote.label}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <IconButton
-                        size="2xs"
-                        variant="ghost-muted"
-                        aria-label={`About ${accountTeamNote.label.toLowerCase()}`}
-                      >
-                        <InfoIcon />
-                      </IconButton>
-                    </TooltipTrigger>
-                    <TooltipContent>{accountTeamNote.detail}</TooltipContent>
-                  </Tooltip>
-                </span>
-              )}
-              {summaryRight}
-              {!readOnly && (
+      <Card aria-label="Billing summary">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          {summaryLeft}
+          <div className="flex flex-wrap items-center gap-3">
+            {accountTeamNote && (
+              <span className="flex items-center gap-1 text-xs text-muted">
+                {accountTeamNote.label}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <IconButton
-                      aria-label="Refresh entitlements"
+                      size="2xs"
                       variant="ghost-muted"
-                      size="xs"
-                      isDisabled={refreshEntitlements.isPending}
-                      onClick={handleRefresh}
+                      aria-label={`About ${accountTeamNote.label.toLowerCase()}`}
                     >
-                      <RefreshCw />
+                      <InfoIcon />
                     </IconButton>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    Plan changes may take a few minutes to take effect.
-                  </TooltipContent>
+                  <TooltipContent>{accountTeamNote.detail}</TooltipContent>
                 </Tooltip>
-              )}
-            </div>
+              </span>
+            )}
+            {summaryRight}
+            {showPayment && showBillingInfo && (
+              <SummaryBlock label="Card on File" onClick={() => setOpenSheet("payment")}>
+                {overview.payment ? (
+                  `${overview.payment.brand.toUpperCase()} ···· ${overview.payment.last4}`
+                ) : (
+                  <span className="text-muted">Not added</span>
+                )}
+              </SummaryBlock>
+            )}
+            {showInvoices && (
+              <SummaryBlock label="Invoices" onClick={() => setOpenSheet("invoices")}>
+                {latestInvoice ? (
+                  <>
+                    <span className="tabular-nums">{fmtMoneyCents(latestInvoice.amount)}</span>
+                    <span
+                      className={cn(
+                        "truncate text-xs",
+                        latestInvoice.paid ? "text-muted" : "text-danger"
+                      )}
+                    >
+                      {latestInvoice.paid ? latestInvoice.date : "Unpaid"}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-muted">None yet</span>
+                )}
+              </SummaryBlock>
+            )}
+            {showBillingInfo && (
+              <SummaryBlock label="Billing Details" onClick={() => setOpenSheet("details")}>
+                {overview.billingDetails?.name || overview.billingDetails?.email || (
+                  <span className="text-muted">Not added</span>
+                )}
+              </SummaryBlock>
+            )}
+            {!readOnly && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    aria-label="Refresh entitlements"
+                    variant="ghost-muted"
+                    size="xs"
+                    isDisabled={refreshEntitlements.isPending}
+                    onClick={handleRefresh}
+                  >
+                    <RefreshCw />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>Plan changes may take a few minutes to take effect.</TooltipContent>
+              </Tooltip>
+            )}
           </div>
-        </Card>
+        </div>
+      </Card>
 
-        {visible.length === 0 ? (
-          <Card>
-            <CardContent>
-              <CardEmpty
-                title="No products available"
-                description="Products will appear here once they're available."
-              />
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
-            {visible.map((prod) => {
-              const ent = entitlements[prod.id];
-              if (ent && isActiveProduct(prod.id)) {
-                const isExpanded = expandedProduct?.productId === prod.id;
-                return (
-                  <ProductOverviewCard
-                    key={prod.id}
-                    prod={prod}
-                    ent={ent}
-                    readOnly={readOnly}
-                    selfServe={overview.selfServe}
-                    isManaged={isManaged}
-                    breakdownOrgId={breakdownOrgId}
-                    breakdownScope={breakdownScope}
-                    isExpanded={isExpanded}
-                    isDimmed={Boolean(expandedProduct) && !isExpanded}
-                    selectedDimensionKey={isExpanded ? expandedProduct?.dimensionKey : undefined}
-                    onExpand={(dimensionKey) =>
-                      setExpanded({
-                        productId: prod.id,
-                        dimensionKey:
-                          dimensionKey ?? (isExpanded ? expandedProduct?.dimensionKey : undefined)
-                      })
-                    }
-                    onCollapse={() => setExpanded(null)}
-                    onManage={onManage}
-                    onSetCommitment={onSetCommitment}
-                    onViewBreakdown={onViewBreakdown}
-                  />
-                );
-              }
+      {visible.length === 0 ? (
+        <Card>
+          <CardContent>
+            <CardEmpty
+              title="No products available"
+              description="Products will appear here once they're available."
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+          {visible.map((prod) => {
+            const ent = entitlements[prod.id];
+            if (ent && isActiveProduct(prod.id)) {
+              const isExpanded = expandedProduct?.productId === prod.id;
               return (
-                <InactiveProductCard
+                <ProductOverviewCard
                   key={prod.id}
-                  isDimmed={Boolean(expandedProduct)}
                   prod={prod}
+                  ent={ent}
                   readOnly={readOnly}
-                  isManaged={isManaged}
                   selfServe={overview.selfServe}
+                  isManaged={isManaged}
+                  breakdownOrgId={breakdownOrgId}
+                  breakdownScope={breakdownScope}
+                  isExpanded={isExpanded}
+                  isDimmed={Boolean(expandedProduct) && !isExpanded}
+                  selectedDimensionKey={isExpanded ? expandedProduct?.dimensionKey : undefined}
+                  onExpand={(dimensionKey) =>
+                    setExpanded({
+                      productId: prod.id,
+                      dimensionKey:
+                        dimensionKey ?? (isExpanded ? expandedProduct?.dimensionKey : undefined)
+                    })
+                  }
+                  onCollapse={() => setExpanded(null)}
                   onManage={onManage}
-                  onContact={onContact}
+                  onSetCommitment={onSetCommitment}
+                  onViewBreakdown={onViewBreakdown}
                 />
               );
-            })}
-          </div>
-        )}
-      </TabsContent>
-
-      {showInvoicesTab && (
-        <TabsContent
-          value="invoices"
-          tabIndex={overview.invoices.some((invoice) => invoice.pdfUrl) ? -1 : 0}
-        >
-          <InvoicesCard invoices={overview.invoices} />
-        </TabsContent>
+            }
+            return (
+              <InactiveProductCard
+                key={prod.id}
+                isDimmed={Boolean(expandedProduct)}
+                prod={prod}
+                readOnly={readOnly}
+                isManaged={isManaged}
+                selfServe={overview.selfServe}
+                onManage={onManage}
+                onContact={onContact}
+              />
+            );
+          })}
+        </div>
       )}
 
-      {showPaymentTab && (
-        <TabsContent
-          value="payment"
-          tabIndex={canManageBilling ? -1 : 0}
-          className="grid items-start gap-6 xl:grid-cols-2"
-        >
-          {showPayment && (
-            <PaymentCard
-              overview={overview}
-              canManage={canManageBilling}
-              onUpdate={onUpdatePayment}
-            />
-          )}
-          <DetailsCard overview={overview} canManage={canManageBilling} onEdit={onEditDetails} />
-        </TabsContent>
+      {showPayment && showBillingInfo && (
+        <PaymentSheet
+          overview={overview}
+          isOpen={openSheet === "payment"}
+          onOpenChange={(isOpen) => setOpenSheet(isOpen ? "payment" : null)}
+          canManage={canManageBilling}
+          onUpdate={onUpdatePayment}
+        />
       )}
-    </Tabs>
+      {showInvoices && (
+        <InvoicesSheet
+          overview={overview}
+          isOpen={openSheet === "invoices"}
+          onOpenChange={(isOpen) => setOpenSheet(isOpen ? "invoices" : null)}
+        />
+      )}
+      {showBillingInfo && (
+        <DetailsSheet
+          overview={overview}
+          isOpen={openSheet === "details"}
+          onOpenChange={(isOpen) => setOpenSheet(isOpen ? "details" : null)}
+          canManage={canManageBilling}
+          onEdit={onEditDetails}
+        />
+      )}
+    </div>
   );
 };
