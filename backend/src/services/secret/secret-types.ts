@@ -454,16 +454,6 @@ export type THandleReminderDTO = {
   actor: TGenericPermission;
 };
 
-export type TCreateSecretReminderDTO = {
-  oldSecret: TPartialSecret;
-  newSecret: TPartialSecret;
-  projectId: string;
-  actor: TGenericPermission;
-  secretReminderRecipients: string[];
-
-  deleteRecipients?: boolean;
-};
-
 export type TRemoveSecretReminderDTO = {
   secretId: string;
   repeatDays: number;

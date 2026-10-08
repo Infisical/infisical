@@ -79,14 +79,9 @@ export const alertChannelServiceFactory = ({
   groupDAL,
   emailDomainDAL
 }: TAlertChannelServiceFactoryDep) => {
-  const $recipientIdsByType = (recipients: TChannelRecipientInput[]) => ({
-    userIds: [
-      ...new Set(recipients.filter((r) => r.principalType === AlertPrincipalType.USER).map((r) => r.principalId))
-    ],
-    groupIds: [
-      ...new Set(recipients.filter((r) => r.principalType === AlertPrincipalType.GROUP).map((r) => r.principalId))
-    ]
-  });
+  const $idsOfType = (recipients: TChannelRecipientInput[], principalType: AlertPrincipalType) => [
+    ...new Set(recipients.filter((r) => r.principalType === principalType).map((r) => r.principalId))
+  ];
 
   const $assertProjectMembersRecipients = (
     projectId: string | null | undefined,
@@ -155,12 +150,10 @@ export const alertChannelServiceFactory = ({
     $assertNoDuplicateRecipients(recipients);
     $assertProjectMembersRecipients(projectId, recipients);
 
-    const idsOfType = (principalType: AlertPrincipalType) =>
-      recipients.filter((r) => r.principalType === principalType).map((r) => r.principalId);
-    const userIds = idsOfType(AlertPrincipalType.USER);
-    const groupIds = idsOfType(AlertPrincipalType.GROUP);
+    const userIds = $idsOfType(recipients, AlertPrincipalType.USER);
+    const groupIds = $idsOfType(recipients, AlertPrincipalType.GROUP);
 
-    await $validateEmailRecipients(orgId, idsOfType(AlertPrincipalType.EMAIL), tx);
+    await $validateEmailRecipients(orgId, $idsOfType(recipients, AlertPrincipalType.EMAIL), tx);
     if (userIds.length === 0 && groupIds.length === 0) return;
 
     const inScope = await resolvePrincipalsInScope(
@@ -318,7 +311,8 @@ export const alertChannelServiceFactory = ({
     recipients: TChannelRecipientInput[],
     tx?: Knex
   ): Promise<TChannelRecipientInput[]> => {
-    const { userIds, groupIds } = $recipientIdsByType(recipients);
+    const userIds = $idsOfType(recipients, AlertPrincipalType.USER);
+    const groupIds = $idsOfType(recipients, AlertPrincipalType.GROUP);
     const inScope =
       userIds.length || groupIds.length
         ? await resolvePrincipalsInScope(

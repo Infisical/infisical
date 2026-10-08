@@ -339,6 +339,19 @@ export const reminderServiceFactory = ({
     logger.warn(`Stopped reaping orphaned secret reminder alerts after ${MAX_ORPHAN_REAP_BATCHES} batches`);
   };
 
+  const deleteReminderBySecretId: TReminderServiceFactory["deleteReminderBySecretId"] = async (
+    secretId: string,
+    projectId: string,
+    tx?: Knex
+  ) => {
+    await reminderDAL.delete({ secretId }, tx);
+    await alertService.deleteAlertsForDeletedResources(
+      { resourceType: SECRET_REMINDER_RESOURCE_TYPE, resourceIds: [secretId] },
+      tx
+    );
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
+  };
+
   const deleteReminder: TReminderServiceFactory["deleteReminder"] = async ({
     actor,
     actorId,
@@ -366,25 +379,7 @@ export const reminderServiceFactory = ({
       ProjectPermissionSecretActions.Edit,
       subject(ProjectPermissionSub.Secrets, subjectFields)
     );
-    await reminderDAL.delete({ secretId });
-    await alertService.deleteAlertsForDeletedResources({
-      resourceType: SECRET_REMINDER_RESOURCE_TYPE,
-      resourceIds: [secretId]
-    });
-    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(secret.projectId);
-  };
-
-  const deleteReminderBySecretId: TReminderServiceFactory["deleteReminderBySecretId"] = async (
-    secretId: string,
-    projectId: string,
-    tx?: Knex
-  ) => {
-    await reminderDAL.delete({ secretId }, tx);
-    await alertService.deleteAlertsForDeletedResources(
-      { resourceType: SECRET_REMINDER_RESOURCE_TYPE, resourceIds: [secretId] },
-      tx
-    );
-    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
+    await deleteReminderBySecretId(secretId, secret.projectId);
   };
 
   // A moved secret takes its reminder with it, schedule and alert, replacing any reminder the destination
