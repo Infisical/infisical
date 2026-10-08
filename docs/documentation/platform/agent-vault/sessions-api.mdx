@@ -55,8 +55,8 @@ curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
   -d '{"accessBundles": ["<access-bundle-name>"], "ttl": "1h"}'
 ```
 
-- `accessBundles` takes a list, but a session can have only one access bundle, so the list must have exactly one name.
-- `ttl` accepts a duration of at least one minute, such as `30m`, `8h`, or `7d`, or `never`, and defaults to `7d`. To pick a value, see [Choose how long a session lasts](#choose-how-long-a-session-lasts).
+- `accessBundles` takes a list, but a session can have only one access bundle, so the list must have exactly one name
+- `ttl` accepts a duration of at least one minute, such as `30m`, `8h`, or `7d`, or `never`, and defaults to `7d` (see [Choose how long a session lasts](#choose-how-long-a-session-lasts) to pick a value)
 
 The response includes the session's ID, the session token, and when the session expires:
 
