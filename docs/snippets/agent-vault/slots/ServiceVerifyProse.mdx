@@ -154,6 +154,12 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
   Resend returns your API keys. Run the same request outside the agent and it fails with a 401.
 </AgentVaultBranch>
 
+<AgentVaultBranch service="shipmail">
+  > Run `curl -sS https://shipmail.to/api/v1/capabilities` and show me the output.
+
+  Shipmail returns the scopes of your API key. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
 <AgentVaultBranch service="sendgrid">
   > Run `curl -sS https://api.sendgrid.com/v3/user/account` and show me the output.
 

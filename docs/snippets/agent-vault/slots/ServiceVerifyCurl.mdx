@@ -150,6 +150,12 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
   ```
 </AgentVaultBranch>
 
+<AgentVaultBranch service="shipmail">
+  ```bash
+  infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS https://shipmail.to/api/v1/capabilities
+  ```
+</AgentVaultBranch>
+
 <AgentVaultBranch service="sendgrid">
   ```bash
   infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS https://api.sendgrid.com/v3/user/account

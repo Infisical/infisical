@@ -366,6 +366,7 @@ Discord
 Postmark
 Resend
 SendGrid
+Shipmail
 Twilio
 
 # --- Payments and commerce ---
