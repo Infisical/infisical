@@ -13,7 +13,7 @@ import {
 } from "../secret-approval-request/secret-approval-request-dal";
 import { RequestState } from "../secret-approval-request/secret-approval-request-types";
 
-export type TSecretChangeRequestDALFactory = ReturnType<typeof secretChangeRequestDALFactory>;
+export type TSecretChangeGlobalRequestBridgeDALFactory = ReturnType<typeof secretChangeGlobalRequestBridgeDALFactory>;
 
 export type TSecretChangeRequestListRow = TApprovalRequests &
   Pick<
@@ -90,7 +90,7 @@ const buildCoreQuery = (dbInstance: Knex, projectId: string) =>
     .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
     .whereNull(`${TableName.Project}.deleteAfter`);
 
-export const secretChangeRequestDALFactory = (db: TDbClient) => {
+export const secretChangeGlobalRequestBridgeDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.SecretChangeRequests);
 
   const findByProjectId = async (

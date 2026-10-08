@@ -12,9 +12,9 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
 import { ProjectPermissionActions, ProjectPermissionSet, ProjectPermissionSub } from "../permission/project-permission";
 import { RequestState } from "../secret-approval-request/secret-approval-request-types";
-import { TSecretChangePolicyRow } from "./secret-change-policy-bridge-dal";
-import { toSecretChangePolicy } from "./secret-change-policy-bridge-fns";
-import { secretChangePolicyBridgeServiceFactory } from "./secret-change-policy-bridge-service";
+import { TSecretChangePolicyRow } from "./secret-change-global-policy-bridge-dal";
+import { toSecretChangePolicy } from "./secret-change-global-policy-bridge-fns";
+import { secretChangeGlobalPolicyBridgeServiceFactory } from "./secret-change-global-policy-bridge-service";
 
 const ORG_ID = "org-1";
 const PROJECT_ID = "project-1";
@@ -65,7 +65,7 @@ const ctx = {
   actorOrgId: ORG_ID,
   actorAuthMethod: null
 } as unknown as Pick<
-  Parameters<ReturnType<typeof secretChangePolicyBridgeServiceFactory>["createSecretChangePolicy"]>[0],
+  Parameters<ReturnType<typeof secretChangeGlobalPolicyBridgeServiceFactory>["createSecretChangePolicy"]>[0],
   "actor" | "actorId" | "actorOrgId" | "actorAuthMethod"
 >;
 
@@ -125,7 +125,7 @@ const buildService = ({
       findSecretChangePolicyByEnvIdsAndSecretPath: vi.fn().mockResolvedValue(existingPolicy)
     },
     approvalRequestDAL: { update: vi.fn().mockResolvedValue([]) },
-    secretChangePolicyBridgeDAL: {
+    secretChangeGlobalPolicyBridgeDAL: {
       findSecretChangePolicies: vi.fn<(filter: TFindFilter, tx?: Knex) => Promise<TSecretChangePolicyRow[]>>(
         ({ policyId, projectId, envId, organizationId }) =>
           Promise.resolve(
@@ -155,8 +155,8 @@ const buildService = ({
     licenseService: { getPlan: vi.fn().mockResolvedValue(plan) }
   };
 
-  const service = secretChangePolicyBridgeServiceFactory(
-    deps as unknown as Parameters<typeof secretChangePolicyBridgeServiceFactory>[0]
+  const service = secretChangeGlobalPolicyBridgeServiceFactory(
+    deps as unknown as Parameters<typeof secretChangeGlobalPolicyBridgeServiceFactory>[0]
   );
   return { service, deps };
 };
@@ -198,7 +198,7 @@ const create = (service: TService, overrides: Partial<TCreateInput> = {}) =>
     ...overrides
   });
 
-describe("secretChangePolicyBridge findSecretChangePolicy", () => {
+describe("secretChangeGlobalPolicyBridge findSecretChangePolicy", () => {
   test("only matches policies of the secret-change type", async () => {
     const { service, deps } = buildService();
 
@@ -211,7 +211,7 @@ describe("secretChangePolicyBridge findSecretChangePolicy", () => {
   });
 });
 
-describe("secretChangePolicyBridge createSecretChangePolicy", () => {
+describe("secretChangeGlobalPolicyBridge createSecretChangePolicy", () => {
   test("rejects approvals greater than the number of user approvers", async () => {
     const { service, deps } = buildService();
 
@@ -433,7 +433,7 @@ describe("secretChangePolicyBridge createSecretChangePolicy", () => {
 
     const policy = await create(service, { environment: undefined, environments: ["dev", "prod"] });
 
-    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies).toHaveBeenLastCalledWith(
+    expect(deps.secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies).toHaveBeenLastCalledWith(
       { policyId: "policy-1" },
       TX
     );
@@ -459,7 +459,7 @@ describe("secretChangePolicyBridge createSecretChangePolicy", () => {
   });
 });
 
-describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
+describe("secretChangeGlobalPolicyBridge updateSecretChangePolicy", () => {
   test("rejects a policy id that does not live on the global approval system", async () => {
     const { service, deps } = buildService({ permission: allowEdit, rows: [] });
 
@@ -473,7 +473,7 @@ describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
     const { service, deps } = buildService({ permission: allowEdit, rows: [buildRow({ organizationId: "org-2" })] });
 
     await expect(update(service)).rejects.toBeInstanceOf(NotFoundError);
-    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies).toHaveBeenCalledWith({
+    expect(deps.secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies).toHaveBeenCalledWith({
       policyId: "policy-1",
       organizationId: ORG_ID
     });
@@ -567,15 +567,15 @@ describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
 
     expect(deps.approvalPolicyDAL.findByIdForUpdate).toHaveBeenCalledWith("policy-1", TX);
     const lockOrder = deps.approvalPolicyDAL.findByIdForUpdate.mock.invocationCallOrder[0];
-    const stateRead = deps.secretChangePolicyBridgeDAL.findSecretChangePolicies.mock.calls.findIndex(
+    const stateRead = deps.secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies.mock.calls.findIndex(
       ([, tx]) => tx === TX
     );
-    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies.mock.calls[stateRead]).toEqual([
+    expect(deps.secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies.mock.calls[stateRead]).toEqual([
       { policyId: "policy-1" },
       TX
     ]);
     expect(lockOrder).toBeLessThan(
-      deps.secretChangePolicyBridgeDAL.findSecretChangePolicies.mock.invocationCallOrder[stateRead]
+      deps.secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies.mock.invocationCallOrder[stateRead]
     );
     expect(lockOrder).toBeLessThan(
       deps.approvalPolicySecretEnvironmentDAL.findSecretChangePolicyByEnvIdsAndSecretPath.mock.invocationCallOrder[0]
@@ -691,7 +691,7 @@ describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
       [{ policyId: "policy-1", userId: "u-3", groupId: null }],
       TX
     );
-    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies).toHaveBeenLastCalledWith(
+    expect(deps.secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies).toHaveBeenLastCalledWith(
       { policyId: "policy-1" },
       TX
     );
@@ -729,7 +729,7 @@ describe("secretChangePolicyBridge updateSecretChangePolicy", () => {
   });
 });
 
-describe("secretChangePolicyBridge deleteSecretChangePolicy", () => {
+describe("secretChangeGlobalPolicyBridge deleteSecretChangePolicy", () => {
   test("rejects a policy id that does not live on the global approval system", async () => {
     const { service, deps } = buildService({ permission: allowDelete, rows: [] });
 
@@ -787,7 +787,7 @@ describe("secretChangePolicyBridge deleteSecretChangePolicy", () => {
   });
 });
 
-describe("secretChangePolicyBridge getSecretChangePolicyById", () => {
+describe("secretChangeGlobalPolicyBridge getSecretChangePolicyById", () => {
   const getById = (service: TService) => service.getSecretChangePolicyById({ ...ctx, sapId: "policy-1" });
 
   test("looks the policy up within the actor's organization and reports a miss as not found", async () => {
@@ -796,7 +796,7 @@ describe("secretChangePolicyBridge getSecretChangePolicyById", () => {
     const result = getById(service);
     await expect(result).rejects.toBeInstanceOf(NotFoundError);
     await expect(result).rejects.toThrow("Secret approval policy with ID 'policy-1' not found");
-    expect(deps.secretChangePolicyBridgeDAL.findSecretChangePolicies).toHaveBeenCalledWith({
+    expect(deps.secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies).toHaveBeenCalledWith({
       policyId: "policy-1",
       organizationId: ORG_ID
     });

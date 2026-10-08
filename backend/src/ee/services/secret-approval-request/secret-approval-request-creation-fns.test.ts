@@ -26,26 +26,26 @@ const build = ({ isBridgePolicy = false } = {}) => {
     insertV2Bridge: vi.fn().mockImplementation(withIds),
     insertApprovalSecretV2Tags: vi.fn().mockResolvedValue([])
   };
-  const secretChangePolicyBridgeService = {
+  const secretChangeGlobalPolicyBridgeService = {
     findSecretChangePolicy: vi.fn().mockResolvedValue(isBridgePolicy ? POLICY : undefined)
   };
-  const secretChangeRequestBridgeService = {
+  const secretChangeGlobalRequestBridgeService = {
     createSecretChangeRequest: vi.fn().mockRejectedValue(BRIDGE_ERROR)
   };
 
   const fns = secretApprovalRequestCreationFnsFactory({
     secretApprovalRequestDAL,
     secretApprovalRequestSecretDAL,
-    secretChangePolicyBridgeService,
-    secretChangeRequestBridgeService
+    secretChangeGlobalPolicyBridgeService,
+    secretChangeGlobalRequestBridgeService
   });
 
   return {
     fns,
     secretApprovalRequestDAL,
     secretApprovalRequestSecretDAL,
-    secretChangePolicyBridgeService,
-    secretChangeRequestBridgeService
+    secretChangeGlobalPolicyBridgeService,
+    secretChangeGlobalRequestBridgeService
   };
 };
 
@@ -73,11 +73,12 @@ const expectedRequestDoc: Record<string, unknown> = {
 
 describe("createSecretApprovalRequestV2Bridge", () => {
   test("writes the request and its commits on the legacy tables inside the caller's transaction", async () => {
-    const { fns, secretApprovalRequestDAL, secretApprovalRequestSecretDAL, secretChangePolicyBridgeService } = build();
+    const { fns, secretApprovalRequestDAL, secretApprovalRequestSecretDAL, secretChangeGlobalPolicyBridgeService } =
+      build();
 
     const result = await fns.createSecretApprovalRequestV2Bridge(v2Dto(), TX);
 
-    expect(secretChangePolicyBridgeService.findSecretChangePolicy).toHaveBeenCalledWith(POLICY.id, TX);
+    expect(secretChangeGlobalPolicyBridgeService.findSecretChangePolicy).toHaveBeenCalledWith(POLICY.id, TX);
     expect(secretApprovalRequestDAL.transaction).not.toHaveBeenCalled();
     expect(secretApprovalRequestDAL.create).toHaveBeenCalledWith(
       { ...expectedRequestDoc, isReplicated: undefined, commitMessage: undefined },
@@ -107,13 +108,14 @@ describe("createSecretApprovalRequestV2Bridge", () => {
   });
 
   test("opens its own transaction when the caller has none", async () => {
-    const { fns, secretApprovalRequestDAL, secretApprovalRequestSecretDAL, secretChangePolicyBridgeService } = build();
+    const { fns, secretApprovalRequestDAL, secretApprovalRequestSecretDAL, secretChangeGlobalPolicyBridgeService } =
+      build();
 
     await fns.createSecretApprovalRequestV2Bridge(
       v2Dto({ isReplicated: true, commitMessage: "replicated", commits: [{ op: SecretOperations.Create, key: "A" }] })
     );
 
-    expect(secretChangePolicyBridgeService.findSecretChangePolicy).toHaveBeenCalledWith(POLICY.id, undefined);
+    expect(secretChangeGlobalPolicyBridgeService.findSecretChangePolicy).toHaveBeenCalledWith(POLICY.id, undefined);
     expect(secretApprovalRequestDAL.transaction).toHaveBeenCalledTimes(1);
     expect(secretApprovalRequestDAL.create).toHaveBeenCalledWith(
       { ...expectedRequestDoc, isReplicated: true, commitMessage: "replicated" },
@@ -138,14 +140,15 @@ describe("createSecretApprovalRequestV2Bridge", () => {
   });
 
   test("hands a request on a policy from the approval system to the bridge", async () => {
-    const { fns, secretApprovalRequestDAL, secretApprovalRequestSecretDAL, secretChangeRequestBridgeService } = build({
-      isBridgePolicy: true
-    });
+    const { fns, secretApprovalRequestDAL, secretApprovalRequestSecretDAL, secretChangeGlobalRequestBridgeService } =
+      build({
+        isBridgePolicy: true
+      });
     const dto = v2Dto();
 
     await expect(fns.createSecretApprovalRequestV2Bridge(dto, TX)).rejects.toBe(BRIDGE_ERROR);
 
-    expect(secretChangeRequestBridgeService.createSecretChangeRequest).toHaveBeenCalledWith(dto, TX);
+    expect(secretChangeGlobalRequestBridgeService.createSecretChangeRequest).toHaveBeenCalledWith(dto, TX);
     expect(secretApprovalRequestDAL.create).not.toHaveBeenCalled();
     expect(secretApprovalRequestSecretDAL.insertV2Bridge).not.toHaveBeenCalled();
   });
@@ -194,9 +197,10 @@ describe("createSecretApprovalRequest", () => {
   });
 
   test("refuses a policy from the approval system, since v1 commits cannot reference a secret change request", async () => {
-    const { fns, secretApprovalRequestDAL, secretApprovalRequestSecretDAL, secretChangeRequestBridgeService } = build({
-      isBridgePolicy: true
-    });
+    const { fns, secretApprovalRequestDAL, secretApprovalRequestSecretDAL, secretChangeGlobalRequestBridgeService } =
+      build({
+        isBridgePolicy: true
+      });
 
     await expect(
       fns.createSecretApprovalRequest(
@@ -205,7 +209,7 @@ describe("createSecretApprovalRequest", () => {
       )
     ).rejects.toBeInstanceOf(BadRequestError);
 
-    expect(secretChangeRequestBridgeService.createSecretChangeRequest).not.toHaveBeenCalled();
+    expect(secretChangeGlobalRequestBridgeService.createSecretChangeRequest).not.toHaveBeenCalled();
     expect(secretApprovalRequestDAL.create).not.toHaveBeenCalled();
     expect(secretApprovalRequestSecretDAL.insertMany).not.toHaveBeenCalled();
   });

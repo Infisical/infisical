@@ -74,9 +74,9 @@ import {
 import { ProjectEvents, TProjectEventPayload } from "../project-events/project-events-types";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { getCommitterIds } from "../secret-approval-policy/secret-approval-policy-fns";
-import { TSecretChangePolicyBridgeServiceFactory } from "../secret-change-policy-bridge/secret-change-policy-bridge-service";
-import { TSecretChangeRequestBridgeServiceFactory } from "../secret-change-request-bridge/secret-change-request-bridge-service";
-import { TSecretChangeRequestListItem } from "../secret-change-request-bridge/secret-change-request-bridge-types";
+import { TSecretChangeGlobalPolicyBridgeServiceFactory } from "../secret-change-global-policy-bridge/secret-change-global-policy-bridge-service";
+import { TSecretChangeGlobalRequestBridgeServiceFactory } from "../secret-change-global-request-bridge/secret-change-global-request-bridge-service";
+import { TSecretChangeRequestListItem } from "../secret-change-global-request-bridge/secret-change-global-request-bridge-types";
 import { pickApprovalCommitColumns, secretApprovalRequestCommitFnsFactory } from "./secret-approval-request-commit-fns";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
 import {
@@ -158,9 +158,9 @@ type TSecretApprovalRequestServiceFactoryDep = {
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   queueService: Pick<TQueueServiceFactory, "queue">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
-  secretChangePolicyBridgeService: Pick<TSecretChangePolicyBridgeServiceFactory, "findSecretChangePolicy">;
-  secretChangeRequestBridgeService: Pick<
-    TSecretChangeRequestBridgeServiceFactory,
+  secretChangeGlobalPolicyBridgeService: Pick<TSecretChangeGlobalPolicyBridgeServiceFactory, "findSecretChangePolicy">;
+  secretChangeGlobalRequestBridgeService: Pick<
+    TSecretChangeGlobalRequestBridgeServiceFactory,
     | "findSecretChangeRequest"
     | "findFolderIdsWithOpenSecretChangeRequests"
     | "generateSecretChangeRequest"
@@ -208,8 +208,8 @@ export const secretApprovalRequestServiceFactory = ({
   telemetryService,
   queueService,
   secretValidationRuleService,
-  secretChangePolicyBridgeService,
-  secretChangeRequestBridgeService
+  secretChangeGlobalPolicyBridgeService,
+  secretChangeGlobalRequestBridgeService
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const { buildSecretApprovalCommits, validateSecrets } = secretApprovalRequestCommitFnsFactory({
     permissionService,
@@ -239,8 +239,8 @@ export const secretApprovalRequestServiceFactory = ({
       smtpService
     });
 
-  const $useSecretChangeRequestBridge = async (requestId: string, tx?: Knex) =>
-    Boolean(await secretChangeRequestBridgeService.findSecretChangeRequest(requestId, tx));
+  const $useSecretChangeGlobalRequestBridge = async (requestId: string, tx?: Knex) =>
+    Boolean(await secretChangeGlobalRequestBridgeService.findSecretChangeRequest(requestId, tx));
 
   const requestCount = async ({
     projectId,
@@ -272,7 +272,7 @@ export const secretApprovalRequestServiceFactory = ({
 
     const [legacyCount, secretChangeCount] = await Promise.all([
       secretApprovalRequestDAL.findProjectRequestCount(projectId, userIdFilter, policyId),
-      secretChangeRequestBridgeService.countSecretChangeRequests({ projectId, userId: userIdFilter, policyId })
+      secretChangeGlobalRequestBridgeService.countSecretChangeRequests({ projectId, userId: userIdFilter, policyId })
     ]);
     return {
       open: legacyCount.open + secretChangeCount.open,
@@ -335,7 +335,7 @@ export const secretApprovalRequestServiceFactory = ({
       };
       const [legacyRequests, secretChangeRequests] = await Promise.all([
         secretApprovalRequestDAL.findByProjectIdBridgeSecretV2(headOfList),
-        secretChangeRequestBridgeService.listSecretChangeRequests(headOfList)
+        secretChangeGlobalRequestBridgeService.listSecretChangeRequests(headOfList)
       ]);
       type TListedRequest = (typeof legacyRequests)["approvals"][number] | TSecretChangeRequestListItem;
       return mergeSecretApprovalRequestPages<TListedRequest>({
@@ -362,8 +362,8 @@ export const secretApprovalRequestServiceFactory = ({
   };
 
   const getSecretApprovalDetails = async (dto: TSecretApprovalDetailsDTO) => {
-    if (await $useSecretChangeRequestBridge(dto.id)) {
-      return secretChangeRequestBridgeService.getSecretChangeRequestById(dto);
+    if (await $useSecretChangeGlobalRequestBridge(dto.id)) {
+      return secretChangeGlobalRequestBridgeService.getSecretChangeRequestById(dto);
     }
 
     const { actor, actorId, actorOrgId, actorAuthMethod, id } = dto;
@@ -538,8 +538,8 @@ export const secretApprovalRequestServiceFactory = ({
   };
 
   const reviewApproval = async (dto: TReviewRequestDTO) => {
-    if (await $useSecretChangeRequestBridge(dto.approvalId)) {
-      return secretChangeRequestBridgeService.reviewSecretChangeRequest(dto);
+    if (await $useSecretChangeGlobalRequestBridge(dto.approvalId)) {
+      return secretChangeGlobalRequestBridgeService.reviewSecretChangeRequest(dto);
     }
 
     const { approvalId, actor, status, comment, actorId, actorAuthMethod, actorOrgId } = dto;
@@ -642,8 +642,8 @@ export const secretApprovalRequestServiceFactory = ({
   };
 
   const updateApprovalStatus = async (dto: TStatusChangeDTO) => {
-    if (await $useSecretChangeRequestBridge(dto.approvalId)) {
-      return secretChangeRequestBridgeService.updateSecretChangeRequestStatus(dto);
+    if (await $useSecretChangeGlobalRequestBridge(dto.approvalId)) {
+      return secretChangeGlobalRequestBridgeService.updateSecretChangeRequestStatus(dto);
     }
 
     const { actorId, status, approvalId, actor, actorOrgId, actorAuthMethod } = dto;
@@ -729,8 +729,8 @@ export const secretApprovalRequestServiceFactory = ({
   };
 
   const mergeSecretApprovalRequest = async (dto: TMergeSecretApprovalRequestDTO) => {
-    if (await $useSecretChangeRequestBridge(dto.approvalId)) {
-      return secretChangeRequestBridgeService.mergeSecretChangeRequest(dto);
+    if (await $useSecretChangeGlobalRequestBridge(dto.approvalId)) {
+      return secretChangeGlobalRequestBridgeService.mergeSecretChangeRequest(dto);
     }
 
     const { approvalId, actor, actorId, actorOrgId, actorAuthMethod, bypassReason } = dto;
@@ -1288,7 +1288,7 @@ export const secretApprovalRequestServiceFactory = ({
   }: TGenerateSecretApprovalRequestDTO) => {
     if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    if (await secretChangePolicyBridgeService.findSecretChangePolicy(policy.id)) {
+    if (await secretChangeGlobalPolicyBridgeService.findSecretChangePolicy(policy.id)) {
       throw new BadRequestError({
         message: `Secret approval policy with ID '${policy.id}' is on the global approval system, which does not support projects that have not been upgraded to the latest secrets version.`
       });
@@ -1629,8 +1629,8 @@ export const secretApprovalRequestServiceFactory = ({
   };
 
   const createSecretApprovalSideEffects = async (dto: TCreateSecretApprovalSideEffectsDTO) => {
-    if (await $useSecretChangeRequestBridge(dto.secretApprovalRequest.id, dto.tx)) {
-      return secretChangeRequestBridgeService.createSecretChangeRequestSideEffects(dto);
+    if (await $useSecretChangeGlobalRequestBridge(dto.secretApprovalRequest.id, dto.tx)) {
+      return secretChangeGlobalRequestBridgeService.createSecretChangeRequestSideEffects(dto);
     }
 
     const { secretApprovalRequest, projectId, environment, secretPath, secretKeys, actor, actorId, actorOrgId, tx } =
@@ -1736,8 +1736,8 @@ export const secretApprovalRequestServiceFactory = ({
   const generateSecretApprovalRequestV2Bridge = async (
     dto: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex; skipPostProcessing?: boolean }
   ) => {
-    if (await secretChangePolicyBridgeService.findSecretChangePolicy(dto.policy.id, dto.trx)) {
-      return secretChangeRequestBridgeService.generateSecretChangeRequest(dto);
+    if (await secretChangeGlobalPolicyBridgeService.findSecretChangePolicy(dto.policy.id, dto.trx)) {
+      return secretChangeGlobalRequestBridgeService.generateSecretChangeRequest(dto);
     }
 
     const {
@@ -1819,10 +1819,8 @@ export const secretApprovalRequestServiceFactory = ({
       { $in: { folderId: folderIds }, status: RequestState.Open },
       { tx }
     );
-    const secretChangeFolderIds = await secretChangeRequestBridgeService.findFolderIdsWithOpenSecretChangeRequests(
-      folderIds,
-      tx
-    );
+    const secretChangeFolderIds =
+      await secretChangeGlobalRequestBridgeService.findFolderIdsWithOpenSecretChangeRequests(folderIds, tx);
 
     return [...new Set([...legacyRequests.map((request) => request.folderId), ...secretChangeFolderIds])];
   };

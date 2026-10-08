@@ -19,10 +19,10 @@ import { ChangeRequestWebhookAction, WebhookEvents } from "@app/services/webhook
 
 import { ApprovalStatus, RequestState } from "../secret-approval-request/secret-approval-request-types";
 import {
-  secretChangeRequestFnsFactory,
+  secretChangeGlobalRequestFnsFactory,
   toSecretChangeRequest,
   toSecretChangeRequestReview
-} from "./secret-change-request-bridge-fns";
+} from "./secret-change-global-request-bridge-fns";
 
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ SITE_URL: "https://app.test" }) }));
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
@@ -200,7 +200,9 @@ const buildFns = ({
     queueService: { queue: vi.fn().mockResolvedValue(undefined) },
     telemetryService: { sendPostHogEvents: vi.fn().mockResolvedValue(undefined) }
   };
-  const fns = secretChangeRequestFnsFactory(deps as unknown as Parameters<typeof secretChangeRequestFnsFactory>[0]);
+  const fns = secretChangeGlobalRequestFnsFactory(
+    deps as unknown as Parameters<typeof secretChangeGlobalRequestFnsFactory>[0]
+  );
   return { fns, deps };
 };
 

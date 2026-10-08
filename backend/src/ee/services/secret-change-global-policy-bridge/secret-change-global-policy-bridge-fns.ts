@@ -18,10 +18,13 @@ import { approvalPolicyMembershipVerifierFactory } from "../access-approval-poli
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { TCreateSapDTO, TUpdateSapDTO } from "../secret-approval-policy/secret-approval-policy-types";
-import { TSecretChangePolicyBridgeDALFactory, TSecretChangePolicyRow } from "./secret-change-policy-bridge-dal";
-import { TSecretChangePolicy, TSecretChangePolicyEnvironment } from "./secret-change-policy-bridge-types";
+import {
+  TSecretChangeGlobalPolicyBridgeDALFactory,
+  TSecretChangePolicyRow
+} from "./secret-change-global-policy-bridge-dal";
+import { TSecretChangePolicy, TSecretChangePolicyEnvironment } from "./secret-change-global-policy-bridge-types";
 
-type TSecretChangePolicyFnsFactoryDep = {
+type TSecretChangeGlobalPolicyFnsFactoryDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findOne" | "findByIdForUpdate" | "updateById" | "transaction">;
   approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "create" | "updateById">;
   approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "insertMany" | "delete">;
@@ -30,7 +33,7 @@ type TSecretChangePolicyFnsFactoryDep = {
     TApprovalPolicySecretEnvironmentDALFactory,
     "findSecretChangePolicyByEnvIdsAndSecretPath" | "insertMany" | "delete"
   >;
-  secretChangePolicyBridgeDAL: Pick<TSecretChangePolicyBridgeDALFactory, "findSecretChangePolicies">;
+  secretChangeGlobalPolicyBridgeDAL: Pick<TSecretChangeGlobalPolicyBridgeDALFactory, "findSecretChangePolicies">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath">;
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
@@ -100,24 +103,24 @@ export const splitApprovers = (approvers: TCreateSapDTO["approvers"]) => ({
     .filter(Boolean) as string[]
 });
 
-export const secretChangePolicyFnsFactory = ({
+export const secretChangeGlobalPolicyFnsFactory = ({
   approvalPolicyDAL,
   approvalPolicyStepsDAL,
   approvalPolicyStepApproversDAL,
   approvalPolicyBypassersDAL,
   approvalPolicySecretEnvironmentDAL,
-  secretChangePolicyBridgeDAL,
+  secretChangeGlobalPolicyBridgeDAL,
   secretApprovalPolicyDAL,
   projectDAL,
   userDAL
-}: TSecretChangePolicyFnsFactoryDep) => {
+}: TSecretChangeGlobalPolicyFnsFactoryDep) => {
   const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });
 
   const findSecretChangePolicy = (policyId: string, tx?: Knex) =>
     approvalPolicyDAL.findOne({ id: policyId, type: ApprovalPolicyType.SecretChange }, tx);
 
   const findSecretChangePolicyById = async (policyId: string, tx?: Knex) => {
-    const [row] = await secretChangePolicyBridgeDAL.findSecretChangePolicies({ policyId }, tx);
+    const [row] = await secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies({ policyId }, tx);
     return row ? toSecretChangePolicy(row) : undefined;
   };
 
@@ -127,12 +130,12 @@ export const secretChangePolicyFnsFactory = ({
   ) => approvalPolicySecretEnvironmentDAL.findSecretChangePolicyByEnvIdsAndSecretPath({ envIds, secretPath }, tx);
 
   const findSecretChangePoliciesByEnvId = async (envId: string, tx?: Knex) => {
-    const rows = await secretChangePolicyBridgeDAL.findSecretChangePolicies({ envId }, tx);
+    const rows = await secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies({ envId }, tx);
     return rows.map(toSecretChangePolicy);
   };
 
   const findSecretChangePoliciesByProjectId = async (projectId: string) => {
-    const rows = await secretChangePolicyBridgeDAL.findSecretChangePolicies({ projectId });
+    const rows = await secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies({ projectId });
     return rows.map(toSecretChangePolicy);
   };
 
@@ -277,7 +280,7 @@ export const secretChangePolicyFnsFactory = ({
   };
 
   const getSecretChangePolicyState = async (policyId: string, tx: Knex) => {
-    const [row] = await secretChangePolicyBridgeDAL.findSecretChangePolicies({ policyId }, tx);
+    const [row] = await secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies({ policyId }, tx);
     if (!row) {
       throw new NotFoundError({
         message: `Secret approval policy with ID '${policyId}' no longer governs any environment`
@@ -373,7 +376,7 @@ export const secretChangePolicyFnsFactory = ({
         tx
       );
 
-      const [row] = await secretChangePolicyBridgeDAL.findSecretChangePolicies({ policyId: policy.id }, tx);
+      const [row] = await secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies({ policyId: policy.id }, tx);
       return toSecretChangePolicy(row);
     });
 

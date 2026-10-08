@@ -8,13 +8,13 @@ import { ApprovalPolicyType } from "@app/services/approval-policy/approval-polic
 
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
 
-export type TSecretChangePolicyBridgeDALFactory = ReturnType<typeof secretChangePolicyBridgeDALFactory>;
+export type TSecretChangeGlobalPolicyBridgeDALFactory = ReturnType<typeof secretChangeGlobalPolicyBridgeDALFactory>;
 
 export type TSecretChangePolicyRow = Awaited<
-  ReturnType<TSecretChangePolicyBridgeDALFactory["findSecretChangePolicies"]>
+  ReturnType<TSecretChangeGlobalPolicyBridgeDALFactory["findSecretChangePolicies"]>
 >[number];
 
-export const secretChangePolicyBridgeDALFactory = (db: TDbClient) => {
+export const secretChangeGlobalPolicyBridgeDALFactory = (db: TDbClient) => {
   const findSecretChangePolicies = async (
     {
       policyId,

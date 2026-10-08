@@ -66,7 +66,7 @@ const buildService = ({
       findPolicyByEnvIdAndSecretPath: vi.fn().mockResolvedValue(undefined),
       find: vi.fn().mockResolvedValue(legacyPolicies)
     },
-    secretChangePolicyBridgeService: {
+    secretChangeGlobalPolicyBridgeService: {
       findSecretChangePolicy: vi.fn().mockResolvedValue(bridgeOwnsPolicy ? { id: "bridge-policy" } : undefined),
       findSecretChangePolicyBySecretPath: vi.fn().mockResolvedValue(bridgePolicy),
       findSecretChangePoliciesByEnvId: vi.fn().mockResolvedValue(bridgePolicies),
@@ -101,7 +101,7 @@ describe("secretApprovalPolicyService createSecretApprovalPolicy", () => {
 
     await expect(service.createSecretApprovalPolicy(createDto)).resolves.toEqual({ id: "bridge-policy" });
 
-    expect(deps.secretChangePolicyBridgeService.createSecretChangePolicy).toHaveBeenCalledWith(createDto);
+    expect(deps.secretChangeGlobalPolicyBridgeService.createSecretChangePolicy).toHaveBeenCalledWith(createDto);
     expect(deps.permissionService.getProjectPermission).not.toHaveBeenCalled();
     expect(deps.secretApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath).not.toHaveBeenCalled();
   });
@@ -115,13 +115,13 @@ describe("secretApprovalPolicyService createSecretApprovalPolicy", () => {
       "A policy for secret path '/' already exists in environment 'dev'"
     );
 
-    expect(deps.secretChangePolicyBridgeService.createSecretChangePolicy).not.toHaveBeenCalled();
+    expect(deps.secretChangeGlobalPolicyBridgeService.createSecretChangePolicy).not.toHaveBeenCalled();
 
     expect(deps.secretApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath).toHaveBeenCalledWith({
       envIds: [ENV_DEV.id],
       secretPath: "/"
     });
-    expect(deps.secretChangePolicyBridgeService.findSecretChangePolicyBySecretPath).toHaveBeenCalledWith({
+    expect(deps.secretChangeGlobalPolicyBridgeService.findSecretChangePolicyBySecretPath).toHaveBeenCalledWith({
       envIds: [ENV_DEV.id],
       secretPath: "/"
     });
@@ -139,7 +139,9 @@ describe("secretApprovalPolicyService getSecretApprovalPolicyByProjectId", () =>
       legacy
     ]);
     expect(deps.secretApprovalPolicyDAL.find).toHaveBeenCalledWith({ projectId: PROJECT_ID, deletedAt: null });
-    expect(deps.secretChangePolicyBridgeService.findSecretChangePoliciesByProjectId).toHaveBeenCalledWith(PROJECT_ID);
+    expect(deps.secretChangeGlobalPolicyBridgeService.findSecretChangePoliciesByProjectId).toHaveBeenCalledWith(
+      PROJECT_ID
+    );
   });
 });
 
@@ -152,7 +154,10 @@ describe("secretApprovalPolicyService getSecretApprovalPolicy", () => {
     await expect(service.getSecretApprovalPolicy(PROJECT_ID, ENV_DEV.slug, "/app/svc", TX)).resolves.toBe(bridgeExact);
     await expect(service.getSecretApprovalPolicy(PROJECT_ID, ENV_DEV.slug, "/app/other", TX)).resolves.toBe(legacyGlob);
     expect(deps.secretApprovalPolicyDAL.find).toHaveBeenCalledWith({ deletedAt: null }, { envId: ENV_DEV.id }, TX);
-    expect(deps.secretChangePolicyBridgeService.findSecretChangePoliciesByEnvId).toHaveBeenCalledWith(ENV_DEV.id, TX);
+    expect(deps.secretChangeGlobalPolicyBridgeService.findSecretChangePoliciesByEnvId).toHaveBeenCalledWith(
+      ENV_DEV.id,
+      TX
+    );
   });
 
   test("lets a legacy exact path win over a global approval system glob", async () => {
@@ -186,7 +191,7 @@ describe("secretApprovalPolicyService getSecretApprovalPolicy", () => {
     expect(byPath.get("/app/other")).toBe(legacyGlob);
     expect(byPath.has("/db")).toBe(false);
     expect(deps.secretApprovalPolicyDAL.find).toHaveBeenCalledTimes(1);
-    expect(deps.secretChangePolicyBridgeService.findSecretChangePoliciesByEnvId).toHaveBeenCalledTimes(1);
+    expect(deps.secretChangeGlobalPolicyBridgeService.findSecretChangePoliciesByEnvId).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -197,7 +202,7 @@ describe("secretApprovalPolicyService getSecretApprovalPolicyById", () => {
     await expect(service.getSecretApprovalPolicyById({ ...ctx, sapId: "bridge-policy" })).resolves.toEqual({
       id: "bridge-policy"
     });
-    expect(deps.secretChangePolicyBridgeService.getSecretChangePolicyById).toHaveBeenCalledWith({
+    expect(deps.secretChangeGlobalPolicyBridgeService.getSecretChangePolicyById).toHaveBeenCalledWith({
       ...ctx,
       sapId: "bridge-policy"
     });
@@ -210,6 +215,6 @@ describe("secretApprovalPolicyService getSecretApprovalPolicyById", () => {
 
     await expect(service.getSecretApprovalPolicyById({ ...ctx, sapId: "legacy" })).resolves.toBe(legacy);
     expect(deps.secretApprovalPolicyDAL.find).toHaveBeenCalledWith({}, { sapId: "legacy" });
-    expect(deps.secretChangePolicyBridgeService.getSecretChangePolicyById).not.toHaveBeenCalled();
+    expect(deps.secretChangeGlobalPolicyBridgeService.getSecretChangePolicyById).not.toHaveBeenCalled();
   });
 });

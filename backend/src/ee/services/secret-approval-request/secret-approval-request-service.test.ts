@@ -28,10 +28,10 @@ const POLICY_ID = "policy-1";
 const build = () => {
   const permissionService = { getProjectPermission: vi.fn() };
   const secretApprovalRequestDAL = { create: vi.fn(), findById: vi.fn().mockResolvedValue(null) };
-  const secretChangePolicyBridgeService = {
+  const secretChangeGlobalPolicyBridgeService = {
     findSecretChangePolicy: vi.fn().mockResolvedValue({ id: POLICY_ID })
   };
-  const secretChangeRequestBridgeService = {
+  const secretChangeGlobalRequestBridgeService = {
     findSecretChangeRequest: vi.fn().mockResolvedValue(null),
     createSecretChangeRequestSideEffects: vi.fn().mockResolvedValue(undefined)
   };
@@ -44,8 +44,8 @@ const build = () => {
   const service = secretApprovalRequestServiceFactory({
     permissionService,
     secretApprovalRequestDAL,
-    secretChangePolicyBridgeService,
-    secretChangeRequestBridgeService,
+    secretChangeGlobalPolicyBridgeService,
+    secretChangeGlobalRequestBridgeService,
     userDAL,
     projectDAL,
     projectEnvDAL,
@@ -57,8 +57,8 @@ const build = () => {
     service,
     permissionService,
     secretApprovalRequestDAL,
-    secretChangePolicyBridgeService,
-    secretChangeRequestBridgeService,
+    secretChangeGlobalPolicyBridgeService,
+    secretChangeGlobalRequestBridgeService,
     projectDAL,
     queueService
   };
@@ -66,7 +66,7 @@ const build = () => {
 
 describe("generateSecretApprovalRequest", () => {
   test("refuses a policy from the approval system before checking permission or writing a request", async () => {
-    const { service, permissionService, secretApprovalRequestDAL, secretChangePolicyBridgeService } = build();
+    const { service, permissionService, secretApprovalRequestDAL, secretChangeGlobalPolicyBridgeService } = build();
 
     await expect(
       service.generateSecretApprovalRequest({
@@ -86,7 +86,7 @@ describe("generateSecretApprovalRequest", () => {
       })
     );
 
-    expect(secretChangePolicyBridgeService.findSecretChangePolicy).toHaveBeenCalledWith(POLICY_ID);
+    expect(secretChangeGlobalPolicyBridgeService.findSecretChangePolicy).toHaveBeenCalledWith(POLICY_ID);
     expect(permissionService.getProjectPermission).not.toHaveBeenCalled();
     expect(secretApprovalRequestDAL.create).not.toHaveBeenCalled();
   });
@@ -107,18 +107,18 @@ describe("createSecretApprovalSideEffects", () => {
   };
 
   test("hands a request stored on the global approval system to the bridge, through the caller's transaction", async () => {
-    const { service, secretChangeRequestBridgeService, projectDAL } = build();
-    secretChangeRequestBridgeService.findSecretChangeRequest.mockResolvedValueOnce({ id: "request-1" });
+    const { service, secretChangeGlobalRequestBridgeService, projectDAL } = build();
+    secretChangeGlobalRequestBridgeService.findSecretChangeRequest.mockResolvedValueOnce({ id: "request-1" });
 
     await service.createSecretApprovalSideEffects(dto);
 
-    expect(secretChangeRequestBridgeService.findSecretChangeRequest).toHaveBeenCalledWith("request-1", TX);
-    expect(secretChangeRequestBridgeService.createSecretChangeRequestSideEffects).toHaveBeenCalledWith(dto);
+    expect(secretChangeGlobalRequestBridgeService.findSecretChangeRequest).toHaveBeenCalledWith("request-1", TX);
+    expect(secretChangeGlobalRequestBridgeService.createSecretChangeRequestSideEffects).toHaveBeenCalledWith(dto);
     expect(projectDAL.findById).not.toHaveBeenCalled();
   });
 
   test("keeps a legacy request on the legacy path", async () => {
-    const { service, secretApprovalRequestDAL, secretChangeRequestBridgeService, queueService } = build();
+    const { service, secretApprovalRequestDAL, secretChangeGlobalRequestBridgeService, queueService } = build();
     const createdAt = new Date("2026-10-01T00:00:00.000Z");
     secretApprovalRequestDAL.findById.mockResolvedValueOnce({
       id: "request-1",
@@ -135,7 +135,7 @@ describe("createSecretApprovalSideEffects", () => {
 
     await service.createSecretApprovalSideEffects(dto);
 
-    expect(secretChangeRequestBridgeService.createSecretChangeRequestSideEffects).not.toHaveBeenCalled();
+    expect(secretChangeGlobalRequestBridgeService.createSecretChangeRequestSideEffects).not.toHaveBeenCalled();
     expect(triggerWorkflowIntegrationNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         input: {

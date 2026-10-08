@@ -24,7 +24,7 @@ export type TSecretChangePolicy = TSecretApprovalPolicies & {
   userApprovers: { userId: string }[];
 };
 
-export type TSecretChangePolicyBridgeMethods = {
+export type TSecretChangeGlobalPolicyBridgeMethods = {
   createSecretChangePolicy: (dto: TCreateSapDTO) => Promise<TSecretChangePolicy>;
   updateSecretChangePolicy: (dto: TUpdateSapDTO) => Promise<TSecretChangePolicy>;
   deleteSecretChangePolicy: (dto: TDeleteSapDTO) => Promise<TSecretChangePolicy>;

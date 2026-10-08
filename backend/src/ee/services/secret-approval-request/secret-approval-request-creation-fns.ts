@@ -5,8 +5,8 @@ import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { getCommitterIds } from "../secret-approval-policy/secret-approval-policy-fns";
-import { TSecretChangePolicyBridgeServiceFactory } from "../secret-change-policy-bridge/secret-change-policy-bridge-service";
-import { TSecretChangeRequestBridgeServiceFactory } from "../secret-change-request-bridge/secret-change-request-bridge-service";
+import { TSecretChangeGlobalPolicyBridgeServiceFactory } from "../secret-change-global-policy-bridge/secret-change-global-policy-bridge-service";
+import { TSecretChangeGlobalRequestBridgeServiceFactory } from "../secret-change-global-request-bridge/secret-change-global-request-bridge-service";
 import { TSecretApprovalRequestDALFactory } from "./secret-approval-request-dal";
 import { TSecretApprovalRequestSecretDALFactory } from "./secret-approval-request-secret-dal";
 import {
@@ -20,8 +20,11 @@ type TSecretApprovalRequestCreationFnsFactoryDep = {
     TSecretApprovalRequestSecretDALFactory,
     "insertMany" | "insertV2Bridge" | "insertApprovalSecretV2Tags"
   >;
-  secretChangePolicyBridgeService: Pick<TSecretChangePolicyBridgeServiceFactory, "findSecretChangePolicy">;
-  secretChangeRequestBridgeService: Pick<TSecretChangeRequestBridgeServiceFactory, "createSecretChangeRequest">;
+  secretChangeGlobalPolicyBridgeService: Pick<TSecretChangeGlobalPolicyBridgeServiceFactory, "findSecretChangePolicy">;
+  secretChangeGlobalRequestBridgeService: Pick<
+    TSecretChangeGlobalRequestBridgeServiceFactory,
+    "createSecretChangeRequest"
+  >;
 };
 
 export type TSecretApprovalRequestCreationFnsFactory = ReturnType<typeof secretApprovalRequestCreationFnsFactory>;
@@ -29,11 +32,11 @@ export type TSecretApprovalRequestCreationFnsFactory = ReturnType<typeof secretA
 export const secretApprovalRequestCreationFnsFactory = ({
   secretApprovalRequestDAL,
   secretApprovalRequestSecretDAL,
-  secretChangePolicyBridgeService,
-  secretChangeRequestBridgeService
+  secretChangeGlobalPolicyBridgeService,
+  secretChangeGlobalRequestBridgeService
 }: TSecretApprovalRequestCreationFnsFactoryDep) => {
   const $isSecretChangePolicy = async (policyId: string, tx?: Knex) =>
-    Boolean(await secretChangePolicyBridgeService.findSecretChangePolicy(policyId, tx));
+    Boolean(await secretChangeGlobalPolicyBridgeService.findSecretChangePolicy(policyId, tx));
 
   const $buildRequestDoc = ({
     policy,
@@ -58,7 +61,7 @@ export const secretApprovalRequestCreationFnsFactory = ({
 
   const createSecretApprovalRequestV2Bridge = async (dto: TCreateSecretApprovalRequestV2BridgeDTO, tx?: Knex) => {
     if (await $isSecretChangePolicy(dto.policy.id, tx)) {
-      return secretChangeRequestBridgeService.createSecretChangeRequest(dto, tx);
+      return secretChangeGlobalRequestBridgeService.createSecretChangeRequest(dto, tx);
     }
 
     const write = async (trx: Knex) => {

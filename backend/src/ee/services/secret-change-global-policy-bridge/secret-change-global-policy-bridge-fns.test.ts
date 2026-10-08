@@ -4,8 +4,8 @@ import { EnforcementLevel } from "@app/lib/types";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
-import { TSecretChangePolicyRow } from "./secret-change-policy-bridge-dal";
-import { readSecretChangePolicyConstraints, toSecretChangePolicy } from "./secret-change-policy-bridge-fns";
+import { TSecretChangePolicyRow } from "./secret-change-global-policy-bridge-dal";
+import { readSecretChangePolicyConstraints, toSecretChangePolicy } from "./secret-change-global-policy-bridge-fns";
 
 const ENV_DEV = { id: "env-dev", name: "Development", slug: "dev" };
 const ENV_PROD = { id: "env-prod", name: "Production", slug: "prod" };

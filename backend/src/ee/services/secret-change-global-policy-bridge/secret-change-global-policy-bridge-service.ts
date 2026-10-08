@@ -20,11 +20,18 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { RequestState } from "../secret-approval-request/secret-approval-request-types";
-import { TSecretChangePolicyBridgeDALFactory } from "./secret-change-policy-bridge-dal";
-import { secretChangePolicyFnsFactory, splitApprovers, toSecretChangePolicy } from "./secret-change-policy-bridge-fns";
-import { TSecretChangePolicyBridgeMethods, TSecretChangePolicyEnvironment } from "./secret-change-policy-bridge-types";
+import { TSecretChangeGlobalPolicyBridgeDALFactory } from "./secret-change-global-policy-bridge-dal";
+import {
+  secretChangeGlobalPolicyFnsFactory,
+  splitApprovers,
+  toSecretChangePolicy
+} from "./secret-change-global-policy-bridge-fns";
+import {
+  TSecretChangeGlobalPolicyBridgeMethods,
+  TSecretChangePolicyEnvironment
+} from "./secret-change-global-policy-bridge-types";
 
-type TSecretChangePolicyBridgeServiceFactoryDep = {
+type TSecretChangeGlobalPolicyBridgeServiceFactoryDep = {
   approvalPolicyDAL: Pick<
     TApprovalPolicyDALFactory,
     "findOne" | "findByIdForUpdate" | "create" | "updateById" | "deleteById" | "transaction"
@@ -37,7 +44,7 @@ type TSecretChangePolicyBridgeServiceFactoryDep = {
     "insertMany" | "delete" | "findSecretChangePolicyByEnvIdsAndSecretPath"
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "update">;
-  secretChangePolicyBridgeDAL: Pick<TSecretChangePolicyBridgeDALFactory, "findSecretChangePolicies">;
+  secretChangeGlobalPolicyBridgeDAL: Pick<TSecretChangeGlobalPolicyBridgeDALFactory, "findSecretChangePolicies">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findEffectiveProjectSubjectsMembership">;
@@ -46,23 +53,25 @@ type TSecretChangePolicyBridgeServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
-export type TSecretChangePolicyBridgeServiceFactory = ReturnType<typeof secretChangePolicyBridgeServiceFactory>;
+export type TSecretChangeGlobalPolicyBridgeServiceFactory = ReturnType<
+  typeof secretChangeGlobalPolicyBridgeServiceFactory
+>;
 
-export const secretChangePolicyBridgeServiceFactory = ({
+export const secretChangeGlobalPolicyBridgeServiceFactory = ({
   approvalPolicyDAL,
   approvalPolicyStepsDAL,
   approvalPolicyStepApproversDAL,
   approvalPolicyBypassersDAL,
   approvalPolicySecretEnvironmentDAL,
   approvalRequestDAL,
-  secretChangePolicyBridgeDAL,
+  secretChangeGlobalPolicyBridgeDAL,
   secretApprovalPolicyDAL,
   projectEnvDAL,
   projectDAL,
   userDAL,
   permissionService,
   licenseService
-}: TSecretChangePolicyBridgeServiceFactoryDep) => {
+}: TSecretChangeGlobalPolicyBridgeServiceFactoryDep) => {
   const {
     findSecretChangePolicy,
     findSecretChangePolicyById,
@@ -74,13 +83,13 @@ export const secretChangePolicyBridgeServiceFactory = ({
     resolveApproverUserIds,
     verifyPolicyActorsMembership,
     updatePolicy
-  } = secretChangePolicyFnsFactory({
+  } = secretChangeGlobalPolicyFnsFactory({
     approvalPolicyDAL,
     approvalPolicyStepsDAL,
     approvalPolicyStepApproversDAL,
     approvalPolicyBypassersDAL,
     approvalPolicySecretEnvironmentDAL,
-    secretChangePolicyBridgeDAL,
+    secretChangeGlobalPolicyBridgeDAL,
     secretApprovalPolicyDAL,
     projectDAL,
     userDAL
@@ -88,7 +97,7 @@ export const secretChangePolicyBridgeServiceFactory = ({
 
   // Scoped to the actor's org so an id from another tenant reads as not found rather than forbidden.
   const $findSecretChangePolicyOrThrow = async (secretPolicyId: string, organizationId: string) => {
-    const [row] = await secretChangePolicyBridgeDAL.findSecretChangePolicies({
+    const [row] = await secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies({
       policyId: secretPolicyId,
       organizationId
     });
@@ -98,7 +107,7 @@ export const secretChangePolicyBridgeServiceFactory = ({
     return toSecretChangePolicy(row);
   };
 
-  const createSecretChangePolicy: TSecretChangePolicyBridgeMethods["createSecretChangePolicy"] = async ({
+  const createSecretChangePolicy: TSecretChangeGlobalPolicyBridgeMethods["createSecretChangePolicy"] = async ({
     name,
     actor,
     actorId,
@@ -223,12 +232,12 @@ export const secretChangePolicyBridgeServiceFactory = ({
         tx
       );
 
-      const [row] = await secretChangePolicyBridgeDAL.findSecretChangePolicies({ policyId: doc.id }, tx);
+      const [row] = await secretChangeGlobalPolicyBridgeDAL.findSecretChangePolicies({ policyId: doc.id }, tx);
       return toSecretChangePolicy(row);
     });
   };
 
-  const updateSecretChangePolicy: TSecretChangePolicyBridgeMethods["updateSecretChangePolicy"] = async ({
+  const updateSecretChangePolicy: TSecretChangeGlobalPolicyBridgeMethods["updateSecretChangePolicy"] = async ({
     secretPolicyId,
     name,
     actor,
@@ -309,7 +318,7 @@ export const secretChangePolicyBridgeServiceFactory = ({
     });
   };
 
-  const deleteSecretChangePolicy: TSecretChangePolicyBridgeMethods["deleteSecretChangePolicy"] = async ({
+  const deleteSecretChangePolicy: TSecretChangeGlobalPolicyBridgeMethods["deleteSecretChangePolicy"] = async ({
     secretPolicyId,
     actor,
     actorId,
@@ -347,7 +356,7 @@ export const secretChangePolicyBridgeServiceFactory = ({
     return { ...policy, deletedAt: new Date() };
   };
 
-  const getSecretChangePolicyById: TSecretChangePolicyBridgeMethods["getSecretChangePolicyById"] = async ({
+  const getSecretChangePolicyById: TSecretChangeGlobalPolicyBridgeMethods["getSecretChangePolicyById"] = async ({
     actor,
     actorId,
     actorOrgId,

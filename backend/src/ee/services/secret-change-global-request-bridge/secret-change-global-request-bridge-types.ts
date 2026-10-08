@@ -105,9 +105,9 @@ export type TSecretChangeRequestListResult = { approvals: TSecretChangeRequestLi
 
 export type TSecretChangeRequestCount = { open: number; closed: number };
 
-export type TCountSecretChangeRequestsDTO = { projectId: string; userId?: string; policyId?: string };
+export type TCountSecretChangeGlobalRequestsDTO = { projectId: string; userId?: string; policyId?: string };
 
-export type TSecretChangeRequestBridgeMethods = {
+export type TSecretChangeGlobalRequestBridgeMethods = {
   generateSecretChangeRequest: (
     dto: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex; skipPostProcessing?: boolean }
   ) => Promise<TSecretChangeRequest>;
@@ -118,5 +118,5 @@ export type TSecretChangeRequestBridgeMethods = {
   updateSecretChangeRequestStatus: (dto: TStatusChangeDTO) => Promise<TSecretChangeRequestStatusResult>;
   getSecretChangeRequestById: (dto: TSecretApprovalDetailsDTO) => Promise<TSecretChangeRequestDetails>;
   listSecretChangeRequests: (filter: TSecretApprovalRequestListFilter) => Promise<TSecretChangeRequestListResult>;
-  countSecretChangeRequests: (dto: TCountSecretChangeRequestsDTO) => Promise<TSecretChangeRequestCount>;
+  countSecretChangeRequests: (dto: TCountSecretChangeGlobalRequestsDTO) => Promise<TSecretChangeRequestCount>;
 };

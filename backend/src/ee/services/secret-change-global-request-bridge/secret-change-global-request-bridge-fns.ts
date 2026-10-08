@@ -38,18 +38,18 @@ import { ChangeRequestWebhookAction, TWebhookActor, WebhookEvents } from "@app/s
 
 import { BypasserType } from "../access-approval-policy/access-approval-policy-types";
 import { TSecretApprovalBridgeCommit } from "../secret-approval-request/secret-approval-request-merge-fns";
-import { readSecretChangePolicyConstraints } from "../secret-change-policy-bridge/secret-change-policy-bridge-fns";
-import { TSecretChangePolicy } from "../secret-change-policy-bridge/secret-change-policy-bridge-types";
+import { readSecretChangePolicyConstraints } from "../secret-change-global-policy-bridge/secret-change-global-policy-bridge-fns";
+import { TSecretChangePolicy } from "../secret-change-global-policy-bridge/secret-change-global-policy-bridge-types";
+import { TSecretChangeRequestListRow } from "./secret-change-global-request-bridge-dal";
 import {
   TApprovalRequestUser,
   TSecretChangeRequest,
   TSecretChangeRequestBase,
   TSecretChangeRequestListItem,
   TSecretChangeRequestPolicySummary
-} from "./secret-change-request-bridge-types";
-import { TSecretChangeRequestListRow } from "./secret-change-request-dal";
+} from "./secret-change-global-request-bridge-types";
 
-type TSecretChangeRequestFnsFactoryDep = {
+type TSecretChangeGlobalRequestFnsFactoryDep = {
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
@@ -86,7 +86,7 @@ export type TSecretChangeRequestSideEffectsDTO = {
   tx?: Knex;
 };
 
-export type TSecretChangeRequestFnsFactory = ReturnType<typeof secretChangeRequestFnsFactory>;
+export type TSecretChangeGlobalRequestFnsFactory = ReturnType<typeof secretChangeGlobalRequestFnsFactory>;
 
 export const toSecretChangeRequestBase = ({
   approvalRequest,
@@ -153,7 +153,7 @@ export const toSecretChangeRequestReview = (
 const buildApprovalUrl = (orgId: string, projectId: string, requestId: string) =>
   `${getConfig().SITE_URL}/organizations/${orgId}/projects/secret-management/${projectId}/approval?requestId=${requestId}`;
 
-export const secretChangeRequestFnsFactory = ({
+export const secretChangeGlobalRequestFnsFactory = ({
   userDAL,
   identityDAL,
   projectDAL,
@@ -166,7 +166,7 @@ export const secretChangeRequestFnsFactory = ({
   notificationService,
   queueService,
   telemetryService
-}: TSecretChangeRequestFnsFactoryDep) => {
+}: TSecretChangeGlobalRequestFnsFactoryDep) => {
   const resolveRequester = async (actor: ActorType, actorId: string, tx?: Knex): Promise<TSecretChangeRequester> => {
     if (actor === ActorType.USER) {
       const user = await userDAL.findById(actorId, tx);

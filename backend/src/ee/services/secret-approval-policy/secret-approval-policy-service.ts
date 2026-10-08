@@ -15,7 +15,7 @@ import { ApproverType, BypasserType } from "../access-approval-policy/access-app
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TSecretApprovalRequestDALFactory } from "../secret-approval-request/secret-approval-request-dal";
 import { RequestState } from "../secret-approval-request/secret-approval-request-types";
-import { TSecretChangePolicyBridgeServiceFactory } from "../secret-change-policy-bridge/secret-change-policy-bridge-service";
+import { TSecretChangeGlobalPolicyBridgeServiceFactory } from "../secret-change-global-policy-bridge/secret-change-global-policy-bridge-service";
 import {
   TSecretApprovalPolicyApproverDALFactory,
   TSecretApprovalPolicyBypasserDALFactory
@@ -43,8 +43,8 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "update">;
   secretApprovalPolicyEnvironmentDAL: TSecretApprovalPolicyEnvironmentDALFactory;
-  secretChangePolicyBridgeService: Pick<
-    TSecretChangePolicyBridgeServiceFactory,
+  secretChangeGlobalPolicyBridgeService: Pick<
+    TSecretChangeGlobalPolicyBridgeServiceFactory,
     | "findSecretChangePolicy"
     | "findSecretChangePolicyBySecretPath"
     | "findSecretChangePoliciesByEnvId"
@@ -69,7 +69,7 @@ export const secretApprovalPolicyServiceFactory = ({
   userDAL,
   licenseService,
   secretApprovalRequestDAL,
-  secretChangePolicyBridgeService
+  secretChangeGlobalPolicyBridgeService
 }: TSecretApprovalPolicyServiceFactoryDep) => {
   const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });
 
@@ -90,19 +90,19 @@ export const secretApprovalPolicyServiceFactory = ({
     const policyEnvIds = envId ? [envId] : envIds || [];
     const policies = await Promise.all([
       secretApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath({ envIds: policyEnvIds, secretPath }),
-      secretChangePolicyBridgeService.findSecretChangePolicyBySecretPath({ envIds: policyEnvIds, secretPath })
+      secretChangeGlobalPolicyBridgeService.findSecretChangePolicyBySecretPath({ envIds: policyEnvIds, secretPath })
     ]);
 
     return policies.some((policy) => policy && policy.id !== policyId);
   };
 
-  const $useSecretChangePolicyBridge = async (policyId: string) =>
-    Boolean(await secretChangePolicyBridgeService.findSecretChangePolicy(policyId));
+  const $useSecretChangeGlobalPolicyBridge = async (policyId: string) =>
+    Boolean(await secretChangeGlobalPolicyBridgeService.findSecretChangePolicy(policyId));
 
   const createSecretApprovalPolicy = async (dto: TCreateSapDTO) => {
     const project = await projectDAL.findById(dto.projectId);
     if (project?.version === ProjectVersion.V3) {
-      return secretChangePolicyBridgeService.createSecretChangePolicy(dto);
+      return secretChangeGlobalPolicyBridgeService.createSecretChangePolicy(dto);
     }
 
     const {
@@ -326,8 +326,8 @@ export const secretApprovalPolicyServiceFactory = ({
   };
 
   const updateSecretApprovalPolicy = async (dto: TUpdateSapDTO) => {
-    if (await $useSecretChangePolicyBridge(dto.secretPolicyId)) {
-      return secretChangePolicyBridgeService.updateSecretChangePolicy(dto);
+    if (await $useSecretChangeGlobalPolicyBridge(dto.secretPolicyId)) {
+      return secretChangeGlobalPolicyBridgeService.updateSecretChangePolicy(dto);
     }
 
     const {
@@ -568,8 +568,8 @@ export const secretApprovalPolicyServiceFactory = ({
   };
 
   const deleteSecretApprovalPolicy = async (dto: TDeleteSapDTO) => {
-    if (await $useSecretChangePolicyBridge(dto.secretPolicyId)) {
-      return secretChangePolicyBridgeService.deleteSecretChangePolicy(dto);
+    if (await $useSecretChangeGlobalPolicyBridge(dto.secretPolicyId)) {
+      return secretChangeGlobalPolicyBridgeService.deleteSecretChangePolicy(dto);
     }
 
     const { secretPolicyId, actor, actorId, actorAuthMethod, actorOrgId } = dto;
@@ -627,7 +627,7 @@ export const secretApprovalPolicyServiceFactory = ({
 
     const [legacyPolicies, secretChangePolicies] = await Promise.all([
       secretApprovalPolicyDAL.find({ projectId, deletedAt: null }),
-      secretChangePolicyBridgeService.findSecretChangePoliciesByProjectId(projectId)
+      secretChangeGlobalPolicyBridgeService.findSecretChangePoliciesByProjectId(projectId)
     ]);
     return [...legacyPolicies, ...secretChangePolicies].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   };
@@ -641,7 +641,7 @@ export const secretApprovalPolicyServiceFactory = ({
     }
     const [legacyPolicies, secretChangePolicies] = await Promise.all([
       secretApprovalPolicyDAL.find({ deletedAt: null }, { envId: env.id }, tx),
-      secretChangePolicyBridgeService.findSecretChangePoliciesByEnvId(env.id, tx)
+      secretChangeGlobalPolicyBridgeService.findSecretChangePoliciesByEnvId(env.id, tx)
     ]);
     return [...legacyPolicies, ...secretChangePolicies];
   };
@@ -691,8 +691,8 @@ export const secretApprovalPolicyServiceFactory = ({
   };
 
   const getSecretApprovalPolicyById = async (dto: TGetSapByIdDTO) => {
-    if (await $useSecretChangePolicyBridge(dto.sapId)) {
-      return secretChangePolicyBridgeService.getSecretChangePolicyById(dto);
+    if (await $useSecretChangeGlobalPolicyBridge(dto.sapId)) {
+      return secretChangeGlobalPolicyBridgeService.getSecretChangePolicyById(dto);
     }
 
     const { actorId, actor, actorOrgId, actorAuthMethod, sapId } = dto;
