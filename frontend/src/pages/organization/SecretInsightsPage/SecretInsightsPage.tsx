@@ -1,12 +1,14 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { Helmet } from "react-helmet";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { FileTextIcon, LockIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  SecretAccessInsightsUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -18,6 +20,7 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   OrgPermissionSubjects,
   useOrganization,
@@ -76,6 +79,7 @@ export const SecretInsightsPage = withPermission(
     const { currentOrg } = useOrganization();
     const { config } = useServerConfig();
     const { subscription } = useSubscription();
+    const { openUpgradeGate, upgradeGate } = useUpgradeGate();
     const isClickhouseEnabled = Boolean(config.isClickhouseAuditLogEnabled);
     const hasInsightsPlan = Boolean(subscription?.secretAccessInsights);
 
@@ -121,10 +125,7 @@ export const SecretInsightsPage = withPermission(
       { enabled: isClickhouseEnabled && hasInsightsPlan }
     );
 
-    const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
-      "requestOrgReport",
-      "upgradePlan"
-    ] as const);
+    const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["requestOrgReport"] as const);
     // Reports are generated asynchronously and delivered by email; the list is newest-first
     // and polls while a report is in flight (the backend allows one in-flight report per org).
     const { data: orgReports } = useGetOrgAuditReports(
@@ -138,11 +139,18 @@ export const SecretInsightsPage = withPermission(
       orgReports?.reports.some((report) => IN_FLIGHT_REPORT_STATUSES.includes(report.status))
     );
 
+    const handleUpgrade = useCallback(() => {
+      openUpgradeGate({
+        intent: SecretAccessInsightsUpgradeIntent,
+        paywallKey: "organization.secret-insights"
+      });
+    }, [openUpgradeGate]);
+
     useEffect(() => {
       if (subscription && !subscription.secretAccessInsights) {
-        handlePopUpOpen("upgradePlan");
+        handleUpgrade();
       }
-    }, [subscription]);
+    }, [handleUpgrade, subscription]);
 
     const isSummaryLoading = hasInsightsPlan && isSummaryPending;
     const isProjectsLoading = hasInsightsPlan && isProjectsPending;
@@ -190,9 +198,13 @@ export const SecretInsightsPage = withPermission(
                         variant="project"
                         size="xs"
                         isDisabled={!isAllowed || hasInFlightReport}
-                        onClick={() =>
-                          handlePopUpOpen(hasInsightsPlan ? "requestOrgReport" : "upgradePlan")
-                        }
+                        onClick={() => {
+                          if (hasInsightsPlan) {
+                            handlePopUpOpen("requestOrgReport");
+                          } else {
+                            handleUpgrade();
+                          }
+                        }}
                       >
                         Generate Report
                       </Button>
@@ -280,12 +292,7 @@ export const SecretInsightsPage = withPermission(
           onOpenChange={(isOpen) => handlePopUpToggle("requestOrgReport", isOpen)}
           isAuditLogSupported={isClickhouseEnabled}
         />
-        <UpgradePlanModal
-          paywallKey="organization.secret-insights"
-          isOpen={popUp.upgradePlan.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text="Your current plan does not include access to secret insights. To unlock this feature, please upgrade your Infisical plan."
-        />
+        {upgradeGate}
       </>
     );
   },

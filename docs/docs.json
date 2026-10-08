@@ -314,6 +314,7 @@
                       "documentation/platform/secret-rotation/auth0-client-secret",
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
                       "documentation/platform/secret-rotation/azure-client-secret",
+                      "documentation/platform/secret-rotation/gcp-service-account-key",
                       "documentation/platform/secret-rotation/ldap-password",
                       "documentation/platform/secret-rotation/okta-client-secret"
                     ]
@@ -1135,6 +1136,7 @@
                   "integrations/app-connections/terraform-cloud",
                   "integrations/app-connections/travis-ci",
                   "integrations/app-connections/trigger-dev",
+                  "integrations/app-connections/ultradns",
                   "integrations/app-connections/venafi",
                   "integrations/app-connections/venafi-tpp",
                   "integrations/app-connections/vercel",
@@ -2488,6 +2490,18 @@
                         ]
                       },
                       {
+                        "group": "UltraDNS",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/ultradns/list",
+                          "api-reference/endpoints/app-connections/ultradns/available",
+                          "api-reference/endpoints/app-connections/ultradns/get-by-id",
+                          "api-reference/endpoints/app-connections/ultradns/get-by-name",
+                          "api-reference/endpoints/app-connections/ultradns/create",
+                          "api-reference/endpoints/app-connections/ultradns/update",
+                          "api-reference/endpoints/app-connections/ultradns/delete"
+                        ]
+                      },
+                      {
                         "group": "Venafi",
                         "pages": [
                           "api-reference/endpoints/app-connections/venafi/list",
@@ -2962,6 +2976,19 @@
                           "api-reference/endpoints/secret-rotations/fireworks-api-key/list",
                           "api-reference/endpoints/secret-rotations/fireworks-api-key/rotate-secrets",
                           "api-reference/endpoints/secret-rotations/fireworks-api-key/update"
+                        ]
+                      },
+                      {
+                        "group": "GCP service account key",
+                        "pages": [
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/create",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/delete",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/get-by-id",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/get-by-name",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/get-generated-credentials-by-id",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/list",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/rotate-secrets",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/update"
                         ]
                       },
                       {

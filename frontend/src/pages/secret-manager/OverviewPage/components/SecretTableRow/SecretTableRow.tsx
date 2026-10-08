@@ -116,6 +116,7 @@ type Props = {
     source: { id: string; name: string; path: string; isValueHidden: boolean };
     environmentSlug: string;
   }) => void;
+  onAccessInsightsUpgrade: (onGranted: () => void) => void;
   activityId: TableRowActivityId;
   onActivityChange: TableRowActivityChangeHandler;
 };
@@ -146,6 +147,7 @@ export const SecretTableRow = ({
   onBatchRevert,
   isSelectionDisabled,
   onCopySecret,
+  onAccessInsightsUpgrade,
   activityId,
   onActivityChange
 }: Props) => {
@@ -418,6 +420,7 @@ export const SecretTableRow = ({
                     })
                 : undefined
             }
+            onAccessInsightsUpgrade={onAccessInsightsUpgrade}
             onExpandedChange={setIsSingleEnvBaseActive}
           />
         ) : (
@@ -806,6 +809,7 @@ export const SecretTableRow = ({
                                       })
                                   : undefined
                               }
+                              onAccessInsightsUpgrade={onAccessInsightsUpgrade}
                             />
                           </TableCell>
                         </TableRow>

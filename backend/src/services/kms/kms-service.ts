@@ -38,6 +38,7 @@ import {
   MAX_HMAC_IMPORT_KEY_BYTE_LENGTH,
   MIN_HMAC_IMPORT_KEY_BYTE_LENGTH,
   resolveInstanceEncryptionKeyBuffer,
+  validateClassicalKeyMaterial,
   verifyKeyTypeAndAlgorithm
 } from "@app/services/kms/kms-fns";
 
@@ -672,27 +673,7 @@ export const kmsServiceFactory = ({
           });
         }
       } else {
-        const keyObj = crypto.nativeCrypto.createPrivateKey({
-          key,
-          format: "pem",
-          type: "pkcs8"
-        });
-        const keyType = keyObj.asymmetricKeyType;
-        const keyDetails = keyObj.asymmetricKeyDetails;
-
-        if (algorithm === AsymmetricKeyAlgorithm.RSA_4096) {
-          if (keyType !== "rsa" || keyDetails?.modulusLength !== 4096) {
-            throw new BadRequestError({
-              message: `Key material does not match the declared algorithm. Expected an RSA 4096-bit key.`
-            });
-          }
-        } else if (algorithm === AsymmetricKeyAlgorithm.ECC_NIST_P256) {
-          if (keyType !== "ec" || keyDetails?.namedCurve !== "prime256v1") {
-            throw new BadRequestError({
-              message: `Key material does not match the declared algorithm. Expected an EC P-256 key.`
-            });
-          }
-        }
+        validateClassicalKeyMaterial(key, algorithm as AsymmetricKeyAlgorithm);
       }
     }
 

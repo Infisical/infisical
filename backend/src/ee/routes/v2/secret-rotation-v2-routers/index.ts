@@ -11,6 +11,7 @@ import { registerDatadogApiKeyRotationRouter } from "./datadog-api-key-rotation-
 import { registerDatadogApplicationKeySecretRotationRouter } from "./datadog-application-key-secret-rotation-router";
 import { registerDbtServiceTokenRotationRouter } from "./dbt-service-token-rotation-router";
 import { registerFireworksApiKeyRotationRouter } from "./fireworks-api-key-rotation-router";
+import { registerGcpServiceAccountKeyRotationRouter } from "./gcp-service-account-key-rotation-router";
 import { registerHpIloRotationRouter } from "./hp-ilo-rotation-router";
 import { registerLdapPasswordRotationRouter } from "./ldap-password-rotation-router";
 import { registerLiteLLMApiKeyRotationRouter } from "./litellm-api-key-rotation-router";
@@ -64,5 +65,6 @@ export const SECRET_ROTATION_REGISTER_ROUTER_MAP: Record<
   [SecretRotation.SnowflakeUserKeyPair]: registerSnowflakeUserKeyPairRotationRouter,
   [SecretRotation.CloudflareApiToken]: registerCloudflareApiTokenRotationRouter,
   [SecretRotation.CloudflareR2AccessKey]: registerCloudflareR2AccessKeyRotationRouter,
-  [SecretRotation.StripeApiKey]: registerStripeApiKeyRotationRouter
+  [SecretRotation.StripeApiKey]: registerStripeApiKeyRotationRouter,
+  [SecretRotation.GcpServiceAccountKey]: registerGcpServiceAccountKeyRotationRouter
 };

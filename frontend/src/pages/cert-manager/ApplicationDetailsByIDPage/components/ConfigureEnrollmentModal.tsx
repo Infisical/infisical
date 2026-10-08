@@ -13,6 +13,10 @@ import {
 } from "lucide-react";
 
 import { AppConnectionOption } from "@app/components/app-connections";
+import {
+  CertificateEnrollmentUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { Spinner, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
@@ -1399,6 +1403,7 @@ export const ConfigureEnrollmentModal = ({
   const [dirtyMethods, setDirtyMethods] = useState<Partial<Record<EnrollmentMethod, boolean>>>({});
 
   const { subscription } = useSubscription();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const ALL_ORDER: EnrollmentMethod[] = ["api", "est", "acme", "scep"];
   const visibleMethods = ALL_ORDER.filter(
@@ -1441,6 +1446,18 @@ export const ConfigureEnrollmentModal = ({
   const handleAdd = (method: EnrollmentMethod) => {
     setPendingMethods((prev) => (prev.includes(method) ? prev : [...prev, method]));
     setActiveTab(method);
+  };
+
+  const handleAddMethod = (method: EnrollmentMethod) => {
+    if (!lockedMethods[method]) {
+      handleAdd(method);
+      return;
+    }
+
+    openUpgradeGate({
+      intent: CertificateEnrollmentUpgradeIntent,
+      paywallKey: `cert-manager.application-enrollment.${method}`
+    });
   };
 
   const handleCancelPending = (method: EnrollmentMethod) =>
@@ -1527,11 +1544,7 @@ export const ConfigureEnrollmentModal = ({
                     {addableMethods.map((m) => {
                       const isLocked = lockedMethods[m] ?? false;
                       return (
-                        <DropdownMenuItem
-                          key={m}
-                          isDisabled={isLocked}
-                          onClick={() => handleAdd(m)}
-                        >
+                        <DropdownMenuItem key={m} onClick={() => handleAddMethod(m)}>
                           <div className="flex flex-col">
                             <span className="flex items-center gap-2 font-medium">
                               {METHOD_LABELS[m]}
@@ -1643,6 +1656,7 @@ export const ConfigureEnrollmentModal = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {upgradeGate}
     </Dialog>
   );
 };

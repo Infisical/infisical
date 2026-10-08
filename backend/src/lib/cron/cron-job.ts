@@ -31,6 +31,7 @@ export const CronJobName = {
   AppConnectionCredentialRotationQueueRotations: "app-connection-credential-rotation-queue-rotations",
   TelemetryInstanceStats: "telemetry-instance-stats",
   TelemetryAggregatedEvents: "telemetry-aggregated-events",
+  TelemetryPkiOrgUsage: "telemetry-pki-org-usage",
   DigiCertOrderPolling: "digicert-order-polling",
   ProjectEnvHardDelete: "project-env-hard-delete",
   ProjectHardDelete: "project-hard-delete",

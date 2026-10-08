@@ -1,0 +1,251 @@
+import { AxiosError } from "axios";
+import { JWT } from "google-auth-library";
+
+import {
+  TRotationFactory,
+  TRotationFactoryCheckActiveCredentials,
+  TRotationFactoryGetSecretsPayload,
+  TRotationFactoryIssueCredentials,
+  TRotationFactoryRevokeCredentials,
+  TRotationFactoryRotateCredentials
+} from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import { request } from "@app/lib/config/request";
+import { BadRequestError } from "@app/lib/errors";
+import { getGcpConnectionAuthToken } from "@app/services/app-connection/gcp";
+import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+
+import {
+  TGcpServiceAccountKeyCreateResponse,
+  TGcpServiceAccountKeyFile,
+  TGcpServiceAccountKeyRotationGeneratedCredentials,
+  TGcpServiceAccountKeyRotationWithConnection
+} from "./gcp-service-account-key-rotation-types";
+
+type TGoogleApiError = {
+  error?: {
+    status?: string;
+    message?: string;
+    details?: { "@type"?: string; reason?: string }[];
+  };
+};
+
+const getGoogleApiError = (error: unknown) =>
+  error instanceof AxiosError ? (error.response?.data as TGoogleApiError | undefined)?.error : undefined;
+
+// The machine-readable cause of a Google API error (e.g. SERVICE_DISABLED), which unlike the message is part of
+// the API contract.
+const getGoogleApiErrorReason = (error: unknown) =>
+  getGoogleApiError(error)?.details?.find((detail) => detail["@type"] === "type.googleapis.com/google.rpc.ErrorInfo")
+    ?.reason;
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof AxiosError) return getGoogleApiError(error)?.message ?? error.message;
+
+  return error instanceof Error ? error.message : "Unknown error";
+};
+
+const getErrorStatus = (error: unknown) => (error instanceof AxiosError ? error.response?.status : undefined);
+
+export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
+  TGcpServiceAccountKeyRotationWithConnection,
+  TGcpServiceAccountKeyRotationGeneratedCredentials
+> = (secretRotation) => {
+  const {
+    connection,
+    parameters: { serviceAccountEmail },
+    secretsMapping
+  } = secretRotation;
+
+  const keysUrl = `${IntegrationUrls.GCP_IAM_URL}/v1/projects/-/serviceAccounts/${encodeURIComponent(serviceAccountEmail)}/keys`;
+
+  const $getRequestConfig = (accessToken: string) => ({
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    }
+  });
+
+  const $toKeyManagementError = (error: unknown, action: string) => {
+    const message = getErrorMessage(error);
+    const status = getErrorStatus(error);
+
+    if (getGoogleApiErrorReason(error) === "SERVICE_DISABLED") {
+      return new BadRequestError({
+        message: `Failed to ${action}: the Identity and Access Management (IAM) API is not enabled on the GCP project of the connection's service account. Enable it in the Google Cloud console and try again.`
+      });
+    }
+
+    if (status === 403) {
+      return new BadRequestError({
+        message: `Failed to ${action}: the connection's service account is not allowed to manage keys of GCP service account "${serviceAccountEmail}". Grant it the Service Account Key Admin role (roles/iam.serviceAccountKeyAdmin) on that service account and try again.`
+      });
+    }
+
+    if (status === 404) {
+      return new BadRequestError({
+        message: `Failed to ${action}: GCP service account "${serviceAccountEmail}" was not found.`
+      });
+    }
+
+    if (getGoogleApiError(error)?.status === "FAILED_PRECONDITION") {
+      return new BadRequestError({
+        message: `Failed to ${action}: ${message} This usually means GCP service account "${serviceAccountEmail}" already has the maximum of 10 keys, or an organization policy (iam.disableServiceAccountKeyCreation) blocks key creation.`
+      });
+    }
+
+    return new BadRequestError({ message: `Failed to ${action}: ${message}` });
+  };
+
+  const $deleteKey = async (accessToken: string, keyId: string) => {
+    try {
+      await request.delete(`${keysUrl}/${encodeURIComponent(keyId)}`, $getRequestConfig(accessToken));
+    } catch (error) {
+      // The key is already gone, e.g. deleted by hand in the console or by an earlier attempt.
+      if (getErrorStatus(error) === 404) return;
+
+      throw $toKeyManagementError(error, `delete key "${keyId}" of GCP service account "${serviceAccountEmail}"`);
+    }
+  };
+
+  /**
+   * A key exists in GCP before the rotation row records it, so anything that fails after the key is
+   * created has to delete it, or it is left behind untracked and counts toward GCP's 10 key limit.
+   */
+  const $deleteOnFailure = async <T>(accessToken: string, keyId: string, action: () => Promise<T>): Promise<T> => {
+    try {
+      return await action();
+    } catch (actionError) {
+      try {
+        await $deleteKey(accessToken, keyId);
+      } catch (cleanupError) {
+        throw new BadRequestError({
+          message: `${getErrorMessage(actionError)} The new key "${keyId}" could not be deleted and may need to be removed manually from GCP service account "${serviceAccountEmail}": ${getErrorMessage(cleanupError)}`
+        });
+      }
+
+      throw actionError;
+    }
+  };
+
+  const $authenticateWithKey = async (serviceAccountKey: string) => {
+    let keyFile: TGcpServiceAccountKeyFile;
+
+    try {
+      keyFile = JSON.parse(serviceAccountKey) as TGcpServiceAccountKeyFile;
+    } catch {
+      // the parse error can quote part of the input, which here is the private key
+      throw new BadRequestError({ message: "The service account key is not valid JSON." });
+    }
+
+    await new JWT({
+      email: keyFile.client_email,
+      key: keyFile.private_key,
+      scopes: [IntegrationUrls.GCP_CLOUD_PLATFORM_SCOPE]
+    }).authorize();
+  };
+
+  const $createKey = async (accessToken: string) => {
+    let data: TGcpServiceAccountKeyCreateResponse;
+
+    try {
+      ({ data } = await request.post<TGcpServiceAccountKeyCreateResponse>(keysUrl, {}, $getRequestConfig(accessToken)));
+    } catch (error) {
+      throw $toKeyManagementError(error, `create a key for GCP service account "${serviceAccountEmail}"`);
+    }
+
+    const keyId = data?.name?.split("/").pop();
+
+    if (!keyId) {
+      throw new BadRequestError({
+        message: `GCP did not return an ID for the new key of service account "${serviceAccountEmail}".`
+      });
+    }
+
+    return $deleteOnFailure(accessToken, keyId, async () => {
+      if (!data.privateKeyData) {
+        throw new BadRequestError({
+          message: `GCP did not return the private key for the new key "${keyId}" of service account "${serviceAccountEmail}".`
+        });
+      }
+
+      return { keyId, serviceAccountKey: Buffer.from(data.privateKeyData, "base64").toString("utf8") };
+    });
+  };
+
+  const issueCredentials: TRotationFactoryIssueCredentials<TGcpServiceAccountKeyRotationGeneratedCredentials> = async (
+    callback
+  ) => {
+    const accessToken = await getGcpConnectionAuthToken(connection);
+
+    const credentials = await $createKey(accessToken);
+
+    return $deleteOnFailure(accessToken, credentials.keyId, () => callback(credentials));
+  };
+
+  const revokeCredentials: TRotationFactoryRevokeCredentials<
+    TGcpServiceAccountKeyRotationGeneratedCredentials
+  > = async (credentials, callback) => {
+    if (!credentials?.length) return callback();
+
+    const accessToken = await getGcpConnectionAuthToken(connection);
+
+    // The key apps are using is deleted last, so a failure part way through leaves the rotation and its
+    // secret in place with a key that still works, rather than one that is already gone.
+    const { activeIndex } = secretRotation;
+    const deletionOrder = [
+      ...credentials.filter((_, index) => index !== activeIndex),
+      ...credentials.filter((_, index) => index === activeIndex)
+    ];
+
+    for await (const { keyId } of deletionOrder) {
+      await $deleteKey(accessToken, keyId);
+    }
+
+    return callback();
+  };
+
+  const rotateCredentials: TRotationFactoryRotateCredentials<
+    TGcpServiceAccountKeyRotationGeneratedCredentials
+  > = async (credentialsToRevoke, callback) => {
+    const accessToken = await getGcpConnectionAuthToken(connection);
+
+    // The new key is created before the previous one is deleted, so a failed create can't leave the service
+    // account with fewer working keys than before. The cost is room for a third key under GCP's 10 key limit
+    // while the rotation runs.
+    const newCredentials = await $createKey(accessToken);
+
+    // Delete before committing, so a failure leaves GCP and the rotation agreeing with each other and the
+    // new key is cleaned up rather than left untracked across retries.
+    if (credentialsToRevoke?.keyId) {
+      await $deleteOnFailure(accessToken, newCredentials.keyId, () =>
+        $deleteKey(accessToken, credentialsToRevoke.keyId)
+      );
+    }
+
+    return $deleteOnFailure(accessToken, newCredentials.keyId, () => callback(newCredentials));
+  };
+
+  const getSecretsPayload: TRotationFactoryGetSecretsPayload<TGcpServiceAccountKeyRotationGeneratedCredentials> = ({
+    serviceAccountKey
+  }) => [{ key: secretsMapping.serviceAccountKey, value: serviceAccountKey }];
+
+  const checkActiveCredentials: TRotationFactoryCheckActiveCredentials<
+    TGcpServiceAccountKeyRotationGeneratedCredentials
+  > = async ({ keyId, serviceAccountKey }) => {
+    try {
+      await $authenticateWithKey(serviceAccountKey);
+    } catch (error) {
+      throw new BadRequestError({
+        message: `GCP rejected key "${keyId}" of service account "${serviceAccountEmail}": ${getErrorMessage(error)}`
+      });
+    }
+  };
+
+  return {
+    issueCredentials,
+    revokeCredentials,
+    rotateCredentials,
+    getSecretsPayload,
+    checkActiveCredentials
+  };
+};

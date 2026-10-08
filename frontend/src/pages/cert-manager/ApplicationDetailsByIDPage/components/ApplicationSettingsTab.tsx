@@ -7,7 +7,10 @@ import { Link, useParams } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
 import { MoreHorizontalIcon, PencilIcon, PlusIcon, Settings2Icon, Trash2Icon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  CertificateApprovalPoliciesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
 import {
@@ -301,16 +304,16 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
 
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "policy",
-    "deletePolicy",
-    "upgradePlan"
+    "deletePolicy"
   ] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   // Creation only; existing policies keep enforcing and their requests can still be approved.
   const handleCreatePolicy = () => {
     if (!subscription.pkiApprovals) {
-      handlePopUpOpen("upgradePlan", {
-        isEnterpriseFeature: true,
-        text: "Certificate approval policies are available on Infisical's Enterprise plan."
+      openUpgradeGate({
+        intent: CertificateApprovalPoliciesUpgradeIntent,
+        paywallKey: "cert-manager.application-settings"
       });
       return;
     }
@@ -637,12 +640,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         handlePopUpToggle={handlePopUpToggle}
         applicationId={application.id}
       />
-      <UpgradePlanModal
-        paywallKey="cert-manager.application-settings"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { text: string })?.text}
-      />
+      {upgradeGate}
       <DeleteActionModal
         isOpen={popUp.deletePolicy.isOpen}
         deleteKey="delete"
