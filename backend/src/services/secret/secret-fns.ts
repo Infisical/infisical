@@ -1198,8 +1198,6 @@ type TFnDeleteProjectSecretReminders = {
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
 };
 
-// Only v1 secrets keep their reminder on the secret row. A v2 project's reminders live in the reminders
-// table, which cascades with the secrets, and their alerts are reaped by reapOrphanedReminderAlerts.
 export const fnDeleteProjectSecretReminders = async (
   projectId: string,
   { secretDAL, reminderService, projectBotService, folderDAL }: TFnDeleteProjectSecretReminders
