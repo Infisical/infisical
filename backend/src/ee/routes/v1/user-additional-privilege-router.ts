@@ -132,6 +132,12 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       if (!data.privilege.actorUserId)
         throw new NotFoundError({ message: `Privilege with id ${req.params.privilegeId} not found` });
 
+      if (data.privilege.grantId) {
+        throw new BadRequestError({
+          message: "Cannot update a privilege that was granted through an access approval request"
+        });
+      }
+
       const isLinkedToAccessApproval = await server.services.additionalPrivilege.isPrivilegeLinkedToAccessApproval(
         req.params.privilegeId
       );

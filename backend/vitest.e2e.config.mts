@@ -84,6 +84,10 @@ export default defineConfig({
       {
         find: "./aws-connection-fns",
         replacement: path.resolve(__dirname, "./e2e-test/fakes/aws-connection-fns")
+      },
+      {
+        find: /^@app\/lib\/aws\/s3$/,
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/s3")
       }
     ]
   },

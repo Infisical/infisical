@@ -135,7 +135,7 @@ const SecretPathInputBase = ({
           align="start"
           onOpenAutoFocus={(e) => e.preventDefault()}
           className={twMerge(
-            "relative top-2 z-100 overflow-hidden rounded-md border border-border-control bg-surface-base font-inter text-foreground-default shadow-md"
+            "relative top-2 z-100 overflow-hidden rounded-md border border-border-control bg-surface-base font-sans text-foreground-default shadow-md"
           )}
           style={{
             width: "var(--radix-popover-trigger-width)",

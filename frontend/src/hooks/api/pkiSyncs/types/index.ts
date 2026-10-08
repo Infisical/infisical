@@ -33,6 +33,7 @@ export type TPkiSyncOption = {
   allowedCharacterPattern?: string;
   maxCertificateNameLength?: number;
   minCertificateNameLength?: number;
+  unsupportedExportFormats?: PkiSyncExportFormat[];
 };
 
 export type TPkiSync =

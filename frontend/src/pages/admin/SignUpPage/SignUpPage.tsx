@@ -117,7 +117,7 @@ export const SignUpPage = () => {
           <CardTitle className="font-alliance text-2xl font-normal">
             {stepContent[activeStep].title}
           </CardTitle>
-          <CardDescription className="font-alliance text-base">
+          <CardDescription className="font-sans text-base">
             {stepContent[activeStep].description}
           </CardDescription>
         </CardHeader>

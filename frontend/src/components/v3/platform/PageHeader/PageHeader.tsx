@@ -87,7 +87,7 @@ export const PageHeader = ({
   return (
     <header
       data-slot="page-header"
-      className={cn("flex w-full flex-col gap-5", className)}
+      className={cn("mb-10 flex w-full flex-col gap-5", className)}
       {...props}
     >
       {backLink && (
@@ -104,7 +104,7 @@ export const PageHeader = ({
             <h1
               data-slot="page-header-title"
               className={cn(
-                "truncate text-2xl font-medium text-foreground underline underline-offset-4",
+                "truncate font-alliance text-2xl font-normal text-foreground underline underline-offset-4",
                 scopeConfig?.titleClassName ?? "no-underline"
               )}
             >

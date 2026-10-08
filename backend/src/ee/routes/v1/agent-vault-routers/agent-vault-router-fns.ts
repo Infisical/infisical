@@ -1,9 +1,9 @@
 import { FastifyRequest } from "fastify";
 
-import { TAgentVaultActorContext } from "@app/ee/services/agent-vault/agent-vault-actor-types";
 import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { TGenericPermission } from "@app/lib/types";
 
-export const actorContext = (req: FastifyRequest): TAgentVaultActorContext => ({
+export const actorContext = (req: FastifyRequest): TGenericPermission => ({
   actorId: req.permission.id,
   actor: req.permission.type,
   actorOrgId: req.permission.orgId,

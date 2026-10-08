@@ -1,3 +1,5 @@
+import axios from "axios";
+
 import {
   BillingV2Cadence,
   BillingV2CatalogProduct,
@@ -18,6 +20,12 @@ export const catalogById = (
 // them sorted; this keeps the order explicit and stable if any intermediate step reshuffles.
 export const byDisplayOrder = <T extends { displayOrder?: number }>(a: T, b: T): number =>
   (a.displayOrder ?? 0) - (b.displayOrder ?? 0);
+
+// The license server's machine code (details.code) on a failed billing request, if any.
+export const billingV2ErrorCode = (error: unknown): string | undefined =>
+  axios.isAxiosError<{ details?: { code?: string } }>(error)
+    ? error.response?.data?.details?.code
+    : undefined;
 
 export const fmtMoney = (n: number, maximumFractionDigits = 0): string =>
   `$${Number(n).toLocaleString("en-US", { maximumFractionDigits })}`;

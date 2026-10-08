@@ -319,10 +319,14 @@ export enum PostHogEventTypes {
   AgentVaultServiceCreated = "Agent Vault Service Created",
   AgentVaultServiceUpdated = "Agent Vault Service Updated",
   AgentVaultServiceDeleted = "Agent Vault Service Deleted",
+  AgentVaultVariableCreated = "Agent Vault Variable Created",
+  AgentVaultVariableUpdated = "Agent Vault Variable Updated",
+  AgentVaultVariableDeleted = "Agent Vault Variable Deleted",
   AgentVaultAccessBundleMemberAdded = "Agent Vault Access Bundle Member Added",
   AgentVaultAccessBundleMemberRemoved = "Agent Vault Access Bundle Member Removed",
   AgentVaultSessionCreated = "Agent Vault Session Created",
   AgentVaultSessionRevoked = "Agent Vault Session Revoked",
+  AgentVaultSessionLogSettingsUpdated = "Agent Vault Session Log Settings Updated",
   AgentVaultProxyRegistered = "Agent Vault Proxy Registered",
   AgentVaultProxyUpdated = "Agent Vault Proxy Updated",
   AgentVaultProxyDeleted = "Agent Vault Proxy Deleted",
@@ -1623,12 +1627,18 @@ export type TPkiSyncExecutedEvent = {
   };
 };
 
+export enum PkiAlertScope {
+  CertificateManager = "certificate-manager",
+  Application = "application"
+}
+
 export type TPkiAlertCreatedEvent = {
   event: PostHogEventTypes.PkiAlertCreated;
   properties: {
     orgId: string;
     projectId: string;
-    applicationId: string;
+    applicationId?: string;
+    alertScope: PkiAlertScope;
     alertType?: string;
   };
 };
@@ -1638,7 +1648,8 @@ export type TPkiAlertUpdatedEvent = {
   properties: {
     orgId: string;
     projectId: string;
-    applicationId: string;
+    applicationId?: string;
+    alertScope: PkiAlertScope;
   };
 };
 
@@ -1647,7 +1658,8 @@ export type TPkiAlertDeletedEvent = {
   properties: {
     orgId: string;
     projectId: string;
-    applicationId: string;
+    applicationId?: string;
+    alertScope: PkiAlertScope;
   };
 };
 
@@ -2442,6 +2454,7 @@ export type TAgentVaultServiceCreatedEvent = {
     allowedPathPrefixCount: number;
     customHeaderCount: number;
     substitutionCount: number;
+    variableReferenceCount: number;
   };
 };
 
@@ -2456,12 +2469,35 @@ export type TAgentVaultServiceUpdatedEvent = {
     allowedPathPrefixCount: number;
     customHeaderCount: number;
     substitutionCount: number;
+    variableReferenceCount: number;
   };
 };
 
 export type TAgentVaultServiceDeletedEvent = {
   event: PostHogEventTypes.AgentVaultServiceDeleted;
   properties: TAgentVaultEventBase & { accessBundleId: string; serviceId: string };
+};
+
+export type TAgentVaultVariableCreatedEvent = {
+  event: PostHogEventTypes.AgentVaultVariableCreated;
+  properties: TAgentVaultEventBase & { accessBundleId: string; variableId: string; isSecret: boolean };
+};
+
+export type TAgentVaultVariableUpdatedEvent = {
+  event: PostHogEventTypes.AgentVaultVariableUpdated;
+  properties: TAgentVaultEventBase & {
+    accessBundleId: string;
+    variableId: string;
+    isSecret: boolean;
+    keyChanged: boolean;
+    valueReplaced: boolean;
+    usedByServiceCount: number;
+  };
+};
+
+export type TAgentVaultVariableDeletedEvent = {
+  event: PostHogEventTypes.AgentVaultVariableDeleted;
+  properties: TAgentVaultEventBase & { accessBundleId: string; variableId: string };
 };
 
 export type TAgentVaultAccessBundleMemberAddedEvent = {
@@ -2486,6 +2522,14 @@ export type TAgentVaultSessionCreatedEvent = {
 export type TAgentVaultSessionRevokedEvent = {
   event: PostHogEventTypes.AgentVaultSessionRevoked;
   properties: TAgentVaultEventBase & { sessionId: string };
+};
+
+export type TAgentVaultSessionLogSettingsUpdatedEvent = {
+  event: PostHogEventTypes.AgentVaultSessionLogSettingsUpdated;
+  properties: TAgentVaultEventBase & {
+    enabled: boolean;
+    hasDestination: boolean;
+  };
 };
 
 export type TAgentVaultProxyRegisteredEvent = {
@@ -2553,10 +2597,14 @@ export type TAgentVaultPostHogEvent =
   | TAgentVaultServiceCreatedEvent
   | TAgentVaultServiceUpdatedEvent
   | TAgentVaultServiceDeletedEvent
+  | TAgentVaultVariableCreatedEvent
+  | TAgentVaultVariableUpdatedEvent
+  | TAgentVaultVariableDeletedEvent
   | TAgentVaultAccessBundleMemberAddedEvent
   | TAgentVaultAccessBundleMemberRemovedEvent
   | TAgentVaultSessionCreatedEvent
   | TAgentVaultSessionRevokedEvent
+  | TAgentVaultSessionLogSettingsUpdatedEvent
   | TAgentVaultProxyRegisteredEvent
   | TAgentVaultProxyUpdatedEvent
   | TAgentVaultProxyDeletedEvent

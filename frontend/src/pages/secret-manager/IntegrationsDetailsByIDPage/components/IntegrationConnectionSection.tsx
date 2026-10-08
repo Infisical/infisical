@@ -196,7 +196,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
   return (
     <div className="mt-4 rounded-lg border border-border-control bg-surface-base p-4">
       <div className="flex items-center justify-between border-b border-border-emphasis pb-4">
-        <h3 className="text-lg font-medium text-foreground">Connection</h3>
+        <h3 className="text-lg font-normal text-foreground">Connection</h3>
       </div>
 
       <div className="mt-4">

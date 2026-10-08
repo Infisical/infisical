@@ -17,9 +17,9 @@ export type TApprovalRequestDALFactory = ReturnType<typeof approvalRequestDALFac
 export const approvalRequestDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ApprovalRequests);
 
-  const findStepsByRequestId = async (requestId: string) => {
+  const findStepsByRequestId = async (requestId: string, tx?: Knex) => {
     try {
-      const dbInstance = db.replicaNode();
+      const dbInstance = tx || db.replicaNode();
       const steps = await dbInstance(TableName.ApprovalRequestSteps).where({ requestId }).orderBy("stepNumber", "asc");
 
       if (!steps.length) {
@@ -169,6 +169,17 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findPendingByPolicyIdForUpdate = async (policyId: string, tx: Knex) => {
+    try {
+      return await tx(TableName.ApprovalRequests)
+        .forUpdate()
+        .where({ policyId, status: ApprovalRequestStatus.Pending })
+        .orderBy("id", "asc");
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindPendingApprovalRequestsByPolicyIdForUpdate" });
+    }
+  };
+
   const markExpiredRequests = async (): Promise<number> => {
     try {
       const rows = await db(TableName.ApprovalRequests)
@@ -188,6 +199,7 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
     findStepsByRequestId,
     findByProjectId,
     findByIdForUpdate,
+    findPendingByPolicyIdForUpdate,
     markExpiredRequests
   };
 };

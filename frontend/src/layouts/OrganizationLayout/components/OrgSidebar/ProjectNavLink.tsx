@@ -15,6 +15,16 @@ import { isOrgScopedProduct } from "@app/helpers/project";
 import type { NavItem, Submenu } from "./types";
 import { PROJECT_TYPE_PATH } from "./types";
 
+const NavDot = ({ variant }: { variant: NonNullable<NavItem["dotVariant"]> }) => (
+  <span className="ml-auto flex shrink-0">
+    <span
+      aria-hidden
+      className={twMerge("size-2 rounded-full", variant === "danger" ? "bg-danger" : "bg-warning")}
+    />
+    <span className="sr-only">Needs attention</span>
+  </span>
+);
+
 // --- Project nav link (handles submenu chevron or normal link) ---
 
 export const ProjectNavLink = ({
@@ -70,7 +80,13 @@ export const ProjectNavLink = ({
               {item.badgeCount}
             </Badge>
           )}
-          <ChevronRight className={twMerge("size-4 opacity-50", !item.badgeCount && "ml-auto")} />
+          {item.dotVariant && <NavDot variant={item.dotVariant} />}
+          <ChevronRight
+            className={twMerge(
+              "size-4 opacity-50",
+              !item.badgeCount && !item.dotVariant && "ml-auto"
+            )}
+          />
         </SidebarMenuButton>
       </SidebarMenuItem>
     );
@@ -105,6 +121,7 @@ export const ProjectNavLink = ({
               {item.badgeCount}
             </Badge>
           )}
+          {item.dotVariant && <NavDot variant={item.dotVariant} />}
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>

@@ -1,3 +1,4 @@
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { logger } from "@app/lib/logger";
 import {
   getPowerDnsZoneRrset,
@@ -10,13 +11,13 @@ import {
   TPowerDnsConnectionConfig
 } from "@app/services/app-connection/powerdns/powerdns-connection-types";
 
-import { TDnsRecordLockKeyStore, withDnsRecordLock } from "./dns-record-lock";
+import { withDnsRecordLock } from "./dns-record-lock";
 
 const ACME_CHALLENGE_TTL_SECONDS = 60;
 const RRSET_LOCK_TTL_MS = POWERDNS_REQUEST_TIMEOUT_MS * 2 + 30_000;
 
 export type TPowerDnsProviderDeps = TPowerDnsGatewayDeps & {
-  keyStore?: TDnsRecordLockKeyStore;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
 };
 
 const toFqdn = (name: string) => (name.endsWith(".") ? name : `${name}.`);
@@ -28,7 +29,7 @@ export const powerDnsInsertTxtRecord = async (
   hostedZoneId: string,
   domain: string,
   value: string,
-  deps: TPowerDnsProviderDeps = {}
+  deps: TPowerDnsProviderDeps
 ) => {
   const { keyStore, ...gatewayDeps } = deps;
   const config = toConnectionConfig(connection);
@@ -38,7 +39,7 @@ export const powerDnsInsertTxtRecord = async (
   logger.info({ zoneId, name }, `Inserting TXT record for PowerDNS [zoneId=${zoneId}] [name=${name}]`);
 
   await withDnsRecordLock(
-    { connectionId: connection.id, zoneId, name, providerName: "PowerDNS", lockTtlMs: RRSET_LOCK_TTL_MS },
+    { providerName: "PowerDNS", connectionId: connection.id, zoneId, name, lockTtlMs: RRSET_LOCK_TTL_MS },
     keyStore,
     async () => {
       const existing = await getPowerDnsZoneRrset(config, { zoneId, name, type: "TXT" }, gatewayDeps);
@@ -71,7 +72,7 @@ export const powerDnsDeleteTxtRecord = async (
   hostedZoneId: string,
   domain: string,
   value: string,
-  deps: TPowerDnsProviderDeps = {}
+  deps: TPowerDnsProviderDeps
 ) => {
   const { keyStore, ...gatewayDeps } = deps;
   const config = toConnectionConfig(connection);
@@ -81,7 +82,7 @@ export const powerDnsDeleteTxtRecord = async (
   logger.info({ zoneId, name }, `Deleting TXT record for PowerDNS [zoneId=${zoneId}] [name=${name}]`);
 
   await withDnsRecordLock(
-    { connectionId: connection.id, zoneId, name, providerName: "PowerDNS", lockTtlMs: RRSET_LOCK_TTL_MS },
+    { providerName: "PowerDNS", connectionId: connection.id, zoneId, name, lockTtlMs: RRSET_LOCK_TTL_MS },
     keyStore,
     async () => {
       const existing = await getPowerDnsZoneRrset(config, { zoneId, name, type: "TXT" }, gatewayDeps);

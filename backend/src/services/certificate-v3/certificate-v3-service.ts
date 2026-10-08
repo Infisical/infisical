@@ -1,5 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { randomUUID } from "crypto";
+import { Knex } from "knex";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -22,13 +23,17 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
-import { APPROVAL_POLICY_FACTORY_MAP } from "@app/services/approval-policy/approval-policy-factory";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import {
   TCertRequestPolicy,
   TCertRequestRequestData
 } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import {
+  CertificateApplicationAlertEvent,
+  TCertificateAlertEventEmitter,
+  TCertificateAlertEventInput
+} from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -177,9 +182,10 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
-  approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy">;
+  approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy" | "matchPolicy">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete" | "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
+  certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit">;
   pkiApplicationProfileDAL: Pick<
     TPkiApplicationProfileDALFactory,
     "findAllByProfileId" | "findOneByApplicationAndProfile"
@@ -349,6 +355,7 @@ export const certificateV3ServiceFactory = ({
   approvalPolicyService,
   resourceMetadataDAL,
   pkiAlertV2Queue,
+  certificateAlertEventEmitter,
   pkiApplicationProfileDAL,
   pkiApplicationDAL,
   apiEnrollmentConfigDAL,
@@ -358,6 +365,9 @@ export const certificateV3ServiceFactory = ({
   telemetryService
 }: TCertificateV3ServiceFactoryDep) => {
   const $quotaDeps = { projectDAL, licenseService, usageCounterDAL, keyStore };
+
+  const $emitIssuanceAlert = (input: Omit<TCertificateAlertEventInput, "eventType">, tx: Knex) =>
+    certificateAlertEventEmitter.emit({ ...input, eventType: CertificateApplicationAlertEvent.Issuance }, tx);
 
   // Called once the certificate row exists, never at the check.
   const $recordQuotaUsage = async (usage?: { orgId: string; isNewQuotaKey: boolean; isWildcard: boolean }) => {
@@ -574,14 +584,10 @@ export const certificateV3ServiceFactory = ({
     );
     const applicationName = await $resolveApplicationName(applicationId);
 
-    const approvalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](ApprovalPolicyType.CertRequest);
-    const matchedApprovalPolicy = (await approvalFactory.matchPolicy(
-      approvalPolicyDAL as TApprovalPolicyDALFactory,
+    const matchedApprovalPolicy = (await approvalPolicyService.matchPolicy(
+      ApprovalPolicyType.CertRequest,
       profile.projectId,
-      {
-        profileName: profile.slug,
-        applicationId
-      }
+      { profileName: profile.slug, applicationId }
     )) as TCertRequestPolicy | null;
 
     const certificateRequestWithDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
@@ -929,6 +935,16 @@ export const certificateV3ServiceFactory = ({
           await certificateDAL.updateById(processResult.certificateData.id, { applicationId }, tx);
         }
 
+        await $emitIssuanceAlert(
+          {
+            certificateId: processResult.certificateData.id,
+            projectId: profile.projectId,
+            orgId: profile.project?.orgId,
+            applicationId
+          },
+          tx
+        );
+
         return { ...processResult, certificateRequestId: certRequestResult.id };
       });
 
@@ -1173,6 +1189,16 @@ export const certificateV3ServiceFactory = ({
         });
       }
 
+      await $emitIssuanceAlert(
+        {
+          certificateId: certResult.certificateId,
+          projectId: profile.projectId,
+          orgId: profile.project?.orgId,
+          applicationId
+        },
+        tx
+      );
+
       return { ...certResult, cert: certificateRecord, certificateRequestId: certRequestResult.id };
     });
 
@@ -1398,16 +1424,10 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    const csrApprovalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
-      ApprovalPolicyType.CertRequest
-    );
-    const csrMatchedApprovalPolicy = (await csrApprovalFactory.matchPolicy(
-      approvalPolicyDAL as TApprovalPolicyDALFactory,
+    const csrMatchedApprovalPolicy = (await approvalPolicyService.matchPolicy(
+      ApprovalPolicyType.CertRequest,
       profile.projectId,
-      {
-        profileName: profile.slug,
-        applicationId
-      }
+      { profileName: profile.slug, applicationId }
     )) as TCertRequestPolicy | null;
 
     if (csrMatchedApprovalPolicy && !shouldBypassApproval(actor, csrMatchedApprovalPolicy)) {
@@ -1671,6 +1691,16 @@ export const certificateV3ServiceFactory = ({
             tx
           );
 
+          await $emitIssuanceAlert(
+            {
+              certificateId: newCert.id,
+              projectId: profile.projectId,
+              orgId: profile.project?.orgId,
+              applicationId
+            },
+            tx
+          );
+
           if (metadata && metadata.length > 0) {
             await insertMetadataForCertificate(resourceMetadataDAL, {
               metadata,
@@ -1915,16 +1945,10 @@ export const certificateV3ServiceFactory = ({
       validateAwsPcaCaIssuanceInputs({ basicConstraints: certificateRequest.basicConstraints });
     }
 
-    const orderApprovalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
-      ApprovalPolicyType.CertRequest
-    );
-    const orderMatchedApprovalPolicy = (await orderApprovalFactory.matchPolicy(
-      approvalPolicyDAL as TApprovalPolicyDALFactory,
+    const orderMatchedApprovalPolicy = (await approvalPolicyService.matchPolicy(
+      ApprovalPolicyType.CertRequest,
       profile.projectId,
-      {
-        profileName: profile.slug,
-        applicationId
-      }
+      { profileName: profile.slug, applicationId }
     )) as TCertRequestPolicy | null;
 
     if (orderMatchedApprovalPolicy && !shouldBypassApproval(actor, orderMatchedApprovalPolicy)) {
@@ -2281,6 +2305,7 @@ export const certificateV3ServiceFactory = ({
     certificateRequestDAL,
     resourceMetadataDAL,
     pkiAlertV2Queue,
+    certificateAlertEventEmitter,
     pkiApplicationProfileDAL,
     pkiApplicationDAL,
     apiEnrollmentConfigDAL,

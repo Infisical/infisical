@@ -38,7 +38,11 @@ import {
 } from "@app/hooks/api/pkiSyncs";
 import { TPkiSyncFilterPreview } from "@app/hooks/api/pkiSyncs/types";
 
-import { TUpdatePkiSyncForm, UpdatePkiSyncFormSchema } from "./schemas/pki-sync-schema";
+import {
+  removeUnusedKeystoreOptions,
+  TUpdatePkiSyncForm,
+  UpdatePkiSyncFormSchema
+} from "./schemas/pki-sync-schema";
 import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
@@ -243,10 +247,14 @@ export const EditPkiSyncForm = ({
   }, [isDirty, onDirtyChange]);
 
   const applyUpdate = async ({ connection, ...formData }: TUpdatePkiSyncForm) => {
+    const hasNewExportPassword = Boolean(
+      (formData as { credentials?: { exportPassword?: string } }).credentials?.exportPassword
+    );
     try {
       const updatedPkiSync = await updatePkiSync.mutateAsync({
         syncId: pkiSync.id,
-        ...formData,
+        ...removeUnusedKeystoreOptions(formData),
+        ...(hasNewExportPassword ? {} : { credentials: undefined }),
         connectionId: connection.id,
         projectId: pkiSync.projectId,
         destination: pkiSync.destination
@@ -382,7 +390,7 @@ export const EditPkiSyncForm = ({
 
           <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
             <div className="mb-6">
-              <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
+              <h2 className="text-lg font-normal text-foreground">{currentStep.title}</h2>
               <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
             </div>
             {renderStep()}

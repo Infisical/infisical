@@ -1,21 +1,16 @@
-import { createFileRoute, isRedirect, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { SessionStorageKeys } from "@app/const";
-import { appConnectionKeys } from "@app/hooks/api/appConnections";
 import { authKeys, fetchAuthToken, selectOrganization } from "@app/hooks/api/auth/queries";
-import { certManagerInstanceKeys } from "@app/hooks/api/certManagerInstance";
-import { identitiesKeys } from "@app/hooks/api/identities/queries";
+import { resetOrganizationCache } from "@app/hooks/api/organization/cache";
 import { fetchOrganizationById, organizationKeys } from "@app/hooks/api/organization/queries";
-import { pamKeys } from "@app/hooks/api/pam";
-import { projectKeys } from "@app/hooks/api/projects";
 import { fetchUserOrgPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
-import { subOrganizationsQuery } from "@app/hooks/api/subOrganizations";
 import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subscriptions/queries";
 
 // Route context to fill in organization's data like details, subscription etc
 export const Route = createFileRoute("/_authenticate/_inject-org-details")({
-  beforeLoad: async ({ context, params }) => {
+  beforeLoad: async ({ context, params, location }) => {
     let organizationId: string;
 
     if ((params as { orgId?: string })?.orgId) {
@@ -29,45 +24,32 @@ export const Route = createFileRoute("/_authenticate/_inject-org-details")({
       const currentTokenOrgId = context.organizationId;
 
       if (urlOrgId !== currentTokenOrgId) {
-        try {
-          const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
-            organizationId: urlOrgId
+        const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
+          organizationId: urlOrgId
+        });
+
+        if (isMfaEnabled) {
+          sessionStorage.setItem(SessionStorageKeys.MFA_TEMP_TOKEN, token);
+          throw redirect({
+            to: "/login/select-organization",
+            search: {
+              org_id: urlOrgId,
+              mfa_method: mfaMethod,
+              redirect_to: location.href
+            }
           });
-
-          if (isMfaEnabled) {
-            sessionStorage.setItem(SessionStorageKeys.MFA_TEMP_TOKEN, token);
-            throw redirect({
-              to: "/login/select-organization",
-              search: { org_id: urlOrgId, mfa_method: mfaMethod }
-            });
-          }
-
-          if (!isMfaEnabled && token) {
-            SecurityClient.setToken(token);
-
-            context.queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-            context.queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
-            context.queryClient.removeQueries({ queryKey: subOrganizationsQuery.allKey() });
-            context.queryClient.removeQueries({ queryKey: certManagerInstanceKeys.all });
-            context.queryClient.removeQueries({ queryKey: identitiesKeys.searchIdentitiesRoot });
-            context.queryClient.removeQueries({ queryKey: identitiesKeys.countIdentitiesRoot });
-            context.queryClient.removeQueries({ queryKey: appConnectionKeys.all });
-            // PAM's keys carry no org, so a stale entry would render another org's data until it goes stale.
-            context.queryClient.removeQueries({ queryKey: pamKeys.all });
-
-            await context.queryClient.fetchQuery({
-              queryKey: authKeys.getAuthToken,
-              queryFn: fetchAuthToken
-            });
-          }
-        } catch (error) {
-          if (isRedirect(error)) {
-            throw error;
-          }
-          console.warn("Failed to automatically exchange token for organization:", error);
         }
+
+        SecurityClient.setToken(token);
+        await context.queryClient.fetchQuery({
+          queryKey: authKeys.getAuthToken,
+          queryFn: fetchAuthToken,
+          staleTime: 0
+        });
       }
     }
+
+    resetOrganizationCache(context.queryClient, organizationId);
 
     await context.queryClient.ensureQueryData({
       queryKey: organizationKeys.getOrgById(organizationId),

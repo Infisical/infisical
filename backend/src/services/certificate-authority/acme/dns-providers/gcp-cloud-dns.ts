@@ -134,7 +134,7 @@ const applyTxtRecordChange = async (
   hostedZoneId: string,
   recordName: string,
   buildChange: TBuildChange,
-  keyStore?: TDnsRecordLockKeyStore,
+  keyStore: TDnsRecordLockKeyStore,
   abortSignal?: AbortSignal
 ) => {
   const zoneUrl = getZoneUrl(hostedZoneId);
@@ -159,7 +159,7 @@ export const gcpCloudDnsInsertTxtRecord = async (
   hostedZoneId: string,
   recordName: string,
   value: string,
-  keyStore?: TDnsRecordLockKeyStore,
+  keyStore: TDnsRecordLockKeyStore,
   abortSignal?: AbortSignal
 ) => {
   await applyTxtRecordChange(
@@ -190,7 +190,7 @@ export const gcpCloudDnsDeleteTxtRecord = async (
   hostedZoneId: string,
   recordName: string,
   value: string,
-  keyStore?: TDnsRecordLockKeyStore
+  keyStore: TDnsRecordLockKeyStore
 ) => {
   await applyTxtRecordChange(
     connection,

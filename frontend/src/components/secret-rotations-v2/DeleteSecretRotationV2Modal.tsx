@@ -73,7 +73,7 @@ export const DeleteSecretRotationV2Modal = ({
       >
         Revoke Credentials
       </Switch>
-      <p className="mt-1 font-inter text-sm text-muted">
+      <p className="mt-1 font-sans text-sm text-muted">
         Generated credentials will {revokeGeneratedCredentials ? "" : "not"} be revoked on deletion
         {revokeGeneratedCredentials ? "" : " and remain active"}.
       </p>
@@ -87,7 +87,7 @@ export const DeleteSecretRotationV2Modal = ({
       >
         Delete Secrets
       </Switch>
-      <p className="mt-1 font-inter text-sm text-muted">
+      <p className="mt-1 font-sans text-sm text-muted">
         Rotation secrets will {deleteSecrets ? "" : "not"} be removed from your project on deletion.
       </p>
     </DeleteActionModal>

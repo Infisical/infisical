@@ -62,6 +62,8 @@ file and the `ARG` defaults together.
 
 Both `backend/` and `frontend/` enforce a minimum release age of 7 days for npm packages (configured via `.npmrc` in each directory). This means `npm install` will only resolve package versions published at least 7 days ago, as a supply-chain security measure.
 
+The backend installs with the npm bundled in Node 26 (11.x), which skips dependency install scripts unless `allowScripts` in `backend/package.json` approves them. The install still succeeds when a script is skipped, so a native addon that was not approved fails only when it is first `require`d. When adding or bumping a dependency with an install script, run `npm install-scripts ls` and approve or deny what it lists (`npm install-scripts approve <pkg>`).
+
 ## Cross-Cutting Patterns
 
 ### Backend Code Quality
@@ -121,6 +123,23 @@ Both handlers and services define narrow interfaces for their dependencies (cons
 All user-facing "notify me when X happens" features share one module: `backend/src/services/alert/`. It owns the alert CRUD, the channel stack (email, Slack, webhook, PagerDuty), recipients, dedup, history, and dispatch. To alert on a new resource, register an `IResourceAlertProvider` on the shared registry — do not stand up a per-domain alert service, channel table, or notification cron. See `backend/CLAUDE.md` for the provider contract and invariants.
 
 **If you touch a code path that deletes or detaches an alertable resource, it must reap that resource's alerts.** `alerts.resourceId` has no foreign key, so nothing cascades and the alert is left dangling. Use `alertService.deleteAlertsForDeletedResource` when the row is gone (unscoped, reaps across every org) and `deleteAlertsForResource` when the resource only left a scope. See the alerting invariants in `backend/CLAUDE.md`.
+
+### Approvals
+
+All "someone has to approve this before it happens" features share one module:
+`backend/src/services/approval-policy/`, which owns policies, requests, steps, grants, break-glass, and
+the generic `/v1/<policy-type>/approval-policies` endpoints. Current types: PAM access, certificate
+requests, code signing.
+
+A policy type plugs in through **one** extension point, a `TApprovalResource` (see its doc comment),
+constructed with its own dependencies and registered in the `approvalResources` map in
+`server/routes/index.ts`; that also gives it the generic `/v1/approval-policies/<type>/...` endpoints,
+which every type now uses for policy CRUD, requests, approve, reject and grant revocation. **Do not stand up a per-product approval service, request table, or review
+endpoint**: `access-approval-*` and `secret-approval-*` predate this module and are what we are
+converging away from. A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
+for product vocabulary only: resolving the resource a request names, notifications, and read models.
+Any rule about what is *allowed* belongs in the resource, or the product's own API and the shared API
+stop agreeing.
 
 ### API Layer (Frontend)
 

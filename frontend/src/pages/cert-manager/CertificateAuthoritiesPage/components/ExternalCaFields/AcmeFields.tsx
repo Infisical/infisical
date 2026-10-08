@@ -1,4 +1,4 @@
-import { Control, Controller } from "react-hook-form";
+import { Control, Controller, UseFormSetValue } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
@@ -19,10 +19,6 @@ import {
 } from "@app/components/v3";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections";
-import { TAzureDNSZone } from "@app/hooks/api/appConnections/azure-dns";
-import { TCloudflareZone } from "@app/hooks/api/appConnections/cloudflare";
-import { TDNSMadeEasyZone } from "@app/hooks/api/appConnections/dns-made-easy";
-import { TPowerDnsZone } from "@app/hooks/api/appConnections/powerdns";
 import { AcmeDnsProvider } from "@app/hooks/api/ca";
 import {
   ACME_DNS_PROVIDER_APP_CONNECTION_MAP,
@@ -34,6 +30,8 @@ import { REQUIRED_EAB_DIRECTORIES } from "./constants";
 import { GcpCloudDnsZoneFields } from "./GcpCloudDnsZoneFields";
 import { FormData } from "./schema";
 
+export type TAcmeDnsZone = { id: string; name: string };
+
 type Props = {
   control: Control<FormData>;
   isExistingCa: boolean;
@@ -42,16 +40,10 @@ type Props = {
   dnsAppConnection: { id: string; name: string };
   availableConnections: TAvailableAppConnection[];
   isPending: boolean;
-  cloudflareZones: TCloudflareZone[];
+  zones: TAcmeDnsZone[];
   isZonesPending: boolean;
-  dnsMadeEasyZones: TDNSMadeEasyZone[];
-  isDNSMadeEasyZonesPending: boolean;
-  azureDnsZones: TAzureDNSZone[];
-  isAzureDNSZonesPending: boolean;
-  powerDnsZones: TPowerDnsZone[];
-  isPowerDnsZonesPending: boolean;
+  setValue: UseFormSetValue<FormData>;
   onDnsSelectionChange: () => void;
-  onDnsProviderChange: () => void;
 };
 
 export const AcmeFields = ({
@@ -62,16 +54,10 @@ export const AcmeFields = ({
   dnsAppConnection,
   availableConnections,
   isPending,
-  cloudflareZones,
+  zones,
   isZonesPending,
-  dnsMadeEasyZones,
-  isDNSMadeEasyZonesPending,
-  azureDnsZones,
-  isAzureDNSZonesPending,
-  powerDnsZones,
-  isPowerDnsZonesPending,
-  onDnsSelectionChange,
-  onDnsProviderChange
+  setValue,
+  onDnsSelectionChange
 }: Props) => (
   <>
     <Controller
@@ -85,7 +71,8 @@ export const AcmeFields = ({
             value={value}
             onValueChange={(val) => {
               onChange(val);
-              onDnsProviderChange();
+              setValue("configuration.dnsAppConnection", { id: "", name: "" });
+              onDnsSelectionChange();
             }}
             disabled={isExistingCa}
           >
@@ -134,120 +121,47 @@ export const AcmeFields = ({
         )}
       />
     )}
-    {dnsProvider === AcmeDnsProvider.Cloudflare && (
-      <Controller
-        name="configuration.dnsProviderConfig.hostedZoneId"
-        control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <Field className="mb-4">
-            <FieldLabel>Zone</FieldLabel>
-            <FilterableSelect
-              isLoading={isZonesPending && !!dnsAppConnection.id}
-              isDisabled={!dnsAppConnection.id}
-              value={
-                cloudflareZones.find((zone) => zone.id === value) ||
-                (value ? { id: value, name: value } : null)
-              }
-              onChange={(option) => {
-                onChange((option as SingleValue<TCloudflareZone>)?.id ?? null);
-              }}
-              options={cloudflareZones}
-              placeholder="Select a zone..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-              isError={Boolean(error)}
-            />
-            <FieldError errors={[error]} />
-          </Field>
-        )}
-      />
-    )}
-    {dnsProvider === AcmeDnsProvider.DNSMadeEasy && (
-      <Controller
-        name="configuration.dnsProviderConfig.hostedZoneId"
-        control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <Field className="mb-4">
-            <FieldLabel>Zone</FieldLabel>
-            <FilterableSelect
-              isLoading={isDNSMadeEasyZonesPending && !!dnsAppConnection.id}
-              isDisabled={!dnsAppConnection.id}
-              value={
-                dnsMadeEasyZones.find((zone) => zone.id === value) ||
-                (value ? { id: value, name: value } : null)
-              }
-              onChange={(option) => {
-                onChange((option as SingleValue<TDNSMadeEasyZone>)?.id ?? null);
-              }}
-              options={dnsMadeEasyZones}
-              placeholder="Select a zone..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-              isError={Boolean(error)}
-            />
-            <FieldError errors={[error]} />
-          </Field>
-        )}
-      />
-    )}
-    {dnsProvider === AcmeDnsProvider.AzureDNS && (
-      <Controller
-        name="configuration.dnsProviderConfig.hostedZoneId"
-        control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <Field className="mb-4">
-            <FieldLabel>Zone</FieldLabel>
-            <FilterableSelect
-              isLoading={isAzureDNSZonesPending && !!dnsAppConnection.id}
-              isDisabled={!dnsAppConnection.id}
-              value={
-                azureDnsZones.find((zone) => zone.id === value) ||
-                (value ? { id: value, name: value } : null)
-              }
-              onChange={(option) => {
-                onChange((option as SingleValue<TAzureDNSZone>)?.id ?? null);
-              }}
-              options={azureDnsZones}
-              placeholder="Select a zone..."
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-              isError={Boolean(error)}
-            />
-            <FieldError errors={[error]} />
-          </Field>
-        )}
-      />
-    )}
-    {dnsProvider === AcmeDnsProvider.PowerDns && (
-      <Controller
-        name="configuration.dnsProviderConfig.hostedZoneId"
-        control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <Field className="mb-4">
-            <FieldLabel>
-              Zone <span className="text-danger">*</span>
-            </FieldLabel>
-            <FilterableSelect
-              isLoading={isPowerDnsZonesPending && !!dnsAppConnection.id}
-              isDisabled={!dnsAppConnection.id}
-              value={
-                powerDnsZones.find((zone) => zone.id === value) ||
-                (value ? { id: value, name: value } : null)
-              }
-              onChange={(option) => {
-                onChange((option as SingleValue<TPowerDnsZone>)?.id ?? null);
-              }}
-              options={powerDnsZones}
-              placeholder="Select a zone..."
-              getOptionLabel={(option) => option.name.replace(/\.$/, "")}
-              getOptionValue={(option) => option.id}
-              isError={Boolean(error)}
-            />
-            <FieldError errors={[error]} />
-          </Field>
-        )}
-      />
-    )}
+    {dnsProvider &&
+      dnsProvider !== AcmeDnsProvider.ROUTE53 &&
+      dnsProvider !== AcmeDnsProvider.GcpCloudDns && (
+        <Controller
+          name="configuration.dnsProviderConfig.hostedZoneId"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel>
+                Zone <span className="text-danger">*</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-md">
+                    The DNS zone where Infisical creates the challenge TXT records. It must contain
+                    the domains you request certificates for.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <FilterableSelect
+                isLoading={isZonesPending && !!dnsAppConnection.id}
+                isDisabled={!dnsAppConnection.id}
+                value={
+                  zones.find((zone) => zone.id === value) ||
+                  (value ? { id: value, name: value } : null)
+                }
+                onChange={(option) => {
+                  onChange((option as SingleValue<TAcmeDnsZone>)?.id ?? null);
+                }}
+                options={zones}
+                placeholder="Select a zone..."
+                getOptionLabel={(option) => option.name.replace(/\.$/, "")}
+                getOptionValue={(option) => option.id}
+                isError={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+      )}
     {dnsProvider === AcmeDnsProvider.GcpCloudDns && (
       <GcpCloudDnsZoneFields
         key={dnsAppConnection.id}
@@ -297,6 +211,15 @@ export const AcmeFields = ({
         <Field className="mb-4">
           <FieldLabel>
             Account Email <span className="text-danger">*</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-md">
+                The email address registered with the CA for this ACME account. CAs such as
+                Let&apos;s Encrypt use it for expiry and account notices.
+              </TooltipContent>
+            </Tooltip>
           </FieldLabel>
           <Input {...field} placeholder="user@infisical.com" isError={Boolean(error)} />
           <FieldError errors={[error]} />

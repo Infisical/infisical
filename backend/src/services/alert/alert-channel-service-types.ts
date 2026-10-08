@@ -13,6 +13,8 @@ export type TAlertChannelEmbedded = {
   enabled: boolean;
   config: Record<string, unknown>;
   recipients: { principalType: string; principalId: string }[];
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export type TAlertChannelInput = {

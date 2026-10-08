@@ -30,6 +30,7 @@ export const PgSqlLock = {
   PamResourceSshCaInit: (resourceId: string) => pgAdvisoryLockHashText(`pam-resource-ssh-ca-init:${resourceId}`),
   CreateIdentity: (orgId: string) => pgAdvisoryLockHashText(`create-identity:${orgId}`),
   CreateGateway: (orgId: string) => pgAdvisoryLockHashText(`create-gateway:${orgId}`),
+  CreateAgentVaultProxy: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-proxy:${projectId}`),
   AccessSharedSecret: (sharedSecretId: string) => pgAdvisoryLockHashText(`access-shared-secret:${sharedSecretId}`),
   KmsOrgKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-key:${orgId}`),
   KmsOrgDataKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-data-key:${orgId}`),
@@ -40,7 +41,10 @@ export const PgSqlLock = {
     pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
   AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`),
   OrgAuditReportRequest: (orgId: string) => pgAdvisoryLockHashText(`audit-report-request:org:${orgId}`),
-  OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`)
+  OrgAgentProxyConfigInit: (orgId: string) => pgAdvisoryLockHashText(`org-agent-proxy-config-init:${orgId}`),
+  ExternalGroupOrgRoleMappingUpdate: (orgId: string) =>
+    pgAdvisoryLockHashText(`external-group-org-role-mapping-update:${orgId}`),
+  AuditLogSettingsUpdate: (scopeId: string) => pgAdvisoryLockHashText(`audit-log-settings-update:${scopeId}`)
 } as const;
 
 // all the key prefixes used must be set here to avoid conflict
@@ -193,6 +197,15 @@ export const KeyStorePrefixes = {
   SecretManagerCachePattern: "secret-manager:*",
   AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
   LicenseCloudPlan: (orgId: string) => `infisical-cloud-plan-${orgId}` as const,
+  // Set alongside the free plan getPlan caches when the License Server fails, so callers can tell it from a real answer.
+  LicenseCloudPlanFallback: (orgId: string) => `infisical-cloud-plan-fallback-${orgId}` as const,
+  LicenseCloudPlanLastKnown: (orgId: string) => `infisical-cloud-plan-last-known-${orgId}` as const,
+  AuditLogOrgSettings: (orgId: string) => `audit-log-settings-org-${orgId}` as const,
+  AuditLogProjectSettings: (orgId: string, projectId: string) =>
+    `audit-log-settings-project-${orgId}-${projectId}` as const,
+  AuditLogCollapseWindow: (key: string) => `audit-log-collapse-window-${key}` as const,
+  AuditLogCollapseCount: (key: string, windowStart: string) =>
+    `audit-log-collapse-count-${key}-${windowStart}` as const,
   // Set after a billing mutation to flag the org's plan cache for stale-while-revalidate reads.
   LicenseCachePassThrough: (orgId: string) => `license-cache-passthrough-${orgId}` as const,
   // Single-flight guard so only one background revalidation runs per org per lock window.
@@ -254,7 +267,7 @@ export const KeyStoreTtls = {
   EmailDispatchMailboxWindowInSeconds: 86400, // 24 hours
   EmailDispatchAbuseProbeInSeconds: 7200, // 2 hours
   InsightsCacheInSeconds: 300, // 5 minutes
-  InsightsDuplicationCacheInSeconds: 3600, // 1 hour
+  InsightsDuplicationCacheInSeconds: 300, // 5 minutes
   InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
   InsightsOrgCacheInSeconds: 900, // 15 minutes
   AdminConfigInSeconds: 60,
@@ -262,6 +275,8 @@ export const KeyStoreTtls = {
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
   LicenseCloudPlanInSeconds: 900, // 15 minutes
+  LicenseCloudPlanLastKnownInSeconds: 86400, // 24 hours
+  AuditLogSettingsInSeconds: 600, // 10 minutes
   PamDefaultProjectInSeconds: 300, // 5 minutes
   AgentVaultDefaultProjectInSeconds: 300, // 5 minutes
   // How long reads stay in stale-while-revalidate mode after a billing mutation (covers Stripe reconciliation).

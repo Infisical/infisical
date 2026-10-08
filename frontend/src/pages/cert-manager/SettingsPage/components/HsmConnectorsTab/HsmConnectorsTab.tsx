@@ -13,7 +13,7 @@ import {
   Trash2Icon
 } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { HsmConnectorsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -109,18 +109,21 @@ export const HsmConnectorsTab = () => {
       <div>
         <div className="rounded-md border border-warning/30 bg-warning/5 p-8 text-center">
           <div className="mb-3 text-2xl">&#x1f6e1;&#xfe0f;</div>
-          <h4 className="mb-2 text-lg font-medium text-foreground">Enterprise Feature</h4>
+          <h4 className="mb-2 text-lg font-normal text-foreground">Enterprise Feature</h4>
           <p className="mx-auto mb-4 max-w-md text-sm text-label">
             HSM Connectors let Infisical use keys backed by a Hardware Security Module. Every
             cryptographic operation is routed through your HSM.
           </p>
           <Button onClick={() => setUpgradeOpen(true)}>Upgrade to Enterprise</Button>
         </div>
-        <UpgradePlanModal
+        <UpgradeGate
           paywallKey="cert-manager.hsm-connectors"
           isOpen={upgradeOpen}
           onOpenChange={setUpgradeOpen}
-          text="To use HSM Connectors, upgrade to Infisical's Enterprise plan."
+          intent={{
+            ...HsmConnectorsUpgradeIntent,
+            isEnterpriseFeature: false
+          }}
         />
       </div>
     );

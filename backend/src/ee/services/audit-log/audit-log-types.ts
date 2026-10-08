@@ -77,11 +77,13 @@ import { WorkflowIntegration } from "@app/services/workflow-integration/workflow
 import { KmipPermission } from "../kmip/kmip-enum";
 import { AcmeChallengeType, AcmeIdentifierType } from "../pki-acme/pki-acme-schemas";
 import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
+import type { AuditLogEventClass } from "./audit-log-event-classes";
 
 export type TListProjectAuditLogDTO = {
   filter: {
     userAgentType?: UserAgentType;
     eventType?: EventType[];
+    eventClass?: AuditLogEventClass[];
     offset?: number;
     limit: number;
     endDate: string;
@@ -120,6 +122,32 @@ export type TCreateAuditLogDTO = {
 
 export type AuditLogInfo = Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
 
+// Lands in the summary event's metadata when a collapse window closes. Add it to the metadata
+// type of any event you pass to createCollapsedAuditLog.
+export type TAuditLogCollapseSummary = {
+  suppressedRepeats?: number;
+  suppressedFrom?: string;
+  suppressedUntil?: string;
+};
+
+export type TCreateCollapsedAuditLogDTO = TCreateAuditLogDTO & {
+  // Same event type + same parts inside the window = repeat.
+  collapseKeyParts: unknown[];
+  collapseWindowSeconds?: number;
+};
+
+export type TAuditLogCollapsedFlushJobData = TCreateAuditLogDTO & {
+  collapseKey: string;
+  windowStart: string;
+  windowEnd: string;
+};
+
+export type TRecordPermissionDeniedDTO = AuditLogInfo & {
+  orgId: string;
+  projectId?: string;
+  metadata: Omit<PermissionDeniedEvent["metadata"], keyof TAuditLogCollapseSummary>;
+};
+
 // What `pushToLog` writes to the Redis ingest stream. We pin `id` and `createdAt` at
 // push time so a consumer retry (reprocessing the same batch after a failed insert)
 // re-inserts byte-identical rows instead of regenerating ids and creating duplicates.
@@ -139,10 +167,13 @@ export type TAuditLogStreamEntry = TCreateAuditLogDTO & {
 
 export type TAuditLogServiceFactory = {
   createAuditLog: (data: TCreateAuditLogDTO) => Promise<void>;
+  createCollapsedAuditLog: (data: TCreateCollapsedAuditLogDTO) => Promise<void>;
+  recordPermissionDenied: (data: TRecordPermissionDeniedDTO) => Promise<void>;
   listAuditLogs: (arg: TListProjectAuditLogDTO) => Promise<
     {
       event: {
         type: string;
+        class: AuditLogEventClass;
         metadata: unknown;
       };
       actor: {
@@ -204,6 +235,7 @@ export enum EventType {
   UPDATE_SECRET = "update-secret",
   UPDATE_SECRETS = "update-secrets",
   MOVE_SECRETS = "move-secrets",
+  SEARCH_SECRETS_BY_VALUE = "search-secrets-by-value",
   DUPLICATE_SECRET = "duplicate-secret",
   DELETE_SECRET = "delete-secret",
   DELETE_SECRETS = "delete-secrets",
@@ -681,6 +713,7 @@ export enum EventType {
   SECRET_SCANNING_CONFIG_UPDATE = "secret-scanning-config-update",
 
   UPDATE_ORG = "update-org",
+  ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING = "enable-org-wide-secret-value-tracking",
 
   CREATE_PROJECT = "create-project",
   UPDATE_PROJECT = "update-project",
@@ -712,6 +745,7 @@ export enum EventType {
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
   VIEW_INSIGHTS_SECRETS_DUPLICATION = "view-insights-secrets-duplication",
+  VIEW_INSIGHTS_ORG_SECRETS_DUPLICATION = "view-insights-org-secrets-duplication",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS = "view-insights-secrets-management-counts",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE = "view-insights-secrets-management-usage",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_PROJECT_WARNINGS = "view-insights-secrets-management-project-warnings",
@@ -777,6 +811,10 @@ export enum EventType {
   AGENT_VAULT_SERVICE_CREATE = "agent-vault-service-create",
   AGENT_VAULT_SERVICE_UPDATE = "agent-vault-service-update",
   AGENT_VAULT_SERVICE_DELETE = "agent-vault-service-delete",
+  AGENT_VAULT_VARIABLE_CREATE = "agent-vault-variable-create",
+  AGENT_VAULT_VARIABLE_UPDATE = "agent-vault-variable-update",
+  AGENT_VAULT_VARIABLE_DELETE = "agent-vault-variable-delete",
+  AGENT_VAULT_VARIABLE_VALUE_VIEW = "agent-vault-variable-value-view",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
   AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
@@ -790,6 +828,7 @@ export enum EventType {
   AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
   AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
   AGENT_VAULT_PROXY_DELETE = "agent-vault-proxy-delete",
+  AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE = "agent-vault-session-log-settings-update",
   APPROVAL_POLICY_CREATE = "approval-policy-create",
   APPROVAL_POLICY_UPDATE = "approval-policy-update",
   APPROVAL_POLICY_DELETE = "approval-policy-delete",
@@ -953,7 +992,13 @@ export enum EventType {
   CREATE_ALERT = "create-alert",
   UPDATE_ALERT = "update-alert",
   DELETE_ALERT = "delete-alert",
-  TEST_ALERT_CHANNEL = "test-alert-channel"
+  TEST_ALERT_CHANNEL = "test-alert-channel",
+
+  // Authorization
+  PERMISSION_DENIED = "permission-denied",
+
+  // Audit Log Settings
+  UPDATE_AUDIT_LOG_SETTINGS = "update-audit-log-settings"
 }
 
 // Maps each actor type to the JSONB key that holds the actor's primary ID in actorMetadata.
@@ -1269,6 +1314,22 @@ interface MoveSecretsEvent {
     destinationEnvironment: string;
     destinationSecretPath: string;
     secretIds: string[];
+  };
+}
+
+// The searched value is never recorded, only how many places it was found in. An audit log is read by
+// more people than the search itself is run by, so logging the value would widen who learns it.
+interface SearchSecretsByValueEvent {
+  type: EventType.SEARCH_SECRETS_BY_VALUE;
+  metadata: {
+    matchCount: number;
+  };
+}
+
+interface EnableOrgWideSecretValueTrackingEvent {
+  type: EventType.ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING;
+  metadata: {
+    projectsTotal: number;
   };
 }
 
@@ -5649,8 +5710,9 @@ interface SecretScanningDataSourceScanEvent {
   metadata: {
     scanId: string;
     resourceId: string;
-    resourceType: string;
+    resourceName: string;
     dataSourceId: string;
+    dataSourceName: string;
     dataSourceType: string;
     scanStatus: SecretScanningScanStatus;
     scanType: SecretScanningScanType;
@@ -5867,6 +5929,13 @@ interface ViewSecretManagementInsightsSummaryEvent {
   };
 }
 
+interface ViewInsightsOrgSecretsDuplicationEvent {
+  type: EventType.VIEW_INSIGHTS_ORG_SECRETS_DUPLICATION;
+  metadata: {
+    groupCount: number;
+  };
+}
+
 interface ViewInsightsSecretsDuplicationEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_DUPLICATION;
   metadata: {
@@ -5961,6 +6030,27 @@ interface DeleteOrgAuditReportEvent {
 interface ViewAuditLogsEvent {
   type: EventType.VIEW_AUDIT_LOGS;
   metadata?: Record<string, unknown>;
+}
+
+interface PermissionDeniedEvent {
+  type: EventType.PERMISSION_DENIED;
+  metadata: TAuditLogCollapseSummary & {
+    permissionAction?: string;
+    permissionSubject?: string;
+    permissionSubjectDetails?: Record<string, unknown>;
+    errorName: string;
+    route?: string;
+    method: string;
+  };
+}
+
+interface UpdateAuditLogSettingsEvent {
+  type: EventType.UPDATE_AUDIT_LOG_SETTINGS;
+  metadata: {
+    scope: "organization" | "project";
+    eventClasses?: { eventClass: string; isEnabled: boolean }[];
+    auditLogsRetentionDays?: number;
+  };
 }
 
 interface ProjectRoleCreateEvent {
@@ -6304,6 +6394,18 @@ interface AgentVaultProxyDeleteEvent {
   };
 }
 
+interface AgentVaultSessionLogSettingsUpdateEvent {
+  type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE;
+  metadata: {
+    enabled: boolean;
+    appConnectionId: string | null;
+    appConnectionName: string | null;
+    bucket: string | null;
+    region: string | null;
+    keyPrefix: string | null;
+  };
+}
+
 interface AgentVaultAccessBundleCreateEvent {
   type: EventType.AGENT_VAULT_ACCESS_BUNDLE_CREATE;
   metadata: {
@@ -6334,6 +6436,7 @@ interface AgentVaultServiceCreateEvent {
   type: EventType.AGENT_VAULT_SERVICE_CREATE;
   metadata: {
     accessBundleId: string;
+    accessBundleName: string;
     serviceId: string;
     name: string;
     hostPattern: string;
@@ -6345,6 +6448,7 @@ interface AgentVaultServiceCreateEvent {
     // Names and placeholders only. A sealed value must never reach an audit row.
     customHeaderNames?: string[];
     substitutionPlaceholders?: string[];
+    variableKeys?: string[];
   };
 }
 
@@ -6352,6 +6456,7 @@ interface AgentVaultServiceUpdateEvent {
   type: EventType.AGENT_VAULT_SERVICE_UPDATE;
   metadata: {
     accessBundleId: string;
+    accessBundleName: string;
     serviceId: string;
     name?: string;
     hostPattern?: string;
@@ -6365,6 +6470,8 @@ interface AgentVaultServiceUpdateEvent {
     substitutionPlaceholders?: string[];
     substitutionsReplaced?: string[];
     credentialReplaced: boolean;
+    // Every key the service uses after the update, present when the update wrote a value that can hold one.
+    variableKeys?: string[];
   };
 }
 
@@ -6372,8 +6479,56 @@ interface AgentVaultServiceDeleteEvent {
   type: EventType.AGENT_VAULT_SERVICE_DELETE;
   metadata: {
     accessBundleId: string;
+    accessBundleName: string;
     serviceId: string;
     name: string;
+  };
+}
+
+// Keys and flags only. A variable's value never reaches an audit row, secret or not.
+interface AgentVaultVariableCreateEvent {
+  type: EventType.AGENT_VAULT_VARIABLE_CREATE;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    variableId: string;
+    key: string;
+    isSecret: boolean;
+  };
+}
+
+interface AgentVaultVariableUpdateEvent {
+  type: EventType.AGENT_VAULT_VARIABLE_UPDATE;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    variableId: string;
+    key: string;
+    // The previous* fields are present only when the update changed them.
+    previousKey?: string;
+    isSecret: boolean;
+    previousIsSecret?: boolean;
+    valueReplaced: boolean;
+  };
+}
+
+interface AgentVaultVariableDeleteEvent {
+  type: EventType.AGENT_VAULT_VARIABLE_DELETE;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    variableId: string;
+    key: string;
+  };
+}
+
+interface AgentVaultVariableValueViewEvent {
+  type: EventType.AGENT_VAULT_VARIABLE_VALUE_VIEW;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    variableId: string;
+    key: string;
   };
 }
 
@@ -6590,7 +6745,11 @@ interface PamAccessRequestCreateEvent {
   metadata: {
     requestId: string;
     accountId: string;
+    accountName?: string;
     folderId: string;
+    folderName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
     duration: string;
     accessType: string;
     reason?: string;
@@ -6602,7 +6761,11 @@ interface PamAccessRequestReviewEvent {
   metadata: {
     requestId: string;
     accountId?: string;
+    accountName?: string;
     folderId?: string;
+    folderName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
     status: string;
     comment?: string;
   };
@@ -6614,7 +6777,11 @@ interface PamAccessGrantRevokeEvent {
     requestId: string;
     grantId: string;
     accountId?: string;
+    accountName?: string;
     folderId?: string;
+    folderName?: string;
+    granteeName?: string;
+    granteeEmail?: string;
   };
 }
 
@@ -7527,7 +7694,6 @@ interface ResourceAuthMethodConfigMetadata {
   resourceName?: string;
   method: ResourceAuthMethodType;
   methodConfigId: string;
-  stsEndpoint?: string;
   allowedPrincipalArns?: string;
   allowedAccountIds?: string;
   kubernetesHost?: string;
@@ -7828,6 +7994,8 @@ export type Event =
   | UpdateSecretEvent
   | UpdateSecretBatchEvent
   | MoveSecretsEvent
+  | SearchSecretsByValueEvent
+  | EnableOrgWideSecretValueTrackingEvent
   | DuplicateSecretEvent
   | DeleteSecretEvent
   | DeleteSecretBatchEvent
@@ -8285,6 +8453,7 @@ export type Event =
   | ViewInsightsAuthMethodsEvent
   | ViewSecretManagementInsightsSummaryEvent
   | ViewInsightsSecretsDuplicationEvent
+  | ViewInsightsOrgSecretsDuplicationEvent
   | ViewSecretManagementInsightsCountsEvent
   | ViewSecretManagementInsightsUsageEvent
   | ViewSecretManagementInsightsProjectWarningsEvent
@@ -8296,6 +8465,8 @@ export type Event =
   | GetOrgAuditReportsEvent
   | DeleteOrgAuditReportEvent
   | ViewAuditLogsEvent
+  | PermissionDeniedEvent
+  | UpdateAuditLogSettingsEvent
   | ProjectRoleCreateEvent
   | ProjectRoleUpdateEvent
   | ProjectRoleDeleteEvent
@@ -8332,6 +8503,10 @@ export type Event =
   | AgentVaultServiceCreateEvent
   | AgentVaultServiceUpdateEvent
   | AgentVaultServiceDeleteEvent
+  | AgentVaultVariableCreateEvent
+  | AgentVaultVariableUpdateEvent
+  | AgentVaultVariableDeleteEvent
+  | AgentVaultVariableValueViewEvent
   | AgentVaultProductMemberAddEvent
   | AgentVaultProductMemberUpdateEvent
   | AgentVaultProductMemberRemoveEvent
@@ -8345,6 +8520,7 @@ export type Event =
   | AgentVaultProxyUpdateEvent
   | AgentVaultProxyRevokeEvent
   | AgentVaultProxyDeleteEvent
+  | AgentVaultSessionLogSettingsUpdateEvent
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent

@@ -20,7 +20,6 @@ export type TGatewayV2 = {
 
 export type GatewayAwsAuthConfig = {
   id: string;
-  stsEndpoint: string;
   allowedPrincipalArns: string;
   allowedAccountIds: string;
   createdAt: string;
@@ -74,7 +73,6 @@ export type TGatewayV2WithAuthMethod = TGatewayV2 & {
 export type SettableAuthMethodInput =
   | {
       method: "aws";
-      stsEndpoint?: string;
       allowedPrincipalArns: string;
       allowedAccountIds: string;
     }
@@ -137,9 +135,24 @@ export type TGatewayConnectedPkiDiscoveryConfig = {
   projectName: string;
 };
 
+export type TGatewayConnectedPamAccount = {
+  id: string;
+  name: string;
+  accountType: string;
+  folderName: string | null;
+};
+
+export type TGatewayConnectedPamAccountTemplate = {
+  id: string;
+  name: string;
+  type: string;
+};
+
 export type TGatewayConnectedResources = {
   appConnections: TGatewayConnectedAppConnection[];
   dynamicSecrets: TGatewayConnectedDynamicSecret[];
   kubernetesAuths: TGatewayConnectedKubernetesAuth[];
   pkiDiscoveryConfigs: TGatewayConnectedPkiDiscoveryConfig[];
+  pamAccounts?: TGatewayConnectedPamAccount[];
+  pamAccountTemplates?: TGatewayConnectedPamAccountTemplate[];
 };

@@ -10,6 +10,10 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import {
+  PamSlackNotificationsUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
 import {
@@ -108,6 +112,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
   const isPamSlackEnabled = Boolean(subscription?.pamSlackNotifications);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const { data: config, isLoading } = useGetPamApprovalConfig(folderId);
   const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
@@ -138,7 +143,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
 
   const confirmRevoke = async () => {
     if (!requestToRevoke) return;
-    await revokeMutation.mutateAsync({ requestId: requestToRevoke.id });
+    await revokeMutation.mutateAsync({ grantId: requestToRevoke.grantId! });
     createNotification({ text: "Access revoked", type: "success" });
     setRequestToRevoke(null);
   };
@@ -546,13 +551,37 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         </CardContent>
       </Card>
 
-      {isPamSlackEnabled && (
+      {isPamSlackEnabled ? (
         <FolderNotificationsSection
           configs={notificationConfigs}
           integrationSlugById={integrationSlugById}
           onChange={setNotificationConfigs}
         />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Slack Notifications</CardTitle>
+            <CardDescription>
+              Notify Slack channels when PAM access is requested, approved, or revoked.
+            </CardDescription>
+            <CardAction>
+              <Button
+                variant="pam"
+                onClick={() =>
+                  openUpgradeGate({
+                    intent: PamSlackNotificationsUpgradeIntent,
+                    paywallKey: "pam.folder-slack-notifications"
+                  })
+                }
+              >
+                View Plans
+              </Button>
+            </CardAction>
+          </CardHeader>
+        </Card>
       )}
+
+      {upgradeGate}
 
       <Card>
         <CardHeader className="border-b">

@@ -11,6 +11,13 @@ export enum SubscriptionPlanTypes {
 }
 
 export type SubscriptionPlan = {
+  productPlans?: {
+    productKey: string;
+    planKey: string | null;
+    status: string | null;
+    trialPlanKey: string | null;
+    trialEndsAt: string | null;
+  }[];
   id: string;
   memberLimit: number;
   identityLimit: number;
@@ -99,7 +106,10 @@ export type SubscriptionPlan = {
   honeyTokens: boolean;
   honeyTokenLimit: number;
   secretsBrokering: boolean;
+  agentVaultByoS3: boolean;
   pam?: boolean | null;
+  enterprisePamAccount?: boolean | null;
+  maxPamAccounts?: number | null;
   certManager?: boolean | null;
   secretsFolderRbac: boolean;
   crossProjectSecretSharing: boolean;

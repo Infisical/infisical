@@ -483,8 +483,13 @@ Stop and remove a gateway's systemd service. Run the command as root on Linux.
 <CLICommand
   id="init"
   command="init"
+  usage="[flags]"
+  flags={[
+    { name: "--project-id", value: "<string>", type: "string", description: "Project ID to link this directory to. When set, skips the interactive org and project pickers and writes `.infisical.json` directly." },
+  ]}
   examples={[
     { title: "Link the current directory to a project", code: "infisical init" },
+    { title: "Link a known project without prompts", code: "infisical init --project-id <project-id>" },
     { title: "Link a project using another profile", code: "infisical init --profile=<profile>" },
   ]}
 >
@@ -493,7 +498,9 @@ Link the current directory to an Infisical project. The command lists the projec
 
 If `.infisical.json` already exists in the current directory, the command asks before replacing it. The new file holds only the project ID, so settings you added, such as `defaultEnvironment`, are lost. See [project config](/cli/project-config) for the file format.
 
-`--org` only accepts the organization of the profile you're using. To link a project in a different organization, switch to a profile for that organization, or change your profile's organization with [infisical profile set-org](/cli/reference#profile-set-org).
+<Note>
+  If you run `init` without a terminal, such as in CI or from a script, the command never prompts. It exits with an error unless you pass `--project-id`, and it doesn't replace an existing `.infisical.json`. To link a different project, edit `workspaceId` in `.infisical.json`.
+</Note>
 
 </CLICommand>
 
@@ -616,6 +623,8 @@ Stop and remove the KMIP server's systemd service. Run the command as root on Li
 >
 
 Log in to Infisical. By default, `infisical login` opens a browser, and falls back to prompts in the terminal if the browser login fails. Pass `--interactive` to go straight to the prompts, or `--email`, `--password`, and `--organization-id` to log in with no prompts at all.
+
+Without a terminal (when standard input isn't a TTY), the browser login waits for the browser to send the session back to the CLI, and doesn't offer to let you paste a token instead.
 
 A user login is stored as a [profile](/cli/reference#profile): an account on an Infisical instance, plus the organization it uses. Without `--save-as` or `--profile`, the profile is named after the account and organization, such as `scott@example.com--acme-x4k2`. Credentials are kept in your system keyring; see [infisical vault](/cli/reference#vault) to store them elsewhere.
 

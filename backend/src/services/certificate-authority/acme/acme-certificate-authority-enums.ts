@@ -4,5 +4,6 @@ export enum AcmeDnsProvider {
   DNSMadeEasy = "dns-made-easy",
   AzureDNS = "azure-dns",
   PowerDns = "powerdns",
-  GcpCloudDns = "gcp-cloud-dns"
+  GcpCloudDns = "gcp-cloud-dns",
+  UltraDNS = "ultradns"
 }

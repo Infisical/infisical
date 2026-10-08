@@ -11,9 +11,14 @@ import { AxiosError } from "axios";
 import {
   ArrowDownZAIcon,
   ArrowUpAZIcon,
+  ArrowUpDownIcon,
+  CalendarArrowDownIcon,
+  CalendarArrowUpIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ClockArrowDownIcon,
+  ClockArrowUpIcon,
   CopyIcon,
   DownloadIcon,
   EyeIcon,
@@ -34,7 +39,21 @@ import {
   HoneyTokenDetailsDrawer,
   RevokeHoneyTokenModal
 } from "@app/components/honey-tokens";
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  DynamicSecretsUpgradeIntent,
+  EnterpriseSecretSyncsUpgradeIntent,
+  EnvironmentLimitUpgradeIntent,
+  FolderAccessControlsUpgradeIntent,
+  hasEnvironmentCapacity,
+  HoneyTokensUpgradeIntent,
+  PointInTimeRecoveryUpgradeIntent,
+  SecretAccessInsightsUpgradeIntent,
+  SecretImportReplicationUpgradeIntent,
+  SecretRotationsUpgradeIntent,
+  SecretsBrokeringUpgradeIntent,
+  UpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -82,6 +101,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   PageHeader,
   Pagination,
@@ -298,7 +321,7 @@ const OVERVIEW_BATCH_MODE_KEY = "overview-batch-mode-enabled";
 const getSecretSortValue = (orderBy: DashboardSecretsOrderBy, orderDirection: OrderByDirection) =>
   `${orderBy}:${orderDirection}`;
 
-const SECRET_NAME_SORT_OPTIONS = [
+const SECRET_SORT_OPTIONS = [
   {
     label: "Name (A to Z)",
     Icon: ArrowUpAZIcon,
@@ -310,10 +333,36 @@ const SECRET_NAME_SORT_OPTIONS = [
     Icon: ArrowDownZAIcon,
     orderBy: DashboardSecretsOrderBy.Name,
     orderDirection: OrderByDirection.DESC
+  },
+  {
+    label: "Last Edited (New)",
+    Icon: ClockArrowUpIcon,
+    orderBy: DashboardSecretsOrderBy.UpdatedAt,
+    orderDirection: OrderByDirection.DESC
+  },
+  {
+    label: "Last Edited (Old)",
+    Icon: ClockArrowDownIcon,
+    orderBy: DashboardSecretsOrderBy.UpdatedAt,
+    orderDirection: OrderByDirection.ASC
+  },
+  {
+    label: "Created (New)",
+    Icon: CalendarArrowUpIcon,
+    orderBy: DashboardSecretsOrderBy.CreatedAt,
+    orderDirection: OrderByDirection.DESC
+  },
+  {
+    label: "Created (Old)",
+    Icon: CalendarArrowDownIcon,
+    orderBy: DashboardSecretsOrderBy.CreatedAt,
+    orderDirection: OrderByDirection.ASC
   }
 ] as const;
 
-const SECRET_SORT_OPTIONS = SECRET_NAME_SORT_OPTIONS;
+type UpgradeRequest = {
+  intent: UpgradeIntent;
+};
 
 const OverviewPageContent = () => {
   const { t } = useTranslation();
@@ -416,6 +465,7 @@ const OverviewPageContent = () => {
   } = usePagination<DashboardSecretsOrderBy>(DashboardSecretsOrderBy.Name, {
     initPerPage: getUserTablePreference("secretOverviewTable", PreferenceKey.PerPage, 100)
   });
+  const [sortEnvironment, setSortEnvironment] = useState<string>();
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
@@ -475,9 +525,10 @@ const OverviewPageContent = () => {
   }, []);
 
   const userAvailableEnvs = currentProject?.environments || [];
-  const isMoreEnvironmentsAllowed = subscription?.environmentLimit
-    ? userAvailableEnvs.length < subscription.environmentLimit
-    : true;
+  const isMoreEnvironmentsAllowed = hasEnvironmentCapacity(
+    subscription?.environmentLimit,
+    userAvailableEnvs.length
+  );
   const [storedEnvIds, setStoredEnvIds] = useLocalStorageState<string[]>(
     `overview-selected-envs-${projectId}`,
     userAvailableEnvs?.[0]?.id ? [userAvailableEnvs[0].id] : []
@@ -576,8 +627,39 @@ const OverviewPageContent = () => {
     [userAvailableEnvs]
   );
 
+  const shouldClearSortEnvironment = Boolean(
+    sortEnvironment &&
+      (visibleEnvs.length === 1 ||
+        !visibleEnvs.some((environment) => environment.slug === sortEnvironment))
+  );
+  const isTimestampSort =
+    orderBy === DashboardSecretsOrderBy.CreatedAt || orderBy === DashboardSecretsOrderBy.UpdatedAt;
+  const shouldResetTimestampSort =
+    isTimestampSort && visibleEnvs.length > 1 && (!sortEnvironment || shouldClearSortEnvironment);
+
+  useEffect(() => {
+    if (shouldClearSortEnvironment) {
+      setSortEnvironment(undefined);
+    }
+
+    if (shouldResetTimestampSort) {
+      setOrderBy(DashboardSecretsOrderBy.Name);
+      setOrderDirection(OrderByDirection.ASC);
+    }
+
+    if (shouldClearSortEnvironment || shouldResetTimestampSort) {
+      setPage(1);
+    }
+  }, [
+    shouldClearSortEnvironment,
+    shouldResetTimestampSort,
+    setOrderBy,
+    setOrderDirection,
+    setPage
+  ]);
+
   const handleSecretSortChange = useCallback(
-    (value: string) => {
+    (value: string, environment?: string) => {
       const option = SECRET_SORT_OPTIONS.find(
         ({ orderBy: nextOrderBy, orderDirection: nextOrderDirection }) =>
           getSecretSortValue(nextOrderBy, nextOrderDirection) === value
@@ -587,6 +669,7 @@ const OverviewPageContent = () => {
 
       setOrderBy(option.orderBy);
       setOrderDirection(option.orderDirection);
+      setSortEnvironment(environment);
       setPage(1);
     },
     [setOrderBy, setOrderDirection, setPage]
@@ -597,6 +680,15 @@ const OverviewPageContent = () => {
       getSecretSortValue(option.orderBy, option.orderDirection) ===
       getSecretSortValue(orderBy, orderDirection)
   );
+  const ActiveSecretSortIcon = activeSecretSort?.Icon ?? ArrowUpDownIcon;
+  let activeSecretSortScope = "";
+  if (sortEnvironment) {
+    activeSecretSortScope = ` in ${
+      visibleEnvs.find((environment) => environment.slug === sortEnvironment)?.name ??
+      sortEnvironment
+    }`;
+  }
+
   const relevantPendingApprovalsCount = useMemo(() => {
     // Reviewers see project-wide pending requests (existing behavior).
     if (canApproveAny) return pendingApprovalsCount;
@@ -868,6 +960,7 @@ const OverviewPageContent = () => {
     secretPath,
     orderDirection,
     orderBy,
+    sortEnvironment,
     includeFolders: isFilteredByResources ? filter.folder : true,
     includeDynamicSecrets: isFilteredByResources ? filter.dynamic : true,
     includeSecrets: activeTagSlugs.length > 0 || (isFilteredByResources ? filter.secret : true),
@@ -886,7 +979,9 @@ const OverviewPageContent = () => {
     data: overview,
     isPlaceholderData,
     isFetching: isOverviewFetching
-  } = useGetProjectSecretsOverview(overviewQueryParams, { enabled: isProjectV3 });
+  } = useGetProjectSecretsOverview(overviewQueryParams, {
+    enabled: isProjectV3 && !shouldClearSortEnvironment && !shouldResetTimestampSort
+  });
   const isOverviewPending = isOverviewLoading || isPlaceholderData;
   const showDelayedOverviewSkeleton = useDelayedLoading(isPlaceholderData, {
     resetKey: JSON.stringify(overviewQueryParams)
@@ -956,6 +1051,7 @@ const OverviewPageContent = () => {
 
   const [folderAccessTarget, setFolderAccessTarget] = useState<{
     folderPath: string;
+    environmentSlug: string;
   } | null>(null);
   const [isCurrentFolderAccessOpen, setIsCurrentFolderAccessOpen] = useState(false);
 
@@ -1136,7 +1232,6 @@ const OverviewPageContent = () => {
     "rotateSecretRotation",
     "viewSecretRotationGeneratedCredentials",
     "deleteSecretRotation",
-    "upgradePlan",
     "reconcileSecretRotation",
     "importSecrets",
     "editDynamicSecret",
@@ -1156,12 +1251,23 @@ const OverviewPageContent = () => {
     "revokeHoneyToken",
     "createEnvironment"
   ] as const);
-
-  const [detailsDrawerHoneyTokenId, setDetailsDrawerHoneyTokenId] = useState<string | null>(null);
+  const { openUpgradeGate: openSharedUpgradeGate, upgradeGate } = useUpgradeGate();
   const [commitHistoryEnv, setCommitHistoryEnv] = useState<{ slug: string; name: string } | null>(
     null
   );
 
+  const openUpgradeGate = useCallback(
+    (request: UpgradeRequest) => {
+      openSharedUpgradeGate({ ...request, paywallKey: "secret-manager.overview" });
+    },
+    [openSharedUpgradeGate]
+  );
+
+  const getEnvironmentUpgradeRequest = (): UpgradeRequest => ({
+    intent: EnvironmentLimitUpgradeIntent
+  });
+
+  const [detailsDrawerHoneyTokenId, setDetailsDrawerHoneyTokenId] = useState<string | null>(null);
   // Auto-open honey token drawer when linked via notification/email
   useEffect(() => {
     if (routerSearch.honeyTokenId) {
@@ -1181,51 +1287,83 @@ const OverviewPageContent = () => {
   }, [routerSearch.dynamicSecretId, dynamicSecrets?.map((ds) => ds.id).join(",")]);
 
   const handleViewCommitHistory = (envSlug: string) => {
+    if (!canReadCommits) return;
+
+    const openCommitHistory = () => {
+      const env = userAvailableEnvs.find((el) => el.slug === envSlug);
+      setCommitHistoryEnv({ slug: envSlug, name: env?.name ?? envSlug });
+    };
+
     if (!subscription?.pitRecovery) {
-      handlePopUpOpen("upgradePlan", {
-        text: "You can use point-in-time recovery if you upgrade your Infisical plan."
+      openUpgradeGate({
+        intent: PointInTimeRecoveryUpgradeIntent
       });
       return;
     }
 
-    if (!canReadCommits) return;
-
-    const env = userAvailableEnvs.find((el) => el.slug === envSlug);
-    setCommitHistoryEnv({ slug: envSlug, name: env?.name ?? envSlug });
+    openCommitHistory();
   };
-
-  const ensureFolderRbacPlan = useCallback(() => {
-    if (subscription?.secretsFolderRbac) return true;
-    handlePopUpOpen("upgradePlan", {
-      text: "Folder-level access controls can be unlocked if you upgrade to Infisical Pro plan."
-    });
-    return false;
-  }, [subscription?.secretsFolderRbac, handlePopUpOpen]);
 
   const handleFolderAccessOpen = useCallback(
     (folderName: string) => {
-      if (!ensureFolderRbacPlan()) return;
-      const folder = getFolderByNameAndEnv(folderName, singleEnvSlug);
-      if (!folder) return;
-      setFolderAccessTarget({
-        folderPath: childFolderPath(folderName)
-      });
-      analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-        source: "folder_row",
-        projectId
-      });
+      const openFolderAccess = () => {
+        const folder = getFolderByNameAndEnv(folderName, singleEnvSlug);
+        if (!folder) return;
+        setFolderAccessTarget({
+          folderPath: childFolderPath(folderName),
+          environmentSlug: singleEnvSlug
+        });
+        analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
+          source: "folder_row",
+          projectId
+        });
+      };
+
+      if (!subscription?.secretsFolderRbac) {
+        openUpgradeGate({
+          intent: FolderAccessControlsUpgradeIntent
+        });
+        return;
+      }
+
+      openFolderAccess();
     },
-    [ensureFolderRbacPlan, getFolderByNameAndEnv, singleEnvSlug, childFolderPath, orgId, projectId]
+    [
+      getFolderByNameAndEnv,
+      singleEnvSlug,
+      childFolderPath,
+      orgId,
+      projectId,
+      subscription?.secretsFolderRbac,
+      openUpgradeGate
+    ]
   );
 
   const handleCurrentFolderAccessOpen = useCallback(() => {
-    if (!ensureFolderRbacPlan()) return;
-    setIsCurrentFolderAccessOpen(true);
-    analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
-      source: "breadcrumb",
-      projectId
-    });
-  }, [ensureFolderRbacPlan, orgId, projectId]);
+    const openCurrentFolderAccess = () => {
+      setIsCurrentFolderAccessOpen(true);
+      analytics.captureForOrganization(AnalyticsEvent.FolderAccessSheetOpened, orgId, {
+        source: "breadcrumb",
+        projectId
+      });
+    };
+
+    if (!subscription?.secretsFolderRbac) {
+      openUpgradeGate({
+        intent: FolderAccessControlsUpgradeIntent
+      });
+      return;
+    }
+
+    openCurrentFolderAccess();
+  }, [
+    openUpgradeGate,
+    orgId,
+    projectId,
+    secretPath,
+    singleEnvSlug,
+    subscription?.secretsFolderRbac
+  ]);
 
   const handleAddSecretImport = () => {
     handlePopUpOpen("addSecretImport");
@@ -2535,6 +2673,121 @@ const OverviewPageContent = () => {
   // }, [debouncedHeaderHeight]);
 
   const [tableWidth, setTableWidth] = useState(0);
+  const [storedColumnWidths, setStoredColumnWidths] = useLocalStorageState<
+    Record<string, number[]>
+  >(`overview-column-widths-${projectId}`, {});
+  const columnResize = useRef<{ index: number; startX: number; widths: number[] } | null>(null);
+  const columnKey = `${isSingleEnvView ? "single" : "multi"}:${visibleEnvs.map(({ id }) => id).join(":")}`;
+  const nameMaxWidth = Math.max(isSingleEnvView ? 280 : 240, tableWidth * 0.8);
+  const columnMinWidths = isSingleEnvView ? [280, 368] : Array(visibleEnvs.length + 1).fill(240);
+  const minColumnTotal = columnMinWidths.reduce((total, width) => total + width, 0);
+  const savedWidths = storedColumnWidths?.[columnKey];
+  const columnWidths = (() => {
+    const hasSavedWidths =
+      Array.isArray(savedWidths) &&
+      savedWidths.length === columnMinWidths.length &&
+      savedWidths.every((width) => Number.isFinite(width) && width > 0);
+    const defaultWidth =
+      tableWidth >= 40 + minColumnTotal ? (tableWidth - 40) / columnMinWidths.length : 0;
+    const widths = columnMinWidths.map((minWidth, index) =>
+      Math.min(
+        index === 0 ? nameMaxWidth : Infinity,
+        Math.max(minWidth, hasSavedWidths ? savedWidths[index] : defaultWidth)
+      )
+    );
+    if (tableWidth < 40 + minColumnTotal) return widths;
+
+    widths[widths.length - 1] += Math.max(
+      0,
+      tableWidth - 40 - widths.reduce((total, width) => total + width, 0)
+    );
+    let excess = Math.max(0, widths.reduce((total, width) => total + width, 0) - (tableWidth - 40));
+    for (let index = widths.length - 1; index >= 0 && excess > 0; index -= 1) {
+      const shrink = Math.min(excess, widths[index] - columnMinWidths[index]);
+      widths[index] -= shrink;
+      excess -= shrink;
+    }
+    return widths;
+  })();
+
+  const getCurrentColumnWidths = () =>
+    Array.from(tableRef.current?.querySelectorAll(":scope > table > thead > tr > th") ?? [])
+      .slice(1)
+      .map((header) => header.getBoundingClientRect().width);
+
+  const resizeColumns = (widths: number[], index: number, delta: number) => {
+    const next = [...widths];
+    const availableWidth = (tableRef.current?.clientWidth ?? 40) - 40;
+    const spareWidth = Math.max(
+      0,
+      availableWidth - widths.reduce((total, width) => total + width, 0)
+    );
+    const maxGrowth = widths[index + 1] - columnMinWidths[index + 1] + spareWidth;
+    const left = Math.max(
+      columnMinWidths[index],
+      Math.min(
+        widths[index] + delta,
+        availableWidth >= minColumnTotal ? widths[index] + maxGrowth : Infinity,
+        index === 0 ? nameMaxWidth : Infinity
+      )
+    );
+    next[index] = left;
+    if (left < widths[index]) {
+      const overflow = Math.max(
+        0,
+        widths.reduce((total, width) => total + width, 0) - availableWidth
+      );
+      next[index + 1] = widths[index + 1] + Math.max(0, widths[index] - left - overflow);
+    } else {
+      next[index + 1] = Math.max(
+        columnMinWidths[index + 1],
+        widths[index + 1] - (left - widths[index])
+      );
+    }
+    setStoredColumnWidths((current) => ({ ...current, [columnKey]: next }));
+  };
+
+  const resizeHandle = (index: number) => (
+    <button
+      type="button"
+      aria-label={`Resize ${index === 0 ? "Name" : visibleEnvs[index - 1].name} column`}
+      title="Drag or use arrow keys to resize"
+      className="group absolute top-0 -right-1 z-20 h-full w-2 cursor-col-resize touch-none focus-visible:outline-none"
+      onPointerDown={(event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        columnResize.current = {
+          index,
+          startX: event.clientX,
+          widths: getCurrentColumnWidths()
+        };
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }}
+      onPointerMove={(event) => {
+        if (!columnResize.current) return;
+        if (Math.abs(event.clientX - columnResize.current.startX) < 3) return;
+        resizeColumns(
+          columnResize.current.widths,
+          columnResize.current.index,
+          event.clientX - columnResize.current.startX
+        );
+      }}
+      onPointerUp={() => {
+        columnResize.current = null;
+      }}
+      onPointerCancel={() => {
+        columnResize.current = null;
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        event.preventDefault();
+        resizeColumns(getCurrentColumnWidths(), index, event.key === "ArrowRight" ? 16 : -16);
+      }}
+    >
+      <span className="pointer-events-none absolute top-0 left-0 h-full w-full group-focus-visible:outline-2 group-focus-visible:outline-ring" />
+    </button>
+  );
 
   const hasPendingCreates =
     mergedSecKeys.length > secKeys.length ||
@@ -2560,7 +2813,8 @@ const OverviewPageContent = () => {
   useEffect(() => {
     const element = tableRef.current;
     if (!element) return;
-    const nameHeader = element.querySelector(":scope > table > thead > tr > th:nth-child(2)");
+    const table = element.querySelector<HTMLTableElement>(":scope > table");
+    const nameHeader = table?.querySelector("thead > tr > th:nth-child(2)");
 
     const handleResize = () => {
       setTableWidth(element.clientWidth);
@@ -2574,6 +2828,7 @@ const OverviewPageContent = () => {
 
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(element);
+    if (table) resizeObserver.observe(table);
     if (nameHeader) resizeObserver.observe(nameHeader);
     handleResize();
 
@@ -2619,6 +2874,44 @@ const OverviewPageContent = () => {
     | (TDynamicSecret & { environment: string; isForced?: boolean })
     | undefined;
 
+  async function handleAddHoneyToken(): Promise<void> {
+    if (!subscription?.honeyTokens) {
+      openUpgradeGate({
+        intent: HoneyTokensUpgradeIntent
+      });
+      return;
+    }
+
+    try {
+      const { data } = await apiRequest.get<{ used: number; limit: number }>(
+        "/api/v1/honey-tokens/limits",
+        {
+          params: { projectId }
+        }
+      );
+
+      if (data.used >= data.limit) {
+        openUpgradeGate({
+          intent: {
+            ...HoneyTokensUpgradeIntent,
+            upgradeLabel: "Increase Honey Token Limit",
+            quota: data,
+            quotaNotice: `You have used ${data.used} out of the ${data.limit} honey token limit.`
+          }
+        });
+        return;
+      }
+    } catch {
+      createNotification({
+        text: "Failed to check honey token limits. Please try again.",
+        type: "error"
+      });
+      return;
+    }
+
+    handlePopUpOpen("addHoneyToken");
+  }
+
   const addResourceButtonsProps: AddResourceButtonsProps = {
     onMenuOpen: (source, menuLevel) =>
       analytics.captureForOrganization(AnalyticsEvent.SecretsAddResourceMenuOpened, orgId, {
@@ -2642,9 +2935,8 @@ const OverviewPageContent = () => {
         handlePopUpOpen("addDynamicSecret");
         return;
       }
-      handlePopUpOpen("upgradePlan", {
-        isEnterpriseFeature: true,
-        text: "Upgrade to the Infisical Secret Management advanced plan to unlock dynamic secrets."
+      openUpgradeGate({
+        intent: DynamicSecretsUpgradeIntent
       });
     },
     onAddSecretRotation: () => {
@@ -2652,49 +2944,18 @@ const OverviewPageContent = () => {
         handlePopUpOpen("addSecretRotation");
         return;
       }
-      handlePopUpOpen("upgradePlan", {
-        text: "Adding secret rotations can be unlocked if you upgrade to Infisical Pro plan."
+      openUpgradeGate({
+        intent: SecretRotationsUpgradeIntent
       });
     },
-    onAddHoneyToken: async () => {
-      if (subscription?.honeyTokens) {
-        try {
-          const { data } = await apiRequest.get<{ used: number; limit: number }>(
-            "/api/v1/honey-tokens/limits",
-            {
-              params: { projectId }
-            }
-          );
-
-          if (data.used >= data.limit) {
-            handlePopUpOpen("upgradePlan", {
-              text: `You have used ${data.used} out of the ${data.limit} honey token limit.`
-            });
-            return;
-          }
-        } catch {
-          createNotification({
-            text: "Failed to check honey token limits. Please try again.",
-            type: "error"
-          });
-          return;
-        }
-
-        handlePopUpOpen("addHoneyToken");
-        return;
-      }
-      handlePopUpOpen("upgradePlan", {
-        text: "Adding honey tokens can be unlocked if you upgrade to Infisical Pro plan."
-      });
-    },
+    onAddHoneyToken: handleAddHoneyToken,
     onAddProxiedService: () => {
       if (subscription?.secretsBrokering) {
         handlePopUpOpen("addProxiedService");
         return;
       }
-      handlePopUpOpen("upgradePlan", {
-        isEnterpriseFeature: true,
-        text: "Secrets brokering can be unlocked if you upgrade to Infisical Enterprise plan."
+      openUpgradeGate({
+        intent: SecretsBrokeringUpgradeIntent
       });
     },
     onCopySecrets: () =>
@@ -2726,13 +2987,14 @@ const OverviewPageContent = () => {
   };
 
   return (
-    <div className="mx-auto flex max-w-8xl flex-col gap-6 md:gap-8">
+    <div className="mx-auto flex max-w-8xl flex-col">
       <Helmet>
         <title>{t("common.head-title", { title: t("dashboard.title") })}</title>
         <meta property="og:title" content={String(t("dashboard.og-title"))} />
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
       <PageHeader
+        className="mb-6 md:mb-10"
         scope={ProjectType.SecretManager}
         title={currentProject.name}
         description={currentProject.description}
@@ -2753,6 +3015,7 @@ const OverviewPageContent = () => {
               <EnvironmentSelect
                 selectedEnvs={filteredEnvs}
                 setSelectedEnvs={setFilteredEnvs}
+                onUpgradePlan={() => openUpgradeGate(getEnvironmentUpgradeRequest())}
                 isDisabled={
                   isBatchModeActive &&
                   (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0)
@@ -2904,9 +3167,7 @@ const OverviewPageContent = () => {
                 if (isMoreEnvironmentsAllowed) {
                   handlePopUpOpen("createEnvironment");
                 } else {
-                  handlePopUpOpen("upgradePlan", {
-                    text: "Your current plan does not include access to adding custom environments. To unlock this feature, please upgrade to Infisical Pro plan."
-                  });
+                  openUpgradeGate(getEnvironmentUpgradeRequest());
                 }
               }}
             />
@@ -2920,11 +3181,28 @@ const OverviewPageContent = () => {
               <DragDropProvider onDragEnd={handleSecretImportReorder}>
                 <Table
                   ref={tableRef}
-                  className="border-separate border-spacing-0 [&_tbody>tr>td:nth-child(2)]:pl-1 [&_thead>tr>th:nth-child(2)>button]:pl-1"
+                  className="w-full table-fixed border-separate border-spacing-0 [&_tbody>tr>td:nth-child(2)]:pl-1 [&_thead>tr>th:nth-child(2)>button]:pl-1"
                   containerClassName="overscroll-x-none rounded-t-none"
+                  style={{
+                    minWidth: 40 + minColumnTotal,
+                    width: columnWidths
+                      ? `max(100%, ${40 + columnWidths.reduce((total, width) => total + width, 0)}px)`
+                      : undefined
+                  }}
                 >
-                  <TableHeader>
-                    <TableRow className="h-10 has-[>th:nth-child(2):hover]:[&>th:nth-child(-n+2)]:bg-foreground/5">
+                  <colgroup>
+                    <col className="w-10" />
+                    <col style={{ width: columnWidths?.[0] }} />
+                    {isSingleEnvView ? (
+                      <col style={{ width: columnWidths?.[1] }} />
+                    ) : (
+                      visibleEnvs.map(({ id }, index) => (
+                        <col key={id} style={{ width: columnWidths?.[index + 1] }} />
+                      ))
+                    )}
+                  </colgroup>
+                  <TableHeader className="relative z-20">
+                    <TableRow className="h-10 has-[>th:nth-child(2):hover]:[&>th:nth-child(-n+2)]:bg-container-hover">
                       <TableHead
                         className={twMerge(
                           !isSingleEnvView && "sticky",
@@ -2944,8 +3222,10 @@ const OverviewPageContent = () => {
                       </TableHead>
                       <TableHead
                         className={twMerge(
-                          !isSingleEnvView && "sticky",
-                          "left-10 z-10 w-60 max-w-60 min-w-60 border-r bg-container p-0 lg:w-96 lg:max-w-96 lg:min-w-96"
+                          isSingleEnvView
+                            ? "relative min-w-[280px]"
+                            : "sticky left-10 min-w-[240px]",
+                          "z-10 border-r bg-container p-0"
                         )}
                       >
                         <DropdownMenu>
@@ -2953,9 +3233,9 @@ const OverviewPageContent = () => {
                             <button
                               type="button"
                               className="flex h-full w-full cursor-pointer items-center justify-between px-3 text-left focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-                              aria-label={`Sort secrets. Current order: ${activeSecretSort?.label ?? "Name (A to Z)"}`}
+                              aria-label={`Sort secrets. Current order: ${activeSecretSort?.label ?? "Name (A to Z)"}${activeSecretSortScope}`}
                             >
-                              <span className="text-foreground">Name</span>
+                              <span className="text-sm font-medium text-muted">Name</span>
                               <ChevronDownIcon className="size-3.5 shrink-0 text-muted" />
                             </button>
                           </DropdownMenuTrigger>
@@ -2968,10 +3248,16 @@ const OverviewPageContent = () => {
                               {visibleEnvs.length > 1 ? "Sort secret names" : "Sort secrets"}
                             </DropdownMenuLabel>
                             <DropdownMenuRadioGroup
-                              value={getSecretSortValue(orderBy, orderDirection)}
+                              value={
+                                sortEnvironment ? "" : getSecretSortValue(orderBy, orderDirection)
+                              }
                               onValueChange={(value) => handleSecretSortChange(value)}
                             >
-                              {SECRET_SORT_OPTIONS.map((option) => (
+                              {SECRET_SORT_OPTIONS.filter(
+                                ({ orderBy: sortField }) =>
+                                  visibleEnvs.length === 1 ||
+                                  sortField === DashboardSecretsOrderBy.Name
+                              ).map((option) => (
                                 <DropdownMenuRadioItem
                                   key={getSecretSortValue(option.orderBy, option.orderDirection)}
                                   value={getSecretSortValue(option.orderBy, option.orderDirection)}
@@ -2983,12 +3269,13 @@ const OverviewPageContent = () => {
                             </DropdownMenuRadioGroup>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                        {resizeHandle(0)}
                       </TableHead>
                       {visibleEnvs.length > 1 ? (
                         visibleEnvs?.map(({ name, slug, id }, index) => {
                           return (
                             <TableHead
-                              className="w-max min-w-40 border-r p-0 text-center whitespace-nowrap last:border-r-0"
+                              className="relative min-w-[240px] border-r p-0 text-center whitespace-nowrap last:border-r-0"
                               key={`secret-overview-${name}-${index + 1}`}
                             >
                               <DropdownMenu>
@@ -2996,17 +3283,71 @@ const OverviewPageContent = () => {
                                   <button
                                     type="button"
                                     title={name}
-                                    aria-label={`Open ${name} environment menu`}
-                                    className="flex h-full w-full min-w-40 cursor-pointer items-center justify-center gap-x-2 px-3 hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                                    aria-label={`Open ${name} environment menu${
+                                      sortEnvironment === slug
+                                        ? `. Currently sorting by ${activeSecretSort?.label ?? "recency"}`
+                                        : ""
+                                    }`}
+                                    className="flex h-full w-full min-w-[240px] cursor-pointer items-center justify-center gap-x-2 px-3 text-sm font-medium text-muted hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                                   >
-                                    <span className="whitespace-nowrap">{name}</span>
-                                    <ChevronDownIcon className="size-3.5 shrink-0" />
+                                    <span
+                                      className={twMerge(
+                                        "min-w-0 truncate",
+                                        sortEnvironment === slug && "text-foreground"
+                                      )}
+                                    >
+                                      {name}
+                                    </span>
+                                    {sortEnvironment === slug ? (
+                                      <ActiveSecretSortIcon className="size-3.5 shrink-0 text-foreground" />
+                                    ) : (
+                                      <ChevronDownIcon className="size-3.5 shrink-0" />
+                                    )}
                                   </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent
                                   align="end"
                                   onCloseAutoFocus={(event) => event.preventDefault()}
                                 >
+                                  <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger>
+                                      <ArrowUpDownIcon />
+                                      Sort Secrets by Recency
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuSubContent>
+                                      <DropdownMenuLabel>Use {name} Timestamps</DropdownMenuLabel>
+                                      <DropdownMenuRadioGroup
+                                        value={
+                                          sortEnvironment === slug
+                                            ? getSecretSortValue(orderBy, orderDirection)
+                                            : ""
+                                        }
+                                        onValueChange={(value) =>
+                                          handleSecretSortChange(value, slug)
+                                        }
+                                      >
+                                        {SECRET_SORT_OPTIONS.filter(
+                                          ({ orderBy: sortField }) =>
+                                            sortField !== DashboardSecretsOrderBy.Name
+                                        ).map((option) => (
+                                          <DropdownMenuRadioItem
+                                            key={getSecretSortValue(
+                                              option.orderBy,
+                                              option.orderDirection
+                                            )}
+                                            value={getSecretSortValue(
+                                              option.orderBy,
+                                              option.orderDirection
+                                            )}
+                                          >
+                                            <option.Icon />
+                                            {option.label}
+                                          </DropdownMenuRadioItem>
+                                        ))}
+                                      </DropdownMenuRadioGroup>
+                                    </DropdownMenuSubContent>
+                                  </DropdownMenuSub>
+                                  <DropdownMenuSeparator />
                                   <DropdownMenuItem
                                     onClick={() => {
                                       navigator.clipboard.writeText(slug);
@@ -3092,11 +3433,12 @@ const OverviewPageContent = () => {
                                   </ProjectPermissionCan>
                                 </DropdownMenuContent>
                               </DropdownMenu>
+                              {index < visibleEnvs.length - 1 && resizeHandle(index + 1)}
                             </TableHead>
                           );
                         })
                       ) : (
-                        <TableHead className="w-full">
+                        <TableHead className="min-w-[368px] text-sm font-medium text-muted">
                           <div className="flex w-full items-center justify-between gap-2">
                             Value
                             <div className="flex items-center gap-2">
@@ -3435,6 +3777,7 @@ const OverviewPageContent = () => {
                                 toggleSelectedEntry(EntryType.SECRET, key, isShiftKey);
                             }}
                             secretPath={secretPath}
+                            tableWidth={tableWidth}
                             getImportedSecretByKey={getImportedSecretByKey}
                             isImportedSecretPresentInEnv={handleIsImportedSecretPresentInEnv}
                             onSecretCreate={handleSecretCreate}
@@ -3444,13 +3787,17 @@ const OverviewPageContent = () => {
                             environments={visibleEnvs}
                             secretKey={key}
                             getSecretByKey={getSecretByKeyWithPending}
-                            tableWidth={tableWidth}
                             importedBy={importedBy}
                             isSingleEnvSecretsVisible={isSingleEnvSecretsVisible}
                             isBatchMode={isBatchModeActive}
                             onBatchRevert={handleBatchRevert}
                             isSelectionDisabled={hasPendingBatchChanges}
                             onCopySecret={handleCopySecret}
+                            onAccessInsightsUpgrade={() =>
+                              openUpgradeGate({
+                                intent: SecretAccessInsightsUpgradeIntent
+                              })
+                            }
                             activityId={getTableRowActivityId("secret", key)}
                             onActivityChange={handleTableRowActivityChange}
                           />
@@ -3806,8 +4153,8 @@ const OverviewPageContent = () => {
           }
         }}
         onUpgradePlan={() =>
-          handlePopUpOpen("upgradePlan", {
-            text: "Secret import replication requires an upgraded plan."
+          openUpgradeGate({
+            intent: SecretImportReplicationUpgradeIntent
           })
         }
       />
@@ -3821,16 +4168,13 @@ const OverviewPageContent = () => {
         initialFormDataIsDirty={false}
         startOnDestination={false}
         onOpenChange={(isOpen) => handlePopUpToggle("addSecretSync", isOpen)}
+        onEnterpriseUpgrade={() =>
+          openUpgradeGate({
+            intent: EnterpriseSecretSyncsUpgradeIntent
+          })
+        }
       />
-      {subscription && (
-        <UpgradePlanModal
-          paywallKey="secret-manager.overview"
-          isOpen={popUp.upgradePlan.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-          text={popUp.upgradePlan.data?.text}
-        />
-      )}
+      {upgradeGate}
       <AddEnvironmentModal
         isOpen={popUp.createEnvironment.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("createEnvironment", isOpen)}
@@ -4044,9 +4388,12 @@ const OverviewPageContent = () => {
             if (!isOpen) setFolderAccessTarget(null);
           }}
           projectId={projectId}
-          environmentSlug={singleEnvSlug}
+          environmentSlug={folderAccessTarget.environmentSlug}
           folderPath={folderAccessTarget.folderPath}
-          environmentName={singleEnvName}
+          environmentName={
+            userAvailableEnvs.find((env) => env.slug === folderAccessTarget.environmentSlug)
+              ?.name ?? folderAccessTarget.environmentSlug
+          }
         />
       )}
       {isCurrentFolderAccessOpen && (

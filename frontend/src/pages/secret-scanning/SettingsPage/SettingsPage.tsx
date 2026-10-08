@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
 import { LookingForOrgPageLink } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningConfigActions } from "@app/context/ProjectPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";

@@ -1,7 +1,6 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
 import { ShieldCheckIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -15,13 +14,11 @@ import {
   StepperList,
   StepperStep
 } from "@app/components/v3";
-import { useListGatewayPools } from "@app/hooks/api/gateway-pools";
-import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { useCreateHsmConnector } from "@app/hooks/api/hsmConnectors";
 
 import { AccessStep } from "./AccessStep";
 import { BasicsStep } from "./BasicsStep";
-import { HostStep, ReachedFromOption } from "./HostStep";
+import { HostStep } from "./HostStep";
 import {
   AccessForm,
   accessSchema,
@@ -42,21 +39,7 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
   const [state, setState] = useState<WizardState>(INITIAL_WIZARD_STATE);
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: gateways = [], isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
-  const { data: pools = [], isPending: isPoolsLoading } = useListGatewayPools();
   const createMutation = useCreateHsmConnector();
-
-  const reachedFromOptions: ReachedFromOption[] = useMemo(() => {
-    const gatewayOptions: ReachedFromOption[] = gateways
-      .filter((g) => g.capabilities?.pkcs11 === true)
-      .map((g) => ({ value: `gateway:${g.id}`, label: g.name, group: "gateway" as const }));
-    const poolOptions: ReachedFromOption[] = pools.map((p) => ({
-      value: `pool:${p.id}`,
-      label: p.name,
-      group: "pool" as const
-    }));
-    return [...gatewayOptions, ...poolOptions];
-  }, [gateways, pools]);
 
   const basicsForm = useForm<BasicsForm>({
     resolver: zodResolver(basicsSchema),
@@ -212,18 +195,12 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
 
             <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
               <div className="mb-6">
-                <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
+                <h2 className="text-lg font-normal text-foreground">{currentStep.title}</h2>
                 <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
               </div>
 
               {step === 0 && <BasicsStep form={basicsForm} />}
-              {step === 1 && (
-                <HostStep
-                  form={hostForm}
-                  options={reachedFromOptions}
-                  isLoading={isGatewaysLoading || isPoolsLoading}
-                />
-              )}
+              {step === 1 && <HostStep form={hostForm} />}
               {step === 2 && <AccessStep form={accessForm} />}
             </div>
 
