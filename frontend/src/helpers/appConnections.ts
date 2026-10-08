@@ -667,12 +667,25 @@ const S3_COMPATIBLE_PROVIDERS = [
   }
 ];
 
-export const getS3CompatibleProviderName = (endpoint: string) => {
+const STORAGE_HOSTNAME_REGEX = /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?$/;
+
+export const isStorageHostname = (hostname: string) => {
+  if (!STORAGE_HOSTNAME_REGEX.test(hostname)) return false;
+  try {
+    return new URL(`https://${hostname}`).host === hostname;
+  } catch {
+    return false;
+  }
+};
+
+export const getS3CompatibleProviderName = (
+  endpoint: string,
+  allowedStorageHostnames: string[] = []
+) => {
   try {
     const url = new URL(endpoint);
     if (
       url.protocol !== "https:" ||
-      url.port ||
       url.username ||
       url.pathname !== "/" ||
       url.search ||
@@ -680,6 +693,8 @@ export const getS3CompatibleProviderName = (endpoint: string) => {
     ) {
       return null;
     }
+    if (allowedStorageHostnames.includes(url.host)) return url.host;
+    if (url.port) return null;
     return (
       S3_COMPATIBLE_PROVIDERS.find(({ hostname }) => hostname.test(url.hostname))?.name ?? null
     );

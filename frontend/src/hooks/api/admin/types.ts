@@ -82,6 +82,7 @@ export type TServerConfig = {
   passwordPolicy: TPasswordPolicy;
   authConsentContent?: string;
   pageFrameContent?: string;
+  allowedStorageHostnames?: string[] | null;
   invalidatingCache: boolean;
   envOverrides?: Record<string, string>;
   isPublicSecretSharingDisabled?: boolean;

@@ -34,7 +34,7 @@ export const resolveS3RecordingAccess = async (
   region: string | undefined
 ): Promise<Pick<TPamRecordingResolvedConfig, "region" | "endpoint" | "awsCredentials">> => {
   if (appConnection.app === AppConnection.S3Compatible) {
-    const s3Config = getS3CompatibleConnectionConfig(appConnection);
+    const s3Config = await getS3CompatibleConnectionConfig(appConnection);
     return { region: s3Config.region, endpoint: s3Config.endpoint, awsCredentials: s3Config.credentials };
   }
 

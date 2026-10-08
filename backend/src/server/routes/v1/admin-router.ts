@@ -22,6 +22,7 @@ import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { StorageHostnameSchema } from "@app/services/app-connection/s3-compatible";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
@@ -44,6 +45,7 @@ const SanitizedSuperAdminSchema = z.object({
   enabledLoginMethods: z.string().array().nullable().optional(),
   authConsentContent: z.string().nullable().optional(),
   pageFrameContent: z.string().nullable().optional(),
+  allowedStorageHostnames: z.string().array().nullable().optional(),
   // Populated on self-hosted instances when a newer release than the running version exists
   latestAvailableVersion: z.string().nullable().optional(),
   // Super admin-only fields (omitted for non-super-admin callers)
@@ -112,6 +114,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             passwordPolicy: PASSWORD_POLICY,
             authConsentContent: config.authConsentContent,
             pageFrameContent: config.pageFrameContent,
+            allowedStorageHostnames: config.allowedStorageHostnames,
             isPublicSecretSharingDisabled: serverEnvs.DISABLE_PUBLIC_SECRET_SHARING,
             isClickhouseAuditLogEnabled,
             latestAvailableVersion
@@ -182,6 +185,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             message: "Page frame content contains unsafe HTML."
           })
           .optional(),
+        allowedStorageHostnames: StorageHostnameSchema.array().max(50).optional(),
         envOverrides: z.record(z.enum(Array.from(overridableKeys) as [string, ...string[]]), z.string()).optional()
       }),
       response: {

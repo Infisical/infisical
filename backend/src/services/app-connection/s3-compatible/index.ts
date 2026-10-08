@@ -8,6 +8,7 @@ export {
   CreateS3CompatibleConnectionSchema,
   S3CompatibleConnectionListItemSchema,
   SanitizedS3CompatibleConnectionSchema,
+  StorageHostnameSchema,
   UpdateS3CompatibleConnectionSchema,
   ValidateS3CompatibleConnectionCredentialsSchema
 } from "./s3-compatible-connection-schemas";

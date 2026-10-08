@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
@@ -19,6 +20,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useServerConfig } from "@app/context";
 import {
   APP_CONNECTION_MAP,
   getAppConnectionMethodDetails,
@@ -43,28 +45,45 @@ const rootSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.S3Compatible)
 });
 
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(S3CompatibleConnectionMethod.AccessKey),
-    credentials: z.object({
-      endpoint: z
-        .string()
-        .trim()
-        .min(1, "Endpoint required")
-        .refine(
-          (endpoint) => Boolean(getS3CompatibleProviderName(endpoint)),
-          "Enter the S3 API endpoint of a supported provider, without the bucket name"
-        ),
-      accessKeyId: z.string().trim().min(1, "Access Key ID required"),
-      secretAccessKey: z.string().trim().min(1, "Secret Access Key required")
+const buildFormSchema = (allowedStorageHostnames: string[]) =>
+  z.discriminatedUnion("method", [
+    rootSchema.extend({
+      method: z.literal(S3CompatibleConnectionMethod.AccessKey),
+      credentials: z.object({
+        endpoint: z
+          .string()
+          .trim()
+          .min(1, "Endpoint required")
+          .refine(
+            (endpoint) => Boolean(getS3CompatibleProviderName(endpoint, allowedStorageHostnames)),
+            "Enter the S3 API endpoint of a supported provider, without the bucket name"
+          ),
+        accessKeyId: z.string().trim().min(1, "Access Key ID required"),
+        secretAccessKey: z.string().trim().min(1, "Secret Access Key required")
+      })
     })
-  })
-]);
+  ]);
 
-type FormData = z.infer<typeof formSchema>;
+type FormData = z.infer<ReturnType<typeof buildFormSchema>>;
 
 export const S3CompatibleConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
+  const { config } = useServerConfig();
+  const allowedStorageHostnames = useMemo(
+    () => config.allowedStorageHostnames ?? [],
+    [config.allowedStorageHostnames]
+  );
+  const formSchema = useMemo(
+    () => buildFormSchema(allowedStorageHostnames),
+    [allowedStorageHostnames]
+  );
+  const supportedEndpoints = new Intl.ListFormat("en").format([
+    "AWS S3",
+    "Cloudflare R2",
+    "Google Cloud Storage",
+    "OCI Object Storage",
+    ...allowedStorageHostnames
+  ]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -136,8 +155,7 @@ export const S3CompatibleConnectionForm = ({ appConnection, onSubmit }: Props) =
                 isError={Boolean(error?.message)}
               />
               <FieldDescription>
-                The S3 API endpoint, without the bucket name. Supports AWS S3, Cloudflare R2, Google
-                Cloud Storage and OCI Object Storage.
+                The S3 API endpoint, without the bucket name. Supports {supportedEndpoints}.
               </FieldDescription>
               <FieldError errors={[error]} />
             </Field>

@@ -178,7 +178,8 @@ template's `settings` column, not `policies`. Both are edited on the template de
 
 **External recording storage** is the `aws-s3` backend whether the connection is AWS or S3-Compatible Storage
 (`resolveS3RecordingAccess`). Don't add a backend per provider: the value is in each chunk's AAD and in the
-backend list gateways read.
+backend list gateways read. Hosts beyond the built-in providers come from the server admin's
+`allowedStorageHostnames`, which `serve-ui.ts` also adds to the CSP `connect-src`, since browsers fetch chunks directly.
 
 **Break-glass** lets a requester self-approve their own pending request, and needs **both** gates open:
 the account's template carries `allow-break-glass`, *and* the folder's approval policy names the actor in

@@ -15,6 +15,8 @@ By default, [session recordings](/documentation/platform/pam/sessions/session-re
 | Google Cloud Storage | `https://storage.googleapis.com` | An HMAC key for a service account with **Storage Object User** on the bucket |
 | OCI Object Storage | `https://<namespace>.compat.objectstorage.<region>.oraclecloud.com` | A customer secret key for a user who can `inspect buckets` and `manage objects` |
 
+If you self-host Infisical, you can also store recordings on your own S3-compatible server, such as MinIO, after a server admin adds its hostname under [Allowed storage hostnames](/documentation/platform/admin-panel/server-admin#allowed-storage-hostnames).
+
 ## Prerequisites
 
 Before configuring external storage, you need an [AWS Connection](/integrations/app-connections/aws) or an S3-Compatible Storage connection in your organization. This provides the credentials Infisical uses to write to your bucket.

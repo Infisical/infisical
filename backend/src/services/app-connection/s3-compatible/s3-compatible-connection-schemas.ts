@@ -18,9 +18,27 @@ const R2_HOSTNAME = new RE2(/^[a-f0-9]{32}(\.[a-z]+)?\.r2\.cloudflarestorage\.co
 const OCI_HOSTNAME = new RE2(
   /^[a-z0-9-]+\.compat\.objectstorage\.([a-z0-9-]+)\.(?:oraclecloud\.com|oci\.customer-oci\.com)$/
 );
+const STORAGE_HOSTNAME = new RE2(/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?$/);
+// S3-compatible servers on custom hostnames, such as MinIO, accept this region by default
+const CUSTOM_HOSTNAME_SIGNING_REGION = "us-east-1";
+
+const isStorageHostname = (hostname: string) => {
+  try {
+    return STORAGE_HOSTNAME.test(hostname) && new URL(`https://${hostname}`).host === hostname;
+  } catch {
+    return false;
+  }
+};
+
+export const StorageHostnameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .max(253, "Hostname cannot exceed 253 characters")
+  .refine(isStorageHostname, "Enter a hostname, with a port if it isn't 443, such as minio.example.com:9000");
 
 export const S3_COMPATIBLE_PROVIDER_MAP: Record<
-  S3CompatibleProvider,
+  Exclude<S3CompatibleProvider, S3CompatibleProvider.Custom>,
   {
     name: string;
     endpointExample: string;
@@ -52,38 +70,39 @@ export const S3_COMPATIBLE_PROVIDER_MAP: Record<
   }
 };
 
-export const parseS3CompatibleEndpoint = (endpoint: string) => {
-  let url: URL;
+const parseEndpointUrl = (endpoint: string) => {
   try {
-    url = new URL(endpoint);
+    const url = new URL(endpoint);
+    if (url.protocol !== "https:" || url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
+      return null;
+    }
+    return url;
   } catch {
     return null;
   }
+};
 
-  if (
-    url.protocol !== "https:" ||
-    url.port ||
-    url.username ||
-    url.password ||
-    url.pathname !== "/" ||
-    url.search ||
-    url.hash
-  ) {
-    return null;
+export const parseS3CompatibleEndpoint = (endpoint: string, allowedStorageHostnames: string[]) => {
+  const url = parseEndpointUrl(endpoint);
+  if (!url) return null;
+
+  if (allowedStorageHostnames.includes(url.host)) {
+    return { provider: S3CompatibleProvider.Custom, region: CUSTOM_HOSTNAME_SIGNING_REGION, origin: url.origin };
   }
+  if (url.port) return null;
 
-  for (const provider of Object.values(S3CompatibleProvider)) {
+  for (const provider of Object.keys(S3_COMPATIBLE_PROVIDER_MAP) as (keyof typeof S3_COMPATIBLE_PROVIDER_MAP)[]) {
     const region = S3_COMPATIBLE_PROVIDER_MAP[provider].getSigningRegion(url.hostname);
     if (region) return { provider, region, origin: url.origin };
   }
   return null;
 };
 
-const S3_COMPATIBLE_ENDPOINT_ERROR = `Endpoint must be the S3 API endpoint of a supported provider, without a bucket name: ${Object.values(
+export const S3_COMPATIBLE_ENDPOINT_ERROR = `Endpoint must be the S3 API endpoint of a supported provider, without a bucket name: ${Object.values(
   S3_COMPATIBLE_PROVIDER_MAP
 )
   .map(({ name, endpointExample }) => `${endpointExample} (${name})`)
-  .join(", ")}`;
+  .join(", ")}, or a hostname allowed in the Server Console`;
 
 export const S3CompatibleConnectionAccessKeyCredentialsSchema = z.object({
   endpoint: z
@@ -91,7 +110,7 @@ export const S3CompatibleConnectionAccessKeyCredentialsSchema = z.object({
     .trim()
     .min(1, "Endpoint required")
     .max(256, "Endpoint cannot exceed 256 characters")
-    .refine((endpoint) => Boolean(parseS3CompatibleEndpoint(endpoint)), S3_COMPATIBLE_ENDPOINT_ERROR)
+    .refine((endpoint) => Boolean(parseEndpointUrl(endpoint)), "Endpoint must be an HTTPS URL without a bucket name")
     .describe(AppConnections.CREDENTIALS.S3_COMPATIBLE.endpoint),
   accessKeyId: z
     .string()

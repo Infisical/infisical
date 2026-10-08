@@ -3,10 +3,15 @@ import { ListBucketsCommand, S3ServiceException } from "@aws-sdk/client-s3";
 import { createS3Client } from "@app/lib/aws/s3";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { AppConnection } from "../app-connection-enums";
 import { S3CompatibleConnectionMethod, S3CompatibleProvider } from "./s3-compatible-connection-enums";
-import { parseS3CompatibleEndpoint, S3_COMPATIBLE_PROVIDER_MAP } from "./s3-compatible-connection-schemas";
+import {
+  parseS3CompatibleEndpoint,
+  S3_COMPATIBLE_ENDPOINT_ERROR,
+  S3_COMPATIBLE_PROVIDER_MAP
+} from "./s3-compatible-connection-schemas";
 import { TS3CompatibleConnectionConfig } from "./s3-compatible-connection-types";
 
 export const getS3CompatibleConnectionListItem = () => {
@@ -17,20 +22,22 @@ export const getS3CompatibleConnectionListItem = () => {
   };
 };
 
-export const getS3CompatibleConnectionConfig = ({
+export const getS3CompatibleConnectionConfig = async ({
   credentials
 }: {
   credentials: TS3CompatibleConnectionConfig["credentials"];
 }) => {
-  const parsed = parseS3CompatibleEndpoint(credentials.endpoint);
+  const { allowedStorageHostnames } = await getServerCfg();
+  const parsed = parseS3CompatibleEndpoint(credentials.endpoint, allowedStorageHostnames ?? []);
   if (!parsed) {
-    throw new BadRequestError({
-      message: "The S3-Compatible Storage connection's endpoint is not supported. Update the connection's endpoint."
-    });
+    throw new BadRequestError({ message: S3_COMPATIBLE_ENDPOINT_ERROR });
   }
 
   return {
-    provider: parsed.provider,
+    providerName:
+      parsed.provider === S3CompatibleProvider.Custom
+        ? new URL(parsed.origin).host
+        : S3_COMPATIBLE_PROVIDER_MAP[parsed.provider].name,
     region: parsed.region,
     endpoint: parsed.provider === S3CompatibleProvider.AwsS3 ? undefined : parsed.origin,
     credentials: { accessKeyId: credentials.accessKeyId, secretAccessKey: credentials.secretAccessKey }
@@ -38,8 +45,7 @@ export const getS3CompatibleConnectionConfig = ({
 };
 
 export const validateS3CompatibleConnectionCredentials = async (config: TS3CompatibleConnectionConfig) => {
-  const { provider, ...clientConfig } = getS3CompatibleConnectionConfig(config);
-  const providerName = S3_COMPATIBLE_PROVIDER_MAP[provider].name;
+  const { providerName, ...clientConfig } = await getS3CompatibleConnectionConfig(config);
 
   try {
     await createS3Client(clientConfig).send(new ListBucketsCommand({}));
@@ -49,7 +55,7 @@ export const validateS3CompatibleConnectionCredentials = async (config: TS3Compa
 
     logger.warn(
       { err: error },
-      `S3-Compatible Storage credential check failed [orgId=${config.orgId}] [provider=${provider}]`
+      `S3-Compatible Storage credential check failed [orgId=${config.orgId}] [provider=${providerName}]`
     );
 
     if (error instanceof S3ServiceException) {
