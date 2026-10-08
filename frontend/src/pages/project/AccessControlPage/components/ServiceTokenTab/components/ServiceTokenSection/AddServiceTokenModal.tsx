@@ -159,7 +159,7 @@ const ServiceTokenForm = () => {
         onSubmit={handleSubmit(onFormSubmit)}
         className="flex flex-1 flex-col overflow-hidden"
       >
-        <div className="flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <div className="relative flex thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
           {hasServiceToken ? (
             <>
               <Field>
