@@ -227,7 +227,7 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.Qovery]: ["organizationName", "projectName", "environmentName"],
   [SecretSync.Cloud66]: ["stackName"],
   [SecretSync.Spacelift]: ["contextName"],
-  [SecretSync.Daytona]: []
+  [SecretSync.Daytona]: [],
   [SecretSync.Coolify]: []
 };
 

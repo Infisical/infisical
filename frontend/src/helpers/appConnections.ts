@@ -724,7 +724,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case DopplerConnectionMethod.ApiToken:
     case RundeckConnectionMethod.ApiToken:
     case CoolifyConnectionMethod.ApiToken:
-      return { name: "API Token", icon: faKey };
+      return { name: "API Token", icon: KeyRoundIcon };
     case VenafiConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };
     case PostgresConnectionMethod.UsernameAndPassword:
