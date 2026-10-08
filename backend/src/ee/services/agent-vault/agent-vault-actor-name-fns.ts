@@ -48,3 +48,21 @@ export const resolveAgentVaultActorNames = async (
   );
   return nameByKey;
 };
+
+export const auditActorFields = ({
+  type,
+  id,
+  actorName
+}: {
+  type: AgentVaultMemberType;
+  id: string;
+  actorName?: TAgentVaultActorName;
+}) => ({
+  ...(type === AgentVaultMemberType.User && {
+    userId: id,
+    userName: actorName?.name,
+    ...(actorName?.email && { userEmail: actorName.email })
+  }),
+  ...(type === AgentVaultMemberType.MachineIdentity && { machineIdentityId: id, machineIdentityName: actorName?.name }),
+  ...(type === AgentVaultMemberType.Group && { groupId: id, groupName: actorName?.name })
+});

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
+import { auditActorFields } from "@app/ee/services/agent-vault/agent-vault-actor-name-fns";
 import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamProductRole } from "@app/ee/services/pam/pam-enums";
@@ -229,7 +230,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
               projectId: agentVaultProjectId,
               event: {
                 type: EventType.AGENT_VAULT_MEMBER_ADD,
-                metadata: { userId: member.id, userName: member.actorName, role: member.role }
+                metadata: { ...auditActorFields(member), role: member.role }
               }
             });
             emitAgentVaultTelemetry(server.services.telemetry, req, {

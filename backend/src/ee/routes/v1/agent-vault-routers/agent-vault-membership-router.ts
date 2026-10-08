@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { auditActorFields } from "@app/ee/services/agent-vault/agent-vault-actor-name-fns";
 import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
@@ -10,7 +11,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext, auditActorFields } from "./agent-vault-router-fns";
+import { actorContext } from "./agent-vault-router-fns";
 import {
   AgentVaultActorRefSchema,
   agentVaultListQuery,

@@ -1,8 +1,7 @@
 import { describe, expect, test } from "vitest";
 
-import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
-
-import { auditActorFields } from "./agent-vault-router-fns";
+import { auditActorFields } from "./agent-vault-actor-name-fns";
+import { AgentVaultMemberType } from "./agent-vault-enums";
 
 describe("auditActorFields", () => {
   test("names a user by username and email", () => {
