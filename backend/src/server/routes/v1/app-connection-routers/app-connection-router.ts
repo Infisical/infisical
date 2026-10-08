@@ -145,10 +145,7 @@ import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
-import {
-  KeeperConnectionListItemSchema,
-  SanitizedKeeperConnectionSchema
-} from "@app/services/app-connection/keeper";
+import { KeeperConnectionListItemSchema, SanitizedKeeperConnectionSchema } from "@app/services/app-connection/keeper";
 import {
   KempLoadMasterConnectionListItemSchema,
   SanitizedKempLoadMasterConnectionSchema

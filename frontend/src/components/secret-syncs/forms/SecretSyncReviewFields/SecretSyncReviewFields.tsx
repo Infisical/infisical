@@ -56,6 +56,7 @@ import { HasuraCloudSyncReviewFields } from "./HasuraCloudSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
+import { KeeperSyncReviewFields } from "./KeeperSyncReviewFields";
 import { LaravelForgeSyncReviewFields } from "./LaravelForgeSyncReviewFields";
 import { NetlifySyncReviewFields } from "./NetlifySyncReviewFields";
 import { NorthflankSyncReviewFields } from "./NorthflankSyncReviewFields";
@@ -67,7 +68,6 @@ import { OvhSyncReviewFields } from "./OvhSyncReviewFields";
 import { QoverySyncReviewFields } from "./QoverySyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
 import { RenderSyncOptionsReviewFields, RenderSyncReviewFields } from "./RenderSyncReviewFields";
-import { KeeperSyncReviewFields } from "./KeeperSyncReviewFields";
 import { RundeckSyncReviewFields } from "./RundeckSyncReviewFields";
 import { SnowflakeSyncReviewFields } from "./SnowflakeSyncReviewFields";
 import {
