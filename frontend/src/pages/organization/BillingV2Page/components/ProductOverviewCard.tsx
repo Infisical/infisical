@@ -103,7 +103,7 @@ const MeterTile = ({
   } else if (allowance === null && monthlyRate > 0) {
     subtext = `${fmtMoneyCents(monthlyRate)} each / mo`;
   } else if (allowance === null) {
-    subtext = "no limit";
+    subtext = "(No limit)";
   }
 
   const content = (
