@@ -648,13 +648,13 @@ export const ProductOverviewCard = ({
         <div className="flex min-w-0 items-center gap-3">
           <ProductIcon product={prod} size={36} />
           <div className="flex min-w-0 flex-col gap-1.5">
-            <CardTitle>
-              {prod.name}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <CardTitle>{prod.name}</CardTitle>
               {ent.planTier && <Badge variant="neutral">{planName}</Badge>}
               {ent.status === "grace" && <Badge variant="warning">Grace</Badge>}
               {ent.status !== "grace" && ent.isTrialing && <Badge variant="info">Trial</Badge>}
               {prod.addon && <Badge variant="neutral">Add-on</Badge>}
-            </CardTitle>
+            </div>
             <div className="flex flex-wrap items-baseline gap-x-1.5 text-xs tabular-nums">
               {!isManaged && (
                 <>
@@ -711,11 +711,12 @@ export const ProductOverviewCard = ({
             <button
               type="button"
               className={cn(
-                "flex h-20 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-md bg-container outline-0 hover:bg-container-hover focus-visible:ring-2 focus-visible:ring-ring",
+                "flex h-20 min-w-0 cursor-pointer flex-col justify-center gap-1.5 rounded-md bg-container px-3 text-left outline-0 hover:bg-container-hover focus-visible:ring-2 focus-visible:ring-ring",
                 visibilityClasses(isClampedAt)
               )}
               onClick={() => onExpand()}
             >
+              <span className="truncate text-xs text-accent">Others</span>
               {TILE_BREAKPOINTS.filter(({ columns }) => isClampedAt(columns)).map(({ columns }) => (
                 <span
                   key={columns}
@@ -727,7 +728,6 @@ export const ProductOverviewCard = ({
                   +{dims.length - columns}
                 </span>
               ))}
-              <span className="text-xs text-muted">more</span>
             </button>
           )}
         </div>
@@ -828,10 +828,10 @@ export const InactiveProductCard = ({
         <div className="flex min-w-0 items-center gap-3">
           <ProductIcon product={prod} size={36} />
           <div className="flex min-w-0 flex-col gap-1.5">
-            <CardTitle>
-              {prod.name}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <CardTitle>{prod.name}</CardTitle>
               {prod.addon && <Badge variant="neutral">Add-on</Badge>}
-            </CardTitle>
+            </div>
             <span className="text-xs text-muted">{isManaged ? "Not included" : "Inactive"}</span>
           </div>
         </div>
