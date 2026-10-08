@@ -1,5 +1,4 @@
 /* eslint-disable no-await-in-loop */
-import { Knex } from "knex";
 import path from "path";
 import RE2 from "re2";
 
@@ -1194,21 +1193,19 @@ export const decryptSecretWithBot = (
 
 type TFnDeleteProjectSecretReminders = {
   secretDAL: Pick<TSecretDALFactory, "find">;
-  reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId" | "deleteRemindersByProjectId">;
+  reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
 };
 
+// Only v1 secrets keep their reminder on the secret row. A v2 project's reminders live in the reminders
+// table, which cascades with the secrets, and their alerts are reaped by reapOrphanedReminderAlerts.
 export const fnDeleteProjectSecretReminders = async (
   projectId: string,
-  { secretDAL, reminderService, projectBotService, folderDAL }: TFnDeleteProjectSecretReminders,
-  tx?: Knex
+  { secretDAL, reminderService, projectBotService, folderDAL }: TFnDeleteProjectSecretReminders
 ) => {
   const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId, false);
-  if (shouldUseSecretV2Bridge) {
-    await reminderService.deleteRemindersByProjectId(projectId, tx);
-    return;
-  }
+  if (shouldUseSecretV2Bridge) return;
 
   const projectFolders = await folderDAL.findByProjectId(projectId);
   const projectSecrets = await secretDAL.find({
@@ -1218,7 +1215,7 @@ export const fnDeleteProjectSecretReminders = async (
 
   for await (const secret of projectSecrets) {
     if (secret.secretReminderRepeatDays) {
-      await reminderService.deleteReminderBySecretId(secret.id, projectId, tx);
+      await reminderService.deleteReminderBySecretId(secret.id, projectId);
     }
   }
 };

@@ -140,7 +140,7 @@ type TOrgServiceFactoryDep = {
   >;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
-  reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId" | "deleteRemindersByProjectId">;
+  reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
@@ -874,11 +874,12 @@ export const orgServiceFactory = ({
       const projects = await projectDAL.find({ orgId }, { tx });
 
       for await (const project of projects) {
-        await fnDeleteProjectSecretReminders(
-          project.id,
-          { secretDAL, reminderService, projectBotService, folderDAL },
-          tx
-        );
+        await fnDeleteProjectSecretReminders(project.id, {
+          secretDAL,
+          reminderService,
+          projectBotService,
+          folderDAL
+        });
       }
 
       const deletedOrg = await orgDAL.deleteById(orgId, tx);
