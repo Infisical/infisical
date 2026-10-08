@@ -102,6 +102,24 @@ describe("CloudflareSecretsStoreSyncFns", () => {
     );
   });
 
+  it.each([
+    ["create", post, ["KEEP", "NEW"]],
+    ["update", patch, ["NEW", "KEEP"]]
+  ])("deletes nothing when a %s fails after an earlier write succeeded", async (_, failingWrite, keys) => {
+    stubCloudflare([
+      [
+        { id: "keep", name: "KEEP" },
+        { id: "stale", name: "STALE" }
+      ]
+    ]);
+    failingWrite.mockRejectedValueOnce(new Error("Cloudflare is unavailable"));
+
+    await expect(CloudflareSecretsStoreSyncFns.syncSecrets(syncWith(), payloadOf(keys))).rejects.toThrow();
+
+    expect(post.mock.calls.length + patch.mock.calls.length).toBe(2);
+    expect(del).not.toHaveBeenCalled();
+  });
+
   it("reads every page when Cloudflare reports only total_count", async () => {
     stubCloudflare([[{ id: "first", name: "FIRST" }], [{ id: "second", name: "SECOND" }]], { totalCount: 51 });
 

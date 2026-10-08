@@ -26,12 +26,13 @@ export const CloudflareSecretsStoreSyncFields = () => {
 
   const connectionId = useWatch({ name: "connection.id", control });
 
-  const { data: stores, isLoading: isStoresLoading } = useCloudflareConnectionListSecretsStores(
-    connectionId,
-    {
-      enabled: Boolean(connectionId)
-    }
-  );
+  const {
+    data: stores,
+    isLoading: isStoresLoading,
+    error: storesError
+  } = useCloudflareConnectionListSecretsStores(connectionId, {
+    enabled: Boolean(connectionId)
+  });
 
   return (
     <FieldGroup>
@@ -70,6 +71,11 @@ export const CloudflareSecretsStoreSyncFields = () => {
                 }}
                 options={stores ?? []}
                 placeholder="Select a store..."
+                emptyMessage={
+                  storesError
+                    ? "Unable to load Cloudflare Secrets Stores. Check that the connection's API token has the Secrets Store Edit permission."
+                    : undefined
+                }
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
                 getOptionKeywords={(option) => [option.id]}

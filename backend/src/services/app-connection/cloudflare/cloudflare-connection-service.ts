@@ -1,8 +1,10 @@
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import {
+  getCloudflareErrorMessage,
   listCloudflarePagesProjects,
   listCloudflarePermissionGroups,
   listCloudflareR2Buckets,
@@ -57,7 +59,9 @@ export const cloudflareConnectionService = (getAppConnection: TGetAppConnectionF
         error,
         `Failed to list Cloudflare Secrets Stores for Cloudflare connection [connectionId=${connectionId}]`
       );
-      return [];
+      throw new BadRequestError({
+        message: `Failed to list Cloudflare Secrets Stores: ${getCloudflareErrorMessage(error)}`
+      });
     }
   };
 
