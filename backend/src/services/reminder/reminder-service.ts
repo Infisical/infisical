@@ -347,7 +347,7 @@ export const reminderServiceFactory = ({
       { resourceType: SECRET_REMINDER_RESOURCE_TYPE, resourceIds: [secretId] },
       tx
     );
-    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
   };
 
   const deleteReminder: TReminderServiceFactory["deleteReminder"] = async ({
