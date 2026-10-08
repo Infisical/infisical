@@ -21,7 +21,7 @@ export const verifyAuth =
     // AuthMode.OAUTH, deliberately not accepted on AuthMode.JWT alone. Scopes are only enforced where a
     // handler checks an org/project ability, since that check is what intersects them, so a route
     // authenticating on bare userId would skip the narrowing entirely. Rough proxy: nothing passing
-    // `requireOrg: false` accepts AuthMode.OAUTH. See "Delegated OAuth tokens" in backend/CLAUDE.md for
+    // `requireOrg: false` accepts AuthMode.OAUTH. See backend/src/services/oauth-client/CLAUDE.md for
     // the families held back and why.
     const isAccessAllowed = authStrategies.some((strategy) => strategy === req.auth.authMode);
     if (!isAccessAllowed) {

@@ -1,0 +1,10 @@
+# Stopping work after a client disconnect
+
+Node keeps running a handler after its client has gone, and a disconnected client usually retries, so a CPU-heavy request that outlives its caller does the full cost again on another pod. Routes whose work can run long after the database reads finish (fan-out over folders, references, or imports) should stop when the connection closes. `GET /api/v3/secrets/raw` and `GET /api/v4/secrets` are examples.
+
+- **Route:** pass `abortSignal: getClientDisconnectSignal(reply)` (`src/server/lib/client-disconnect.ts`) into the service. It aborts only when the socket closes before the response was written, so a normal completion never trips it.
+- **Service:** call `throwIfClientDisconnected(abortSignal)` at fan-out points only: before each unit of work that triggers more reads (each reference, each import level, a shared folder load). Don't add one after every `await`; a check that saves a single query for a client that has already left is noise. Checks are cooperative, so an in-flight query or synchronous block still finishes, and a long synchronous block delays noticing the disconnect. Keep the per-item work linear.
+- **`Promise.allSettled` fan-outs:** they swallow the rejection, so scan the results with `throwIfAnySettledClientClosed(results)` instead of rechecking the signal. A disconnect mid-fan-out means the result is partial and must not be cached or returned as reference errors; a result that completed before the client left should still be cached so the retry is a hit.
+- **Catch blocks** that turn failures into an empty result (a folder that failed to load, a skipped cross-project read) must rethrow `ClientClosedRequestError` first, or the partial state gets cached.
+
+The 499 never reaches the caller. It exists for logs (warn, no stack) and the `error.type="client_closed"` label on `infisical.core.http.error.count`. This is disconnect handling, not a request deadline: a slow client that stays connected is still bounded only by Fastify's 100s socket `connectionTimeout` in `src/server/app.ts`.

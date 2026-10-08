@@ -1,6 +1,6 @@
 # PostHog Product Analytics
 
-Separate from the OpenTelemetry metrics in `backend/CLAUDE.md` (Telemetry / Metrics). `src/services/telemetry/telemetry-service.ts` captures product events; the events listed in `POSTHOG_AGGREGATED_EVENTS` are too high-volume to send one-per-occurrence, so they are buffered in Redis and rolled up by the `TelemetryAggregatedEvents` cron every 10 minutes.
+Separate from the OpenTelemetry metrics in `src/lib/telemetry/CLAUDE.md`. `src/services/telemetry/telemetry-service.ts` captures product events; the events listed in `POSTHOG_AGGREGATED_EVENTS` are too high-volume to send one-per-occurrence, so they are buffered in Redis and rolled up by the `TelemetryAggregatedEvents` cron every 10 minutes.
 
 **Buffered events live in one Redis stream per (event type, bucket)** — `telemetry-agg-stream:<event>:<bucket>`, 30 buckets, bucket chosen by hashing the `distinctId`. Two invariants hold that shape together:
 
