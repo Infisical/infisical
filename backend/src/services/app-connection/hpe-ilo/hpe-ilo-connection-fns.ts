@@ -36,6 +36,15 @@ const getHpeIloAuthHeaders = ({ username, password }: THpeIloConnectionConfig["c
   "OData-Version": "4.0"
 });
 
+// OpenSSL's FIPS provider refuses TLS 1.2 handshakes without Extended Master Secret (RFC 7627), which older iLO
+// firmware does not negotiate. The raw error is an OpenSSL stack string, and it survives gateway error wrapping
+// only as message text
+const getHpeIloTlsErrorMessage = (error: unknown, hostname: string) => {
+  if (!(error instanceof Error) || !error.message.includes("ems not enabled")) return undefined;
+
+  return `HPE iLO at '${hostname}' negotiated TLS 1.2 without Extended Master Secret, which FIPS mode does not allow. Enable TLS 1.3 on the iLO or update its firmware.`;
+};
+
 // requestCfg.url is a path relative to the iLO root (e.g. "/redfish/v1/Systems/1")
 export const executeHpeIloRequest = async <T>(
   config: Pick<THpeIloConnectionConfig, "gatewayId" | "credentials">,
@@ -118,6 +127,9 @@ export const validateHpeIloConnectionCredentials = async (
       url: HPE_ILO_ACCOUNTS_PATH
     });
   } catch (error: unknown) {
+    const tlsErrorMessage = getHpeIloTlsErrorMessage(error, hostname);
+    if (tlsErrorMessage) throw new BadRequestError({ message: `Unable to validate connection: ${tlsErrorMessage}` });
+
     if (error instanceof BadRequestError) throw error;
 
     if (isAxiosError(error)) {
