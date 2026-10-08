@@ -1,11 +1,7 @@
 import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import {
-  getSecretSyncsDuplicatedByCopies,
-  getSecretSyncsNewlyCoveringPaths,
-  TItemMove
-} from "@app/helpers/secretSyncCoverage";
+import { getSecretSyncsNewlyCoveringPaths, TItemMove } from "@app/helpers/secretSyncCoverage";
 import { SecretSync, TSecretSyncOption } from "@app/hooks/api/secretSyncs";
 import {
   TListSecretSyncOptions,
@@ -115,15 +111,12 @@ export const useListSecretSyncs = (
 export const useListSecretSyncsCoveringMove = (
   projectId: string,
   moves: TItemMove[],
-  { enabled, isCopy }: { enabled: boolean; isCopy: boolean }
+  { enabled }: { enabled: boolean }
 ) =>
   useQuery({
     queryKey: secretSyncKeys.coveringMove(projectId, moves),
     queryFn: () => fetchSecretSyncsByProjectId(projectId),
-    select: (secretSyncs) => ({
-      newSecretSyncs: getSecretSyncsNewlyCoveringPaths(secretSyncs, moves),
-      duplicatedSecretSyncs: isCopy ? getSecretSyncsDuplicatedByCopies(secretSyncs, moves) : []
-    }),
+    select: (secretSyncs) => getSecretSyncsNewlyCoveringPaths(secretSyncs, moves),
     enabled,
     staleTime: 0,
     gcTime: 0

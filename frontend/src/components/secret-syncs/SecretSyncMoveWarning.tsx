@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { CircleAlertIcon, ExternalLinkIcon, TriangleAlertIcon } from "lucide-react";
+import { ExternalLinkIcon, TriangleAlertIcon } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle, Checkbox, Label } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -10,24 +10,19 @@ import { TItemMove } from "@app/helpers/secretSyncCoverage";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { TSecretSync, useListSecretSyncsCoveringMove } from "@app/hooks/api/secretSyncs";
 
-type TAcknowledgement = {
-  isRequired: boolean;
-  isAcknowledged: boolean;
-  setIsAcknowledged: (value: boolean) => void;
-};
-
 export type TSecretSyncMoveWarning = {
   secretSyncs: TSecretSync[];
-  duplicatedSecretSyncs: TSecretSync[];
   isChecking: boolean;
   hasError: boolean;
-  coverageAcknowledgement: TAcknowledgement;
+  needsAcknowledgement: boolean;
+  isAcknowledged: boolean;
+  setIsAcknowledged: (value: boolean) => void;
   isBlockingSubmit: boolean;
 };
 
 // remembers the warning the user ticked. it is cleared on any change, so returning to a warning ticked
 // earlier asks again rather than carrying a yes over to syncs the user has not seen.
-const useAcknowledgement = (isRequired: boolean, warningKey: string): TAcknowledgement => {
+const useAcknowledgement = (warningKey: string) => {
   const [acknowledgedWarningKey, setAcknowledgedWarningKey] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,7 +30,6 @@ const useAcknowledgement = (isRequired: boolean, warningKey: string): TAcknowled
   }, [warningKey]);
 
   return {
-    isRequired,
     isAcknowledged: acknowledgedWarningKey === warningKey,
     setIsAcknowledged: (value: boolean) => setAcknowledgedWarningKey(value ? warningKey : null)
   };
@@ -44,8 +38,7 @@ const useAcknowledgement = (isRequired: boolean, warningKey: string): TAcknowled
 // intentionally warns only about syncs the user can read
 export const useSecretSyncMoveWarning = (
   projectId: string,
-  moves: TItemMove[],
-  { isCopy = false }: { isCopy?: boolean } = {}
+  moves: TItemMove[]
 ): TSecretSyncMoveWarning => {
   const { permission } = useProjectPermission();
   const canReadSecretSyncs = permission.can(
@@ -54,35 +47,30 @@ export const useSecretSyncMoveWarning = (
   );
 
   const {
-    data,
+    data: fetchedSecretSyncs = [],
     isLoading: isChecking,
     isError
   } = useListSecretSyncsCoveringMove(projectId, moves, {
-    enabled: canReadSecretSyncs && moves.length > 0,
-    isCopy
+    enabled: canReadSecretSyncs && moves.length > 0
   });
 
   // a disabled query keeps its last result, so a user whose read access is revoked mid-dialog must not
   // keep seeing the syncs it listed
-  const secretSyncs = (canReadSecretSyncs && data?.newSecretSyncs) || [];
-  const duplicatedSecretSyncs = (canReadSecretSyncs && data?.duplicatedSecretSyncs) || [];
+  const secretSyncs = canReadSecretSyncs ? fetchedSecretSyncs : [];
   const hasError = canReadSecretSyncs && isError;
-
-  const coverageAcknowledgement = useAcknowledgement(
-    hasError || secretSyncs.length > 0,
+  const needsAcknowledgement = hasError || secretSyncs.length > 0;
+  const { isAcknowledged, setIsAcknowledged } = useAcknowledgement(
     JSON.stringify({ moves, syncIds: secretSyncs.map(({ id }) => id), hasError })
   );
 
   return {
     secretSyncs,
-    duplicatedSecretSyncs,
     isChecking,
     hasError,
-    coverageAcknowledgement,
-    isBlockingSubmit:
-      isChecking ||
-      duplicatedSecretSyncs.length > 0 ||
-      (coverageAcknowledgement.isRequired && !coverageAcknowledgement.isAcknowledged)
+    needsAcknowledgement,
+    isAcknowledged,
+    setIsAcknowledged,
+    isBlockingSubmit: isChecking || (needsAcknowledgement && !isAcknowledged)
   };
 };
 
@@ -113,20 +101,18 @@ const getTitle = ({
 const SecretSyncMoveWarningItem = ({
   sync,
   orgId,
-  projectId,
-  manualSyncNote
+  projectId
 }: {
   sync: TSecretSync;
   orgId: string;
   projectId: string;
-  manualSyncNote?: string;
 }) => (
   <li>
     <span className="font-medium text-foreground">{sync.name}</span>
     {` (${SECRET_SYNC_MAP[sync.destination].name}) syncs `}
     <code>{sync.folder?.path ?? "/"}</code>
     {sync.syncOptions.includeAllSubFolders ? " and all its subfolders." : "."}
-    {manualSyncNote && !sync.isAutoSyncEnabled && ` Auto-sync is off, so ${manualSyncNote}.`}{" "}
+    {!sync.isAutoSyncEnabled && " Auto-sync is off, so it sends them on its next manual sync."}{" "}
     <Link
       to={ROUTE_PATHS.SecretManager.SecretSyncDetailsByIDPage.path}
       params={{
@@ -145,94 +131,42 @@ const SecretSyncMoveWarningItem = ({
   </li>
 );
 
-const SecretSyncMoveWarningList = ({
-  syncs,
-  projectId,
-  manualSyncNote
-}: {
-  syncs: TSecretSync[];
-  projectId: string;
-  manualSyncNote?: string;
-}) => {
-  const { currentOrg } = useOrganization();
-
-  return (
-    <ul className="max-h-40 list-disc overflow-y-auto pl-4">
-      {syncs.map((sync) => (
-        <SecretSyncMoveWarningItem
-          key={sync.id}
-          sync={sync}
-          orgId={currentOrg.id}
-          projectId={projectId}
-          manualSyncNote={manualSyncNote}
-        />
-      ))}
-    </ul>
-  );
-};
-
-const AcknowledgementCheckbox = ({
-  id,
-  acknowledgement,
-  label
-}: {
-  id: string;
-  acknowledgement: TAcknowledgement;
-  label: string;
-}) => (
-  <div className="mt-2 flex items-center gap-2">
-    <Checkbox
-      id={id}
-      variant="warning"
-      isChecked={acknowledgement.isAcknowledged}
-      onCheckedChange={(checked) => acknowledgement.setIsAcknowledged(checked === true)}
-    />
-    <Label htmlFor={id}>{label}</Label>
-  </div>
-);
-
 export const SecretSyncMoveWarning = ({ warning, projectId, noun, verb }: Props) => {
-  const { isChecking, hasError, secretSyncs, duplicatedSecretSyncs, coverageAcknowledgement } =
-    warning;
+  const { currentOrg } = useOrganization();
+  const { needsAcknowledgement, isChecking, hasError, secretSyncs } = warning;
 
-  if (isChecking) return null;
+  if (isChecking || !needsAcknowledgement) return null;
 
   return (
-    <>
-      {coverageAcknowledgement.isRequired && (
-        <Alert variant="warning">
-          <TriangleAlertIcon />
-          <AlertTitle>{getTitle({ noun, verb, count: secretSyncs.length, hasError })}</AlertTitle>
-          <AlertDescription>
-            {hasError && <p>Secret syncs may send these {noun} to external destinations.</p>}
-            {secretSyncs.length > 0 && (
-              <SecretSyncMoveWarningList
-                syncs={secretSyncs}
+    <Alert variant="warning">
+      <TriangleAlertIcon />
+      <AlertTitle>{getTitle({ noun, verb, count: secretSyncs.length, hasError })}</AlertTitle>
+      <AlertDescription>
+        {hasError && <p>Secret syncs may send these {noun} to external destinations.</p>}
+        {secretSyncs.length > 0 && (
+          <ul className="max-h-40 list-disc overflow-y-auto pl-4">
+            {secretSyncs.map((sync) => (
+              <SecretSyncMoveWarningItem
+                key={sync.id}
+                sync={sync}
+                orgId={currentOrg.id}
                 projectId={projectId}
-                manualSyncNote="it sends them on its next manual sync"
               />
-            )}
-            <AcknowledgementCheckbox
-              id="secret-sync-move-warning-acknowledgement"
-              acknowledgement={coverageAcknowledgement}
-              label={`I understand these ${noun} ${hasError ? "may" : "will"} be synced to external destinations`}
-            />
-          </AlertDescription>
-        </Alert>
-      )}
-      {duplicatedSecretSyncs.length > 0 && (
-        <Alert variant="danger">
-          <CircleAlertIcon />
-          <AlertTitle>Cannot copy these secrets here</AlertTitle>
-          <AlertDescription>
-            <p>
-              The following secret syncs cover both folders and cannot send two secrets with the
-              same name. Choose a destination outside them:
-            </p>
-            <SecretSyncMoveWarningList syncs={duplicatedSecretSyncs} projectId={projectId} />
-          </AlertDescription>
-        </Alert>
-      )}
-    </>
+            ))}
+          </ul>
+        )}
+        <div className="mt-2 flex items-center gap-2">
+          <Checkbox
+            id="secret-sync-move-warning-acknowledgement"
+            variant="warning"
+            isChecked={warning.isAcknowledged}
+            onCheckedChange={(checked) => warning.setIsAcknowledged(checked === true)}
+          />
+          <Label htmlFor="secret-sync-move-warning-acknowledgement">
+            I understand these {noun} {hasError ? "may" : "will"} be synced to external destinations
+          </Label>
+        </div>
+      </AlertDescription>
+    </Alert>
   );
 };

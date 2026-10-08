@@ -1,10 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import {
-  getSecretSyncsDuplicatedByCopies,
-  getSecretSyncsNewlyCoveringPaths,
-  isPathCoveredBySecretSync
-} from "./secretSyncCoverage";
+import { getSecretSyncsNewlyCoveringPaths, isPathCoveredBySecretSync } from "./secretSyncCoverage";
 
 describe("isPathCoveredBySecretSync", () => {
   const sync = (path: string, includeAllSubFolders?: boolean, environment = "dev") => ({
@@ -106,78 +102,6 @@ describe("getSecretSyncsNewlyCoveringPaths", () => {
 
     expect(
       getSecretSyncsNewlyCoveringPaths(syncs, [move("/other", "/apps")]).map(({ name }) => name)
-    ).toEqual(["alpha", "zeta"]);
-  });
-});
-
-describe("getSecretSyncsDuplicatedByCopies", () => {
-  const sync = (id: string, overrides: Record<string, unknown> = {}) => ({
-    id,
-    name: id,
-    environment: { slug: "dev" },
-    folder: { path: "/" },
-    syncOptions: { includeAllSubFolders: true },
-    ...overrides
-  });
-
-  const copy = (
-    sourceSecretPath: string,
-    destinationSecretPath: string,
-    sourceEnvironment = "dev",
-    destinationEnvironment = sourceEnvironment
-  ) => ({
-    source: { environment: sourceEnvironment, secretPath: sourceSecretPath },
-    destination: { environment: destinationEnvironment, secretPath: destinationSecretPath }
-  });
-
-  const ids = (syncs: { id: string }[]) => syncs.map(({ id }) => id);
-
-  test("returns a sync that covers both the source and the destination", () => {
-    expect(ids(getSecretSyncsDuplicatedByCopies([sync("a")], [copy("/", "/bench")]))).toEqual([
-      "a"
-    ]);
-    expect(
-      ids(getSecretSyncsDuplicatedByCopies([sync("a")], [copy("/apps/x", "/apps/y")]))
-    ).toEqual(["a"]);
-  });
-
-  test("leaves out a sync that covers only one side", () => {
-    const syncs = [sync("a", { folder: { path: "/apps" } })];
-
-    expect(getSecretSyncsDuplicatedByCopies(syncs, [copy("/other", "/apps")])).toEqual([]);
-    expect(getSecretSyncsDuplicatedByCopies(syncs, [copy("/apps", "/other")])).toEqual([]);
-  });
-
-  test("leaves out a sync that does not include subfolders", () => {
-    const syncs = [sync("a", { syncOptions: { includeAllSubFolders: false } })];
-
-    expect(getSecretSyncsDuplicatedByCopies(syncs, [copy("/", "/bench")])).toEqual([]);
-  });
-
-  test("leaves out a copy onto its own path", () => {
-    expect(getSecretSyncsDuplicatedByCopies([sync("a")], [copy("/bench", "/bench/")])).toEqual([]);
-  });
-
-  test("leaves out a copy into another environment", () => {
-    expect(
-      getSecretSyncsDuplicatedByCopies([sync("a")], [copy("/", "/bench", "prod", "dev")])
-    ).toEqual([]);
-    expect(getSecretSyncsDuplicatedByCopies([sync("a")], [copy("/", "/", "dev", "prod")])).toEqual(
-      []
-    );
-  });
-
-  test("returns a sync once even when several copies duplicate into it", () => {
-    const copies = [copy("/", "/a"), copy("/x", "/b")];
-
-    expect(ids(getSecretSyncsDuplicatedByCopies([sync("a")], copies))).toEqual(["a"]);
-  });
-
-  test("orders syncs by name", () => {
-    const syncs = [sync("b", { name: "zeta" }), sync("a", { name: "alpha" })];
-
-    expect(
-      getSecretSyncsDuplicatedByCopies(syncs, [copy("/", "/bench")]).map(({ name }) => name)
     ).toEqual(["alpha", "zeta"]);
   });
 });
