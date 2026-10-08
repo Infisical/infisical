@@ -27,6 +27,7 @@ import { TMembershipRoleDALFactory } from "@app/services/membership/membership-r
 import {
   agentVaultActorKey,
   resolveAgentVaultActorNames,
+  TAgentVaultActorName,
   TAgentVaultActorNameDALs
 } from "../agent-vault/agent-vault-actor-name-fns";
 import { describeConflict, findHostPatternConflicts } from "../agent-vault/agent-vault-conflict-fns";
@@ -131,10 +132,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   });
 
   // actorName is for the audit body; the response schemas do not select it.
-  const withActorNames = async <T extends TAgentVaultAccessBundleActorRef>(members: T[]) => {
-    const nameByKey = await resolveAgentVaultActorNames({ userDAL, groupDAL, identityDAL }, members);
-    return members.map((member) => ({ ...member, actorName: nameByKey.get(agentVaultActorKey(member)) }));
-  };
+  const withActorNames = <T extends TAgentVaultAccessBundleActorRef>(
+    members: T[],
+    nameByKey: Map<string, TAgentVaultActorName>
+  ) => members.map((member) => ({ ...member, actorName: nameByKey.get(agentVaultActorKey(member)) }));
 
   type TGrantActorColumn = "actorUserId" | "actorIdentityId" | "actorGroupId";
 
@@ -152,6 +153,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     type: ACTOR_TYPE_OF[actorColumn],
     id: actorId
   });
+
+  // Called before the write: a lookup that failed after commit would fail the request with the change made,
+  // and the retry finds the actor skipped, so that change would never be audited.
+  const resolveActorNames = (actors: TGrantActor[]) =>
+    resolveAgentVaultActorNames({ userDAL, groupDAL, identityDAL }, actors.map(toActorRefFromGrant));
 
   const ACTOR_FIELD_OF: Record<TGrantActorColumn, "userId" | "identityId" | "groupId"> = {
     actorUserId: "userId",
@@ -985,6 +991,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     const actors = [...requested.values()];
     await assertActorsInProject({ projectId: rest.projectId, actors });
+    const nameByKey = await resolveActorNames(actors);
 
     // The bundle row lock serializes grants for this bundle, so reading the existing ones inside it is
     // enough to dedupe. The unique index per actor per bundle stays as the backstop, and its violation
@@ -1030,7 +1037,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
 
     return {
-      members: await withActorNames(outcome.created.map(toMember)),
+      members: withActorNames(outcome.created.map(toMember), nameByKey),
       skipped: outcome.skipped,
       accessBundleName: bundle.name
     };
@@ -1059,6 +1066,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ids.forEach((actorId) => requested.set(actorKey({ actorColumn, actorId }), { actorColumn, actorId }));
     });
     const actors = [...requested.values()];
+    const nameByKey = await resolveActorNames(actors);
 
     // The same row lock the grant path takes, so a revoke cannot race a grant or a bundle delete.
     const outcome = await membershipDAL.transaction(async (tx) => {
@@ -1093,7 +1101,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     });
 
     return {
-      members: await withActorNames(outcome.removed.map(toActorRef)),
+      members: withActorNames(outcome.removed.map(toActorRef), nameByKey),
       skipped: outcome.skipped,
       accessBundleName: bundle.name
     };
