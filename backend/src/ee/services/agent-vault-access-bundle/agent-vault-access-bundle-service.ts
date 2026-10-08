@@ -24,6 +24,11 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
+import {
+  agentVaultActorKey,
+  resolveAgentVaultActorNames,
+  TAgentVaultActorNameDALs
+} from "../agent-vault/agent-vault-actor-name-fns";
 import { describeConflict, findHostPatternConflicts } from "../agent-vault/agent-vault-conflict-fns";
 import {
   AgentVaultBearerConfigSchema,
@@ -76,7 +81,7 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
   agentVaultMemberDAL: Pick<TAgentVaultMemberDALFactory, "findProductMembers">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
-};
+} & TAgentVaultActorNameDALs;
 
 export type TAgentVaultAccessBundleServiceFactory = ReturnType<typeof agentVaultAccessBundleServiceFactory>;
 
@@ -101,7 +106,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     membershipRoleDAL,
     agentVaultMemberDAL,
     userGroupMembershipDAL,
-    identityGroupMembershipDAL
+    identityGroupMembershipDAL,
+    userDAL,
+    groupDAL,
+    identityDAL
   } = deps;
 
   const bundleScope = (projectId: string, accessBundleId: string) => ({
@@ -119,9 +127,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
   const toMember = (row: TMemberships) => ({
     ...toActorRef(row),
-    accessBundleId: row.scopeResourceId!,
     grantedAt: row.createdAt
   });
+
+  // actorName is for the audit body; the response schemas do not select it.
+  const withActorNames = async <T extends TAgentVaultAccessBundleActorRef>(members: T[]) => {
+    const nameByKey = await resolveAgentVaultActorNames({ userDAL, groupDAL, identityDAL }, members);
+    return members.map((member) => ({ ...member, actorName: nameByKey.get(agentVaultActorKey(member)) }));
+  };
 
   type TGrantActorColumn = "actorUserId" | "actorIdentityId" | "actorGroupId";
 
@@ -1017,7 +1030,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
 
     return {
-      members: outcome.created.map(toMember),
+      members: await withActorNames(outcome.created.map(toMember)),
       skipped: outcome.skipped,
       accessBundleName: bundle.name
     };
@@ -1080,7 +1093,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     });
 
     return {
-      members: outcome.removed.map(toMember),
+      members: await withActorNames(outcome.removed.map(toActorRef)),
       skipped: outcome.skipped,
       accessBundleName: bundle.name
     };

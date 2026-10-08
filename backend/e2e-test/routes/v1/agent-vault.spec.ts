@@ -890,7 +890,7 @@ describe("Agent Vault V1 Router", async () => {
 
       const removed = await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
       expect(removed.statusCode).toBe(200);
-      expect(JSON.parse(removed.payload)).toMatchObject({
+      expect(JSON.parse(removed.payload)).toEqual({
         members: [{ type: "machineIdentity", id: identity.id }],
         skipped: []
       });
@@ -899,9 +899,9 @@ describe("Agent Vault V1 Router", async () => {
       // that is what makes the call safe to retry.
       const again = await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
       expect(again.statusCode).toBe(200);
-      expect(JSON.parse(again.payload)).toMatchObject({
+      expect(JSON.parse(again.payload)).toEqual({
         members: [],
-        skipped: [{ type: "machineIdentity", id: identity.id, identifier: identity.id }]
+        skipped: [{ type: "machineIdentity", id: identity.id }]
       });
 
       const after = await listMembers("actorType=machineIdentity");
@@ -3014,10 +3014,14 @@ describe("Agent Vault V1 Router", async () => {
       const group = await createProjectGroup(projectId, "av-revoke-group", ProjectMembershipRole.Member);
 
       try {
-        expect(
-          (await inject("POST", `/api/v1/agent-vault/access-bundles/${held.id}/members`, { groupIds: [group.id] }))
-            .statusCode
-        ).toBe(200);
+        const granted = await inject("POST", `/api/v1/agent-vault/access-bundles/${held.id}/members`, {
+          groupIds: [group.id]
+        });
+        expect(granted.statusCode).toBe(200);
+        expect(JSON.parse(granted.payload)).toEqual({
+          members: [{ type: "group", id: group.id, grantedAt: expect.any(String) }],
+          skipped: []
+        });
 
         const stillGranted = async () => (await grantRows(held.id, { actorGroupId: group.id })).length;
         const revoke = (accessBundleId: string, body: Record<string, unknown>) =>
@@ -3048,8 +3052,8 @@ describe("Agent Vault V1 Router", async () => {
 
         const correct = await revoke(held.id, { groupIds: [group.id] });
         expect(correct.statusCode).toBe(200);
-        expect(JSON.parse(correct.payload)).toMatchObject({
-          members: [{ type: "group", id: group.id, accessBundleId: held.id, grantedAt: expect.any(String) }],
+        expect(JSON.parse(correct.payload)).toEqual({
+          members: [{ type: "group", id: group.id }],
           skipped: []
         });
         expect(await stillGranted()).toBe(0);

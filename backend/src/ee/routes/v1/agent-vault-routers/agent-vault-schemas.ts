@@ -423,12 +423,6 @@ export const AgentVaultProductMemberRefSchema = z.discriminatedUnion("type", [
   actorRefSchemas.group.extend(productMemberRefFields)
 ]);
 
-export const AgentVaultRemovedProductMemberSchema = z.discriminatedUnion("type", [
-  actorRefSchemas.user.extend({ addedAt: addedAtSchema }),
-  actorRefSchemas.machineIdentity.extend({ addedAt: addedAtSchema }),
-  actorRefSchemas.group.extend({ addedAt: addedAtSchema })
-]);
-
 export const AgentVaultSkippedActorSchema = z.discriminatedUnion("type", [
   z
     .object({
@@ -455,17 +449,6 @@ export const AgentVaultSkippedActorSchema = z.discriminatedUnion("type", [
 
 const grantedAtSchema = z.date().describe(AGENT_VAULT.MEMBER.grantedAt);
 
-const grantRefFields = {
-  accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
-  grantedAt: grantedAtSchema
-};
-
-export const AgentVaultRemovedMemberSchema = z.discriminatedUnion("type", [
-  actorRefSchemas.user.extend(grantRefFields),
-  actorRefSchemas.machineIdentity.extend(grantRefFields),
-  actorRefSchemas.group.extend(grantRefFields)
-]);
-
 export const AgentVaultMemberSchema = z.discriminatedUnion("type", [
   memberActorSchemas.user.extend({ grantedAt: grantedAtSchema }),
   memberActorSchemas.machineIdentity.extend({ grantedAt: grantedAtSchema }),
@@ -473,7 +456,7 @@ export const AgentVaultMemberSchema = z.discriminatedUnion("type", [
 ]);
 
 export const AgentVaultCreatedMemberSchema = z.discriminatedUnion("type", [
-  actorRefSchemas.user.extend(grantRefFields),
-  actorRefSchemas.machineIdentity.extend(grantRefFields),
-  actorRefSchemas.group.extend(grantRefFields)
+  actorRefSchemas.user.extend({ grantedAt: grantedAtSchema }),
+  actorRefSchemas.machineIdentity.extend({ grantedAt: grantedAtSchema }),
+  actorRefSchemas.group.extend({ grantedAt: grantedAtSchema })
 ]);

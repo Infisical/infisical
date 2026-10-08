@@ -142,9 +142,11 @@ export type TAddAgentVaultProductMembersDTO = TAgentVaultActorIdsDTO & {
 
 export type TAgentVaultWrittenMember = TAgentVaultActorRef & { role: string; addedAt: string };
 
-export type TAgentVaultMemberWriteResult<T> = {
-  members: T[];
-  skipped: (TAgentVaultActorRef & { identifier: string })[];
+export type TAgentVaultGrantedMember = TAgentVaultActorRef & { grantedAt: string };
+
+export type TAgentVaultMemberWriteResult<TMember, TSkipped = TAgentVaultActorRef> = {
+  members: TMember[];
+  skipped: TSkipped[];
 };
 
 export type TAgentVaultAccessBundle = {

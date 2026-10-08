@@ -33,7 +33,6 @@ import {
   AgentVaultMemberSchema,
   AgentVaultNameSchema,
   AgentVaultProductMemberSchema,
-  AgentVaultRemovedMemberSchema,
   AgentVaultServiceSchema,
   AgentVaultSubstitutionsInputSchema,
   AgentVaultSubstitutionsUpdateSchema
@@ -620,7 +619,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       body: AgentVaultMemberRevokeIdsSchema,
       response: {
         200: z.object({
-          members: AgentVaultRemovedMemberSchema.array(),
+          members: AgentVaultActorRefSchema.array(),
           skipped: AgentVaultActorRefSchema.array().describe(AGENT_VAULT.MEMBER.revokeSkipped)
         })
       }

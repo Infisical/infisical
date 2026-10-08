@@ -6395,6 +6395,7 @@ interface AgentVaultProductMemberAddEvent {
   metadata: {
     userId?: string;
     userName?: string;
+    userEmail?: string;
     groupId?: string;
     groupName?: string;
     machineIdentityId?: string;
@@ -6408,6 +6409,7 @@ interface AgentVaultProductMemberUpdateEvent {
   metadata: {
     userId?: string;
     userName?: string;
+    userEmail?: string;
     groupId?: string;
     groupName?: string;
     machineIdentityId?: string;
@@ -6421,6 +6423,7 @@ interface AgentVaultProductMemberRemoveEvent {
   metadata: {
     userId?: string;
     userName?: string;
+    userEmail?: string;
     groupId?: string;
     groupName?: string;
     machineIdentityId?: string;
@@ -6434,8 +6437,12 @@ interface AgentVaultAccessBundleMemberAddEvent {
     accessBundleId: string;
     accessBundleName: string;
     userId?: string;
-    machineIdentityId?: string;
+    userName?: string;
+    userEmail?: string;
     groupId?: string;
+    groupName?: string;
+    machineIdentityId?: string;
+    machineIdentityName?: string;
   };
 }
 
@@ -6445,8 +6452,12 @@ interface AgentVaultAccessBundleMemberRemoveEvent {
     accessBundleId: string;
     accessBundleName: string;
     userId?: string;
-    machineIdentityId?: string;
+    userName?: string;
+    userEmail?: string;
     groupId?: string;
+    groupName?: string;
+    machineIdentityId?: string;
+    machineIdentityName?: string;
   };
 }
 
