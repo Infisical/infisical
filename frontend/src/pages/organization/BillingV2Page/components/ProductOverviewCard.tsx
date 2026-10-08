@@ -658,7 +658,7 @@ export const ProductOverviewCard = ({
             <div className="flex flex-wrap items-baseline gap-x-1.5 text-xs tabular-nums">
               {!isManaged && (
                 <>
-                  {prices.length === 0 && <span className="text-muted">Included</span>}
+                  {prices.length === 0 && !trial && <span className="text-muted">Included</span>}
                   {prices.map((price, index) => (
                     <span key={price.period} className="flex items-baseline gap-x-1.5">
                       {index > 0 && <span className="text-muted">+</span>}
@@ -674,7 +674,7 @@ export const ProductOverviewCard = ({
               {isManaged && <span className="text-muted">Set by your license</span>}
               {trial && (
                 <span className={ent.trialPaymentDueAt ? "text-warning" : "text-muted"}>
-                  {!isManaged && "· "}
+                  {!isManaged && (prices.length > 0 || onDemand > 0) && "· "}
                   {trial}
                 </span>
               )}

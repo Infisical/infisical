@@ -56,7 +56,6 @@ type TabbedOverviewProps = {
 };
 
 const ACCOUNT_STATUS = {
-  trialing: { label: "Trial", variant: "info" },
   "past-due": { label: "Past Due", variant: "warning" },
   suspended: { label: "Suspended", variant: "danger" }
 } as const;
@@ -150,6 +149,21 @@ export const TabbedOverview = ({
       ? ACCOUNT_STATUS[overview.subState as keyof typeof ACCOUNT_STATUS]
       : null;
   const { nextCharge } = billing;
+  const trials = visible
+    .filter((prod) => {
+      const ent = entitlements[prod.id];
+      return (
+        isActiveProduct(prod.id) && ent?.isTrialing && ent.trialEndsAt && !ent.trialPaymentDueAt
+      );
+    })
+    .map((prod) => ({ name: prod.name, endsAt: entitlements[prod.id]?.trialEndsAt ?? "" }))
+    .sort((a, b) => Date.parse(a.endsAt) - Date.parse(b.endsAt));
+  let trialNote: string | null = null;
+  if (trials.length === 1) {
+    trialNote = `${trials[0].name} trial ends ${trials[0].endsAt}`;
+  } else if (trials.length > 1) {
+    trialNote = `${trials.length} trials · first ends ${trials[0].endsAt}`;
+  }
   let accountTeamNote: { label: string; detail: string } | null = null;
   if (isManaged) {
     accountTeamNote = {
@@ -191,7 +205,7 @@ export const TabbedOverview = ({
         </span>
       </div>
     );
-  } else if (!isSubscribed) {
+  } else if (!isSubscribed && !trialNote) {
     summaryLeft = (
       <div className="flex flex-col gap-1">
         <span className="text-xs text-accent">Subscription</span>
@@ -246,6 +260,7 @@ export const TabbedOverview = ({
             </Tooltip>
           )}
         </span>
+        {trialNote && <span className="text-xs text-muted">{trialNote}</span>}
       </div>
     );
   }
