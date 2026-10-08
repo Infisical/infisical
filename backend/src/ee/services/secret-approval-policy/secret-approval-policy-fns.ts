@@ -1,4 +1,31 @@
+import picomatch from "picomatch";
+
+import { containsGlobPatterns } from "@app/lib/picomatch";
 import { ActorType } from "@app/services/auth/auth-type";
+
+export const getPolicyScore = (policy: { secretPath?: string | null }) =>
+  // if glob pattern score is 1, if not exist score is 0 and if its not both then its exact path meaning score 2
+  // eslint-disable-next-line
+  policy.secretPath ? (containsGlobPatterns(policy.secretPath) ? 1 : 2) : 0;
+
+// picks the highest-priority policy governing a secret path: exact path match first, then glob, then env-scoped.
+// Legacy and approval-system policies are resolved together, so the tie-break is explicit rather than
+// relying on the order one DAL happened to return.
+export const resolvePolicyForPath = <T extends { secretPath?: string | null; createdAt: Date; id: string }>(
+  policies: T[],
+  secretPath: string
+) =>
+  policies
+    .filter(
+      ({ secretPath: policyPath }) => !policyPath || picomatch.isMatch(secretPath, policyPath, { strictSlashes: false })
+    )
+    .sort(
+      (a, b) =>
+        getPolicyScore(b) - getPolicyScore(a) ||
+        a.createdAt.getTime() - b.createdAt.getTime() ||
+        a.id.localeCompare(b.id)
+    )
+    .shift();
 
 /**
  * Returns the committer ID fields for a secret approval request,

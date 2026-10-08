@@ -234,6 +234,7 @@ export * from "./secret-approval-requests-reviewers";
 export * from "./secret-approval-requests-secrets";
 export * from "./secret-approval-requests-secrets-v2";
 export * from "./secret-blind-indexes";
+export * from "./secret-change-requests";
 export * from "./secret-folder-versions";
 export * from "./secret-folders";
 export * from "./secret-imports";
