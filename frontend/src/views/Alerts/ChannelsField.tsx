@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { useUpgradeGate } from "@app/components/license/UpgradeGate";
 import { Label } from "@app/components/v3";
 import {
   ALERT_CHANNEL_TYPE_LABELS,
@@ -44,7 +43,7 @@ export const buildNextChannel = (existing: { name: string }[], channelType: Aler
 };
 
 export const ChannelsField = ({ projectId, resourceType, resourceId, channelPaywall }: Props) => {
-  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const {
     control,
     getValues,
@@ -71,18 +70,16 @@ export const ChannelsField = ({ projectId, resourceType, resourceId, channelPayw
         <AddChannelMenu
           onAdd={appendChannel}
           lockedChannelTypes={channelPaywall?.lockedChannelTypes}
-          onLockedSelect={() => setIsUpgradeOpen(true)}
+          onLockedSelect={() =>
+            channelPaywall &&
+            openUpgradeGate({
+              intent: channelPaywall.intent,
+              paywallKey: channelPaywall.paywallKey
+            })
+          }
           contentClassName={channelPaywall ? "min-w-56" : undefined}
         />
-        {channelPaywall && (
-          <UpgradePlanModal
-            isOpen={isUpgradeOpen}
-            onOpenChange={setIsUpgradeOpen}
-            paywallKey={channelPaywall.paywallKey}
-            text={channelPaywall.text}
-            isEnterpriseFeature
-          />
-        )}
+        {upgradeGate}
       </div>
 
       {rootError && <p className="text-xs text-danger">{rootError}</p>}

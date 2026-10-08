@@ -18,6 +18,7 @@ export const ACME_DNS_PROVIDER_NAME_MAP: Record<AcmeDnsProvider, string> = {
   [AcmeDnsProvider.DNSMadeEasy]: "DNS Made Easy",
   [AcmeDnsProvider.AzureDNS]: "Azure DNS",
   [AcmeDnsProvider.PowerDns]: "PowerDNS",
+  [AcmeDnsProvider.GcpCloudDns]: "Google Cloud DNS",
   [AcmeDnsProvider.UltraDNS]: "UltraDNS"
 };
 
@@ -27,6 +28,7 @@ export const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppCo
   [AcmeDnsProvider.DNSMadeEasy]: AppConnection.DNSMadeEasy,
   [AcmeDnsProvider.AzureDNS]: AppConnection.AzureDNS,
   [AcmeDnsProvider.PowerDns]: AppConnection.PowerDns,
+  [AcmeDnsProvider.GcpCloudDns]: AppConnection.GCP,
   [AcmeDnsProvider.UltraDNS]: AppConnection.UltraDNS
 };
 

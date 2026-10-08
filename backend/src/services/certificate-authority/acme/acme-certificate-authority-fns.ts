@@ -27,6 +27,7 @@ import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-
 import { TAzureDnsConnection } from "@app/services/app-connection/azure-dns/azure-dns-connection-types";
 import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
+import { TGcpConnection } from "@app/services/app-connection/gcp/gcp-connection-types";
 import { TPowerDnsConnection } from "@app/services/app-connection/powerdns/powerdns-connection-types";
 import { TUltraDNSConnection } from "@app/services/app-connection/ultradns/ultradns-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
@@ -68,6 +69,11 @@ import {
 import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-providers/azure-dns";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
+import {
+  gcpCloudDnsDeleteTxtRecord,
+  gcpCloudDnsInsertTxtRecord,
+  validateGcpCloudDnsZone
+} from "./dns-providers/gcp-cloud-dns";
 import { powerDnsDeleteTxtRecord, powerDnsInsertTxtRecord, TPowerDnsProviderDeps } from "./dns-providers/powerdns";
 import { ultraDNSDeleteTxtRecord, ultraDNSInsertTxtRecord } from "./dns-providers/ultradns";
 
@@ -288,6 +294,7 @@ const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppConnectio
   [AcmeDnsProvider.DNSMadeEasy]: AppConnection.DNSMadeEasy,
   [AcmeDnsProvider.AzureDNS]: AppConnection.AzureDNS,
   [AcmeDnsProvider.PowerDns]: AppConnection.PowerDns,
+  [AcmeDnsProvider.GcpCloudDns]: AppConnection.GCP,
   [AcmeDnsProvider.UltraDNS]: AppConnection.UltraDNS
 };
 
@@ -532,6 +539,17 @@ export const executeAcmeOrder = async (
           );
           break;
         }
+        case AcmeDnsProvider.GcpCloudDns: {
+          await gcpCloudDnsInsertTxtRecord(
+            connection as TGcpConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue,
+            keyStore,
+            abortSignal
+          );
+          break;
+        }
         case AcmeDnsProvider.UltraDNS: {
           await ultraDNSInsertTxtRecord(
             connection as TUltraDNSConnection,
@@ -609,6 +627,16 @@ export const executeAcmeOrder = async (
             recordName,
             recordValue,
             powerDnsDeps
+          );
+          break;
+        }
+        case AcmeDnsProvider.GcpCloudDns: {
+          await gcpCloudDnsDeleteTxtRecord(
+            connection as TGcpConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue,
+            keyStore
           );
           break;
         }
@@ -770,6 +798,10 @@ export const AcmeCertificateAuthorityFns = ({
 
     validateDnsProviderAppConnection(dnsProviderConfig.provider, dnsAppConnectionId, appConnection.app);
 
+    if (dnsProviderConfig.provider === AcmeDnsProvider.GcpCloudDns) {
+      validateGcpCloudDnsZone(dnsProviderConfig.hostedZoneId);
+    }
+
     if (dnsResolver) {
       validateDnsResolver(dnsResolver);
     }
@@ -855,6 +887,10 @@ export const AcmeCertificateAuthorityFns = ({
         }
 
         validateDnsProviderAppConnection(dnsProviderConfig.provider, dnsAppConnectionId, appConnection.app);
+
+        if (dnsProviderConfig.provider === AcmeDnsProvider.GcpCloudDns) {
+          validateGcpCloudDnsZone(dnsProviderConfig.hostedZoneId);
+        }
 
         if (dnsResolver) {
           validateDnsResolver(dnsResolver);

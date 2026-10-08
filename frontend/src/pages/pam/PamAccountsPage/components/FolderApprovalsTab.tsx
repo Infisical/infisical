@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { PamEnterpriseAlertingUpgradeIntent } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
 import {
@@ -557,8 +558,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                         AlertChannelType.Webhook,
                         AlertChannelType.PagerDuty
                       ],
-                      paywallKey: "pam.folder-alert-channels",
-                      text: "Slack, webhook, and PagerDuty alert channels for PAM are available on the Enterprise plan."
+                      intent: PamEnterpriseAlertingUpgradeIntent,
+                      paywallKey: "pam.folder-alert-channels"
                     }
               }
             />

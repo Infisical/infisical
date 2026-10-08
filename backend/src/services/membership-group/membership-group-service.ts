@@ -306,9 +306,9 @@ export const membershipGroupServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membershipDoc = await membershipGroupDAL.transaction(async (tx) => {
-      const newRolesHavePermanentAdmin = data.roles.some(
-        (r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary
-      );
+      const newIsActive = data.isActive ?? existingMembership.isActive;
+      const newRolesHavePermanentAdmin =
+        newIsActive && data.roles.some((r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary);
       if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Project) {
         await assertProductWillRetainAdmin({
           project: await projectDAL.findById(scopeData.projectId, tx),

@@ -2809,7 +2809,7 @@ export const CertificateAuthorities = {
       directoryUrl: `The directory URL for the ACME Certificate Authority.`,
       accountEmail: `The email address for the ACME Certificate Authority.`,
       provider: `The DNS provider for the ACME Certificate Authority.`,
-      hostedZoneId: `The hosted zone ID for the ACME Certificate Authority.`,
+      hostedZoneId: `The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}.`,
       eabKid: `The External Account Binding (EAB) Key ID for the ACME Certificate Authority. Required if the ACME provider uses EAB.`,
       eabHmacKey: `The External Account Binding (EAB) HMAC key for the ACME Certificate Authority. Required if the ACME provider uses EAB.`,
       dnsResolver: `An optional custom DNS resolver IP address to use for verifying DNS propagation during ACME challenges. Must be a valid IP address (e.g. 8.8.8.8). When not set, the system default DNS resolver is used.`
@@ -3741,6 +3741,10 @@ export const SecretRotations = {
         "The name for each Stripe API key this rotation creates, up to 80 characters. Infisical appends a timestamp so the old and new key can be told apart. Defaults to 'infisical-managed'.",
       permissions:
         "The permissions granted to the generated Stripe API key. Stripe has no wildcard permission, so this is the full list of what the key may do."
+    },
+    GCP_SERVICE_ACCOUNT_KEY: {
+      serviceAccountEmail:
+        "The email of the GCP service account whose keys will be rotated, e.g. my-app@my-project.iam.gserviceaccount.com. The connection's service account needs the Service Account Key Admin role (roles/iam.serviceAccountKeyAdmin) on it."
     }
   },
   SECRETS_MAPPING: {
@@ -3843,6 +3847,10 @@ export const SecretRotations = {
     },
     STRIPE_API_KEY: {
       apiKey: "The name of the secret that the rotated Stripe API key will be mapped to."
+    },
+    GCP_SERVICE_ACCOUNT_KEY: {
+      serviceAccountKey:
+        "The name of the secret that the rotated service account key (the JSON key file) will be mapped to."
     }
   }
 };

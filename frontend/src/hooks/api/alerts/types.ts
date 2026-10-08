@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { UpgradeIntent } from "@app/components/license/UpgradeGate";
 import { CertSource } from "@app/hooks/api/certificates/enums";
 
 export enum AlertResourceType {
@@ -113,8 +114,8 @@ export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
 // Channel types a plan doesn't include, and the paywall shown when one is picked.
 export type TAlertChannelPaywall = {
   lockedChannelTypes: AlertChannelType[];
+  intent: UpgradeIntent;
   paywallKey: string;
-  text: string;
 };
 
 export const ALERT_CHANNEL_TYPE_LABELS: Record<AlertChannelType, string> = {

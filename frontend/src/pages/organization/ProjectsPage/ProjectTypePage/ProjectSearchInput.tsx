@@ -1,7 +1,10 @@
 import { FocusEvent, KeyboardEvent, useRef, useState } from "react";
 import { KeyIcon, SearchIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  SecretAccessInsightsUpgradeIntent,
+  UpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { SecretValueSearchSheet } from "@app/components/secrets/SecretValueSearchSheet";
 import {
   InputGroup,
@@ -129,11 +132,11 @@ export const ProjectSearchInput = ({ orgId, value, onChange, canSearchByValue }:
         isOpen={isValueSearchOpen}
         onOpenChange={setIsValueSearchOpen}
       />
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.secret-insights"
         isOpen={isUpgradeOpen}
         onOpenChange={setIsUpgradeOpen}
-        text="Your current plan does not include access to secret insights. To unlock this feature, please upgrade your Infisical plan."
+        intent={SecretAccessInsightsUpgradeIntent}
       />
     </>
   );
