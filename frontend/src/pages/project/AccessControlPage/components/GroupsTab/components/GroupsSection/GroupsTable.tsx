@@ -1,9 +1,16 @@
 import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { ChevronDownIcon, MoreHorizontalIcon, SearchIcon, UserRoundXIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  CopyIcon,
+  MoreHorizontalIcon,
+  SearchIcon,
+  UserRoundXIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   DropdownMenu,
@@ -259,29 +266,40 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                               </IconButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent sideOffset={2} align="end">
-                              {!isLinkedGroup && (
-                                <ProjectPermissionCan
-                                  I={ProjectPermissionActions.Delete}
-                                  a={ProjectPermissionSub.Groups}
-                                >
-                                  {(isAllowed) => (
-                                    <DropdownMenuItem
-                                      variant="danger"
-                                      isDisabled={!isAllowed}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handlePopUpOpen("deleteGroup", {
-                                          id,
-                                          name
-                                        });
-                                      }}
-                                    >
-                                      <UserRoundXIcon />
-                                      {`Remove Group From ${productLabel}`}
-                                    </DropdownMenuItem>
-                                  )}
-                                </ProjectPermissionCan>
-                              )}
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(id);
+                                  createNotification({
+                                    text: "Group ID copied to clipboard",
+                                    type: "info"
+                                  });
+                                }}
+                              >
+                                <CopyIcon />
+                                Copy Group ID
+                              </DropdownMenuItem>
+                              <ProjectPermissionCan
+                                I={ProjectPermissionActions.Delete}
+                                a={ProjectPermissionSub.Groups}
+                              >
+                                {(isAllowed) => (
+                                  <DropdownMenuItem
+                                    variant="danger"
+                                    isDisabled={!isAllowed}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePopUpOpen("deleteGroup", {
+                                        id,
+                                        name
+                                      });
+                                    }}
+                                  >
+                                    <UserRoundXIcon />
+                                    {`Remove Group From ${productLabel}`}
+                                  </DropdownMenuItem>
+                                )}
+                              </ProjectPermissionCan>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
