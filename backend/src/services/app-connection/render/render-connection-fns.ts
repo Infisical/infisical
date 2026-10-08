@@ -10,10 +10,12 @@ import { RenderConnectionMethod } from "./render-connection-enums";
 import {
   TRawRenderEnvironmentGroup,
   TRawRenderService,
+  TRawRenderWorkflow,
   TRenderConnection,
   TRenderConnectionConfig,
   TRenderEnvironmentGroup,
-  TRenderService
+  TRenderService,
+  TRenderWorkflow
 } from "./render-connection-types";
 
 export const getRenderConnectionListItem = () => {
@@ -70,6 +72,54 @@ export const listRenderServices = async (appConnection: TRenderConnection): Prom
   }
 
   return services;
+};
+
+export const listRenderWorkflows = async (appConnection: TRenderConnection): Promise<TRenderWorkflow[]> => {
+  const {
+    credentials: { apiKey }
+  } = appConnection;
+
+  const workflows: TRenderWorkflow[] = [];
+  let hasMorePages = true;
+  const perPage = 100;
+  let cursor;
+  let maxIterations = 10;
+
+  while (hasMorePages) {
+    if (maxIterations <= 0) break;
+
+    const res: TRawRenderWorkflow[] = (
+      await request.get<TRawRenderWorkflow[]>(`${IntegrationUrls.RENDER_API_URL}/v1/workflows`, {
+        params: new URLSearchParams({
+          ...(cursor ? { cursor: String(cursor) } : {}),
+          limit: String(perPage)
+        }),
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          Accept: "application/json",
+          "Accept-Encoding": "application/json"
+        }
+      })
+    ).data;
+
+    res.forEach((item) => {
+      if (!item.workflow) return;
+      workflows.push({
+        name: item.workflow.name,
+        id: item.workflow.id
+      });
+    });
+
+    if (res.length < perPage) {
+      hasMorePages = false;
+    } else {
+      cursor = res[res.length - 1].cursor;
+    }
+
+    maxIterations -= 1;
+  }
+
+  return workflows;
 };
 
 export const validateRenderConnectionCredentials = async (config: TRenderConnectionConfig) => {
