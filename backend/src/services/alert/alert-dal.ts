@@ -10,10 +10,7 @@ import { AlertPrincipalType, AlertTriggerType } from "./alert-types";
 
 export type TAlertDALFactory = ReturnType<typeof alertDALFactory>;
 
-export type TAlertWithChannels = {
-  id: string;
-  name: string;
-  resourceId: string | null;
+export type TAlertWithChannels = TAlerts & {
   channels: { id: string; name: string; channelType: string; enabled: boolean }[];
 };
 
@@ -107,9 +104,13 @@ export const alertDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findActiveById = async (id: string, tx?: Knex): Promise<TAlerts | undefined> => {
+  const findActiveById = async (
+    id: string,
+    { readFromPrimary = false }: { readFromPrimary?: boolean } = {},
+    tx?: Knex
+  ): Promise<TAlerts | undefined> => {
     try {
-      const alert = await (tx || db.replicaNode())(TableName.Alert)
+      const alert = await (tx || (readFromPrimary ? db : db.replicaNode()))(TableName.Alert)
         .leftJoin(TableName.Project, `${TableName.Alert}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Alert}.id`, id)
         .whereNull(`${TableName.Project}.deleteAfter`)
@@ -119,6 +120,29 @@ export const alertDALFactory = (db: TDbClient) => {
       return alert as TAlerts | undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindActiveById" });
+    }
+  };
+
+  const findByIdForUpdate = async (id: string, tx: Knex): Promise<TAlerts | undefined> => {
+    try {
+      const alert = await tx(TableName.Alert).where({ id }).forUpdate().first();
+      return alert as TAlerts | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByIdForUpdate" });
+    }
+  };
+
+  // Bumps updatedAt (the alert's version) for a save that changed only its channels.
+  const touchById = async (id: string, tx: Knex): Promise<TAlerts> => {
+    try {
+      // Typed as the row because the table's update type excludes updatedAt. The trigger sets it either way.
+      const [alert] = await tx<TAlerts>(TableName.Alert)
+        .where({ id })
+        .update({ updatedAt: tx.fn.now() })
+        .returning("*");
+      return alert as TAlerts;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "TouchById" });
     }
   };
 
@@ -259,10 +283,8 @@ export const alertDALFactory = (db: TDbClient) => {
           `${TableName.AlertChannelMembership}.channelId`,
           `${TableName.AlertChannel}.id`
         )
+        .select(selectAllTableCols(TableName.Alert))
         .select(
-          db.ref("id").withSchema(TableName.Alert),
-          db.ref("name").withSchema(TableName.Alert),
-          db.ref("resourceId").withSchema(TableName.Alert),
           db.ref("id").withSchema(TableName.AlertChannel).as("channelId"),
           db.ref("name").withSchema(TableName.AlertChannel).as("channelName"),
           db.ref("channelType").withSchema(TableName.AlertChannel),
@@ -273,7 +295,7 @@ export const alertDALFactory = (db: TDbClient) => {
       return sqlNestRelationships({
         data: rows,
         key: "id",
-        parentMapper: ({ id, name, resourceId }) => ({ id, name, resourceId: resourceId ?? null }),
+        parentMapper: ({ channelId, channelName, channelType, channelEnabled, ...alert }) => alert as TAlerts,
         childrenMapper: [
           {
             key: "channelId",
@@ -328,6 +350,8 @@ export const alertDALFactory = (db: TDbClient) => {
     findEnabledByResourceType,
     findEnabledForEvent,
     findActiveById,
+    findByIdForUpdate,
+    touchById,
     findActiveByScope,
     findByChannelId,
     findScopedDuplicate

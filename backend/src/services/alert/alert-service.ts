@@ -4,7 +4,7 @@ import { z } from "zod";
 import { TableName, TAlertChannels, TAlerts, TAlertsInsert } from "@app/db/schemas";
 import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { TGenericPermission } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
@@ -341,10 +341,7 @@ export const alertServiceFactory = ({
     return { plan, provider, cipher };
   };
 
-  const $prepareUpdate = async (dto: TUpdateAlertDTO) => {
-    const alert = await alertDAL.findActiveById(dto.alertId);
-    if (!alert) throw new NotFoundError({ message: `Alert with ID '${dto.alertId}' not found` });
-
+  const $prepareUpdate = async (alert: TAlerts, dto: TUpdateAlertDTO) => {
     const provider = $getProvider(alert.resourceType);
     await $assertAlertPermission(
       provider,
@@ -487,8 +484,18 @@ export const alertServiceFactory = ({
       return createdAlert;
     }
 
+    // The plan was built from a read taken before this transaction, so two overlapping saves could each
+    // delete or overwrite the other's channels. The table's update trigger bumps updatedAt on every write,
+    // so it works as a version: refuse if it moved, and write the row so a save still in flight sees this one.
+    const current = await alertDAL.findByIdForUpdate(plan.alert.id, tx);
+    if (!current) throw new NotFoundError({ message: `Alert with ID '${plan.alert.id}' not found` });
+    if (current.updatedAt.getTime() !== plan.alert.updatedAt.getTime()) {
+      throw new ConflictError({ message: "This alert was changed while you were saving it. Reload and try again." });
+    }
     const updatedAlert =
-      Object.keys(plan.patch).length > 0 ? await alertDAL.updateById(plan.alert.id, plan.patch, tx) : plan.alert;
+      Object.keys(plan.patch).length > 0
+        ? await alertDAL.updateById(plan.alert.id, plan.patch, tx)
+        : await alertDAL.touchById(plan.alert.id, tx);
     for (const channelId of plan.deleteChannelIds) {
       // eslint-disable-next-line no-await-in-loop -- one shared tx connection; writes must be serial
       await alertChannelService.deleteChannel(channelId, tx);
@@ -548,7 +555,7 @@ export const alertServiceFactory = ({
       "replaceAll" in channels ? channels.replaceAll : $channelsWithRecipients(existing, channels.replaceRecipients);
 
     const { plan } = existing
-      ? await $prepareUpdate({ alertId: existing.id, name, channels: alertChannels, ...actor })
+      ? await $prepareUpdate(existing, { alertId: existing.id, name, channels: alertChannels, ...actor })
       : await $prepareCreate({
           name,
           resourceType,
@@ -672,7 +679,10 @@ export const alertServiceFactory = ({
   };
 
   const updateAlert = async (dto: TUpdateAlertDTO): Promise<TAlertResponse> => {
-    const { plan, provider, cipher } = await $prepareUpdate(dto);
+    // Read from the primary: the update plan is built from this row and its channels.
+    const alert = await alertDAL.findActiveById(dto.alertId, { readFromPrimary: true });
+    if (!alert) throw new NotFoundError({ message: `Alert with ID '${dto.alertId}' not found` });
+    const { plan, provider, cipher } = await $prepareUpdate(alert, dto);
 
     const { updated, channels } = await alertDAL.transaction(async (tx) => {
       const updatedAlert = await $applyPlan(plan, tx);

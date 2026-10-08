@@ -124,6 +124,11 @@ const buildService = (opts?: {
         return row;
       },
       findActiveById: async (id: string) => alerts.get(id),
+      findByIdForUpdate: async (id: string) => alerts.get(id),
+      touchById: async (id: string) => {
+        alerts.set(id, { ...alerts.get(id), updatedAt: new Date() });
+        return alerts.get(id);
+      },
       findWithChannelsForResources: async ({
         resourceType,
         resourceIds
@@ -134,9 +139,7 @@ const buildService = (opts?: {
         [...alerts.values()]
           .filter((row) => row.resourceType === resourceType && resourceIds.includes(row.resourceId as string))
           .map((row) => ({
-            id: row.id,
-            name: row.name,
-            resourceId: row.resourceId,
+            ...row,
             channels: (memberships.get(row.id as string) ?? []).map((channelId) => {
               const channel = channels.get(channelId) as TChannelRow;
               return { id: channel.id, name: channel.name, channelType: channel.channelType, enabled: channel.enabled };
@@ -150,7 +153,8 @@ const buildService = (opts?: {
       updateById: async (id: string, data: Record<string, unknown>) => {
         // Mirror knex, which throws "Empty .update() call detected!" on an empty patch.
         if (Object.keys(data).length === 0) throw new Error("Empty .update() call detected!");
-        alerts.set(id, { ...alerts.get(id), ...data });
+        // Mirror the table's update trigger, which bumps updatedAt on every write.
+        alerts.set(id, { ...alerts.get(id), ...data, updatedAt: new Date() });
         return alerts.get(id);
       },
       deleteById: async (id: string) => alerts.delete(id),
@@ -667,6 +671,19 @@ describe("alert service", () => {
         }),
         expect.objectContaining({ id: webhookBefore.id, name: "webhook-ch" })
       ]);
+    });
+
+    test("refuses a save prepared before another save was applied", async () => {
+      const { service, alerts, channels } = buildService();
+      await service.createAlert({ ...validCreate, eventType: "test.resource.opened", condition: null });
+      alerts.set("alert-1", { ...alerts.get("alert-1"), updatedAt: new Date(0) });
+
+      const first = await service.prepareAlertForResource(resourceAlert(["user-2"]));
+      const second = await service.prepareAlertForResource(resourceAlert(["user-3"]));
+      await service.applyPreparedAlert(first, tx);
+
+      await expect(service.applyPreparedAlert(second, tx)).rejects.toThrow("changed while you were saving");
+      expect([...channels.values()][0].recipients).toEqual([expect.objectContaining({ principalId: "user-2" })]);
     });
   });
 
