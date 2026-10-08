@@ -114,6 +114,8 @@ export enum IntegrationUrls {
   GCP_SECRET_MANAGER_URL = `https://${GCP_SECRET_MANAGER_SERVICE_NAME}`,
   GCP_CERTIFICATE_MANAGER_SERVICE_NAME = "certificatemanager.googleapis.com",
   GCP_CERTIFICATE_MANAGER_URL = `https://${GCP_CERTIFICATE_MANAGER_SERVICE_NAME}`,
+  GCP_CLOUD_DNS_SERVICE_NAME = "dns.googleapis.com",
+  GCP_CLOUD_DNS_URL = `https://${GCP_CLOUD_DNS_SERVICE_NAME}`,
   GCP_SERVICE_USAGE_URL = "https://serviceusage.googleapis.com",
   GCP_CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform",
 
