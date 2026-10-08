@@ -1,5 +1,3 @@
-import crypto from "node:crypto";
-
 import * as x509 from "@peculiar/x509";
 import { GeneralName, GeneralSubtree, NameConstraints } from "pkijs";
 
@@ -23,7 +21,7 @@ const nextSerial = () => {
   return serial.toString(16);
 };
 
-const generateKeys = () => crypto.webcrypto.subtle.generateKey(KEY_ALGORITHM, true, ["sign", "verify"]);
+const generateKeys = () => globalThis.crypto.subtle.generateKey(KEY_ALGORITHM, true, ["sign", "verify"]);
 
 const ekuExtension = (usages: string[]) => new x509.ExtendedKeyUsageExtension(usages, true);
 

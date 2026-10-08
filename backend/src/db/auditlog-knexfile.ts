@@ -1,7 +1,4 @@
 /* eslint-disable no-console */
-// eslint-disable-next-line import/no-extraneous-dependencies
-import "ts-node/register";
-
 import dotenv from "dotenv";
 import type { Knex } from "knex";
 import path from "path";

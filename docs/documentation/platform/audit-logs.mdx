@@ -142,6 +142,9 @@ Each log contains the following fields:
     <ResponseField name="type" type="string">
       The event type (for example, `create-secret`). See [Event types](#event-types) for the full catalog.
     </ResponseField>
+    <ResponseField name="class" type="string">
+      The [event class](#event-classes) the event type belongs to: `management`, `authentication`, `authorization`, or `data-access`.
+    </ResponseField>
     <ResponseField name="metadata" type="object">
       Context specific to the event. The shape depends on `event.type`; a `get-secret` event carries `environment`, `secretPath`, `secretKey`, and `secretVersion`, while a batch event like `create-secrets` carries a `secrets` array.
     </ResponseField>
@@ -198,6 +201,7 @@ Each log contains the following fields:
    "projectName": "[PROJECT_NAME]",
    "event": {
        "type": "get-secret",
+       "class": "data-access",
        "metadata": {
            "environment": "prod",
            "secretPath": "/db",
@@ -220,6 +224,93 @@ Each log contains the following fields:
    }
 }
 ```
+
+## Event classes
+
+Every [event type](/documentation/platform/audit-logs#param-type) belongs to one of four classes, based on the kind of activity the event records.
+
+| Class            | What it covers                                                                                                             | Default |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `management`     | Creates, updates, deletes, membership, roles, policies, background jobs, and the start and end of privileged sessions      | Always on |
+| `data-access`    | Reads and lists, plus the crypto operations that return or operate on secret material, such as KMS encrypt and decrypt     | Always on |
+| `authentication` | Logins, failed logins, organization selection, machine identity authentication, and Gateway enrollment and connections     | On      |
+| `authorization`  | [Permission denials](#permission-denials)                                                                                  | Off     |
+
+### Choose which classes to record
+
+You can turn authentication and authorization events on or off. Management and data access events are always recorded, so the log always has every configuration change and every read of secret material.
+
+<Note>
+  Recording authorization events requires the new privilege system. If your organization still uses legacy privilege management, the **Authorization** toggle is disabled. To upgrade, go to **Access Control** in your organization and select **Learn More & Upgrade**.
+</Note>
+
+<Tabs>
+  <Tab title="For an organization">
+    These settings cover organization-level events, such as membership and login changes. Projects and sub-organizations have their own settings.
+
+    <Steps>
+      <Step>
+        From your organization's home page, go to **Audit Logs** and select the **Settings** tab.
+      </Step>
+      <Step>
+        Turn a class on or off, then select **Save Changes**.
+      </Step>
+    </Steps>
+
+    You need the **Edit** permission on **Audit Logs**, which the admin role has.
+  </Tab>
+  <Tab title="For a project">
+    These settings cover only the project's events.
+
+    <Steps>
+      <Step>
+        Open the project, go to **Audit Logs**, and select the **Settings** tab.
+      </Step>
+      <Step>
+        Under **Event Classes**, turn a class on or off, then select **Save Changes**.
+      </Step>
+    </Steps>
+
+    You need the **Edit** permission on **Audit Logs**, which the admin role has.
+  </Tab>
+  <Tab title="API">
+    Update the organization's classes with [the organization audit log settings endpoint](/api-reference/endpoints/audit-logs/update-organization-audit-log-settings), or one project's classes with [the project audit log settings endpoint](/api-reference/endpoints/audit-logs/update-project-audit-log-settings). The request replaces the current settings, so include both `authentication` and `authorization`.
+
+    ```bash
+    curl -X PUT "https://app.infisical.com/api/v1/organization/audit-log-settings" \
+      -H "Authorization: Bearer <your-access-token>" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "eventClasses": [
+          {"eventClass": "authentication", "isEnabled": true},
+          {"eventClass": "authorization", "isEnabled": false}
+        ]
+      }'
+    ```
+
+  </Tab>
+</Tabs>
+
+<Info>
+Any changes you make apply to new events within 10 minutes. Events already in the log aren't affected.
+</Info>
+
+### Permission denials
+
+If you [turn authorization events on](#choose-which-classes-to-record), Infisical records a `permission-denied` event whenever a user or machine identity tries an action its role doesn't allow. The event's metadata includes:
+
+| Field                      | What it contains                                                |
+| -------------------------- | --------------------------------------------------------------- |
+| `permissionAction`         | The action the role didn't allow, such as `create`              |
+| `permissionSubject`        | The resource type the action was on, such as `secrets`          |
+| `permissionSubjectDetails` | The resource the actor targeted, such as an environment and secret path |
+| `route`                    | The endpoint the actor called                                   |
+| `method`                   | The HTTP method of the request                                  |
+| `projectId`                | The project the request was for, if it had one                  |
+
+<Info>
+If the same denial repeats within a minute, Infisical records it once, then records one summary event with the number of repeats in `suppressedRepeats`. The summary's `suppressedFrom` and `suppressedUntil` fields give the start and end of the interval covered by that count.
+</Info>
 
 ## Filtering audit logs
 
@@ -256,6 +347,7 @@ Every filter is an exact match, so wildcards like `*` aren't supported.
     | Filter        | Matches                                                                                        | Requires                                                     |
     | ------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
     | `event`       | One or more event types (for example, `create-secret`, `update-secret`)                        |                                                              |
+    | `class`       | One or more [event classes](#event-classes) (for example, `data-access`, `authorization`)      |                                                              |
     | `actor`       | The actor type (for example, `user`, `identity`, `platform`, `kmipClient`, `scimClient`, and so on)         |                                                              |
     | `actor_id`    | A specific actor ID                                                                            | `actor` set to a type that carries an ID (see below)         |
     | `source`      | The client that made the request: `web`, `cli`, `k8-operator`, `terraform`, an SDK, or `other` |                                                              |
@@ -270,6 +362,7 @@ Every filter is an exact match, so wildcards like `*` aren't supported.
     | Parameter       | Matches                                                                                        | Requires                                                          |
     | --------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
     | `eventType`     | One or more event types, comma-separated (for example, `create-secret,update-secret`)          |                                                                   |
+    | `eventClass`    | One or more [event classes](#event-classes), comma-separated (for example, `data-access,authorization`) |                                                          |
     | `actorType`     | The actor type (for example, `user`, `identity`, `platform`, `kmipClient`, `scimClient`)         |                                                                   |
     | `actor`         | A specific actor ID                                                                            | `actorType` set to a type that carries an ID (see below)          |
     | `userAgentType` | The client that made the request: `web`, `cli`, `k8-operator`, `terraform`, an SDK, or `other` |                                                                   |
@@ -885,10 +978,16 @@ Infisical emits hundreds of event types. Here are some of the most common ones y
     | `secret-approval-request`, `secret-approval-request-review`, `secret-approval-merged`, `secret-approval-closed`, `secret-approval-reopened` | The lifecycle of a secret change request.               |
     | `approval-policy-create`, `approval-policy-update`, `approval-policy-delete`                                                             | An admin changed an approval policy.                      |
   </Accordion>
+  <Accordion title="Authorization">
+    | Event                                                                   | When it fires                                                        |
+    | ----------------------------------------------------------------------- | -------------------------------------------------------------------- |
+    | `permission-denied`                                                     | A user or machine identity was refused an action its role doesn't allow. See [Permission denials](#permission-denials). |
+  </Accordion>
   <Accordion title="Audit logs">
     | Event                                                                   | When it fires                                                        |
     | ----------------------------------------------------------------------- | -------------------------------------------------------------------- |
     | `view-audit-logs`                                                       | A user opened the audit log viewer.                                  |
+    | `update-audit-log-settings`                                             | An admin changed which event classes an organization or project records, or how long a project keeps its audit logs. |
     | `create-audit-report`, `get-audit-report`, `get-audit-reports`, `delete-audit-report` | A user managed a project-level audit report.           |
     | `create-org-audit-report`, `get-org-audit-reports`, `delete-org-audit-report` | A user managed an organization-level audit report.             |
   </Accordion>

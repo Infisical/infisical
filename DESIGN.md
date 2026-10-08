@@ -40,8 +40,8 @@ revealing one is an intentional act.
 - Scope- and product-aware (org / sub-org / project / admin / PAM / Agent Vault)
 - Border-first depth with the shared `Card`'s `shadow-xs`; overlapping labels
   retain the shared Badge styling
-- Inter for product UI, Alliance for display typography, and distinct
-  functional and decorative monospace roles
+- IBM Plex Sans for product UI, Alliance No. 2 for headings, and JetBrains
+  Mono for monospaced content
 - Secrets masked by default; reveal is an act
 
 ## 2. Color Palette & Roles
@@ -125,28 +125,27 @@ for exact classes and supported variants.
 
 ## 3. Typography
 
-Typography uses several intentional families. Do not collapse them into one
-font or substitute one role for another:
+Typography uses three intentional families:
 
-- **Inter** (`font-inter`, `--font-inter`) is the default product and control
-  face. Body copy, forms, tables, buttons, labels, navigation, and dense product
-  surfaces inherit Inter unless a documented role below applies.
-- **Alliance No. 2** (`font-alliance`, `--font-alliance`) is the display face.
-  Use it selectively for prominent authentication, onboarding, and
-  brand-forward headings or supporting display copy—not routine product chrome.
-- **The existing application mono** (`font-mono`) is functional. Preserve it
-  for code, secret values, identifiers, timestamps, logs, and other content
-  whose character shapes and alignment carry meaning.
-- **JetBrains Mono** (`font-jetbrains-mono`, `--font-jetbrains-mono`) is a
-  decorative mono. Use it for short eyebrow labels, technical decals, and
-  brand-forward microcopy. It does not replace `font-mono` and should not be
-  used for code editors, data tables, IDs, logs, or secret values.
+- **IBM Plex Sans** (`font-sans`, `--font-sans`) is the default product UI face.
+  Body copy, forms, tables, buttons, labels, and navigation inherit it. Real
+  400, 500, 600, and 700 weights are bundled for UI hierarchy.
+- **Alliance No. 2** (`font-alliance`, `--font-alliance`) is the heading face.
+  Semantic headings and shared page, card, dialog, alert dialog, and sheet
+  titles use its bundled Regular weight. Do not use it for arbitrary bold body
+  text or request synthetic heavier weights.
+  Product and project tile names are titles, not descriptions. Use `CardTitle`
+  for them. Do not override semantic headings or shared titles with medium,
+  semibold, or bold weights; express hierarchy with size and spacing instead.
+- **JetBrains Mono** (`font-mono`, `--font-mono`) is the functional and
+  decorative mono. Use it for code, secret values, identifiers, timestamps,
+  logs, and short technical microcopy.
 
 | Role                    | Class                                                                     | Notes                                                              |
 | ----------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Page title (h1)         | `text-2xl font-medium underline underline-offset-4 decoration-<scope>/90` | In `PageHeader`; scope icon (size 26) sits inline before the title |
+| Page title (h1)         | `font-alliance text-2xl font-normal underline underline-offset-4 decoration-<scope>/90` | In `PageHeader`; scope icon (size 26) sits inline before the title |
 | Page description        | `text-label`                                                              | Sits under the title, separated by the header's `gap-2`            |
-| Card title              | `text-lg font-semibold leading-none`                                      | `flex gap-1.5` so badges can sit inline                            |
+| Card title              | `font-alliance text-lg font-normal leading-none`                           | `flex gap-1.5` so badges can sit inline                            |
 | Card description        | `text-sm text-accent`                                                     |                                                                    |
 | Body                    | `text-sm`                                                                 | Default for table cells, form values, dialog content               |
 | Label / meta            | `text-xs text-accent`                                                     | Field labels, table column captions, metadata                      |
@@ -297,6 +296,7 @@ host component; don't override unless necessary.
 
 - **Page container** — `max-w-8xl` (88rem) centered, `bg-page`.
 - **Page header** — v3 `PageHeader` with scope/product icon + underlined `h1` + description. Import it from `@app/components/v3` and set `scope` to `org`, `namespace`, `instance`, or the applicable `ProjectType`. See [`PageHeader.tsx`](frontend/src/components/v3/platform/PageHeader/PageHeader.tsx).
+- **Header boundary** — `PageHeader` owns the normal 40px bottom margin (`mb-10`). Do not repeat that margin at ordinary callers or add a parent row gap between the header and body. Keep independent card/section spacing in the body layout. Use `className` for genuine compact/responsive cases, such as `mb-6 md:mb-10` for Overview; see the header's spacing stories.
 - **Section** — one `Card` per logical section. Title + optional `DocumentationLinkBadge` in `CardHeader`; primary action in `CardAction` (top-right).
 - **Tables inside Cards** — filters and search sit in the `CardHeader` above the table; pagination sits in the `CardFooter` or bottom of `CardContent`. **Empty state** — when the table has no rows (and isn't loading), hide the `Table` entirely and render `Empty` in its place; never leave a column header floating above a blank body. Add `className="border"` to `Empty` whenever it's nested in a `Card`, `Sheet`, or `Dialog` so the dashed frame is visible against the parent surface (the component ships dashed-but-borderless on purpose for page-level use).
 - **Forms inside Sheets/Dialog** — create / edit flows open in a Sheet or Dialog, never inline, never as a full-page route. **Pick by form size:** small forms (1–2 fields, e.g. "Add domain", "Rename") go in a centered `Dialog`; large or multi-step forms (multiple fields, scrollable detail, file uploads, wizard steps) go in a right-side `Sheet`. When in doubt, default to Dialog — Sheet is for cases where Dialog feels cramped.
@@ -349,9 +349,9 @@ remain legible across the control edge.
   The documented brand-forward `text-highlight` treatment and deliberately
   branded `ButtonBadge` flags are narrow exceptions for authentication and
   onboarding surfaces.
-- **DON'T** mix font families arbitrarily. Choose the documented role: Inter
-  for product UI, Alliance for display type, `font-mono` for functional
-  monospaced content, and JetBrains Mono for decorative technical microcopy.
+- **DON'T** mix font families arbitrarily. Use IBM Plex Sans for UI and body
+  text, Alliance Regular for headings, and JetBrains Mono (`font-mono`) for
+  monospaced content.
 - **DON'T** animate for decoration. Motion should clarify state change only.
 
 ## 8. Voice & Content Tone

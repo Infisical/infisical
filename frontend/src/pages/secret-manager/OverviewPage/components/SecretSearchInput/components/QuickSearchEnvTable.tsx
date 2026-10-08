@@ -11,7 +11,7 @@ type Props = {
 
 export const QuickSearchEnvTable = ({ envName, trailingHead, children }: Props) => (
   <div>
-    <h3 className="mb-2 text-sm font-medium text-foreground">{envName}</h3>
+    <h3 className="mb-2 text-sm font-normal text-foreground">{envName}</h3>
     <Table>
       <TableHeader>
         <TableRow>

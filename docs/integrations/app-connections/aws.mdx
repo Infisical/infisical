@@ -1,1056 +1,306 @@
 ---
 title: "AWS connection"
 sidebarTitle: "AWS"
-description: "Learn how to configure an AWS Connection for Infisical."
+description: "Learn how to configure an AWS connection for Infisical."
 ---
 
-Infisical supports two methods for connecting to AWS.
+import { UseCasePicker, UseCase } from "/snippets/UseCasePicker.jsx";
+import { awsUseCaseGroups } from "/snippets/app-connections/aws/use-cases.jsx";
+import { CombinedIamPolicy } from "/snippets/AwsIamPolicy.jsx";
+import SelfHostedInstance from "/snippets/app-connections/aws/self-hosted-instance.mdx";
+import CreateIamRole from "/snippets/app-connections/aws/create-iam-role.mdx";
+import CreateIamUser from "/snippets/app-connections/aws/create-iam-user.mdx";
+import ConnectionFormFields from "/snippets/app-connections/aws/form-fields.mdx";
+import AgentVaultSessionLogsCorsRule from "/snippets/app-connections/aws/agent-vault-session-logs-cors-rule.mdx";
+
+<UseCasePicker prefix="I want the connection to work with" groups={awsUseCaseGroups} />
+
+An AWS connection authenticates Infisical to your AWS account, either by assuming an [IAM role](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html) or with an [IAM user's access keys](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html).
+
+<Note>
+    This guide doesn’t configure any behavior—it just authenticates Infisical with AWS. Once the app connection is ready, you can [use it to set up integrations](#step-4-configure-integrations).
+</Note>
+
+## Prerequisites
+
+- An AWS account where you can create IAM roles or users and attach policies to them
+
+<UseCase use="pam-recording" hideWhenEmpty>
+    - An [Amazon S3 bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html) for PAM session recordings
+</UseCase>
+
+<UseCase use="agent-vault-session-logs" hideWhenEmpty>
+    - An [Amazon S3 bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html) for Agent Vault session logs
+</UseCase>
+
+<UseCase use="private-ca" hideWhenEmpty>
+    - An [AWS Private CA](https://docs.aws.amazon.com/privateca/latest/userguide/create-CA.html) for Infisical to issue certificates from
+</UseCase>
+
+<UseCase use="acm-public-ca,acme-route53" hideWhenEmpty>
+    - A [Route 53 hosted zone](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/CreatingHostedZone.html) for the domain you'll issue certificates for
+</UseCase>
+
+## Step 1: Create an IAM role or IAM user
+
+Infisical can either assume an IAM role in your account or sign in as an IAM user with an access key. We recommend using an IAM role, since Infisical never holds a long-lived credential for it.
 
 <Tabs>
     <Tab title="Assume Role (Recommended)">
-        Infisical will assume the provided role in your AWS account securely, without the need to share any credentials.
-
-        <Accordion title="Self-Hosted Instance">
-            To connect your self-hosted Infisical instance with AWS, you need to set up an AWS IAM User account that can assume the configured AWS IAM Role.
-
-            <Note>
-              If your Infisical instance is deployed on AWS (e.g. EC2, ECS, or EKS), you do not need to provide static credentials. When the `INF_APP_CONNECTION_AWS_ACCESS_KEY_ID` and `INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY` environment variables are not set, Infisical will automatically retrieve credentials from your instance's environment (instance profile, task role, or IRSA). Simply ensure that the IAM role attached to your compute has the permission policy below to assume your target roles.
-            </Note>
-
-            The following steps are for instances **not** deployed on AWS:
-            <Steps>
-                <Step title="Create an IAM User">
-                    Navigate to [Create IAM User](https://console.aws.amazon.com/iamv2/home#/users/create) in your AWS Console.
-                </Step>
-                <Step title="Create an Inline Policy">
-                    Attach the following inline permission policy to the IAM User to allow it to assume any IAM Roles:
-                    ```json
-                    {
-                        "Version": "2012-10-17",
-                        "Statement": [
-                    {
-                        "Sid": "AllowAssumeAnyRole",
-                        "Effect": "Allow",
-                        "Action": "sts:AssumeRole",
-                        "Resource": "arn:aws:iam::*:role/*"
-                    }
-                        ]
-                    }
-                    ```
-                </Step>
-                <Step title="Obtain the IAM User Credentials">
-                    Obtain the AWS access key ID and secret access key for your IAM User by navigating to **IAM > Users > [Your User] > Security credentials > Access keys**.
-
-                    ![Access Key Step 1](/images/integrations/aws/integrations-aws-access-key-1.png)
-                    ![Access Key Step 2](/images/integrations/aws/integrations-aws-access-key-2.png)
-                    ![Access Key Step 3](/images/integrations/aws/integrations-aws-access-key-3.png)
-                </Step>
-                <Step title="Set Up Connection Keys">
-                    1. Set the access key as **INF_APP_CONNECTION_AWS_ACCESS_KEY_ID**.
-                    2. Set the secret key as **INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY**.
-                </Step>
-            </Steps>
-        </Accordion>
+        <SelfHostedInstance />
 
         <Steps>
-            <Step title="Create the Managing User IAM Role for Infisical">
-                1. Navigate to the [Create IAM Role](https://console.aws.amazon.com/iamv2/home#/roles/create?step=selectEntities) page in your AWS Console.
-                ![IAM Role Creation](/images/integrations/aws/integration-aws-iam-assume-role.png)
-
-                2. Select **AWS Account** as the **Trusted Entity Type**.
-                3. Select **Another AWS Account** and provide the appropriate Infisical AWS Account ID: use **381492033652** for the **US region**, and **345594589636** for the **EU region**. This restricts the role to be assumed only by Infisical. If self-hosting, provide your AWS account number instead.
-                <Note>
-                  **For Dedicated Instances**: Your AWS account ID differs from the one provided above. Please reach out to Infisical support to obtain your AWS account ID.
-                </Note>
-                4. (Recommended) <strong>Enable "Require external ID"</strong> and input the appropriate ID to strengthen security and mitigate the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html):
-                   - **Project-scoped connections** — use your **Project ID** as the External ID (for Certificate Manager and Agent Vault connections, use your **Organization ID**).
-                   - **Organization-scoped connections** — use your **Organization ID** as the External ID.
-
-                <Warning type="warning" title="Security Best Practice: Use External ID to Prevent Confused Deputy Attacks">
-                    When configuring an IAM Role that Infisical will assume, it’s highly recommended to enable the **"Require external ID"** option.
-
-                    This precaution helps protect your AWS account against the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html), a potential security vulnerability where Infisical could be tricked into performing actions on your behalf by an unauthorized actor.
-
-                    Infisical automatically sends the correct External ID based on the connection’s scope:
-                    - **Project-scoped connections** use the **Project ID** as the External ID, restricting role access to a single project. **Certificate Manager** and **Agent Vault** connections use the **Organization ID** as the External ID.
-                    - **Organization-scoped connections** use the **Organization ID** as the External ID.
-
-                    <strong>Always enable "Require external ID" when setting up the IAM Role, and use the ID that matches your connection’s scope.</strong>
-
-                    <Note>
-                        **Upgrading existing project-scoped connections:** Connections created before **May 26, 2026** (cloud) or release **v0.160.7** (self-hosted) use the Organization ID as the External ID (legacy behavior). To adopt the stronger project-scoped External ID, delete and recreate the connection, then update your IAM role’s trust policy to use your Project ID instead.
-                    </Note>
-                </Warning>
-            </Step>
-
-            <Step title="Add Required Permissions to the IAM Role">
-                Navigate to your IAM role permissions and click **Create Inline Policy**.
-
-                ![IAM Role Create Policy](/images/app-connections/aws/assume-role-create-policy.png)
-
-                Depending on your use case, add one or more of the following policies to your IAM Role:
-
-                <Tabs>
-                    <Tab title="Secret Sync">
-                        <AccordionGroup>
-                            <Accordion title="AWS Secrets Manager">
-                                Use the following custom policy to grant the minimum permissions required by Infisical to sync secrets to AWS Secrets Manager:
-
-                                ![IAM Role Secrets Manager Permissions](/images/app-connections/aws/secrets-manager-permissions.png)
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Sid": "AllowSecretsManagerAccess",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "secretsmanager:ListSecrets",
-                                                "secretsmanager:GetSecretValue",
-                                                "secretsmanager:BatchGetSecretValue",
-                                                "secretsmanager:CreateSecret",
-                                                "secretsmanager:UpdateSecret",
-                                                "secretsmanager:DeleteSecret",
-                                                "secretsmanager:DescribeSecret",
-                                                "secretsmanager:TagResource",
-                                                "secretsmanager:UntagResource",
-                                                "kms:ListAliases", // if you need to specify the KMS key
-                                                "kms:Encrypt", // if you need to specify the KMS key
-                                                "kms:Decrypt", // if you need to specify the KMS key
-                                                "kms:DescribeKey" // if you need to specify the KMS key
-                                            ],
-                                            "Resource": "*"
-                                        }
-                                    ]
-                                }
-                                ```
-                                <Note>If using a custom KMS key, be sure to add the IAM user or role as a key user. ![KMS Key IAM Role User](/images/app-connections/aws/kms-key-user.png)</Note>
-                            </Accordion>
-                            <Accordion title="AWS Parameter Store">
-                                Use the following custom policy to grant the minimum permissions required by Infisical to sync secrets to AWS Parameter Store:
-
-                                ![IAM Role Secrets Manager Permissions](/images/app-connections/aws/parameter-store-permissions.png)
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Sid": "AllowSSMAccess",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "ssm:PutParameter",
-                                                "ssm:GetParameters",
-                                                "ssm:GetParametersByPath",
-                                                "ssm:DescribeParameters",
-                                                "ssm:DeleteParameters",
-                                                "ssm:ListTagsForResource", // if you need to add tags to secrets
-                                                "ssm:AddTagsToResource", // if you need to add tags to secrets
-                                                "ssm:RemoveTagsFromResource", // if you need to add tags to secrets
-                                                "kms:ListAliases", // if you need to specify the KMS key
-                                                "kms:Encrypt", // if you need to specify the KMS key
-                                                "kms:Decrypt", // if you need to specify the KMS key
-                                                "kms:DescribeKey" // if you need to specify the KMS key
-                                            ],
-                                            "Resource": "*"
-                                        }
-                                    ]
-                                }
-                                ```
-                                <Note>If using a custom KMS key, be sure to add the IAM user or role as a key user. ![KMS Key IAM Role User](/images/app-connections/aws/kms-key-user.png)</Note>
-                            </Accordion>
-                        </AccordionGroup>
-                    </Tab>
-                    <Tab title="Secret Rotation">
-                        <AccordionGroup>
-                            <Accordion title="AWS IAM">
-                                Use the following custom policy to grant the minimum permissions required by Infisical to rotate secrets to AWS Access Keys:
-
-                                ![IAM Role Secret Rotation Permissions](/images/app-connections/aws/iam-role-secret-rotation-permissions.png)
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "iam:ListAccessKeys",
-                                                "iam:CreateAccessKey",
-                                                "iam:UpdateAccessKey",
-                                                "iam:DeleteAccessKey",
-                                                "iam:ListUsers"
-                                            ],
-                                            "Resource": "*"
-                                        }
-                                    ]
-                                }
-                                ```
-                            </Accordion>
-                        </AccordionGroup>
-                    </Tab>
-                    <Tab title="PKI Sync">
-                        <AccordionGroup>
-                            <Accordion title="AWS Certificate Manager">
-                                Use the following custom policy to grant the minimum permissions required by Infisical to sync certificates to AWS Certificate Manager:
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Sid": "AllowCertificateManagerAccess",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "acm:ListCertificates",
-                                                "acm:DescribeCertificate",
-                                                "acm:GetCertificate",
-                                                "acm:ImportCertificate",
-                                                "acm:ExportCertificate",
-                                                "acm:DeleteCertificate",
-                                                "acm:AddTagsToCertificate",
-                                                "acm:RemoveTagsFromCertificate",
-                                                "acm:ListTagsForCertificate"
-                                            ],
-                                            "Resource": "*"
-                                        }
-                                    ]
-                                }
-                                ```
-                                <Note>
-                                    - **ListCertificates**: Lists all certificates in the account
-                                    - **ImportCertificate**: Imports certificates from Infisical into AWS Certificate Manager
-                                    - **ExportCertificate**: Exports certificates for synchronization
-                                    - **DeleteCertificate**: Removes certificates that are no longer managed by Infisical
-                                    - **DescribeCertificate** and **GetCertificate**: Retrieves certificate details for comparison during sync
-                                    - Tag-related permissions: Manages certificate tags for identification and organization
-                                </Note>
-                            </Accordion>
-                            <Accordion title="AWS Elastic Load Balancer">
-                                Use the following custom policy to grant the minimum permissions required by Infisical to sync certificates to AWS Elastic Load Balancers:
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Sid": "AllowCertificateManagerAccess",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "acm:ListCertificates",
-                                                "acm:DescribeCertificate",
-                                                "acm:ImportCertificate",
-                                                "acm:DeleteCertificate",
-                                                "acm:ListTagsForCertificate"
-                                            ],
-                                            "Resource": "*"
-                                        },
-                                        {
-                                            "Sid": "AllowElasticLoadBalancerAccess",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "elasticloadbalancing:DescribeLoadBalancers",
-                                                "elasticloadbalancing:DescribeListeners",
-                                                "elasticloadbalancing:DescribeListenerCertificates",
-                                                "elasticloadbalancing:AddListenerCertificates",
-                                                "elasticloadbalancing:RemoveListenerCertificates",
-                                                "elasticloadbalancing:ModifyListener"
-                                            ],
-                                            "Resource": "*"
-                                        }
-                                    ]
-                                }
-                                ```
-                                <Note>
-                                    **ACM Permissions:**
-                                    - **ListCertificates**: Lists all certificates in the account
-                                    - **ImportCertificate**: Imports certificates from Infisical into AWS Certificate Manager
-                                    - **DeleteCertificate**: Removes certificates that are no longer managed by Infisical
-                                    - **DescribeCertificate**: Retrieves certificate details for comparison during sync
-                                    - **ListTagsForCertificate**: Retrieves certificate tags for identification
-
-                                    **ELB Permissions:**
-                                    - **DescribeLoadBalancers**: Lists available load balancers for selection
-                                    - **DescribeListeners**: Lists HTTPS/TLS listeners on load balancers
-                                    - **DescribeListenerCertificates**: Lists certificates attached to listeners
-                                    - **AddListenerCertificates**: Attaches certificates to listeners
-                                    - **RemoveListenerCertificates**: Removes certificates from listeners
-                                    - **ModifyListener**: Sets the default certificate on listeners
-                                </Note>
-                            </Accordion>
-                        </AccordionGroup>
-                    </Tab>
-                    <Tab title="External Certificate Authority">
-                        <AccordionGroup>
-                            <Accordion title="AWS Private CA">
-                                Use the following custom policy to grant the minimum permissions required by Infisical to issue certificates via AWS Private CA.
-
-                                For a **single CA**, scope the `Resource` to that CA's ARN:
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Sid": "AllowAwsPrivateCAAccess",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "acm-pca:DescribeCertificateAuthority",
-                                                "acm-pca:GetCertificateAuthorityCertificate",
-                                                "acm-pca:IssueCertificate",
-                                                "acm-pca:GetCertificate",
-                                                "acm-pca:RevokeCertificate"
-                                            ],
-                                            "Resource": "arn:aws:acm-pca:us-east-1:123456789012:certificate-authority/your-ca-id"
-                                        }
-                                    ]
-                                }
-                                ```
-
-                                For **multiple CAs**, list each ARN in the `Resource` array:
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Sid": "AllowAwsPrivateCAAccess",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "acm-pca:DescribeCertificateAuthority",
-                                                "acm-pca:GetCertificateAuthorityCertificate",
-                                                "acm-pca:IssueCertificate",
-                                                "acm-pca:GetCertificate",
-                                                "acm-pca:RevokeCertificate"
-                                            ],
-                                            "Resource": [
-                                                "arn:aws:acm-pca:us-east-1:123456789012:certificate-authority/ca-id-1",
-                                                "arn:aws:acm-pca:us-west-2:123456789012:certificate-authority/ca-id-2"
-                                            ]
-                                        }
-                                    ]
-                                }
-                                ```
-                                <Note>
-                                    - **DescribeCertificateAuthority**: Validates the CA status and configuration
-                                    - **GetCertificateAuthorityCertificate**: Retrieves the CA certificate and chain
-                                    - **IssueCertificate**: Issues certificates from the private CA
-                                    - **GetCertificate**: Retrieves issued certificates
-                                    - **RevokeCertificate**: Revokes previously issued certificates
-
-                                    Using a specific CA ARN in `Resource` is recommended over `"*"` to follow the principle of least privilege.
-                                </Note>
-                                <Note>
-                                    If you further restrict `IssueCertificate` with an `acm-pca:TemplateArn` condition, include every template Infisical uses, or issuance fails with a permission error:
-
-                                    - `arn:aws:acm-pca:::template/BlankEndEntityCertificate_APICSRPassthrough/V1` for end-entity certificates
-                                    - `arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen{0,1,2,3}_APICSRPassthrough/V1` for [CA certificates](/documentation/platform/pki/ca/aws-pca#issuing-ca-certificates)
-                                </Note>
-                            </Accordion>
-                            <Accordion title="AWS ACM Public CA">
-                                Use the following custom policy to grant the minimum permissions required by Infisical to issue publicly-trusted certificates via AWS Certificate Manager and perform DNS validation through Route 53.
-
-                                **ACM permissions** — `RequestCertificate` cannot be scoped below `"*"` because the certificate ARN does not exist until after the call succeeds:
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Sid": "AllowAcmPublicCaAccess",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "acm:RequestCertificate",
-                                                "acm:DescribeCertificate",
-                                                "acm:ExportCertificate",
-                                                "acm:RenewCertificate",
-                                                "acm:RevokeCertificate",
-                                                "acm:ListCertificates"
-                                            ],
-                                            "Resource": "*"
-                                        }
-                                    ]
-                                }
-                                ```
-
-                                **Route 53 permissions** — scope to the hosted zone(s) used for DNS validation:
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Sid": "AllowRoute53ForAcmValidation",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "route53:GetHostedZone",
-                                                "route53:ChangeResourceRecordSets"
-                                            ],
-                                            "Resource": "arn:aws:route53:::hostedzone/YOUR_HOSTED_ZONE_ID"
-                                        }
-                                    ]
-                                }
-                                ```
-
-                                ACM and Route 53 permissions can live on the same IAM principal, or be split across two separate connections in Infisical.
-
-                                <Note>
-                                    **ACM Permissions:**
-                                    - **RequestCertificate**: Requests a new public certificate from ACM
-                                    - **DescribeCertificate**: Retrieves certificate status and DNS validation records
-                                    - **ExportCertificate**: Exports the issued certificate and private key to Infisical
-                                    - **RenewCertificate**: Triggers renewal of an existing certificate
-                                    - **RevokeCertificate**: Revokes a previously issued certificate
-                                    - **ListCertificates**: Used during connection validation
-
-                                    **Route 53 Permissions:**
-                                    - **GetHostedZone**: Validates the hosted zone during CA setup
-                                    - **ChangeResourceRecordSets**: Writes the ACM DNS validation CNAME records
-                                </Note>
-                            </Accordion>
-                        </AccordionGroup>
-                    </Tab>
-                    <Tab title="PAM Session Recording">
-                        <AccordionGroup>
-                            <Accordion title="AWS S3 Bucket">
-                                Use the following custom policy to grant the minimum permissions required by Infisical to store and play back PAM session recordings in your S3 bucket. Replace `your-pam-recordings-bucket` with the bucket name you configure in **Project Settings → Session Recording**.
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Sid": "AllowPamRecordingBucketAccess",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "s3:PutObject",
-                                                "s3:GetObject"
-                                            ],
-                                            "Resource": "arn:aws:s3:::your-pam-recordings-bucket/*"
-                                        },
-                                        {
-                                            "Sid": "AllowPamRecordingBucketTest",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "s3:ListBucket"
-                                            ],
-                                            "Resource": "arn:aws:s3:::your-pam-recordings-bucket"
-                                        },
-                                        {
-                                            "Sid": "AllowPamRecordingConnectionTestCleanup",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "s3:DeleteObject"
-                                            ],
-                                            "Resource": "arn:aws:s3:::your-pam-recordings-bucket/.test/*"
-                                        }
-                                    ]
-                                }
-                                ```
-
-                                If you scoped the recording config to a key prefix (for example `pam/prod`), update all three `Resource` ARNs to include the prefix:
-
-                                ```json
-                                "Resource": "arn:aws:s3:::your-pam-recordings-bucket/pam/prod/*"
-                                ```
-
-                                ```json
-                                "Resource": "arn:aws:s3:::your-pam-recordings-bucket/pam/prod/.test/*"
-                                ```
-
-                                <Note>
-                                    **S3 Permissions:**
-                                    - **PutObject**: Lets the gateway upload encrypted recording chunks via presigned PUT URLs. Also used by the connection test to write a probe object under `{prefix}/.test/{uuid}`.
-                                    - **GetObject**: Lets the browser fetch encrypted chunks during playback via presigned GET URLs. Decryption happens locally in the browser; Infisical only ever sees ciphertext.
-                                    - **ListBucket**: Required by `HeadBucket`, which Infisical calls during the connection test to confirm the bucket exists and the credentials can reach it.
-                                    - **DeleteObject** (scoped to `.test/*`): Used **only** to clean up the probe object after the connection test. Infisical never deletes recording chunks. Your bucket lifecycle policy owns retention. When using a key prefix, the test object is written under `{prefix}/.test/`, so the `DeleteObject` resource must include the prefix.
-                                </Note>
-
-                                <Note>
-                                    Recording chunks are encrypted with a per-session AES-256-GCM key on the gateway before they leave your network, and the session key is wrapped with Infisical's KMS using session-bound AAD. Even if the bucket policy is wider than the principle of least privilege suggests, the ciphertext is not readable without an authenticated session-key unwrap.
-                                </Note>
-
-                                #### Bucket CORS configuration
-
-                                During playback the browser fetches encrypted chunks directly from S3 using presigned GET URLs. For this to work the bucket needs a CORS policy that allows requests from your Infisical domain.
-
-                                Open the bucket in the AWS console, go to **Permissions → Cross-origin resource sharing (CORS)**, and add:
-
-                                ```json
-                                [
-                                    {
-                                        "AllowedHeaders": ["*"],
-                                        "AllowedMethods": ["GET"],
-                                        "AllowedOrigins": ["https://app.infisical.com"],
-                                        "ExposeHeaders": [],
-                                        "MaxAgeSeconds": 3600
-                                    }
-                                ]
-                                ```
-
-                                Replace `https://app.infisical.com` with the origin where your Infisical dashboard is served (for example `https://eu.infisical.com` or `http://localhost:8080` during development). You can list multiple origins if needed.
-                            </Accordion>
-                        </AccordionGroup>
-                    </Tab>
-                </Tabs>
-            </Step>
-
-            <Step title="Copy the AWS IAM Role ARN">
-                ![Copy IAM Role ARN](/images/integrations/aws/integration-aws-iam-assume-arn.png)
-            </Step>
-
-            <Step title="Setup AWS Connection in Infisical">
-                <Tabs>
-                    <Tab title="Infisical UI">
-                        1. Navigate to the **Integrations** tab in the desired project, then select **App Connections**.
-                        ![App Connections Tab](/images/app-connections/general/add-connection.png)
-
-                        2. Select the **AWS Connection** option.
-                        ![Select AWS Connection](/images/app-connections/aws/select-aws-connection.png)
-
-                        3. Select the **Assume Role** method option and provide the **AWS IAM Role ARN** obtained from the previous step and press **Connect to AWS**.
-                        ![Create AWS Connection](/images/app-connections/aws/create-assume-role-method.png)
-
-                        <Note>
-                            The optional **STS Endpoint URL** field lets you override the default AWS STS endpoint that Infisical
-                            calls to assume the role. Provide an HTTPS URL (for example a VPC PrivateLink, GovCloud, China, FIPS,
-                            or region-pinned STS endpoint) when the default `https://sts.amazonaws.com` is not reachable or desired.
-                            Leave it blank to use AWS's default endpoint resolution.
-                        </Note>
-
-                        4. Your **AWS Connection** is now available for use.
-                        ![Assume Role AWS Connection](/images/app-connections/aws/assume-role-connection.png)
-                    </Tab>
-                    <Tab title="API">
-                        To create an AWS Connection, make an API request to the [Create AWS
-                        Connection](/api-reference/endpoints/app-connections/aws/create) API endpoint.
-
-                        ### Sample request
-
-                        ```bash Request
-                        curl    --request POST \
-                                --url https://app.infisical.com/api/v1/app-connections/aws \
-                                --header 'Content-Type: application/json' \
-                                --data '{
-                                    "name": "my-aws-connection",
-                                    "method": "assume-role",
-                                    "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
-                                    "credentials": {
-                                        "roleArn": "...",
-                                        "stsEndpoint": "https://sts.amazonaws.com"
-                                    }
-                                }'
-                        ```
-
-                        ### Sample response
-
-                        ```bash Response
-                        {
-                            "appConnection": {
-                                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                                "name": "my-aws-connection",
-                                "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
-                                "version": 123,
-                                "orgId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                                "createdAt": "2023-11-07T05:31:56Z",
-                                "updatedAt": "2023-11-07T05:31:56Z",
-                                "app": "aws",
-                                "method": "assume-role",
-                                "credentials": {}
-                            }
-                        }
-                        ```
-                    </Tab>
-                </Tabs>
-            </Step>
+            <CreateIamRole externalId="required" />
         </Steps>
-
     </Tab>
     <Tab title="Access Key">
-        Infisical will use the provided **Access Key ID** and **Secret Key** to connect to your AWS instance.
-
         <Steps>
-            <Step title="Add Required Permissions to the IAM User">
-                Navigate to your IAM user permissions and click **Create Inline Policy**.
-
-                ![User IAM Create Policy](/images/app-connections/aws/access-key-create-policy.png)
-
-                Depending on your use case, add one or more of the following policies to your user:
-
-                <Tabs>
-                    <Tab title="Secret Sync">
-                        <AccordionGroup>
-                            <Accordion title="AWS Secrets Manager">
-                                Use the following custom policy to grant the minimum permissions required by Infisical to sync secrets to AWS Secrets Manager:
-
-                                ![IAM Role Secrets Manager Permissions](/images/app-connections/aws/secrets-manager-permissions.png)
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                {
-                                    "Sid": "AllowSecretsManagerAccess",
-                                    "Effect": "Allow",
-                                    "Action": [
-                                        "secretsmanager:ListSecrets",
-                                        "secretsmanager:GetSecretValue",
-                                        "secretsmanager:BatchGetSecretValue",
-                                        "secretsmanager:CreateSecret",
-                                        "secretsmanager:UpdateSecret",
-                                        "secretsmanager:DeleteSecret",
-                                        "secretsmanager:DescribeSecret",
-                                        "secretsmanager:TagResource",
-                                        "secretsmanager:UntagResource",
-                                        "kms:ListAliases", // if you need to specify the KMS key
-                                        "kms:Encrypt", // if you need to specify the KMS key
-                                        "kms:Decrypt", // if you need to specify the KMS key
-                                        "kms:DescribeKey" // if you need to specify the KMS key
-                                    ],
-                                    "Resource": "*"
-                                }
-                                    ]
-                                }
-                                ```
-                                <Note>If using a custom KMS key, be sure to add the IAM user or role as a key user. ![KMS Key IAM Role User](/images/app-connections/aws/kms-key-user.png)</Note>
-                            </Accordion>
-                            <Accordion title="AWS Parameter Store">
-                                Use the following custom policy to grant the minimum permissions required by Infisical to sync secrets to AWS Parameter Store:
-
-                                ![IAM Role Secrets Manager Permissions](/images/app-connections/aws/parameter-store-permissions.png)
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                {
-                                    "Sid": "AllowSSMAccess",
-                                    "Effect": "Allow",
-                                    "Action": [
-                                        "ssm:PutParameter",
-                                        "ssm:GetParameters",
-                                        "ssm:GetParametersByPath",
-                                        "ssm:DescribeParameters",
-                                        "ssm:DeleteParameters",
-                                        "ssm:ListTagsForResource", // if you need to add tags to secrets
-                                        "ssm:AddTagsToResource", // if you need to add tags to secrets
-                                        "ssm:RemoveTagsFromResource", // if you need to add tags to secrets
-                                        "kms:ListAliases", // if you need to specify the KMS key
-                                        "kms:Encrypt", // if you need to specify the KMS key
-                                        "kms:Decrypt", // if you need to specify the KMS key
-                                        "kms:DescribeKey" // if you need to specify the KMS key
-                                    ],
-                                    "Resource": "*"
-                                }
-                                    ]
-                                }
-                                ```
-                                <Note>If using a custom KMS key, be sure to add the IAM user or role as a key user. ![KMS Key IAM Role User](/images/app-connections/aws/kms-key-user.png)</Note>
-                            </Accordion>
-                        </AccordionGroup>
-                    </Tab>
-                    <Tab title="Secret Rotation">
-                        <AccordionGroup>
-                            <Accordion title="AWS IAM">
-                                Use the following custom policy to grant the minimum permissions required by Infisical to rotate secrets to AWS Access Keys:
-
-                                ![IAM Role Secret Rotation Permissions](/images/app-connections/aws/iam-role-secret-rotation-permissions.png)
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "iam:ListAccessKeys",
-                                                "iam:CreateAccessKey",
-                                                "iam:UpdateAccessKey",
-                                                "iam:DeleteAccessKey",
-                                                "iam:ListUsers"
-                                            ],
-                                            "Resource": "*"
-                                        }
-                                    ]
-                                }
-                                ```
-                            </Accordion>
-                        </AccordionGroup>
-                    </Tab>
-                    <Tab title="PKI Sync">
-                        <AccordionGroup>
-                            <Accordion title="AWS Certificate Manager">
-                                Use the following custom policy to grant the minimum permissions required by Infisical to sync certificates to AWS Certificate Manager:
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Sid": "AllowCertificateManagerAccess",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "acm:ListCertificates",
-                                                "acm:DescribeCertificate",
-                                                "acm:GetCertificate",
-                                                "acm:ImportCertificate",
-                                                "acm:ExportCertificate",
-                                                "acm:DeleteCertificate",
-                                                "acm:AddTagsToCertificate",
-                                                "acm:RemoveTagsFromCertificate",
-                                                "acm:ListTagsForCertificate"
-                                            ],
-                                            "Resource": "*"
-                                        }
-                                    ]
-                                }
-                                ```
-                                <Note>
-                                    - **ListCertificates**: Lists all certificates in the account
-                                    - **ImportCertificate**: Imports certificates from Infisical into AWS Certificate Manager
-                                    - **ExportCertificate**: Exports certificates for synchronization
-                                    - **DeleteCertificate**: Removes certificates that are no longer managed by Infisical
-                                    - **DescribeCertificate** and **GetCertificate**: Retrieves certificate details for comparison during sync
-                                    - Tag-related permissions: Manages certificate tags for identification and organization
-                                </Note>
-                            </Accordion>
-                            <Accordion title="AWS Elastic Load Balancer">
-                                Use the following custom policy to grant the minimum permissions required by Infisical to sync certificates to AWS Elastic Load Balancers:
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Sid": "AllowCertificateManagerAccess",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "acm:ListCertificates",
-                                                "acm:DescribeCertificate",
-                                                "acm:ImportCertificate",
-                                                "acm:DeleteCertificate",
-                                                "acm:ListTagsForCertificate"
-                                            ],
-                                            "Resource": "*"
-                                        },
-                                        {
-                                            "Sid": "AllowElasticLoadBalancerAccess",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "elasticloadbalancing:DescribeLoadBalancers",
-                                                "elasticloadbalancing:DescribeListeners",
-                                                "elasticloadbalancing:DescribeListenerCertificates",
-                                                "elasticloadbalancing:AddListenerCertificates",
-                                                "elasticloadbalancing:RemoveListenerCertificates",
-                                                "elasticloadbalancing:ModifyListener"
-                                            ],
-                                            "Resource": "*"
-                                        }
-                                    ]
-                                }
-                                ```
-                                <Note>
-                                    **ACM Permissions:**
-                                    - **ListCertificates**: Lists all certificates in the account
-                                    - **ImportCertificate**: Imports certificates from Infisical into AWS Certificate Manager
-                                    - **DeleteCertificate**: Removes certificates that are no longer managed by Infisical
-                                    - **DescribeCertificate**: Retrieves certificate details for comparison during sync
-                                    - **ListTagsForCertificate**: Retrieves certificate tags for identification
-
-                                    **ELB Permissions:**
-                                    - **DescribeLoadBalancers**: Lists available load balancers for selection
-                                    - **DescribeListeners**: Lists HTTPS/TLS listeners on load balancers
-                                    - **DescribeListenerCertificates**: Lists certificates attached to listeners
-                                    - **AddListenerCertificates**: Attaches certificates to listeners
-                                    - **RemoveListenerCertificates**: Removes certificates from listeners
-                                    - **ModifyListener**: Sets the default certificate on listeners
-                                </Note>
-                            </Accordion>
-                        </AccordionGroup>
-                    </Tab>
-                    <Tab title="External CA">
-                        <AccordionGroup>
-                            <Accordion title="AWS Private CA">
-                                Use the following custom policy to grant the minimum permissions required by Infisical to issue certificates via AWS Private CA.
-
-                                For a **single CA**, scope the `Resource` to that CA's ARN:
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Sid": "AllowAwsPrivateCAAccess",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "acm-pca:DescribeCertificateAuthority",
-                                                "acm-pca:GetCertificateAuthorityCertificate",
-                                                "acm-pca:IssueCertificate",
-                                                "acm-pca:GetCertificate",
-                                                "acm-pca:RevokeCertificate"
-                                            ],
-                                            "Resource": "arn:aws:acm-pca:us-east-1:123456789012:certificate-authority/your-ca-id"
-                                        }
-                                    ]
-                                }
-                                ```
-
-                                For **multiple CAs**, list each ARN in the `Resource` array:
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Sid": "AllowAwsPrivateCAAccess",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "acm-pca:DescribeCertificateAuthority",
-                                                "acm-pca:GetCertificateAuthorityCertificate",
-                                                "acm-pca:IssueCertificate",
-                                                "acm-pca:GetCertificate",
-                                                "acm-pca:RevokeCertificate"
-                                            ],
-                                            "Resource": [
-                                                "arn:aws:acm-pca:us-east-1:123456789012:certificate-authority/ca-id-1",
-                                                "arn:aws:acm-pca:us-west-2:123456789012:certificate-authority/ca-id-2"
-                                            ]
-                                        }
-                                    ]
-                                }
-                                ```
-                                <Note>
-                                    - **DescribeCertificateAuthority**: Validates the CA status and configuration
-                                    - **GetCertificateAuthorityCertificate**: Retrieves the CA certificate and chain
-                                    - **IssueCertificate**: Issues certificates from the private CA
-                                    - **GetCertificate**: Retrieves issued certificates
-                                    - **RevokeCertificate**: Revokes previously issued certificates
-
-                                    Using a specific CA ARN in `Resource` is recommended over `"*"` to follow the principle of least privilege.
-                                </Note>
-                                <Note>
-                                    If you further restrict `IssueCertificate` with an `acm-pca:TemplateArn` condition, include every template Infisical uses, or issuance fails with a permission error:
-
-                                    - `arn:aws:acm-pca:::template/BlankEndEntityCertificate_APICSRPassthrough/V1` for end-entity certificates
-                                    - `arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen{0,1,2,3}_APICSRPassthrough/V1` for [CA certificates](/documentation/platform/pki/ca/aws-pca#issuing-ca-certificates)
-                                </Note>
-                            </Accordion>
-                            <Accordion title="AWS ACM Public CA">
-                                Use the following custom policy to grant the minimum permissions required by Infisical to issue publicly-trusted certificates via AWS Certificate Manager and perform DNS validation through Route 53.
-
-                                **ACM permissions** — `RequestCertificate` cannot be scoped below `"*"` because the certificate ARN does not exist until after the call succeeds:
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Sid": "AllowAcmPublicCaAccess",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "acm:RequestCertificate",
-                                                "acm:DescribeCertificate",
-                                                "acm:ExportCertificate",
-                                                "acm:RenewCertificate",
-                                                "acm:RevokeCertificate",
-                                                "acm:ListCertificates"
-                                            ],
-                                            "Resource": "*"
-                                        }
-                                    ]
-                                }
-                                ```
-
-                                **Route 53 permissions** — scope to the hosted zone(s) used for DNS validation:
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Sid": "AllowRoute53ForAcmValidation",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "route53:GetHostedZone",
-                                                "route53:ChangeResourceRecordSets"
-                                            ],
-                                            "Resource": "arn:aws:route53:::hostedzone/YOUR_HOSTED_ZONE_ID"
-                                        }
-                                    ]
-                                }
-                                ```
-
-                                ACM and Route 53 permissions can live on the same IAM principal, or be split across two separate connections in Infisical.
-
-                                <Note>
-                                    **ACM Permissions:**
-                                    - **RequestCertificate**: Requests a new public certificate from ACM
-                                    - **DescribeCertificate**: Retrieves certificate status and DNS validation records
-                                    - **ExportCertificate**: Exports the issued certificate and private key to Infisical
-                                    - **RenewCertificate**: Triggers renewal of an existing certificate
-                                    - **RevokeCertificate**: Revokes a previously issued certificate
-                                    - **ListCertificates**: Used during connection validation
-
-                                    **Route 53 Permissions:**
-                                    - **GetHostedZone**: Validates the hosted zone during CA setup
-                                    - **ChangeResourceRecordSets**: Writes the ACM DNS validation CNAME records
-                                </Note>
-                            </Accordion>
-                        </AccordionGroup>
-                    </Tab>
-                    <Tab title="PAM Session Recording">
-                        <AccordionGroup>
-                            <Accordion title="AWS S3 Bucket">
-                                Use the following custom policy to grant the minimum permissions required by Infisical to store and play back PAM session recordings in your S3 bucket. Replace `your-pam-recordings-bucket` with the bucket name you configure in **Project Settings → Session Recording**.
-
-                                ```json
-                                {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Sid": "AllowPamRecordingBucketAccess",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "s3:PutObject",
-                                                "s3:GetObject"
-                                            ],
-                                            "Resource": "arn:aws:s3:::your-pam-recordings-bucket/*"
-                                        },
-                                        {
-                                            "Sid": "AllowPamRecordingBucketTest",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "s3:ListBucket"
-                                            ],
-                                            "Resource": "arn:aws:s3:::your-pam-recordings-bucket"
-                                        },
-                                        {
-                                            "Sid": "AllowPamRecordingConnectionTestCleanup",
-                                            "Effect": "Allow",
-                                            "Action": [
-                                                "s3:DeleteObject"
-                                            ],
-                                            "Resource": "arn:aws:s3:::your-pam-recordings-bucket/.test/*"
-                                        }
-                                    ]
-                                }
-                                ```
-
-                                If you scoped the recording config to a key prefix (for example `pam/prod`), update all three `Resource` ARNs to include the prefix:
-
-                                ```json
-                                "Resource": "arn:aws:s3:::your-pam-recordings-bucket/pam/prod/*"
-                                ```
-
-                                ```json
-                                "Resource": "arn:aws:s3:::your-pam-recordings-bucket/pam/prod/.test/*"
-                                ```
-
-                                <Note>
-                                    **S3 Permissions:**
-                                    - **PutObject**: Lets the gateway upload encrypted recording chunks via presigned PUT URLs. Also used by the connection test to write a probe object under `{prefix}/.test/{uuid}`.
-                                    - **GetObject**: Lets the browser fetch encrypted chunks during playback via presigned GET URLs. Decryption happens locally in the browser; Infisical only ever sees ciphertext.
-                                    - **ListBucket**: Required by `HeadBucket`, which Infisical calls during the connection test to confirm the bucket exists and the credentials can reach it.
-                                    - **DeleteObject** (scoped to `.test/*`): Used **only** to clean up the probe object after the connection test. Infisical never deletes recording chunks. Your bucket lifecycle policy owns retention. When using a key prefix, the test object is written under `{prefix}/.test/`, so the `DeleteObject` resource must include the prefix.
-                                </Note>
-
-                                <Note>
-                                    Recording chunks are encrypted with a per-session AES-256-GCM key on the gateway before they leave your network, and the session key is wrapped with Infisical's KMS using session-bound AAD. Even if the bucket policy is wider than the principle of least privilege suggests, the ciphertext is not readable without an authenticated session-key unwrap.
-                                </Note>
-
-                                #### Bucket CORS configuration
-
-                                During playback the browser fetches encrypted chunks directly from S3 using presigned GET URLs. For this to work the bucket needs a CORS policy that allows requests from your Infisical domain.
-
-                                Open the bucket in the AWS console, go to **Permissions → Cross-origin resource sharing (CORS)**, and add:
-
-                                ```json
-                                [
-                                    {
-                                        "AllowedHeaders": ["*"],
-                                        "AllowedMethods": ["GET"],
-                                        "AllowedOrigins": ["https://app.infisical.com"],
-                                        "ExposeHeaders": [],
-                                        "MaxAgeSeconds": 3600
-                                    }
-                                ]
-                                ```
-
-                                Replace `https://app.infisical.com` with the origin where your Infisical dashboard is served (for example `https://eu.infisical.com` or `http://localhost:8080` during development). You can list multiple origins if needed.
-                            </Accordion>
-                        </AccordionGroup>
-                    </Tab>
-                </Tabs>
-            </Step>
-            <Step title="Obtain Access Key ID and Secret Access Key">
-                Retrieve an AWS **Access Key ID** and a **Secret Key** for your IAM user in **IAM > Users > User > Security credentials > Access keys**.
-
-                ![access key 1](/images/integrations/aws/integrations-aws-access-key-1.png)
-                ![access key 2](/images/integrations/aws/integrations-aws-access-key-2.png)
-                ![access key 3](/images/integrations/aws/integrations-aws-access-key-3.png)
-            </Step>
-            <Step title="Setup AWS Connection in Infisical">
-                <Tabs>
-                    <Tab title="Infisical UI">
-                        1. Navigate to the **Integrations** tab in the desired project, then select **App Connections**.
-                        ![App Connections Tab](/images/app-connections/general/add-connection.png)
-
-                        2. Select the **AWS Connection** option.
-                        ![Select AWS Connection](/images/app-connections/aws/select-aws-connection.png)
-
-                        3. Select the **Access Key** method option and provide the **Access Key ID** and **Secret Key** obtained from the previous step and press **Connect to AWS**.
-                        ![Create AWS Connection](/images/app-connections/aws/create-access-key-method.png)
-
-                        4. Your **AWS Connection** is now available for use.
-                        ![Assume Role AWS Connection](/images/app-connections/aws/access-key-connection.png)
-                    </Tab>
-                    <Tab title="API">
-                        To create an AWS Connection, make an API request to the [Create AWS
-                        Connection](/api-reference/endpoints/app-connections/aws/create) API endpoint.
-
-                        ### Sample request
-
-                        ```bash Request
-                        curl    --request POST \
-                                --url https://app.infisical.com/api/v1/app-connections/aws \
-                                --header 'Content-Type: application/json' \
-                                --data '{
-                                    "name": "my-aws-connection",
-                                    "method": "access-key",
-                                    "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
-                                    "credentials": {
-                                        "accessKeyId": "...",
-                                        "secretKey": "..."
-                                    }
-                                }'
-                        ```
-
-                        ### Sample response
-
-                        ```bash Response
-                        {
-                            "appConnection": {
-                                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                                "name": "my-aws-connection",
-                                "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
-                                "version": 123,
-                                "orgId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                                "createdAt": "2023-11-07T05:31:56Z",
-                                "updatedAt": "2023-11-07T05:31:56Z",
-                                "app": "aws",
-                                "method": "access-key",
-                                "credentials": {
-                                    "accessKeyId": "..."
-                                }
-                            }
-                        }
-                        ```
-                    </Tab>
-                </Tabs>
-            </Step>
+            <CreateIamUser />
         </Steps>
-
     </Tab>
-
 </Tabs>
+
+## Step 2: Add permissions
+
+Next, add the required policies to the IAM role or user from [Step 1](#step-1-create-an-iam-role-or-iam-user):
+
+<Steps>
+    <Step>
+        In the IAM console, open the IAM role or user.
+    </Step>
+    <Step>
+        On the **Permissions** tab, select **Add permissions** > **Create inline policy**.
+
+        ![IAM Role Create Policy](/images/app-connections/aws/assume-role-create-policy.png)
+    </Step>
+    <Step>
+        Switch to the **JSON** editor, and replace the policy in the editor with this one. It combines the permissions of every integration you picked:
+
+        <CombinedIamPolicy groups={awsUseCaseGroups} />
+
+        <UseCase use="pam-recording,agent-vault-session-logs,private-ca,acm-public-ca,acme-route53" hideWhenEmpty>
+            Then replace the placeholders for the integrations you picked:
+        </UseCase>
+
+        <UseCase use="pam-recording" hideWhenEmpty>
+            - `<recording-bucket>`: the bucket you enter in the **Session Recording** card of a PAM account template (if you set a key prefix, such as `pam/prod`, add it after the bucket in both object ARNs)
+        </UseCase>
+
+        <UseCase use="agent-vault-session-logs" hideWhenEmpty>
+            - `<session-logs-bucket>` and `<key-prefix>`: the bucket and key prefix you'll enter in the **Session Logs** dialog in Agent Vault (if you won't set a key prefix, delete `<key-prefix>/`)
+        </UseCase>
+
+        <UseCase use="private-ca" hideWhenEmpty>
+            - `<region>`, `<account-id>`, and `<ca-id>`: the parts of your CA's ARN (to use several CAs, list each ARN in a `Resource` array)
+        </UseCase>
+
+        <UseCase use="acm-public-ca,acme-route53" hideWhenEmpty>
+            - `<hosted-zone-id>`: the ID of the Route 53 hosted zone for your domain
+        </UseCase>
+
+        <UseCase use="private-ca" hideWhenEmpty>
+            If you restrict `acm-pca:IssueCertificate` with an `acm-pca:TemplateArn` condition, include every template Infisical uses, or issuance fails with a permission error:
+
+            - `arn:aws:acm-pca:::template/BlankEndEntityCertificate_APICSRPassthrough/V1` for end-entity certificates
+            - `arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen{0,1,2,3}_APICSRPassthrough/V1` for [CA certificates](/documentation/platform/pki/ca/aws-pca#issuing-ca-certificates)
+        </UseCase>
+
+        <UseCase use="acm-public-ca" hideWhenEmpty>
+            If a different AWS account owns the hosted zone for an ACM public CA, move the `AllowRoute53ForAcmValidation` statement to a second connection in that account instead.
+        </UseCase>
+
+        <UseCase use="secrets-manager,parameter-store" hideWhenEmpty>
+            If a sync encrypts with a customer managed KMS key, select its KMS checkbox above the policy. If that key doesn't use the default key policy, also add the IAM role or user under **Key users** on the key's page in the AWS KMS console.
+        </UseCase>
+
+        <UseCase use="secrets-manager,parameter-store,iam-rotation,honey-tokens,acm-sync,elb-sync,pki-secrets-manager,private-ca,acm-public-ca,acme-route53,pam-recording,agent-vault-session-logs" hideWhenEmpty>
+            <Warning>
+                If you use the **Access Key** method, AWS may reject the policy as too large, because IAM users allow less inline policy than roles do.
+                
+                In this case, create it as a customer managed policy instead: in the IAM console, go to **Policies** > **Create policy**, paste the same JSON, and save it. Then open the IAM user and attach it under **Add permissions** > **Attach policies directly**.
+            </Warning>
+        </UseCase>
+    </Step>
+    <Step>
+        Select **Next**. Enter a **Policy name** that says which integrations the policy covers, such as `secrets-manager-sync`. Then, select **Create policy**. The policy belongs to the role or user, which already names Infisical, so the policy name only has to say what the policy grants.
+    </Step>
+</Steps>
+
+<UseCase use="pam-recording" hideWhenEmpty>
+    ### Add a CORS rule for PAM session recording
+
+    Your browser downloads recordings directly from the bucket during playback, so the bucket needs a CORS rule.
+
+    <Steps>
+        <Step>
+            In the Amazon S3 console, open the recording bucket, go to **Permissions**, and select **Edit** under **Cross-origin resource sharing (CORS)**.
+        </Step>
+        <Step>
+            Paste this rule, then select **Save changes**. If the bucket already has CORS rules, add this rule's object to the existing array instead of replacing it, so other applications that use the bucket keep working:
+
+            <CodeGroup>
+                ```json Infisical Cloud (US)
+                [
+                    {
+                        "AllowedHeaders": ["*"],
+                        "AllowedMethods": ["GET"],
+                        "AllowedOrigins": ["https://app.infisical.com"],
+                        "ExposeHeaders": [],
+                        "MaxAgeSeconds": 3600
+                    }
+                ]
+                ```
+
+                ```json Infisical Cloud (EU)
+                [
+                    {
+                        "AllowedHeaders": ["*"],
+                        "AllowedMethods": ["GET"],
+                        "AllowedOrigins": ["https://eu.infisical.com"],
+                        "ExposeHeaders": [],
+                        "MaxAgeSeconds": 3600
+                    }
+                ]
+                ```
+            </CodeGroup>
+
+            If you self-host Infisical or use a dedicated instance, replace `AllowedOrigins` with your instance's URL.
+        </Step>
+    </Steps>
+</UseCase>
+
+<UseCase use="agent-vault-session-logs" hideWhenEmpty>
+    ### Add a CORS rule for Agent Vault session logs
+
+    Your browser downloads session logs directly from the bucket, so the bucket needs a CORS rule. To see the same rule with your Infisical URL filled in, select **View AWS Setup** in the **Session Logs** dialog.
+
+    <Steps>
+        <AgentVaultSessionLogsCorsRule />
+    </Steps>
+</UseCase>
+
+## Step 3: Create the app connection
+
+Next, create the app connection in Infisical.
+
+<Tip>
+    To create the connection using the API, use the [Create AWS Connection](/api-reference/endpoints/app-connections/aws/create) endpoint.
+</Tip>
+
+<View title="Organization-level">
+    <Steps>
+        <Step>
+            In the sidebar, select **Integrations**, then open the **App Connections** tab.
+
+            ![App Connections Tab](/images/app-connections/general/add-connection.png)
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **AWS**.
+
+            ![Select AWS Connection](/images/app-connections/aws/select-aws-connection.png)
+        </Step>
+        <Step>
+            Fill out the form's fields:
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to AWS**.
+
+            ![AWS Connection Form](/images/app-connections/aws/create-assume-role-method.png)
+        </Step>
+    </Steps>
+</View>
+
+<View title="Project-level">
+    <Steps>
+        <Step>
+            Open the project's app connections:
+
+            - **Secrets Manager project:** select **Integrations** in the sidebar, then open the **App Connections** tab
+            - **Certificate Manager project:** select **Settings** in the sidebar, then open the **App Connections** tab
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **AWS**.
+        </Step>
+        <Step>
+            Fill out the form's fields:
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to AWS**.
+        </Step>
+    </Steps>
+</View>
+
+When you select **Connect to AWS**, Infisical checks the credentials. For **Assume Role**, it assumes the role, so the role's trust policy has to name the right AWS account and External ID. For **Access Key**, it signs in with the access key. Infisical doesn't check the permissions from [Step 2](#step-2-add-permissions) until an integration uses them.
+
+<Check>
+    Your AWS app connection is ready to use.
+</Check>
+
+## Step 4: Configure integrations
+
+Now that your AWS app connection is configured, you can use it to set up the following integrations:
+
+<CardGroup cols={2}>
+    <UseCase use="secrets-manager">
+        <Card title="AWS Secrets Manager sync" icon="refresh-cw" href="/integrations/secret-syncs/aws-secrets-manager">
+            Sync secrets from Infisical to AWS Secrets Manager.
+        </Card>
+    </UseCase>
+    <UseCase use="parameter-store">
+        <Card title="AWS Parameter Store sync" icon="refresh-cw" href="/integrations/secret-syncs/aws-parameter-store">
+            Sync secrets from Infisical to AWS Parameter Store.
+        </Card>
+    </UseCase>
+    <UseCase use="iam-rotation">
+        <Card title="AWS IAM user secret rotation" icon="rotate-cw" href="/documentation/platform/secret-rotation/aws-iam-user-secret">
+            Rotate an IAM user's access keys on a schedule.
+        </Card>
+    </UseCase>
+    <UseCase use="acm-sync">
+        <Card title="AWS Certificate Manager sync" icon="file-badge" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">
+            Sync certificates from Infisical to AWS Certificate Manager.
+        </Card>
+    </UseCase>
+    <UseCase use="elb-sync">
+        <Card title="AWS Elastic Load Balancer sync" icon="file-badge" href="/documentation/platform/pki/applications/certificate-syncs/aws-elastic-load-balancer">
+            Attach certificates from Infisical to load balancer listeners.
+        </Card>
+    </UseCase>
+    <UseCase use="pki-secrets-manager">
+        <Card title="AWS Secrets Manager certificate sync" icon="file-badge" href="/documentation/platform/pki/applications/certificate-syncs/aws-secrets-manager">
+            Store certificates from Infisical as secrets in AWS Secrets Manager.
+        </Card>
+    </UseCase>
+    <UseCase use="private-ca">
+        <Card title="AWS Private CA" icon="landmark" href="/documentation/platform/pki/ca/aws-pca">
+            Issue certificates from your AWS Private CA.
+        </Card>
+    </UseCase>
+    <UseCase use="acm-public-ca">
+        <Card title="AWS Certificate Manager public CA" icon="landmark" href="/documentation/platform/pki/ca/aws-acm-public-ca">
+            Issue publicly trusted certificates through AWS Certificate Manager.
+        </Card>
+    </UseCase>
+    <UseCase use="acme-route53">
+        <Card title="ACME CA with Route 53" icon="landmark" href="/documentation/platform/pki/ca/acme-ca">
+            Prove domain ownership for an ACME CA through Route 53.
+        </Card>
+    </UseCase>
+    <UseCase use="honey-tokens">
+        <Card title="AWS honey tokens" icon="bell-ring" href="/documentation/platform/honey-tokens/aws/setup">
+            Detect leaked AWS credentials with decoy access keys.
+        </Card>
+    </UseCase>
+    <UseCase use="pam-recording">
+        <Card title="PAM session recording" icon="video" href="/documentation/platform/pam/sessions/external-storage">
+            Store PAM session recordings in your S3 bucket.
+        </Card>
+    </UseCase>
+    <UseCase use="agent-vault-session-logs">
+        <Card title="Agent Vault session logs" icon="list" href="/documentation/platform/agent-vault/session-logs">
+            Record every request an AI agent makes in your S3 bucket.
+        </Card>
+    </UseCase>
+</CardGroup>

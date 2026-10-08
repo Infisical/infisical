@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -179,6 +178,7 @@ type Props = {
   pendingKeyName?: string;
   revokedProjectFolderGrant?: boolean;
   onCopySecret?: () => void;
+  onAccessInsightsUpgrade: (onGranted: () => void) => void;
   onExpandedChange?: (isExpanded: boolean) => void;
 };
 
@@ -219,11 +219,11 @@ export const SecretEditTableRow = ({
   pendingKeyName,
   revokedProjectFolderGrant,
   onCopySecret,
+  onAccessInsightsUpgrade,
   onExpandedChange
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
-    "accessInsightsUpgrade",
     "createSharedSecret"
   ] as const);
 
@@ -1494,7 +1494,7 @@ export const SecretEditTableRow = ({
                     <MessageSquareIcon className={twMerge(comment && "text-project")} />
                     {comment ? "View Comment" : "Add Comment"}
                   </DropdownMenuItem>
-                  <Tooltip open={!canReadTags ? undefined : false} disableHoverableContent>
+                  <Tooltip open={!canReadTags ? undefined : false}>
                     <TooltipTrigger className="block w-full">
                       <DropdownMenuItem
                         className="px-2.5 py-1.5"
@@ -1509,10 +1509,7 @@ export const SecretEditTableRow = ({
                     </TooltipTrigger>
                     <TooltipContent side="left">Access Denied</TooltipContent>
                   </Tooltip>
-                  <Tooltip
-                    open={!secretId || isPendingCreate ? undefined : false}
-                    disableHoverableContent
-                  >
+                  <Tooltip open={!secretId || isPendingCreate ? undefined : false}>
                     <TooltipTrigger className="block w-full">
                       <DropdownMenuItem
                         className="px-2.5 py-1.5"
@@ -1537,10 +1534,7 @@ export const SecretEditTableRow = ({
 
               <div className="my-1" />
               <DropdownMenuLabel className="px-2.5 py-0.5 text-[10px]">Insights</DropdownMenuLabel>
-              <Tooltip
-                open={!canReadSecretValue || !secretId || isEmpty ? undefined : false}
-                disableHoverableContent
-              >
+              <Tooltip open={!canReadSecretValue || !secretId || isEmpty ? undefined : false}>
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
                     className="px-2.5 py-1.5"
@@ -1566,7 +1560,6 @@ export const SecretEditTableRow = ({
                         ? undefined
                         : false
                     }
-                    disableHoverableContent
                   >
                     <TooltipTrigger className="block w-full">
                       <DropdownMenuItem
@@ -1598,14 +1591,13 @@ export const SecretEditTableRow = ({
               </ProjectPermissionCan>
               <Tooltip
                 open={isPendingBatchChange || isImportedSecret || isCreatable ? undefined : false}
-                disableHoverableContent
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
                     className="px-2.5 py-1.5"
                     onClick={() => {
                       if (!subscription?.secretAccessInsights) {
-                        handlePopUpOpen("accessInsightsUpgrade");
+                        onAccessInsightsUpgrade(() => setIsAccessInsightsOpen(true));
                       } else {
                         setIsAccessInsightsOpen(true);
                       }
@@ -1635,7 +1627,6 @@ export const SecretEditTableRow = ({
                     ? undefined
                     : false
                 }
-                disableHoverableContent
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuCheckboxItem
@@ -1675,7 +1666,6 @@ export const SecretEditTableRow = ({
                     ? undefined
                     : false
                 }
-                disableHoverableContent
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
@@ -1716,7 +1706,6 @@ export const SecretEditTableRow = ({
                     ? undefined
                     : false
                 }
-                disableHoverableContent
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
@@ -1763,7 +1752,6 @@ export const SecretEditTableRow = ({
                     ? undefined
                     : false
                 }
-                disableHoverableContent
               >
                 <TooltipTrigger className="block w-full">
                   <DropdownMenuItem
@@ -1814,7 +1802,6 @@ export const SecretEditTableRow = ({
                         ? undefined
                         : false
                     }
-                    disableHoverableContent
                   >
                     <TooltipTrigger className="block w-full">
                       <DropdownMenuItem
@@ -1923,13 +1910,6 @@ export const SecretEditTableRow = ({
           )}
         </SheetContent>
       </Sheet>
-      <UpgradePlanModal
-        paywallKey="secret-manager.secret-edit-table-row"
-        isOpen={popUp.accessInsightsUpgrade.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("accessInsightsUpgrade", isOpen)}
-        text="Secret access insights can be unlocked if you upgrade to Infisical Pro plan."
-      />
-
       <AlertDialog
         open={popUp.editSecret.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("editSecret", isOpen)}

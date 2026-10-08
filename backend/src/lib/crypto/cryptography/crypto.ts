@@ -1,7 +1,7 @@
 // NOTE: DO NOT USE crypto-js ANYWHERE EXCEPT THIS FILE.
 // We use crypto-js purely to get around our native node crypto FIPS restrictions in FIPS mode.
 
-import crypto, { subtle } from "node:crypto";
+import crypto from "node:crypto";
 
 import bcrypt from "bcrypt";
 import jwtDep from "jsonwebtoken";
@@ -481,10 +481,12 @@ const cryptographyFactory = () => {
       createPrivateKey: crypto.createPrivateKey,
       getRandomValues: crypto.getRandomValues,
       randomUUID: crypto.randomUUID,
+      // The same object as node:crypto's webcrypto.subtle, but DOM-typed: @peculiar/x509 expects DOM
+      // CryptoKeys, and @types/node's key usages have outgrown TypeScript's DOM lib.
       subtle: {
-        generateKey: subtle.generateKey.bind(subtle),
-        importKey: subtle.importKey.bind(subtle),
-        exportKey: subtle.exportKey.bind(subtle)
+        generateKey: globalThis.crypto.subtle.generateKey.bind(globalThis.crypto.subtle),
+        importKey: globalThis.crypto.subtle.importKey.bind(globalThis.crypto.subtle),
+        exportKey: globalThis.crypto.subtle.exportKey.bind(globalThis.crypto.subtle)
       },
       constants: crypto.constants,
       X509Certificate: crypto.X509Certificate,

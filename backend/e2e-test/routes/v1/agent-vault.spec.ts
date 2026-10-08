@@ -1,11 +1,13 @@
 import crypto from "node:crypto";
 
+import * as x509 from "@peculiar/x509";
 import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
 
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
+import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-variable-dal";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
 import {
   AGENT_VAULT_MAX_PROXIES_PER_ORG,
@@ -15,15 +17,25 @@ import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
+import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
-import { initLogger } from "@app/lib/logger";
+import { initLogger, logger } from "@app/lib/logger";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { ActorType } from "@app/services/auth/auth-type";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
+import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
+import { internalKmsKeyVersionDALFactory } from "@app/services/kms/internal-kms-key-version-dal";
+import { kmsKekHistoryDALFactory } from "@app/services/kms/kms-kek-history-dal";
+import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
+import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-encryption-key-dal";
+import { kmsServiceFactory, TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { usageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
@@ -742,6 +754,778 @@ describe("Agent Vault V1 Router", async () => {
         credential: { type: "bearer", headerName: "Content-Length", value: "t" }
       });
       expect(asCredential.statusCode).toBe(422);
+    });
+  });
+
+  describe("variables", async () => {
+    const variablesUrl = (accessBundleId: string) => `/api/v1/agent-vault/access-bundles/${accessBundleId}/variables`;
+    const servicesUrl = (accessBundleId: string) => `/api/v1/agent-vault/access-bundles/${accessBundleId}/services`;
+
+    type TReference = {
+      variableId: string;
+      key: string;
+      field: string;
+      customHeaderId?: string;
+      substitutionId?: string;
+    };
+
+    const createVariable = async (accessBundleId: string, body: { key: string; value: string; isSecret?: boolean }) => {
+      const res = await inject("POST", variablesUrl(accessBundleId), body);
+      expect(res.statusCode).toBe(200);
+      return (JSON.parse(res.payload) as { variable: { id: string; key: string } }).variable;
+    };
+
+    const referencesByField = (references: TReference[]) =>
+      references.map((reference) => `${reference.field}:${reference.key}`).sort();
+
+    // Enrollment only checks that it is a live CA. ECDSA P-256, because the FIPS image refuses Ed25519.
+    const createProxyCaPem = async () => {
+      const algorithm = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+      const keys = await globalThis.crypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
+      const certificate = await x509.X509CertificateGenerator.createSelfSigned({
+        name: "CN=Agent Vault Variables Test CA",
+        serialNumber: "01",
+        notBefore: new Date(Date.now() - 60_000),
+        notAfter: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        signingAlgorithm: algorithm,
+        keys,
+        extensions: [
+          new x509.BasicConstraintsExtension(true, undefined, true),
+          // eslint-disable-next-line no-bitwise
+          new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true)
+        ]
+      });
+      return certificate.toString("pem");
+    };
+
+    type TResolved = {
+      services: {
+        name: string;
+        allowedMethods: string[] | null;
+        allowedPathPrefixes: string[] | null;
+        credential: Record<string, string>;
+        customHeaders: { name: string; prefix: string; value: string }[];
+        substitutions: { placeholder: string; surfaces: string[]; value: string }[];
+      }[];
+    };
+
+    // A real enrolled proxy on the real resolve route, unlike the stubbed resolvers elsewhere in this file,
+    // so every value goes through the project's actual KMS key.
+    const resolverFor = async (bundle: { name: string }, proxyName: string) => {
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h" });
+      expect(mint.statusCode).toBe(200);
+      const { session } = JSON.parse(mint.payload) as { session: { token: string } };
+
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: proxyName });
+      expect(created.statusCode).toBe(200);
+      const { token } = JSON.parse(created.payload) as { token: string };
+      const login = await testServer.inject({
+        method: "POST",
+        url: "/api/v1/agent-vault/proxy/login",
+        body: { method: ResourceAuthMethodType.Token, token, rootCaCertificate: await createProxyCaPem() }
+      });
+      expect(login.statusCode).toBe(200);
+      const { accessToken } = JSON.parse(login.payload) as { accessToken: string };
+
+      return async () => {
+        const resolved = await testServer.inject({
+          method: "POST",
+          url: "/api/v1/agent-vault/proxy/resolve",
+          headers: { authorization: `Bearer ${accessToken}`, "x-infisical-agent-session": session.token }
+        });
+        expect(resolved.statusCode).toBe(200);
+        return JSON.parse(resolved.payload) as TResolved;
+      };
+    };
+
+    // The project's own key, loaded the way the server loads it, so a test can read and write sealed text directly.
+    // The spec runs in its own module graph, which is why the env config is initialized again here.
+    let kmsService: TKmsServiceFactory | undefined;
+    const cipherFor = async (accessBundleId: string) => {
+      if (!kmsService) {
+        await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
+        kmsService = kmsServiceFactory({
+          kmsRootConfigDAL: testKmsRootConfigDAL,
+          kmsLegacyEncryptionKeyDAL: kmsLegacyEncryptionKeyDALFactory(testDb),
+          kmsKekHistoryDAL: kmsKekHistoryDALFactory(testDb),
+          kmsDAL: kmskeyDALFactory(testDb),
+          internalKmsDAL: internalKmsDALFactory(testDb),
+          internalKmsKeyVersionDAL: internalKmsKeyVersionDALFactory(testDb),
+          orgDAL: orgDALFactory(testDb),
+          projectDAL: projectDALFactory(testDb),
+          hsmService: testHsmService,
+          keyStore: {
+            getItem: async () => null,
+            setItemWithExpiry: async () => "OK" as const,
+            deleteItem: async () => 0
+          },
+          envConfig: getConfig()
+        });
+        const hsmStatus = await isHsmActiveAndEnabled({
+          hsmService: testHsmService,
+          kmsRootConfigDAL: testKmsRootConfigDAL
+        });
+        await kmsService.startService(hsmStatus, { skipRotationState: true });
+      }
+      const { projectId } = (await testDb("agent_vault_access_bundles").where({ id: accessBundleId }).first()) as {
+        projectId: string;
+      };
+      return kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    };
+
+    const STORED_REFERENCE = /\{\{([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\}\}/g;
+
+    // What the delete refusal rests on: every field's rows name exactly the ids in its sealed text that resolve
+    // expands, which are those of the bundle's own variables. Read off the sealed text, not through the service.
+    const expectReferencesMatchSealedText = async (accessBundleId: string) => {
+      const { decryptor } = await cipherFor(accessBundleId);
+      const open = (sealed: Buffer) =>
+        JSON.parse(decryptor({ cipherTextBlob: sealed }).toString("utf-8")) as Record<string, string>;
+      const variableIds = new Set(
+        ((await testDb("agent_vault_variables").where({ accessBundleId }).select("id")) as { id: string }[]).map(
+          (row) => row.id
+        )
+      );
+      const idsIn = (text: string) =>
+        [...new Set(Array.from(text.matchAll(STORED_REFERENCE), (match) => match[1]))].filter((id) =>
+          variableIds.has(id)
+        );
+
+      const services = (await testDb("agent_vault_services").where({ accessBundleId })) as {
+        id: string;
+        encryptedCredential: Buffer | null;
+      }[];
+      const serviceIds = services.map((service) => service.id);
+      type TSealedRow = { id: string; serviceId: string; encryptedValue: Buffer };
+      const customHeaders = (await testDb("agent_vault_service_custom_headers").whereIn(
+        "serviceId",
+        serviceIds
+      )) as TSealedRow[];
+      const substitutions = (await testDb("agent_vault_service_substitutions").whereIn(
+        "serviceId",
+        serviceIds
+      )) as TSealedRow[];
+      const references = (await testDb("agent_vault_service_variable_references").whereIn("serviceId", serviceIds)) as {
+        serviceId: string;
+        variableId: string;
+        field: string;
+        customHeaderId: string | null;
+        substitutionId: string | null;
+      }[];
+
+      const expected = [
+        ...services.flatMap((service) =>
+          Object.entries(service.encryptedCredential ? open(service.encryptedCredential) : {}).flatMap(([part, text]) =>
+            idsIn(text).map(
+              (id) => `${service.id} ${part === "username" ? "credential-username" : "credential-value"} ${id}`
+            )
+          )
+        ),
+        ...customHeaders.flatMap((row) =>
+          idsIn(open(row.encryptedValue).value).map((id) => `${row.serviceId} custom-header:${row.id} ${id}`)
+        ),
+        ...substitutions.flatMap((row) =>
+          idsIn(open(row.encryptedValue).value).map((id) => `${row.serviceId} substitution:${row.id} ${id}`)
+        )
+      ];
+      const actual = references.map((row) => {
+        const target = row.customHeaderId ?? row.substitutionId;
+        return `${row.serviceId} ${row.field}${target ? `:${target}` : ""} ${row.variableId}`;
+      });
+      expect(actual.sort()).toEqual(expected.sort());
+    };
+
+    // Resolves once a backend waits on a lock the given one holds: by then a request has done everything it
+    // does before the lock and is queued behind it.
+    const waitUntilBlockedBy = async (pid: number, attemptsLeft = 200): Promise<void> => {
+      const { rows } = await testDb.raw(
+        "select count(*)::int as waiting from pg_stat_activity where ? = any(pg_blocking_pids(pid))",
+        [pid]
+      );
+      if (rows[0].waiting > 0) return;
+      if (attemptsLeft === 0) throw new Error(`No request queued behind the lock held by backend ${pid}`);
+      await new Promise((resolve) => {
+        setTimeout(resolve, 25);
+      });
+      await waitUntilBlockedBy(pid, attemptsLeft - 1);
+    };
+
+    test("a service uses a variable by key, and resolve puts the value in its place", async () => {
+      const bundle = await createAccessBundle("variables-resolve");
+      const token = await createVariable(bundle.id, { key: "GITHUB_TOKEN", value: "ghp_from_variable" });
+      const org = await createVariable(bundle.id, { key: "ORG_ID", value: "org-42", isSecret: false });
+
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "github",
+        hostPattern: "api.github.com",
+        credential: { type: "bearer", value: "{{GITHUB_TOKEN}}" },
+        customHeaders: [{ name: "X-Org", value: "org={{ORG_ID}};t={{GITHUB_TOKEN}}" }],
+        substitutions: [{ placeholder: "__ORG__", surfaces: ["path"], value: "{{ORG_ID}}" }]
+      });
+      expect(created.statusCode).toBe(200);
+      expect(created.payload).not.toContain("ghp_from_variable");
+      const { service } = JSON.parse(created.payload) as {
+        service: {
+          customHeaders: { id: string }[];
+          substitutions: { id: string }[];
+          variableReferences: TReference[];
+        };
+      };
+      expect(service.variableReferences).toHaveLength(4);
+      // Exact entries, because a reference carries only the id its field uses, not the others as null.
+      expect(service.variableReferences).toEqual(
+        expect.arrayContaining([
+          { variableId: token.id, key: "GITHUB_TOKEN", field: "credential-value" },
+          {
+            variableId: token.id,
+            key: "GITHUB_TOKEN",
+            field: "custom-header",
+            customHeaderId: service.customHeaders[0].id
+          },
+          {
+            variableId: org.id,
+            key: "ORG_ID",
+            field: "custom-header",
+            customHeaderId: service.customHeaders[0].id
+          },
+          {
+            variableId: org.id,
+            key: "ORG_ID",
+            field: "substitution",
+            substitutionId: service.substitutions[0].id
+          }
+        ])
+      );
+      await expectReferencesMatchSealedText(bundle.id);
+
+      const resolve = await resolverFor(bundle, "variables-resolve");
+      const [resolved] = (await resolve()).services;
+      expect(resolved.credential).toMatchObject({ type: "bearer", value: "ghp_from_variable" });
+      expect(resolved.customHeaders[0].value).toBe("org=org-42;t=ghp_from_variable");
+      expect(resolved.substitutions[0].value).toBe("org-42");
+    });
+
+    test("a field at the reference limit reaches the host whole with its variables at their longest, from either save", async () => {
+      const bundle = await createAccessBundle("variables-longest");
+      const long = await createVariable(bundle.id, { key: "LONG", value: "x" });
+
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "longest",
+        hostPattern: "longest.example.com",
+        credential: { type: "bearer", value: "{{LONG}}".repeat(3) }
+      });
+      expect(created.statusCode).toBe(200);
+
+      // Nothing measures a field filled in, so a value change can't be refused on a service's behalf.
+      const grown = await inject("PATCH", `${variablesUrl(bundle.id)}/${long.id}`, { value: "y".repeat(8192) });
+      expect(grown.statusCode).toBe(200);
+
+      const resolve = await resolverFor(bundle, "variables-longest");
+      expect((await resolve()).services[0].credential).toMatchObject({ value: "y".repeat(8192 * 3) });
+    });
+
+    test("a username a variable fills in is trimmed like a typed one, and the password keeps its spaces", async () => {
+      const bundle = await createAccessBundle("variables-username-trim");
+      await createVariable(bundle.id, { key: "PADDED", value: " padded " });
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "padded",
+        hostPattern: "padded.example.com",
+        credential: { type: "basic", username: "{{PADDED}}", password: "{{PADDED}}" }
+      });
+      expect(created.statusCode).toBe(200);
+
+      const resolve = await resolverFor(bundle, "variables-username-trim");
+      expect((await resolve()).services[0].credential).toEqual({
+        type: "basic",
+        username: "padded",
+        password: " padded "
+      });
+    });
+
+    test("a stored id with no variable behind it is sent as stored, and its service keeps its restrictions", async () => {
+      const bundle = await createAccessBundle("variables-missing");
+      const gone = await createVariable(bundle.id, { key: "GONE", value: "x" });
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "missing",
+        hostPattern: "api.example.com",
+        allowedMethods: ["GET"],
+        allowedPathPrefixes: ["/v1"],
+        credential: { type: "bearer", value: "{{GONE}}" }
+      });
+      expect(created.statusCode).toBe(200);
+
+      // The delete refusal never lets this happen, so the rows go straight from the database.
+      await testDb("agent_vault_service_variable_references").where({ variableId: gone.id }).delete();
+      await testDb("agent_vault_variables").where({ id: gone.id }).delete();
+
+      const resolve = await resolverFor(bundle, "variables-missing");
+      const [resolved] = (await resolve()).services;
+      expect(resolved.credential).toMatchObject({ type: "bearer", value: `{{${gone.id}}}` });
+      expect(resolved.allowedMethods).toEqual(["GET"]);
+      expect(resolved.allowedPathPrefixes).toEqual(["/v1"]);
+    });
+
+    test("renaming a variable keeps its services working, and a new value reaches the next resolve", async () => {
+      const bundle = await createAccessBundle("variables-rename");
+      const variable = await createVariable(bundle.id, { key: "OLD_NAME", value: "first" });
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "echo",
+        hostPattern: "echo.example.com",
+        credential: { type: "bearer", value: "{{OLD_NAME}}" }
+      });
+      expect(created.statusCode).toBe(200);
+      const serviceId = (JSON.parse(created.payload) as { service: { id: string } }).service.id;
+      const resolve = await resolverFor(bundle, "variables-rename");
+
+      const renamed = await inject("PATCH", `${variablesUrl(bundle.id)}/${variable.id}`, { key: "NEW_NAME" });
+      expect(renamed.statusCode).toBe(200);
+      expect(JSON.parse(renamed.payload).variable).toMatchObject({
+        key: "NEW_NAME",
+        value: null,
+        serviceIds: [serviceId]
+      });
+
+      const detail = JSON.parse((await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`)).payload) as {
+        accessBundle: { services: { variableReferences: TReference[] }[] };
+      };
+      expect(detail.accessBundle.services[0].variableReferences).toEqual([
+        expect.objectContaining({ key: "NEW_NAME", field: "credential-value" })
+      ]);
+      await expectReferencesMatchSealedText(bundle.id);
+      expect((await resolve()).services[0].credential).toMatchObject({ value: "first" });
+
+      expect((await inject("PATCH", `${variablesUrl(bundle.id)}/${variable.id}`, { value: "second" })).statusCode).toBe(
+        200
+      );
+      expect((await resolve()).services[0].credential).toMatchObject({ value: "second" });
+
+      const stale = await inject("POST", servicesUrl(bundle.id), {
+        name: "stale",
+        hostPattern: "stale.example.com",
+        credential: { type: "bearer", value: "{{OLD_NAME}}" }
+      });
+      expect(stale.statusCode).toBe(400);
+      expect(JSON.parse(stale.payload).message).toContain("OLD_NAME");
+    });
+
+    test("a variable a service uses can't be deleted, and the refusal names the service", async () => {
+      const bundle = await createAccessBundle("variables-in-use");
+      const variable = await createVariable(bundle.id, { key: "API_KEY", value: "key_value" });
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "datadog",
+        hostPattern: "api.datadoghq.com",
+        credential: { type: "bearer", headerName: "DD-API-KEY", value: "{{API_KEY}}" }
+      });
+      expect(created.statusCode).toBe(200);
+      const { service } = JSON.parse(created.payload) as { service: { id: string } };
+
+      const refused = await inject("DELETE", `${variablesUrl(bundle.id)}/${variable.id}`);
+      expect(refused.statusCode).toBe(409);
+      expect(JSON.parse(refused.payload).message).toContain("'datadog'");
+
+      const detached = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+        credential: { type: "bearer", value: "literal_value" }
+      });
+      expect(detached.statusCode).toBe(200);
+      expect(JSON.parse(detached.payload).service.variableReferences).toEqual([]);
+      await expectReferencesMatchSealedText(bundle.id);
+
+      const removed = await inject("DELETE", `${variablesUrl(bundle.id)}/${variable.id}`);
+      expect(removed.statusCode).toBe(200);
+      expect(JSON.parse(removed.payload).variable).toMatchObject({ id: variable.id, key: "API_KEY", value: null });
+    });
+
+    test("an unknown key fails the save by name, and a malformed reference fails validation unquoted", async () => {
+      const bundle = await createAccessBundle("variables-validation");
+
+      const unknown = await inject("POST", servicesUrl(bundle.id), {
+        name: "unknown",
+        hostPattern: "unknown.example.com",
+        credential: { type: "bearer", value: "{{NOT_DEFINED}}" }
+      });
+      expect(unknown.statusCode).toBe(400);
+      expect(JSON.parse(unknown.payload).message).toContain("NOT_DEFINED");
+
+      const malformed = await inject("POST", servicesUrl(bundle.id), {
+        name: "malformed",
+        hostPattern: "malformed.example.com",
+        credential: { type: "passthrough" },
+        customHeaders: [{ name: "X-Key", value: "{{lower_case_secret}}" }]
+      });
+      expect(malformed.statusCode).toBe(422);
+      expect(malformed.payload).not.toContain("lower_case_secret");
+
+      const bracedPlaceholder = await inject("POST", servicesUrl(bundle.id), {
+        name: "braced",
+        hostPattern: "braced.example.com",
+        credential: { type: "passthrough" },
+        substitutions: [{ placeholder: "{{PAT}}", surfaces: ["header"], value: "x" }]
+      });
+      expect(bracedPlaceholder.statusCode).toBe(422);
+
+      // A prefix is sent as typed, so braces in one would reach the host as a reference nobody fills in.
+      const bracedBearerPrefix = await inject("POST", servicesUrl(bundle.id), {
+        name: "braced-bearer",
+        hostPattern: "braced-bearer.example.com",
+        credential: { type: "bearer", headerPrefix: "{{ORG}}", value: "x" }
+      });
+      expect(bracedBearerPrefix.statusCode).toBe(422);
+      const bracedHeaderPrefix = await inject("POST", servicesUrl(bundle.id), {
+        name: "braced-header",
+        hostPattern: "braced-header.example.com",
+        credential: { type: "passthrough" },
+        customHeaders: [{ name: "X-Org", prefix: "org-{{ORG}}", value: "x" }]
+      });
+      expect(bracedHeaderPrefix.statusCode).toBe(422);
+
+      expect(await testDb("agent_vault_services").where({ accessBundleId: bundle.id })).toHaveLength(0);
+    });
+
+    test("a value takes three variable references, a repeat counted each time, and a fourth fails validation", async () => {
+      const bundle = await createAccessBundle("variables-reference-limit");
+      await createVariable(bundle.id, { key: "TOKEN", value: "t" });
+
+      const atLimit = await inject("POST", servicesUrl(bundle.id), {
+        name: "at-limit",
+        hostPattern: "at-limit.example.com",
+        credential: { type: "bearer", value: "{{TOKEN}}".repeat(3) }
+      });
+      expect(atLimit.statusCode).toBe(200);
+
+      const overLimit = await inject("POST", servicesUrl(bundle.id), {
+        name: "over-limit",
+        hostPattern: "over-limit.example.com",
+        credential: { type: "bearer", value: "{{TOKEN}}".repeat(4) }
+      });
+      expect(overLimit.statusCode).toBe(422);
+      expect(overLimit.payload).toContain("at most 3 variable references");
+
+      const services = (await testDb("agent_vault_services").where({ accessBundleId: bundle.id })) as {
+        name: string;
+      }[];
+      expect(services.map((service) => service.name)).toEqual(["at-limit"]);
+    });
+
+    test("the list carries only values that are not secret, and the value route returns either uncached", async () => {
+      const bundle = await createAccessBundle("variables-visibility");
+      const hidden = await createVariable(bundle.id, { key: "HIDDEN", value: "hidden_value" });
+      await createVariable(bundle.id, { key: "SHOWN", value: "shown_value", isSecret: false });
+
+      const listed = await inject("GET", variablesUrl(bundle.id));
+      expect(listed.statusCode).toBe(200);
+      expect(listed.payload).not.toContain("hidden_value");
+      expect(JSON.parse(listed.payload).variables).toEqual([
+        expect.objectContaining({ key: "HIDDEN", isSecret: true, value: null, serviceIds: [] }),
+        expect.objectContaining({ key: "SHOWN", isSecret: false, value: "shown_value", serviceIds: [] })
+      ]);
+
+      const revealed = await inject("GET", `${variablesUrl(bundle.id)}/${hidden.id}/value`);
+      expect(revealed.statusCode).toBe(200);
+      expect(JSON.parse(revealed.payload)).toEqual({ value: "hidden_value" });
+      expect(revealed.headers["cache-control"]).toContain("no-store");
+
+      const flipped = await inject("PATCH", `${variablesUrl(bundle.id)}/${hidden.id}`, { isSecret: false });
+      expect(flipped.statusCode).toBe(200);
+      expect(JSON.parse(flipped.payload).variable).toMatchObject({ isSecret: false, value: "hidden_value" });
+
+      const row = await testDb("agent_vault_variables").where({ id: hidden.id }).first();
+      expect(row.encryptedValue.toString("utf-8")).not.toContain("hidden_value");
+    });
+
+    test("a value can't be only spaces, and one with spaces around it is kept as typed", async () => {
+      const bundle = await createAccessBundle("variables-blank-value");
+      const blank = await inject("POST", variablesUrl(bundle.id), { key: "BLANK", value: "   " });
+      expect(blank.statusCode).toBe(422);
+      expect(blank.payload).toContain("A value can't be only spaces.");
+
+      const padded = await createVariable(bundle.id, { key: "PADDED", value: " kept ", isSecret: false });
+      expect(JSON.parse((await inject("GET", variablesUrl(bundle.id))).payload).variables).toEqual([
+        expect.objectContaining({ key: "PADDED", value: " kept " })
+      ]);
+      expect((await inject("PATCH", `${variablesUrl(bundle.id)}/${padded.id}`, { value: " " })).statusCode).toBe(422);
+    });
+
+    test("a key is unique in its bundle and has to be upper snake case", async () => {
+      const bundle = await createAccessBundle("variables-keys");
+      await createVariable(bundle.id, { key: "TOKEN", value: "one" });
+
+      const duplicate = await inject("POST", variablesUrl(bundle.id), { key: "TOKEN", value: "two" });
+      expect(duplicate.statusCode).toBe(400);
+      expect(JSON.parse(duplicate.payload).message).toContain("'TOKEN'");
+      expect((await inject("POST", variablesUrl(bundle.id), { key: "lower_case", value: "x" })).statusCode).toBe(422);
+
+      const other = await createAccessBundle("variables-keys-other");
+      expect((await inject("POST", variablesUrl(other.id), { key: "TOKEN", value: "three" })).statusCode).toBe(200);
+    });
+
+    test("an update rebuilds the references of only the values it wrote", async () => {
+      const bundle = await createAccessBundle("variables-partial");
+      await createVariable(bundle.id, { key: "USER", value: "the-user" });
+      await createVariable(bundle.id, { key: "PASS", value: "the-pass" });
+      await createVariable(bundle.id, { key: "HEADER", value: "the-header" });
+
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "basic",
+        hostPattern: "basic.example.com",
+        credential: { type: "basic", username: "{{USER}}", password: "{{PASS}}" },
+        customHeaders: [{ name: "X-One", value: "{{HEADER}}" }]
+      });
+      expect(created.statusCode).toBe(200);
+      const { service } = JSON.parse(created.payload) as { service: { id: string; customHeaders: { id: string }[] } };
+      const url = `${servicesUrl(bundle.id)}/${service.id}`;
+
+      // The password and the renamed header were not sent, so both keep what they had.
+      const patched = await inject("PATCH", url, {
+        credential: { type: "basic", username: "plain-user" },
+        customHeaders: [{ id: service.customHeaders[0].id, name: "X-Renamed" }]
+      });
+      expect(patched.statusCode).toBe(200);
+      expect(referencesByField(JSON.parse(patched.payload).service.variableReferences)).toEqual([
+        "credential-value:PASS",
+        "custom-header:HEADER"
+      ]);
+      await expectReferencesMatchSealedText(bundle.id);
+
+      const resolve = await resolverFor(bundle, "variables-partial");
+      const [resolved] = (await resolve()).services;
+      expect(resolved.credential).toEqual({ type: "basic", username: "plain-user", password: "the-pass" });
+      expect(resolved.customHeaders).toEqual([{ name: "X-Renamed", prefix: "", value: "the-header" }]);
+
+      const switched = await inject("PATCH", url, { credential: { type: "bearer", value: "literal" } });
+      expect(switched.statusCode).toBe(200);
+      expect(referencesByField(JSON.parse(switched.payload).service.variableReferences)).toEqual([
+        "custom-header:HEADER"
+      ]);
+      await expectReferencesMatchSealedText(bundle.id);
+
+      const dropped = await inject("PATCH", url, { customHeaders: [] });
+      expect(dropped.statusCode).toBe(200);
+      expect(JSON.parse(dropped.payload).service.variableReferences).toEqual([]);
+      expect(await testDb("agent_vault_service_variable_references").where({ serviceId: service.id })).toHaveLength(0);
+    });
+
+    test("a basic credential's kept half is stored text, so one saved before variables existed stays as it was", async () => {
+      const bundle = await createAccessBundle("variables-legacy-half");
+      await createVariable(bundle.id, { key: "FOO", value: "foo-value" });
+      await createVariable(bundle.id, { key: "USER", value: "the-user" });
+
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "legacy",
+        hostPattern: "legacy.example.com",
+        credential: { type: "basic", username: "u", password: "p" }
+      });
+      expect(created.statusCode).toBe(200);
+      const { service } = JSON.parse(created.payload) as { service: { id: string } };
+
+      // Sealed the way a service saved before variables existed was: literal braces and no reference rows. The
+      // id-shaped pair names no variable at all.
+      const legacyPassword = `{{FOO}}:{{${crypto.randomUUID()}}}`;
+      const { encryptor } = await cipherFor(bundle.id);
+      await testDb("agent_vault_services")
+        .where({ id: service.id })
+        .update({
+          encryptedCredential: encryptor({
+            plainText: Buffer.from(JSON.stringify({ username: "u", password: legacyPassword }))
+          }).cipherTextBlob
+        });
+
+      const patched = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+        credential: { type: "basic", username: "{{USER}}" }
+      });
+      expect(patched.statusCode).toBe(200);
+      expect(referencesByField(JSON.parse(patched.payload).service.variableReferences)).toEqual([
+        "credential-username:USER"
+      ]);
+      await expectReferencesMatchSealedText(bundle.id);
+
+      const resolve = await resolverFor(bundle, "variables-legacy-half");
+      expect((await resolve()).services[0].credential).toEqual({
+        type: "basic",
+        username: "the-user",
+        password: legacyPassword
+      });
+    });
+
+    test("a partial basic update refuses to write over a credential another save changed while it waited", async () => {
+      const bundle = await createAccessBundle("variables-stale-half");
+      await createVariable(bundle.id, { key: "FIRST_USER", value: "first-user" });
+      await createVariable(bundle.id, { key: "SECOND_USER", value: "second-user" });
+      await createVariable(bundle.id, { key: "PASS", value: "the-pass" });
+
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "stale",
+        hostPattern: "stale.example.com",
+        credential: { type: "basic", username: "{{FIRST_USER}}", password: "plain-pass" }
+      });
+      expect(created.statusCode).toBe(200);
+      const { service } = JSON.parse(created.payload) as { service: { id: string } };
+      const url = `${servicesUrl(bundle.id)}/${service.id}`;
+
+      // What the other save commits, sealed by the API itself on a second service: a new username.
+      const other = await inject("POST", servicesUrl(bundle.id), {
+        name: "other",
+        hostPattern: "other.example.com",
+        credential: { type: "basic", username: "{{SECOND_USER}}", password: "plain-pass" }
+      });
+      expect(other.statusCode).toBe(200);
+      const otherId = (JSON.parse(other.payload) as { service: { id: string } }).service.id;
+      const otherRow = (await testDb("agent_vault_services").where({ id: otherId }).first()) as {
+        encryptedCredential: Buffer;
+      };
+      const otherReferences = (await testDb("agent_vault_service_variable_references").where({
+        serviceId: otherId
+      })) as { variableId: string; field: string }[];
+
+      // Holding the bundle lock like the other save would, so this one reads the service and then waits.
+      const trx = await testDb.transaction();
+      try {
+        const { rows } = await trx.raw("select pg_backend_pid() as pid");
+        await trx("agent_vault_access_bundles").where({ id: bundle.id }).forUpdate().first();
+
+        const pending = inject("PATCH", url, { credential: { type: "basic", password: "{{PASS}}" } });
+        await waitUntilBlockedBy(rows[0].pid);
+
+        await trx("agent_vault_services")
+          .where({ id: service.id })
+          .update({ encryptedCredential: otherRow.encryptedCredential });
+        await trx("agent_vault_service_variable_references").where({ serviceId: service.id }).del();
+        await trx("agent_vault_service_variable_references").insert(
+          otherReferences.map(({ variableId, field }) => ({ serviceId: service.id, variableId, field }))
+        );
+        await trx.commit();
+
+        const refused = await pending;
+        expect(refused.statusCode).toBe(409);
+      } catch (err) {
+        if (!trx.isCompleted()) await trx.rollback();
+        throw err;
+      }
+
+      const kept = (await testDb("agent_vault_services").where({ id: service.id }).first()) as {
+        encryptedCredential: Buffer;
+      };
+      expect(kept.encryptedCredential.equals(otherRow.encryptedCredential)).toBe(true);
+      await expectReferencesMatchSealedText(bundle.id);
+
+      const retried = await inject("PATCH", url, { credential: { type: "basic", password: "{{PASS}}" } });
+      expect(retried.statusCode).toBe(200);
+      await expectReferencesMatchSealedText(bundle.id);
+
+      const resolve = await resolverFor(bundle, "variables-stale-half");
+      const resolved = (await resolve()).services.find((entry) => entry.name === "stale");
+      expect(resolved?.credential).toEqual({ type: "basic", username: "second-user", password: "the-pass" });
+    });
+
+    test("an update whose service is deleted while it waits is a 404, not a deleted variable", async () => {
+      const bundle = await createAccessBundle("variables-deleted-service");
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "doomed",
+        hostPattern: "doomed.example.com",
+        credential: { type: "passthrough" }
+      });
+      expect(created.statusCode).toBe(200);
+      const { service } = JSON.parse(created.payload) as { service: { id: string } };
+      const url = `${servicesUrl(bundle.id)}/${service.id}`;
+
+      // The update reads the service, then waits on the bundle lock, which a delete doesn't take.
+      const trx = await testDb.transaction();
+      try {
+        const { rows } = await trx.raw("select pg_backend_pid() as pid");
+        await trx("agent_vault_access_bundles").where({ id: bundle.id }).forUpdate().first();
+
+        const pending = inject("PATCH", url, {
+          substitutions: [{ placeholder: "__ORG__", surfaces: ["header"], value: "org-42" }]
+        });
+        await waitUntilBlockedBy(rows[0].pid);
+
+        expect((await inject("DELETE", url)).statusCode).toBe(200);
+        await trx.commit();
+
+        const refused = await pending;
+        expect(refused.statusCode).toBe(404);
+        expect(JSON.parse(refused.payload).message).toBe(`Service with ID '${service.id}' not found`);
+      } catch (err) {
+        if (!trx.isCompleted()) await trx.rollback();
+        throw err;
+      }
+    });
+
+    test("deleting a bundle takes its variables and every reference to them", async () => {
+      const bundle = await createAccessBundle("variables-bundle-delete");
+      const variable = await createVariable(bundle.id, { key: "TOKEN", value: "t" });
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "one",
+        hostPattern: "one.example.com",
+        credential: { type: "bearer", value: "{{TOKEN}}" },
+        customHeaders: [{ name: "X-Two", value: "{{TOKEN}}" }]
+      });
+      expect(created.statusCode).toBe(200);
+
+      const removed = await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
+      expect(removed.statusCode).toBe(200);
+      expect(await testDb("agent_vault_variables").where({ id: variable.id })).toHaveLength(0);
+      expect(await testDb("agent_vault_service_variable_references").where({ variableId: variable.id })).toHaveLength(
+        0
+      );
+    });
+
+    test("variables are admin only, reads included", async () => {
+      const bundle = await createAccessBundle("variables-admin-only");
+      const variable = await createVariable(bundle.id, { key: "TOKEN", value: "admin_only_value", isSecret: false });
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "uses-token",
+        hostPattern: "api.example.com",
+        credential: { type: "bearer", value: "{{TOKEN}}" }
+      });
+      expect(created.statusCode).toBe(200);
+      const member = await createUaIdentity(`av-variables-member-${Date.now()}`);
+
+      try {
+        expect(
+          (await inject("POST", "/api/v1/agent-vault/members", { machineIdentityIds: [member.id], role: "member" }))
+            .statusCode
+        ).toBe(200);
+        expect(
+          (
+            await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+              machineIdentityIds: [member.id]
+            })
+          ).statusCode
+        ).toBe(200);
+
+        type TBundleRead = { accessBundle: { services: { name: string; variableReferences?: TReference[] }[] } };
+
+        // The member reaches the bundle, so the refusals below are about variables and nothing else. It sees the
+        // service, but neither the key nor the id of the variable its token comes from.
+        const reached = await member.asIdentity("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
+        expect(reached.statusCode).toBe(200);
+        const { accessBundle } = JSON.parse(reached.payload) as TBundleRead;
+        expect(accessBundle.services.map((service) => service.name)).toEqual(["uses-token"]);
+        expect(accessBundle.services[0]).not.toHaveProperty("variableReferences");
+        expect(reached.payload).not.toContain("variableReferences");
+        expect(reached.payload).not.toContain("TOKEN");
+        expect(reached.payload).not.toContain(variable.id);
+
+        const asAdmin = JSON.parse(
+          (await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`)).payload
+        ) as TBundleRead;
+        expect(asAdmin.accessBundle.services[0].variableReferences).toEqual([
+          { variableId: variable.id, key: "TOKEN", field: "credential-value" }
+        ]);
+
+        const listed = await member.asIdentity("GET", variablesUrl(bundle.id));
+        expect(listed.statusCode).toBe(403);
+        expect(JSON.parse(listed.payload).message).toBe("Only Agent Vault admins can view or change variables");
+        expect(listed.payload).not.toContain("admin_only_value");
+        expect((await member.asIdentity("GET", `${variablesUrl(bundle.id)}/${variable.id}/value`)).statusCode).toBe(
+          403
+        );
+        expect((await member.asIdentity("POST", variablesUrl(bundle.id), { key: "MINE", value: "x" })).statusCode).toBe(
+          403
+        );
+      } finally {
+        await deleteUaIdentity(member.id);
+      }
     });
   });
 
@@ -1802,6 +2586,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
+        agentVaultVariableDAL: agentVaultVariableDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
@@ -1932,6 +2717,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
+        agentVaultVariableDAL: agentVaultVariableDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
@@ -2098,6 +2884,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
+        agentVaultVariableDAL: agentVaultVariableDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
@@ -2729,6 +3516,7 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
           agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
           agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
+          agentVaultVariableDAL: agentVaultVariableDALFactory(testDb),
           agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
           agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),
@@ -2827,6 +3615,7 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultResolveDAL: agentVaultResolveDALFactory(testDb),
           agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
           agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
+          agentVaultVariableDAL: agentVaultVariableDALFactory(testDb),
           agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
           agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),

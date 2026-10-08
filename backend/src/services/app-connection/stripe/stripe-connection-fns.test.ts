@@ -8,10 +8,7 @@ const { postMock, decryptMock, encryptMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => ({
-    INF_APP_CONNECTION_STRIPE_SECRET_KEY: "sk_test_app",
-    WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS: ["org-id"]
-  })
+  getConfig: () => ({ INF_APP_CONNECTION_STRIPE_SECRET_KEY: "sk_test_app" })
 }));
 vi.mock("@app/lib/config/request", () => ({
   request: { post: postMock, get: vi.fn() }
@@ -213,7 +210,6 @@ describe("validateStripeConnectionCredentials", () => {
     postMock.mockRejectedValue(oauthError(400, "invalid_grant", "Authorization code does not exist: ac_secret"));
 
     const error = (await validateStripeConnectionCredentials({
-      orgId: "org-id",
       credentials: { code: "ac_secret" }
     } as never).catch((e: Error) => e)) as Error;
 

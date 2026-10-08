@@ -2,7 +2,6 @@ import { SetStateAction, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -37,9 +36,15 @@ type Props = {
   selectedEnvs: ProjectEnv[];
   setSelectedEnvs: (value: SetStateAction<ProjectEnv[]>) => void;
   isDisabled?: boolean;
+  onUpgradePlan: () => void;
 };
 
-export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }: Props) {
+export function EnvironmentSelect({
+  selectedEnvs,
+  setSelectedEnvs,
+  isDisabled,
+  onUpgradePlan
+}: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
 
@@ -47,10 +52,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
     currentProject: { environments: projectEnvs, id: projectId }
   } = useProject();
   const { subscription } = useSubscription();
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
-    "createEnvironment",
-    "upgradePlan"
-  ] as const);
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["createEnvironment"] as const);
   const queryClient = useQueryClient();
 
   const isMoreEnvironmentsAllowed =
@@ -63,7 +65,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
     if (isMoreEnvironmentsAllowed) {
       handlePopUpOpen("createEnvironment");
     } else {
-      handlePopUpOpen("upgradePlan");
+      onUpgradePlan();
     }
   };
 
@@ -113,12 +115,6 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
           });
           setSelectedEnvs([newEnv]);
         }}
-      />
-      <UpgradePlanModal
-        paywallKey="secret-manager.environment-select"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(open) => handlePopUpToggle("upgradePlan", open)}
-        text="Your current plan does not include access to adding custom environments. To unlock this feature, please upgrade to Infisical Pro plan."
       />
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <Tooltip open={isDisabled ? undefined : false}>
@@ -176,7 +172,7 @@ export function EnvironmentSelect({ selectedEnvs, setSelectedEnvs, isDisabled }:
                     onSelect={handleSwitchEnv}
                     keywords={[env.name, env.slug]}
                   >
-                    <Tooltip delayDuration={500} disableHoverableContent>
+                    <Tooltip delayDuration={500}>
                       <TooltipTrigger asChild>
                         <span className="min-w-0 flex-1 truncate">{env.name}</span>
                       </TooltipTrigger>

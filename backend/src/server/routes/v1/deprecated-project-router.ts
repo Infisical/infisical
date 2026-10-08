@@ -296,8 +296,11 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         orgId: req.permission.orgId,
         projectId: workspace.id,
         event: {
-          type: EventType.UPDATE_PROJECT,
-          metadata: req.body
+          type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
+          metadata: {
+            scope: "project",
+            auditLogsRetentionDays: req.body.auditLogsRetentionDays
+          }
         }
       });
 

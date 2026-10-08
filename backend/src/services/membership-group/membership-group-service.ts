@@ -25,6 +25,8 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
+import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
+import { ApprovalPolicyType } from "../approval-policy/approval-policy-enums";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -48,6 +50,7 @@ type TMembershipGroupServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
   accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "find">;
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findPoliciesWhereSubjectIsApprover">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "find">;
   secretApprovalPolicyApproverDAL: Pick<TSecretApprovalPolicyApproverDALFactory, "find">;
   roleDAL: Pick<TRoleDALFactory, "find">;
@@ -74,6 +77,7 @@ export const membershipGroupServiceFactory = ({
   roleDAL,
   accessApprovalPolicyDAL,
   accessApprovalPolicyApproverDAL,
+  approvalPolicyDAL,
   secretApprovalPolicyDAL,
   secretApprovalPolicyApproverDAL,
   membershipRoleDAL,
@@ -302,9 +306,9 @@ export const membershipGroupServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membershipDoc = await membershipGroupDAL.transaction(async (tx) => {
-      const newRolesHavePermanentAdmin = data.roles.some(
-        (r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary
-      );
+      const newIsActive = data.isActive ?? existingMembership.isActive;
+      const newRolesHavePermanentAdmin =
+        newIsActive && data.roles.some((r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary);
       if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Project) {
         await assertProductWillRetainAdmin({
           project: await projectDAL.findById(scopeData.projectId, tx),
@@ -409,6 +413,20 @@ export const membershipGroupServiceFactory = ({
           message: `Cannot remove group from project: group is an approver in access approval ${accessApprovalPolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
         });
       }
+    }
+
+    const secretAccessPolicies = await approvalPolicyDAL.findPoliciesWhereSubjectIsApprover({
+      ...(existingMembership.scopeProjectId
+        ? { projectId: existingMembership.scopeProjectId }
+        : { organizationId: existingMembership.scopeOrgId }),
+      type: ApprovalPolicyType.SecretAccess,
+      groupId: dto.selector.groupId
+    });
+    if (secretAccessPolicies.length > 0) {
+      const policyNames = secretAccessPolicies.map((p) => p.name).join(", ");
+      throw new BadRequestError({
+        message: `Cannot remove group from ${existingMembership.scopeProjectId ? "project" : "organization"}: group is an approver in access approval ${secretAccessPolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
+      });
     }
 
     // check if group is assigned to any secret approval policy

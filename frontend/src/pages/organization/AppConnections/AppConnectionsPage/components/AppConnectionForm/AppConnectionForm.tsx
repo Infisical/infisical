@@ -95,6 +95,7 @@ import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
 import { TravisCIConnectionForm } from "./TravisCIConnectionForm";
 import { TriggerDevConnectionForm } from "./TriggerDevConnectionForm";
+import { UltraDNSConnectionForm } from "./UltraDNSConnectionForm";
 import { VenafiConnectionForm } from "./VenafiConnectionForm";
 import { VenafiTppConnectionForm } from "./VenafiTppConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
@@ -275,6 +276,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <CloudflareConnectionForm onSubmit={onSubmit} />;
       case AppConnection.DNSMadeEasy:
         return <DNSMadeEasyConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.UltraDNS:
+        return <UltraDNSConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Spacelift:
         return <SpaceliftConnectionForm onSubmit={onSubmit} />;
       case AppConnection.AzureDNS:
@@ -570,6 +573,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <CloudflareConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.DNSMadeEasy:
         return <DNSMadeEasyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.UltraDNS:
+        return <UltraDNSConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Spacelift:
         return <SpaceliftConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.AzureDNS:

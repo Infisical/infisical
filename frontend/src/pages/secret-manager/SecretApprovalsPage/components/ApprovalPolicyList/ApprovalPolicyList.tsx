@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ChevronDownIcon,
   CircleAlertIcon,
@@ -8,7 +8,10 @@ import {
   SearchIcon
 } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  SecretApprovalPoliciesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import {
   AccessRestrictedNotice,
   Alert,
@@ -29,6 +32,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
@@ -82,6 +86,8 @@ import { RemoveApprovalPolicyModal } from "./components/RemoveApprovalPolicyModa
 
 interface IProps {
   projectId: string;
+  openAddPolicy: PolicyType | null;
+  onAddPolicyOpened: () => void;
 }
 
 enum PolicyOrderBy {
@@ -145,15 +151,31 @@ const useApprovalPolicies = (permission: TProjectPermission, currentProject?: Pr
   };
 };
 
-export const ApprovalPolicyList = ({ projectId }: IProps) => {
+export const ApprovalPolicyList = ({ projectId, openAddPolicy, onAddPolicyOpened }: IProps) => {
+  const [initialPolicyType, setInitialPolicyType] = useState<PolicyType>();
   const { handlePopUpToggle, handlePopUpOpen, popUp } = usePopUp([
     "policyForm",
-    "deletePolicy",
-    "upgradePlan"
+    "deletePolicy"
   ] as const);
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+
+  useEffect(() => {
+    if (!openAddPolicy) return;
+
+    if (subscription && !subscription.secretApproval) {
+      openUpgradeGate({
+        intent: SecretApprovalPoliciesUpgradeIntent,
+        paywallKey: "secret-manager.approval-policy-list"
+      });
+    } else {
+      setInitialPolicyType(openAddPolicy);
+      handlePopUpOpen("policyForm");
+    }
+    onAddPolicyOpened();
+  }, [openAddPolicy, subscription, handlePopUpOpen, openUpgradeGate, onAddPolicyOpened]);
 
   const canReadPolicies = permission.can(
     ProjectPermissionActions.Read,
@@ -334,9 +356,13 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                   <Button
                     onClick={() => {
                       if (subscription && !subscription?.secretApproval) {
-                        handlePopUpOpen("upgradePlan");
+                        openUpgradeGate({
+                          intent: SecretApprovalPoliciesUpgradeIntent,
+                          paywallKey: "secret-manager.approval-policy-list"
+                        });
                         return;
                       }
+                      setInitialPolicyType(undefined);
                       handlePopUpOpen("policyForm");
                     }}
                     variant="project"
@@ -543,6 +569,28 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
                       Create a policy to require approval for secret changes and access requests.
                     </EmptyDescription>
                   </EmptyHeader>
+                  {canCreatePolicies && (
+                    <EmptyContent>
+                      <Button
+                        variant="project"
+                        size="sm"
+                        onClick={() => {
+                          if (subscription && !subscription.secretApproval) {
+                            openUpgradeGate({
+                              intent: SecretApprovalPoliciesUpgradeIntent,
+                              paywallKey: "secret-manager.approval-policy-list"
+                            });
+                          } else {
+                            setInitialPolicyType(undefined);
+                            handlePopUpOpen("policyForm");
+                          }
+                        }}
+                      >
+                        <PlusIcon />
+                        Configure Policy
+                      </Button>
+                    </EmptyContent>
+                  )}
                 </Empty>
               )}
               {Boolean(
@@ -572,6 +620,8 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
         </CardContent>
       </Card>
       <AccessPolicyForm
+        key={initialPolicyType ?? "default"}
+        initialPolicyType={initialPolicyType}
         projectId={currentProject.id}
         projectSlug={currentProject.slug}
         isOpen={popUp.policyForm.isOpen}
@@ -594,12 +644,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
           policyId={popUp.deletePolicy.data.id}
         />
       )}
-      <UpgradePlanModal
-        paywallKey="secret-manager.approval-policy-list"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Adding secret approval policies can be unlocked if you upgrade to Infisical Pro plan."
-      />
+      {upgradeGate}
     </>
   );
 };

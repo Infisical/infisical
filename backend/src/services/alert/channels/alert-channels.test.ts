@@ -98,6 +98,25 @@ describe("buildWebhookPayload", () => {
     expect(wh.data.alert.condition).toBe("30d");
   });
 
+  test("carries each item's typed resource for receivers that act on it", () => {
+    const payload = samplePayload();
+    payload.items[0].resource = { serialNumber: "abc", notAfter: "2026-10-04T23:59:00.000Z" };
+    expect(buildWebhookPayload(payload).data.items[0].resource).toEqual({
+      serialNumber: "abc",
+      notAfter: "2026-10-04T23:59:00.000Z"
+    });
+  });
+
+  test("prefers the provider's source and exposes the alert's resource id", () => {
+    const payload = samplePayload();
+    payload.webhookSource = "/applications/app-1/alerts/alert-1";
+    payload.alert.resourceId = "app-1";
+    const wh = buildWebhookPayload(payload);
+    expect(wh.source).toBe("/applications/app-1/alerts/alert-1");
+    expect(wh.data.alert.resourceId).toBe("app-1");
+    expect(buildWebhookPayload(samplePayload()).data.alert).not.toHaveProperty("resourceId");
+  });
+
   test("uses an org-less source when there is no project", () => {
     const payload = samplePayload();
     payload.alert.projectId = undefined;
@@ -166,6 +185,27 @@ describe("buildPagerDutyEvent", () => {
     expect(pd.payload.custom_details.identifier).toBe("4B:3E:2F:A1");
     expect(pd.payload.custom_details.fields.Expires).toBe("2025-11-12");
   });
+
+  test("uses the target's own summary and severity when the provider sets them", () => {
+    const payload = samplePayload();
+    const item = {
+      ...payload.items[1],
+      summary: "Certificate 'web.example.com' expires on November 10, 2025",
+      severity: "info" as const
+    };
+    const pd = buildPagerDutyEvent(payload, item, "a".repeat(32));
+
+    expect(pd.payload.summary).toBe("Certificate 'web.example.com' expires on November 10, 2025");
+    expect(pd.payload.severity).toBe("info");
+  });
+
+  test("falls back to the alert summary and severity for targets without their own", () => {
+    const payload = samplePayload();
+    const pd = buildPagerDutyEvent(payload, payload.items[0], "a".repeat(32));
+
+    expect(pd.payload.summary).toBe("2 certificates expiring within 30d — api.prod.example.com");
+    expect(pd.payload.severity).toBe("warning");
+  });
 });
 
 describe("SlackChannelConfigSchema webhook allowlist", () => {
@@ -225,6 +265,54 @@ describe("sendEmailNotification (directed)", () => {
     const result = await sendEmailNotification(ctx);
     expect(result.success).toBe(true);
     expect(sentTo).toEqual(["external@example.com"]);
+  });
+
+  test("lists at most 50 items and counts the rest so a large run renders quickly", async () => {
+    let substitutions: { items: unknown[]; remainingCount: number } | undefined;
+    const payload = samplePayload();
+    payload.items = Array.from({ length: 120 }, (_, index) => ({
+      id: `cert-${index}`,
+      title: `cert-${index}.example.com`
+    }));
+    const ctx = {
+      ...baseCtx(),
+      payload,
+      config: {},
+      recipient: { email: "user@example.com" },
+      deps: {
+        smtpService: {
+          sendMail: async (opts: { substitutions: object }) => {
+            substitutions = opts.substitutions as { items: unknown[]; remainingCount: number };
+          }
+        }
+      }
+    };
+
+    await sendEmailNotification(ctx);
+
+    expect(substitutions?.items).toHaveLength(50);
+    expect(substitutions?.remainingCount).toBe(70);
+  });
+
+  test("shows every item and no remainder when the run is small", async () => {
+    let substitutions: { items: unknown[]; remainingCount: number } | undefined;
+    const ctx = {
+      ...baseCtx(),
+      config: {},
+      recipient: { email: "user@example.com" },
+      deps: {
+        smtpService: {
+          sendMail: async (opts: { substitutions: object }) => {
+            substitutions = opts.substitutions as { items: unknown[]; remainingCount: number };
+          }
+        }
+      }
+    };
+
+    await sendEmailNotification(ctx);
+
+    expect(substitutions?.items).toHaveLength(2);
+    expect(substitutions?.remainingCount).toBe(0);
   });
 
   test("fails when there is no recipient", async () => {

@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeftIcon, Loader2Icon, Lock, type LucideIcon, Search } from "lucide-react";
 
+import {
+  ExternalCertificateAuthoritiesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
@@ -37,6 +41,7 @@ import {
 import { useDNSMadeEasyConnectionListZones } from "@app/hooks/api/appConnections/dns-made-easy";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { usePowerDnsConnectionListZones } from "@app/hooks/api/appConnections/powerdns";
+import { useUltraDNSConnectionListZones } from "@app/hooks/api/appConnections/ultradns";
 import {
   AcmeDnsProvider,
   CaStatus,
@@ -53,7 +58,7 @@ import {
 } from "@app/hooks/api/ca/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { AcmeFields } from "./ExternalCaFields/AcmeFields";
+import { AcmeFields, TAcmeDnsZone } from "./ExternalCaFields/AcmeFields";
 import { AdcsFields } from "./ExternalCaFields/AdcsFields";
 import { AwsAcmPublicCaFields } from "./ExternalCaFields/AwsAcmPublicCaFields";
 import { AwsPcaFields } from "./ExternalCaFields/AwsPcaFields";
@@ -192,8 +197,7 @@ const CaTypeCard = ({
     <button
       type="button"
       onClick={onClick}
-      disabled={isLocked}
-      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors enabled:hover:border-border-strong enabled:hover:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-60"
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-border-strong hover:bg-surface-hover/50"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-hover">
@@ -226,6 +230,7 @@ const CaTypeCard = ({
 export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
   const { subscription } = useSubscription();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const { data: ca, isLoading: isCaLoading } = useGetCa({
     caId: (popUp?.ca?.data as { caId: string })?.caId || "",
@@ -355,7 +360,13 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     type !== CaType.ACME && !subscription.pkiEnterpriseCaIntegrations;
 
   const handleSelectType = (type: CaType) => {
-    if (isCaTypeLocked(type)) return;
+    if (isCaTypeLocked(type)) {
+      openUpgradeGate({
+        intent: ExternalCertificateAuthoritiesUpgradeIntent,
+        paywallKey: "cert-manager.external-ca-type"
+      });
+      return;
+    }
     reset(getInitialValuesForType(type));
     setSelectedType(type);
   };
@@ -398,6 +409,19 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const { data: availablePowerDnsConnections, isPending: isPowerDnsPending } =
     useListAvailableAppConnections(AppConnection.PowerDns, currentProject.id, {
+      enabled: caType === CaType.ACME
+    });
+
+  const { data: availableGcpConnections, isPending: isGcpPending } = useListAvailableAppConnections(
+    AppConnection.GCP,
+    currentProject.id,
+    {
+      enabled: caType === CaType.ACME
+    }
+  );
+
+  const { data: availableUltraDNSConnections, isPending: isUltraDNSPending } =
+    useListAvailableAppConnections(AppConnection.UltraDNS, currentProject.id, {
       enabled: caType === CaType.ACME
     });
 
@@ -458,7 +482,9 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       ...(availableCloudflareConnections || []),
       ...(availableDNSMadeEasyConnections || []),
       ...(availableAzureDNSConnections || []),
-      ...(availablePowerDnsConnections || [])
+      ...(availablePowerDnsConnections || []),
+      ...(availableGcpConnections || []),
+      ...(availableUltraDNSConnections || [])
     ];
   }, [
     caType,
@@ -467,6 +493,8 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableDNSMadeEasyConnections,
     availableAzureDNSConnections,
     availablePowerDnsConnections,
+    availableGcpConnections,
+    availableUltraDNSConnections,
     availableAzureConnections,
     availableAdcsConnections,
     availableAwsConnections,
@@ -487,6 +515,10 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         return availableAzureDNSConnections || [];
       case AcmeDnsProvider.PowerDns:
         return availablePowerDnsConnections || [];
+      case AcmeDnsProvider.GcpCloudDns:
+        return availableGcpConnections || [];
+      case AcmeDnsProvider.UltraDNS:
+        return availableUltraDNSConnections || [];
       default:
         return [];
     }
@@ -496,7 +528,9 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     availableCloudflareConnections,
     availableDNSMadeEasyConnections,
     availableAzureDNSConnections,
-    availablePowerDnsConnections
+    availablePowerDnsConnections,
+    availableGcpConnections,
+    availableUltraDNSConnections
   ]);
 
   const isPending =
@@ -504,7 +538,9 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       isCloudflarePending ||
       isDNSMadeEasyPending ||
       isAzureDNSPending ||
-      isPowerDnsPending) &&
+      isPowerDnsPending ||
+      isGcpPending ||
+      isUltraDNSPending) &&
       caType === CaType.ACME) ||
     (isAzurePending && caType === CaType.AZURE_AD_CS) ||
     (isAdcsPending && caType === CaType.ADCS) ||
@@ -518,7 +554,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       ? configuration.dnsAppConnection
       : { id: "", name: "" };
 
-  const { data: cloudflareZones = [], isPending: isZonesPending } =
+  const { data: cloudflareZones = [], isPending: isCloudflareZonesPending } =
     useCloudflareConnectionListZones(dnsAppConnection.id, {
       enabled: dnsProvider === AcmeDnsProvider.Cloudflare && !!dnsAppConnection.id
     });
@@ -538,15 +574,53 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       enabled: dnsProvider === AcmeDnsProvider.PowerDns && !!dnsAppConnection.id
     });
 
-  // Populate form with CA data when editing
+  const { data: ultraDNSZones = [], isPending: isUltraDNSZonesPending } =
+    useUltraDNSConnectionListZones(dnsAppConnection.id, {
+      enabled: dnsProvider === AcmeDnsProvider.UltraDNS && !!dnsAppConnection.id
+    });
+
+  const zonesByDnsProvider: Partial<
+    Record<AcmeDnsProvider, { zones: TAcmeDnsZone[]; isPending: boolean }>
+  > = {
+    [AcmeDnsProvider.Cloudflare]: { zones: cloudflareZones, isPending: isCloudflareZonesPending },
+    [AcmeDnsProvider.DNSMadeEasy]: {
+      zones: dnsMadeEasyZones,
+      isPending: isDNSMadeEasyZonesPending
+    },
+    [AcmeDnsProvider.AzureDNS]: { zones: azureDnsZones, isPending: isAzureDNSZonesPending },
+    [AcmeDnsProvider.PowerDns]: { zones: powerDnsZones, isPending: isPowerDnsZonesPending },
+    [AcmeDnsProvider.UltraDNS]: { zones: ultraDNSZones, isPending: isUltraDNSZonesPending }
+  };
+
+  const { zones = [], isPending: isZonesPending = false } =
+    (dnsProvider && zonesByDnsProvider[dnsProvider]) || {};
+
+  const prefilledCaIdRef = useRef<string | null>(null);
+
+  // Prefill once per open: re-running on connection list refreshes would discard unsaved edits
   useEffect(() => {
-    if (ca && !isCaLoading) {
+    if (!popUp?.ca?.isOpen) prefilledCaIdRef.current = null;
+  }, [popUp?.ca?.isOpen]);
+
+  useEffect(() => {
+    if (
+      ca &&
+      !isCaLoading &&
+      !isPending &&
+      caType === ca.type &&
+      prefilledCaIdRef.current !== ca.id
+    ) {
+      const prefill = (values: Parameters<typeof reset>[0]) => {
+        reset(values);
+        prefilledCaIdRef.current = ca.id;
+      };
+
       if (ca.type === CaType.ACME && availableConnections?.length) {
         const selectedConnection = availableConnections?.find(
           (connection) => connection.id === ca.configuration.dnsAppConnectionId
         );
 
-        reset({
+        prefill({
           type: ca.type,
           name: ca.name,
           status: ca.status,
@@ -571,7 +645,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           (connection) => connection.id === ca.configuration.azureAdcsConnectionId
         );
 
-        reset({
+        prefill({
           type: ca.type,
           name: ca.name,
           status: ca.status,
@@ -587,7 +661,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           (connection) => connection.id === ca.configuration.appConnectionId
         );
 
-        reset({
+        prefill({
           type: ca.type,
           name: ca.name,
           status: ca.status,
@@ -604,7 +678,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           (connection) => connection.id === ca.configuration.appConnectionId
         );
 
-        reset({
+        prefill({
           type: ca.type,
           name: ca.name,
           status: ca.status,
@@ -622,7 +696,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           (connection) => connection.id === ca.configuration.appConnectionId
         );
 
-        reset({
+        prefill({
           type: ca.type,
           name: ca.name,
           status: ca.status,
@@ -647,7 +721,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             )
           : undefined;
 
-        reset({
+        prefill({
           type: ca.type,
           name: ca.name,
           status: ca.status,
@@ -671,7 +745,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           (connection) => connection.id === ca.configuration.appConnectionId
         );
 
-        reset({
+        prefill({
           type: ca.type,
           name: ca.name,
           status: ca.status,
@@ -688,7 +762,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           (connection) => connection.id === ca.configuration.appConnectionId
         );
 
-        reset({
+        prefill({
           type: ca.type,
           name: ca.name,
           status: ca.status,
@@ -702,7 +776,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         });
       }
     }
-  }, [ca, availableConnections, reset, isCaLoading]);
+  }, [ca, availableConnections, reset, isCaLoading, isPending, caType]);
 
   const digicertConnectionId =
     caType === CaType.DIGICERT && configuration && "digicertConnection" in configuration
@@ -874,216 +948,214 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   });
 
   return (
-    <Sheet
-      open={popUp?.ca?.isOpen}
-      onOpenChange={(isOpen) => {
-        if (!isOpen) {
-          reset();
-          setSelectedType(null);
-          setSearch("");
-        }
-        handlePopUpToggle("ca", isOpen);
-      }}
-    >
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-2xl">
-        <SheetHeader className="border-b border-border">
-          {showGrid ? (
-            <>
-              <SheetTitle>Connect External CA</SheetTitle>
-              <SheetDescription>
-                Select the third-party certificate authority to connect to. Infisical issues through
-                it rather than hosting the signing key.
-              </SheetDescription>
-            </>
-          ) : (
-            <>
-              {!isEditMode && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedType(null)}
-                  className="mb-1 flex w-fit cursor-pointer items-center gap-1 text-xs text-muted transition-colors hover:text-foreground hover:underline"
-                >
-                  <ArrowLeftIcon className="size-3" />
-                  Select Another CA
-                </button>
-              )}
-              <SheetTitle>
-                <ExternalCaHeader
-                  name={headerTitle}
-                  subtitle="Define the connection and credentials used to issue certificates from this CA."
-                  image={activeTypeMedia?.image}
-                  icon={activeTypeMedia?.icon}
-                />
-              </SheetTitle>
-            </>
-          )}
-        </SheetHeader>
+    <>
+      <Sheet
+        open={popUp?.ca?.isOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            reset();
+            setSelectedType(null);
+            setSearch("");
+          }
+          handlePopUpToggle("ca", isOpen);
+        }}
+      >
+        <SheetContent className="flex h-full max-h-full flex-col gap-y-0 p-0 sm:max-w-2xl">
+          <SheetHeader className="border-b border-border">
+            {showGrid ? (
+              <>
+                <SheetTitle>Connect External CA</SheetTitle>
+                <SheetDescription>
+                  Select the third-party certificate authority to connect to. Infisical issues
+                  through it rather than hosting the signing key.
+                </SheetDescription>
+              </>
+            ) : (
+              <>
+                {!isEditMode && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedType(null)}
+                    className="mb-1 flex w-fit cursor-pointer items-center gap-1 text-xs text-muted transition-colors hover:text-foreground hover:underline"
+                  >
+                    <ArrowLeftIcon className="size-3" />
+                    Select Another CA
+                  </button>
+                )}
+                <SheetTitle>
+                  <ExternalCaHeader
+                    name={headerTitle}
+                    subtitle="Define the connection and credentials used to issue certificates from this CA."
+                    image={activeTypeMedia?.image}
+                    icon={activeTypeMedia?.icon}
+                  />
+                </SheetTitle>
+              </>
+            )}
+          </SheetHeader>
 
-        {/* eslint-disable-next-line no-nested-ternary */}
-        {showGrid ? (
-          <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6">
-            <InputGroup>
-              <InputGroupAddon align="inline-start">
-                <Search />
-              </InputGroupAddon>
-              <InputGroupInput
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search certificate authorities..."
-              />
-            </InputGroup>
-            <div className="grid grid-cols-2 gap-3">
-              {filteredCaOptions.map((option) => (
-                <CaTypeCard
-                  key={option.type}
-                  option={option}
-                  onClick={() => handleSelectType(option.type)}
-                  isLocked={isCaTypeLocked(option.type)}
+          {/* eslint-disable-next-line no-nested-ternary */}
+          {showGrid ? (
+            <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6">
+              <InputGroup>
+                <InputGroupAddon align="inline-start">
+                  <Search />
+                </InputGroupAddon>
+                <InputGroupInput
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search certificate authorities..."
                 />
-              ))}
+              </InputGroup>
+              <div className="grid grid-cols-2 gap-3">
+                {filteredCaOptions.map((option) => (
+                  <CaTypeCard
+                    key={option.type}
+                    option={option}
+                    onClick={() => handleSelectType(option.type)}
+                    isLocked={isCaTypeLocked(option.type)}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        ) : isEditMode && isCaLoading ? (
-          <div className="flex min-h-0 flex-1 items-center justify-center">
-            <Loader2Icon className="size-8 animate-spin text-accent" />
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit(onFormSubmit)} className="flex min-h-0 flex-1 flex-col">
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-              {ca && (
-                <Field className="mb-4">
-                  <FieldLabel>CA ID</FieldLabel>
-                  <Input value={ca.id} disabled />
-                </Field>
-              )}
-              <Controller
-                control={control}
-                defaultValue=""
-                name="name"
-                render={({ field, fieldState: { error } }) => (
+          ) : isEditMode && isCaLoading ? (
+            <div className="flex min-h-0 flex-1 items-center justify-center">
+              <Loader2Icon className="size-8 animate-spin text-accent" />
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit(onFormSubmit)} className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+                {ca && (
                   <Field className="mb-4">
-                    <FieldLabel>
-                      Name <span className="text-danger">*</span>
-                    </FieldLabel>
-                    <Input
-                      {...field}
-                      placeholder="my-external-ca"
-                      disabled={Boolean(ca)}
-                      isError={Boolean(error)}
-                      autoComplete="off"
-                      name="certificate-authority-name"
-                    />
-                    {!error && (
-                      <FieldDescription>
-                        Must be slug-friendly: lowercase letters, numbers, and hyphens only.
-                      </FieldDescription>
-                    )}
-                    <FieldError errors={[error]} />
+                    <FieldLabel>CA ID</FieldLabel>
+                    <Input value={ca.id} disabled />
                   </Field>
                 )}
-              />
-              {caType === CaType.ACME && (
-                <AcmeFields
+                <Controller
                   control={control}
-                  isExistingCa={Boolean(ca)}
-                  dnsProvider={dnsProvider}
-                  directoryUrl={directoryUrl}
-                  dnsAppConnection={dnsAppConnection}
-                  availableConnections={dnsAppConnections}
-                  isPending={isPending}
-                  cloudflareZones={cloudflareZones}
-                  isZonesPending={isZonesPending}
-                  dnsMadeEasyZones={dnsMadeEasyZones}
-                  isDNSMadeEasyZonesPending={isDNSMadeEasyZonesPending}
-                  azureDnsZones={azureDnsZones}
-                  isAzureDNSZonesPending={isAzureDNSZonesPending}
-                  powerDnsZones={powerDnsZones}
-                  isPowerDnsZonesPending={isPowerDnsZonesPending}
-                  onDnsSelectionChange={() =>
-                    setValue("configuration.dnsProviderConfig.hostedZoneId", "", {
-                      shouldDirty: true
-                    })
-                  }
+                  defaultValue=""
+                  name="name"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field className="mb-4">
+                      <FieldLabel>
+                        Name <span className="text-danger">*</span>
+                      </FieldLabel>
+                      <Input
+                        {...field}
+                        placeholder="my-external-ca"
+                        disabled={Boolean(ca)}
+                        isError={Boolean(error)}
+                        autoComplete="off"
+                        name="certificate-authority-name"
+                      />
+                      {!error && (
+                        <FieldDescription>
+                          Must be slug-friendly: lowercase letters, numbers, and hyphens only.
+                        </FieldDescription>
+                      )}
+                      <FieldError errors={[error]} />
+                    </Field>
+                  )}
                 />
-              )}
-              {caType === CaType.AZURE_AD_CS && (
-                <AzureAdCsFields
-                  control={control}
-                  availableConnections={availableConnections}
-                  isPending={isPending}
-                />
-              )}
-              {caType === CaType.ADCS && (
-                <AdcsFields
-                  control={control}
-                  availableConnections={availableConnections}
-                  isPending={isPending}
-                />
-              )}
-              {caType === CaType.AWS_PCA && (
-                <AwsPcaFields
-                  control={control}
-                  availableConnections={availableConnections}
-                  isPending={isPending}
-                />
-              )}
-              {caType === CaType.DIGICERT && (
-                <DigiCertFields
-                  control={control}
-                  setValue={setValue}
-                  configuration={configuration}
-                  availableConnections={availableConnections}
-                  isPending={isPending}
-                  digicertConnectionId={digicertConnectionId}
-                  digicertOrganizations={digicertOrganizations}
-                  isDigiCertOrgsPending={isDigiCertOrgsPending}
-                  digicertProducts={digicertProducts}
-                  isDigiCertProductsPending={isDigiCertProductsPending}
-                  csRequiresContact={csRequiresContact}
-                />
-              )}
-              {caType === CaType.AWS_ACM_PUBLIC_CA && (
-                <AwsAcmPublicCaFields
-                  control={control}
-                  availableConnections={availableConnections}
-                  isPending={isPending}
-                />
-              )}
-              {caType === CaType.VENAFI_TPP && (
-                <VenafiTppFields
-                  control={control}
-                  availableConnections={availableConnections}
-                  isPending={isPending}
-                />
-              )}
-              {caType === CaType.GODADDY && (
-                <GoDaddyFields
-                  control={control}
-                  availableConnections={availableConnections}
-                  isPending={isPending}
-                />
-              )}
-            </div>
-            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border px-6 py-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handlePopUpToggle("ca", false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="project"
-                isPending={isSubmitting || isCheckingCsValidation}
-                isDisabled={isSubmitting || isCheckingCsValidation}
-              >
-                {isEditMode ? "Update" : "Create"}
-              </Button>
-            </div>
-          </form>
-        )}
-      </SheetContent>
-    </Sheet>
+                {caType === CaType.ACME && (
+                  <AcmeFields
+                    control={control}
+                    isExistingCa={Boolean(ca)}
+                    dnsProvider={dnsProvider}
+                    directoryUrl={directoryUrl}
+                    dnsAppConnection={dnsAppConnection}
+                    availableConnections={dnsAppConnections}
+                    isPending={isPending}
+                    zones={zones}
+                    isZonesPending={isZonesPending}
+                    setValue={setValue}
+                    onDnsSelectionChange={() =>
+                      setValue("configuration.dnsProviderConfig.hostedZoneId", "", {
+                        shouldDirty: true
+                      })
+                    }
+                  />
+                )}
+                {caType === CaType.AZURE_AD_CS && (
+                  <AzureAdCsFields
+                    control={control}
+                    availableConnections={availableConnections}
+                    isPending={isPending}
+                  />
+                )}
+                {caType === CaType.ADCS && (
+                  <AdcsFields
+                    control={control}
+                    availableConnections={availableConnections}
+                    isPending={isPending}
+                  />
+                )}
+                {caType === CaType.AWS_PCA && (
+                  <AwsPcaFields
+                    control={control}
+                    availableConnections={availableConnections}
+                    isPending={isPending}
+                  />
+                )}
+                {caType === CaType.DIGICERT && (
+                  <DigiCertFields
+                    control={control}
+                    setValue={setValue}
+                    configuration={configuration}
+                    availableConnections={availableConnections}
+                    isPending={isPending}
+                    digicertConnectionId={digicertConnectionId}
+                    digicertOrganizations={digicertOrganizations}
+                    isDigiCertOrgsPending={isDigiCertOrgsPending}
+                    digicertProducts={digicertProducts}
+                    isDigiCertProductsPending={isDigiCertProductsPending}
+                    csRequiresContact={csRequiresContact}
+                  />
+                )}
+                {caType === CaType.AWS_ACM_PUBLIC_CA && (
+                  <AwsAcmPublicCaFields
+                    control={control}
+                    availableConnections={availableConnections}
+                    isPending={isPending}
+                  />
+                )}
+                {caType === CaType.VENAFI_TPP && (
+                  <VenafiTppFields
+                    control={control}
+                    availableConnections={availableConnections}
+                    isPending={isPending}
+                  />
+                )}
+                {caType === CaType.GODADDY && (
+                  <GoDaddyFields
+                    control={control}
+                    availableConnections={availableConnections}
+                    isPending={isPending}
+                  />
+                )}
+              </div>
+              <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border px-6 py-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handlePopUpToggle("ca", false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="project"
+                  isPending={isSubmitting || isCheckingCsValidation}
+                  isDisabled={isSubmitting || isCheckingCsValidation}
+                >
+                  {isEditMode ? "Update" : "Create"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </SheetContent>
+      </Sheet>
+      {upgradeGate}
+    </>
   );
 };

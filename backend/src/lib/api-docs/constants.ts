@@ -1,3 +1,4 @@
+import { AGENT_VAULT_MAX_REFERENCES_PER_FIELD } from "@app/ee/services/agent-vault/agent-vault-variable-fns";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
   SECRET_ROTATION_CONNECTION_MAP,
@@ -1533,6 +1534,8 @@ export const DASHBOARD = {
     limit: "The number of secrets/folders to return.",
     orderBy: "The column to order secrets/folders by.",
     orderDirection: "The direction to order secrets/folders in.",
+    sortEnvironment:
+      "The environment slug whose secret timestamps determine recency ordering. Required for multi-environment recency sorting.",
     search: "The text string to filter secret keys and folder names by.",
     tags: "The tags to filter secrets by (comma separated, ie 'tags=billing,engineering').",
     includeSecrets: "Whether to include project secrets in the response.",
@@ -1574,6 +1577,8 @@ export const AUDIT_LOGS = {
     environment:
       "The environment to filter logs by. If not provided, logs from all environments will be returned. Note that the projectId parameter must also be provided.",
     eventType: "The type of the event to export.",
+    eventClass:
+      "Filter by event class, comma-separated for multiple values (management, authentication, authorization, data-access). Combined with eventType, only event types in both are returned. If the selected classes include secret events, the environment, secretPath, and secretKey filters drop every event whose metadata doesn't match, including events that aren't about secrets. If they don't, those filters are ignored.",
     secretPath:
       "The path of the secret to query audit logs for. Note that the projectId parameter must also be provided.",
     secretKey:
@@ -2078,6 +2083,27 @@ export const INTEGRATION = {
   }
 };
 
+export const AUDIT_LOG_SETTINGS = {
+  eventClass: "The audit log event class: management, authentication, data-access, or authorization.",
+  isEnabled: "Whether events of this class are recorded.",
+  shouldUseNewPrivilegeSystem:
+    "Whether the organization is on the new privilege system. Permission denials (the authorization class) are only recorded on the new privilege system.",
+  eventClasses:
+    "Every event class except management and data-access, each exactly once. The request replaces the current settings. Management and data-access events are always recorded, so a request that includes either class is rejected. The authorization class can only be turned on for organizations on the new privilege system; otherwise the request is rejected.",
+  UPDATE_ORG: {
+    isEnabled:
+      "Whether to record events of this class for the organization. This only covers organization-level events; each project has its own setting."
+  },
+  UPDATE_PROJECT: {
+    projectId: "The ID of the project to update the audit log settings for.",
+    isEnabled:
+      "Whether to record events of this class for the project. A project that has never saved a setting uses the default."
+  },
+  GET_PROJECT: {
+    projectId: "The ID of the project to get the audit log settings for."
+  }
+} as const;
+
 export const AUDIT_LOG_STREAMS = {
   CREATE: {
     url: "The HTTP URL to push logs to.",
@@ -2391,6 +2417,52 @@ export const CA_CRLS = {
   GET: {
     crlId: "The ID of the certificate revocation list (CRL) to get.",
     crl: "The certificate revocation list (CRL)."
+  }
+};
+
+export const ALERTING = {
+  CREATE: {
+    name: "The name of the alert.",
+    description: "The description of the alert.",
+    resourceType: "The type of resource the alert watches, for example `cert-manager.application`.",
+    resourceId:
+      "The ID of the resource the alert watches. Set to null to watch every resource of this type, where the resource type supports it.",
+    eventType: "The event that triggers the alert, for example `cert-manager.application.certificate.expiry`.",
+    condition:
+      "The settings of the alert's event, for example `alertBefore` on an expiry event. The accepted fields depend on `eventType`.",
+    enabled: "Whether the alert is enabled. Defaults to true.",
+    projectId: "The ID of the project to create the alert in. Optional when the resource belongs to a project.",
+    channels: "The channels the alert notifies. Each is email, Slack, webhook, or PagerDuty."
+  },
+  TEST_CHANNEL: {
+    resourceType: "The type of resource the alert watches.",
+    resourceId: "The ID of the resource the alert watches.",
+    projectId: "The ID of the project the alert belongs to.",
+    alertId: "The ID of the saved alert the channel belongs to.",
+    channelId: "The ID of the saved channel to test."
+  },
+  LIST: {
+    resourceType: "The type of resource to list alerts for.",
+    resourceId:
+      "The ID of the resource to list alerts for. If omitted, lists every alert on the resource type. For resource types that support alerts covering all of their resources, such as `cert-manager`, lists only those alerts.",
+    projectId: "The ID of the project to list alerts in.",
+    enabled: "Whether to list only enabled or only disabled alerts."
+  },
+  GET: {
+    alertId: "The ID of the alert to get.",
+    filters:
+      "The resources named in the alert's condition, such as applications and certificate profiles, each as `{ id, name }`. `name` is null for a deleted resource."
+  },
+  UPDATE: {
+    alertId: "The ID of the alert to update.",
+    name: "The new name of the alert.",
+    description: "The new description of the alert. Set to null to remove it.",
+    condition: "The new settings of the alert's event. The accepted fields depend on the alert's `eventType`.",
+    enabled: "Whether the alert is enabled.",
+    channels: "The alert's channels. Replaces the current channels, so channels left out are deleted."
+  },
+  DELETE: {
+    alertId: "The ID of the alert to delete."
   }
 };
 
@@ -2737,7 +2809,7 @@ export const CertificateAuthorities = {
       directoryUrl: `The directory URL for the ACME Certificate Authority.`,
       accountEmail: `The email address for the ACME Certificate Authority.`,
       provider: `The DNS provider for the ACME Certificate Authority.`,
-      hostedZoneId: `The hosted zone ID for the ACME Certificate Authority.`,
+      hostedZoneId: `The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}.`,
       eabKid: `The External Account Binding (EAB) Key ID for the ACME Certificate Authority. Required if the ACME provider uses EAB.`,
       eabHmacKey: `The External Account Binding (EAB) HMAC key for the ACME Certificate Authority. Required if the ACME provider uses EAB.`,
       dnsResolver: `An optional custom DNS resolver IP address to use for verifying DNS propagation during ACME challenges. Must be a valid IP address (e.g. 8.8.8.8). When not set, the system default DNS resolver is used.`
@@ -3669,6 +3741,10 @@ export const SecretRotations = {
         "The name for each Stripe API key this rotation creates, up to 80 characters. Infisical appends a timestamp so the old and new key can be told apart. Defaults to 'infisical-managed'.",
       permissions:
         "The permissions granted to the generated Stripe API key. Stripe has no wildcard permission, so this is the full list of what the key may do."
+    },
+    GCP_SERVICE_ACCOUNT_KEY: {
+      serviceAccountEmail:
+        "The email of the GCP service account whose keys will be rotated, e.g. my-app@my-project.iam.gserviceaccount.com. The connection's service account needs the Service Account Key Admin role (roles/iam.serviceAccountKeyAdmin) on it."
     }
   },
   SECRETS_MAPPING: {
@@ -3771,6 +3847,10 @@ export const SecretRotations = {
     },
     STRIPE_API_KEY: {
       apiKey: "The name of the secret that the rotated Stripe API key will be mapped to."
+    },
+    GCP_SERVICE_ACCOUNT_KEY: {
+      serviceAccountKey:
+        "The name of the secret that the rotated service account key (the JSON key file) will be mapped to."
     }
   }
 };
@@ -3853,7 +3933,7 @@ export const SecretScanningFindings = {
   UPDATE: {
     findingId: "The ID of the Secret Scanning Finding to update.",
     status: "The updated status of the specified Secret Scanning Finding.",
-    remarks: "Remarks pertaining to the status of this finding."
+    triageComment: "A comment explaining the status given to this finding."
   }
 };
 
@@ -4252,6 +4332,8 @@ export const ENCRYPTION_KEY_ROTATION = {
   }
 };
 
+const AGENT_VAULT_VARIABLE_REFERENCES = `Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to the access bundle's variables, written as \`{{KEY}}\`. A reference that repeats counts each time.`;
+
 export const AGENT_VAULT = {
   ACCESS_BUNDLE: {
     accessBundleId: "The ID of the access bundle.",
@@ -4273,19 +4355,15 @@ export const AGENT_VAULT = {
       "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). A leading `*.` wildcard matches exactly one label. Paths are not supported.",
     headerName: "The header the credential is written to. Defaults to `Authorization`.",
     headerPrefix:
-      "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",
-    username:
-      "The username half of the basic credential. May be empty if a password is set. Never returned once saved, since some APIs put the whole key here.",
-    updateUsername:
-      "The username half of the basic credential. Omit to keep the stored username; send an empty string to remove it, which requires a password.",
-    updateValue: "The secret. Omit to keep the stored secret.",
-    updatePassword:
-      "The password half of the basic credential. Omit to keep the stored password; send an empty string to remove it, which requires a username.",
+      "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. Can't contain `{{` or `}}`. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",
+    username: `The username half of the basic credential. May be empty if a password is set. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved, since some APIs put the whole key here.`,
+    updateUsername: `The username half of the basic credential. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored username; send an empty string to remove it, which requires a password.`,
+    updateValue: `The secret. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored secret.`,
+    updatePassword: `The password half of the basic credential. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored password; send an empty string to remove it, which requires a username.`,
     createdAt: "When the service was added to the access bundle.",
     updatedAt: "When the service was last changed.",
-    value: "The secret. Never returned once saved.",
-    password:
-      "The password half of the basic credential. May be empty if a username is set, for APIs that carry the whole key in the username. Never returned once saved.",
+    value: `The secret. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
+    password: `The password half of the basic credential. May be empty if a username is set, for APIs that carry the whole key in the username. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
     allowedMethods:
       "The HTTP methods this service allows. Null allows every method. Anything else is refused by the proxy with a 403.",
     allowedPathPrefixes:
@@ -4294,20 +4372,41 @@ export const AGENT_VAULT = {
       "Additional headers the proxy attaches to every request to this service, on top of the credential. Send the full list. A header you leave out is deleted. Send a header's `id` to change it in place and keep its stored value. Without an `id`, a header is matched by name.",
     customHeaderId: "The ID of the custom header. Send it to change that header in place. Omit it to match by name.",
     customHeaderName: "The name of the header, which must not be the credential's own header.",
-    customHeaderPrefix: "Written before the header value, separated by one space. Leave empty to send the value alone.",
+    customHeaderPrefix:
+      "Written before the header value, separated by one space. Leave empty to send the value alone. Can't contain `{{` or `}}`.",
     updateCustomHeaderPrefix:
-      "Written before the header value, separated by one space. Unlike the value, an omitted prefix is cleared rather than kept, since the stored prefix is returned and can be resent.",
-    customHeaderValue: "The header value. Never returned once saved.",
-    updateCustomHeaderValue: "The header value. Omit to keep the value already stored for this header.",
+      "Written before the header value, separated by one space. Can't contain `{{` or `}}`. Unlike the value, an omitted prefix is cleared rather than kept, since the stored prefix is returned and can be resent.",
+    customHeaderValue: `The header value. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
+    updateCustomHeaderValue: `The header value. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the value already stored for this header.`,
     substitutions:
       "Placeholders the proxy swaps for a real secret before forwarding. Send the full list. A substitution you leave out is deleted. Send a substitution's `id` to change it in place and keep its stored value. Without an `id`, it is matched by its placeholder.",
     substitutionId:
       "The ID of the substitution. Send it to change that substitution in place. Omit it to match by placeholder.",
     placeholder:
-      "The fake value your agent already sends. The proxy replaces it with the real secret. Matched as a plain string, so a distinctive placeholder is worth choosing.",
+      "The fake value your agent already sends. The proxy replaces it with the real secret. Matched as a plain string, so a distinctive placeholder is worth choosing. Can't contain `{{` or `}}`.",
     surfaces: "Where in the request to look for the placeholder: path, query, header or body.",
-    substitutionValue: "The real value the placeholder is replaced with. Never returned once saved.",
-    updateSubstitutionValue: "The real value the placeholder is replaced with. Omit to keep the value already stored."
+    substitutionValue: `The real value the placeholder is replaced with. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
+    updateSubstitutionValue: `The real value the placeholder is replaced with. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the value already stored.`,
+    variableReferences:
+      "The variables this service's credential, custom header values and substitution values use. Not returned to Agent Vault members, since only admins can see variables.",
+    referenceField:
+      "Which value uses the variable: credential-value (a bearer token or a basic password), credential-username, custom-header or substitution.",
+    referenceCustomHeaderId: "The custom header whose value uses the variable.",
+    referenceSubstitutionId: "The substitution whose value uses the variable."
+  },
+  VARIABLE: {
+    variableId: "The ID of the variable.",
+    key: "The name services use to refer to the variable, as `{{KEY}}`. Starts with a letter and uses only upper case letters, numbers and underscores.",
+    value: "The value the proxy puts in place of each `{{KEY}}`.",
+    updateValue: "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value.",
+    isSecret: "Whether the value is hidden once saved. A secret value is only returned by the value endpoint.",
+    listedValue:
+      "The value, for a variable that is not secret. Null for a secret one: read it from the value endpoint.",
+    revealedValue: "The variable's value.",
+    serviceIds:
+      "The IDs of the services in the access bundle that use this variable. A variable in use can't be deleted.",
+    createdAt: "When the variable was added to the access bundle.",
+    updatedAt: "When the variable was last changed."
   },
   MEMBER: {
     memberId: "The ID of the access bundle membership.",

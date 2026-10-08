@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import slugify from "@sindresorhus/slugify";
@@ -25,14 +25,21 @@ import { AgentVaultTemplate, findTemplateForHostPattern } from "@app/helpers/age
 import { useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
 import {
   AgentVaultCredentialType,
+  AgentVaultVariableReferenceField,
   useCreateAgentVaultService,
+  useListAgentVaultVariables,
   useUpdateAgentVaultService
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
+import {
+  TAgentVaultService,
+  TAgentVaultVariable,
+  TAgentVaultVariableReference
+} from "@app/hooks/api/agentVault/types";
 import { onRequestError } from "@app/hooks/api/reactQuery";
 import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
 
 import { ServiceTemplateSelect } from "../ServiceTemplateSelect";
+import { VariableFormDialog } from "../VariableFormDialog";
 import { CredentialFields } from "./CredentialFields";
 import { DetailsFields } from "./DetailsFields";
 import { ReviewFields } from "./ReviewFields";
@@ -46,6 +53,7 @@ import {
   TServiceForm,
   UNCHANGED_SECRET
 } from "./serviceSchema";
+import { NO_STORED_KEYS, ServiceVariablesContext } from "./ServiceVariablesContext";
 import { SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
 import { ADVANCED_ITEM, TransformationsFields } from "./TransformationsFields";
 
@@ -97,6 +105,40 @@ type Props = {
   onSaved?: () => void;
 };
 
+const storedVariableKeys = (service?: TAgentVaultService | null) => {
+  const references = service?.variableReferences;
+  if (!service || !references?.length) return NO_STORED_KEYS;
+
+  const keysWhere = (match: (reference: TAgentVaultVariableReference) => boolean) =>
+    references.filter(match).map((reference) => reference.key);
+  const byRow = (
+    rows: { id: string }[],
+    idOf: (r: TAgentVaultVariableReference) => string | null
+  ) =>
+    Object.fromEntries(
+      rows.map((row) => [row.id, keysWhere((reference) => idOf(reference) === row.id)])
+    );
+
+  return {
+    secret: keysWhere(
+      (reference) => reference.field === AgentVaultVariableReferenceField.CredentialValue
+    ),
+    username: keysWhere(
+      (reference) => reference.field === AgentVaultVariableReferenceField.CredentialUsername
+    ),
+    customHeaders: byRow(service.customHeaders, (reference) =>
+      reference.field === AgentVaultVariableReferenceField.CustomHeader
+        ? reference.customHeaderId
+        : null
+    ),
+    substitutions: byRow(service.substitutions, (reference) =>
+      reference.field === AgentVaultVariableReferenceField.Substitution
+        ? reference.substitutionId
+        : null
+    )
+  };
+};
+
 // Long enough for the advanced section to open and settle. There is no event to wait on: the section
 // is a Radix accordion, whose content is unmounted while closed, so the control cannot be measured
 // until after it mounts and takes its height.
@@ -114,9 +156,34 @@ export const ServiceSheet = ({
   const createService = useCreateAgentVaultService();
   const updateService = useUpdateAgentVaultService();
 
+  const { data: variables } = useListAgentVaultVariables(accessBundleId, isOpen);
+  const variableKeys = useMemo(() => variables?.map((variable) => variable.key), [variables]);
+  const storedKeys = useMemo(() => storedVariableKeys(service), [service]);
+  // One dialog for every field. The request settles once the dialog has closed, not when the variable is
+  // saved: until then the dialog's focus trap would pull focus back from the field that asked.
+  const [newVariableKey, setNewVariableKey] = useState<string | null>(null);
+  const newVariableRequest = useRef<{
+    resolve: (variable: TAgentVaultVariable | null) => void;
+    created: TAgentVaultVariable | null;
+  } | null>(null);
+  const requestVariable = useCallback(
+    (key: string) =>
+      new Promise<TAgentVaultVariable | null>((resolve) => {
+        newVariableRequest.current?.resolve(null);
+        newVariableRequest.current = { resolve, created: null };
+        setNewVariableKey(key);
+      }),
+    []
+  );
+
+  const serviceVariables = useMemo(
+    () => ({ variables, storedKeys, requestVariable }),
+    [variables, storedKeys, requestVariable]
+  );
+
   const [template, setTemplate] = useState<AgentVaultTemplate | null>(null);
 
-  const schema = useMemo(() => buildServiceSchema(service), [service]);
+  const schema = useMemo(() => buildServiceSchema(service, variableKeys), [service, variableKeys]);
 
   const formMethods = useForm<TServiceForm>({
     defaultValues: BLANK_SERVICE_FORM,
@@ -523,16 +590,18 @@ export const ServiceSheet = ({
                   className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 py-6"
                 >
                   <div className="mb-6">
-                    <h2 className="text-lg font-semibold text-foreground">{current.title}</h2>
+                    <h2 className="text-lg font-normal text-foreground">{current.title}</h2>
                     <p className="mt-1 text-sm text-muted">{current.subtitle}</p>
                   </div>
 
                   {current.step === ServiceStep.Details && <DetailsFields />}
                   {current.step === ServiceStep.Credential && (
-                    <div className="flex flex-col gap-5">
-                      <CredentialFields storedType={service?.credential.type} />
-                      <TransformationsFields openItem={openItem} onOpenChange={setOpenItem} />
-                    </div>
+                    <ServiceVariablesContext.Provider value={serviceVariables}>
+                      <div className="flex flex-col gap-5">
+                        <CredentialFields storedType={service?.credential.type} />
+                        <TransformationsFields openItem={openItem} onOpenChange={setOpenItem} />
+                      </div>
+                    </ServiceVariablesContext.Provider>
                   )}
                   {current.step === ServiceStep.Review && <ReviewFields isUpdate={isUpdate} />}
                 </div>
@@ -546,6 +615,9 @@ export const ServiceSheet = ({
                   </div>
                   <p className="text-sm font-semibold text-foreground">What this step does</p>
                   <p className="text-sm leading-relaxed text-muted">{current.rightDescription}</p>
+                  {current.rightTip && (
+                    <p className="text-sm leading-relaxed text-muted">{current.rightTip}</p>
+                  )}
                 </aside>
               </div>
 
@@ -573,6 +645,27 @@ export const ServiceSheet = ({
             </form>
           )}
         </FormProvider>
+
+        <VariableFormDialog
+          isOpen={newVariableKey !== null}
+          onOpenChange={(open) => {
+            if (!open) setNewVariableKey(null);
+          }}
+          accessBundleId={accessBundleId}
+          initialKey={newVariableKey ?? undefined}
+          existingKeys={variableKeys ?? []}
+          onCreated={(variable) => {
+            if (newVariableRequest.current) newVariableRequest.current.created = variable;
+          }}
+          // The dialog opens from no trigger, so its default would drop focus on the body.
+          onCloseAutoFocus={(event) => {
+            const request = newVariableRequest.current;
+            if (!request) return;
+            event.preventDefault();
+            newVariableRequest.current = null;
+            request.resolve(request.created);
+          }}
+        />
 
         <DiscardChangesAlertDialog
           open={isDiscardDialogOpen}

@@ -839,7 +839,7 @@ export const SecretImportTableRow = ({
               singleEnvImport?.isReplication &&
               singleEnvImport.lastReplicated && (
                 <div className="mr-16 ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16">
-                  <Tooltip disableHoverableContent>
+                  <Tooltip>
                     <TooltipTrigger>
                       <div
                         className={twMerge(

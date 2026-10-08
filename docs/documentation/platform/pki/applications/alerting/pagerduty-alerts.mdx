@@ -4,88 +4,87 @@ sidebarTitle: "PagerDuty"
 description: "Create PagerDuty incidents for certificate alerts."
 ---
 
-Create PagerDuty incidents when certificate events occur using the [Events API v2](https://developer.pagerduty.com/docs/events-api-v2-overview). Get paged when certificates are about to expire or are revoked.
+A PagerDuty channel on a certificate [alert](/documentation/platform/pki/applications/alerting/overview) creates PagerDuty incidents through the [Events API v2](https://developer.pagerduty.com/docs/events-api-v2-overview), so your on-call team gets paged when certificates are about to expire or are revoked.
 
-<Info>
-  Alerts are configured per Application and apply to all certificates within that Application.
-</Info>
-
-## Create a PagerDuty alert
+## Step 1: Get a PagerDuty integration key
 
 <Steps>
-  <Step title="Create a PagerDuty Service">
-    1. Go to **PagerDuty → Services → Service Directory → New Service**
-    2. Name the service (e.g., "Infisical PKI Alerts")
-    3. Select **Events API v2** as the integration
-    4. Select **Create Service**
-    
+  <Step>
+    In PagerDuty, go to **Services** > **Service Directory** and select **New Service**.
+  </Step>
+  <Step>
+    Name the service, for example `Infisical PKI Alerts`, choose **Events API v2** as the integration, and select **Create Service**.
+
     <Note>
-      To use an existing service, go to **Integrations → Add an Integration → Events API v2**.
+      To use an existing service, open the service and go to **Integrations** > **Add an Integration** > **Events API v2**.
     </Note>
   </Step>
-  <Step title="Copy the Integration Key">
-    After creating the service, copy the 32-character **Integration Key** from the **Integrations** tab.
-    
+  <Step>
+    Copy the 32-character **Integration Key** from the service's **Integrations** tab.
+
     <Note>
-      Keep your integration key secure. Anyone with access can send events to your PagerDuty service.
+      Anyone with the integration key can send events to your PagerDuty service, so store it like a secret.
     </Note>
   </Step>
-  <Step title="Navigate to your Application">
-    Go to **Certificate Manager → Applications** and select your Application.
+</Steps>
+
+## Step 2: Add the PagerDuty channel to an alert
+
+<Steps>
+  <Step>
+    [Create an alert](/documentation/platform/pki/applications/alerting/overview#create-an-alert) in your application, or edit an existing one.
   </Step>
-  <Step title="Create an alert">
-    Go to the **Settings** tab and find the **Alerting** section. Select **Create Alert**.
-    
-    | Setting | Description |
-    |---------|-------------|
-    | **Alert Type** | Certificate Expiration, Issuance, Renewal, or Revocation |
-    | **Alert Name** | A slug-friendly name like `tls-expiry-alert` |
-    | **Description** | Optional context about this alert |
-    | **Alert Before** | *(Expiration only)* Time before expiry to trigger, e.g., `30d` |
+  <Step>
+    Select **Add Channel** > **PagerDuty** and paste the integration key.
   </Step>
-  <Step title="Add a PagerDuty channel">
-    Add a **PagerDuty** notification channel and paste the integration key.
+  <Step>
+    Optionally, select **Send test** to send a test notification to the channel.
+  </Step>
+  <Step>
+    Select **Continue**, check the **Review** step, and select **Create Alert**.
   </Step>
 </Steps>
 
 ## Severity mapping
 
-Infisical automatically maps alert types to PagerDuty severity levels.
+Each incident's PagerDuty severity comes from the alert's event. For expiration alerts, it comes from how close the certificate is to expiry.
 
 ### Expiration alerts
 
-| Time Until Expiry | PagerDuty Severity |
+| Time until expiry | PagerDuty severity |
 |-------------------|-------------------|
-| ≤ 7 days | `critical` |
-| ≤ 14 days | `error` |
-| ≤ 30 days | `warning` |
-| > 30 days | `info` |
+| 7 days or less | `critical` |
+| 8 to 14 days | `error` |
+| 15 to 30 days | `warning` |
+| More than 30 days | `info` |
 
-### Other alert types
+### Other alert events
 
-| Alert Type | PagerDuty Severity |
-|------------|-------------------|
-| Certificate Issuance | `info` |
-| Certificate Renewal | `info` |
-| Certificate Revocation | `warning` |
+| Event | PagerDuty severity |
+|-------|-------------------|
+| Issuance | `info` |
+| Renewal | `info` |
+| Revocation | `warning` |
 
 ## Incident grouping
 
-Alerts with the same alert ID are grouped into the same PagerDuty incident via `dedup_key`. Repeated triggers update the existing incident rather than creating duplicates.
+Each certificate gets its own incident. If the same alert fires again for the same certificate, PagerDuty updates the existing incident instead of opening a new one.
+
+Each PagerDuty channel opens at most 10 incidents per run. If more than 10 certificates are due for an expiration alert, the ones closest to expiry go first and the rest go on the next daily run.
 
 ## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Webhook Alerts" icon="webhook" href="/documentation/platform/pki/applications/alerting/webhook-alerts">
-    Send alerts to custom HTTP endpoints.
+  <Card title="Webhook" icon="webhook" href="/documentation/platform/pki/applications/alerting/webhook-alerts">
+    Send alerts to your own endpoint.
   </Card>
-  <Card title="Slack Alerts" icon="slack" iconType="brands" href="/documentation/platform/pki/applications/alerting/slack-alerts">
+  <Card title="Slack" icon="slack" iconType="brands" href="/documentation/platform/pki/applications/alerting/slack-alerts">
     Send alerts to a Slack channel.
   </Card>
-  <Card title="Certificate Syncs" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+  <Card title="Certificate syncs" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
     Push certificates to cloud destinations.
   </Card>
-  <Card title="Managing Certificates" icon="list" href="/documentation/platform/pki/applications/certificates">
+  <Card title="Certificates" icon="list" href="/documentation/platform/pki/applications/certificates">
     View and manage certificates.
   </Card>
 </CardGroup>

@@ -17,14 +17,16 @@ export const PkiSubscribersPage = () => {
       </Helmet>
       <div className="h-full bg-page">
         <div className="mx-auto flex flex-col justify-between text-foreground-inverse">
-          <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+          <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
             <PageHeader
               scope={ProjectType.CertificateManager}
               title="Subscribers"
               description="Manage subscribers that request and receive certificates, including user devices, servers, and services."
             />
-            <LegacyPkiDeprecationAlert resource={LegacyPkiResource.PkiSubscriber} />
-            <PkiSubscriberSection />
+            <div className="flex flex-col gap-8">
+              <LegacyPkiDeprecationAlert resource={LegacyPkiResource.PkiSubscriber} />
+              <PkiSubscriberSection />
+            </div>
           </div>
         </div>
       </div>

@@ -14,12 +14,18 @@ import {
 import { useProject } from "@app/context";
 import {
   BOOLEAN_SYNC_OPTION_FIELDS,
+  getUnusedExportOptionKeys,
   KEY_VALUE_SYNC_OPTION_FIELDS,
   PKI_SYNC_MAP,
   VALUE_SYNC_OPTION_FIELDS
 } from "@app/helpers/pkiSyncs";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
-import { usePkiSyncOption, usePkiSyncPreviewCertificates } from "@app/hooks/api/pkiSyncs";
+import {
+  PKI_SYNC_EXPORT_FORMAT_LABELS,
+  PkiSyncExportFormat,
+  usePkiSyncOption,
+  usePkiSyncPreviewCertificates
+} from "@app/hooks/api/pkiSyncs";
 import { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
@@ -99,6 +105,9 @@ export const PkiSyncReviewFields = ({ applicationId }: Props = {}) => {
   });
   const postSyncCommand =
     syncOptions && "postSyncCommand" in syncOptions ? syncOptions.postSyncCommand : undefined;
+  const exportFormat = (syncOptions as { exportFormat?: PkiSyncExportFormat } | undefined)
+    ?.exportFormat;
+  const inapplicableOptionKeys = getUnusedExportOptionKeys(exportFormat);
   const healthCheckCommand =
     syncOptions && "healthCheckCommand" in syncOptions ? syncOptions.healthCheckCommand : undefined;
 
@@ -193,7 +202,7 @@ export const PkiSyncReviewFields = ({ applicationId }: Props = {}) => {
           </ReviewFieldLabel>
           {BOOLEAN_SYNC_OPTION_FIELDS.map(({ key, label }) => {
             const optionValue = (syncOptions as Record<string, unknown> | undefined)?.[key];
-            if (typeof optionValue !== "boolean") return null;
+            if (typeof optionValue !== "boolean" || inapplicableOptionKeys.has(key)) return null;
             return (
               <ReviewFieldLabel key={key} label={label}>
                 <Badge variant={optionValue ? "success" : "danger"}>
@@ -220,11 +229,21 @@ export const PkiSyncReviewFields = ({ applicationId }: Props = {}) => {
           })}
           {VALUE_SYNC_OPTION_FIELDS.map(({ key, label }) => {
             const optionValue = (syncOptions as Record<string, unknown> | undefined)?.[key];
-            if (optionValue === undefined || optionValue === null || optionValue === "")
+            if (
+              optionValue === undefined ||
+              optionValue === null ||
+              optionValue === "" ||
+              inapplicableOptionKeys.has(key)
+            )
               return null;
             return (
               <ReviewFieldLabel key={key} label={label}>
-                <Badge variant="neutral">{String(optionValue)}</Badge>
+                <Badge variant="neutral">
+                  {key === "exportFormat"
+                    ? (PKI_SYNC_EXPORT_FORMAT_LABELS[optionValue as PkiSyncExportFormat] ??
+                      String(optionValue))
+                    : String(optionValue)}
+                </Badge>
               </ReviewFieldLabel>
             );
           })}
