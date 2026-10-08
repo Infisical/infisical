@@ -74,8 +74,8 @@ export const ipGuardedLookup = createIpGuardedLookup();
 export const createIpGuardedAgents = (isInternalIpAllowed?: () => boolean) => {
   const lookup = createIpGuardedLookup(isInternalIpAllowed);
   return {
-    httpAgent: new http.Agent({ keepAlive: true, lookup }),
-    httpsAgent: new https.Agent({ keepAlive: true, lookup })
+    httpAgent: new http.Agent({ keepAlive: true, timeout: 5000, lookup }),
+    httpsAgent: new https.Agent({ keepAlive: true, timeout: 5000, lookup })
   };
 };
 
