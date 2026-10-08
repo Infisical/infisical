@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { AppConnections } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -30,16 +31,17 @@ export const registerKeeperConnectionRouter = async (server: FastifyZodProvider)
     schema: {
       operationId: "listKeeperSharedFolders",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().uuid().describe(AppConnections.KEEPER.LIST_SHARED_FOLDERS.connectionId)
       }),
       response: {
         200: z.object({
           sharedFolders: z
             .object({
-              uid: z.string(),
-              name: z.string()
+              uid: z.string().describe(AppConnections.KEEPER.LIST_SHARED_FOLDERS.uid),
+              name: z.string().describe(AppConnections.KEEPER.LIST_SHARED_FOLDERS.name)
             })
             .array()
+            .describe(AppConnections.KEEPER.LIST_SHARED_FOLDERS.sharedFolders)
         })
       }
     },

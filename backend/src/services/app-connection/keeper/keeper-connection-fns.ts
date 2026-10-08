@@ -58,6 +58,7 @@ export const executeKeeperCommand = async <T = unknown>(
       `${removeTrailingSlash(instanceUrl)}/api/v1/executecommand`,
       { command },
       {
+        timeout: 30_000,
         headers: {
           "api-key": apiKey,
           Accept: "application/json",
@@ -141,7 +142,7 @@ export const listKeeperSharedFolders = async (appConnection: TKeeperConnection):
   if (!Array.isArray(rows)) return [];
 
   return rows
-    .filter((row) => typeof row?.shared_folder_uid === "string" && KEEPER_UID_PATTERN.test(row.shared_folder_uid))
+    .filter((row) => typeof row?.shared_folder_uid === "string" && isAddressableKeeperUid(row.shared_folder_uid))
     .map((row) => ({ uid: row.shared_folder_uid, name: row.name || row.shared_folder_uid }))
     .sort((a, b) => a.name.localeCompare(b.name));
 };
