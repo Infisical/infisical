@@ -97,9 +97,9 @@ export const OrgSecretScanningTab = () => {
           <TriangleAlertIcon />
           <AlertDescription>
             <p>
-              Your organization has multiple Secret Scanning projects. Going forward, only one
-              project per organization is supported, and the most recently created project is the
-              active one.
+              Secret Scanning no longer uses projects. Opening Secret Scanning takes everyone to the
+              most recently created project below. The earlier ones stay available from their
+              links.
             </p>
           </AlertDescription>
         </Alert>

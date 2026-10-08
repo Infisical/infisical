@@ -19,27 +19,27 @@ export const SecretScanningInstanceBanner = () => {
       <FontAwesomeIcon icon={faWarning} className="mt-0.5 shrink-0 text-base text-warning" />
       {isViewingActive ? (
         <p>
-          This is your organization&apos;s active Secret Scanning project, the most recently
-          created one. Use this for all work going forward.{" "}
+          Secret Scanning no longer uses projects. Your organization&apos;s earlier Secret
+          Scanning projects are still available.{" "}
           <Link
             to="/organizations/$orgId/settings"
             params={{ orgId: currentOrg.id }}
             search={{ selectedTab: "product-settings" }}
             className="underline underline-offset-2 hover:text-warning"
           >
-            View all projects
+            View earlier projects
           </Link>
         </p>
       ) : (
         <p>
-          You&apos;re viewing a Secret Scanning project that isn&apos;t your organization&apos;s
-          active project.{" "}
+          You&apos;re viewing an earlier Secret Scanning project. Secret Scanning no longer uses
+          projects, but this one stays available from its link.{" "}
           <Link
             to="/organizations/$orgId/projects/secret-scanning/$projectId/data-sources"
             params={{ orgId: currentOrg.id, projectId: data.activeProjectId }}
             className="underline underline-offset-2 hover:text-warning"
           >
-            Switch to your active project →
+            Go to Secret Scanning →
           </Link>
         </p>
       )}
