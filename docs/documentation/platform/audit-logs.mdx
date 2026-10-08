@@ -615,6 +615,8 @@ Here are a few common patterns for filtering audit logs, grouped by product.
         </Steps>
       </Tab>
       <Tab title="API">
+        This request returns failures from across your organization, so the access token needs permission to read the organization's audit logs.
+
         ```bash
         curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
           -H "Authorization: Bearer <your-access-token>" \
