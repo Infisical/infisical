@@ -15,7 +15,6 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { SECRET_ROTATION_CONNECTION_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { APP_CONNECTION_NAME_MAP, APP_CONNECTION_PLAN_MAP } from "@app/services/app-connection/app-connection-maps";
@@ -295,6 +294,11 @@ import {
   TriggerDevConnectionMethod,
   validateTriggerDevConnectionCredentials
 } from "./trigger-dev";
+import { UltraDNSConnectionMethod } from "./ultradns/ultradns-connection-enum";
+import {
+  getUltraDNSConnectionListItem,
+  validateUltraDNSConnectionCredentials
+} from "./ultradns/ultradns-connection-fns";
 import { getVenafiConnectionListItem, validateVenafiConnectionCredentials, VenafiConnectionMethod } from "./venafi";
 import {
   getVenafiTppConnectionListItem,
@@ -334,6 +338,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.AzureKeyVault,
   AppConnection.Chef,
   AppConnection.DNSMadeEasy,
+  AppConnection.UltraDNS,
   AppConnection.AzureDNS,
   AppConnection.PowerDns,
   AppConnection.Venafi,
@@ -379,7 +384,7 @@ export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?
 // Add a product only once nothing creates other connection types in it through the API.
 export const PROJECT_TYPES_ENFORCING_APP_CONNECTION_TYPES = [ProjectType.AgentVault];
 
-export const listAppConnectionOptions = (orgId: string, projectType?: ProjectType) => {
+export const listAppConnectionOptions = (projectType?: ProjectType) => {
   return [
     getAwsConnectionListItem(),
     getGitHubConnectionListItem(),
@@ -418,6 +423,7 @@ export const listAppConnectionOptions = (orgId: string, projectType?: ProjectTyp
     getGitLabConnectionListItem(),
     getCloudflareConnectionListItem(),
     getDNSMadeEasyConnectionListItem(),
+    getUltraDNSConnectionListItem(),
     getAzureDnsConnectionListItem(),
     getZabbixConnectionListItem(),
     getRailwayConnectionListItem(),
@@ -468,15 +474,7 @@ export const listAppConnectionOptions = (orgId: string, projectType?: ProjectTyp
     getDaytonaConnectionListItem(),
     getStripeConnectionListItem()
   ]
-    .filter((option) => {
-      if (option.app === AppConnection.Stripe) {
-        if (!getConfig().WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS?.includes(orgId)) {
-          return false;
-        }
-      }
-
-      return isAppConnectionAllowedInProject(option.app, projectType);
-    })
+    .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
     .sort((a, b) => a.name.localeCompare(b.name));
 };
 
@@ -652,6 +650,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.GitLab]: validateGitLabConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.DNSMadeEasy]: validateDNSMadeEasyConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.UltraDNS]: validateUltraDNSConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureDNS]: validateAzureDnsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Zabbix]: validateZabbixConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Railway]: validateRailwayConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -777,6 +776,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case MsSqlConnectionMethod.UsernameAndPassword:
     case MySqlConnectionMethod.UsernameAndPassword:
     case OracleDBConnectionMethod.UsernameAndPassword:
+    case UltraDNSConnectionMethod.UsernamePassword:
     case AzureADCSConnectionMethod.UsernamePassword:
     case ADCSConnectionMethod.UsernamePassword:
     case WinRMConnectionMethod.UsernamePassword:
@@ -936,6 +936,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.GitLab]: platformManagedCredentialsNotSupported,
   [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported,
   [AppConnection.DNSMadeEasy]: platformManagedCredentialsNotSupported,
+  [AppConnection.UltraDNS]: platformManagedCredentialsNotSupported,
   [AppConnection.AzureDNS]: platformManagedCredentialsNotSupported,
   [AppConnection.Zabbix]: platformManagedCredentialsNotSupported,
   [AppConnection.Railway]: platformManagedCredentialsNotSupported,

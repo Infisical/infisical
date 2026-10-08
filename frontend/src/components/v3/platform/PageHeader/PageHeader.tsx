@@ -87,7 +87,7 @@ export const PageHeader = ({
   return (
     <header
       data-slot="page-header"
-      className={cn("flex w-full flex-col gap-5", className)}
+      className={cn("mb-10 flex w-full flex-col gap-5", className)}
       {...props}
     >
       {backLink && (

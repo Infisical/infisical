@@ -10,7 +10,10 @@ import {
   UsersIcon
 } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  InstanceUserManagementUpgradeIntent,
+  UpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
@@ -397,11 +400,13 @@ export const ServerAdminsTable = () => {
           isOpen={popUp.addServerAdmin.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("addServerAdmin", isOpen)}
         />
-        <UpgradePlanModal
+        <UpgradeGate
+          intent={{
+            ...InstanceUserManagementUpgradeIntent
+          }}
           paywallKey="admin.server-admins"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text="Your current plan does not allow removing server admins. To unlock this feature, please upgrade to Infisical Pro plan."
         />
         <ConfirmActionDialog
           isOpen={popUp.removeUsers.isOpen}

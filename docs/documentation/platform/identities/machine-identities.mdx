@@ -1,163 +1,206 @@
 ---
 title: Machine identities
 sidebarTitle: "Overview"
-description: "Learn how to use Machine Identities to programmatically interact with Infisical."
+description: "Give applications and other workloads access to Infisical without a user account."
 ---
 
-## Concept
+import { CatalogBrowser } from "/snippets/CatalogBrowser.jsx";
+import { machineAuthMethods, machineAuthCategories } from "/snippets/catalogs/machine-authentication.jsx";
 
-An Infisical machine identity is an entity that represents a workload or application that require access to various resources in Infisical. This is conceptually similar to an IAM user in AWS or service account in Google Cloud Platform (GCP).
+A machine identity lets an application, script, or other workload use Infisical without a user account. A machine identity works like an IAM user in AWS or a service account in Google Cloud.
 
-Each identity must authenticate with the Infisical API using a supported authentication method like [Token Auth](/documentation/platform/identities/token-auth), [Universal Auth](/documentation/platform/identities/universal-auth), [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth), [AWS Auth](/documentation/platform/identities/aws-auth), [Azure Auth](/documentation/platform/identities/azure-auth), or [GCP Auth](/documentation/platform/identities/gcp-auth) to get back a short-lived access token to be used in subsequent requests.
+Each machine identity has a [role](/documentation/platform/access-controls/role-based-access-controls) that controls what the identity can access, and one or more [auth methods](#authentication-methods). Your workload logs in with an auth method, gets a short-lived access token, and sends the token with each request to the Infisical API.
 
 ![Organization Identities](/images/platform/organization/organization-machine-identities.png)
 
-Key Features:
+## Organization and project identities
 
-- Role Assignment: Identities must be assigned [roles](/documentation/platform/access-controls/role-based-access-controls). These roles determine the scope of access to resources, either at the organization level or project level.
-- Auth/Token Configuration: Identities must be configured with corresponding authentication methods and access token properties to securely interact with the Infisical API.
-- Alerting: An identity can notify your team before a credential expires or whenever one of its auth methods changes via [Alerts](#alerts).
+You can create a machine identity either in an organization or in a project. Both work the same way, except for where you manage them and what they can access:
 
-## Scopes
+| | Project identity | Organization identity |
+|---|---|---|
+| **Managed in** | The project | The organization |
+| **Can access** | Only its own project | Each project you add the identity to, and organization-level actions |
+| **Use it when** | Each team manages its own project | A workload works across several projects |
 
-Identities can be created either at the organization-level or the project-level. Outside of identity management and scope of operation, organization and project identities are functionally identical.
-
-- Project identities are managed at the project-level and can only operate within their respective project.
-Project-level identities are useful for organizations that delegate responsibility to autonomous teams via projects.
-
-- Organization identities are managed at the organization-level and can be assigned to one or more projects, as well as
-perform organization-level operations. Organization-level identities are useful for organizations that have cross-project operations.
-
-## Workflow
+## Set up a machine identity
 
 <Tabs>
-    <Tab title="Project Identities">
-        A typical workflow for using project identities consists of three steps:
+  <Tab title="Project identity">
+    <Steps>
+      <Step>
+        In your project, go to **Access Control** > **Machine Identities** and create an identity with a name and a [role](/documentation/platform/access-controls/role-based-access-controls). You can pick a role that Infisical includes, such as **Viewer** for read-only access, or a custom role.
+      </Step>
+      <Step>
+        Set up the [auth method](#authentication-methods) that matches where your workload runs, such as AWS Auth for a workload on AWS.
 
-        1. Creating the identity with a name and [role](/documentation/platform/access-controls/role-based-access-controls) in Project > Access Control > Machine Identities.
-        This step also involves configuring an authentication method for it.
-        2. Authenticating the identity with the Infisical API based on the configured authentication method on it and receiving a short-lived access token back.
-        3. Authenticating subsequent requests with the Infisical API using the short-lived access token.
-    </Tab>
-    <Tab title="Organization Identities">
-        A typical workflow for using organization identities consists of four steps:
+        <Note>
+          Infisical adds [Universal Auth](/documentation/platform/identities/universal-auth#guide) to each new identity. To log in with Universal Auth, create a client secret. If you use a different auth method, you can remove Universal Auth from the identity.
+        </Note>
+      </Step>
+      <Step>
+        From your workload, log in with the auth method to get a short-lived access token.
+      </Step>
+      <Step>
+        Send the access token with each request to the Infisical API.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Organization identity">
+    <Steps>
+      <Step>
+        In your organization, go to **Access Control** > **Machine Identities** and create an identity with a name and a [role](/documentation/platform/access-controls/role-based-access-controls). You can pick a role that Infisical includes, such as **Member**, or a custom role.
+      </Step>
+      <Step>
+        Set up the [auth method](#authentication-methods) that matches where your workload runs, such as AWS Auth for a workload on AWS.
 
-        1. Creating the identity with a name and [role](/documentation/platform/access-controls/role-based-access-controls) in Organization > Access Control > Machine Identities.
-        This step also involves configuring an authentication method for it.
-        2. Adding the identity to the project(s) you want it to have access to.
-        3. Authenticating the identity with the Infisical API based on the configured authentication method on it and receiving a short-lived access token back.
-        4. Authenticating subsequent requests with the Infisical API using the short-lived access token.
-    </Tab>
+        <Note>
+          Infisical adds [Universal Auth](/documentation/platform/identities/universal-auth#guide) to each new identity. To log in with Universal Auth, create a client secret. If you use a different auth method, you can remove Universal Auth from the identity.
+        </Note>
+      </Step>
+      <Step>
+        Add the identity to each project it needs to access.
+      </Step>
+      <Step>
+        From your workload, log in with the auth method to get a short-lived access token.
+      </Step>
+      <Step>
+        Send the access token with each request to the Infisical API.
+      </Step>
+    </Steps>
+  </Tab>
 </Tabs>
 
 ## Authentication methods
 
-To interact with various resources in Infisical, Machine Identities can authenticate with the Infisical API using:
+A machine identity logs in to Infisical with an auth method. Pick the auth method that matches where your workload runs:
 
-- [Token Auth](/documentation/platform/identities/token-auth): A platform-agnostic, simple authentication method suitable to authenticate with Infisical using a token.
-- [Universal Auth](/documentation/platform/identities/universal-auth): A platform-agnostic authentication method suitable to authenticate with Infisical using a Client ID and Client Secret.
-- [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth): A Kubernetes-native authentication method for applications (e.g. pods).
-- [AWS Auth](/documentation/platform/identities/aws-auth): An AWS-native authentication method for AWS services (e.g. EC2, Lambda functions, etc.).
-- [Azure Auth](/documentation/platform/identities/azure-auth): An Azure-native authentication method for Azure resources (e.g. Azure VMs, Azure App Services, Azure Functions, Azure Kubernetes Service, etc.).
-- [GCP Auth](/documentation/platform/identities/gcp-auth): A GCP-native authentication method for GCP resources (e.g. Compute Engine, App Engine, Cloud Run, Google Kubernetes Engine, IAM service accounts, etc.).
-- [OIDC Auth](/documentation/platform/identities/oidc-auth): A platform-agnostic, JWT-based authentication method for workloads using an OpenID Connect identity provider.
-- [SPIFFE Auth](/documentation/platform/identities/spiffe-auth): A SPIFFE-native authentication method for workloads using JWT-SVIDs issued by SPIRE.
+<CatalogBrowser
+  id="machine-authentication"
+  items={machineAuthMethods}
+  categories={machineAuthCategories}
+  noun="authentication method"
+/>
 
 ## Identity lockout
 
-Lockout is a feature that prevents brute-force attacks on identity login endpoints. Auth methods that support lockout include: [Universal Auth](/documentation/platform/identities/universal-auth), [LDAP Auth](/documentation/platform/identities/ldap-auth/general).
+Lockout protects [Universal Auth](/documentation/platform/identities/universal-auth) and [LDAP Auth](/documentation/platform/identities/ldap-auth/general) from brute-force attacks. By default, after 3 consecutive failed login attempts within 30 seconds, Infisical blocks logins with that auth method on the identity for 5 minutes.
 
-Supported auth methods have lockout enabled by default. If triggered, lockout temporarily disables the login endpoint for 5 minutes after 3 consecutive failed login attempts within a 30-second window. Lockout can be configured and disabled in the identity auth method settings.
+To change these limits or turn lockout off, edit the auth method on the identity.
 
-## Access token revocation
+## Revoke access tokens
 
-Machine identity access tokens can be invalidated before their natural expiry. An access token is revoked when you:
+An access token expires after the Access Token TTL set on the auth method, which is 30 days by default. You can revoke the token before it expires. Infisical revokes an access token when you:
 
-- Call the token revoke endpoint for that token (for example, `POST /api/v1/auth/token/revoke` for Universal Auth).
-- Delete the identity, which revokes all of its active access tokens.
-- Remove the credential the token was issued from, such as deleting a Universal Auth client secret or removing an authentication method from the identity.
+- Revoke the token through the API, such as with [Revoke access token](/api-reference/endpoints/universal-auth/revoke-access-token) for Universal Auth or [Revoke token](/api-reference/endpoints/token-auth/revoke-token) for Token Auth
+- Delete the identity, which revokes all of its access tokens
+- Remove the credential that Infisical issued the token for, such as a Universal Auth client secret, or remove the auth method from the identity
 
-Once revoked, the token is rejected on subsequent authenticated requests and can no longer be renewed. The revocation is persisted in Infisical's database, which is the source of truth consulted on every authentication check.
+After Infisical revokes a token, it rejects requests that use the token, and the token can't be renewed.
 
 <Note>
-  To keep authentication fast under high request volume, Infisical caches the result of each revocation check in Redis for a short period. Under normal operation a revocation takes effect immediately, because revoking a token also invalidates any cached decision for that identity.
-
-  In the rare case where this cache invalidation can't be performed (for example, a transient Redis disruption during the revoke), the database still records the revocation, but Infisical may continue to accept that exact token until its cached result expires, which takes at most 12 minutes. After that, the check is re-evaluated against the database and the token is rejected.
-
-  If you need a revocation to take effect with no propagation delay even under those conditions, rotate the underlying credential (delete the Universal Auth client secret) or delete the identity, both of which invalidate the affected tokens regardless of cache state.
+  If Infisical's cache (Redis) is briefly unavailable when you revoke a token, Infisical can keep
+  accepting that token for up to 12 minutes. To make sure a token stops working right away, delete
+  the credential that Infisical issued the token for, such as the Universal Auth client secret, or
+  delete the identity.
 </Note>
 
 ## Alerts
 
-An alert on a machine identity notifies your team through the channels you pick. Each alert watches one event, chosen when you create it:
+An alert on a machine identity sends a notification to your team through the [channels](#notification-channels) you choose. Each alert watches one of these events:
 
-| Event | When it fires |
-|-------|---------------|
-| **Credential Expiration** | A set number of days before a Universal Auth client secret or Token Auth access token expires, checked once a day |
-| **Auth Method Change** | Right after an auth method is added, updated, or removed, or a Universal Auth client secret or Token Auth token is created, updated, or revoked |
+| Event | When the alert fires |
+|-------|----------------------|
+| **Credential Expiration** | A set number of days before a Universal Auth client secret or Token Auth access token expires (Infisical checks once a day) |
+| **Auth Method Change** | As soon as someone adds, updates, or removes an auth method, or creates, updates, or revokes a Universal Auth client secret or Token Auth token |
 
 ### Credential expiration
 
-A machine identity whose credential expires unnoticed takes your workload down with it. This alert watches the Universal Auth client secrets and Token Auth access tokens attached to the identity and notifies your team a configurable number of days before they expire, so the credential gets rotated before anything breaks.
+This alert notifies your team before a credential on the identity expires, so you can replace the credential before your workload loses access to Infisical. The alert skips revoked credentials, and checks each credential type against a different expiry date:
 
-A client secret is only monitored when its TTL is greater than `0`, since one created with the default TTL of `0` never expires and has nothing to alert on. Revoked client secrets are skipped.
+| Credential | Expiry date the alert checks |
+|------------|------------------------------|
+| Universal Auth client secret | The time the secret was created plus its TTL. If the TTL is `0` (the default), the secret never expires, and the alert ignores it. |
+| Token Auth access token | The time the token was created plus its access token TTL. If the TTL is `0`, the alert ignores the token. |
 
-The alert watches a Token Auth token's original expiry: when the token was created plus its access token TTL. That's when the token stops working if it isn't renewed. Renewing the token doesn't move that date, so a renewed token still triggers this alert on its original expiry and gets no alert after that date passes. Deleting the alert and creating a new one doesn't move it either, since the new alert watches the same date. To get alerts for a later expiry, create a new token. Revoked tokens are skipped.
-
-Unlike a client secret, a Token Auth token with an access token TTL of `0` still expires. Every access token is capped at a maximum lifetime, 90 days by default, so a token with a TTL of `0` or a TTL longer than the cap triggers this alert as it approaches that cap. Self-hosted instances can change the cap with the `MAX_MACHINE_IDENTITY_TOKEN_AGE` environment variable.
+If you renew a Token Auth token, the alert still checks the token's original expiry date, and doesn't fire again after that date passes. Removing the alert and creating it again doesn't change the date. To get alerts for a later expiry date, create a new token.
 
 <Note>
-  For Universal Auth, the alert watches the client secret, not the access tokens minted by logging
-  in with it. Those access tokens are short-lived by design and are renewed programmatically. See
-  [Universal Auth](/documentation/platform/identities/universal-auth) for the difference between
-  Client Secret TTL, Access Token TTL, and Access Token Max TTL.
+  For Universal Auth, the alert checks the client secret, not the access tokens that an identity
+  gets by logging in with the secret. Those access tokens are short-lived and renewed by your
+  application. See [Universal Auth](/documentation/platform/identities/universal-auth) for the
+  difference between Client Secret TTL, Access Token TTL, and Access Token Max TTL.
 </Note>
 
-### Auth method or credential change
+### Auth method change
 
-Changing how a machine identity authenticates changes who can act as it. This alert fires every time any of the identity's auth methods is added, updated, or removed, whether through the dashboard, the API, or Terraform. It covers all auth methods, from Universal Auth and Token Auth to the cloud, Kubernetes, OIDC, JWT, LDAP, SPIFFE, and TLS certificate methods.
+This alert tells your team when someone changes how the identity can log in. The alert fires each time:
 
-It also fires when a credential inside a method changes: a Universal Auth client secret is created or revoked, or a Token Auth token is created, renamed, or revoked. Access tokens minted by logging in with a credential aren't credentials themselves and don't fire it.
+- Someone adds, updates, or removes an auth method on the identity
+- Someone creates or revokes a Universal Auth client secret
+- Someone creates, renames, or revokes a Token Auth token
 
-Each notification names the auth method, the kind of change, the credential where one is involved, who made the change (a user's email or a machine identity's name), and when. It takes no condition and has no daily run: the notification is sent as soon as the change is saved.
+<Note>
+Logging in doesn't count as a change, so the alert doesn't fire each time your workload gets an access token.
+</Note>
+
+Each notification names the auth method, the kind of change, the credential if one changed, who made the change (a user's email or a machine identity's name), and when the change happened.
 
 ### Create an alert
 
-Open the machine identity you want to monitor and select **Alerts** in the top-right of the page. An identity can have one alert per event, so you can watch for both credential expiration and auth method changes. If the identity has no alerts yet, the alert form opens right away. Otherwise the list of its alerts opens, and **Add Alert** at the bottom creates another. **Add Alert** is hidden once every event has an alert.
+An identity can have one alert for each event.
 
-![Create Machine Identity Alert](/images/platform/organization/mi-create-alert.png)
+<Steps>
+  <Step>
+    Open the machine identity and select **Alerts** at the top right of the page. If the identity already has alerts, select **Add Alert** at the bottom of the list.
+  </Step>
+  <Step>
+    Fill in the alert's fields.
 
-| Field | Description |
-|-------|-------------|
-| **Name** | A name for the alert, e.g. `ua-secret-expiry` |
-| **Description** | Optional context about this alert |
-| **Event** | **Credential Expiration** or **Auth Method or Credential Change**. The event can't be changed after the alert is created; remove the alert and create a new one instead. |
-| **Condition** | For **Credential Expiration** only: how many days before expiration to notify, as a whole number from `1` to `90` |
-| **Daily Reminder** | For **Credential Expiration** only: if enabled, repeats the alert every day from the threshold until the credential expires |
-| **Enabled** | Turn the alert off without deleting it |
+    ![Create Machine Identity Alert](/images/platform/organization/mi-create-alert.png)
 
-With **Daily Reminder** off, each credential triggers the expiration alert once. Turn it on for credentials you can't afford to miss, and you'll get one notification per day until the credential expires or is rotated.
+    | Field | Description |
+    |-------|-------------|
+    | **Name** | A name for the alert, such as `ua-secret-expiry` |
+    | **Description** | Optional notes about what the alert is for |
+    | **Event** | **Credential Expiration** or **Auth Method Change** (you can't change the event later) |
+    | **Enabled** | Whether Infisical sends notifications for the alert (on by default) |
+    | **Condition** | For **Credential Expiration** only: how many days before a credential expires to send the notification, from `1` to `90` |
+    | **Repeat daily until the secret is rotated** | For **Credential Expiration** only: if selected, Infisical sends the notification every day until the credential expires or is replaced, instead of once |
+  </Step>
+  <Step>
+    Select **Add channel** and set up at least one [notification channel](#notification-channels).
+  </Step>
+  <Step>
+    Select **Create Alert**.
+  </Step>
+</Steps>
 
 ### Manage alerts
 
-Select **Alerts** on the machine identity to see its alerts. The number next to **Alerts** counts the enabled ones. Use the toggle on a row to turn that alert on or off, or open the menu at the end of the row and select **Edit** or **Remove**. Removing an alert asks you to type its name to confirm.
+Select **Alerts** on the machine identity to see its alerts. Use the toggle next to an alert to turn it on or off, or open the menu next to the toggle and select **Edit** or **Remove**.
 
 ### Notification channels
 
-An alert delivers through one or more channels, up to 10 per alert. Add at least one.
+Each alert sends notifications to between 1 and 10 channels:
 
 | Channel | Configuration |
 |---------|---------------|
-| **Email** | Pick recipients from the organization's users and groups, up to 20 per channel. Group membership is expanded at send time. |
-| **Slack** | An [Incoming Webhook](https://api.slack.com/messaging/webhooks) URL. Must be an HTTPS `hooks.slack.com` URL. |
-| **PagerDuty** | An [Events API v2](https://developer.pagerduty.com/docs/events-api-v2-overview) integration key (32-character hex string). Triggers one incident per expiring credential, deduplicated by credential. For auth method changes, repeated changes of the same kind to the same method land on one open incident. |
-| **Webhook** | Any HTTPS endpoint, with an optional signing secret for verification. |
+| **Email** | Users and groups in your organization, up to 20 per channel. If someone joins a group after you add the group, they also get the notifications. |
+| **Slack** | An [Incoming Webhook](https://api.slack.com/messaging/webhooks) URL that uses HTTPS and has the exact hostname `hooks.slack.com` |
+| **PagerDuty** | An [Events API v2](https://developer.pagerduty.com/docs/events-api-v2-overview) integration key (a 32-character hex string). Infisical opens one incident per expiring credential, and adds repeated changes of the same kind to the same auth method to one open incident. |
+| **Webhook** | An HTTPS URL, with an optional [signing secret](#verify-webhook-signatures) |
 
 ### Webhook payload
 
-Webhook deliveries are [CloudEvents](https://cloudevents.io/) 1.0 JSON documents. The `type` names the event: `com.infisical.identity.authentication.expiration` for a credential expiration and `com.infisical.identity.authentication.auth-method-changed` for an auth method change. Every credential due for this run, or the change that fired, is listed in `data.items`:
+Infisical sends each webhook as a [CloudEvents](https://cloudevents.io/) 1.0 JSON document. The value of the `type` field depends on the event that fired the alert:
 
-```json
+- `com.infisical.identity.authentication.expiration` for credential expiration
+- `com.infisical.identity.authentication.auth-method-changed` for an auth method change
+
+For credential expiration, `data.items` lists each credential that the daily check found:
+
+```json expandable
 {
   "specversion": "1.0",
   "type": "com.infisical.identity.authentication.expiration",
@@ -201,9 +244,9 @@ Webhook deliveries are [CloudEvents](https://cloudevents.io/) 1.0 JSON documents
 }
 ```
 
-An auth method or credential change carries one item whose fields name the method, the change, the credential when one is involved, who made the change, and when. The `Change` field is one of `Added`, `Updated`, `Removed`, `Credential Added`, `Credential Updated`, or `Credential Revoked`:
+For an auth method change, `data.items` has one item. Its `Change` field is one of `Added`, `Updated`, `Removed`, `Credential Added`, `Credential Updated`, or `Credential Revoked`:
 
-```json
+```json expandable
 {
   "specversion": "1.0",
   "type": "com.infisical.identity.authentication.auth-method-changed",
@@ -238,47 +281,65 @@ An auth method or credential change carries one item whose fields name the metho
 }
 ```
 
-When a signing secret is set, Infisical signs the request and sends it in the `x-infisical-signature` header:
+### Verify webhook signatures
+
+If you set a signing secret on a webhook channel, Infisical signs each request and sends the signature in the `x-infisical-signature` header:
 
 ```
 x-infisical-signature: t=1786924804512,v1=9f8c1d...e3
 ```
 
-`t` is a Unix timestamp in **milliseconds**, and `v1` is `HMAC-SHA256("<t>.<raw-request-body>", <signing-secret>)` as a hex digest. Recompute it over the raw body rather than a re-serialized copy, then compare against `v1` before trusting the payload and reject stale timestamps.
+- `t` is the time Infisical sent the request, as a Unix timestamp in milliseconds
+- `v1` is `HMAC-SHA256("<t>.<raw-request-body>", <signing-secret>)`, as a hex string
+
+To verify a request before you trust its payload:
+
+<Steps>
+  <Step>
+    Compute the HMAC over the raw request body, not over a copy you parsed and serialized again.
+  </Step>
+  <Step>
+    Compare the result with `v1`.
+  </Step>
+  <Step>
+    Reject the request if `t` is older than you allow, such as five minutes.
+  </Step>
+</Steps>
 
 ## FAQ
 
 <AccordionGroup>
 <Accordion title="Can I use machine identities with the CLI?">
 
-Yes - Identities can be used with the CLI.
-
-You can learn more about how to do this in the CLI quickstart [here](/cli/usage).
+Yes. To log in to the CLI as a machine identity, see [CLI usage](/cli/usage).
 
 </Accordion>
 
-<Accordion title="What is the difference between an identity and service token?">
+<Accordion title="What's the difference between a machine identity and a service token?">
   A [service token](/documentation/platform/token) is a project-level authentication method scoped to select environments and paths within a single project.
 
-  Amongst many differences, identities provide broader access over the Infisical API, utilizes the same
-  permission system as user identities, and come with a significantly larger number of configurable authentication and security features.
+  Compared with a service token, a machine identity:
 
-  If you're looking for a simple authentication method, similar to service tokens, that can be bound onto an identity, we recommend checking out [Token Auth](/documentation/platform/identities/token-auth).
+  - Can call more of the Infisical API
+  - Uses the same permission system as users
+  - Supports more auth methods and security settings, such as [lockout](#identity-lockout)
+
+  If you want a single token that works like a service token, add [Token Auth](/documentation/platform/identities/token-auth) to a machine identity.
 </Accordion>
-<Accordion title="Why can I not create, read, update, or delete an identity?">
-  There are a few reasons for why this might happen:
+<Accordion title="Why can't I create, read, update, or delete an identity?">
+  Infisical blocks the action if:
 
-  - You have insufficient organization permissions to create, read, update, delete identities.
-  - The identity you're trying to read, update, or delete is more privileged than yourself.
-  - The role you're trying to create an identity for or update an identity to is more privileged than yours.
+  - Your organization role doesn't have permission to manage identities
+  - The identity you're reading, updating, or deleting has more privileges than you
+  - The role you're giving the identity has more privileges than your role
 </Accordion>
 <Accordion title="Why didn't I get an alert for a credential expiring in a few hours?">
-  Expiry alerts run once a day, so a credential whose entire lifetime is shorter than the gap between two runs can expire before an alert is ever due. Alerts are meant for credentials with TTLs measured in days.
+  Infisical checks for expiring credentials once a day, so a credential that lasts less than a day can expire before a check finds it. Use expiration alerts for credentials with TTLs of several days or more.
 </Accordion>
 <Accordion title="What happens to an alert after I rotate the credential?">
-  The new client secret is evaluated on its own TTL, and the old one drops out of the alert once it's revoked or expires. No change to the alert is needed.
+  Nothing changes on the alert. The alert checks the new client secret against the new secret's TTL, and stops checking the old secret once you revoke it or it expires.
 </Accordion>
-<Accordion title="Does the auth method or credential change alert fire when I rotate a client secret?">
-  Yes. Creating the new client secret sends one notification and revoking the old one sends another, each naming the secret by its description or prefix. Logging in with a client secret to mint an access token doesn't fire it.
+<Accordion title="Does the auth method change alert fire when I rotate a client secret?">
+  Yes. Infisical sends one notification when you create the new client secret and another when you revoke the old one. Each notification names the secret by its description or prefix.
 </Accordion>
 </AccordionGroup>

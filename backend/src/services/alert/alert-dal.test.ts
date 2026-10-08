@@ -119,10 +119,26 @@ describe("alert dal", () => {
     expect(calls.where).toContainEqual([`${TableName.Alert}.orgId`, "org-1"]);
     expect(calls.where).toContainEqual([`${TableName.Alert}.resourceType`, "approval.workflow"]);
     expect(calls.where).toContainEqual([`${TableName.Alert}.resourceId`, "policy-1"]);
+    expect(calls.orWhereNull ?? []).not.toContainEqual(`${TableName.Alert}.resourceId`);
     expect(calls.where).toContainEqual([`${TableName.Alert}.eventType`, "approval.workflow.request_opened"]);
     // Mirrors the cron's filter: an event must never trigger a scheduled alert.
     expect(calls.where).toContainEqual([`${TableName.Alert}.triggerType`, "event"]);
     expect(calls.where).toContainEqual([`${TableName.Alert}.enabled`, true]);
+  });
+
+  test("findEnabledForEvent matches only resource-less alerts for an event without a resource", async () => {
+    const { dal, calls } = buildDAL();
+
+    await dal.findEnabledForEvent({
+      orgId: "org-1",
+      projectId: "proj-1",
+      resourceType: "cert-manager.application",
+      resourceId: null,
+      eventType: "cert-manager.application.certificate.issuance"
+    });
+
+    expect(calls.whereNull).toContainEqual(`${TableName.Alert}.resourceId`);
+    expect(calls.where).not.toContainEqual([`${TableName.Alert}.resourceId`, null]);
   });
 
   // An empty result is terminal for the event, so it can't come from a replica that hasn't seen the
@@ -189,6 +205,6 @@ describe("alert dal", () => {
 
     expect(calls.whereNull).not.toContainEqual(`${TableName.Alert}.projectId`);
     expect(calls.where).not.toContainEqual(expect.arrayContaining([`${TableName.Alert}.projectId`]));
-    expect(calls.orWhereNull).toHaveLength(0);
+    expect(calls.orWhereNull).not.toContainEqual(`${TableName.Alert}.projectId`);
   });
 });

@@ -21,6 +21,7 @@ import { databricksServicePrincipalSecretRotationFactory } from "@app/ee/service
 import { datadogApiKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/datadog-api-key/datadog-api-key-rotation-fns";
 import { datadogApplicationKeySecretRotationFactory } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret/datadog-application-key-secret-rotation-fns";
 import { fireworksApiKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/fireworks-api-key/fireworks-api-key-rotation-fns";
+import { gcpServiceAccountKeyRotationFactory } from "@app/ee/services/secret-rotation-v2/gcp-service-account-key/gcp-service-account-key-rotation-fns";
 import { ldapPasswordRotationFactory } from "@app/ee/services/secret-rotation-v2/ldap-password/ldap-password-rotation-fns";
 import { salesforceOauthCredentialsRotationFactory } from "@app/ee/services/secret-rotation-v2/salesforce-oauth-credentials/salesforce-oauth-credentials-rotation-fns";
 import { SecretRotation, SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
@@ -85,6 +86,7 @@ import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import {
   fnSecretBulkDelete,
@@ -218,7 +220,8 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.SnowflakeUserKeyPair]: snowflakeUserKeyPairRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.CloudflareApiToken]: cloudflareApiTokenRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.CloudflareR2AccessKey]: cloudflareR2AccessKeyRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.StripeApiKey]: stripeApiKeyRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.StripeApiKey]: stripeApiKeyRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.GcpServiceAccountKey]: gcpServiceAccountKeyRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({
@@ -656,6 +659,14 @@ export const secretRotationV2ServiceFactory = ({
           kmsService
         });
 
+        // Resolved before the transaction opens, so a slow external KMS does not hold a connection
+        // and the advisory lock while it answers.
+        const { encryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
+        const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsService });
+
         return secretRotationV2DAL.transaction(async (tx) => {
           await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretRotationV2Creation(folder.id)]);
 
@@ -691,18 +702,13 @@ export const secretRotationV2ServiceFactory = ({
 
           const secretsPayload = rotationFactory.getSecretsPayload(newCredentials);
 
-          const { encryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
-            type: KmsDataKey.SecretManager,
-            projectId
-          });
-
           const inputSecretsWithBlindIndex = await Promise.all(
             secretsPayload.map(async ({ key, value }) => ({
               key,
               encryptedValue: encryptor({
                 plainText: Buffer.from(value)
               }).cipherTextBlob,
-              secretValueBlindIndex: await generateSecretBlindIndex(Buffer.from(value)),
+              blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(value)),
               references: []
             }))
           );
@@ -812,6 +818,15 @@ export const secretRotationV2ServiceFactory = ({
     if (connection.app !== SECRET_ROTATION_CONNECTION_MAP[type])
       throw new BadRequestError({
         message: `Secret Rotation with ID "${rotationId}" is not configured for ${SECRET_ROTATION_NAME_MAP[type]}`
+      });
+
+    // A running rotation saves the next rotation time from the settings it started with, so an edit made
+    // meanwhile would have its schedule overwritten when the rotation finishes.
+    const isRotationOccurring = Boolean(await keyStore.getItem(KeyStorePrefixes.SecretRotationLock(secretRotation.id)));
+
+    if (isRotationOccurring)
+      throw new BadRequestError({
+        message: "A rotation is currently in progress for this secret rotation. Please try again shortly."
       });
 
     const nextRotationAt = calculateNextRotationAt({
@@ -1099,14 +1114,12 @@ export const secretRotationV2ServiceFactory = ({
 
     const mappedKeys = Object.values(secretsMapping as TSecretRotationV2["secretsMapping"]);
 
-    const {
-      encryptor: secretManagerEncryptor,
-      decryptor: secretManagerDecryptor,
-      generateSecretBlindIndex
-    } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsService });
 
     const updatedRotation = await secretRotationV2DAL.transaction(async (tx) => {
       const conflictingRotation = await secretRotationV2DAL.findOne({
@@ -1202,7 +1215,7 @@ export const secretRotationV2ServiceFactory = ({
             secretQueueService,
             encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
             decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
-            generateSecretBlindIndex,
+            blindIndexer,
             tx
           });
         }
@@ -1357,13 +1370,16 @@ export const secretRotationV2ServiceFactory = ({
             kmsService
           });
 
+          // Resolved before the transaction opens, so a slow external KMS does not hold a connection
+          // while it answers.
+          const { encryptor } = await kmsService.createCipherPairWithDataKey({
+            type: KmsDataKey.SecretManager,
+            projectId
+          });
+          const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: connection.orgId, kmsService });
+
           return secretRotationV2DAL.transaction(async (tx) => {
             const secretsPayload = rotationFactory.getSecretsPayload(newCredentials);
-
-            const { encryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
-              type: KmsDataKey.SecretManager,
-              projectId
-            });
 
             // update mapped secrets with new credential values
             const inputSecretsWithBlindIndex = await Promise.all(
@@ -1377,7 +1393,7 @@ export const secretRotationV2ServiceFactory = ({
                   encryptedValue: encryptor({
                     plainText: Buffer.from(value)
                   }).cipherTextBlob,
-                  secretValueBlindIndex: await generateSecretBlindIndex(Buffer.from(value)),
+                  blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(value)),
                   references: []
                 }
               }))
@@ -2084,12 +2100,15 @@ export const secretRotationV2ServiceFactory = ({
           kmsService
         });
 
-        return secretRotationV2DAL.transaction(async (tx) => {
-          const { encryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
-            type: KmsDataKey.SecretManager,
-            projectId
-          });
+        // Resolved before the transaction opens, so a slow external KMS does not hold a connection
+        // while it answers.
+        const { encryptor } = await kmsService.createCipherPairWithDataKey({
+          type: KmsDataKey.SecretManager,
+          projectId
+        });
+        const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsService });
 
+        return secretRotationV2DAL.transaction(async (tx) => {
           // Update the password secret with the new value
           const secretsMapping = secretRotation.secretsMapping as TLocalAccountRotation["secretsMapping"];
           const passwordBuffer = Buffer.from(localAccountCredentials.password);
@@ -2109,7 +2128,7 @@ export const secretRotationV2ServiceFactory = ({
                   encryptedValue: encryptor({
                     plainText: passwordBuffer
                   }).cipherTextBlob,
-                  secretValueBlindIndex: await generateSecretBlindIndex(passwordBuffer),
+                  blindIndexes: await blindIndexer.generateBlindIndexes(passwordBuffer),
                   references: []
                 }
               }

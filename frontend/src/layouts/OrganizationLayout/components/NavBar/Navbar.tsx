@@ -71,6 +71,7 @@ import { SidebarTrigger } from "@app/components/v3/generic/Sidebar";
 import { type Theme, useTheme } from "@app/components/v3/platform/ThemeProvider";
 import { envConfig } from "@app/config/env";
 import {
+  OrgPermissionBillingActions,
   OrgPermissionMemberActions,
   OrgPermissionSubjects,
   useOrganization,
@@ -103,6 +104,7 @@ import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
 import { NotificationDropdown } from "./NotificationDropdown";
+import { OrganizationProductPlans } from "./OrganizationProductPlans";
 import { VersionBadge } from "./VersionBadge";
 
 const getFormattedSupportEmailLink = (variables: {
@@ -404,7 +406,7 @@ export const Navbar = () => {
             <div
               className={twMerge(
                 "flex h-full min-w-0 items-center overflow-hidden border-border-soft pr-2 pl-4 transition-all duration-300 ease-in-out",
-                isProjectScope ? "mr-2 w-[72px] border-r" : "mr-4 w-96 max-w-96"
+                isProjectScope ? "mr-2 w-[72px] border-r" : "mr-4 max-w-96"
               )}
             >
               <NavbarSwitcher open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
@@ -611,6 +613,20 @@ export const Navbar = () => {
                 </NavbarSwitcherContent>
               </NavbarSwitcher>
             </div>
+            {!isProjectScope && (
+              <OrgPermissionCan
+                I={OrgPermissionBillingActions.Read}
+                a={OrgPermissionSubjects.Billing}
+              >
+                {(isAllowed) => (
+                  <OrganizationProductPlans
+                    plans={subscription.productPlans}
+                    isSubOrganization={isSubOrganization}
+                    billingOrgId={isAllowed ? (currentOrg.rootOrgId ?? currentOrg.id) : undefined}
+                  />
+                )}
+              </OrgPermissionCan>
+            )}
             {isProjectScope && (
               <>
                 <TypeSelect />

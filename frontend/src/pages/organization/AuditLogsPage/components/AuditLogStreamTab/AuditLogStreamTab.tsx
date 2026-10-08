@@ -1,6 +1,6 @@
 import { PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { AuditLogStreamsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -71,12 +71,14 @@ export const AuditLogStreamsTab = withPermission(
           isOpen={popUp.auditLogStreamForm.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("auditLogStreamForm", isOpen)}
         />
-        <UpgradePlanModal
+        <UpgradeGate
           paywallKey="organization.audit-log-stream"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text="Your current plan does not include access to audit log streams. To unlock this feature, please upgrade to Infisical Enterprise plan."
-          isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+          intent={{
+            ...AuditLogStreamsUpgradeIntent,
+            isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
+          }}
         />
       </>
     );

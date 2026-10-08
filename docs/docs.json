@@ -145,6 +145,7 @@
                     "root": "documentation/platform/secrets-mgmt/monitoring",
                     "pages": [
                       "documentation/platform/insights",
+                      "documentation/platform/secret-value-search",
                       "documentation/platform/webhooks",
                       "documentation/platform/event-subscriptions"
                     ]
@@ -313,6 +314,7 @@
                       "documentation/platform/secret-rotation/auth0-client-secret",
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
                       "documentation/platform/secret-rotation/azure-client-secret",
+                      "documentation/platform/secret-rotation/gcp-service-account-key",
                       "documentation/platform/secret-rotation/ldap-password",
                       "documentation/platform/secret-rotation/okta-client-secret"
                     ]
@@ -384,6 +386,7 @@
                       "documentation/platform/dynamic-secrets/github",
                       "documentation/platform/dynamic-secrets/kubernetes",
                       "documentation/platform/dynamic-secrets/ldap",
+                      "documentation/platform/dynamic-secrets/oauth2",
                       "documentation/platform/dynamic-secrets/tailscale"
                     ]
                   },
@@ -631,6 +634,7 @@
                       "documentation/platform/pki/settings/policies",
                       "documentation/platform/pki/settings/profiles",
                       "documentation/platform/pki/settings/certificate-cleanup",
+                      "documentation/platform/pki/settings/alerts",
                       {
                         "group": "HSM",
                         "pages": [
@@ -792,7 +796,21 @@
                 "pages": [
                   "documentation/platform/agent-vault/guides/claude-code",
                   "documentation/platform/agent-vault/guides/codex",
-                  "documentation/platform/agent-vault/guides/opencode"
+                  "documentation/platform/agent-vault/guides/opencode",
+                  {
+                    "group": "Hermes Agent",
+                    "root": "documentation/platform/agent-vault/guides/hermes",
+                    "pages": [
+                      "documentation/platform/agent-vault/guides/hermes-gateway"
+                    ]
+                  },
+                  {
+                    "group": "OpenClaw",
+                    "root": "documentation/platform/agent-vault/guides/openclaw",
+                    "pages": [
+                      "documentation/platform/agent-vault/guides/openclaw-gateway"
+                    ]
+                  }
                 ]
               },
               {
@@ -801,8 +819,13 @@
                   "documentation/platform/agent-vault/access-bundles",
                   "documentation/platform/agent-vault/services",
                   "documentation/platform/agent-vault/variables",
-                  "documentation/platform/agent-vault/sessions",
-                  "documentation/platform/agent-vault/session-logs",
+                  {
+                    "group": "Sessions",
+                    "root": "documentation/platform/agent-vault/sessions",
+                    "pages": [
+                      "documentation/platform/agent-vault/session-logs"
+                    ]
+                  },
                   "documentation/platform/agent-vault/proxies",
                   "documentation/platform/agent-vault/access-control"
                 ]
@@ -1113,6 +1136,7 @@
                   "integrations/app-connections/terraform-cloud",
                   "integrations/app-connections/travis-ci",
                   "integrations/app-connections/trigger-dev",
+                  "integrations/app-connections/ultradns",
                   "integrations/app-connections/venafi",
                   "integrations/app-connections/venafi-tpp",
                   "integrations/app-connections/vercel",
@@ -2466,6 +2490,18 @@
                         ]
                       },
                       {
+                        "group": "UltraDNS",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/ultradns/list",
+                          "api-reference/endpoints/app-connections/ultradns/available",
+                          "api-reference/endpoints/app-connections/ultradns/get-by-id",
+                          "api-reference/endpoints/app-connections/ultradns/get-by-name",
+                          "api-reference/endpoints/app-connections/ultradns/create",
+                          "api-reference/endpoints/app-connections/ultradns/update",
+                          "api-reference/endpoints/app-connections/ultradns/delete"
+                        ]
+                      },
+                      {
                         "group": "Venafi",
                         "pages": [
                           "api-reference/endpoints/app-connections/venafi/list",
@@ -2542,7 +2578,11 @@
                   {
                     "group": "Audit logs",
                     "pages": [
-                      "api-reference/endpoints/audit-logs/export-audit-log"
+                      "api-reference/endpoints/audit-logs/export-audit-log",
+                      "api-reference/endpoints/audit-logs/get-organization-audit-log-settings",
+                      "api-reference/endpoints/audit-logs/update-organization-audit-log-settings",
+                      "api-reference/endpoints/audit-logs/get-project-audit-log-settings",
+                      "api-reference/endpoints/audit-logs/update-project-audit-log-settings"
                     ]
                   },
                   {
@@ -2936,6 +2976,19 @@
                           "api-reference/endpoints/secret-rotations/fireworks-api-key/list",
                           "api-reference/endpoints/secret-rotations/fireworks-api-key/rotate-secrets",
                           "api-reference/endpoints/secret-rotations/fireworks-api-key/update"
+                        ]
+                      },
+                      {
+                        "group": "GCP service account key",
+                        "pages": [
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/create",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/delete",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/get-by-id",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/get-by-name",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/get-generated-credentials-by-id",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/list",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/rotate-secrets",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/update"
                         ]
                       },
                       {
@@ -3925,15 +3978,6 @@
                         ]
                       },
                       {
-                        "group": "Application alerts",
-                        "pages": [
-                          "api-reference/endpoints/pki/applications/alerts/list",
-                          "api-reference/endpoints/pki/applications/alerts/create",
-                          "api-reference/endpoints/pki/applications/alerts/update",
-                          "api-reference/endpoints/pki/applications/alerts/delete"
-                        ]
-                      },
-                      {
                         "group": "Enrollment methods",
                         "pages": [
                           "api-reference/endpoints/pki/applications/enrollment/get-state",
@@ -3967,15 +4011,6 @@
                               "api-reference/endpoints/pki/applications/enrollment/clear-scep"
                             ]
                           }
-                        ]
-                      },
-                      {
-                        "group": "Alerting",
-                        "pages": [
-                          "api-reference/endpoints/pki-alerts/create",
-                          "api-reference/endpoints/pki-alerts/read",
-                          "api-reference/endpoints/pki-alerts/update",
-                          "api-reference/endpoints/pki-alerts/delete"
                         ]
                       },
                       {
@@ -5069,6 +5104,38 @@
     {
       "source": "/documentation/platform/pki/est",
       "destination": "/documentation/platform/pki/applications/enrollment-methods/est"
+    },
+    {
+      "source": "/api-reference/endpoints/pki/applications/alerts/list",
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
+    },
+    {
+      "source": "/api-reference/endpoints/pki/applications/alerts/create",
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
+    },
+    {
+      "source": "/api-reference/endpoints/pki/applications/alerts/update",
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
+    },
+    {
+      "source": "/api-reference/endpoints/pki/applications/alerts/delete",
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
+    },
+    {
+      "source": "/api-reference/endpoints/pki-alerts/create",
+      "destination": "/documentation/platform/pki/settings/alerts"
+    },
+    {
+      "source": "/api-reference/endpoints/pki-alerts/read",
+      "destination": "/documentation/platform/pki/settings/alerts"
+    },
+    {
+      "source": "/api-reference/endpoints/pki-alerts/update",
+      "destination": "/documentation/platform/pki/settings/alerts"
+    },
+    {
+      "source": "/api-reference/endpoints/pki-alerts/delete",
+      "destination": "/documentation/platform/pki/settings/alerts"
     },
     {
       "source": "/documentation/platform/pki/alerting",

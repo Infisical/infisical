@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { OrgPermissionGuardBanner } from "@app/components/permissions/OrgPermissionCan";
-import { Button, PageHeader } from "@app/components/v2";
+import { Button } from "@app/components/v2";
 import {
   LookingForOrgPageLink,
   Tabs,
@@ -14,6 +14,7 @@ import {
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionActions,

@@ -11,6 +11,7 @@ import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
+import { getTlsServerNameOptions } from "@app/lib/tls";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
@@ -149,7 +150,7 @@ export const AzureSqlDatabaseProvider = ({
       ? {
           rejectUnauthorized: providerInputs.sslRejectUnauthorized,
           ca: providerInputs.ca,
-          servername: providerInputs.originalHost
+          ...getTlsServerNameOptions(providerInputs.originalHost)
         }
       : undefined;
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AlertTriangle, Info, ShieldCheck } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { SsoEnforcementUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -46,6 +46,13 @@ enum EnforceAuthType {
   GOOGLE = "google",
   OIDC = "oidc"
 }
+
+const upgradeDescriptions: Record<string, string> = {
+  "enforce SAML SSO": "Require SAML single sign-on for organization members.",
+  "enforce Google OAuth": "Require Google sign-in for organization members.",
+  "OIDC SSO": "Authenticate organization members with OIDC single sign-on.",
+  "Admin SSO Bypass": "Allow organization admins to sign in without single sign-on."
+};
 
 export const OrgGeneralAuthSection = ({
   isSamlConfigured,
@@ -386,11 +393,17 @@ export const OrgGeneralAuthSection = ({
         </CardContent>
       </Card>
 
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.org-general-auth"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={`Your current plan does not include access to ${popUp.upgradePlan.data?.featureName ?? "enforce SAML SSO"}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.planName ?? "Pro"} plan.`}
+        intent={{
+          ...SsoEnforcementUpgradeIntent,
+          description:
+            upgradeDescriptions[popUp.upgradePlan.data?.featureName ?? ""] ??
+            SsoEnforcementUpgradeIntent.description,
+          isEnterpriseFeature: popUp.upgradePlan.data?.planName === "Enterprise"
+        }}
       />
 
       <Dialog
