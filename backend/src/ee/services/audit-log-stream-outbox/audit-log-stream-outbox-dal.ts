@@ -10,6 +10,8 @@ import { AuditLogStreamOutboxStatus, TAuditLogStreamOutboxRow } from "./audit-lo
 
 export type TAuditLogStreamOutboxDALFactory = ReturnType<typeof auditLogStreamOutboxDALFactory>;
 
+export type TDroppedStreamRow = { streamId: string; orgId: string; provider: string | null };
+
 export type TInsertOutboxRow = {
   streamId: string;
   orgId: string;
@@ -134,9 +136,16 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     successIds: number[];
     retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
     exhaustedIds: number[];
+    inTransaction?: (tx: Knex) => Promise<void>;
   }) => {
     const retriableCount = input.retriable?.groups.reduce((n, g) => n + g.ids.length, 0) ?? 0;
-    if (input.successIds.length === 0 && retriableCount === 0 && input.exhaustedIds.length === 0) return;
+    if (
+      input.successIds.length === 0 &&
+      retriableCount === 0 &&
+      input.exhaustedIds.length === 0 &&
+      !input.inTransaction
+    )
+      return;
     try {
       await db.transaction(async (tx) => {
         if (input.successIds.length > 0) {
@@ -151,6 +160,7 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
         if (input.exhaustedIds.length > 0) {
           await tx(TableName.AuditLogStreamOutbox).whereIn("id", input.exhaustedIds).del();
         }
+        if (input.inTransaction) await input.inTransaction(tx);
       });
     } catch (error) {
       throw new DatabaseError({ error, name: "AuditLogStreamOutbox: commitDeliveryResult" });
@@ -166,8 +176,9 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   // emits a metric for the dropped count.
   const recoverStaleClaims = async (
     thresholdMs: number,
-    maxAttempts: number
-  ): Promise<{ retried: number; dropped: { streamId: string; orgId: string; provider: string | null }[] }> => {
+    maxAttempts: number,
+    onDropped?: (dropped: TDroppedStreamRow[], tx: Knex) => Promise<void>
+  ): Promise<{ retried: number; dropped: TDroppedStreamRow[] }> => {
     try {
       return await db.transaction(async (tx) => {
         const staleRows = await tx(TableName.AuditLogStreamOutbox)
@@ -217,14 +228,14 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
           .select<{ id: string; provider: string }[]>("id", "provider");
         const providerByStreamId = new Map(streams.map((stream) => [stream.id, stream.provider]));
 
-        return {
-          retried: retriable.length,
-          dropped: exhausted.map((row) => ({
-            streamId: row.streamId,
-            orgId: row.orgId,
-            provider: providerByStreamId.get(row.streamId) ?? null
-          }))
-        };
+        const dropped = exhausted.map((row) => ({
+          streamId: row.streamId,
+          orgId: row.orgId,
+          provider: providerByStreamId.get(row.streamId) ?? null
+        }));
+        if (onDropped) await onDropped(dropped, tx);
+
+        return { retried: retriable.length, dropped };
       });
     } catch (error) {
       throw new DatabaseError({ error, name: "AuditLogStreamOutbox: recoverStaleClaims" });
@@ -286,8 +297,37 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Flips the stream to failing only if it was healthy, so the caller emits the alert event on
+  // the null -> set edge exactly once even when two workers race. Returns the timestamp it set,
+  // or null when the stream was already failing (or no longer exists).
+  const markStreamFailing = async (
+    { streamId, errorMessage }: { streamId: string; errorMessage: string },
+    tx: Knex
+  ): Promise<Date | null> => {
+    try {
+      const [row] = await tx(TableName.AuditLogStream)
+        .where("id", streamId)
+        .whereNull("failingSince")
+        .update({ failingSince: new Date(), lastDeliveryError: errorMessage })
+        .returning<{ failingSince: Date }[]>("failingSince");
+      return row?.failingSince ?? null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "AuditLogStreamOutbox: markStreamFailing" });
+    }
+  };
+
+  const clearStreamFailing = async (streamId: string, tx: Knex) => {
+    try {
+      await tx(TableName.AuditLogStream).where("id", streamId).update({ failingSince: null, lastDeliveryError: null });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "AuditLogStreamOutbox: clearStreamFailing" });
+    }
+  };
+
   return {
     batchInsert,
+    markStreamFailing,
+    clearStreamFailing,
     claimBatchForStream,
     commitDeliveryResult,
     recoverStaleClaims,

@@ -40,9 +40,13 @@ vi.mock("@app/lib/telemetry/metrics", () => ({
 
 // Keep the real product-filter helpers (auditLogMatchesStreamFilter, resolveAuditLogProduct) so
 // the fanout filtering tests exercise actual behavior; only credential decryption is stubbed.
+const { decryptLogStreamCredentials } = vi.hoisted(() => ({
+  decryptLogStreamCredentials: vi.fn<() => Promise<unknown>>(async () => ({}))
+}));
+
 vi.mock("@app/ee/services/audit-log-stream/audit-log-stream-fns", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/ee/services/audit-log-stream/audit-log-stream-fns")>()),
-  decryptLogStreamCredentials: async () => ({})
+  decryptLogStreamCredentials
 }));
 
 // Every provider lookup returns the same shared batchStreamLog mock so tests can
@@ -81,21 +85,37 @@ const createService = () => {
     batchInsert: vi.fn(async () => undefined),
     claimBatchForStream: vi.fn<(...args: unknown[]) => Promise<TAuditLogStreamOutboxRow[]>>(async () => []),
     commitDeliveryResult: vi.fn<(input: unknown) => Promise<void>>(async () => undefined),
-    recoverStaleClaims: vi.fn(async () => ({ retried: 0, dropped: [] })),
+    markStreamFailing: vi.fn<(input: unknown, tx: unknown) => Promise<Date | null>>(async () => new Date()),
+    clearStreamFailing: vi.fn<(streamId: string, tx: unknown) => Promise<void>>(async () => undefined),
+    recoverStaleClaims: vi.fn<(...args: unknown[]) => Promise<{ retried: number; dropped: unknown[] }>>(async () => ({
+      retried: 0,
+      dropped: []
+    })),
     findStreamsWithOverdueRows: vi.fn(async () => []),
     deleteDeliveredOlderThan: vi.fn<(retentionMs: number) => Promise<number>>(async () => 0)
   };
 
   const auditLogStreamDAL = {
     find: vi.fn(async () => []),
-    findById: vi.fn(async () => ({
-      id: STREAM_ID,
-      provider: PROVIDER,
-      orgId: ORG_ID,
-      encryptedCredentials: Buffer.from("x"),
-      streamMode: StreamMode.Batch as StreamMode
-    }))
+    findById: vi.fn(
+      async (): Promise<{
+        id: string;
+        provider: LogProvider;
+        orgId: string;
+        encryptedCredentials: Buffer;
+        streamMode: StreamMode;
+        failingSince?: Date | null;
+      }> => ({
+        id: STREAM_ID,
+        provider: PROVIDER,
+        orgId: ORG_ID,
+        encryptedCredentials: Buffer.from("x"),
+        streamMode: StreamMode.Batch
+      })
+    )
   };
+
+  const eventEmitter = { emit: vi.fn<(event: unknown, tx?: unknown) => Promise<void>>(async () => undefined) };
 
   const projectDAL = {
     findProjectTypesByIds: vi.fn(async () => [])
@@ -107,10 +127,11 @@ const createService = () => {
     projectDAL: projectDAL as never,
     kmsService: {} as never,
     keyStore: {} as never,
-    queueService: {} as never
+    queueService: {} as never,
+    eventEmitter
   });
 
-  return { service, auditLogStreamOutboxDAL, auditLogStreamDAL, projectDAL };
+  return { service, auditLogStreamOutboxDAL, auditLogStreamDAL, projectDAL, eventEmitter };
 };
 
 describe("audit-log-stream-outbox-service drainStream failure handling", () => {
@@ -354,7 +375,8 @@ describe("audit-log-stream-outbox-service enqueueForLogs batch fanout", () => {
       projectDAL: projectDAL as never,
       kmsService: {} as never,
       keyStore: keyStore as never,
-      queueService: queueService as never
+      queueService: queueService as never,
+      eventEmitter: { emit: vi.fn(async () => undefined) }
     });
 
     return { service, auditLogStreamOutboxDAL, auditLogStreamDAL, projectDAL, keyStore, queueService };
@@ -592,5 +614,169 @@ describe("audit-log-stream-outbox-service sweepStaleClaims", () => {
     await sweepWith([], 5);
 
     expect(exhaustedCounterAdd).not.toHaveBeenCalled();
+  });
+});
+
+const containing = (fields: Record<string, unknown>): unknown => expect.objectContaining(fields);
+
+describe("audit-log-stream-outbox-service delivery failure alerting", () => {
+  const TX = { tx: true };
+  const FAILING_SINCE = new Date("2026-10-07T10:00:00.000Z");
+
+  type TInTransactionInput = { inTransaction?: (tx: unknown) => Promise<void> };
+
+  const lastCommit = (dal: ReturnType<typeof createService>["auditLogStreamOutboxDAL"]) =>
+    dal.commitDeliveryResult.mock.calls[0][0] as TInTransactionInput;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getProviderBatchLimit.mockReturnValue({ maxLogs: 1_000, maxBytes: 4 * 1024 * 1024 });
+    decryptLogStreamCredentials.mockResolvedValue({});
+  });
+
+  test("emits one event with the drop when a healthy stream exhausts a row", async () => {
+    const { service, auditLogStreamOutboxDAL, eventEmitter } = createService();
+    auditLogStreamOutboxDAL.claimBatchForStream
+      .mockResolvedValueOnce([buildRow({ attempts: 4 }), buildRow({ id: 2, attempts: 4 })])
+      .mockResolvedValueOnce([]);
+    auditLogStreamOutboxDAL.markStreamFailing.mockResolvedValueOnce(FAILING_SINCE);
+    batchStreamLog.mockRejectedValueOnce(new Error(FAILURE_MESSAGE));
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    await lastCommit(auditLogStreamOutboxDAL).inTransaction?.(TX);
+
+    expect(auditLogStreamOutboxDAL.markStreamFailing).toHaveBeenCalledWith(
+      { streamId: STREAM_ID, errorMessage: FAILURE_MESSAGE },
+      TX
+    );
+    expect(eventEmitter.emit).toHaveBeenCalledTimes(1);
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      {
+        eventType: "audit-log.stream.delivery-failed",
+        payload: containing({
+          orgId: ORG_ID,
+          resourceType: "audit-log.stream",
+          resourceId: STREAM_ID,
+          targetIds: [STREAM_ID],
+          provider: PROVIDER,
+          errorMessage: FAILURE_MESSAGE,
+          droppedCount: 2,
+          failingSince: FAILING_SINCE.toISOString()
+        })
+      },
+      TX
+    );
+  });
+
+  test("does not emit when another worker already flipped the stream to failing", async () => {
+    const { service, auditLogStreamOutboxDAL, eventEmitter } = createService();
+    auditLogStreamOutboxDAL.claimBatchForStream
+      .mockResolvedValueOnce([buildRow({ attempts: 4 })])
+      .mockResolvedValueOnce([]);
+    auditLogStreamOutboxDAL.markStreamFailing.mockResolvedValueOnce(null);
+    batchStreamLog.mockRejectedValueOnce(new Error(FAILURE_MESSAGE));
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+    await lastCommit(auditLogStreamOutboxDAL).inTransaction?.(TX);
+
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  test("does not touch stream health for a retriable failure", async () => {
+    const { service, auditLogStreamOutboxDAL } = createService();
+    auditLogStreamOutboxDAL.claimBatchForStream.mockResolvedValueOnce([buildRow()]).mockResolvedValueOnce([]);
+    batchStreamLog.mockRejectedValueOnce(new Error(FAILURE_MESSAGE));
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    expect(lastCommit(auditLogStreamOutboxDAL).inTransaction).toBeUndefined();
+  });
+
+  test("does not touch stream health for a healthy stream that delivers", async () => {
+    const { service, auditLogStreamOutboxDAL } = createService();
+    auditLogStreamOutboxDAL.claimBatchForStream.mockResolvedValueOnce([buildRow()]).mockResolvedValueOnce([]);
+    batchStreamLog.mockResolvedValueOnce(undefined);
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    expect(lastCommit(auditLogStreamOutboxDAL).inTransaction).toBeUndefined();
+  });
+
+  test("stays quiet when a stream that is already failing exhausts more rows", async () => {
+    const { service, auditLogStreamOutboxDAL, auditLogStreamDAL } = createService();
+    auditLogStreamDAL.findById.mockResolvedValueOnce({
+      id: STREAM_ID,
+      provider: PROVIDER,
+      orgId: ORG_ID,
+      encryptedCredentials: Buffer.from("x"),
+      streamMode: StreamMode.Batch,
+      failingSince: FAILING_SINCE
+    });
+    auditLogStreamOutboxDAL.claimBatchForStream
+      .mockResolvedValueOnce([buildRow({ attempts: 4 })])
+      .mockResolvedValueOnce([]);
+    batchStreamLog.mockRejectedValueOnce(new Error(FAILURE_MESSAGE));
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    expect(lastCommit(auditLogStreamOutboxDAL).inTransaction).toBeUndefined();
+  });
+
+  test("clears the failing state when a failing stream delivers again", async () => {
+    const { service, auditLogStreamOutboxDAL, auditLogStreamDAL, eventEmitter } = createService();
+    auditLogStreamDAL.findById.mockResolvedValueOnce({
+      id: STREAM_ID,
+      provider: PROVIDER,
+      orgId: ORG_ID,
+      encryptedCredentials: Buffer.from("x"),
+      streamMode: StreamMode.Batch,
+      failingSince: FAILING_SINCE
+    });
+    auditLogStreamOutboxDAL.claimBatchForStream.mockResolvedValueOnce([buildRow()]).mockResolvedValueOnce([]);
+    batchStreamLog.mockResolvedValueOnce(undefined);
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+    await lastCommit(auditLogStreamOutboxDAL).inTransaction?.(TX);
+
+    expect(auditLogStreamOutboxDAL.clearStreamFailing).toHaveBeenCalledWith(STREAM_ID, TX);
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  test("a credential decrypt failure claims the rows and fails them instead of throwing", async () => {
+    const { service, auditLogStreamOutboxDAL } = createService();
+    decryptLogStreamCredentials.mockRejectedValueOnce(new Error("kms unreachable"));
+    auditLogStreamOutboxDAL.claimBatchForStream.mockResolvedValueOnce([buildRow()]).mockResolvedValueOnce([]);
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    expect(batchStreamLog).not.toHaveBeenCalled();
+    const call = auditLogStreamOutboxDAL.commitDeliveryResult.mock.calls[0][0] as {
+      retriable: { groups: { ids: number[] }[] } | null;
+    };
+    expect(call.retriable?.groups.flatMap((g) => g.ids)).toEqual([1]);
+  });
+
+  test("stale-claim drops emit once per stream with the dropped count", async () => {
+    const { service, auditLogStreamOutboxDAL, eventEmitter } = createService();
+    auditLogStreamOutboxDAL.markStreamFailing.mockResolvedValue(FAILING_SINCE);
+
+    await service.sweepStaleClaims();
+
+    const onDropped = auditLogStreamOutboxDAL.recoverStaleClaims.mock.calls[0][2] as (
+      dropped: { streamId: string; orgId: string; provider: string | null }[],
+      tx: unknown
+    ) => Promise<void>;
+    const row = { streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER as string | null };
+    await onDropped([row, row, { ...row, streamId: "stream-2" }], TX);
+
+    expect(eventEmitter.emit).toHaveBeenCalledTimes(2);
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      {
+        eventType: "audit-log.stream.delivery-failed",
+        payload: containing({ resourceId: STREAM_ID, droppedCount: 2 })
+      },
+      TX
+    );
   });
 });
