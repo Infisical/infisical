@@ -166,6 +166,10 @@ type TSecretChangeRequestBridgeServiceFactoryDep = {
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
+type TRequestSteps = Awaited<ReturnType<TApprovalRequestDALFactory["findStepsByRequestId"]>>;
+
+const POLICY_DELETED_MESSAGE = "The policy associated with this secret approval request has been deleted.";
+
 export type TSecretChangeRequestBridgeServiceFactory = ReturnType<typeof secretChangeRequestBridgeServiceFactory>;
 
 export const secretChangeRequestBridgeServiceFactory = ({
@@ -288,9 +292,7 @@ export const secretChangeRequestBridgeServiceFactory = ({
       ? await secretChangePolicyBridgeService.findSecretChangePolicyById(policyId, tx)
       : undefined;
     if (!policy) {
-      throw new BadRequestError({
-        message: "The policy associated with this secret approval request has been deleted."
-      });
+      throw new BadRequestError({ message: POLICY_DELETED_MESSAGE });
     }
     return policy;
   };
@@ -336,6 +338,51 @@ export const secretChangeRequestBridgeServiceFactory = ({
     }
 
     return { hasRole, permission, steps, currentStep, userGroupIds };
+  };
+
+  const $findUnmetStep = (steps: TRequestSteps, eligibleByStepId: Map<string, Set<string>>) =>
+    steps
+      .map((step) => {
+        const eligibleUserIds = eligibleByStepId.get(step.id) ?? new Set<string>();
+        const approvedCount = new Set(
+          step.approvals
+            .filter(
+              (approval) =>
+                approval.decision === ApprovalRequestApprovalDecision.Approved &&
+                eligibleUserIds.has(approval.approverUserId)
+            )
+            .map((approval) => approval.approverUserId)
+        ).size;
+        return { step, approvedCount };
+      })
+      .find(({ step, approvedCount }) => approvedCount < step.requiredApprovals);
+
+  const $resolveMergeBypass = ({
+    unmetStep,
+    slug,
+    isSoftEnforcement,
+    canBypass,
+    bypassReason
+  }: {
+    unmetStep: ReturnType<typeof $findUnmetStep>;
+    slug: string;
+    isSoftEnforcement: boolean;
+    canBypass: boolean;
+    bypassReason?: string;
+  }): { isMergedViaBypass: true; bypassReason: string } | { isMergedViaBypass: false; bypassReason: null } => {
+    if (!unmetStep) return { isMergedViaBypass: false, bypassReason: null };
+    if (!(isSoftEnforcement && canBypass)) {
+      throw new BadRequestError({
+        message: `Secret approval request '${slug}' needs ${unmetStep.step.requiredApprovals} approval(s) on step ${unmetStep.step.stepNumber} and has ${unmetStep.approvedCount}.`
+      });
+    }
+    const trimmed = bypassReason?.trim() ?? "";
+    if (trimmed.length < 10) {
+      throw new BadRequestError({
+        message: "A bypass reason of at least 10 characters is required to bypass approvals"
+      });
+    }
+    return { isMergedViaBypass: true, bypassReason: trimmed };
   };
 
   const $writeSecretChangeRequest = async (
@@ -576,22 +623,11 @@ export const secretChangeRequestBridgeServiceFactory = ({
       action: "merge"
     });
 
-    const stepApprovals = await Promise.all(
-      steps.map(async (step) => {
-        const eligibleUserIds = await resolveStepApproverUserIds(step, userGroupMembershipDAL);
-        const approvedCount = new Set(
-          step.approvals
-            .filter(
-              (approval) =>
-                approval.decision === ApprovalRequestApprovalDecision.Approved &&
-                eligibleUserIds.has(approval.approverUserId)
-            )
-            .map((approval) => approval.approverUserId)
-        ).size;
-        return { step, approvedCount };
-      })
+    const eligibleByStepId = new Map(
+      await Promise.all(
+        steps.map(async (step) => [step.id, await resolveStepApproverUserIds(step, userGroupMembershipDAL)] as const)
+      )
     );
-    const unmetStep = stepApprovals.find(({ step, approvedCount }) => approvedCount < step.requiredApprovals);
     const isSoftEnforcement = policy.enforcementLevel === EnforcementLevel.Soft;
     const canBypass =
       !policy.bypassers.length ||
@@ -600,13 +636,15 @@ export const secretChangeRequestBridgeServiceFactory = ({
           (bypasser.type === BypasserType.User && bypasser.id === actorId) ||
           (bypasser.type === BypasserType.Group && userGroupIds.has(bypasser.id))
       );
-
-    if (unmetStep && !(isSoftEnforcement && canBypass)) {
-      throw new BadRequestError({
-        message: `Secret approval request '${secretChangeRequest.slug}' needs ${unmetStep.step.requiredApprovals} approval(s) on step ${unmetStep.step.stepNumber} and has ${unmetStep.approvedCount}.`
+    const resolveBypass = (requestSteps: TRequestSteps) =>
+      $resolveMergeBypass({
+        unmetStep: $findUnmetStep(requestSteps, eligibleByStepId),
+        slug: secretChangeRequest.slug,
+        isSoftEnforcement,
+        canBypass,
+        bypassReason
       });
-    }
-    const isMergedViaBypass = isSoftEnforcement && Boolean(unmetStep);
+    resolveBypass(steps);
 
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
@@ -624,6 +662,8 @@ export const secretChangeRequestBridgeServiceFactory = ({
       if (!locked || locked.status !== ApprovalRequestStatus.Open) {
         throw new BadRequestError({ message: "You can only merge open approval requests" });
       }
+      const lockedSteps = await approvalRequestDAL.findStepsByRequestId(approvalRequest.id, tx);
+      const bypass = resolveBypass(lockedSteps);
 
       const secrets = await applySecretApprovalCommitsV2Bridge({
         projectId,
@@ -649,7 +689,7 @@ export const secretChangeRequestBridgeServiceFactory = ({
           conflicts: JSON.stringify(conflicts),
           hasMerged: true,
           statusChangedByUserId: actorId,
-          bypassReason: isMergedViaBypass ? (bypassReason ?? null) : null
+          bypassReason: bypass.bypassReason
         },
         tx
       );
@@ -660,7 +700,7 @@ export const secretChangeRequestBridgeServiceFactory = ({
       );
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
 
-      return { secrets, approvalRequest: mergedApprovalRequest, secretChangeRequest: mergedChangeRequest };
+      return { secrets, approvalRequest: mergedApprovalRequest, secretChangeRequest: mergedChangeRequest, bypass };
     });
 
     await syncMergedSecrets({ projectId, actorOrgId, actor, actorId, folder, secrets: merged.secrets });
@@ -675,7 +715,7 @@ export const secretChangeRequestBridgeServiceFactory = ({
         environment: folder.environmentSlug,
         environmentName: folder.environmentName,
         secretPath: folder.path,
-        isBypassed: isMergedViaBypass
+        isBypassed: merged.bypass.isMergedViaBypass
       });
     } catch (error) {
       logger.error(
@@ -684,14 +724,14 @@ export const secretChangeRequestBridgeServiceFactory = ({
       );
     }
 
-    if (isMergedViaBypass) {
+    if (merged.bypass.isMergedViaBypass) {
       await notifySecretApprovalBypass({
         project,
         environmentName: folder.environmentName,
         secretPath: folder.path,
         actorId,
         approverUserIds: unique(policy.userApprovers.map((approver) => approver.userId)),
-        bypassReason
+        bypassReason: merged.bypass.bypassReason
       });
     }
 
@@ -709,7 +749,7 @@ export const secretChangeRequestBridgeServiceFactory = ({
         secretPath: folder.path,
         secrets: merged.secrets
       }),
-      isMergedViaBypass,
+      isMergedViaBypass: merged.bypass.isMergedViaBypass,
       requestedByActor: buildRequestedByActor({
         committerUserId: approvalRequest.requesterId,
         committerUser: { email: approvalRequest.requesterEmail, username: approvalRequest.requesterEmail },
@@ -835,10 +875,14 @@ export const secretChangeRequestBridgeServiceFactory = ({
     if (approvalRequest.status === status) throw new BadRequestError({ message: alreadyInStatusMessage });
 
     const updated = await approvalRequestDAL.transaction(async (tx) => {
+      const lockedPolicy = await approvalPolicyDAL.findByIdForShare(policy.id, tx);
+      if (!lockedPolicy) throw new BadRequestError({ message: POLICY_DELETED_MESSAGE });
+
       const locked = await approvalRequestDAL.findByIdForUpdate(approvalRequest.id, tx);
       if (!locked || locked.status !== approvalRequest.status) {
         throw new BadRequestError({ message: alreadyInStatusMessage });
       }
+      if (locked.policyId !== policy.id) throw new BadRequestError({ message: POLICY_DELETED_MESSAGE });
       const lockedChangeRequest = await secretChangeRequestDAL.findOne({ approvalRequestId: approvalRequest.id }, tx);
       if (!lockedChangeRequest || lockedChangeRequest.hasMerged) {
         throw new BadRequestError({ message: "Approval request has been merged" });

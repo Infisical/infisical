@@ -795,11 +795,11 @@ describe("secretChangeRequestBridge mergeSecretChangeRequest", () => {
   test("lets a soft policy without bypassers merge unapproved and records the bypass", async () => {
     const { service, deps } = buildService({ policy: { ...POLICY, enforcementLevel: "soft" } });
 
-    const result = await merge(service, { actorId: "user-1", bypassReason: "incident" });
+    const result = await merge(service, { actorId: "user-1", bypassReason: "  incident response  " });
 
     expect(deps.secretChangeRequestDAL.updateById).toHaveBeenCalledWith(
       "change-1",
-      expect.objectContaining({ hasMerged: true, bypassReason: "incident" }),
+      expect.objectContaining({ hasMerged: true, bypassReason: "incident response" }),
       OWN_TX
     );
     expect(queueChangeRequestWebhook).toHaveBeenCalledWith(expect.objectContaining({ isBypassed: true }));
@@ -809,22 +809,62 @@ describe("secretChangeRequestBridge mergeSecretChangeRequest", () => {
       secretPath: "/app",
       actorId: "user-1",
       approverUserIds: ["approver-1"],
-      bypassReason: "incident"
+      bypassReason: "incident response"
     });
-    expect(result).toMatchObject({ isMergedViaBypass: true, approval: { bypassReason: "incident" } });
+    expect(result).toMatchObject({ isMergedViaBypass: true, approval: { bypassReason: "incident response" } });
   });
 
   test("only a listed bypasser, directly or through a group, can bypass a soft policy", async () => {
     const policy = { ...POLICY, enforcementLevel: "soft", bypassers: [{ type: "group", id: "group-9" }] };
+    const bypass = { actorId: "user-1", bypassReason: "incident response" };
     const refused = buildService({ policy });
-    await expect(merge(refused.service, { actorId: "user-1" })).rejects.toBeInstanceOf(BadRequestError);
+    await expect(merge(refused.service, bypass)).rejects.toBeInstanceOf(BadRequestError);
 
     const allowed = buildService({ policy });
     allowed.deps.userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg.mockResolvedValue([{ groupId: "group-9" }]);
-    await expect(merge(allowed.service, { actorId: "user-1" })).resolves.toMatchObject({ isMergedViaBypass: true });
+    await expect(merge(allowed.service, bypass)).resolves.toMatchObject({ isMergedViaBypass: true });
 
     const direct = buildService({ policy: { ...policy, bypassers: [{ type: "user", id: "user-1" }] } });
-    await expect(merge(direct.service, { actorId: "user-1" })).resolves.toMatchObject({ isMergedViaBypass: true });
+    await expect(merge(direct.service, bypass)).resolves.toMatchObject({ isMergedViaBypass: true });
+  });
+
+  test("refuses a bypass merge without a reason of at least 10 characters", async () => {
+    const { service, deps } = buildService({ policy: { ...POLICY, enforcementLevel: "soft" } });
+    const refusal = new BadRequestError({
+      message: "A bypass reason of at least 10 characters is required to bypass approvals"
+    });
+
+    await expect(merge(service, { actorId: "user-1" })).rejects.toThrow(refusal);
+    await expect(merge(service, { actorId: "user-1", bypassReason: "   " })).rejects.toThrow(refusal);
+    await expect(merge(service, { actorId: "user-1", bypassReason: "too short" })).rejects.toThrow(refusal);
+    expect(applySecretApprovalCommitsV2Bridge).not.toHaveBeenCalled();
+    expect(deps.secretChangeRequestDAL.updateById).not.toHaveBeenCalled();
+  });
+
+  test("refuses when an approval is withdrawn between the checks and the lock", async () => {
+    const { service, deps } = buildService({ requestSteps: [stepWith({ approvals: approvedBy("approver-1") })] });
+    deps.approvalRequestDAL.findStepsByRequestId
+      .mockResolvedValueOnce([stepWith({ approvals: approvedBy("approver-1") })])
+      .mockResolvedValueOnce([
+        stepWith({
+          approvals: [
+            {
+              id: "approval-0",
+              stepId: "step-1",
+              approverUserId: "approver-1",
+              decision: ApprovalRequestApprovalDecision.Rejected
+            }
+          ]
+        })
+      ]);
+
+    await expect(merge(service)).rejects.toThrow(
+      new BadRequestError({ message: "Secret approval request 'slug-1' needs 1 approval(s) on step 1 and has 0." })
+    );
+    expect(deps.approvalRequestDAL.findStepsByRequestId).toHaveBeenNthCalledWith(2, "request-1", OWN_TX);
+    expect(applySecretApprovalCommitsV2Bridge).not.toHaveBeenCalled();
+    expect(deps.secretChangeRequestDAL.updateById).not.toHaveBeenCalled();
+    expect(deps.approvalRequestDAL.updateById).not.toHaveBeenCalled();
   });
 
   test("does not persist a bypass reason on a fully approved merge", async () => {
@@ -984,9 +1024,38 @@ describe("secretChangeRequestBridge updateSecretChangeRequestStatus", () => {
     await expect(setStatus(service, { status: RequestState.Open })).resolves.toMatchObject({
       status: ApprovalRequestStatus.Open
     });
+    expect(deps.approvalPolicyDAL.findByIdForShare).toHaveBeenCalledWith("policy-1", OWN_TX);
+    expect(deps.approvalPolicyDAL.findByIdForShare.mock.invocationCallOrder[0]).toBeLessThan(
+      deps.approvalRequestDAL.findByIdForUpdate.mock.invocationCallOrder[0]
+    );
     expect(queueChangeRequestWebhook).toHaveBeenCalledWith(
       expect.objectContaining({ action: ChangeRequestWebhookAction.Reopened })
     );
+  });
+
+  test("refuses when the policy is deleted while the reopen waits on its lock", async () => {
+    const { service, deps } = buildService();
+    const closed = { ...APPROVAL_REQUEST, status: ApprovalRequestStatus.Closed };
+    deps.approvalRequestDAL.findById.mockResolvedValue(closed);
+    deps.approvalPolicyDAL.findByIdForShare.mockResolvedValueOnce(undefined);
+
+    await expect(setStatus(service, { status: RequestState.Open })).rejects.toThrow("has been deleted");
+    expect(deps.approvalRequestDAL.findByIdForUpdate).not.toHaveBeenCalled();
+    expect(deps.approvalRequestDAL.updateById).not.toHaveBeenCalled();
+    expect(deps.secretChangeRequestDAL.updateById).not.toHaveBeenCalled();
+    expect(queueChangeRequestWebhook).not.toHaveBeenCalled();
+  });
+
+  test("refuses when the locked request no longer belongs to the policy", async () => {
+    const { service, deps } = buildService();
+    const closed = { ...APPROVAL_REQUEST, status: ApprovalRequestStatus.Closed };
+    deps.approvalRequestDAL.findById.mockResolvedValue(closed);
+    deps.approvalRequestDAL.findByIdForUpdate.mockResolvedValueOnce({ ...closed, policyId: null });
+
+    await expect(setStatus(service, { status: RequestState.Open })).rejects.toThrow("has been deleted");
+    expect(deps.approvalRequestDAL.updateById).not.toHaveBeenCalled();
+    expect(deps.secretChangeRequestDAL.updateById).not.toHaveBeenCalled();
+    expect(queueChangeRequestWebhook).not.toHaveBeenCalled();
   });
 
   test("refuses when the plan lacks secret approvals", async () => {
