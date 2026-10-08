@@ -1,9 +1,22 @@
+import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
+import { unpackRules } from "@casl/ability/extra";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
+import {
+  OrgPermissionAdminConsoleAction,
+  OrgPermissionSet,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 import { urlSlugToProjectType } from "@app/helpers/project";
 import { projectKeys } from "@app/hooks/api";
+import { grantOrgAdminProjectAccess } from "@app/hooks/api/orgAdmin";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { fetchUserProjectPermissions, roleQueryKeys } from "@app/hooks/api/roles/queries";
+import { conditionsMatcher } from "@app/hooks/api/roles/permission-matcher";
+import {
+  fetchUserOrgPermissions,
+  fetchUserProjectPermissions,
+  roleQueryKeys
+} from "@app/hooks/api/roles/queries";
 import {
   fetchSecretScanningProjectId,
   secretScanningV2Keys
@@ -33,9 +46,9 @@ export const Route = createFileRoute(
 
     if (projectType !== ProjectType.SecretScanning) return;
 
-    // Secret Scanning has one active project per org, so members skip the list. Resolving can create
-    // the project and its memberships, which the cached project list cannot know about yet, so access
-    // is decided by loading the user's permissions on it, as the PAM layout does.
+    // Secret Scanning has one active project per org, so members skip the list. Resolving can create the
+    // project, which the cached project list cannot know about yet, so access is decided by loading the
+    // user's permissions on it, as the PAM layout does.
     let projectId: string;
     try {
       projectId = await context.queryClient.fetchQuery({
@@ -56,14 +69,40 @@ export const Route = createFileRoute(
       isMember = false;
     }
 
+    if (!isMember) {
+      // The project is created with no members, so org admins join it here, as the home card does.
+      const orgPermissions = await context.queryClient.ensureQueryData({
+        queryKey: roleQueryKeys.getUserOrgPermissions({ orgId: params.orgId }),
+        queryFn: () => fetchUserOrgPermissions({ orgId: params.orgId })
+      });
+      const orgAbility = createMongoAbility<OrgPermissionSet>(
+        unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(orgPermissions.permissions),
+        { conditionsMatcher }
+      );
+
+      if (
+        orgAbility.can(
+          OrgPermissionAdminConsoleAction.AccessAllProjects,
+          OrgPermissionSubjects.AdminConsole
+        )
+      ) {
+        try {
+          await grantOrgAdminProjectAccess({ projectId });
+          isMember = true;
+        } catch {
+          // Fall through to the list, where the admin can still join from All Projects.
+        }
+      }
+
+      // The cached project list predates this join or a project created just now.
+      await context.queryClient.invalidateQueries({ queryKey: projectKeys.allProjectQueries() });
+    }
+
     if (isMember) {
       throw redirect({
         to: "/organizations/$orgId/projects/secret-scanning/$projectId/data-sources",
         params: { orgId: params.orgId, projectId }
       });
     }
-
-    // Non-members land on the list to request access, which has to include a project created just now.
-    await context.queryClient.invalidateQueries({ queryKey: projectKeys.allProjectQueries() });
   }
 });
