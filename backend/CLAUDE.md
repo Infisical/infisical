@@ -89,7 +89,7 @@ Path alias: `@app/*` maps to `./src/*`.
 
 These load automatically when you read a file in that folder. Read the file directly when your change touches the area without opening one of its files.
 
-| Task | Instructions |
+| Task | Read |
 |---|---|
 | Adding `AuthMode.OAUTH` to a route, adding an Administration route, or changing how OAuth tokens are issued or exchanged | `src/services/oauth-client/CLAUDE.md` |
 | Changing how an invite, removal, SCIM, or SSO login path finds a user, or syncing a user's email or name from an IdP | `src/services/user-alias/CLAUDE.md` |
