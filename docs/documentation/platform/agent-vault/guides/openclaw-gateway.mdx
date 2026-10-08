@@ -6,7 +6,7 @@ description: "Learn how to run the OpenClaw gateway through Agent Vault so OpenC
 
 import SeparateMachinesNote from "/snippets/agent-vault/SeparateMachinesNote.mdx";
 
-This guide walks you through running the [OpenClaw](https://docs.openclaw.ai/) [gateway](https://docs.openclaw.ai/gateway) through Agent Vault, so OpenClaw can make authenticated API calls without holding any real credentials. The gateway connects OpenClaw to a messaging platform such as Slack or Telegram.
+This guide walks you through running the [OpenClaw](https://docs.openclaw.ai/) [gateway](https://docs.openclaw.ai/gateway) through Agent Vault, so OpenClaw can make authenticated API calls without holding any real credentials. The gateway connects OpenClaw to a messaging platform such as Telegram.
 
 <Tip>
   If you use OpenClaw in your terminal, follow [Agent Vault with OpenClaw](/documentation/platform/agent-vault/guides/openclaw) instead.
@@ -76,7 +76,7 @@ Most OpenClaw setups have three kinds of API keys:
 | Kind | Example keys | Service to add in Step 2 |
 | --- | --- | --- |
 | Model provider (the LLM API OpenClaw sends its prompts to) | `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` | The provider's template, such as **OpenRouter**, **Anthropic**, or **OpenAI** |
-| Messaging platform (where you chat with OpenClaw) | `channels.telegram.botToken` or `TELEGRAM_BOT_TOKEN` | A **Custom** service for `api.telegram.org`, or the platform's template, such as **Slack** |
+| Messaging platform (where you chat with OpenClaw) | `channels.telegram.botToken` or `TELEGRAM_BOT_TOKEN` | A **Custom** service for `api.telegram.org` |
 | External APIs | `GITHUB_TOKEN` | The API's template, such as **GitHub** (or a **Custom** service if Infisical has no template for the API) |
 
 <Note>
@@ -110,7 +110,7 @@ First, create an [access bundle](/documentation/platform/agent-vault/access-bund
     [Add a substitution](/documentation/platform/agent-vault/services#add-a-substitution) for each key instead if either of these is true:
 
     - The API expects the key outside a header, such as in the URL path. For example, Telegram's bot token goes in the URL of every request: `https://api.telegram.org/bot<token>/getUpdates`
-    - The API uses more than one key, such as Slack's bot token and app token (one service can hold a substitution for each key, and an access bundle can't have two services for the same host)
+    - The API uses more than one key (one service can hold a substitution for each key, and an access bundle can't have two services for the same host)
 
     Note the placeholder you enter in **Replace**, because you'll give it to OpenClaw in [Step 3](#replace-the-api-keys-with-placeholders).
     </Note>
@@ -282,7 +282,13 @@ Set OpenClaw's proxy URL, replacing `<session-token>` with the token from [Step 
 openclaw config set proxy.proxyUrl http://x-agent-vault:<session-token>@<proxy-host>:17323
 ```
 
-OpenClaw routes all of the gateway's outbound HTTP and WebSocket traffic through this proxy, including traffic from its messaging platform clients. Then reinstall the gateway service so it picks up the new settings. This also restarts the gateway.
+OpenClaw routes all of the gateway's outbound traffic through this proxy, including traffic from its messaging platform clients.
+
+<Note>
+The proxy doesn't carry [WebSocket connections](/documentation/platform/agent-vault/proxies#supported-connections), so a messaging platform that OpenClaw connects to over a WebSocket, such as Discord, fails through the proxy.
+</Note>
+
+Then reinstall the gateway service so it picks up the new settings. This also restarts the gateway.
 
 ```bash
 openclaw gateway install --force
@@ -416,6 +422,9 @@ To follow the gateway's logs, run `openclaw logs --follow`. To check the gateway
   </Accordion>
   <Accordion title="The gateway is stuck waiting for state ownership">
     Another OpenClaw process may be using OpenClaw's state, usually an `openclaw tui --local` session from the [terminal guide](/documentation/platform/agent-vault/guides/openclaw). The gateway waits for that process to exit. Quit the terminal session, then run `openclaw gateway restart`.
+  </Accordion>
+  <Accordion title="The gateway logs WebSocket connection errors">
+    The proxy doesn't carry [WebSocket connections](/documentation/platform/agent-vault/proxies#supported-connections). If OpenClaw connects to a messaging platform over a WebSocket, that platform doesn't work through Agent Vault.
   </Accordion>
 </AccordionGroup>
 

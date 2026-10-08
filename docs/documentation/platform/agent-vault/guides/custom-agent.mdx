@@ -126,15 +126,15 @@ http://x-agent-vault:<session-token>@<proxy-host>:17323
     Most HTTP clients read the proxy and the certificate from environment variables, so if you set these variables for the agent's process, you don't need to change its code:
 
     ```bash
-    HTTPS_PROXY=http://x-agent-vault:<session-token>@<proxy-host>:17323
-    HTTP_PROXY=http://x-agent-vault:<session-token>@<proxy-host>:17323
-    NO_PROXY=localhost,127.0.0.1
+    export HTTPS_PROXY=http://x-agent-vault:<session-token>@<proxy-host>:17323
+    export HTTP_PROXY=http://x-agent-vault:<session-token>@<proxy-host>:17323
+    export NO_PROXY=localhost,127.0.0.1
     # Trust the proxy's certificate
-    SSL_CERT_FILE=/path/to/ca.pem
-    REQUESTS_CA_BUNDLE=/path/to/ca.pem
-    NODE_EXTRA_CA_CERTS=/path/to/ca.pem
+    export SSL_CERT_FILE=/path/to/ca.pem
+    export REQUESTS_CA_BUNDLE=/path/to/ca.pem
+    export NODE_EXTRA_CA_CERTS=/path/to/ca.pem
     # Node.js 24 or later: make the built-in fetch read HTTPS_PROXY
-    NODE_USE_ENV_PROXY=1
+    export NODE_USE_ENV_PROXY=1
     ```
 
     Clients that read `SSL_CERT_FILE` or `REQUESTS_CA_BUNDLE` trust only the certificates in that file. If the agent calls an HTTPS host in `NO_PROXY`, add your system's certificates to `ca.pem`, such as with `cat /etc/ssl/certs/ca-certificates.crt >> ca.pem` on Debian or Ubuntu.
@@ -221,7 +221,7 @@ http://x-agent-vault:<session-token>@<proxy-host>:17323
 Keep the session token out of logs. Anyone who can reach the proxy with the token can call every API in the session's access bundle until the session expires or you [revoke it](/documentation/platform/agent-vault/sessions#revoke-a-session).
 
 <Note>
-  The proxy only supports HTTP/1.1. WebSocket connections and clients that only speak HTTP/2, such as gRPC clients, fail through the proxy. If the agent needs one of these connections, add the host to `NO_PROXY` and give the agent that credential another way.
+  The proxy only supports HTTP/1.1, so WebSocket connections and clients that only speak HTTP/2, such as gRPC clients, fail through the proxy. If an API offers both, configure the agent to use its plain HTTPS requests. Many SDKs fall back to HTTPS when a WebSocket connection fails.
 </Note>
 
 ## Step 5: Verify it works
