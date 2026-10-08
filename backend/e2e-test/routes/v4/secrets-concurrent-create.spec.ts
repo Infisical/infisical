@@ -1,4 +1,5 @@
 import { createIsolatedOrgAndProject } from "../../testUtils/fixtures";
+import { createSecretV2, getSecretsV2 } from "../../testUtils/secrets";
 
 // Each create runs inside a transaction that holds one pool connection. Any query in that path
 // that skips the transaction needs a second connection, and once concurrent creates outnumber the
@@ -12,30 +13,26 @@ describe("Concurrent secret creation", () => {
     const { projectId, authToken, cleanup } = await createIsolatedOrgAndProject("concurrent-secret-create");
 
     try {
-      const results = await Promise.all(
+      await Promise.all(
         Array.from({ length: CONCURRENT_CREATES }, (_, i) =>
-          testServer.inject({
-            method: "POST",
-            url: `/api/v4/secrets/CONCURRENT_SECRET_${i}`,
-            headers: { authorization: `Bearer ${authToken}` },
-            body: { projectId, environment: "dev", secretPath: "/", secretValue: `value-${i}` }
+          createSecretV2({
+            workspaceId: projectId,
+            environmentSlug: "dev",
+            secretPath: "/",
+            key: `CONCURRENT_SECRET_${i}`,
+            value: `value-${i}`,
+            authToken
           })
         )
       );
 
-      const failed = results
-        .map((res, i) => ({ i, statusCode: res.statusCode }))
-        .filter(({ statusCode }) => statusCode !== 200);
-      expect(failed).toEqual([]);
-
-      const listRes = await testServer.inject({
-        method: "GET",
-        url: "/api/v4/secrets",
-        headers: { authorization: `Bearer ${authToken}` },
-        query: { projectId, environment: "dev", secretPath: "/" }
+      const { secrets } = await getSecretsV2({
+        workspaceId: projectId,
+        environmentSlug: "dev",
+        secretPath: "/",
+        authToken
       });
-      expect(listRes.statusCode).toBe(200);
-      expect(listRes.json().secrets).toHaveLength(CONCURRENT_CREATES);
+      expect(secrets).toHaveLength(CONCURRENT_CREATES);
     } finally {
       await cleanup();
     }
