@@ -10,6 +10,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { SyncMetadataSchema } from "@app/services/certificate-sync/certificate-sync-schemas";
 import { PkiSync, PkiSyncStatus } from "@app/services/pki-sync/pki-sync-enums";
+import { PkiSyncExportFormat } from "@app/services/pki-sync/pki-sync-export-fns";
 import { PkiSyncFiltersField, PkiSyncStoredFiltersField } from "@app/services/pki-sync/pki-sync-schemas";
 
 const PkiSyncCertificateRefSchema = z.object({
@@ -97,7 +98,12 @@ const PkiSyncOptionsSchema = z.object({
   forbiddenCharacters: z.string().optional(),
   allowedCharacterPattern: z.string().optional(),
   maxCertificateNameLength: z.number().optional(),
-  minCertificateNameLength: z.number().optional()
+  minCertificateNameLength: z.number().optional(),
+  unsupportedExportFormats: z
+    .nativeEnum(PkiSyncExportFormat)
+    .array()
+    .optional()
+    .describe("Export formats this instance cannot produce, such as Java KeyStore when running in FIPS mode.")
 });
 
 const PkiSyncCertificateSchema = z.object({

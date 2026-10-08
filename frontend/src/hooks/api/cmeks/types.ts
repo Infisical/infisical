@@ -155,6 +155,7 @@ export enum CmekOrderBy {
 export enum AsymmetricKeyAlgorithm {
   RSA_4096 = "RSA_4096",
   ECC_NIST_P256 = "ECC_NIST_P256",
+  ED25519 = "ED25519",
   ML_DSA_44 = "ML_DSA_44",
   ML_DSA_65 = "ML_DSA_65",
   ML_DSA_87 = "ML_DSA_87"
@@ -195,6 +196,8 @@ export enum SigningAlgorithm {
   ECDSA_SHA_256 = "ECDSA_SHA_256",
   ECDSA_SHA_384 = "ECDSA_SHA_384",
   ECDSA_SHA_512 = "ECDSA_SHA_512",
+
+  ED25519 = "ED25519",
 
   // ML-DSA (post-quantum) — signing algorithm equals key algorithm
   ML_DSA_44 = "ML_DSA_44",

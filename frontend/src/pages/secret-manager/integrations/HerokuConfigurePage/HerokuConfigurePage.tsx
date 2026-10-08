@@ -11,7 +11,6 @@ import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "@app/c
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
-// import { RadioGroup } from "@app/components/v2/RadioGroup";
 import { useCreateIntegration } from "@app/hooks/api";
 import {
   useGetIntegrationAuthApps,

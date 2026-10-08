@@ -312,9 +312,9 @@ export const membershipIdentityServiceFactory = ({
     const membershipDoc = await membershipIdentityDAL.transaction(async (tx) => {
       // The project advisory lock before the row lock, the order every other caller takes: a product-route
       // change holding the advisory lock needs KEY SHARE on this row, so the reverse order deadlocks.
-      const newRolesHavePermanentAdmin = data.roles.some(
-        (r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary
-      );
+      const newIsActive = data.isActive ?? existingMembership.isActive;
+      const newRolesHavePermanentAdmin =
+        newIsActive && data.roles.some((r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary);
       if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Project) {
         await assertProductWillRetainAdmin({
           project: await projectDAL.findById(scopeData.projectId, tx),

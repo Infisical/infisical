@@ -1,8 +1,8 @@
 import { createMongoAbility } from "@casl/ability";
-import { Knex } from "knex";
+import knex, { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { AccessScope } from "@app/db/schemas";
+import { AccessScope, ProjectType } from "@app/db/schemas";
 
 import { membershipIdentityServiceFactory } from "./membership-identity-service";
 import {
@@ -40,8 +40,10 @@ const buildDto = (): TDeleteMembershipIdentityDTO => ({
 });
 
 const createService = ({
-  existingMembership = { id: MEMBERSHIP_ID, actorIdentityId: IDENTITY_ID }
-}: { existingMembership?: Record<string, unknown> | null } = {}) => {
+  existingMembership = { id: MEMBERSHIP_ID, actorIdentityId: IDENTITY_ID },
+  projectType,
+  tx = {} as Knex
+}: { existingMembership?: Record<string, unknown> | null; projectType?: ProjectType; tx?: Knex } = {}) => {
   const bumpIdentityRevocationVersion = vi.fn().mockResolvedValue(undefined);
   const insertOrgMembershipRevocationMarker = vi.fn().mockResolvedValue(undefined);
   const removeOrgMembershipRevocationMarkers = vi.fn().mockResolvedValue(undefined);
@@ -57,7 +59,7 @@ const createService = ({
     create: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID, actorIdentityId: IDENTITY_ID }),
     updateById: vi.fn().mockImplementation(async (id: string, data: Record<string, unknown>) => ({ id, ...data })),
     deleteById: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID }),
-    transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb({} as Knex))
+    transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(tx))
   };
 
   const service = membershipIdentityServiceFactory({
@@ -90,7 +92,9 @@ const createService = ({
     } as never,
     licenseService: { getPlan: vi.fn() } as never,
     applicationMembershipCleanupService: { cleanupActorApplicationMemberships: vi.fn() } as never,
-    projectDAL: { findById: vi.fn() } as never,
+    projectDAL: {
+      findById: vi.fn().mockResolvedValue(projectType ? { id: "project-1", type: projectType } : undefined)
+    } as never,
     keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
     usageMeteringService: { emit: vi.fn(), emitForProject: vi.fn() } as never,
     alertService: { deleteAlertsForResource } as never,
@@ -143,6 +147,35 @@ describe("deleteMembership org revocation bump ordering", () => {
 });
 
 const PROJECT_ID = "project-1";
+
+describe("project admin identity deactivation", () => {
+  test.each([ProjectType.CertificateManager, ProjectType.PAM, ProjectType.AgentVault])(
+    "refuses disabling the last admin while retaining its Admin role in %s",
+    async (projectType) => {
+      const query = knex({ client: "pg" }).queryBuilder();
+      vi.spyOn(query, "first").mockResolvedValueOnce({ count: "0" }).mockResolvedValue({ count: "1" });
+      const tx = Object.assign(
+        vi.fn(() => query),
+        { raw: vi.fn().mockResolvedValue(undefined) }
+      ) as unknown as Knex;
+      const { service, membershipIdentityDAL } = createService({
+        projectType,
+        tx,
+        existingMembership: { id: MEMBERSHIP_ID, actorIdentityId: IDENTITY_ID, isActive: true }
+      });
+      await expect(
+        service.updateMembership({
+          ...buildDto(),
+          scopeData: { scope: AccessScope.Project, orgId: SUB_ORG_ID, projectId: PROJECT_ID },
+          data: { roles: [{ role: "admin", isTemporary: false }], isActive: false }
+        })
+      ).rejects.toThrow("must keep at least one admin");
+      expect(membershipIdentityDAL.updateById).not.toHaveBeenCalled();
+      expect(membershipIdentityDAL.findByIdForUpdate).not.toHaveBeenCalled();
+      expect(query.toSQL().bindings).toContain(MEMBERSHIP_ID);
+    }
+  );
+});
 
 describe("deleteMembership alert cleanup", () => {
   beforeEach(() => vi.clearAllMocks());

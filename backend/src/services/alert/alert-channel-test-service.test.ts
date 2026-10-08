@@ -205,10 +205,7 @@ describe("alertChannelTestService", () => {
       expect(result).toEqual({
         success: true,
         deliveredTo: 1,
-        projectId: null,
-        resourceName: null,
-        alertName: null,
-        channelName: null
+        projectId: null
       });
       expect(sent).toHaveLength(1);
       expect(sent[0].config).toEqual({ webhookUrl: "https://hooks.slack.com/services/T/B/x" });
@@ -468,10 +465,7 @@ describe("alertChannelTestService", () => {
       await expect(service.testChannel(dto)).resolves.toEqual({
         success: true,
         deliveredTo: 1,
-        projectId: null,
-        resourceName: null,
-        alertName: null,
-        channelName: null
+        projectId: null
       });
       await expect(service.testChannel(dto)).rejects.toThrow(/Try again in 60s/);
     } finally {
@@ -505,10 +499,7 @@ describe("alertChannelTestService", () => {
       ).resolves.toEqual({
         success: true,
         deliveredTo: 1,
-        projectId: null,
-        resourceName: null,
-        alertName: null,
-        channelName: null
+        projectId: null
       });
     } finally {
       restoreSlack();
@@ -535,10 +526,7 @@ describe("alertChannelTestService", () => {
       expect(result).toEqual({
         success: false,
         error: "connect ECONNREFUSED",
-        projectId: null,
-        resourceName: null,
-        alertName: null,
-        channelName: null
+        projectId: null
       });
     } finally {
       restore();

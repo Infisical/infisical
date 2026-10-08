@@ -26,7 +26,7 @@ export const getDefaultOnPremFeatures = () => {
     enforceGoogleSSO: false,
     hsm: false,
     oidcSSO: true,
-    secretAccessInsights: false,
+    secretAccessInsights: true,
     scim: true,
     ldap: true,
     groups: false,

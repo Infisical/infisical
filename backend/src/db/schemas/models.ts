@@ -153,6 +153,7 @@ export enum TableName {
   AuditLog = "audit_logs",
   AuditLogStream = "audit_log_streams",
   AuditLogStreamOutbox = "audit_log_stream_outbox",
+  AuditLogSettings = "audit_log_settings",
   GitAppInstallSession = "git_app_install_sessions",
   GitAppOrg = "git_app_org",
   SecretScanningGitRisk = "secret_scanning_git_risks",
@@ -286,7 +287,6 @@ export enum TableName {
   AgentVaultSessionLogConfig = "agent_vault_session_log_configs",
   AgentVaultSessionLogChunk = "agent_vault_session_log_chunks",
 
-  VaultExternalMigrationConfig = "vault_external_migration_configs",
   ExternalMigrationConfig = "external_migration_configs",
 
   // PKI ACME
@@ -323,6 +323,7 @@ export enum TableName {
   ApprovalPolicySteps = "approval_policy_steps",
   ApprovalPolicyStepApprovers = "approval_policy_step_approvers",
   ApprovalPolicyBypassers = "approval_policy_bypassers",
+  ApprovalPolicySecretEnvironment = "approval_policy_secret_environments",
   ApprovalRequests = "approval_requests",
   ApprovalRequestSteps = "approval_request_steps",
   ApprovalRequestStepEligibleApprovers = "approval_request_step_eligible_approvers",

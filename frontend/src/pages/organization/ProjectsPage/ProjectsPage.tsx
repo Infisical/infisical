@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link, Outlet, useMatches } from "@tanstack/react-router";
-import { InfoIcon } from "lucide-react";
+import { Outlet, useMatches } from "@tanstack/react-router";
 
 import { AnnouncementModal } from "@app/components/announcements/AnnouncementModal";
 import { useAnnouncementSeen } from "@app/components/announcements/useAnnouncementSeen";
-import { PageHeader } from "@app/components/v2";
-import { AlertDescription, AlertTitle, DismissableAlert } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { useOrganization } from "@app/context";
 import { useGetRecentAnnouncements } from "@app/hooks/api/announcement";
 
@@ -16,7 +14,7 @@ import { ProjectCategoryOverview } from "./components/ProjectCategoryOverview";
 export const ProjectsPage = () => {
   const { t } = useTranslation();
   const matches = useMatches();
-  const { currentOrg, isSubOrganization } = useOrganization();
+  const { isSubOrganization } = useOrganization();
 
   const projectsRouteId =
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects";
@@ -56,27 +54,6 @@ export const ProjectsPage = () => {
         title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Overview`}
         description="Your team's complete security toolkit — organized and ready when you need them."
       />
-      <DismissableAlert
-        variant="info"
-        className="mb-4 md:mb-6"
-        actionKey="secret_sharing_moved_banner_dismissed"
-      >
-        <InfoIcon />
-        <AlertTitle>Secret Sharing Has Moved</AlertTitle>
-        <AlertDescription>
-          <p>
-            Secret sharing now lives under Secrets Management. Go to{" "}
-            <Link
-              to="/organizations/$orgId/projects/secret-management/secret-sharing"
-              params={{ orgId: currentOrg.id }}
-              className="inline underline hover:opacity-80"
-            >
-              Secret Sharing
-            </Link>
-            .
-          </p>
-        </AlertDescription>
-      </DismissableAlert>
       <ProjectCategoryOverview />
       {announcements && announcements.length > 0 && (
         <AnnouncementModal

@@ -1,6 +1,9 @@
 import { PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  CertificateAuthoritiesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
@@ -34,9 +37,9 @@ export const ExternalCaSection = () => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "ca",
     "deleteCa",
-    "caStatus", // enable / disable
-    "upgradePlan"
+    "caStatus" // enable / disable
   ] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   // maxCas covers every CA type, so an external CA is capped the same way an internal one is.
   // maxInternalCas is deliberately not consulted here: it caps INTERNAL only.
@@ -46,8 +49,9 @@ export const ExternalCaSection = () => {
 
   const handleCreateCa = () => {
     if (isAtCaLimit) {
-      handlePopUpOpen("upgradePlan", {
-        text: `Your plan includes ${caLimit.limit} certificate ${caLimit.limit === 1 ? "authority" : "authorities"}. Your organization is using ${caLimit.used}. Upgrade to add more.`
+      openUpgradeGate({
+        intent: CertificateAuthoritiesUpgradeIntent,
+        paywallKey: "cert-manager.external-ca"
       });
       return;
     }
@@ -154,12 +158,7 @@ export const ExternalCaSection = () => {
         }
       />
 
-      <UpgradePlanModal
-        paywallKey="cert-manager.external-ca"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { text: string })?.text}
-      />
+      {upgradeGate}
     </Card>
   );
 };

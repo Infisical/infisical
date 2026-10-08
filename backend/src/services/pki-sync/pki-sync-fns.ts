@@ -54,6 +54,7 @@ import {
 } from "./pki-sync-certificate-name-fns";
 import { PkiSync } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
+import { isExportFormatBlockedByFips, PkiSyncExportFormat } from "./pki-sync-export-fns";
 import { hasAnyPkiSyncFilter, PKI_SYNC_FILTER_KINDS, TPkiSyncFilterKind } from "./pki-sync-filter-fns";
 import { getHealthCheckCommand } from "./pki-sync-health-check-command-fns";
 import {
@@ -105,13 +106,22 @@ export const assertPkiSyncLicense = async (
   }
 };
 
+const SERVER_PKI_SYNC_DESTINATIONS = new Set<PkiSync>([PkiSync.LinuxServer, PkiSync.WindowsServer]);
+
 export const listPkiSyncOptions = () => {
+  const unsupportedExportFormats = Object.values(PkiSyncExportFormat).filter(isExportFormatBlockedByFips);
   return Object.values(PKI_SYNC_LIST_OPTIONS)
     .map((option) => {
       const additionalConnections = getPkiSyncConnectionApps(option.destination).filter(
         (app) => app !== option.connection
       );
-      return additionalConnections.length ? { ...option, additionalConnections } : option;
+      return {
+        ...option,
+        ...(additionalConnections.length ? { additionalConnections } : {}),
+        ...(SERVER_PKI_SYNC_DESTINATIONS.has(option.destination) && unsupportedExportFormats.length
+          ? { unsupportedExportFormats }
+          : {})
+      };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 };

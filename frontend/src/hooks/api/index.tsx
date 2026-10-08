@@ -7,6 +7,7 @@ export * from "./approvalPolicies";
 export * from "./approvalRequests";
 export * from "./assumePrivileges";
 export * from "./auditLogs";
+export * from "./auditLogSettings";
 export * from "./auditLogStreams";
 export * from "./auditReports";
 export * from "./auth";

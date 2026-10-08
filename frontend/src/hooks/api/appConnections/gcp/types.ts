@@ -22,3 +22,9 @@ export type TGcpCertificateMap = {
   name: string;
   description?: string;
 };
+
+export type TGcpCloudDnsZone = {
+  id: string;
+  name: string;
+  dnsName: string;
+};
