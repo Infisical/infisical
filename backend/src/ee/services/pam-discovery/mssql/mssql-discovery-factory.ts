@@ -1,3 +1,5 @@
+import net from "node:net";
+
 import slugify from "@sindresorhus/slugify";
 import knex from "knex";
 import pLimit from "p-limit";
@@ -21,6 +23,10 @@ const SCAN_CONCURRENCY = 32;
 const SWEEP_DIAL_TIMEOUT_MS = 3 * 1000;
 const MAX_ACCOUNTS_PER_HOST = 2000;
 const MAX_ACCOUNTS_PER_SCAN = 50000;
+const MAX_ACCOUNT_NAME_LENGTH = 64;
+const DEFAULT_PORT = 1433;
+const PROXY_HOST = "127.0.0.1";
+const REDIRECT_REFUSED = "EREDIRECTREFUSED";
 
 const SQL_LOGIN_AUTH_METHOD = "sql-login";
 
@@ -45,6 +51,8 @@ const describeDriverError = (err: unknown): string => {
   if (name === "KnexTimeoutError") return "Timed out connecting to the instance";
 
   switch (cause?.code) {
+    case REDIRECT_REFUSED:
+      return "The instance redirected the connection to another server, which discovery doesn't follow";
     case "ECONNREFUSED":
       return "Connection refused";
     case "ECONNRESET":
@@ -68,6 +76,15 @@ const describeScanError = (err: unknown): string =>
   err instanceof BadRequestError ? err.message : "Could not enumerate logins on this instance";
 
 const TRAILING_HYPHENS_REGEX = new RE2(/-+$/);
+
+const toAccountName = (host: string, port: number, login: string) => {
+  const suffix = slugify(`${port === DEFAULT_PORT ? "" : port} ${login}`, { lowercase: true })
+    .slice(0, MAX_ACCOUNT_NAME_LENGTH)
+    .replace(TRAILING_HYPHENS_REGEX, "");
+  const room = MAX_ACCOUNT_NAME_LENGTH - suffix.length - 1;
+  const prefix = room > 0 ? slugify(host, { lowercase: true }).slice(0, room).replace(TRAILING_HYPHENS_REGEX, "") : "";
+  return prefix ? `${prefix}-${suffix}` : suffix;
+};
 
 const NO_USABLE_ACCOUNT_MESSAGE =
   "No credential account can be used to scan. SQL Server discovery requires an account that uses SQL Server authentication with a stored password.";
@@ -119,19 +136,33 @@ export const msSqlDiscoveryFactory: TPamDiscoveryFactory = ({
 
   const enumerateInstance = (host: string, port: number, account: TMsSqlAccount) =>
     executeWithGateway(host, port, gatewayId, gatewayV2Service, async (proxyPort) => {
+      const connector = ({ host: dialHost, port: dialPort }: { host: string; port: number }) =>
+        new Promise<net.Socket>((resolve, reject) => {
+          if (dialHost !== PROXY_HOST || dialPort !== proxyPort) {
+            reject(Object.assign(new Error("Refused a server-sent redirect"), { code: REDIRECT_REFUSED }));
+            return;
+          }
+          const socket = net.connect({ host: PROXY_HOST, port: proxyPort });
+          socket.once("error", reject);
+          socket.once("connect", () => {
+            socket.off("error", reject);
+            resolve(socket);
+          });
+        });
       const options = account.sslEnabled
         ? {
             encrypt: true,
             trustServerCertificate: !account.sslRejectUnauthorized,
             // the driver dials the local proxy, so the certificate is checked against the real host instead
             serverName: host,
-            cryptoCredentialsDetails: account.sslCertificate ? { ca: account.sslCertificate } : {}
+            cryptoCredentialsDetails: account.sslCertificate ? { ca: account.sslCertificate } : {},
+            connector
           }
-        : { encrypt: false };
+        : { encrypt: false, connector };
       const db = knex({
         client: "mssql",
         connection: {
-          server: "localhost",
+          server: PROXY_HOST,
           port: proxyPort,
           database: account.database,
           user: account.username,
@@ -175,8 +206,6 @@ export const msSqlDiscoveryFactory: TPamDiscoveryFactory = ({
     complete: boolean;
   }> => {
     const machine = `${host}:${port}`;
-    if (signal.aborted) return { accounts: [], machine, complete: false };
-
     const candidates = [
       ...accounts.filter((a) => a.host === host && a.port === port),
       ...accounts.filter((a) => a.host !== host || a.port !== port)
@@ -184,6 +213,7 @@ export const msSqlDiscoveryFactory: TPamDiscoveryFactory = ({
 
     let lastError = "No credential account could authenticate";
     for (const account of candidates) {
+      if (signal.aborted) return { accounts: [], machine, complete: false };
       try {
         // eslint-disable-next-line no-await-in-loop
         const logins = await enumerateInstance(host, port, account);
@@ -206,7 +236,7 @@ export const msSqlDiscoveryFactory: TPamDiscoveryFactory = ({
               }),
           accounts: logins.slice(0, MAX_ACCOUNTS_PER_HOST).map((login) => ({
             accountType: PamAccountType.MsSQL,
-            name: slugify(`${host} ${login}`, { lowercase: true }).slice(0, 64).replace(TRAILING_HYPHENS_REGEX, ""),
+            name: toAccountName(host, port, login),
             fingerprint: `${machine}:${login}`,
             details: {
               connectionDetails: {
@@ -273,13 +303,19 @@ export const msSqlDiscoveryFactory: TPamDiscoveryFactory = ({
 
     const discovered: TDiscoveredAccount[] = [];
     const scannedAccountMachines: string[] = [];
+    const machineErrors: TDiscoveryMachineError[] = [];
     let droppedInstances = 0;
     for (const result of results) {
       if (discovered.length + result.accounts.length > MAX_ACCOUNTS_PER_SCAN) {
         droppedInstances += 1;
+        machineErrors.push({
+          machine: result.machine,
+          error: `The scan reached its limit of ${MAX_ACCOUNTS_PER_SCAN} accounts, so this instance's logins were not staged`
+        });
       } else {
         discovered.push(...result.accounts);
         if (result.complete) scannedAccountMachines.push(result.machine);
+        if (result.error) machineErrors.push(result.error);
       }
     }
     if (droppedInstances) {
@@ -290,7 +326,7 @@ export const msSqlDiscoveryFactory: TPamDiscoveryFactory = ({
 
     return {
       accounts: discovered,
-      machineErrors: results.flatMap((r) => (r.error ? [r.error] : [])),
+      machineErrors,
       dependencies: [],
       scannedDependencyMachines: [],
       scannedAccountMachines
