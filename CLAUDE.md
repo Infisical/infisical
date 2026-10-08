@@ -77,6 +77,10 @@ It is a floor, not an exhaustive standard: user-understandable error messages an
 
 That list describes what the guide currently covers; it is **not** a test for whether the guide applies. Do not skip it because a change does not look like one of those topics. Read it, then decide which items are relevant.
 
+Treat that list as a summary of the guide's current contents, not as a condition for reading it. A change that does not look like any of those topics still gets checked, because the guide grows and because the items apply in places they are not obviously about (a bug fix that adds a query inside an existing transaction, a refactor that moves a third-party list call).
+
+Some of it needs judgment rather than a mechanical check. The deadlock rules cannot be caught by testing one request at a time. And a design that breaks REST should be raised with the author, with the conforming alternative proposed, rather than implemented silently or quietly "fixed" (some deviations are deliberate).
+
 ### Code Comments
 
 **Default to no comments.** One earns its place only by explaining *why*: a non-obvious constraint, a workaround, an ordering dependency, or logic that looks wrong until you know the reason.
