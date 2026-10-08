@@ -89,26 +89,28 @@ Path alias: `@app/*` maps to `./src/*`.
 
 These load automatically when you read a file in that folder. Read the file directly when your change touches the area without opening one of its files.
 
-- Adding `AuthMode.OAUTH` to a route, adding an Administration route, or changing how OAuth tokens are issued or exchanged: `src/services/oauth-client/CLAUDE.md`
-- Changing how an invite, removal, SCIM, or SSO login path finds a user, or syncing a user's email or name from an IdP: `src/services/user-alias/CLAUDE.md`
-- Changing role or privilege assignment, identity auth method access, project permission caching, or a folder grant, rename, move, or delete path: `src/ee/services/permission/CLAUDE.md`
-- Adding `requestMemoize` to a call: `src/lib/request-context/CLAUDE.md`
-- Adding queued or background work: `src/queue/CLAUDE.md`
-- Adding recurring or scheduled work, or a per-process refresh: `src/lib/cron/CLAUDE.md`
-- Adding or changing an alert provider or channel, or deleting or detaching an alertable resource: `src/services/alert/CLAUDE.md`
-- Emitting a domain event, or adding an event consumer: `src/services/event-outbox/CLAUDE.md`
-- Soft-deleting a resource, deleting rows in bulk, or adding a foreign key that takes part in a cascade: `src/db/CLAUDE.md`
-- Making a long-running route stop when its client disconnects: `src/server/lib/CLAUDE.md`
-- Adding a code path that revokes a certificate, changing CA signing (`TCaSigner`), or changing CRL or OCSP: `src/ee/services/certificate-authority-ocsp/CLAUDE.md`
-- Adding a dynamic secret provider, or changing what a provider stores in its config or lease: `src/ee/services/dynamic-secret/CLAUDE.md`
-- Touching a gateway dial path, or attaching a gateway to a resource: `src/ee/services/gateway-v2/CLAUDE.md`
-- Adding an audit log event type, collapsing an audit log event, or changing audit log settings: `src/ee/services/audit-log/CLAUDE.md`
-- Adding or changing a server plugin: `src/server/plugins/CLAUDE.md`
-- Adding or changing an OpenTelemetry metric or its attributes: `src/lib/telemetry/CLAUDE.md`
-- Changing PostHog event aggregation: `src/services/telemetry/CLAUDE.md`
-- Changing root encryption key rotation, or calling a `*WithRootEncryptionKey` function: `src/services/kms/CLAUDE.md`
-- Writing an e2e test that fakes a third-party provider: `e2e-test/CLAUDE.md`
-- Editing `Dockerfile.fips-toolchain` or `Dockerfile.dev.fips`, or building the backend image without GHCR: [`FIPS_TOOLCHAIN.md`](FIPS_TOOLCHAIN.md)
+| Task | Instructions |
+|---|---|
+| Adding `AuthMode.OAUTH` to a route, adding an Administration route, or changing how OAuth tokens are issued or exchanged | `src/services/oauth-client/CLAUDE.md` |
+| Changing how an invite, removal, SCIM, or SSO login path finds a user, or syncing a user's email or name from an IdP | `src/services/user-alias/CLAUDE.md` |
+| Changing role or privilege assignment, identity auth method access, project permission caching, or a folder grant, rename, move, or delete path | `src/ee/services/permission/CLAUDE.md` |
+| Adding `requestMemoize` to a call | `src/lib/request-context/CLAUDE.md` |
+| Adding queued or background work | `src/queue/CLAUDE.md` |
+| Adding recurring or scheduled work, or a per-process refresh | `src/lib/cron/CLAUDE.md` |
+| Adding or changing an alert provider or channel, or deleting or detaching an alertable resource | `src/services/alert/CLAUDE.md` |
+| Emitting a domain event, or adding an event consumer | `src/services/event-outbox/CLAUDE.md` |
+| Soft-deleting a resource, deleting rows in bulk, or adding a foreign key that takes part in a cascade | `src/db/CLAUDE.md` |
+| Making a long-running route stop when its client disconnects | `src/server/lib/CLAUDE.md` |
+| Adding a code path that revokes a certificate, changing CA signing (`TCaSigner`), or changing CRL or OCSP | `src/ee/services/certificate-authority-ocsp/CLAUDE.md` |
+| Adding a dynamic secret provider, or changing what a provider stores in its config or lease | `src/ee/services/dynamic-secret/CLAUDE.md` |
+| Touching a gateway dial path, or attaching a gateway to a resource | `src/ee/services/gateway-v2/CLAUDE.md` |
+| Adding an audit log event type, collapsing an audit log event, or changing audit log settings | `src/ee/services/audit-log/CLAUDE.md` |
+| Adding or changing a server plugin | `src/server/plugins/CLAUDE.md` |
+| Adding or changing an OpenTelemetry metric or its attributes | `src/lib/telemetry/CLAUDE.md` |
+| Changing PostHog event aggregation | `src/services/telemetry/CLAUDE.md` |
+| Changing root encryption key rotation, or calling a `*WithRootEncryptionKey` function | `src/services/kms/CLAUDE.md` |
+| Writing an e2e test that fakes a third-party provider | `e2e-test/CLAUDE.md` |
+| Editing `Dockerfile.fips-toolchain` or `Dockerfile.dev.fips`, or building the backend image without GHCR | [`FIPS_TOOLCHAIN.md`](FIPS_TOOLCHAIN.md) |
 
 ## ESLint & Import Ordering
 
