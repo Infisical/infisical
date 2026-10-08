@@ -23,17 +23,27 @@ import {
   TGcpServiceAccountKeyRotationWithConnection
 } from "./gcp-service-account-key-rotation-types";
 
-// GCP documents that a new key can take 60 seconds or more before it is accepted, but the rotation
-// holds a 60 second lock, so polling stops well short of that and the attempt fails instead.
-const KEY_VERIFICATION_MAX_ATTEMPTS = 12;
-const KEY_VERIFICATION_INTERVAL_MS = 3000;
+// GCP documents that a new key can take 60 seconds or more before it is accepted. Every check has to
+// finish inside this rotation's lock, which SECRET_ROTATION_LOCK_TTL_MS sets to 5 minutes.
+const KEY_VERIFICATION_MAX_ATTEMPTS = 5;
+const KEY_VERIFICATION_INTERVAL_MS = 60 * 1000;
 
 type TGoogleApiError = {
-  error?: { status?: string; message?: string };
+  error?: {
+    status?: string;
+    message?: string;
+    details?: { "@type"?: string; reason?: string }[];
+  };
 };
 
 const getGoogleApiError = (error: unknown) =>
   error instanceof AxiosError ? (error.response?.data as TGoogleApiError | undefined)?.error : undefined;
+
+// The machine-readable cause of a Google API error (e.g. SERVICE_DISABLED), which unlike the message is part of
+// the API contract.
+const getGoogleApiErrorReason = (error: unknown) =>
+  getGoogleApiError(error)?.details?.find((detail) => detail["@type"] === "type.googleapis.com/google.rpc.ErrorInfo")
+    ?.reason;
 
 const getErrorMessage = (error: unknown): string => {
   if (error instanceof AxiosError) return getGoogleApiError(error)?.message ?? error.message;
@@ -66,13 +76,13 @@ export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
     const message = getErrorMessage(error);
     const status = getErrorStatus(error);
 
-    if (status === 403) {
-      if (message.includes("has not been used in project") || message.includes("is disabled")) {
-        return new BadRequestError({
-          message: `Failed to ${action}: the Identity and Access Management (IAM) API is not enabled on the GCP project of the connection's service account. Enable it in the Google Cloud console and try again.`
-        });
-      }
+    if (getGoogleApiErrorReason(error) === "SERVICE_DISABLED") {
+      return new BadRequestError({
+        message: `Failed to ${action}: the Identity and Access Management (IAM) API is not enabled on the GCP project of the connection's service account. Enable it in the Google Cloud console and try again.`
+      });
+    }
 
+    if (status === 403) {
       return new BadRequestError({
         message: `Failed to ${action}: the connection's service account is not allowed to manage keys of GCP service account "${serviceAccountEmail}". Grant it the Service Account Key Admin role (roles/iam.serviceAccountKeyAdmin) on that service account and try again.`
       });
@@ -241,6 +251,9 @@ export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
   > = async (credentialsToRevoke, callback, _activeCredentials, options) => {
     const accessToken = await getGcpConnectionAuthToken(connection);
 
+    // The new key is created before the previous one is deleted, so a failed create or a key GCP never
+    // accepts can't leave the service account with fewer working keys than before. The cost is room for a
+    // third key under GCP's 10 key limit while the rotation runs.
     const newCredentials = await $createKey(accessToken, Boolean(options?.isBackgroundJob));
 
     // Delete before committing, so a failure leaves GCP and the rotation agreeing with each other and the

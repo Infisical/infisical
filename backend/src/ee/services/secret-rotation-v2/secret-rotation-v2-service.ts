@@ -38,7 +38,9 @@ import {
   throwOnImmutableParameterUpdate
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-fns";
 import {
+  DEFAULT_SECRET_ROTATION_LOCK_TTL_MS,
   SECRET_ROTATION_CONNECTION_MAP,
+  SECRET_ROTATION_LOCK_TTL_MS,
   SECRET_ROTATION_NAME_MAP
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import {
@@ -1309,7 +1311,10 @@ export const secretRotationV2ServiceFactory = ({
 
     try {
       try {
-        lock = await keyStore.acquireLock([KeyStorePrefixes.SecretRotationLock(rotationId)], 60 * 1000);
+        lock = await keyStore.acquireLock(
+          [KeyStorePrefixes.SecretRotationLock(rotationId)],
+          SECRET_ROTATION_LOCK_TTL_MS[type as SecretRotation] ?? DEFAULT_SECRET_ROTATION_LOCK_TTL_MS
+        );
       } catch (e) {
         throw new InternalServerError({
           message: "Failed to acquire rotation lock."

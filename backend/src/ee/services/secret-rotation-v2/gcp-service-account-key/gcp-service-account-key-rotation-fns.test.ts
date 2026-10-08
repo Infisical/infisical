@@ -3,10 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TSecretRotationV2Raw } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 
-const { postMock, deleteMock, authorizeMock } = vi.hoisted(() => ({
+const { postMock, deleteMock, authorizeMock, delayMock } = vi.hoisted(() => ({
   postMock: vi.fn<(url: string, body?: unknown, config?: unknown) => Promise<unknown>>(),
   deleteMock: vi.fn<(url: string, config?: unknown) => Promise<unknown>>(),
-  authorizeMock: vi.fn<() => Promise<unknown>>()
+  authorizeMock: vi.fn<() => Promise<unknown>>(),
+  delayMock: vi.fn<(ms: number) => Promise<void>>()
 }));
 
 vi.mock("@app/lib/config/request", () => ({
@@ -22,7 +23,7 @@ vi.mock("google-auth-library", () => ({
   }
 }));
 vi.mock("@app/lib/delay", () => ({
-  delay: vi.fn(async () => {})
+  delay: delayMock
 }));
 vi.mock("@app/lib/logger", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }
