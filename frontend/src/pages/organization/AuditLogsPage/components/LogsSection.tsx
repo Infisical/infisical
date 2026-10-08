@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { AuditLogsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import {
   Alert,
   AlertDescription,
@@ -217,13 +217,16 @@ const LogsSectionComponent = ({
             timezone={timezone}
           />
         </CardContent>
-        <UpgradePlanModal
+        <UpgradeGate
           paywallKey="organization.logs"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => {
             handlePopUpToggle("upgradePlan", isOpen);
           }}
-          text="Your current plan does not include access to audit logs. To unlock this feature, please upgrade to Infisical Pro plan."
+          intent={{
+            ...AuditLogsUpgradeIntent,
+            isEnterpriseFeature: false
+          }}
         />
       </Card>
     );
@@ -303,13 +306,16 @@ const LogsSectionComponent = ({
         }}
         timezone={timezone}
       />
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.logs"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("upgradePlan", isOpen);
         }}
-        text="Your current plan does not include access to audit logs. To unlock this feature, please upgrade to Infisical Pro plan."
+        intent={{
+          ...AuditLogsUpgradeIntent,
+          isEnterpriseFeature: false
+        }}
       />
     </div>
   );

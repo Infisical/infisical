@@ -24,6 +24,14 @@ export const secretRotations = [
     rotationType: "Dual-Phase",
   },
   {
+    name: "GCP Service Account Key",
+    slug: "gcp-service-account-key",
+    path: "/documentation/platform/secret-rotation/gcp-service-account-key",
+    description: "Learn how to automatically rotate GCP service account keys.",
+    category: "Cloud Providers",
+    rotationType: "Dual-Phase",
+  },
+  {
     name: "Databricks Service Principal Secret",
     slug: "databricks-service-principal-secret",
     path: "/documentation/platform/secret-rotation/databricks-service-principal-secret",
