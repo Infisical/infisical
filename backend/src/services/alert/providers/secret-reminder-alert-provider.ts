@@ -170,8 +170,7 @@ export const secretReminderAlertProviderFactory = ({
       throw new BadRequestError({ message: "Secret reminders must be managed within a project" });
     }
     if (!input.resourceId) {
-      // A reminder alert's name carries its secret key, so a listing across a project would reveal keys
-      // the caller may not be allowed to see.
+      // A project-wide listing would reveal the keys of secrets the caller may not be allowed to see.
       throw new BadRequestError({ message: "Secret reminders can only be managed for a single secret" });
     }
     const [secret] = await $loadSecretsWithPath([input.resourceId]);

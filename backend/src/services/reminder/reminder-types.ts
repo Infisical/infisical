@@ -31,11 +31,7 @@ export type TCreateReminderDTO = {
   };
 };
 
-export type TPrepareReminderDTO = TCreateReminderDTO & {
-  // The key the secret will have once the caller's own write lands (eg a rename in the same update), so
-  // the alert is named after it rather than the key being replaced.
-  secretKey?: string;
-};
+export type TPrepareReminderDTO = TCreateReminderDTO;
 
 // A reminder that has passed every check, ready to be written with applyReminder in the caller's
 // transaction.

@@ -66,7 +66,7 @@ const buildProvider = (
 
 const alertContext: TAlertContext = {
   id: "alert-1",
-  name: "Reminder for DB_PASSWORD",
+  name: "Secret reminder",
   orgId: "org-1",
   projectId: "proj-1",
   resourceType: SECRET_REMINDER_RESOURCE_TYPE,

@@ -300,7 +300,7 @@ describe("reminder alert sync", () => {
 
     expect(alertRequests).toEqual([
       expect.objectContaining({
-        name: "Reminder for DB_PASSWORD",
+        name: "Secret reminder",
         resourceType: SECRET_REMINDER_RESOURCE_TYPE,
         resourceId: "secret-1",
         eventType: SECRET_REMINDER_DUE_EVENT,
@@ -347,16 +347,6 @@ describe("reminder alert sync", () => {
     await service.applyReminder(prepared, callerTx);
     expect(calls).toEqual(["alert:apply", "reminder:create"]);
     expect(writeTxs).toEqual([callerTx, callerTx]);
-  });
-
-  test("a rename in the same request names the alert after the new key", async () => {
-    const { service, alertRequests } = buildWriteService();
-    await service.prepareReminder({
-      ...caller,
-      secretKey: "RENAMED",
-      reminder: { secretId: "secret-1", repeatDays: 30, recipients: ["user-1"] }
-    } as never);
-    expect(alertRequests).toEqual([expect.objectContaining({ name: "Reminder for RENAMED" })]);
   });
 
   test("no recipients means everyone in the project", async () => {

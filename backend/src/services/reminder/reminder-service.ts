@@ -24,9 +24,8 @@ import { TCreateReminderDTO, TReminderMove, TReminderServiceFactory } from "./re
 
 const ORPHAN_REAP_BATCH_SIZE = 500;
 const MAX_ORPHAN_REAP_BATCHES = 20;
-const MAX_ALERT_NAME_LENGTH = 255;
 
-const reminderAlertName = (secretKey: string) => `Reminder for ${secretKey}`.slice(0, MAX_ALERT_NAME_LENGTH);
+const REMINDER_ALERT_NAME = "Secret reminder";
 
 type TReminderServiceFactoryDep = {
   reminderDAL: TReminderDALFactory;
@@ -168,8 +167,7 @@ export const reminderServiceFactory = ({
     actorId,
     actorOrgId,
     actorAuthMethod,
-    reminder,
-    secretKey
+    reminder
   }) => {
     const { secret, subjectFields } = await $getSecretForPermissionCheck(reminder.secretId!);
     const { permission } = await permissionService.getProjectPermission({
@@ -194,7 +192,7 @@ export const reminderServiceFactory = ({
       resourceId: secret.id,
       projectId: secret.projectId,
       eventType: SECRET_REMINDER_DUE_EVENT,
-      name: reminderAlertName(secretKey ?? secret.key),
+      name: REMINDER_ALERT_NAME,
       channels: reminder.channels
         ? { replaceAll: reminder.channels }
         : {
