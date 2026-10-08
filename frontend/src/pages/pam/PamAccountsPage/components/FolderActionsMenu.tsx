@@ -16,7 +16,6 @@ import {
   PamFolderCallerAccess,
   PamResourcePermissionActions,
   TPamFolderWithCount,
-  useGetPamAccessCapabilities,
   usePamFolderActions
 } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
@@ -39,17 +38,17 @@ export const FolderActionsMenu = ({
   onJoinAsAdmin
 }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { data: capabilities } = useGetPamAccessCapabilities();
 
   // Every role sees the same menu with the same items, so permissions only decide what's disabled —
-  // fetch them when the menu opens rather than once per visible folder on page load. A product admin
+  // fetch them when the menu opens rather than once per visible folder on page load. An org admin
   // with no membership on the folder has none to fetch.
   const { can, isLoading } = usePamFolderActions(
     folder.id,
     isOpen && folder.callerAccess !== PamFolderCallerAccess.None
   );
-  const canJoinAsAdmin =
-    Boolean(capabilities?.isProductAdmin) && folder.callerAccess !== PamFolderCallerAccess.Admin;
+  // callerAccess is only returned to org admins, the only role that can join a folder as admin.
+  const isOrgAdmin = folder.callerAccess !== undefined;
+  const canJoinAsAdmin = isOrgAdmin && folder.callerAccess !== PamFolderCallerAccess.Admin;
 
   // Treat an unresolved permission set as "not allowed" so nothing is actionable until it loads.
   const allowed = (action: PamResourcePermissionActions) => !isLoading && can(action);
@@ -121,9 +120,9 @@ export const FolderActionsMenu = ({
           </TooltipTrigger>
           {!canJoinAsAdmin && (
             <TooltipContent side="left">
-              {capabilities?.isProductAdmin
+              {isOrgAdmin
                 ? "You're already an admin of this folder"
-                : "Only product admins can join a folder as admin"}
+                : "Only organization admins can join a folder as admin"}
             </TooltipContent>
           )}
         </Tooltip>

@@ -402,7 +402,7 @@ export type TDeletePamFolderDTO = {
 
 export type TPamFolderWithCount = TPamFolder & {
   accountCount: number;
-  // Only returned to product admins, who see every folder and can join one as admin.
+  // Only returned to org admins, who see every folder and can join one as admin.
   callerAccess?: PamFolderCallerAccess;
 };
 

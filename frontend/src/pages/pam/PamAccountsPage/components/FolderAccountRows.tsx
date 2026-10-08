@@ -48,7 +48,7 @@ export const FolderAccountRows = ({
   onFolderJoinAsAdmin
 }: Props) => {
   const count = accounts ? accounts.length : folder.accountCount;
-  // Only product admins are sent folders they hold no membership on; opening one means joining it.
+  // Only org admins are sent folders they hold no membership on; opening one means joining it.
   const isNotMember = folder.callerAccess === PamFolderCallerAccess.None;
 
   return (

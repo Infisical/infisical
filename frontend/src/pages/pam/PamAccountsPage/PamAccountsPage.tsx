@@ -87,7 +87,7 @@ export const PamAccountsPage = () => {
   // never hide it. Capabilities just drive the create affordances and the empty-state copy.
   const { data: capabilities } = useGetPamAccessCapabilities();
 
-  // Backed by ReadAccounts/ReadFolder, so every role gets its visible subset (not a 403). Product admins
+  // Backed by ReadAccounts/ReadFolder, so every role gets its visible subset (not a 403). Org admins
   // also get the folders they aren't a member of, marked so they can join one as admin.
   const { data: folders = [], isLoading: isLoadingFolders } = useListPamFolders({
     includeNonMemberFolders: true

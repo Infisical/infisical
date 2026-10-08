@@ -44,7 +44,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
           .optional()
           .transform((v) => v === "true")
           .describe(
-            "For product admins, also return the folders they hold no membership on, so they can join one as admin. Ignored for everyone else and when filterByAction is set."
+            "For users holding the organization Admin role, also return the folders they hold no membership on, so they can join one as admin. Ignored for everyone else and when filterByAction is set."
           )
       }),
       response: {
@@ -56,7 +56,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
                 .nativeEnum(PamFolderCallerAccess)
                 .optional()
                 .describe(
-                  "The caller's own access to the folder. Returned only when a product admin sets includeNonMemberFolders."
+                  "The caller's own access to the folder. Returned only when an organization admin sets includeNonMemberFolders."
                 )
             })
           )
@@ -81,14 +81,15 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // RPC-shaped on purpose, to match the org admin's POST /organization-admin/projects/:projectId/grant-admin-access.
+  // RPC-shaped on purpose: an explicit action, not a membership resource, matching the org admin's
+  // grant-admin-access endpoint elsewhere in the product.
   server.route({
     method: "POST",
     url: "/:folderId/grant-admin-access",
     schema: {
       operationId: "grantPamFolderAdminAccess",
       description:
-        "Make the calling product admin an admin of a PAM folder, replacing any role they already hold on it. Only product admins can call this, and every call is recorded in the audit log.",
+        "Make the calling organization admin an admin of a PAM folder, replacing any role they already hold on it. Only users holding the organization Admin role can call this, and every call is recorded in the audit log.",
       tags: [ApiDocsTags.PamFolders],
       params: z.object({
         folderId: z.string().uuid().describe("The ID of the folder")
@@ -98,7 +99,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
       }
     },
     config: { rateLimit: writeLimit },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { folder, previousRole } = await server.services.pamFolder.grantAdminAccess({
         folderId: req.params.folderId,
@@ -114,7 +115,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         orgId: req.permission.orgId,
         projectId: req.internalPamProjectId,
         event: {
-          type: EventType.PAM_PRODUCT_ADMIN_ACCESS_FOLDER,
+          type: EventType.ORG_ADMIN_ACCESS_PAM_FOLDER,
           metadata: {
             folderId: folder.id,
             folderName: folder.name,

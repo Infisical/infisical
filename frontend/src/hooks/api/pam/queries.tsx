@@ -263,7 +263,7 @@ export const useListPamAccounts = (
 type TListPamFoldersParams = {
   search?: string;
   filterByAction?: string;
-  // Product admins only: also return folders they hold no membership on, so they can join one as admin.
+  // Org admins only: also return folders they hold no membership on, so they can join one as admin.
   includeNonMemberFolders?: boolean;
 };
 

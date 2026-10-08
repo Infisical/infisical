@@ -3888,7 +3888,7 @@ export const registerRoutes = async (
     permissionService,
     pamAccessRequestService,
     userDAL,
-    identityDAL,
+    userGroupMembershipDAL,
     notificationService,
     smtpService
   });

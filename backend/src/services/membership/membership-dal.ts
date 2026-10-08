@@ -211,8 +211,23 @@ export const membershipDALFactory = (db: TDbClient) => {
     }
   };
 
+  // For deletes that must take the membership row lock before touching its roles, the same order
+  // lockResourceMembershipForActor callers use, so the two can't deadlock.
+  const lockById = async (id: string, tx: Knex): Promise<TMemberships | undefined> => {
+    try {
+      return await tx(TableName.Membership)
+        .where({ id })
+        .select(selectAllTableCols(TableName.Membership))
+        .forUpdate()
+        .first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "LockMembershipById" });
+    }
+  };
+
   return {
     ...orm,
+    lockById,
     findResourceMembershipsForActor,
     findResourceMembershipsForActors,
     findResourceMembershipsForGroup,

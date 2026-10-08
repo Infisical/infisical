@@ -2,7 +2,8 @@ import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 
-import { RESOURCE_SCOPE, ResourceType, TPamFolders } from "@app/db/schemas";
+import { OrganizationActionScope, OrgMembershipRole, RESOURCE_SCOPE, ResourceType, TPamFolders } from "@app/db/schemas";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -13,7 +14,6 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -47,10 +47,13 @@ type TPamFolderServiceFactoryDep = {
     | "transaction"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete" | "find">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  permissionService: Pick<
+    TPermissionServiceFactory,
+    "getOrgPermission" | "getProjectPermission" | "getResourcePermission"
+  >;
   pamAccessRequestService: Pick<TPamAccessRequestServiceFactory, "cleanupFolderResources">;
   userDAL: Pick<TUserDALFactory, "find" | "findById">;
-  identityDAL: Pick<TIdentityDALFactory, "findById">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
 };
@@ -64,12 +67,27 @@ export const pamFolderServiceFactory = ({
   permissionService,
   pamAccessRequestService,
   userDAL,
-  identityDAL,
+  userGroupMembershipDAL,
   notificationService,
   smtpService
 }: TPamFolderServiceFactoryDep) => {
   const verifyMembership = (projectId: string, ctx: TActorContext) =>
     verifyProductMembership(permissionService, projectId, ctx);
+
+  // Joining a folder is for a person holding the org Admin role itself, the highest privilege there is, so it is
+  // no escalation. Machine identities are excluded so the decision to enter a folder is always a human one.
+  const canJoinFolders = async (ctx: TActorContext) => {
+    if (ctx.actor !== ActorType.USER) return false;
+    const { hasRole } = await permissionService.getOrgPermission({
+      actor: ctx.actor,
+      actorId: ctx.actorId,
+      orgId: ctx.actorOrgId,
+      actorAuthMethod: ctx.actorAuthMethod,
+      actorOrgId: ctx.actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
+    return hasRole(OrgMembershipRole.Admin);
+  };
 
   const verifyProductAdmin = async (projectId: string, ctx: TActorContext) => {
     const { hasRole } = await verifyMembership(projectId, ctx);
@@ -104,7 +122,7 @@ export const pamFolderServiceFactory = ({
     includeNonMemberFolders,
     ...ctx
   }: TListPamFoldersDTO & TActorContext) => {
-    const { hasRole } = await verifyMembership(projectId, ctx);
+    await verifyMembership(projectId, ctx);
 
     const actionsToCheck = filterByAction
       ? { anyOf: [filterByAction] }
@@ -131,9 +149,10 @@ export const pamFolderServiceFactory = ({
       });
     };
 
-    // Product admins can ask for every folder so they can explicitly join one as admin (grantAdminAccess).
+    // Org admins can ask for every folder so they can explicitly join one as admin (grantAdminAccess).
     // The folders they hold no membership on stay closed to them until they do.
-    if (!includeNonMemberFolders || filterByAction || !hasRole(PamProductRole.Admin)) return listVisible();
+    if (!includeNonMemberFolders || filterByAction) return listVisible();
+    if (!(await canJoinFolders(ctx))) return listVisible();
 
     const [visibleFolders, allFolders, adminFolders] = await Promise.all([
       listVisible(),
@@ -303,8 +322,8 @@ export const pamFolderServiceFactory = ({
     };
   };
 
-  // Mirrors the org admin's project access, which notifies that project's admins. Runs after commit without
-  // being awaited and never throws: the access is already granted and audited by then.
+  // Tells the folder's admins that an org admin let themselves in. Runs after commit without being awaited and
+  // never throws: the access is already granted and audited by then.
   const notifyFolderAdminsOfAdminAccess = async (folder: TPamFolders, ctx: TActorContext) => {
     try {
       const memberships = await membershipDAL.find({
@@ -312,8 +331,7 @@ export const pamFolderServiceFactory = ({
         scopeProjectId: folder.projectId,
         scopeResourceType: ResourceType.PamFolder,
         scopeResourceId: folder.id,
-        isActive: true,
-        $notNull: ["actorUserId"]
+        isActive: true
       });
       const roles = memberships.length
         ? await membershipRoleDAL.find({ $in: { membershipId: memberships.map((m) => m.id) } })
@@ -321,18 +339,25 @@ export const pamFolderServiceFactory = ({
       const adminMembershipIds = new Set(
         roles.filter((r) => r.role === PamResourceRole.Admin && isActiveRole(r)).map((r) => r.membershipId)
       );
-      const adminUserIds = memberships
-        .filter((m) => adminMembershipIds.has(m.id) && m.actorUserId !== ctx.actorId)
-        .map((m) => m.actorUserId as string);
+      const adminMemberships = memberships.filter((m) => adminMembershipIds.has(m.id));
+      const adminGroupIds = adminMemberships.map((m) => m.actorGroupId).filter((id): id is string => Boolean(id));
+      const groupMembers = adminGroupIds.length
+        ? await userGroupMembershipDAL.find({ $in: { groupId: adminGroupIds }, isPending: false })
+        : [];
+
+      const adminUserIds = [
+        ...new Set([
+          ...adminMemberships.map((m) => m.actorUserId).filter((id): id is string => Boolean(id)),
+          ...groupMembers.map((m) => m.userId)
+        ])
+      ].filter((id) => id !== ctx.actorId);
       if (adminUserIds.length === 0) return;
 
-      const [admins, actorName] = await Promise.all([
+      const [admins, actor] = await Promise.all([
         userDAL.find({ $in: { id: adminUserIds } }),
-        ctx.actor === ActorType.USER
-          ? userDAL.findById(ctx.actorId).then((user) => user?.email || user?.username)
-          : identityDAL.findById(ctx.actorId).then((identity) => identity?.name)
+        userDAL.findById(ctx.actorId)
       ]);
-      const name = actorName || "A PAM admin";
+      const name = actor?.email || actor?.username || "An organization admin";
 
       await notificationService.createUserNotifications(
         admins.map((admin) => ({
@@ -340,7 +365,7 @@ export const pamFolderServiceFactory = ({
           orgId: ctx.actorOrgId,
           type: NotificationType.PAM_FOLDER_ADMIN_ACCESS_ISSUED,
           title: "Direct Folder Access Issued",
-          body: `The PAM admin **${name}** has self-issued admin access to the folder **${folder.name}**.`,
+          body: `The organization admin **${name}** has self-issued admin access to the folder **${folder.name}**.`,
           link: `/organizations/${ctx.actorOrgId}/pam/accounts`
         }))
       );
@@ -350,19 +375,22 @@ export const pamFolderServiceFactory = ({
         await smtpService.sendMail({
           template: SmtpTemplates.PamFolderAdminAccess,
           recipients,
-          subjectLine: "PAM Folder Direct Access Issued",
+          subjectLine: "Organization Admin PAM Folder Direct Access Issued",
           substitutions: { actorName: name, folderName: folder.name }
         });
       }
     } catch (err) {
-      logger.error(err, `Failed to notify folder admins of a product admin joining [folderId=${folder.id}]`);
+      logger.error(err, `Failed to notify folder admins of an org admin joining [folderId=${folder.id}]`);
     }
   };
 
-  // The product-admin counterpart of the org admin's "access project" flow: folder access never falls back to
-  // the product admin, so entering a folder is an explicit, audited membership write.
+  // Folder access never falls back to anyone, so an org admin entering a folder is an explicit, audited
+  // membership write.
   const grantAdminAccess = async ({ folderId, projectId, ...ctx }: TGrantPamFolderAdminAccessDTO & TActorContext) => {
-    await verifyProductAdmin(projectId, ctx);
+    await verifyMembership(projectId, ctx);
+    if (!(await canJoinFolders(ctx))) {
+      throw new ForbiddenRequestError({ message: "Only organization admins can join a PAM folder as admin" });
+    }
 
     const folder = await pamFolderDAL.findById(folderId);
     if (!folder || folder.projectId !== projectId) {
