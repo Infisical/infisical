@@ -19,8 +19,8 @@ export const SecretScanningInstanceBanner = () => {
       <FontAwesomeIcon icon={faWarning} className="mt-0.5 shrink-0 text-base text-warning" />
       {isViewingActive ? (
         <p>
-          Secret Scanning no longer uses projects. Your organization&apos;s earlier Secret
-          Scanning projects are still available.{" "}
+          Secret Scanning no longer uses projects. Your organization&apos;s earlier Secret Scanning
+          projects are still available.{" "}
           <Link
             to="/organizations/$orgId/settings"
             params={{ orgId: currentOrg.id }}

@@ -98,8 +98,7 @@ export const OrgSecretScanningTab = () => {
           <AlertDescription>
             <p>
               Secret Scanning no longer uses projects. Opening Secret Scanning takes everyone to the
-              most recently created project below. The earlier ones stay available from their
-              links.
+              most recently created project below. The earlier ones stay available from their links.
             </p>
           </AlertDescription>
         </Alert>

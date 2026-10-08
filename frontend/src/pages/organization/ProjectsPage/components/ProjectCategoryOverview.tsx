@@ -37,8 +37,8 @@ import { fetchAgentVaultProjectId } from "@app/hooks/api/agentVault/queries";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
 import { resolvePamProjectId } from "@app/hooks/api/pam/queries";
-import { fetchSecretScanningProjectId } from "@app/hooks/api/secretScanningV2/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
+import { fetchSecretScanningProjectId } from "@app/hooks/api/secretScanningV2/queries";
 
 type ActiveProducts = ProjectType;
 
@@ -139,8 +139,7 @@ export const ProjectCategoryOverview = () => {
   const [pendingPamProjectId, setPendingPamProjectId] = useState<string | null>(null);
   const [isAgentVaultRequestAccessOpen, setIsAgentVaultRequestAccessOpen] = useState(false);
   const [pendingAgentVaultProjectId, setPendingAgentVaultProjectId] = useState<string | null>(null);
-  const [isSecretScanningRequestAccessOpen, setIsSecretScanningRequestAccessOpen] =
-    useState(false);
+  const [isSecretScanningRequestAccessOpen, setIsSecretScanningRequestAccessOpen] = useState(false);
   const [pendingSecretScanningProjectId, setPendingSecretScanningProjectId] = useState<
     string | null
   >(null);

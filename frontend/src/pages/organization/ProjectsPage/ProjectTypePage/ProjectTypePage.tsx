@@ -115,6 +115,10 @@ import {
 
 import { ProjectSearchInput } from "./ProjectSearchInput";
 
+// Single-project products: their one project always exists by the time this list renders, so creating
+// another is refused.
+const PROJECT_TYPES_BLOCKED_CREATION: ProjectType[] = [ProjectType.SecretScanning];
+
 enum ProjectsViewMode {
   GRID = "grid",
   LIST = "list"
@@ -1259,8 +1263,7 @@ const Toolbar = ({
             <ListIcon />
           </IconButton>
         </ButtonGroup>
-        {/* Secret Scanning's one project always exists by the time this list renders, so creating another is refused. */}
-        {projectType !== ProjectType.SecretScanning && (
+        {!PROJECT_TYPES_BLOCKED_CREATION.includes(projectType) && (
           <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
             {(isOldProjectV1Allowed) => (
               <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
