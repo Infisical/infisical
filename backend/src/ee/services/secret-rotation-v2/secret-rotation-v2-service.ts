@@ -822,6 +822,15 @@ export const secretRotationV2ServiceFactory = ({
         message: `Secret Rotation with ID "${rotationId}" is not configured for ${SECRET_ROTATION_NAME_MAP[type]}`
       });
 
+    // A running rotation saves the next rotation time from the settings it started with, so an edit made
+    // meanwhile would have its schedule overwritten when the rotation finishes.
+    const isRotationOccurring = Boolean(await keyStore.getItem(KeyStorePrefixes.SecretRotationLock(secretRotation.id)));
+
+    if (isRotationOccurring)
+      throw new BadRequestError({
+        message: "A rotation is currently in progress for this secret rotation. Please try again shortly."
+      });
+
     const nextRotationAt = calculateNextRotationAt({
       ...(secretRotation as TSecretRotationV2),
       ...payload,
