@@ -1,4 +1,5 @@
-import { FormLabel, Spinner } from "@app/components/v2";
+import { FormLabel } from "@app/components/v2";
+import { Spinner } from "@app/components/v3";
 import { useGetIntegrationAuthOctopusDeployScopeValues } from "@app/hooks/api/integrationAuth/queries";
 import {
   OctopusDeployScope,

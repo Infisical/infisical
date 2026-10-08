@@ -73,6 +73,7 @@ import { FireworksConnectionMethod } from "@app/hooks/api/appConnections/types/f
 import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/godaddy-connection";
 import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
+import { HpeIloConnectionMethod } from "@app/hooks/api/appConnections/types/hpe-ilo-connection";
 import { KempLoadMasterConnectionMethod } from "@app/hooks/api/appConnections/types/kemp-loadmaster-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { LiteLLMConnectionMethod } from "@app/hooks/api/appConnections/types/litellm-connection";
@@ -100,6 +101,7 @@ import { StripeConnectionMethod } from "@app/hooks/api/appConnections/types/stri
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
 import { TravisCIConnectionMethod } from "@app/hooks/api/appConnections/types/travis-ci-connection";
 import { TriggerDevConnectionMethod } from "@app/hooks/api/appConnections/types/trigger-dev-connection";
+import { UltraDNSConnectionMethod } from "@app/hooks/api/appConnections/types/ultradns-connection";
 import { VenafiConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-connection";
 import { VenafiTppConnectionMethod } from "@app/hooks/api/appConnections/types/venafi-tpp-connection";
 import { WinRMConnectionMethod } from "@app/hooks/api/appConnections/types/winrm-connection";
@@ -334,6 +336,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "PowerDNS.png",
     category: "DNS",
     description: "Manage DNS records on a self-hosted PowerDNS server."
+  },
+  [AppConnection.UltraDNS]: {
+    name: "UltraDNS",
+    image: "UltraDNS.png",
+    category: "DNS",
+    description: "Manage DNS records on UltraDNS."
   },
   [AppConnection.Zabbix]: {
     name: "Zabbix",
@@ -605,6 +613,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "NETWORKING",
     description: "Manage an F5 BIG-IP appliance."
   },
+  [AppConnection.HpeIloRedFish]: {
+    name: "HPE iLO",
+    image: "HPE iLO.png",
+    category: "INFRASTRUCTURE",
+    description: "Manage an HPE iLO server through the Redfish API."
+  },
   [AppConnection.Convex]: {
     name: "Convex",
     image: "Convex.png",
@@ -774,6 +788,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AdcsConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
     case MongoDBConnectionMethod.UsernameAndPassword:
+    case UltraDNSConnectionMethod.UsernamePassword:
       return { name: "Username & Password", icon: LockIcon };
     case SnowflakeConnectionMethod.UsernameAndToken:
       return { name: "Username & Token", icon: KeyRoundIcon };
@@ -854,6 +869,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case KempLoadMasterConnectionMethod.BasicAuth:
     case NutanixPrismCentralConnectionMethod.BasicAuth:
     case F5BigIpConnectionMethod.BasicAuth:
+    case HpeIloConnectionMethod.BasicAuth:
       return { name: "Basic Auth", icon: LockIcon };
     case NutanixPrismCentralConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };

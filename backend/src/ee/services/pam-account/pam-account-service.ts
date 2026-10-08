@@ -710,6 +710,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       const currentPamAccountCount = await pamAccountDAL.countByOrgId(ctx.actorOrgId);
       if (currentPamAccountCount >= plan.maxPamAccounts) {
         throw new BadRequestError({
+          name: "PAM_ACCOUNT_LIMIT_REACHED",
           message: "Failed to create PAM account due to plan limit reached. Upgrade plan to add more PAM accounts."
         });
       }

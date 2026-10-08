@@ -30,11 +30,12 @@ import { DynamicSecretStatus, TDynamicSecretServiceFactory } from "./dynamic-sec
 import { AzureEntraIDProvider } from "./providers/azure-entra-id";
 import { GcpIamServiceAccountSuffixError } from "./providers/gcp-iam";
 import { IbmApiConnectProvider } from "./providers/ibm-api-connect";
-import { DynamicSecretProviders, redactStoredInputs, SshStoredSchema, TDynamicProviderFns } from "./providers/models";
+import { DynamicSecretProviders, SshStoredSchema, TDynamicProviderFns } from "./providers/models";
+import { redactStoredInputs, restoreOmittedSecretFields } from "./providers/redact";
 
 type TDynamicSecretServiceFactoryDep = {
   dynamicSecretDAL: TDynamicSecretDALFactory;
-  dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "find">;
+  dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "find" | "countLeasesForDynamicSecret">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
   dynamicSecretQueueService: Pick<
     TDynamicSecretLeaseQueueServiceFactory,
@@ -208,7 +209,7 @@ export const dynamicSecretServiceFactory = ({
       selectedGatewayId = gatewayv2.id;
     }
 
-    const isConnected = await selectedProvider.validateConnection(provider.inputs, { projectId });
+    const isConnected = await selectedProvider.validateConnection(provider.inputs, { projectId, defaultTTL, maxTTL });
     if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
 
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
@@ -340,7 +341,10 @@ export const dynamicSecretServiceFactory = ({
     const decryptedStoredInput = JSON.parse(
       secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
     ) as object;
-    const newInput = { ...decryptedStoredInput, ...(inputs || {}) };
+    const newInput = restoreOmittedSecretFields(dynamicSecretCfg.type as DynamicSecretProviders, decryptedStoredInput, {
+      ...decryptedStoredInput,
+      ...(inputs || {})
+    });
     // Mutual exclusion: reject if both gateway fields are set
     if (
       inputs &&
@@ -368,11 +372,13 @@ export const dynamicSecretServiceFactory = ({
         throw error;
       }
     }
+    const activeLeaseCount = await dynamicSecretLeaseDAL.countLeasesForDynamicSecret(dynamicSecretCfg.id);
     const updatedInput = await selectedProvider.validateProviderInputs(newInput, {
       projectId,
       previousInputs: decryptedStoredInput,
       defaultTTL,
-      maxTTL
+      maxTTL,
+      hasActiveLeases: activeLeaseCount > 0
     });
 
     const updatedFields = getUpdatedFieldPaths(
@@ -449,7 +455,11 @@ export const dynamicSecretServiceFactory = ({
       selectedGatewayId = gatewayv2.id;
     }
 
-    const isConnected = await selectedProvider.validateConnection(newInput, { projectId });
+    const isConnected = await selectedProvider.validateConnection(newInput, {
+      projectId,
+      defaultTTL: defaultTTL ?? dynamicSecretCfg.defaultTTL,
+      maxTTL: maxTTL === undefined ? dynamicSecretCfg.maxTTL : maxTTL
+    });
     if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
 
     const updatedDynamicCfg = await dynamicSecretDAL.transaction(async (tx) => {

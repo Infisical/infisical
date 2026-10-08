@@ -269,6 +269,13 @@ export const appConnections = [
     category: "Networking & DNS",
   },
   {
+    name: "UltraDNS",
+    slug: "ultradns",
+    path: "/integrations/app-connections/ultradns",
+    description: "Learn how to connect Infisical to UltraDNS for ACME DNS validation.",
+    category: "Networking & DNS",
+  },
+  {
     name: "Windmill",
     slug: "windmill",
     path: "/integrations/app-connections/windmill",
@@ -582,6 +589,14 @@ export const appConnections = [
     path: "/integrations/app-connections/f5-big-ip",
     description:
       "Learn how to connect F5 BIG-IP to deploy and manage certificates with Infisical.",
+    category: "Networking & DNS",
+  },
+  {
+    name: "HPE iLO",
+    slug: "hpe-ilo",
+    path: "/integrations/app-connections/hpe-ilo",
+    description:
+      "Learn how to connect HPE iLO to manage iLO local accounts with Infisical.",
     category: "Networking & DNS",
   },
   {

@@ -36,6 +36,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.GitLab]: "GitLab",
   [AppConnection.Cloudflare]: "Cloudflare",
   [AppConnection.DNSMadeEasy]: "DNS Made Easy",
+  [AppConnection.UltraDNS]: "UltraDNS",
   [AppConnection.Zabbix]: "Zabbix",
   [AppConnection.Railway]: "Railway",
   [AppConnection.Bitbucket]: "Bitbucket",
@@ -87,6 +88,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Daytona]: "Daytona",
   [AppConnection.MicrosoftIntune]: "Microsoft Intune",
   [AppConnection.Stripe]: "Stripe",
+  [AppConnection.HpeIloRedFish]: "HPE iLO",
   [AppConnection.S3Compatible]: "S3-Compatible Storage"
 };
 
@@ -126,6 +128,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.GitLab]: AppConnectionPlanType.Regular,
   [AppConnection.Cloudflare]: AppConnectionPlanType.Regular,
   [AppConnection.DNSMadeEasy]: AppConnectionPlanType.Regular,
+  [AppConnection.UltraDNS]: AppConnectionPlanType.Regular,
   [AppConnection.Zabbix]: AppConnectionPlanType.Regular,
   [AppConnection.Railway]: AppConnectionPlanType.Regular,
   [AppConnection.Bitbucket]: AppConnectionPlanType.Regular,
@@ -177,5 +180,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Daytona]: AppConnectionPlanType.Regular,
   [AppConnection.MicrosoftIntune]: AppConnectionPlanType.Enterprise,
   [AppConnection.Stripe]: AppConnectionPlanType.Regular,
+  [AppConnection.HpeIloRedFish]: AppConnectionPlanType.Regular,
   [AppConnection.S3Compatible]: AppConnectionPlanType.Regular
 };

@@ -1,7 +1,6 @@
 import Markdown from "react-markdown";
-import { faCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDistance } from "date-fns";
+import { Trash2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
@@ -28,9 +27,11 @@ export const Notification = ({ notification, onDelete }: Props) => {
         <div className="flex items-start gap-2">
           {!notification.isRead && (
             <div className="flex h-5 items-center">
-              <FontAwesomeIcon
-                icon={faCircle}
-                className={twMerge("size-2 shrink-0", isCritical ? "text-danger" : "text-warning")}
+              <span
+                className={twMerge(
+                  "size-2 shrink-0 rounded-full",
+                  isCritical ? "bg-danger" : "bg-warning"
+                )}
               />
             </div>
           )}
@@ -44,28 +45,30 @@ export const Notification = ({ notification, onDelete }: Props) => {
               <Markdown>{notification.title}</Markdown>
             </TooltipContent>
           </Tooltip>
-          <span className="mt-px ml-auto text-xs whitespace-nowrap text-muted">
-            {formatDistance(notification.createdAt, new Date())} ago
-          </span>
+          <div className="relative ml-auto shrink-0 pl-7">
+            <span className="inline-block text-xs leading-5 whitespace-nowrap text-muted transition-transform group-focus-within:-translate-x-7 group-hover:-translate-x-7 [@media(hover:none)]:-translate-x-7">
+              {formatDistance(notification.createdAt, new Date())} ago
+            </span>
+            <IconButton
+              aria-label="Delete notification"
+              variant="ghost-muted"
+              size="2xs"
+              className="absolute -top-0.5 right-0 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(notification.id);
+              }}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <Trash2 />
+            </IconButton>
+          </div>
         </div>
         {notification.body && (
           <div className="w-full overflow-hidden text-xs break-words text-accent">
             <Markdown>{notification.body}</Markdown>
           </div>
         )}
-      </div>
-      <div className="mt-0.5 flex w-0 shrink-0 justify-end opacity-0 transition-all group-hover:w-[24px] group-hover:opacity-100">
-        <IconButton
-          aria-label="Delete notification"
-          variant="danger"
-          size="xs"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(notification.id);
-          }}
-        >
-          <FontAwesomeIcon icon={faTrash} />
-        </IconButton>
       </div>
     </div>
   );

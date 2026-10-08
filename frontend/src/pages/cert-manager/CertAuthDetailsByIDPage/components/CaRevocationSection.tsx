@@ -4,7 +4,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { z } from "zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  CertificateRevocationListsUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -96,8 +99,9 @@ const editSchema = z.object({
 type EditFormData = z.infer<typeof editSchema>;
 
 export const CaRevocationSection = ({ caId }: Props) => {
-  const { popUp, handlePopUpToggle } = usePopUp(["editRevocation", "upgradePlan"] as const);
+  const { popUp, handlePopUpToggle } = usePopUp(["editRevocation"] as const);
   const { subscription } = useSubscription();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const { data } = useGetCa({ caId, type: CaType.INTERNAL });
   const ca = data as TInternalCertificateAuthority | undefined;
@@ -132,7 +136,10 @@ export const CaRevocationSection = ({ caId }: Props) => {
 
   const handleAddCrlUrl = () => {
     if (!subscription.caCrl) {
-      handlePopUpToggle("upgradePlan", true);
+      openUpgradeGate({
+        intent: CertificateRevocationListsUpgradeIntent,
+        paywallKey: "cert-manager.ca-distribution-points"
+      });
       return;
     }
     crlUrls.append({ value: "" });
@@ -371,12 +378,7 @@ export const CaRevocationSection = ({ caId }: Props) => {
         </DialogContent>
       </Dialog>
 
-      <UpgradePlanModal
-        paywallKey="cert-manager.ca-distribution-points"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Custom CRL distribution points are available on Infisical's Enterprise plan."
-      />
+      {upgradeGate}
     </>
   );
 };

@@ -55,6 +55,7 @@ import { GoDaddyConnectionForm } from "./GoDaddyConnectionForm";
 import { HasuraCloudConnectionForm } from "./HasuraCloudConnectionForm";
 import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 import { HerokuConnectionForm } from "./HerokuAppConnectionForm";
+import { HpeIloConnectionForm } from "./HpeIloConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { KempLoadMasterConnectionForm } from "./KempLoadMasterConnectionForm";
 import { LaravelForgeConnectionForm } from "./LaravelForgeConnectionForm";
@@ -95,6 +96,7 @@ import { TeamCityConnectionForm } from "./TeamCityConnectionForm";
 import { TerraformCloudConnectionForm } from "./TerraformCloudConnectionForm";
 import { TravisCIConnectionForm } from "./TravisCIConnectionForm";
 import { TriggerDevConnectionForm } from "./TriggerDevConnectionForm";
+import { UltraDNSConnectionForm } from "./UltraDNSConnectionForm";
 import { VenafiConnectionForm } from "./VenafiConnectionForm";
 import { VenafiTppConnectionForm } from "./VenafiTppConnectionForm";
 import { VercelConnectionForm } from "./VercelConnectionForm";
@@ -274,6 +276,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <CloudflareConnectionForm onSubmit={onSubmit} />;
       case AppConnection.DNSMadeEasy:
         return <DNSMadeEasyConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.UltraDNS:
+        return <UltraDNSConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Spacelift:
         return <SpaceliftConnectionForm onSubmit={onSubmit} />;
       case AppConnection.S3Compatible:
@@ -366,6 +370,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <DatadogConnectionForm onSubmit={onSubmit} />;
       case AppConnection.F5BigIp:
         return <F5BigIpConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.HpeIloRedFish:
+        return <HpeIloConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Rundeck:
@@ -565,6 +571,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <CloudflareConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.DNSMadeEasy:
         return <DNSMadeEasyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.UltraDNS:
+        return <UltraDNSConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Spacelift:
         return <SpaceliftConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.S3Compatible:
@@ -649,6 +657,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DatadogConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.F5BigIp:
         return <F5BigIpConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.HpeIloRedFish:
+        return <HpeIloConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Rundeck:

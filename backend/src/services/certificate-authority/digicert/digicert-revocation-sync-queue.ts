@@ -7,7 +7,7 @@ import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { ActorType } from "@app/services/auth/auth-type";
 import {
-  CertificateAlertEvent,
+  CertificateApplicationAlertEvent,
   TCertificateAlertEventEmitter
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -72,7 +72,7 @@ export const digicertRevocationSyncQueueFactory = ({
     await certificateAlertEventEmitter.notify({
       certificateId: cert.id,
       projectId: cert.projectId,
-      eventType: CertificateAlertEvent.Revocation,
+      eventType: CertificateApplicationAlertEvent.Revocation,
       applicationId: cert.applicationId ?? null
     });
 

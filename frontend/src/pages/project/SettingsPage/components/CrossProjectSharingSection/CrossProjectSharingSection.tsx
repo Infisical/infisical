@@ -14,7 +14,10 @@ import {
   TrashIcon
 } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  CrossProjectSecretSharingUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { PermissionDeniedBanner } from "@app/components/permissions";
 import {
@@ -65,7 +68,6 @@ import {
   useListProjectFolderGrants
 } from "@app/hooks/api/projectFolderGrants";
 import { projectFolderGrantKeys } from "@app/hooks/api/projectFolderGrants/queries";
-import { usePopUp } from "@app/hooks/usePopUp";
 
 import { ShareSecretsEditData, ShareSecretsSheet } from "./ShareSecretsSheet";
 
@@ -204,7 +206,7 @@ export const CrossProjectSharingSection = () => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const canEditGrants =
     permission.can(
       ProjectPermissionProjectFolderGrantActions.CreateGrant,
@@ -402,7 +404,10 @@ export const CrossProjectSharingSection = () => {
               size="sm"
               onClick={() => {
                 if (!subscription?.crossProjectSecretSharing) {
-                  handlePopUpOpen("upgradePlan");
+                  openUpgradeGate({
+                    intent: CrossProjectSecretSharingUpgradeIntent,
+                    paywallKey: "project.cross-project-sharing"
+                  });
                   return;
                 }
                 setEditData(null);
@@ -447,12 +452,7 @@ export const CrossProjectSharingSection = () => {
         }}
         sourceProjectId={currentProject.id}
       />
-      <UpgradePlanModal
-        paywallKey="project.cross-project-sharing"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not allow sharing secrets across projects. To unlock this feature, please upgrade to Infisical Pro plan."
-      />
+      {upgradeGate}
     </Card>
   );
 };

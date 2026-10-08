@@ -20,6 +20,14 @@ export type TOrgUnitCountRow = { orgId: string; count: number };
 // read, so the two meters can never disagree about which certificates are live.
 export type TCertificateOrgUnitRow = TOrgUnitCountRow & { wildcard: number };
 
+export type TPkiRootOrgUsageRow = {
+  rootOrgId: string;
+  cas: number;
+  internalCas: number;
+  activeCertificates: number;
+  wildcardCertificates: number;
+};
+
 const toCount = (row: unknown): number => Number((row as { count?: string | number } | undefined)?.count ?? 0);
 
 // Live counts for the project-scoped metered features, summed across the whole org tree and excluding
@@ -397,6 +405,80 @@ export const usageCounterDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Orgs with a Certificate Manager project are included even at zero, so one that stops using PKI is
+  // overwritten with zeros rather than keeping stale counts. The last such project cannot be deleted.
+  const getPkiUsageByRootOrg = async (): Promise<TPkiRootOrgUsageRow[]> => {
+    const orgColumns = [`${TableName.Organization}.rootOrgId`, `${TableName.Organization}.id`];
+    const rootOrgIdSql = db.raw(`COALESCE(??, ??)`, orgColumns);
+    const rootOrgIdSelect = db.raw(`COALESCE(??, ??) as "rootOrgId"`, orgColumns);
+
+    try {
+      const caRows = (await db
+        .replicaNode()(TableName.CertificateAuthority)
+        .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
+        .join(TableName.Organization, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
+        .leftJoin(
+          TableName.InternalCertificateAuthority,
+          `${TableName.CertificateAuthority}.id`,
+          `${TableName.InternalCertificateAuthority}.caId`
+        )
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .groupBy(rootOrgIdSql)
+        .select(rootOrgIdSelect)
+        .countDistinct(`${TableName.CertificateAuthority}.id as cas`)
+        .countDistinct(`${TableName.InternalCertificateAuthority}.caId as internalCas`)) as {
+        rootOrgId: string;
+        cas: string | number;
+        internalCas: string | number;
+      }[];
+
+      const activeCertificateRows = (await $activeQuotaCertificates()
+        .join(TableName.Organization, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
+        .groupBy(rootOrgIdSql)
+        .select(rootOrgIdSelect)
+        .countDistinct(`${TableName.Certificate}.quotaKey as activeCertificates`)
+        .select(
+          db.raw(`COUNT(DISTINCT ??) FILTER (WHERE ??) as "wildcardCertificates"`, [
+            `${TableName.Certificate}.quotaKey`,
+            `${TableName.Certificate}.hasWildcard`
+          ])
+        )) as { rootOrgId: string; activeCertificates: string | number; wildcardCertificates: string | number }[];
+
+      const certManagerOrgRows = (await db
+        .replicaNode()(TableName.Project)
+        .join(TableName.Organization, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
+        .where(`${TableName.Project}.type`, ProjectType.CertificateManager)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .distinct(rootOrgIdSelect)) as { rootOrgId: string }[];
+
+      const usageByRootOrgId = new Map<string, TPkiRootOrgUsageRow>();
+      const getRow = (rootOrgId: string) => {
+        let row = usageByRootOrgId.get(rootOrgId);
+        if (!row) {
+          row = { rootOrgId, cas: 0, internalCas: 0, activeCertificates: 0, wildcardCertificates: 0 };
+          usageByRootOrgId.set(rootOrgId, row);
+        }
+        return row;
+      };
+
+      certManagerOrgRows.forEach(({ rootOrgId }) => getRow(rootOrgId));
+      caRows.forEach(({ rootOrgId, cas, internalCas }) => {
+        const row = getRow(rootOrgId);
+        row.cas = Number(cas);
+        row.internalCas = Number(internalCas);
+      });
+      activeCertificateRows.forEach(({ rootOrgId, activeCertificates, wildcardCertificates }) => {
+        const row = getRow(rootOrgId);
+        row.activeCertificates = Number(activeCertificates);
+        row.wildcardCertificates = Number(wildcardCertificates);
+      });
+
+      return [...usageByRootOrgId.values()];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Get PKI usage by root org" });
+    }
+  };
+
   const countAgentVaultIdentities = async (orgId?: string): Promise<number> => {
     try {
       return await countProjectIdentities(ProjectType.AgentVault, orgId);
@@ -417,6 +499,7 @@ export const usageCounterDALFactory = (db: TDbClient) => {
     getProjectIdentityBreakdown,
     getInternalCaOrgBreakdown,
     getActiveCertificateOrgBreakdown,
+    getPkiUsageByRootOrg,
     countAgentVaultIdentities
   };
 };
