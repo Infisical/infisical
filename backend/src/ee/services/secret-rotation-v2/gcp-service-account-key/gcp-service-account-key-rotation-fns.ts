@@ -10,9 +10,7 @@ import {
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { request } from "@app/lib/config/request";
-import { delay } from "@app/lib/delay";
 import { BadRequestError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { getGcpConnectionAuthToken } from "@app/services/app-connection/gcp";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -22,11 +20,6 @@ import {
   TGcpServiceAccountKeyRotationGeneratedCredentials,
   TGcpServiceAccountKeyRotationWithConnection
 } from "./gcp-service-account-key-rotation-types";
-
-// GCP documents that a new key can take 60 seconds or more before it is accepted. Every check has to
-// finish inside this rotation's lock, which SECRET_ROTATION_LOCK_TTL_MS sets to 5 minutes.
-const KEY_VERIFICATION_MAX_ATTEMPTS = 5;
-const KEY_VERIFICATION_INTERVAL_MS = 60 * 1000;
 
 type TGoogleApiError = {
   error?: {
@@ -151,37 +144,7 @@ export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
     }).authorize();
   };
 
-  // Apps read the mapped secret as soon as it changes, so a scheduled rotation only publishes a key once GCP
-  // accepts it. Rotations run from an HTTP request skip this, so the wait never holds a request open.
-  const $waitUntilKeyAccepted = async (keyId: string, serviceAccountKey: string) => {
-    let lastError: unknown;
-
-    for (let attempt = 1; attempt <= KEY_VERIFICATION_MAX_ATTEMPTS; attempt += 1) {
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        await $authenticateWithKey(serviceAccountKey);
-
-        if (attempt > 1) {
-          logger.info(
-            `secretRotation: GCP accepted new service account key [serviceAccountEmail=${serviceAccountEmail}] [keyId=${keyId}] [attempt=${attempt}]`
-          );
-        }
-
-        return;
-      } catch (error) {
-        lastError = error;
-      }
-
-      // eslint-disable-next-line no-await-in-loop
-      if (attempt < KEY_VERIFICATION_MAX_ATTEMPTS) await delay(KEY_VERIFICATION_INTERVAL_MS);
-    }
-
-    throw new BadRequestError({
-      message: `GCP did not accept the new key "${keyId}" for service account "${serviceAccountEmail}" in time: ${getErrorMessage(lastError)}`
-    });
-  };
-
-  const $createKey = async (accessToken: string, shouldWaitUntilAccepted: boolean) => {
+  const $createKey = async (accessToken: string) => {
     let data: TGcpServiceAccountKeyCreateResponse;
 
     try {
@@ -205,11 +168,7 @@ export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
         });
       }
 
-      const serviceAccountKey = Buffer.from(data.privateKeyData, "base64").toString("utf8");
-
-      if (shouldWaitUntilAccepted) await $waitUntilKeyAccepted(keyId, serviceAccountKey);
-
-      return { keyId, serviceAccountKey };
+      return { keyId, serviceAccountKey: Buffer.from(data.privateKeyData, "base64").toString("utf8") };
     });
   };
 
@@ -218,8 +177,7 @@ export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
   ) => {
     const accessToken = await getGcpConnectionAuthToken(connection);
 
-    // creating a rotation always runs inside an HTTP request
-    const credentials = await $createKey(accessToken, false);
+    const credentials = await $createKey(accessToken);
 
     return $deleteOnFailure(accessToken, credentials.keyId, () => callback(credentials));
   };
@@ -248,13 +206,13 @@ export const gcpServiceAccountKeyRotationFactory: TRotationFactory<
 
   const rotateCredentials: TRotationFactoryRotateCredentials<
     TGcpServiceAccountKeyRotationGeneratedCredentials
-  > = async (credentialsToRevoke, callback, _activeCredentials, options) => {
+  > = async (credentialsToRevoke, callback) => {
     const accessToken = await getGcpConnectionAuthToken(connection);
 
-    // The new key is created before the previous one is deleted, so a failed create or a key GCP never
-    // accepts can't leave the service account with fewer working keys than before. The cost is room for a
-    // third key under GCP's 10 key limit while the rotation runs.
-    const newCredentials = await $createKey(accessToken, Boolean(options?.isBackgroundJob));
+    // The new key is created before the previous one is deleted, so a failed create can't leave the service
+    // account with fewer working keys than before. The cost is room for a third key under GCP's 10 key limit
+    // while the rotation runs.
+    const newCredentials = await $createKey(accessToken);
 
     // Delete before committing, so a failure leaves GCP and the rotation agreeing with each other and the
     // new key is cleaned up rather than left untracked across retries.

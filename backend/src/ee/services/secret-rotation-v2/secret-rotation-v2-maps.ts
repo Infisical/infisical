@@ -66,11 +66,3 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.StripeApiKey]: AppConnection.Stripe,
   [SecretRotation.GcpServiceAccountKey]: AppConnection.GCP
 };
-
-export const DEFAULT_SECRET_ROTATION_LOCK_TTL_MS = 60 * 1000;
-
-// For rotations that wait on the provider after creating a credential, so a rotation still running can't
-// have its lock expire and another rotation start on the same credentials.
-export const SECRET_ROTATION_LOCK_TTL_MS: Partial<Record<SecretRotation, number>> = {
-  [SecretRotation.GcpServiceAccountKey]: 5 * 60 * 1000
-};

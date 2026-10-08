@@ -517,15 +517,10 @@ export type TRotationFactoryRevokeCredentials<T extends TSecretRotationV2Generat
   callback: () => Promise<TSecretRotationV2Raw>
 ) => Promise<TSecretRotationV2Raw>;
 
-// isBackgroundJob is true when a queue job runs the rotation rather than an HTTP request, so a factory
-// can do slow work, such as waiting for the provider to accept new credentials, without holding a request open.
-export type TRotationFactoryRotateCredentialsOptions = { isBackgroundJob: boolean };
-
 export type TRotationFactoryRotateCredentials<T extends TSecretRotationV2GeneratedCredentials> = (
   credentialsToRevoke: T[number] | undefined,
   callback: (newCredentials: T[number]) => Promise<TSecretRotationV2Raw>,
-  activeCredentials: T[number],
-  options?: TRotationFactoryRotateCredentialsOptions
+  activeCredentials: T[number]
 ) => Promise<TSecretRotationV2Raw>;
 
 export type TRotationFactoryGetSecretsPayload<T extends TSecretRotationV2GeneratedCredentials> = (

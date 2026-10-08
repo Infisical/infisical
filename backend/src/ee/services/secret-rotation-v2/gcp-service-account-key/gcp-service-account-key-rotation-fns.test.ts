@@ -3,11 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TSecretRotationV2Raw } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 
-const { postMock, deleteMock, authorizeMock, delayMock } = vi.hoisted(() => ({
+const { postMock, deleteMock, authorizeMock } = vi.hoisted(() => ({
   postMock: vi.fn<(url: string, body?: unknown, config?: unknown) => Promise<unknown>>(),
   deleteMock: vi.fn<(url: string, config?: unknown) => Promise<unknown>>(),
-  authorizeMock: vi.fn<() => Promise<unknown>>(),
-  delayMock: vi.fn<(ms: number) => Promise<void>>()
+  authorizeMock: vi.fn<() => Promise<unknown>>()
 }));
 
 vi.mock("@app/lib/config/request", () => ({
@@ -16,17 +15,11 @@ vi.mock("@app/lib/config/request", () => ({
 vi.mock("@app/services/app-connection/gcp", () => ({
   getGcpConnectionAuthToken: vi.fn(async () => "access-token")
 }));
-// Stands in for GCP's token endpoint, which is where a new key is accepted or rejected.
+// Stands in for GCP's token endpoint, which is where a key is accepted or rejected.
 vi.mock("google-auth-library", () => ({
   JWT: class {
     authorize = authorizeMock;
   }
-}));
-vi.mock("@app/lib/delay", () => ({
-  delay: delayMock
-}));
-vi.mock("@app/lib/logger", () => ({
-  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }
 }));
 
 // eslint-disable-next-line import/first
@@ -133,7 +126,7 @@ describe("gcpServiceAccountKeyRotationFactory", () => {
   });
 
   describe("issueCredentials", () => {
-    it("creates a key and hands the decoded key file to the callback without waiting for GCP", async () => {
+    it("creates a key and hands the decoded key file to the callback", async () => {
       mockGcp();
 
       const result = await makeFactory().issueCredentials(commit);
@@ -166,30 +159,6 @@ describe("gcpServiceAccountKeyRotationFactory", () => {
 
       expect(calls).toEqual(["create", "delete:old-key-id", "commit"]);
       expect(commit).toHaveBeenCalledWith(NEW_KEY);
-    });
-
-    it("waits until GCP accepts the new key when running as a background job", async () => {
-      mockGcp();
-      authorizeMock.mockImplementationOnce(async () => {
-        calls.push("authorize");
-        throw new Error("invalid_grant: Invalid JWT Signature.");
-      });
-
-      await makeFactory().rotateCredentials(OLD_KEY, commit, NEW_KEY, { isBackgroundJob: true });
-
-      expect(calls).toEqual(["create", "authorize", "authorize", "delete:old-key-id", "commit"]);
-    });
-
-    it("deletes the new key and keeps the previous one when GCP never accepts the new key", async () => {
-      mockGcp();
-      authorizeMock.mockRejectedValue(new Error("invalid_grant: Invalid JWT Signature."));
-
-      await expect(
-        makeFactory().rotateCredentials(OLD_KEY, commit, NEW_KEY, { isBackgroundJob: true })
-      ).rejects.toThrow("GCP did not accept the new key");
-
-      expect(calls).toEqual(["create", "delete:new-key-id"]);
-      expect(commit).not.toHaveBeenCalled();
     });
 
     it("deletes the new key and fails when deleting the previous key fails", async () => {
