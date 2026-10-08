@@ -1,4 +1,5 @@
 /* eslint-disable no-await-in-loop */
+import { Knex } from "knex";
 import path from "path";
 import RE2 from "re2";
 
@@ -36,7 +37,6 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { createSecretBlindIndexer } from "../secret-v2-bridge/secret-blind-index-fns";
-import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretDALFactory } from "./secret-dal";
 import {
   TCreateManySecretsRawFn,
@@ -1194,36 +1194,31 @@ export const decryptSecretWithBot = (
 
 type TFnDeleteProjectSecretReminders = {
   secretDAL: Pick<TSecretDALFactory, "find">;
-  secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find">;
-  reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
+  reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId" | "deleteRemindersByProjectId">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
 };
 
 export const fnDeleteProjectSecretReminders = async (
   projectId: string,
-  { secretDAL, secretV2BridgeDAL, reminderService, projectBotService, folderDAL }: TFnDeleteProjectSecretReminders
+  { secretDAL, reminderService, projectBotService, folderDAL }: TFnDeleteProjectSecretReminders,
+  tx?: Knex
 ) => {
-  const projectFolders = await folderDAL.findByProjectId(projectId);
   const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId, false);
+  if (shouldUseSecretV2Bridge) {
+    await reminderService.deleteRemindersByProjectId(projectId, tx);
+    return;
+  }
 
-  const projectSecrets = shouldUseSecretV2Bridge
-    ? await secretV2BridgeDAL.find({
-        $in: { folderId: projectFolders.map((folder) => folder.id) },
-        $notNull: ["reminderRepeatDays"]
-      })
-    : await secretDAL.find({
-        $in: { folderId: projectFolders.map((folder) => folder.id) },
-        $notNull: ["secretReminderRepeatDays"]
-      });
+  const projectFolders = await folderDAL.findByProjectId(projectId);
+  const projectSecrets = await secretDAL.find({
+    $in: { folderId: projectFolders.map((folder) => folder.id) },
+    $notNull: ["secretReminderRepeatDays"]
+  });
 
   for await (const secret of projectSecrets) {
-    const repeatDays = shouldUseSecretV2Bridge
-      ? (secret as { reminderRepeatDays: number }).reminderRepeatDays
-      : (secret as { secretReminderRepeatDays: number }).secretReminderRepeatDays;
-
-    if (repeatDays) {
-      await reminderService.deleteReminderBySecretId(secret.id, projectId);
+    if (secret.secretReminderRepeatDays) {
+      await reminderService.deleteReminderBySecretId(secret.id, projectId, tx);
     }
   }
 };

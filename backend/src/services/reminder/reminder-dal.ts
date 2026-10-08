@@ -58,6 +58,21 @@ export const reminderDALFactory = (db: TDbClient) => {
     return reminders.map((reminder) => RemindersSchema.parse(reminder));
   };
 
+  const findSecretIdsByProjectId = async (projectId: string, tx?: Knex) => {
+    const rows = await (tx || db.replicaNode())(TableName.Reminder)
+      .whereNotNull(`${TableName.Reminder}.secretId`)
+      .join<TSecretsV2>(TableName.SecretV2, `${TableName.Reminder}.secretId`, `${TableName.SecretV2}.id`)
+      .join<TSecretFolders>(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+      .join<TProjectEnvironments>(
+        TableName.Environment,
+        `${TableName.SecretFolder}.envId`,
+        `${TableName.Environment}.id`
+      )
+      .where(`${TableName.Environment}.projectId`, projectId)
+      .select(db.ref("secretId").withSchema(TableName.Reminder));
+    return rows.map((row) => row.secretId as string);
+  };
+
   const findByProjectAndDateRange = async (
     {
       projectId,
@@ -107,6 +122,7 @@ export const reminderDALFactory = (db: TDbClient) => {
 
   return {
     ...reminderOrm,
+    findSecretIdsByProjectId,
     findDueReminders,
     findByIdForUpdate,
     findSecretReminder,

@@ -456,7 +456,7 @@ export type THandleReminderDTO = {
 
 export type TRemoveSecretReminderDTO = {
   secretId: string;
-  repeatDays: number;
+  repeatDays?: number;
   projectId: string;
   deleteRecipients?: boolean;
 };

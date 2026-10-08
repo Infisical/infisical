@@ -94,6 +94,8 @@ export interface TReminderServiceFactory {
 
   deleteReminderBySecretId: (secretId: string, projectId: string, tx?: Knex) => Promise<void>;
 
+  deleteRemindersByProjectId: (projectId: string, tx?: Knex) => Promise<void>;
+
   moveReminders: (moves: TReminderMove[], tx: Knex) => Promise<void>;
 
   copyReminders: (moves: TReminderMove[], tx: Knex) => Promise<void>;

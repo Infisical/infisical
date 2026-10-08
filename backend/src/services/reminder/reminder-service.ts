@@ -7,6 +7,7 @@ import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/servi
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
 import { TChannelRecipientInput } from "../alert/alert-channel-service-types";
@@ -350,6 +351,21 @@ export const reminderServiceFactory = ({
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
   };
 
+  const deleteRemindersByProjectId: TReminderServiceFactory["deleteRemindersByProjectId"] = async (
+    projectId: string,
+    tx?: Knex
+  ) => {
+    const secretIds = await reminderDAL.findSecretIdsByProjectId(projectId, tx);
+    for (const ids of chunkArray(secretIds, ORPHAN_REAP_BATCH_SIZE)) {
+      await reminderDAL.delete({ $in: { secretId: ids } }, tx);
+      await alertService.deleteAlertsForDeletedResources(
+        { resourceType: SECRET_REMINDER_RESOURCE_TYPE, resourceIds: ids },
+        tx
+      );
+    }
+    if (secretIds.length > 0) await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
+  };
+
   const deleteReminder: TReminderServiceFactory["deleteReminder"] = async ({
     actor,
     actorId,
@@ -476,6 +492,7 @@ export const reminderServiceFactory = ({
     reapOrphanedReminderAlerts,
     deleteReminder,
     deleteReminderBySecretId,
+    deleteRemindersByProjectId,
     moveReminders,
     copyReminders,
     getRemindersForDashboard

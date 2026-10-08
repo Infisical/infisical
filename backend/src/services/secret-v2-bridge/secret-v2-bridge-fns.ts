@@ -449,13 +449,8 @@ export const fnSecretBulkDelete = async ({
 
   await Promise.all(
     deletedSecrets
-      .filter(({ reminderRepeatDays }) => Boolean(reminderRepeatDays))
-      .map(({ id, reminderRepeatDays }) =>
-        secretQueueService.removeSecretReminder(
-          { secretId: id, repeatDays: reminderRepeatDays as number, projectId },
-          tx
-        )
-      )
+      .filter(({ type }) => type === SecretType.Shared)
+      .map(({ id }) => secretQueueService.removeSecretReminder({ secretId: id, projectId }, tx))
   );
 
   const secretVersions = await secretVersionDAL.findLatestVersionMany(
