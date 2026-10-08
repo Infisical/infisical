@@ -1096,6 +1096,7 @@
                   "integrations/app-connections/hashicorp-vault",
                   "integrations/app-connections/hasura-cloud",
                   "integrations/app-connections/heroku",
+                  "integrations/app-connections/hpe-ilo",
                   "integrations/app-connections/humanitec",
                   "integrations/app-connections/kemp-loadmaster",
                   "integrations/app-connections/external-infisical",
@@ -2085,6 +2086,18 @@
                           "api-reference/endpoints/app-connections/heroku/create",
                           "api-reference/endpoints/app-connections/heroku/update",
                           "api-reference/endpoints/app-connections/heroku/delete"
+                        ]
+                      },
+                      {
+                        "group": "HPE iLO",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/hpe-ilo/list",
+                          "api-reference/endpoints/app-connections/hpe-ilo/available",
+                          "api-reference/endpoints/app-connections/hpe-ilo/get-by-id",
+                          "api-reference/endpoints/app-connections/hpe-ilo/get-by-name",
+                          "api-reference/endpoints/app-connections/hpe-ilo/create",
+                          "api-reference/endpoints/app-connections/hpe-ilo/update",
+                          "api-reference/endpoints/app-connections/hpe-ilo/delete"
                         ]
                       },
                       {

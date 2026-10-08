@@ -12,7 +12,8 @@ import {
 import { getOracleDBConnectionListItem, OracleDBConnectionMethod } from "@app/ee/services/app-connections/oracledb";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { SECRET_ROTATION_CONNECTION_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
+import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
+import { getSecretRotationConnectionApps } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -182,6 +183,7 @@ import {
 } from "./hc-vault";
 import { HerokuConnectionMethod } from "./heroku";
 import { getHerokuConnectionListItem, validateHerokuConnectionCredentials } from "./heroku/heroku-connection-fns";
+import { getHpeIloConnectionListItem, HpeIloConnectionMethod, validateHpeIloConnectionCredentials } from "./hpe-ilo";
 import {
   getHumanitecConnectionListItem,
   HumanitecConnectionMethod,
@@ -321,7 +323,7 @@ const SECRET_SYNC_APP_CONNECTION_MAP = Object.fromEntries(
 );
 
 const SECRET_ROTATION_APP_CONNECTION_MAP = Object.fromEntries(
-  Object.entries(SECRET_ROTATION_CONNECTION_MAP).map(([key, value]) => [value, key])
+  Object.values(SecretRotation).flatMap((type) => getSecretRotationConnectionApps(type).map((app) => [app, type]))
 );
 
 const SECRET_SCANNING_APP_CONNECTION_MAP = Object.fromEntries(
@@ -472,7 +474,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getPowerDnsConnectionListItem(),
     getSpaceliftConnectionListItem(),
     getDaytonaConnectionListItem(),
-    getStripeConnectionListItem()
+    getStripeConnectionListItem(),
+    getHpeIloConnectionListItem()
   ]
     .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -709,7 +712,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.PowerDns]: validatePowerDnsConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Spacelift]: validateSpaceliftConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Daytona]: validateDaytonaConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Stripe]: validateStripeConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Stripe]: validateStripeConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.HpeIloRedFish]: validateHpeIloConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayV2Service);
@@ -832,6 +836,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case KempLoadMasterConnectionMethod.BasicAuth:
     case F5BigIpConnectionMethod.BasicAuth:
     case NutanixPrismCentralConnectionMethod.BasicAuth:
+    case HpeIloConnectionMethod.BasicAuth:
       return "Basic Auth";
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return "Machine Identity - Universal Auth";
@@ -987,7 +992,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.PowerDns]: platformManagedCredentialsNotSupported,
   [AppConnection.Spacelift]: platformManagedCredentialsNotSupported,
   [AppConnection.Daytona]: platformManagedCredentialsNotSupported,
-  [AppConnection.Stripe]: platformManagedCredentialsNotSupported
+  [AppConnection.Stripe]: platformManagedCredentialsNotSupported,
+  [AppConnection.HpeIloRedFish]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

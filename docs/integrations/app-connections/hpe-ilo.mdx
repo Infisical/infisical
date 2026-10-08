@@ -1,0 +1,84 @@
+---
+title: "HPE iLO connection"
+sidebarTitle: "HPE iLO"
+description: "Learn how to configure an HPE iLO connection for Infisical."
+---
+
+import ConnectionFormFields from "/snippets/app-connections/hpe-ilo/form-fields.mdx";
+
+An HPE iLO connection authenticates Infisical to HPE Integrated Lights-Out (iLO), the management interface of HPE servers, with the username and password of an iLO local account. Infisical uses the connection to manage iLO local accounts through the iLO [Redfish API](https://servermanagementportal.ext.hpe.com/docs/redfishservices/ilos/).
+
+<Note>
+    This guide only authenticates Infisical with HPE iLO. Once the app connection is ready, you can [use it to set up integrations](#step-2-configure-integrations).
+</Note>
+
+## Prerequisites
+
+- An HPE iLO that Infisical can reach over HTTPS, either directly or through a [Gateway](/documentation/platform/gateways/overview)
+- An iLO local account with at least the **Login** privilege, for Infisical to sign in with
+
+## Step 1: Create the app connection
+
+<Tip>
+    To create the connection using the API, use the [Create HPE iLO Connection](/api-reference/endpoints/app-connections/hpe-ilo/create) endpoint.
+</Tip>
+
+<View title="Organization-level">
+    <Steps>
+        <Step>
+            In the sidebar, select **Integrations**, then open the **App Connections** tab.
+
+            ![App Connections Tab](/images/app-connections/general/add-connection.png)
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **HPE iLO**.
+
+            ![Select HPE iLO Connection](/images/app-connections/hpe-ilo/select-connection.png)
+        </Step>
+        <Step>
+            Fill out the form's fields:
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to HPE iLO**.
+
+            ![HPE iLO Connection Form](/images/app-connections/hpe-ilo/connection-form.png)
+        </Step>
+    </Steps>
+</View>
+
+<View title="Project-level">
+    <Steps>
+        <Step>
+            In your Secrets Manager project, select **Integrations** from the sidebar, then open the **App Connections** tab.
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **HPE iLO**.
+
+            ![Select HPE iLO Connection](/images/app-connections/hpe-ilo/select-connection.png)
+        </Step>
+        <Step>
+            Fill out the form's fields:
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to HPE iLO**.
+
+            ![HPE iLO Connection Form](/images/app-connections/hpe-ilo/connection-form.png)
+        </Step>
+    </Steps>
+</View>
+
+When you select **Connect to HPE iLO**, Infisical signs in to the iLO with the account's username and password and reads the list of iLO accounts. If the iLO rejects the username or password, or the account can't read the account list, Infisical shows an error and doesn't save the connection.
+
+<Check>
+    Your HPE iLO app connection is ready to use.
+</Check>
+
+## Step 2: Configure integrations
+
+Now that your HPE iLO app connection is configured, you can use it to set up the following integrations:
+
+<Card title="HP iLO local account rotation" icon="rotate-cw" href="/documentation/platform/secret-rotation/hp-ilo-local-account">
+    Rotate the password of an iLO local account on a schedule.
+</Card>
