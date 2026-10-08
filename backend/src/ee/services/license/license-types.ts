@@ -28,6 +28,15 @@ export type TOfflineLicense = {
   entitlements?: TEntitlementsResponse;
 };
 
+export type TPlanNotice = {
+  type: "trial_payment_failed";
+  productKey: string;
+  trialPlanKey: string | null;
+  accessEndsAt: string;
+  nextAttemptAt: string | null;
+  cause: string | null;
+};
+
 export type TOrgSeatUsage = {
   membersUsed: number;
   identitiesUsed: number;
@@ -43,6 +52,7 @@ export type TFeatureSet = {
     trialPlanKey: string | null;
     trialEndsAt: string | null;
   }[];
+  notices?: TPlanNotice[];
   // True when features are sourced from an offline (air-gapped) license; the billing UI renders a
   // read-only offline banner instead of the live billing surface.
   isOffline?: boolean;
