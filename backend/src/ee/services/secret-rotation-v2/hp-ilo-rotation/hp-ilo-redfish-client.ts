@@ -12,7 +12,7 @@ import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { safeRequest } from "@app/lib/validator";
 import { THpeIloConnectionConfig } from "@app/services/app-connection/hpe-ilo";
-import { HPE_ILO_DEFAULT_PORT } from "@app/services/app-connection/hpe-ilo/hpe-ilo-connection-fns";
+import { HPE_ILO_DEFAULT_PORT, toUrlHost } from "@app/services/app-connection/hpe-ilo/hpe-ilo-connection-fns";
 
 import { THpIloClient } from "./hp-ilo-rotation-types";
 
@@ -44,7 +44,7 @@ export const hpIloRedfishClientFactory = (
   const { credentials } = config;
   const { hostname: host } = credentials;
   const port = credentials.port ?? HPE_ILO_DEFAULT_PORT;
-  const baseUrl = `https://${host}:${port}`;
+  const baseUrl = `https://${toUrlHost(host)}:${port}`;
 
   // Through the gateway the socket points at localhost, so the certificate has to be checked against the iLO host
   // explicitly; SNI is left unset for IP hosts since TLS does not allow an IP address as the server name
@@ -110,7 +110,7 @@ export const hpIloRedfishClientFactory = (
             const response = await request.request<T>({
               ...requestConfig,
               url: `https://localhost:${proxyPort}${path}`,
-              headers: { ...requestConfig.headers, Host: host },
+              headers: { ...requestConfig.headers, Host: toUrlHost(host) },
               httpsAgent: new https.Agent(tlsOptions),
               maxRedirects: 0,
               proxy: false

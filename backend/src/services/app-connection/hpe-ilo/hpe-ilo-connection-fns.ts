@@ -25,7 +25,7 @@ export const getHpeIloConnectionListItem = () => {
 };
 
 // IPv6 literals must be bracketed in URLs and Host headers
-const toUrlHost = (hostname: string) => (net.isIPv6(hostname) ? `[${hostname}]` : hostname);
+export const toUrlHost = (hostname: string) => (net.isIPv6(hostname) ? `[${hostname}]` : hostname);
 
 const getHpeIloBaseUrl = (credentials: THpeIloConnectionConfig["credentials"]) =>
   `https://${toUrlHost(credentials.hostname)}:${credentials.port ?? HPE_ILO_DEFAULT_PORT}`;
