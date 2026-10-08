@@ -9,6 +9,7 @@ import {
 } from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
+import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -16,6 +17,7 @@ import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-p
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TAuditLogStreamDALFactory } from "./audit-log-stream-dal";
 import { LogProvider, REDACTED_CREDENTIAL_VALUE, StreamMode } from "./audit-log-stream-enums";
+import { AUDIT_LOG_STREAM_RESOURCE_TYPE } from "./audit-log-stream-events";
 import { LOG_STREAM_FACTORY_MAP } from "./audit-log-stream-factory";
 import { TAuditLogStream, TCreateAuditLogStreamDTO, TUpdateAuditLogStreamDTO } from "./audit-log-stream-types";
 import { TCustomProviderCredentials } from "./custom/custom-provider-types";
@@ -27,6 +29,7 @@ export type TAuditLogStreamServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
 };
 
 export type TAuditLogStreamServiceFactory = ReturnType<typeof auditLogStreamServiceFactory>;
@@ -35,7 +38,8 @@ export const auditLogStreamServiceFactory = ({
   auditLogStreamDAL,
   permissionService,
   licenseService,
-  kmsService
+  kmsService,
+  alertService
 }: TAuditLogStreamServiceFactoryDep) => {
   const create = async ({ provider, credentials, filters }: TCreateAuditLogStreamDTO, actor: OrgServiceActor) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -233,7 +237,13 @@ export const auditLogStreamServiceFactory = ({
       });
     }
 
-    const deletedLogStream = await auditLogStreamDAL.deleteById(logStreamId);
+    const deletedLogStream = await auditLogStreamDAL.transaction(async (tx) => {
+      await alertService.deleteAlertsForDeletedResource(
+        { resourceType: AUDIT_LOG_STREAM_RESOURCE_TYPE, resourceId: logStreamId },
+        tx
+      );
+      return auditLogStreamDAL.deleteById(logStreamId, tx);
+    });
 
     return decryptLogStream(deletedLogStream, kmsService);
   };
