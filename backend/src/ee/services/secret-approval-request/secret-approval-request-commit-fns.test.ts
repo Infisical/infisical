@@ -238,6 +238,28 @@ describe("buildSecretApprovalCommits", () => {
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 
+  test("names the secrets missing from a rename, not the ones that were found", async () => {
+    const stored = [
+      { id: "secret-1", key: "KEEP", version: 1 },
+      { id: "secret-2", key: "GONE", version: 1 }
+    ];
+    const { fns, deps } = buildFns({ stored });
+    deps.secretV2BridgeDAL.findBySecretKeys.mockResolvedValueOnce(stored).mockResolvedValueOnce([stored[0]]);
+
+    await expect(
+      fns.buildSecretApprovalCommits(
+        input({
+          data: {
+            [SecretOperations.Update]: [
+              { secretKey: "KEEP", newSecretName: "KEEP2" },
+              { secretKey: "GONE", newSecretName: "GONE2" }
+            ]
+          }
+        })
+      )
+    ).rejects.toEqual(expect.objectContaining({ name: "NotFound", message: "Secret does not exist: GONE" }));
+  });
+
   test("upsert turns missing updates into creates without duplicating a key already being created", async () => {
     const { fns } = buildFns();
 

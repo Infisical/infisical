@@ -3,7 +3,7 @@ import { Knex } from "knex";
 
 import { ActionProjectType, SecretType, TableName, TSecretApprovalRequestsSecretsV2Insert } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { groupBy, unique } from "@app/lib/fn";
+import { diff, groupBy, unique } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -328,7 +328,10 @@ export const secretApprovalRequestCommitFnsFactory = ({
 
         if (secrets.length !== secretsWithNewName.length)
           throw new NotFoundError({
-            message: `Secret does not exist: ${secrets.map((el) => el.key).join(",")}`
+            message: `Secret does not exist: ${diff(
+              secretsWithNewName.map((el) => el.secretKey),
+              secrets.map((el) => el.key)
+            ).join(", ")}`
           });
 
         // the new name must not already be taken by another secret in the folder
