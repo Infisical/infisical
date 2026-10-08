@@ -124,6 +124,7 @@ type Props = {
     source: { id: string; name: string; path: string; isValueHidden: boolean };
     environmentSlug: string;
   }) => void;
+  onAccessInsightsUpgrade: (onGranted: () => void) => void;
   activityId: TableRowActivityId;
   onActivityChange: TableRowActivityChangeHandler;
 };
@@ -170,6 +171,7 @@ export const SecretTableRow = ({
   measureElement,
   onUnsavedChange,
   onCopySecret,
+  onAccessInsightsUpgrade,
   activityId,
   onActivityChange
 }: Props) => {
@@ -529,6 +531,7 @@ export const SecretTableRow = ({
                     })
                 : undefined
             }
+            onAccessInsightsUpgrade={onAccessInsightsUpgrade}
             onExpandedChange={setIsSingleEnvBaseActive}
           />
         ) : (
@@ -693,11 +696,11 @@ export const SecretTableRow = ({
           )}
         >
           <TableCell>
-            <GitBranchIcon className="text-override" />
+            <GitBranchIcon className="text-override-foreground" />
           </TableCell>
           <TableCell
             className={twMerge(
-              "border-r text-override",
+              "border-r text-override-foreground",
               singleEnvHasOverride && "border-l border-l-override"
             )}
           >
@@ -929,6 +932,7 @@ export const SecretTableRow = ({
                                       })
                                   : undefined
                               }
+                              onAccessInsightsUpgrade={onAccessInsightsUpgrade}
                             />
                           </TableCell>
                         </TableRow>

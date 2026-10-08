@@ -1,10 +1,12 @@
 import { Helmet } from "react-helmet";
 import { KeyRound } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  CrossProjectSecretSharingUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
 import {
   Card,
   CardContent,
@@ -18,13 +20,13 @@ import {
   FieldTitle,
   Toggle
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
   useSubscription
 } from "@app/context";
-import { usePopUp } from "@app/hooks";
 import { useUpdateOrg } from "@app/hooks/api/organization/queries";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -35,7 +37,7 @@ export const ProductSettingsPage = () => {
   const { currentOrg } = useOrganization();
   const { mutateAsync: updateOrg, isPending } = useUpdateOrg();
   const { subscription } = useSubscription();
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const handleToggle = async (state: boolean) => {
     if (!currentOrg?.id) return;
@@ -55,7 +57,10 @@ export const ProductSettingsPage = () => {
     if (!currentOrg?.id) return;
 
     if (state && !subscription?.crossProjectSecretSharing) {
-      handlePopUpOpen("upgradePlan");
+      openUpgradeGate({
+        intent: CrossProjectSecretSharingUpgradeIntent,
+        paywallKey: "organization.product-settings"
+      });
       return;
     }
 
@@ -155,12 +160,7 @@ export const ProductSettingsPage = () => {
           </div>
         </div>
       </div>
-      <UpgradePlanModal
-        paywallKey="organization.product-settings"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Cross-project secret sharing is not available on your plan. Upgrade to the Infisical Pro plan to enable this feature."
-      />
+      {upgradeGate}
     </>
   );
 };

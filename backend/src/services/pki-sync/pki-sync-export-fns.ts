@@ -1,9 +1,47 @@
+import { crypto } from "@app/lib/crypto/cryptography";
 import { generatePkcs12FromCertificate } from "@app/services/certificate/certificate-fns";
+import {
+  generateJksFromCertificate,
+  generateJksTruststore,
+  getJksTruststoreCertificates
+} from "@app/services/certificate/certificate-jks-fns";
 
 export enum PkiSyncExportFormat {
   Pem = "pem",
-  Pkcs12 = "pkcs12"
+  Pkcs12 = "pkcs12",
+  Jks = "jks"
 }
+
+export const isKeystoreExportFormat = (format: unknown): boolean =>
+  format === PkiSyncExportFormat.Pkcs12 || format === PkiSyncExportFormat.Jks;
+
+export const getUnusedKeystoreOptionMessage = (syncOptions: Record<string, unknown>): string | undefined => {
+  if (!isKeystoreExportFormat(syncOptions.exportFormat) && syncOptions.keystoreAlias !== undefined) {
+    return "keystoreAlias only applies when exportFormat is pkcs12 or jks. Remove it or change the export format.";
+  }
+  if (syncOptions.exportFormat !== PkiSyncExportFormat.Jks && syncOptions.includeTruststore === true) {
+    return "includeTruststore only applies when exportFormat is jks. Remove it or change the export format.";
+  }
+  return undefined;
+};
+
+export const JKS_FIPS_UNSUPPORTED_MESSAGE =
+  "Java KeyStore (JKS) export is not supported in FIPS mode of operation. Use PEM instead.";
+
+export const isExportFormatBlockedByFips = (format: unknown): boolean =>
+  format === PkiSyncExportFormat.Jks && crypto.isFipsModeEnabled();
+
+export const buildFileCollisionMessage = (filePath: string) =>
+  `Another certificate in this sync already writes "${filePath}". Change the certificate name schema so each certificate gets its own file names.`;
+
+export const isBlankExportPassword = (password: string | undefined) => password !== undefined && password.trim() === "";
+
+export const EXPORT_PASSWORD_BLANK_MESSAGE = "The export password cannot be blank";
+
+export const KEYSTORE_PASSWORD_REQUIRED_MESSAGE = "A password is required when the export format is PKCS#12 or JKS";
+
+export const JKS_KEYSTORE_SUFFIX = ".jks";
+export const JKS_TRUSTSTORE_SUFFIX = ".truststore.jks";
 
 export enum PemCertificateExtension {
   Pem = "pem",
@@ -22,10 +60,13 @@ export type TExportCertificateForSyncParams = {
   certificateChain?: string;
   privateKey?: string;
   includePrivateKey: boolean;
-  // Required for PKCS#12.
+  // Required for PKCS#12 and JKS.
   password?: string;
-  // Friendly name / alias used inside a PKCS#12 keystore.
+  // Friendly name / alias used inside a PKCS#12 or JKS keystore.
   alias: string;
+  includeTruststore?: boolean;
+  fullCertificateChain?: string;
+  caCertificate?: string;
   // PEM only: the extension for the certificate and chain files. Defaults to ".pem".
   pemCertificateExtension?: PemCertificateExtension;
   // PEM only: when true, the certificate file holds the leaf certificate followed by the chain (a
@@ -40,6 +81,8 @@ export type TExportedCertificateFileShape = {
   hasPrivateKey: boolean;
   pemCertificateExtension?: PemCertificateExtension;
   combineCertificateChain?: boolean;
+  includeTruststore?: boolean;
+  hasTruststoreCertificates?: boolean;
 };
 
 export const getExportedCertificateFileSuffixes = ({
@@ -48,9 +91,16 @@ export const getExportedCertificateFileSuffixes = ({
   hasCertificateChain,
   hasPrivateKey,
   pemCertificateExtension,
-  combineCertificateChain
+  combineCertificateChain,
+  includeTruststore,
+  hasTruststoreCertificates
 }: TExportedCertificateFileShape): string[] => {
   if (format === PkiSyncExportFormat.Pkcs12) return [".pfx"];
+  if (format === PkiSyncExportFormat.Jks) {
+    return includeTruststore && hasTruststoreCertificates
+      ? [JKS_KEYSTORE_SUFFIX, JKS_TRUSTSTORE_SUFFIX]
+      : [JKS_KEYSTORE_SUFFIX];
+  }
 
   const certExtension = pemCertificateExtension ?? PemCertificateExtension.Pem;
   const suffixes = [`.${certExtension}`];
@@ -69,10 +119,11 @@ export const getExportedCertificateFileSuffixes = ({
  * - PEM      -> "<base>.<pem|crt>" (cert), "<base>.chain.<pem|crt>" (chain), "<base>.key" (key, when included)
  * - PEM (combined chain) -> "<base>.<pem|crt>" (leaf + chain), "<base>.key" (key, when included)
  * - PKCS#12  -> "<base>.pfx" (cert + chain + key, password-protected)
+ * - JKS      -> "<base>.jks" (key + cert + chain), plus "<base>.truststore.jks" when requested
  *
  * The caller is responsible for deciding whether the private key is available and whether it is
  * required (see the destination factories, which fail the certificate when includePrivateKey is set
- * but the key cannot be exported). This helper assumes inputs are valid and only guards PKCS#12.
+ * but the key cannot be exported). This helper assumes inputs are valid and only guards the keystores.
  */
 export const exportCertificateForSync = ({
   format,
@@ -83,7 +134,10 @@ export const exportCertificateForSync = ({
   password,
   alias,
   pemCertificateExtension,
-  combineCertificateChain
+  combineCertificateChain,
+  includeTruststore,
+  fullCertificateChain,
+  caCertificate
 }: TExportCertificateForSyncParams): Promise<TExportedCertificateFile[]> | TExportedCertificateFile[] => {
   if (format === PkiSyncExportFormat.Pkcs12) {
     return generatePkcs12FromCertificate({
@@ -93,6 +147,36 @@ export const exportCertificateForSync = ({
       password: password ?? "",
       alias
     }).then((pfx) => [{ suffix: ".pfx", content: pfx, isPrivateKey: true }]);
+  }
+
+  if (format === PkiSyncExportFormat.Jks) {
+    const files: TExportedCertificateFile[] = [
+      {
+        suffix: JKS_KEYSTORE_SUFFIX,
+        content: generateJksFromCertificate({
+          certificate,
+          certificateChain,
+          privateKey: privateKey ?? "",
+          password: password ?? "",
+          alias
+        }),
+        isPrivateKey: true
+      }
+    ];
+    const trustedCertificates = includeTruststore
+      ? getJksTruststoreCertificates({
+          certificate,
+          fullCertificateChain: fullCertificateChain ?? certificateChain,
+          caCertificate
+        })
+      : [];
+    if (trustedCertificates.length > 0) {
+      files.push({
+        suffix: JKS_TRUSTSTORE_SUFFIX,
+        content: generateJksTruststore({ trustedCertificates, password: password ?? "", alias })
+      });
+    }
+    return files;
   }
 
   const certExtension = pemCertificateExtension ?? PemCertificateExtension.Pem;

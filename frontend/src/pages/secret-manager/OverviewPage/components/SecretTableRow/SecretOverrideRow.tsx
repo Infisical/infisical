@@ -227,7 +227,7 @@ export const SecretOverrideRow = ({
       }}
     >
       {!isSingleEnvView && (
-        <div className="flex shrink-0 items-center text-override">
+        <div className="flex shrink-0 items-center text-override-foreground">
           <GitBranchIcon className="size-3.5" />
         </div>
       )}
@@ -245,7 +245,7 @@ export const SecretOverrideRow = ({
               isVisible={isVisible}
               secretPath={secretPath}
               environment={environment}
-              containerClassName="[&_[aria-hidden]]:!text-override"
+              containerClassName="[&_[aria-hidden]]:!text-override-foreground"
               placeholder="Enter personal override..."
               onFocus={() => {
                 if (canFetchOverrideValue && !overrideValueData) refetchOverrideValue();

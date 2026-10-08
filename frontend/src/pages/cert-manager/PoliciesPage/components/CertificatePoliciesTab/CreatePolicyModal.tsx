@@ -4,6 +4,10 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info, PencilIcon, Plus, ShieldCheck, Trash2 } from "lucide-react";
 
+import {
+  PostQuantumCertificatesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
@@ -477,6 +481,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
   ) => {
     const { currentProject } = useProject();
     const { subscription } = useSubscription();
+    const { openUpgradeGate, upgradeGate } = useUpgradeGate();
     const createPolicy = useCreateCertificatePolicy();
     const updatePolicy = useUpdateCertificatePolicy();
 
@@ -1164,10 +1169,16 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
                 id={`${fieldName}-${alg}`}
                 variant="project"
                 isChecked={isSelected}
-                isDisabled={isPqcGated}
-                onCheckedChange={(checked) =>
-                  toggleAlgorithm(fieldName, key, selected, alg, Boolean(checked))
-                }
+                onCheckedChange={(checked) => {
+                  if (isPqcGated && checked) {
+                    openUpgradeGate({
+                      intent: PostQuantumCertificatesUpgradeIntent,
+                      paywallKey: "cert-manager.policy-algorithm"
+                    });
+                    return;
+                  }
+                  toggleAlgorithm(fieldName, key, selected, alg, Boolean(checked));
+                }}
               />
               <label
                 htmlFor={`${fieldName}-${alg}`}
@@ -1827,6 +1838,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
             </SectionToggle>
           </div>
         )}
+        {upgradeGate}
       </div>
     );
   }

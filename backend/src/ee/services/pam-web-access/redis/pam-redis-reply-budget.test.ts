@@ -53,7 +53,7 @@ const startFakeRedis = async (replyBytes: () => number) => {
     let pending = Buffer.alloc(0);
 
     socket.on("data", (chunk) => {
-      pending = Buffer.concat([pending, chunk]);
+      pending = Buffer.concat([pending, Buffer.from(chunk)]);
       const { names, rest } = takeCommands(pending);
       pending = rest;
 

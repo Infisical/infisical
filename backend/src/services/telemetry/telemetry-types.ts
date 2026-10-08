@@ -1627,12 +1627,18 @@ export type TPkiSyncExecutedEvent = {
   };
 };
 
+export enum PkiAlertScope {
+  CertificateManager = "certificate-manager",
+  Application = "application"
+}
+
 export type TPkiAlertCreatedEvent = {
   event: PostHogEventTypes.PkiAlertCreated;
   properties: {
     orgId: string;
     projectId: string;
-    applicationId: string;
+    applicationId?: string;
+    alertScope: PkiAlertScope;
     alertType?: string;
   };
 };
@@ -1642,7 +1648,8 @@ export type TPkiAlertUpdatedEvent = {
   properties: {
     orgId: string;
     projectId: string;
-    applicationId: string;
+    applicationId?: string;
+    alertScope: PkiAlertScope;
   };
 };
 
@@ -1651,7 +1658,8 @@ export type TPkiAlertDeletedEvent = {
   properties: {
     orgId: string;
     projectId: string;
-    applicationId: string;
+    applicationId?: string;
+    alertScope: PkiAlertScope;
   };
 };
 

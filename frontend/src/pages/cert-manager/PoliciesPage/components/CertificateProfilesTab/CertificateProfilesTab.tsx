@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -19,7 +18,6 @@ import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { usePopUp } from "@app/hooks";
 import {
   TCertificateProfileWithDetails,
   useDeleteCertificateProfile
@@ -37,8 +35,6 @@ export const CertificateProfilesTab = () => {
   const [selectedProfile, setSelectedProfile] = useState<TCertificateProfileWithDetails | null>(
     null
   );
-  const { popUp, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
-
   const deleteProfile = useDeleteCertificateProfile();
 
   const handleEditProfile = (profile: TCertificateProfileWithDetails) => {
@@ -108,13 +104,6 @@ export const CertificateProfilesTab = () => {
       </CardContent>
 
       <CreateProfileModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
-      <UpgradePlanModal
-        paywallKey="cert-manager.certificate-profiles"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-        text="Your current plan does not include access to managing template enrollment options for ACME. To unlock this feature, please upgrade to Infisical Enterprise plan."
-      />
 
       {selectedProfile && (
         <>
