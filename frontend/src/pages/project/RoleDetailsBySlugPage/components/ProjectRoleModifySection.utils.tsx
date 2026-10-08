@@ -59,6 +59,7 @@ import {
   TPermissionCondition,
   TPermissionConditionOperators
 } from "@app/context/ProjectPermissionContext/types";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectPermission } from "@app/hooks/api/roles/types";
 
@@ -70,7 +71,8 @@ const GeneralPolicyActionSchema = z.object({
 });
 
 const AuditLogsPolicyActionSchema = z.object({
-  [ProjectPermissionAuditLogsActions.Read]: z.boolean().optional()
+  [ProjectPermissionAuditLogsActions.Read]: z.boolean().optional(),
+  [ProjectPermissionAuditLogsActions.Edit]: z.boolean().optional()
 });
 
 const InsightsPolicyActionSchema = z.object({
@@ -2678,12 +2680,19 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   },
   [ProjectPermissionSub.AuditLogs]: {
     title: "Audit Logs",
-    description: "View project activity and audit trail",
+    description: "View project activity and audit trail, and choose which events are recorded",
     actions: [
       {
         label: "Read",
         value: ProjectPermissionAuditLogsActions.Read,
         description: "View audit logs and security events"
+      },
+      {
+        label: "Edit",
+        value: ProjectPermissionAuditLogsActions.Edit,
+        description: isInfisicalCloud()
+          ? "Choose which audit log event classes the project records"
+          : "Choose which audit log event classes the project records and how long it keeps its audit logs"
       }
     ]
   },
@@ -3588,7 +3597,7 @@ const projectManagerTemplate = (
   permissions: [
     {
       subject: ProjectPermissionSub.AuditLogs,
-      actions: Object.values(ProjectPermissionAuditLogsActions)
+      actions: [ProjectPermissionAuditLogsActions.Read]
     },
     {
       subject: ProjectPermissionSub.Groups,

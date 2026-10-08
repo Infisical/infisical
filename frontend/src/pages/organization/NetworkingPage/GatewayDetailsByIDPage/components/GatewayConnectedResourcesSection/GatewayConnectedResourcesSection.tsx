@@ -36,7 +36,9 @@ const totalCountOf = (r: TGatewayConnectedResources | undefined) =>
     ? r.appConnections.length +
       r.dynamicSecrets.length +
       r.kubernetesAuths.length +
-      r.pkiDiscoveryConfigs.length
+      r.pkiDiscoveryConfigs.length +
+      (r.pamAccounts?.length ?? 0) +
+      (r.pamAccountTemplates?.length ?? 0)
     : 0;
 
 const ResourceRow = ({
@@ -162,6 +164,54 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                         subtitle="Kubernetes Auth"
                         to="/organizations/$orgId/identities/$identityId"
                         params={{ orgId: currentOrg.id, identityId: a.identityId }}
+                      />
+                    ))}
+                  </ItemGroup>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            {(resources?.pamAccounts?.length ?? 0) > 0 && (
+              <AccordionItem value="pam-accounts">
+                <AccordionTrigger>
+                  <span className="flex-1">PAM Accounts</span>
+                  <Badge variant="neutral">{resources?.pamAccounts?.length}</Badge>
+                </AccordionTrigger>
+                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
+                  <ItemGroup>
+                    {resources?.pamAccounts?.map((a) => (
+                      <ResourceRow
+                        key={a.id}
+                        name={a.name}
+                        subtitle={
+                          a.folderName ? `${a.accountType} · ${a.folderName}` : a.accountType
+                        }
+                        to="/organizations/$orgId/pam/accounts"
+                        params={{ orgId: currentOrg.id }}
+                        search={{ accountId: a.id }}
+                      />
+                    ))}
+                  </ItemGroup>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            {(resources?.pamAccountTemplates?.length ?? 0) > 0 && (
+              <AccordionItem value="pam-account-templates">
+                <AccordionTrigger>
+                  <span className="flex-1">PAM Account Templates</span>
+                  <Badge variant="neutral">{resources?.pamAccountTemplates?.length}</Badge>
+                </AccordionTrigger>
+                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
+                  <ItemGroup>
+                    {resources?.pamAccountTemplates?.map((t) => (
+                      <ResourceRow
+                        key={t.id}
+                        name={t.name}
+                        subtitle={t.type}
+                        to="/organizations/$orgId/pam/templates"
+                        params={{ orgId: currentOrg.id }}
+                        search={{ templateId: t.id }}
                       />
                     ))}
                   </ItemGroup>

@@ -7,6 +7,14 @@ A proxy intercepts your agents' requests to the APIs they call, then attaches th
 
 You create a proxy in Infisical, enroll it once from the CLI, and change its settings in Infisical afterwards.
 
+## Choose where to run the proxy
+
+While you can technically run the agent and the proxy on a single machine, we recommend running the proxy on a different machine from the agent. If the agent and the proxy run on the same machine, the agent could read the proxy's [state directory](#state-directory), which contains sensitive values like the proxy's access token and the private key of its certificate authority.
+
+<Tip>
+We also recommend keeping both machines on the same private network. This is because every request the agent makes goes through the proxy, and a round trip between networks adds latency to every request.
+</Tip>
+
 ## Create and enroll a proxy
 
 <Steps>

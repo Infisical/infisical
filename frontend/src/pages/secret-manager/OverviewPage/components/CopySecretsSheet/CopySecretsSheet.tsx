@@ -592,10 +592,10 @@ const CopySecretsSession = ({
             <div className="@container/copy-sheet flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
               <div className="grid min-h-0 flex-1 gap-4 @xl/copy-sheet:grid-cols-[minmax(0,1fr)_1rem_minmax(0,1fr)] @xl/copy-sheet:grid-rows-[auto_minmax(0,1fr)] @xl/copy-sheet:gap-x-2 @xl/copy-sheet:gap-y-3">
                 <section
-                  className="flex min-h-0 min-w-0 flex-col gap-3 @xl/copy-sheet:col-start-1 @xl/copy-sheet:row-span-2 @xl/copy-sheet:row-start-1 @xl/copy-sheet:grid @xl/copy-sheet:grid-rows-subgrid"
+                  className="flex min-h-0 min-w-0 flex-col gap-3 @xl/copy-sheet:col-start-1 @xl/copy-sheet:row-span-2 @xl/copy-sheet:row-start-1 @xl/copy-sheet:grid @xl/copy-sheet:grid-cols-[minmax(0,1fr)] @xl/copy-sheet:grid-rows-subgrid"
                   aria-labelledby="copy-source-contents-heading"
                 >
-                  <div className="flex flex-col gap-2">
+                  <div className="flex min-w-0 flex-col gap-2">
                     <h3
                       id="copy-source-contents-heading"
                       className="text-sm font-normal text-foreground"
@@ -667,7 +667,7 @@ const CopySecretsSession = ({
                       </p>
                     )}
                   </div>
-                  <div className="min-h-0 flex-1">{sourceContent}</div>
+                  <div className="min-h-0 min-w-0 flex-1">{sourceContent}</div>
                 </section>
                 <div
                   className="flex items-center justify-center text-muted @xl/copy-sheet:col-start-2 @xl/copy-sheet:row-start-2"
@@ -677,10 +677,10 @@ const CopySecretsSession = ({
                   <ArrowRightIcon className="hidden size-4 @xl/copy-sheet:block" />
                 </div>
                 <section
-                  className="flex min-h-0 min-w-0 flex-col gap-3 @xl/copy-sheet:col-start-3 @xl/copy-sheet:row-span-2 @xl/copy-sheet:row-start-1 @xl/copy-sheet:grid @xl/copy-sheet:grid-rows-subgrid"
+                  className="flex min-h-0 min-w-0 flex-col gap-3 @xl/copy-sheet:col-start-3 @xl/copy-sheet:row-span-2 @xl/copy-sheet:row-start-1 @xl/copy-sheet:grid @xl/copy-sheet:grid-cols-[minmax(0,1fr)] @xl/copy-sheet:grid-rows-subgrid"
                   aria-labelledby="copy-destination-contents-heading"
                 >
-                  <div className="flex flex-col gap-2">
+                  <div className="flex min-w-0 flex-col gap-2">
                     <h3
                       id="copy-destination-contents-heading"
                       className="text-sm font-normal text-foreground"
@@ -733,7 +733,7 @@ const CopySecretsSession = ({
                       </p>
                     )}
                   </div>
-                  <div className="min-h-0 flex-1">{destinationContent}</div>
+                  <div className="min-h-0 min-w-0 flex-1">{destinationContent}</div>
                 </section>
               </div>
 

@@ -5,7 +5,7 @@ import { MoreHorizontal, Plus, Radar, Search, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { HighlightText } from "@app/components/utilities/HighlightText";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
+import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -37,6 +37,7 @@ import {
   TableRow
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   TPamDiscoverySource,
   useDeletePamDiscoverySource,

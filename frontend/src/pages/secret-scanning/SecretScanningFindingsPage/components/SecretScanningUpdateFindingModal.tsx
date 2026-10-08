@@ -28,7 +28,7 @@ type Props = {
 };
 
 const FormSchema = z.object({
-  remarks: z.string().max(256, "Cannot exceed 256 characters").optional(),
+  triageComment: z.string().max(1024, "Cannot exceed 1024 characters").optional(),
   status: z.nativeEnum(SecretScanningFindingStatus).optional()
 });
 
@@ -48,7 +48,7 @@ const Content = ({ findings, onComplete }: ContentProps) => {
     resolver: zodResolver(FormSchema),
     defaultValues: {
       status: single ? findings[0].status : undefined,
-      remarks: single ? findings[0].remarks : undefined
+      triageComment: single ? (findings[0].triageComment ?? undefined) : undefined
     }
   });
 
@@ -117,10 +117,10 @@ const Content = ({ findings, onComplete }: ContentProps) => {
       />
       <Controller
         control={control}
-        name="remarks"
+        name="triageComment"
         render={({ field, fieldState: { error } }) => {
           return (
-            <FormControl label="Remarks" isError={Boolean(error)} errorText={error?.message}>
+            <FormControl label="Comment" isError={Boolean(error)} errorText={error?.message}>
               <TextArea className="h-40 resize-none!" {...field} />
             </FormControl>
           );
@@ -155,7 +155,7 @@ export const SecretScanningUpdateFindingModal = ({
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
         title={`Update Finding${findings.length === 1 ? "" : "s"}`}
-        subTitle="Update the status or leave remarks"
+        subTitle="Update the status or leave a comment"
       >
         <Content
           findings={findings}

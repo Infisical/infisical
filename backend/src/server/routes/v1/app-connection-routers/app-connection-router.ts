@@ -253,6 +253,10 @@ import {
   SanitizedTriggerDevConnectionSchema,
   TriggerDevConnectionListItemSchema
 } from "@app/services/app-connection/trigger-dev";
+import {
+  SanitizedUltraDNSConnectionSchema,
+  UltraDNSConnectionListItemSchema
+} from "@app/services/app-connection/ultradns/ultradns-connection-schema";
 import { SanitizedVenafiConnectionSchema, VenafiConnectionListItemSchema } from "@app/services/app-connection/venafi";
 import {
   SanitizedVenafiTppConnectionSchema,
@@ -322,6 +326,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedLaravelForgeConnectionSchema.options,
   ...SanitizedChefConnectionSchema.options,
   ...SanitizedDNSMadeEasyConnectionSchema.options,
+  ...SanitizedUltraDNSConnectionSchema.options,
   ...SanitizedAzureDnsConnectionSchema.options,
   ...SanitizedOctopusDeployConnectionSchema.options,
   ...SanitizedSmbConnectionSchema.options,
@@ -411,6 +416,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   LaravelForgeConnectionListItemSchema,
   ChefConnectionListItemSchema,
   DNSMadeEasyConnectionListItemSchema,
+  UltraDNSConnectionListItemSchema,
   AzureDnsConnectionListItemSchema,
   OctopusDeployConnectionListItemSchema,
   SmbConnectionListItemSchema,
@@ -472,10 +478,7 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: (req) => {
-      const appConnectionOptions = server.services.appConnection.listAppConnectionOptions(
-        req.permission.orgId,
-        req.query.projectType
-      );
+      const appConnectionOptions = server.services.appConnection.listAppConnectionOptions(req.query.projectType);
       return { appConnectionOptions };
     }
   });

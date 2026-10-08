@@ -5,8 +5,7 @@ import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secr
 import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import {
   SecretScanningDataSource,
-  SecretScanningFindingSeverity,
-  SecretScanningResource
+  SecretScanningFindingSeverity
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
   assertProviderRepositorySizeWithinLimit,
@@ -95,8 +94,7 @@ export const GitHubSecretScanningFactory = () => {
 
     return filteredRepos.map(({ id, full_name }) => ({
       name: full_name,
-      externalId: id.toString(),
-      type: SecretScanningResource.Repository
+      externalId: id.toString()
     }));
   };
 
@@ -154,8 +152,7 @@ export const GitHubSecretScanningFactory = () => {
   > = ({ repository }) => {
     return {
       name: repository.full_name,
-      externalId: repository.id.toString(),
-      type: SecretScanningResource.Repository
+      externalId: repository.id.toString()
     };
   };
 
