@@ -92,7 +92,7 @@ describe("Secret reminders delivered through alerts", () => {
     const secretId = await createSecret("KEEP_WEBHOOK");
     await setSecretReminder({ secretId, authToken, repeatDays: 30, message: "rotate it", recipients: [member.userId] });
     const [alert] = await reminderAlerts(secretId);
-    expect(alert.name).toBe("Reminder for KEEP_WEBHOOK");
+    expect(alert.name).toBe("Secret reminder");
     expect(alert.channels).toEqual([
       expect.objectContaining({
         channelType: "email",
@@ -424,7 +424,7 @@ describe("Secret reminders delivered through alerts", () => {
       await migrateRemindersToAlerts(testDb);
 
       const [alert] = await reminderAlerts(secretId);
-      expect(alert).toMatchObject({ name: "Reminder for MIGRATE", triggerType: "event" });
+      expect(alert).toMatchObject({ name: "Secret reminder", triggerType: "event" });
       expect(alert.channels).toHaveLength(1);
       expect(alert.channels[0].recipients).toEqual([{ principalType: "user", principalId: member.userId }]);
       // The API does not report who created an alert.

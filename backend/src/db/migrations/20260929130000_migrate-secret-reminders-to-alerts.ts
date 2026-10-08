@@ -19,7 +19,7 @@ import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/
 // migration did.
 const RESOURCE_TYPE = "secret.reminder";
 const EVENT_TYPE = "secret.reminder.due";
-const MAX_ALERT_NAME_LENGTH = 255;
+const ALERT_NAME = "Secret reminder";
 const MAX_RECIPIENTS_PER_CHANNEL = 20;
 const CATCH_UP_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -29,7 +29,6 @@ const BATCH_STATEMENT_TIMEOUT_MS = 60_000;
 type TReminderRow = {
   id: string;
   secretId: string;
-  secretKey: string;
   projectId: string;
   orgId: string;
 };
@@ -112,7 +111,6 @@ export async function up(knex: Knex): Promise<void> {
       .select(
         knex.ref("id").withSchema(TableName.Reminder),
         knex.ref("secretId").withSchema(TableName.Reminder),
-        knex.ref("key").withSchema(TableName.SecretV2).as("secretKey"),
         knex.ref("id").withSchema(TableName.Project).as("projectId"),
         knex.ref("orgId").withSchema(TableName.Project).as("orgId")
       )) as TReminderRow[];
@@ -187,7 +185,7 @@ export async function up(knex: Knex): Promise<void> {
       for (const reminder of pending.filter(({ id }) => recipientsByReminder.has(id))) {
         const [alert] = (await tx(TableName.Alert)
           .insert({
-            name: `Reminder for ${reminder.secretKey}`.slice(0, MAX_ALERT_NAME_LENGTH),
+            name: ALERT_NAME,
             resourceType: RESOURCE_TYPE,
             resourceId: reminder.secretId,
             eventType: EVENT_TYPE,
