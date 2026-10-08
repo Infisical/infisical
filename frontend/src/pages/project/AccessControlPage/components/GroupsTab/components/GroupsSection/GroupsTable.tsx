@@ -265,7 +265,11 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                                 <MoreHorizontalIcon />
                               </IconButton>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent sideOffset={2} align="end">
+                            <DropdownMenuContent
+                              sideOffset={2}
+                              align="end"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
