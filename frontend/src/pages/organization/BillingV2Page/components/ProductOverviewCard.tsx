@@ -80,11 +80,13 @@ const dimRates = (dim: BillingV2EntitlementDim) => {
 
 const MeterTile = ({
   dim,
+  className,
   isDimmed,
   isSelected,
   onSelect
 }: {
   dim: BillingV2EntitlementDim;
+  className?: string;
   isDimmed?: boolean;
   isSelected?: boolean;
   onSelect?: () => void;
@@ -135,7 +137,8 @@ const MeterTile = ({
 
   const tileClass = cn(
     "flex h-20 min-w-0 flex-col justify-center gap-1.5 rounded-md bg-container px-3 text-left transition-opacity",
-    isDimmed && "opacity-40 hover:opacity-100 focus-visible:opacity-100"
+    isDimmed && "opacity-40 hover:opacity-100 focus-visible:opacity-100",
+    className
   );
 
   if (!onSelect) {
@@ -157,10 +160,45 @@ const MeterTile = ({
   );
 };
 
-const tileColumns = (count: number) => {
-  if (count >= 3) return "@sm:grid-cols-2 @lg:grid-cols-3";
-  if (count === 2) return "@sm:grid-cols-2";
-  return "";
+const TILE_BREAKPOINTS = [
+  {
+    columns: 1,
+    grid: ["grid-cols-1"],
+    clampedGrid: "grid-cols-[minmax(0,1fr)_5rem]",
+    hide: "hidden",
+    show: "flex"
+  },
+  {
+    columns: 2,
+    grid: ["@sm:grid-cols-1", "@sm:grid-cols-2"],
+    clampedGrid: "@sm:grid-cols-[repeat(2,minmax(0,1fr))_5rem]",
+    hide: "@sm:hidden",
+    show: "@sm:flex"
+  },
+  {
+    columns: 3,
+    grid: ["@lg:grid-cols-1", "@lg:grid-cols-2", "@lg:grid-cols-3"],
+    clampedGrid: "@lg:grid-cols-[repeat(3,minmax(0,1fr))_5rem]",
+    hide: "@lg:hidden",
+    show: "@lg:flex"
+  },
+  {
+    columns: 4,
+    grid: ["@2xl:grid-cols-1", "@2xl:grid-cols-2", "@2xl:grid-cols-3", "@2xl:grid-cols-4"],
+    clampedGrid: "@2xl:grid-cols-[repeat(4,minmax(0,1fr))_5rem]",
+    hide: "@2xl:hidden",
+    show: "@2xl:flex"
+  }
+];
+
+const visibilityClasses = (isVisibleAt: (columns: number) => boolean) => {
+  let wasVisible = true;
+  return TILE_BREAKPOINTS.map(({ columns, hide, show }) => {
+    const isVisible = isVisibleAt(columns);
+    if (isVisible === wasVisible) return "";
+    wasVisible = isVisible;
+    return isVisible ? show : hide;
+  });
 };
 
 const UsageDistribution = ({
@@ -584,6 +622,10 @@ export const ProductOverviewCard = ({
   const trial = trialLine(ent);
   const detailsId = `billing-product-details-${prod.id}`;
   const headerRef = useRef<HTMLDivElement>(null);
+  const isClampedAt = (columns: number) => !isExpanded && dims.length > columns;
+  const tileGridClasses = TILE_BREAKPOINTS.map(({ columns, grid, clampedGrid }) =>
+    isClampedAt(columns) ? clampedGrid : grid[Math.min(dims.length, columns) - 1]
+  );
 
   useEffect(() => {
     if (!isExpanded) return;
@@ -596,7 +638,7 @@ export const ProductOverviewCard = ({
   return (
     <Card
       className={cn(
-        "product-color @container scroll-mt-6 transition-opacity",
+        "product-color @container h-full scroll-mt-6 transition-opacity",
         isExpanded && "lg:col-span-2",
         isDimmed && "opacity-50 focus-within:opacity-100 hover:opacity-100"
       )}
@@ -652,16 +694,42 @@ export const ProductOverviewCard = ({
       </div>
 
       {dims.length > 0 ? (
-        <div className={cn("grid grid-cols-1 gap-2", tileColumns(dims.length))}>
-          {dims.map((dim) => (
+        <div className={cn("grid gap-2", tileGridClasses)}>
+          {dims.map((dim, index) => (
             <MeterTile
               key={dim.key}
               dim={dim}
+              className={cn(
+                visibilityClasses((columns) => !isClampedAt(columns) || index < columns)
+              )}
               isSelected={isExpanded && selectedDim?.key === dim.key}
               isDimmed={isExpanded && Boolean(selectedDim) && selectedDim?.key !== dim.key}
               onSelect={breakdownKeys.has(dim.key) ? () => onExpand(dim.key) : undefined}
             />
           ))}
+          {isClampedAt(1) && (
+            <button
+              type="button"
+              className={cn(
+                "flex h-20 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-md bg-container outline-0 hover:bg-container-hover focus-visible:ring-2 focus-visible:ring-ring",
+                visibilityClasses(isClampedAt)
+              )}
+              onClick={() => onExpand()}
+            >
+              {TILE_BREAKPOINTS.filter(({ columns }) => isClampedAt(columns)).map(({ columns }) => (
+                <span
+                  key={columns}
+                  className={cn(
+                    "text-base leading-5 font-medium tabular-nums",
+                    visibilityClasses((visibleColumns) => visibleColumns === columns)
+                  )}
+                >
+                  +{dims.length - columns}
+                </span>
+              ))}
+              <span className="text-xs text-muted">more</span>
+            </button>
+          )}
         </div>
       ) : (
         <div className="flex h-20 items-center justify-center rounded-md bg-container px-3 text-center text-xs text-muted">
@@ -751,7 +819,7 @@ export const InactiveProductCard = ({
   return (
     <Card
       className={cn(
-        "product-color @container transition-opacity",
+        "product-color @container h-full transition-opacity",
         isDimmed && "opacity-50 focus-within:opacity-100 hover:opacity-100"
       )}
       style={{ "--product-color": prod.color } as CSSProperties}
