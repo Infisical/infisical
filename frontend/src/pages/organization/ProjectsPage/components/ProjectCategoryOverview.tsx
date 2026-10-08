@@ -227,7 +227,7 @@ export const ProjectCategoryOverview = () => {
         return [
           { label: "data sources", value: productStats.secretScanning.dataSourcesCount },
           { label: "resources", value: productStats.secretScanning.resourcesCount },
-          { label: "projects", value: productStats.secretScanning.projectsCount }
+          { label: "findings", value: productStats.secretScanning.findingsCount }
         ];
       case ProjectType.PAM:
         return [

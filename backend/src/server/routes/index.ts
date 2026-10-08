@@ -1715,7 +1715,8 @@ export const registerRoutes = async (
   });
 
   const orgProductStatsService = orgProductStatsServiceFactory({
-    orgProductStatsDAL
+    orgProductStatsDAL,
+    keyStore
   });
 
   const orgAdminService = orgAdminServiceFactory({

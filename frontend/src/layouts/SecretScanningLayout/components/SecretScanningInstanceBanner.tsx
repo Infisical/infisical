@@ -27,7 +27,7 @@ export const SecretScanningInstanceBanner = () => {
             search={{ selectedTab: "product-settings" }}
             className="underline underline-offset-2 hover:text-warning"
           >
-            View earlier projects
+            View other projects
           </Link>
         </p>
       ) : (
