@@ -1,6 +1,7 @@
 import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 import { unpackRules } from "@casl/ability/extra";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import axios from "axios";
 
 import {
   OrgPermissionAdminConsoleAction,
@@ -59,18 +60,24 @@ export const Route = createFileRoute(
       return;
     }
 
-    let isMember = true;
+    const toProject = redirect({
+      to: "/organizations/$orgId/projects/secret-scanning/$projectId/data-sources",
+      params: { orgId: params.orgId, projectId }
+    });
+
     try {
       await context.queryClient.ensureQueryData({
         queryKey: roleQueryKeys.getUserProjectPermissions({ projectId }),
-        queryFn: () => fetchUserProjectPermissions({ projectId })
+        queryFn: () => fetchUserProjectPermissions({ projectId }),
+        retry: false
       });
-    } catch {
-      isMember = false;
-    }
+    } catch (err) {
+      // Only a missing membership leads to a join: grant-admin-access replaces an existing member's
+      // roles with Admin, so any other failure must stay an error.
+      const isNotAMember =
+        axios.isAxiosError(err) && err.response?.data?.error === "ProjectMembershipNotFound";
+      if (!isNotAMember) throw err;
 
-    if (!isMember) {
-      // The project is created with no members, so org admins join it here, as the home card does.
       const orgPermissions = await context.queryClient.ensureQueryData({
         queryKey: roleQueryKeys.getUserOrgPermissions({ orgId: params.orgId }),
         queryFn: () => fetchUserOrgPermissions({ orgId: params.orgId })
@@ -79,30 +86,21 @@ export const Route = createFileRoute(
         unpackRules<RawRuleOf<MongoAbility<OrgPermissionSet>>>(orgPermissions.permissions),
         { conditionsMatcher }
       );
+      const isOrgAdmin = orgAbility.can(
+        OrgPermissionAdminConsoleAction.AccessAllProjects,
+        OrgPermissionSubjects.AdminConsole
+      );
 
-      if (
-        orgAbility.can(
-          OrgPermissionAdminConsoleAction.AccessAllProjects,
-          OrgPermissionSubjects.AdminConsole
-        )
-      ) {
-        try {
-          await grantOrgAdminProjectAccess({ projectId });
-          isMember = true;
-        } catch {
-          // Fall through to the list, where the admin can still join from All Projects.
-        }
-      }
+      // Org admins promoted after the project was created are not seeded into it, so they join here, as
+      // the home card does. Everyone else stays on the list to request access.
+      if (isOrgAdmin) await grantOrgAdminProjectAccess({ projectId });
 
       // The cached project list predates this join or a project created just now.
       await context.queryClient.invalidateQueries({ queryKey: projectKeys.allProjectQueries() });
+
+      if (!isOrgAdmin) return;
     }
 
-    if (isMember) {
-      throw redirect({
-        to: "/organizations/$orgId/projects/secret-scanning/$projectId/data-sources",
-        params: { orgId: params.orgId, projectId }
-      });
-    }
+    throw toProject;
   }
 });

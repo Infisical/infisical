@@ -3939,6 +3939,23 @@ export const SecretScanningConfigs = {
   }
 };
 
+export const SecretScanningProjects = {
+  GET_ACTIVE: {
+    projectId:
+      "The ID of the organization's active Secret Scanning project, which is the most recently created one. One is created if the organization has none."
+  },
+  GET_INSTANCE: {
+    activeProjectId:
+      "The ID of the organization's active Secret Scanning project, which is the most recently created one. Null if the organization has none.",
+    projects: "Every Secret Scanning project in the organization, most recently created first.",
+    id: "The ID of the Secret Scanning project.",
+    name: "The name of the Secret Scanning project.",
+    slug: "The slug of the Secret Scanning project.",
+    createdAt: "When the Secret Scanning project was created.",
+    isMultiInstance: "Whether the organization has more than one Secret Scanning project."
+  }
+};
+
 export const OidcSSo = {
   GET_CONFIG: {
     organizationId: "The ID of the organization to get the OIDC config for."

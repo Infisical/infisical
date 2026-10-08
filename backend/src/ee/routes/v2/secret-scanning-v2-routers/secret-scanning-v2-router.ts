@@ -17,7 +17,8 @@ import {
   ApiDocsTags,
   SecretScanningConfigs,
   SecretScanningDataSources,
-  SecretScanningFindings
+  SecretScanningFindings,
+  SecretScanningProjects
 } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -44,7 +45,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       tags: [ApiDocsTags.SecretScanning],
       description: "Resolve the organization's active Secret Scanning project, creating it on first access.",
       response: {
-        200: z.object({ projectId: z.string() })
+        200: z.object({ projectId: z.string().describe(SecretScanningProjects.GET_ACTIVE.projectId) })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -72,16 +73,17 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       description: "Get the active Secret Scanning project and every Secret Scanning project in the organization.",
       response: {
         200: z.object({
-          activeProjectId: z.string().nullable(),
+          activeProjectId: z.string().nullable().describe(SecretScanningProjects.GET_INSTANCE.activeProjectId),
           projects: z
             .object({
-              id: z.string(),
-              name: z.string(),
-              slug: z.string(),
-              createdAt: z.date()
+              id: z.string().describe(SecretScanningProjects.GET_INSTANCE.id),
+              name: z.string().describe(SecretScanningProjects.GET_INSTANCE.name),
+              slug: z.string().describe(SecretScanningProjects.GET_INSTANCE.slug),
+              createdAt: z.date().describe(SecretScanningProjects.GET_INSTANCE.createdAt)
             })
-            .array(),
-          isMultiInstance: z.boolean()
+            .array()
+            .describe(SecretScanningProjects.GET_INSTANCE.projects),
+          isMultiInstance: z.boolean().describe(SecretScanningProjects.GET_INSTANCE.isMultiInstance)
         })
       }
     },
