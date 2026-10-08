@@ -10,14 +10,10 @@ import {
   TableName
 } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
-import { chunkArray } from "@app/lib/fn";
-import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-
-const ADMIN_MEMBERSHIP_BATCH_SIZE = 500;
 
 type TResolverDeps = {
   db: Knex;
@@ -51,8 +47,8 @@ export const secretScanningV2ProjectResolverFactory = ({
     return projects.length ? projects[0].id : null;
   };
 
-  const listOrgAdminActors = async (orgId: string): Promise<TAdminActor[]> => {
-    const adminRows = (await db(TableName.Membership)
+  const listOrgAdminActors = async (orgId: string, tx: Knex): Promise<TAdminActor[]> => {
+    const adminRows = (await tx(TableName.Membership)
       .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
       .where(`${TableName.Membership}.scope`, AccessScope.Organization)
       .where(`${TableName.Membership}.scopeOrgId`, orgId)
@@ -75,49 +71,15 @@ export const secretScanningV2ProjectResolverFactory = ({
     return [...adminActors.values()];
   };
 
-  // Org admins become project admins so access requests have someone to go to. The admin count is
-  // tenant-sized, so they are added in bounded batches after the project commits rather than inside the
-  // locked creation transaction. A failed batch leaves those admins out; they can still join through
-  // grant-admin-access, which is idempotent.
-  const addOrgAdminsAsProjectAdmins = async (orgId: string, projectId: string) => {
-    const adminActors = await listOrgAdminActors(orgId);
-
-    for (const batch of chunkArray(adminActors, ADMIN_MEMBERSHIP_BATCH_SIZE)) {
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        await db.transaction(async (tx) => {
-          const memberships = await membershipDAL.insertMany(
-            batch.map((actor) => ({
-              scope: AccessScope.Project,
-              scopeOrgId: orgId,
-              scopeProjectId: projectId,
-              ...actor,
-              isActive: true
-            })),
-            tx
-          );
-
-          await membershipRoleDAL.insertMany(
-            memberships.map((membership) => ({ membershipId: membership.id, role: ProjectMembershipRole.Admin })),
-            tx
-          );
-        });
-      } catch (error) {
-        logger.error(
-          { error },
-          `Failed to add org admins to the Secret Scanning project [orgId=${orgId}] [projectId=${projectId}] [batchSize=${batch.length}]`
-        );
-      }
-    }
-  };
-
-  const ensureDefaultProject = async (orgId: string): Promise<string> => {
-    const { projectId, created } = await db.transaction(async (tx) => {
+  // Org admins become project admins in the same transaction, so access requests always have someone
+  // to go to and nobody can join a half-set-up project. Two bulk inserts regardless of the admin count.
+  const ensureDefaultProject = async (orgId: string): Promise<string> =>
+    db.transaction(async (tx) => {
       // The lock createProject takes, so a lazy create and a manual one cannot both pass the one-per-org check.
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(orgId)]);
 
       const existingId = await findDefaultProjectId(orgId, tx);
-      if (existingId) return { projectId: existingId, created: false };
+      if (existingId) return existingId;
 
       const project = await projectDAL.create(
         {
@@ -131,13 +93,24 @@ export const secretScanningV2ProjectResolverFactory = ({
         tx
       );
 
-      return { projectId: project.id, created: true };
+      const adminActors = await listOrgAdminActors(orgId, tx);
+      const memberships = await membershipDAL.insertMany(
+        adminActors.map((actor) => ({
+          scope: AccessScope.Project,
+          scopeOrgId: orgId,
+          scopeProjectId: project.id,
+          ...actor,
+          isActive: true
+        })),
+        tx
+      );
+      await membershipRoleDAL.insertMany(
+        memberships.map(({ id }) => ({ membershipId: id, role: ProjectMembershipRole.Admin })),
+        tx
+      );
+
+      return project.id;
     });
-
-    if (created) await addOrgAdminsAsProjectAdmins(orgId, projectId);
-
-    return projectId;
-  };
 
   return {
     resolve: async (actorOrgId: string): Promise<string> => {
