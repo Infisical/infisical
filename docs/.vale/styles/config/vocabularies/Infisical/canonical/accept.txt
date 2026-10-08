@@ -199,6 +199,7 @@ Fly.io
 DigitalOcean
 Cloudflare
 Cloudflare Pages
+Cloudflare Secrets Store
 Cloudflare Workers
 Windmill
 Humanitec

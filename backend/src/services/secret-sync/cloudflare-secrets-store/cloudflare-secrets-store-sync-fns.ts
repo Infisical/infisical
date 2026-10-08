@@ -98,7 +98,9 @@ export const CloudflareSecretsStoreSyncFns = {
       if (usage + newSecretCount > quota) {
         throw new SecretSyncError({
           shouldRetry: false,
-          message: `This sync would create ${newSecretCount} secrets, which exceeds the Cloudflare account's limit of ${quota} Secrets Store secrets (${usage} in use). Secrets this sync removes are deleted only after the new ones are created, so they still count toward the limit. Delete unused secrets from the store or sync fewer secrets.`
+          message: `This sync would create ${newSecretCount} ${
+            newSecretCount === 1 ? "secret" : "secrets"
+          }, which exceeds the Cloudflare account's limit of ${quota} Secrets Store secrets (${usage} in use). Secrets this sync removes are deleted only after the new ones are created, so they still count toward the limit. Delete unused secrets from the store or sync fewer secrets.`
         });
       }
     }

@@ -252,6 +252,7 @@
                       "integrations/secret-syncs/circleci",
                       "integrations/secret-syncs/cloud-66",
                       "integrations/secret-syncs/cloudflare-pages",
+                      "integrations/secret-syncs/cloudflare-secrets-store",
                       "integrations/secret-syncs/cloudflare-workers",
                       "integrations/secret-syncs/databricks",
                       "integrations/secret-syncs/daytona",
@@ -3398,6 +3399,19 @@
                           "api-reference/endpoints/secret-syncs/cloudflare-pages/delete",
                           "api-reference/endpoints/secret-syncs/cloudflare-pages/sync-secrets",
                           "api-reference/endpoints/secret-syncs/cloudflare-pages/remove-secrets"
+                        ]
+                      },
+                      {
+                        "group": "Cloudflare Secrets Store",
+                        "pages": [
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/list",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/get-by-id",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/get-by-name",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/create",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/update",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/delete",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/sync-secrets",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/remove-secrets"
                         ]
                       },
                       {
