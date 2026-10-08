@@ -596,7 +596,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
   <Accordion title="Why a certificate failed to issue" id="certificate-issuance-failures">
     Find every certificate that Infisical couldn't issue, and the reason for each failure.
 
-    Infisical records a `certificate-issuance-failed` event for certificates requested from a certificate profile through the API or the Infisical UI, ACME, EST, and SCEP, including renewals and certificates issued after an approval. The event is in the `management` class, so it's always recorded.
+    Infisical records a `certificate-issuance-failed` event for certificates requested from a certificate profile through the API or the Infisical UI, ACME, EST, and SCEP, including renewals and certificates issued after an approval.
 
     <Note>
       If an automatic renewal fails before Infisical sends it to an external CA, Infisical records an `automated-renew-certificate-failed` event instead. Infisical doesn't record `certificate-issuance-failed` for EST enrollment through a certificate template, for EST requests rejected before Infisical reads the CSR (such as a failed sign-in or a rejected client certificate), or for requests the actor's role doesn't allow, which are recorded as [`permission-denied` events](#permission-denials).
@@ -606,7 +606,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
       <Tab title="Infisical UI">
         <Steps>
           <Step>
-            Go to **Certificate Manager**, select the project, and open **Audit Logs**.
+            In **Certificate Manager**, open **Audit Logs**.
           </Step>
           <Step>
             Select **Search audit logs** and add:
@@ -618,7 +618,6 @@ Here are a few common patterns for filtering audit logs, grouped by product.
         ```bash
         curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
           -H "Authorization: Bearer <your-access-token>" \
-          --data-urlencode "projectId=<project-id>" \
           --data-urlencode "eventType=certificate-issuance-failed"
         ```
       </Tab>
@@ -634,7 +633,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
     - `originalCertificateId`: on a failed renewal, the certificate being renewed
     - `suppressedRepeats`, `suppressedFrom`, and `suppressedUntil`: on a summary event, how many identical failures Infisical counted instead of recording, and the minute they fell in
 
-    If issuance fails in a background job, or after an approver approves the request, the event's actor is `platform`. A background job issues the certificate when the CA is external, such as DigiCert or AWS Private CA. To find who requested a certificate through the API or the Infisical UI, filter by the original event, such as `order-certificate-from-profile`, and match the `certificateRequestId`.
+    The event's actor is `platform` if issuance fails after the original request has returned. That happens in two cases: an external CA, such as DigiCert or AWS Private CA, fails the order in the background, or issuance fails once an approver approves the request. An approved request for an external CA goes through the same background step. To find who requested a certificate through the API or the Infisical UI, filter by the original event, such as `order-certificate-from-profile`, and match the `certificateRequestId`.
 
     Infisical counts identical failures the same way it counts [repeated denials](#permission-denials). In each minute, it records the first failure with a given actor, operation, certificate, and error, then writes one summary event when the minute ends.
   </Accordion>

@@ -120,7 +120,7 @@ export const recordCertificateIssuanceFailure = async (
   } catch (auditError) {
     logger.warn(
       auditError,
-      `Failed to record certificate issuance failure [projectId=${projectId}] [operation=${metadata.operation}]`
+      `Failed to record certificate issuance failure [certificateProfileId=${metadata.certificateProfileId}] [certificateRequestId=${metadata.certificateRequestId}] [operation=${metadata.operation}]`
     );
   }
 };
