@@ -429,6 +429,27 @@ describe("isWebhookPathSubscribed", () => {
     });
   });
 
+  describe("secret change paths match the documented Secret Path semantics", () => {
+    test.each([
+      ["/", "/", true],
+      ["/apps", "/", false],
+      ["/apps/nested", "/", false],
+      ["/", "/**", true],
+      ["/apps", "/**", true],
+      ["/apps/nested", "/**", true],
+      ["/backend", "/backend", true],
+      ["/backend/api", "/backend", false],
+      ["/backend", "/backend/*", false],
+      ["/backend/api", "/backend/*", true],
+      ["/backend/api/v1", "/backend/*", false],
+      ["/backend", "/backend/**", true],
+      ["/backend/api/v1", "/backend/**", true],
+      ["/web", "/backend/**", false]
+    ])("event %s against hook %s is %s", (eventPath, hookPath, expected) => {
+      expect(isWebhookPathSubscribed(WebhookEvents.SecretModified, eventPath, hookPath)).toBe(expected);
+    });
+  });
+
   describe("access request paths are globs and use overlap", () => {
     test.each([
       ["/api/billing", "/api/*", true],
