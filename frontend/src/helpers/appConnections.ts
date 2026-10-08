@@ -656,6 +656,43 @@ export const APP_CONNECTION_MAP: Record<
   }
 };
 
+const S3_COMPATIBLE_PROVIDERS = [
+  { name: "AWS S3", hostname: /^s3\.[a-z0-9-]+\.amazonaws\.com$/ },
+  { name: "Cloudflare R2", hostname: /^[a-f0-9]{32}(\.[a-z]+)?\.r2\.cloudflarestorage\.com$/ },
+  { name: "Google Cloud Storage", hostname: /^storage\.googleapis\.com$/ },
+  {
+    name: "OCI Object Storage",
+    hostname:
+      /^[a-z0-9-]+\.compat\.objectstorage\.[a-z0-9-]+\.(oraclecloud\.com|oci\.customer-oci\.com)$/
+  }
+];
+
+export const getS3CompatibleProviderName = (endpoint: string) => {
+  try {
+    const url = new URL(endpoint);
+    if (
+      url.protocol !== "https:" ||
+      url.port ||
+      url.username ||
+      url.pathname !== "/" ||
+      url.search ||
+      url.hash
+    ) {
+      return null;
+    }
+    return (
+      S3_COMPATIBLE_PROVIDERS.find(({ hostname }) => hostname.test(url.hostname))?.name ?? null
+    );
+  } catch {
+    return null;
+  }
+};
+
+export const getAppConnectionProviderName = (connection: TAppConnection) =>
+  (connection.app === AppConnection.S3Compatible &&
+    getS3CompatibleProviderName(connection.credentials.endpoint)) ||
+  APP_CONNECTION_MAP[connection.app].name;
+
 export const POPULAR_APP_CONNECTIONS: AppConnection[] = [
   AppConnection.AWS,
   AppConnection.GitHub,

@@ -34,8 +34,10 @@ import {
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { useProject } from "@app/context";
+import { APP_CONNECTION_MAP, getAppConnectionProviderName } from "@app/helpers/appConnections";
 import {
   AppConnection,
+  useListAppConnections,
   useListAvailableAppConnectionsForApps
 } from "@app/hooks/api/appConnections";
 import {
@@ -283,6 +285,7 @@ const SettingsTab = ({
     PAM_RECORDING_CONNECTION_APPS,
     currentProject.id
   );
+  const { data: appConnections = [] } = useListAppConnections();
   const { map: accountTypeMap } = usePamAccountTypeMap();
 
   const maxPwLength = maxGeneratedPasswordLength(template?.type);
@@ -904,11 +907,23 @@ const SettingsTab = ({
                             <SelectValue placeholder="Select a connection" />
                           </SelectTrigger>
                           <SelectContent position="popper">
-                            {recordingConnections.map((conn) => (
-                              <SelectItem key={conn.id} value={conn.id}>
-                                {conn.name}
-                              </SelectItem>
-                            ))}
+                            {recordingConnections.length === 0 && (
+                              <div className="px-2 py-3 text-center text-xs text-muted">
+                                No AWS or S3-Compatible Storage connections found. Create one from
+                                the App Connections page.
+                              </div>
+                            )}
+                            {recordingConnections.map((conn) => {
+                              const connection = appConnections.find(({ id }) => id === conn.id);
+                              const providerName = connection
+                                ? getAppConnectionProviderName(connection)
+                                : APP_CONNECTION_MAP[conn.app].name;
+                              return (
+                                <SelectItem key={conn.id} value={conn.id}>
+                                  {conn.name} <span className="text-muted">({providerName})</span>
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                         {fieldState.error ? (

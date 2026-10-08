@@ -1,6 +1,5 @@
 import {
   DeleteObjectCommand,
-  DeleteObjectsCommand,
   GetObjectCommand,
   HeadBucketCommand,
   ListObjectsV2Command,
@@ -12,6 +11,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createS3Client } from "@app/lib/aws/s3";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
@@ -163,14 +163,10 @@ export const AwsS3RecordingStorageProvider: TPamRecordingStorageProvider = () =>
         })
       );
       const keys = (listed.Contents ?? []).map((o) => o.Key).filter((k): k is string => Boolean(k));
-      if (keys.length > 0) {
+      // single-object deletes, since OCI rejects the CRC32 checksum the SDK sends with DeleteObjects
+      for (const batch of chunkArray(keys, 50)) {
         // eslint-disable-next-line no-await-in-loop
-        await client.send(
-          new DeleteObjectsCommand({
-            Bucket: config.bucket,
-            Delete: { Objects: keys.map((Key) => ({ Key })), Quiet: true }
-          })
-        );
+        await Promise.all(batch.map((Key) => client.send(new DeleteObjectCommand({ Bucket: config.bucket, Key }))));
       }
       continuationToken = listed.IsTruncated ? listed.NextContinuationToken : undefined;
     } while (continuationToken);

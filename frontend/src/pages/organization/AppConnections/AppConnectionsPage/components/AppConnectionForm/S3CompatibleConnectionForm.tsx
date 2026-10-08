@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import {
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   Input,
@@ -18,7 +19,11 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import {
+  APP_CONNECTION_MAP,
+  getAppConnectionMethodDetails,
+  getS3CompatibleProviderName
+} from "@app/helpers/appConnections";
 import { TS3CompatibleConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { S3CompatibleConnectionMethod } from "@app/hooks/api/appConnections/types/s3-compatible-connection";
@@ -28,13 +33,6 @@ import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
 } from "./GenericAppConnectionFields";
-
-const S3_COMPATIBLE_ENDPOINT_EXAMPLES = [
-  "https://s3.<region>.amazonaws.com",
-  "https://<account-id>.r2.cloudflarestorage.com",
-  "https://storage.googleapis.com",
-  "https://<namespace>.compat.objectstorage.<region>.oraclecloud.com"
-];
 
 type Props = {
   appConnection?: TS3CompatibleConnection;
@@ -53,8 +51,10 @@ const formSchema = z.discriminatedUnion("method", [
         .string()
         .trim()
         .min(1, "Endpoint required")
-        .url("Must be a valid URL")
-        .startsWith("https://", "Endpoint must use HTTPS"),
+        .refine(
+          (endpoint) => Boolean(getS3CompatibleProviderName(endpoint)),
+          "Enter the S3 API endpoint of a supported provider, without the bucket name"
+        ),
       accessKeyId: z.string().trim().min(1, "Access Key ID required"),
       secretAccessKey: z.string().trim().min(1, "Secret Access Key required")
     })
@@ -127,22 +127,7 @@ export const S3CompatibleConnectionForm = ({ appConnection, onSubmit }: Props) =
           shouldUnregister
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
-              <FieldLabel htmlFor="endpoint">
-                Endpoint
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-sm">
-                    <p>The S3 API endpoint of your provider, without the bucket name:</p>
-                    <ul className="mt-1 list-disc pl-4 font-mono text-xs">
-                      {S3_COMPATIBLE_ENDPOINT_EXAMPLES.map((example) => (
-                        <li key={example}>{example}</li>
-                      ))}
-                    </ul>
-                  </TooltipContent>
-                </Tooltip>
-              </FieldLabel>
+              <FieldLabel htmlFor="endpoint">Endpoint</FieldLabel>
               <Input
                 id="endpoint"
                 value={value}
@@ -150,6 +135,10 @@ export const S3CompatibleConnectionForm = ({ appConnection, onSubmit }: Props) =
                 placeholder="https://s3.us-east-1.amazonaws.com"
                 isError={Boolean(error?.message)}
               />
+              <FieldDescription>
+                The S3 API endpoint, without the bucket name. Supports AWS S3, Cloudflare R2, Google
+                Cloud Storage and OCI Object Storage.
+              </FieldDescription>
               <FieldError errors={[error]} />
             </Field>
           )}

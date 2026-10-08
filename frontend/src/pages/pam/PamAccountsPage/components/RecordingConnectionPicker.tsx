@@ -1,4 +1,5 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@app/components/v3";
+import { getAppConnectionProviderName } from "@app/helpers/appConnections";
 import { useListAppConnections } from "@app/hooks/api/appConnections/queries";
 import { PAM_RECORDING_CONNECTION_APPS } from "@app/hooks/api/pam/constants";
 
@@ -36,7 +37,8 @@ export const RecordingConnectionPicker = ({ value, onChange, isError, includeNon
         )}
         {recordingConnections.map((connection) => (
           <SelectItem key={connection.id} value={connection.id}>
-            {connection.name}
+            {connection.name}{" "}
+            <span className="text-muted">({getAppConnectionProviderName(connection)})</span>
           </SelectItem>
         ))}
       </SelectContent>
