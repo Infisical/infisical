@@ -5,6 +5,7 @@ import {
   isAddressableKeeperUid,
   KEEPER_UID_PATTERN,
   quoteKeeperArg,
+  syncDownKeeperVault,
   TKeeperCredentials
 } from "@app/services/app-connection/keeper";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
@@ -44,6 +45,8 @@ const listKeeperLoginRecords = async (credentials: TKeeperCredentials, folderUid
       message: `Keeper Password Manager shared folder UID '${folderUid}' cannot be addressed through Keeper Commander Service Mode. Choose a different shared folder.`
     });
   }
+
+  await syncDownKeeperVault(credentials);
 
   const listing = await executeKeeperCommand<TKeeperListResponse>(credentials, `ls --format=json ${folderUid}`);
 

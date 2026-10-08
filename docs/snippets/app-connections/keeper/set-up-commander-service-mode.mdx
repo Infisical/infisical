@@ -39,7 +39,7 @@
           -v $HOME/.keeper/config.json:/home/commander/.keeper/config.json \
           keeper/commander:latest \
           service-create -p 8900 -f json -q n \
-            -c 'whoami,list-sf,ls,get,record-add,record-update,rm' \
+            -c 'whoami,list-sf,ls,get,record-add,record-update,rm,sync-down' \
             -rl 120/minute -aip '<infisical-ip-addresses>'
         ```
 
@@ -63,4 +63,5 @@
 
         Copy the key. You need it to create the connection in Infisical.
     </Step>
+
 </Steps>

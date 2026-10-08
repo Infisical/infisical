@@ -80,7 +80,7 @@ const fakeKeeper = (
 
 const sentCommands = () => post.mock.calls.map(([, body]) => (body as { command: string }).command);
 
-const writeCommands = () => sentCommands().filter((command) => !/^(ls|get) /.test(command));
+const writeCommands = () => sentCommands().filter((command) => !/^(sync-down$|ls |get )/.test(command));
 
 describe("KeeperSyncFns", () => {
   beforeEach(() => {
@@ -98,8 +98,16 @@ describe("KeeperSyncFns", () => {
       { headers: Record<string, string> }
     ];
     expect(url).toBe("https://keeper.example.com/api/v1/executecommand");
-    expect(body).toEqual({ command: `ls --format=json ${FOLDER_UID}` });
+    expect(body).toEqual({ command: "sync-down" });
     expect(options.headers["api-key"]).toBe("api-key");
+  });
+
+  it("syncs the vault down before listing the shared folder", async () => {
+    fakeKeeper([{ uid: "uid-a", title: "A", password: "a" }]);
+
+    await KeeperSyncFns.syncSecrets(syncWith(), payloadOf({ A: "a" }));
+
+    expect(sentCommands()).toEqual(["sync-down", `ls --format=json ${FOLDER_UID}`, "get --format=json uid-a"]);
   });
 
   it("creates missing records, updates changed ones and skips unchanged ones", async () => {
@@ -184,7 +192,7 @@ describe("KeeperSyncFns", () => {
     fakeKeeper([{ uid: "bad uid'; rm", title: "BAD", password: "x" }]);
 
     await expect(KeeperSyncFns.getSecrets(syncWith())).resolves.toEqual({});
-    expect(sentCommands()).toEqual([`ls --format=json ${FOLDER_UID}`]);
+    expect(sentCommands()).toEqual(["sync-down", `ls --format=json ${FOLDER_UID}`]);
   });
 
   it("skips records whose UID starts with a dash, since Service Mode blocks the -- separator", async () => {
@@ -195,7 +203,7 @@ describe("KeeperSyncFns", () => {
 
     await KeeperSyncFns.syncSecrets(syncWith(), payloadOf({ A: "a" }));
 
-    expect(sentCommands()).toEqual([`ls --format=json ${FOLDER_UID}`, "get --format=json uid-a"]);
+    expect(sentCommands()).toEqual(["sync-down", `ls --format=json ${FOLDER_UID}`, "get --format=json uid-a"]);
   });
 
   it("refuses a shared folder whose UID starts with a dash before sending anything", async () => {

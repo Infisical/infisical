@@ -133,7 +133,11 @@ export const validateKeeperConnectionCredentials = async (config: TKeeperConnect
   return config.credentials;
 };
 
+export const syncDownKeeperVault = (credentials: TKeeperCredentials) => executeKeeperCommand(credentials, "sync-down");
+
 export const listKeeperSharedFolders = async (appConnection: TKeeperConnection): Promise<TKeeperSharedFolder[]> => {
+  await syncDownKeeperVault(appConnection.credentials);
+
   const rows = await executeKeeperCommand<TKeeperListSharedFoldersRow[]>(
     appConnection.credentials,
     "list-sf --format=json"
