@@ -34,6 +34,64 @@ const SecretScanningDataSourceOptionsSchema = z.discriminatedUnion("type", [
 export const registerSecretScanningV2Router = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
+    url: "/project",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "getSecretScanningProject",
+      tags: [ApiDocsTags.SecretScanning],
+      description: "Resolve the organization's active Secret Scanning project, creating it on first access.",
+      response: {
+        200: z.object({ projectId: z.string() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const projectId = await server.services.secretScanningV2ProjectResolver.resolve(req.permission.orgId);
+      return { projectId };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/instance",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "getSecretScanningInstanceState",
+      tags: [ApiDocsTags.SecretScanning],
+      description: "Get the active Secret Scanning project and every Secret Scanning project in the organization.",
+      response: {
+        200: z.object({
+          activeProjectId: z.string().nullable(),
+          projects: z
+            .object({
+              id: z.string(),
+              name: z.string(),
+              slug: z.string(),
+              createdAt: z.date()
+            })
+            .array(),
+          isMultiInstance: z.boolean()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.secretScanningV2Instance.getInstanceState({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      })
+  });
+
+  server.route({
+    method: "GET",
     url: "/data-sources/options",
     config: {
       rateLimit: readLimit

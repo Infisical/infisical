@@ -37,6 +37,7 @@ import { fetchAgentVaultProjectId } from "@app/hooks/api/agentVault/queries";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
 import { resolvePamProjectId } from "@app/hooks/api/pam/queries";
+import { fetchSecretScanningProjectId } from "@app/hooks/api/secretScanningV2/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 
 type ActiveProducts = ProjectType;
@@ -138,6 +139,11 @@ export const ProjectCategoryOverview = () => {
   const [pendingPamProjectId, setPendingPamProjectId] = useState<string | null>(null);
   const [isAgentVaultRequestAccessOpen, setIsAgentVaultRequestAccessOpen] = useState(false);
   const [pendingAgentVaultProjectId, setPendingAgentVaultProjectId] = useState<string | null>(null);
+  const [isSecretScanningRequestAccessOpen, setIsSecretScanningRequestAccessOpen] =
+    useState(false);
+  const [pendingSecretScanningProjectId, setPendingSecretScanningProjectId] = useState<
+    string | null
+  >(null);
 
   const orgDefaultCertManagerProjectId = certManagerInstance?.activeProjectId ?? null;
   const cmInstances = useMemo(
@@ -386,6 +392,51 @@ export const ProjectCategoryOverview = () => {
     });
   };
 
+  const navigateToSecretScanning = (projectId: string) => {
+    navigate({
+      to: "/organizations/$orgId/projects/secret-scanning/$projectId/data-sources",
+      params: { orgId: currentOrg?.id ?? "", projectId }
+    });
+  };
+
+  const enterSecretScanningProject = async () => {
+    // Also lazily bootstraps the Secret Scanning project for orgs that don't have one yet.
+    let secretScanningProjectId: string;
+    try {
+      secretScanningProjectId = await fetchSecretScanningProjectId();
+    } catch (err) {
+      createNotification({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to resolve the Secret Scanning project."
+      });
+      return;
+    }
+
+    const isMember = projects.some((p) => p.id === secretScanningProjectId);
+    if (isMember) {
+      navigateToSecretScanning(secretScanningProjectId);
+      return;
+    }
+
+    setPendingSecretScanningProjectId(secretScanningProjectId);
+
+    if (isOrgAdmin) {
+      try {
+        await orgAdminAccessProject.mutateAsync({ projectId: secretScanningProjectId });
+        navigateToSecretScanning(secretScanningProjectId);
+      } catch {
+        // The global mutation error handler already reports the failure.
+      }
+    } else if (canRequestAccess) {
+      setIsSecretScanningRequestAccessOpen(true);
+    } else {
+      createNotification({
+        type: "error",
+        text: "You don't have access to Secret Scanning."
+      });
+    }
+  };
+
   const handleTileClick = async (type: ProjectType) => {
     const orgId = currentOrg?.id || "";
 
@@ -410,6 +461,11 @@ export const ProjectCategoryOverview = () => {
 
     if (type === ProjectType.AgentVault) {
       await enterAgentVaultProject();
+      return;
+    }
+
+    if (type === ProjectType.SecretScanning) {
+      await enterSecretScanningProject();
       return;
     }
 
@@ -457,6 +513,13 @@ export const ProjectCategoryOverview = () => {
     ? ({
         id: pendingPamProjectId,
         name: "Privileged Access Manager"
+      } as Project)
+    : undefined;
+
+  const secretScanningRequestAccessProject: Project | undefined = pendingSecretScanningProjectId
+    ? ({
+        id: pendingSecretScanningProjectId,
+        name: "Secret Scanning"
       } as Project)
     : undefined;
 
@@ -543,12 +606,13 @@ export const ProjectCategoryOverview = () => {
 
           const tileClassName = `group h-auto cursor-pointer rounded-md transition-all duration-200 ease-out hover:scale-[1.01] ${cardClassName}`;
 
-          // Cert Manager and PAM resolve their destination asynchronously (instance picker,
-          // lazy project bootstrap, join-on-behalf), so they stay handler-driven.
+          // These resolve their destination asynchronously (instance picker, lazy project
+          // bootstrap, join-on-behalf), so they stay handler-driven.
           if (
             type === ProjectType.CertificateManager ||
             type === ProjectType.PAM ||
-            type === ProjectType.AgentVault
+            type === ProjectType.AgentVault ||
+            type === ProjectType.SecretScanning
           ) {
             return (
               <Card
@@ -594,6 +658,16 @@ export const ProjectCategoryOverview = () => {
         }}
         project={pamRequestAccessProject}
         subTitle="Requesting access to Privileged Access Manager. You may include an optional note for admins to review your request."
+      />
+
+      <RequestProjectAccessModal
+        isOpen={isSecretScanningRequestAccessOpen}
+        onOpenChange={(isOpen) => {
+          setIsSecretScanningRequestAccessOpen(isOpen);
+          if (!isOpen) setPendingSecretScanningProjectId(null);
+        }}
+        project={secretScanningRequestAccessProject}
+        subTitle="Requesting access to Secret Scanning. You may include an optional note for admins to review your request."
       />
 
       <RequestProjectAccessModal
