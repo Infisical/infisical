@@ -11,5 +11,6 @@ export type TSupabaseConnection = TRootAppConnection & {
   credentials: {
     instanceUrl?: string;
     accessKey: string;
+    projectRef?: string;
   };
 };

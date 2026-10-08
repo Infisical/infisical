@@ -3041,7 +3041,8 @@ export const AppConnections = {
     },
     SUPABASE: {
       accessKey: "The Key used to access Supabase.",
-      instanceUrl: "The URL used to access Supabase."
+      instanceUrl: "The URL used to access Supabase.",
+      projectRef: "The reference ID of the Supabase project to connect to (required when using project-scoped tokens)."
     },
     DIGITAL_OCEAN_APP_PLATFORM: {
       apiToken: "The API token used to authenticate with Digital Ocean App Platform."

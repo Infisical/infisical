@@ -6,7 +6,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 
 import { SupabaseConnectionMethod } from "./supabase-connection-constants";
 import { SupabasePublicAPI } from "./supabase-connection-public-client";
-import { TSupabaseConnection, TSupabaseConnectionConfig } from "./supabase-connection-types";
+import { TSupabaseConnection, TSupabaseConnectionConfig, TSupabaseProjectItem } from "./supabase-connection-types";
 
 export const getSupabaseConnectionListItem = () => {
   return {
@@ -23,8 +23,14 @@ export const validateSupabaseConnectionCredentials = async (config: TSupabaseCon
     await SupabasePublicAPI.healthcheck(config);
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
+      const is403 = error.response?.status === 403 || error.status === 403;
+      const message =
+        !credentials.projectRef && is403
+          ? `Failed to validate credentials: ${error.message || "Request failed with status code 403"}. If using a project-scoped access token, please specify a Project Reference.`
+          : `Failed to validate credentials: ${error.message || "Unknown error"}`;
+
       throw new BadRequestError({
-        message: `Failed to validate credentials: ${error.message || "Unknown error"}`
+        message
       });
     }
 
@@ -36,9 +42,16 @@ export const validateSupabaseConnectionCredentials = async (config: TSupabaseCon
   return credentials;
 };
 
-export const listProjects = async (appConnection: TSupabaseConnection) => {
+export const listProjects = async (appConnection: TSupabaseConnection): Promise<TSupabaseProjectItem[]> => {
+  const { credentials } = appConnection;
+
+  if (credentials.projectRef) {
+    return [{ id: credentials.projectRef, name: credentials.projectRef }];
+  }
+
   try {
-    return await SupabasePublicAPI.getProjects(appConnection);
+    const projects = await SupabasePublicAPI.getProjects(appConnection);
+    return projects ?? [];
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
       throw new BadRequestError({
