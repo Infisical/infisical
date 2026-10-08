@@ -1259,29 +1259,32 @@ const Toolbar = ({
             <ListIcon />
           </IconButton>
         </ButtonGroup>
-        <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
-          {(isOldProjectV1Allowed) => (
-            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
-              {(isAllowed) => (
-                <Button
-                  isDisabled={!isAllowed && !isOldProjectV1Allowed}
-                  size="sm"
-                  variant="project"
-                  onClick={() => {
-                    if (isAddingProjectsAllowed) {
-                      onAddNewProject();
-                    } else {
-                      onUpgradePlan();
-                    }
-                  }}
-                >
-                  <PlusIcon />
-                  New Project
-                </Button>
-              )}
-            </OrgPermissionCan>
-          )}
-        </OrgPermissionCan>
+        {/* Secret Scanning's one project always exists by the time this list renders, so creating another is refused. */}
+        {projectType !== ProjectType.SecretScanning && (
+          <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
+            {(isOldProjectV1Allowed) => (
+              <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
+                {(isAllowed) => (
+                  <Button
+                    isDisabled={!isAllowed && !isOldProjectV1Allowed}
+                    size="sm"
+                    variant="project"
+                    onClick={() => {
+                      if (isAddingProjectsAllowed) {
+                        onAddNewProject();
+                      } else {
+                        onUpgradePlan();
+                      }
+                    }}
+                  >
+                    <PlusIcon />
+                    New Project
+                  </Button>
+                )}
+              </OrgPermissionCan>
+            )}
+          </OrgPermissionCan>
+        )}
       </div>
     </div>
   );
@@ -1301,6 +1304,30 @@ const EmptyState = ({
   isAddingProjectsAllowed: boolean;
 }) => {
   const typeTitle = getProjectTitle(projectType);
+  const { permission } = useOrgPermission();
+
+  if (projectType === ProjectType.SecretScanning) {
+    const canRequestAccess = permission.can(
+      OrgPermissionProjectActions.RequestAccess,
+      OrgPermissionSubjects.Project
+    );
+
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <ProductIcon />
+          </EmptyMedia>
+          <EmptyTitle>You don&apos;t have access to Secret Scanning</EmptyTitle>
+          <EmptyDescription>
+            {canRequestAccess
+              ? "Switch to All Projects to request access to the Secret Scanning project."
+              : "Ask an organization admin to add you to the Secret Scanning project."}
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
 
   return (
     <Empty className="border">
