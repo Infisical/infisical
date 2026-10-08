@@ -3,7 +3,7 @@ import { AxiosError } from "axios";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, ipGuardedAgents } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -59,6 +59,7 @@ export const validateTriggerDevConnectionCredentials = async (config: TTriggerDe
 
   try {
     await request.get(`${instanceUrl}/api/v1/projects`, {
+      ...ipGuardedAgents,
       headers: {
         Authorization: `Bearer ${apiKey}`,
         Accept: "application/json"
@@ -83,6 +84,7 @@ export const listTriggerDevProjects = async (appConnection: TTriggerDevConnectio
   const { apiKey } = appConnection.credentials;
 
   const { data } = await request.get<TTriggerDevApiProject[]>(`${instanceUrl}/api/v1/projects`, {
+    ...ipGuardedAgents,
     headers: {
       Authorization: `Bearer ${apiKey}`,
       Accept: "application/json"
@@ -115,6 +117,7 @@ export const listTriggerDevEnvironments = async (
   const { data } = await request.get<TTriggerDevApiEnvironment[]>(
     `${instanceUrl}/api/v1/projects/${encodeURIComponent(projectRef)}/environments`,
     {
+      ...ipGuardedAgents,
       headers: {
         Authorization: `Bearer ${apiKey}`,
         Accept: "application/json"

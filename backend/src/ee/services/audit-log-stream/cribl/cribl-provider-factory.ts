@@ -4,7 +4,7 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 
 import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
-import { blockAuditLogStreamInternalIps } from "../audit-log-stream-fns";
+import { auditLogStreamAgents, blockAuditLogStreamInternalIps } from "../audit-log-stream-fns";
 import {
   TLogStreamFactoryBatchStreamLog,
   TLogStreamFactoryGetProviderBatchLimit,
@@ -28,6 +28,7 @@ export const CriblProviderFactory = () => {
 
     await request
       .post(url, JSON.stringify({ ping: "ok" }), {
+        ...auditLogStreamAgents,
         headers: streamHeaders,
         timeout: AUDIT_LOG_STREAM_TIMEOUT
       })
@@ -57,6 +58,7 @@ export const CriblProviderFactory = () => {
     const body = auditLogs.map((auditLog) => JSON.stringify(auditLog)).join("\n");
 
     await request.post(url, body, {
+      ...auditLogStreamAgents,
       headers: streamHeaders,
       timeout: AUDIT_LOG_STREAM_BATCH_TIMEOUT
     });
@@ -73,6 +75,7 @@ export const CriblProviderFactory = () => {
     };
 
     await request.post(url, JSON.stringify(auditLog), {
+      ...auditLogStreamAgents,
       headers: streamHeaders,
       timeout: AUDIT_LOG_STREAM_TIMEOUT
     });

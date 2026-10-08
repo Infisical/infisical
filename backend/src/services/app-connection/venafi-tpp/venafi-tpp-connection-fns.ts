@@ -10,7 +10,7 @@ import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 import { getTlsServerNameOptions } from "@app/lib/tls";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
+import { blockLocalAndPrivateIpAddresses, ipGuardedAgents } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { VenafiTppConnectionMethod } from "./venafi-tpp-connection-enums";
@@ -55,7 +55,7 @@ export const requestWithVenafiTppGateway = async <T>(
   await blockLocalAndPrivateIpAddresses(url.toString(), Boolean(gatewayId));
 
   if (!gatewayId) {
-    return request.request(requestConfig);
+    return request.request({ ...requestConfig, ...ipGuardedAgents });
   }
 
   const [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });

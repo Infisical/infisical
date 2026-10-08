@@ -1,4 +1,8 @@
+import nodeDns, { LookupAddress } from "node:dns";
 import dns from "node:dns/promises";
+import http from "node:http";
+import https from "node:https";
+import { LookupFunction } from "node:net";
 
 import { isIP } from "net";
 import RE2 from "re2";
@@ -41,6 +45,41 @@ export const blockLocalAndPrivateIpAddresses = async (url: string, isGateway = f
   const isInternalIp = inputHostIps.some((el) => isPrivateIp(el));
   if (isInternalIp && !allowInternal) throw new BadRequestError({ message: "Local IPs not allowed as URL" });
 };
+
+const createIpGuardedLookup =
+  (isInternalIpAllowed: () => boolean = () => false): LookupFunction =>
+  (hostname, options, callback) => {
+    nodeDns.lookup(hostname, { ...options, all: true }, (err, addresses: LookupAddress[]) => {
+      if (err) {
+        callback(err, "", 0);
+        return;
+      }
+      const appCfg = getConfig();
+      const isInternalAllowed =
+        appCfg.isDevelopmentMode || appCfg.ALLOW_INTERNAL_IP_CONNECTIONS || isInternalIpAllowed();
+      if (!isInternalAllowed && addresses.some(({ address }) => isPrivateIp(address))) {
+        callback(new BadRequestError({ message: "Local IPs not allowed as URL" }), "", 0);
+        return;
+      }
+      if (options.all) {
+        (callback as unknown as (error: null, result: LookupAddress[]) => void)(null, addresses);
+        return;
+      }
+      callback(null, addresses[0].address, addresses[0].family);
+    });
+  };
+
+export const ipGuardedLookup = createIpGuardedLookup();
+
+export const createIpGuardedAgents = (isInternalIpAllowed?: () => boolean) => {
+  const lookup = createIpGuardedLookup(isInternalIpAllowed);
+  return {
+    httpAgent: new http.Agent({ keepAlive: true, lookup }),
+    httpsAgent: new https.Agent({ keepAlive: true, lookup })
+  };
+};
+
+export const ipGuardedAgents = createIpGuardedAgents();
 
 const AZURE_KEY_VAULT_HOST_REGEX = new RE2(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?\.vault\.azure\.net$/);
 

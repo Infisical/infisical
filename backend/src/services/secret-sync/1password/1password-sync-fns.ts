@@ -1,4 +1,5 @@
 import { request } from "@app/lib/config/request";
+import { ipGuardedAgents } from "@app/lib/validator";
 import { getOnePassInstanceUrl } from "@app/services/app-connection/1password";
 import {
   TDeleteOnePassVariable,
@@ -18,6 +19,7 @@ const VALUE_LABEL_DEFAULT = "value";
 
 const listOnePassItems = async ({ instanceUrl, apiToken, vaultId, valueLabel }: TOnePassListVariables) => {
   const { data } = await request.get<TOnePassListVariablesResponse>(`${instanceUrl}/v1/vaults/${vaultId}/items`, {
+    ...ipGuardedAgents,
     headers: {
       Authorization: `Bearer ${apiToken}`,
       Accept: "application/json"
@@ -38,6 +40,7 @@ const listOnePassItems = async ({ instanceUrl, apiToken, vaultId, valueLabel }: 
     }
 
     const { data: secret } = await request.get<TOnePassVariable>(`${instanceUrl}/v1/vaults/${vaultId}/items/${s.id}`, {
+      ...ipGuardedAgents,
       headers: {
         Authorization: `Bearer ${apiToken}`,
         Accept: "application/json"
@@ -85,6 +88,7 @@ const createOnePassItem = async ({
       ]
     },
     {
+      ...ipGuardedAgents,
       headers: {
         Authorization: `Bearer ${apiToken}`,
         "Content-Type": "application/json"
@@ -125,6 +129,7 @@ const updateOnePassItem = async ({
       ]
     },
     {
+      ...ipGuardedAgents,
       headers: {
         Authorization: `Bearer ${apiToken}`,
         "Content-Type": "application/json"
@@ -135,6 +140,7 @@ const updateOnePassItem = async ({
 
 const deleteOnePassItem = async ({ instanceUrl, apiToken, vaultId, itemId }: TDeleteOnePassVariable) => {
   return request.delete(`${instanceUrl}/v1/vaults/${vaultId}/items/${itemId}`, {
+    ...ipGuardedAgents,
     headers: {
       Authorization: `Bearer ${apiToken}`
     }

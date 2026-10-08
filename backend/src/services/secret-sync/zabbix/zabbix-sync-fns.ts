@@ -1,7 +1,7 @@
 import RE2 from "re2";
 
 import { request } from "@app/lib/config/request";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, ipGuardedAgents } from "@app/lib/validator";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
@@ -59,6 +59,7 @@ const listZabbixSecrets = async (apiToken: string, instanceUrl: string, hostId?:
 
   try {
     const response: ZabbixApiResponse<TZabbixSecret[]> = await request.post(apiUrl, payload, {
+      ...ipGuardedAgents,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiToken}`
@@ -106,6 +107,7 @@ const putZabbixSecrets = async (
 
         // eslint-disable-next-line no-await-in-loop
         const response: ZabbixApiResponse<ZabbixMacroCreateResponse> = await request.post(apiUrl, updatePayload, {
+          ...ipGuardedAgents,
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${apiToken}`
@@ -137,6 +139,7 @@ const putZabbixSecrets = async (
 
         // eslint-disable-next-line no-await-in-loop
         const response: ZabbixApiResponse<ZabbixMacroCreateResponse> = await request.post(apiUrl, createPayload, {
+          ...ipGuardedAgents,
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${apiToken}`
@@ -181,6 +184,7 @@ const deleteZabbixSecrets = async (
     };
 
     const response: ZabbixApiResponse<ZabbixMacroDeleteResponse> = await request.post(apiUrl, payload, {
+      ...ipGuardedAgents,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiToken}`

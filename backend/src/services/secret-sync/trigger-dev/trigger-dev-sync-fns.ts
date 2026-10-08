@@ -1,4 +1,5 @@
 import { request } from "@app/lib/config/request";
+import { ipGuardedAgents } from "@app/lib/validator";
 import { getTriggerDevInstanceUrl } from "@app/services/app-connection/trigger-dev";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -37,6 +38,7 @@ const listTriggerDevEnvVars = async (
 
   try {
     const { data } = await request.get<TTriggerDevEnvVar[]>(baseUrl, {
+      ...ipGuardedAgents,
       headers: {
         Authorization: `Bearer ${apiKey}`,
         Accept: "application/json"
@@ -68,6 +70,7 @@ const importTriggerDevEnvVars = async (
       `${baseUrl}/import`,
       { variables, override: true, isSecret },
       {
+        ...ipGuardedAgents,
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json"
@@ -94,6 +97,7 @@ const deleteTriggerDevEnvVar = async (
 
   try {
     await request.delete(`${baseUrl}/${encodeURIComponent(key)}`, {
+      ...ipGuardedAgents,
       headers: {
         Authorization: `Bearer ${apiKey}`,
         Accept: "application/json"

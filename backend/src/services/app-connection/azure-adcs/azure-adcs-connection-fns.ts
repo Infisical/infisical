@@ -4,7 +4,7 @@ import https from "https";
 import RE2 from "re2";
 
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
+import { blockLocalAndPrivateIpAddresses, ipGuardedLookup } from "@app/lib/validator";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
@@ -112,7 +112,8 @@ const createHttpsAgent = (sslRejectUnauthorized: boolean, sslCertificate?: strin
     ca: sslCertificate ? [sslCertificate.trim()] : undefined,
     // Disable hostname verification as Microsoft servers by default use local IPs for certificates
     // which may not match the hostname used to connect
-    checkServerIdentity: () => undefined
+    checkServerIdentity: () => undefined,
+    lookup: ipGuardedLookup
   };
 
   return new https.Agent(agentOptions);
@@ -130,6 +131,7 @@ const axiosNtlmRequest = async (config: AxiosNtlmConfig): Promise<AxiosNtlmRespo
 
   const axiosConfig = {
     httpsAgent: config.httpsAgent,
+    maxRedirects: 0,
     timeout: 60000
   };
 

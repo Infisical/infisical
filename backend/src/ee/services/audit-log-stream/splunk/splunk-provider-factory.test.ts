@@ -21,6 +21,7 @@ vi.mock("@app/lib/logger", () => ({
 // Only safeRequest's URL validation is stubbed, because the real one resolves DNS. The stub still
 // dispatches through the axios instance below, so the on-wire assertions stay on real behaviour.
 vi.mock("@app/lib/validator", () => ({
+  createIpGuardedAgents: () => ({}),
   safeRequest: {
     post: async (url: string, data: unknown, options: Record<string, unknown> = {}) => {
       const { allowPrivateIps, ...axiosOpts } = options;

@@ -17,7 +17,7 @@ import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, ipGuardedAgents } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -462,7 +462,12 @@ export const executeAcmeOrder = async (
 
   await reportProgress("Submitting order to the certificate authority");
 
-  const pem = await acmeClient.auto({
+  const ipGuardInterceptorId = acme.axios.interceptors.request.use(async (config) => {
+    if (config.url) await blockLocalAndPrivateIpAddresses(config.url);
+    return { ...config, ...ipGuardedAgents, maxRedirects: 0 };
+  });
+
+  const order = acmeClient.auto({
     csr,
     email: acmeCa.configuration.accountEmail,
     challengePriority: ["dns-01"],
@@ -628,6 +633,8 @@ export const executeAcmeOrder = async (
       }
     }
   });
+
+  const pem = await order.finally(() => acme.axios.interceptors.request.eject(ipGuardInterceptorId));
 
   if (isCancelled && (await isCancelled())) {
     throw new CertificateRequestCancelledError();

@@ -4,7 +4,7 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 
 import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
-import { blockAuditLogStreamInternalIps } from "../audit-log-stream-fns";
+import { auditLogStreamAgents, blockAuditLogStreamInternalIps } from "../audit-log-stream-fns";
 import {
   TLogStreamFactoryBatchStreamLog,
   TLogStreamFactoryGetProviderBatchLimit,
@@ -33,6 +33,7 @@ export const CustomProviderFactory = () => {
         url,
         { ping: "ok" },
         {
+          ...auditLogStreamAgents,
           headers: streamHeaders,
           timeout: AUDIT_LOG_STREAM_TIMEOUT,
           maxRedirects: 0
@@ -64,6 +65,7 @@ export const CustomProviderFactory = () => {
     }
 
     await request.post(url, auditLogs, {
+      ...auditLogStreamAgents,
       headers: streamHeaders,
       timeout: AUDIT_LOG_STREAM_BATCH_TIMEOUT
     });
@@ -83,6 +85,7 @@ export const CustomProviderFactory = () => {
     }
 
     await request.post(url, auditLog, {
+      ...auditLogStreamAgents,
       headers: streamHeaders,
       timeout: AUDIT_LOG_STREAM_TIMEOUT
     });

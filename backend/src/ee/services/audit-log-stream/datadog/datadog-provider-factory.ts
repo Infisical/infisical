@@ -5,7 +5,7 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 
 import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
-import { blockAuditLogStreamInternalIps } from "../audit-log-stream-fns";
+import { auditLogStreamAgents, blockAuditLogStreamInternalIps } from "../audit-log-stream-fns";
 import {
   TLogStreamFactoryBatchStreamLog,
   TLogStreamFactoryGetProviderBatchLimit,
@@ -39,6 +39,7 @@ export const DatadogProviderFactory = () => {
 
     await request
       .post(url, createPayload({ ping: "ok" }), {
+        ...auditLogStreamAgents,
         headers: streamHeaders,
         timeout: AUDIT_LOG_STREAM_TIMEOUT
       })
@@ -62,6 +63,7 @@ export const DatadogProviderFactory = () => {
     const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": "application/json", "DD-API-KEY": token };
 
     await request.post(url, auditLogs.map(createPayload), {
+      ...auditLogStreamAgents,
       headers: streamHeaders,
       timeout: AUDIT_LOG_STREAM_BATCH_TIMEOUT
     });

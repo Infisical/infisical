@@ -25,6 +25,9 @@ export {
 } from "./validate-smb";
 export {
   blockLocalAndPrivateIpAddresses,
+  createIpGuardedAgents,
+  ipGuardedAgents,
+  ipGuardedLookup,
   isValidAzureKeyVaultUrl,
   ssrfSafeGet,
   ssrfSafePost,

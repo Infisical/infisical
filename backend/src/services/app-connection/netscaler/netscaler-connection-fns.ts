@@ -8,7 +8,7 @@ import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { getTlsServerNameOptions } from "@app/lib/tls";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, ipGuardedLookup } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { NetScalerConnectionMethod } from "./netscaler-connection-enums";
@@ -20,7 +20,8 @@ export const createNetScalerHttpsAgent = (credentials: {
 }): https.Agent => {
   return new https.Agent({
     rejectUnauthorized: credentials.sslRejectUnauthorized,
-    ca: credentials.sslCertificate ? [credentials.sslCertificate] : undefined
+    ca: credentials.sslCertificate ? [credentials.sslCertificate] : undefined,
+    lookup: ipGuardedLookup
   });
 };
 

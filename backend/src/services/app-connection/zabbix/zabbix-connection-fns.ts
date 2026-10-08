@@ -3,7 +3,7 @@ import RE2 from "re2";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, ipGuardedAgents } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { ZabbixConnectionMethod } from "./zabbix-connection-enums";
@@ -41,6 +41,7 @@ export const validateZabbixConnectionCredentials = async (config: TZabbixConnect
     };
 
     const response: { data: { error?: { message: string }; result?: string } } = await request.post(apiUrl, payload, {
+      ...ipGuardedAgents,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiToken}`
@@ -83,6 +84,7 @@ export const listZabbixHosts = async (appConnection: TZabbixConnection): Promise
     };
 
     const response: { data: TZabbixHostListResponse } = await request.post(apiUrl, payload, {
+      ...ipGuardedAgents,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiToken}`
