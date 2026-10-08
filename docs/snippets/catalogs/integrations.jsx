@@ -122,4 +122,5 @@ export const integrations = [
   { name: "Hasura Cloud", path: "/integrations/secret-syncs/hasura-cloud", description: "Learn how to sync secrets from Infisical to Hasura Cloud.", type: "Secret Sync", tag: "Hosting" },
   { name: "Daytona", path: "/integrations/secret-syncs/daytona", description: "Learn how to sync secrets from Infisical to a Daytona organization.", type: "Secret Sync", tag: "DevOps Tools" },
   { name: "Devin", path: "/integrations/secret-syncs/devin", description: "Learn how to sync secrets from Infisical to Devin.", type: "Secret Sync", tag: "DevOps Tools" },
+  { name: "Keeper Password Manager", path: "/integrations/secret-syncs/keeper-password-manager", description: "Learn how to sync secrets from Infisical to a Keeper shared folder.", type: "Secret Sync", tag: "Security" },
 ];

@@ -252,6 +252,7 @@ Daytona
 DBT
 Ab Initio
 Initio
+Keeper Password Manager
 
 # --- Identity ---
 Okta

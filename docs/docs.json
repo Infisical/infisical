@@ -266,6 +266,7 @@
                       "integrations/secret-syncs/heroku",
                       "integrations/secret-syncs/humanitec",
                       "integrations/secret-syncs/external-infisical",
+                      "integrations/secret-syncs/keeper-password-manager",
                       "integrations/secret-syncs/laravel-forge",
                       "integrations/secret-syncs/netlify",
                       "integrations/secret-syncs/northflank",
@@ -1096,6 +1097,7 @@
                   "integrations/app-connections/hasura-cloud",
                   "integrations/app-connections/heroku",
                   "integrations/app-connections/humanitec",
+                  "integrations/app-connections/keeper",
                   "integrations/app-connections/kemp-loadmaster",
                   "integrations/app-connections/external-infisical",
                   "integrations/app-connections/laravel-forge",
@@ -2107,6 +2109,18 @@
                           "api-reference/endpoints/app-connections/external-infisical/create",
                           "api-reference/endpoints/app-connections/external-infisical/update",
                           "api-reference/endpoints/app-connections/external-infisical/delete"
+                        ]
+                      },
+                      {
+                        "group": "Keeper",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/keeper/list",
+                          "api-reference/endpoints/app-connections/keeper/available",
+                          "api-reference/endpoints/app-connections/keeper/get-by-id",
+                          "api-reference/endpoints/app-connections/keeper/get-by-name",
+                          "api-reference/endpoints/app-connections/keeper/create",
+                          "api-reference/endpoints/app-connections/keeper/update",
+                          "api-reference/endpoints/app-connections/keeper/delete"
                         ]
                       },
                       {
@@ -3597,6 +3611,20 @@
                           "api-reference/endpoints/secret-syncs/external-infisical/sync-secrets",
                           "api-reference/endpoints/secret-syncs/external-infisical/import-secrets",
                           "api-reference/endpoints/secret-syncs/external-infisical/remove-secrets"
+                        ]
+                      },
+                      {
+                        "group": "Keeper Password Manager",
+                        "pages": [
+                          "api-reference/endpoints/secret-syncs/keeper-password-manager/list",
+                          "api-reference/endpoints/secret-syncs/keeper-password-manager/get-by-id",
+                          "api-reference/endpoints/secret-syncs/keeper-password-manager/get-by-name",
+                          "api-reference/endpoints/secret-syncs/keeper-password-manager/create",
+                          "api-reference/endpoints/secret-syncs/keeper-password-manager/update",
+                          "api-reference/endpoints/secret-syncs/keeper-password-manager/delete",
+                          "api-reference/endpoints/secret-syncs/keeper-password-manager/sync-secrets",
+                          "api-reference/endpoints/secret-syncs/keeper-password-manager/import-secrets",
+                          "api-reference/endpoints/secret-syncs/keeper-password-manager/remove-secrets"
                         ]
                       },
                       {
