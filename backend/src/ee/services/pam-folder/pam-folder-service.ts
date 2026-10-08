@@ -2,17 +2,24 @@ import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 
-import { RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
+import { RESOURCE_SCOPE, ResourceType, TPamFolders } from "@app/db/schemas";
+import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionPamResourceActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { NotificationType } from "@app/services/notification/notification-types";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { PamFolderCallerAccess, PamProductRole, PamResourceRole } from "../pam/pam-enums";
 import { getResourceIdsWithActions, TActorContext, verifyProductMembership } from "../pam/pam-permission";
@@ -31,11 +38,21 @@ type TPamFolderServiceFactoryDep = {
   pamFolderDAL: TPamFolderDALFactory;
   membershipDAL: Pick<
     TMembershipDALFactory,
-    "create" | "find" | "delete" | "updateById" | "findResourceMembershipsForActor" | "transaction"
+    | "create"
+    | "find"
+    | "delete"
+    | "updateById"
+    | "findResourceMembershipsForActor"
+    | "lockResourceMembershipForActor"
+    | "transaction"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete" | "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   pamAccessRequestService: Pick<TPamAccessRequestServiceFactory, "cleanupFolderResources">;
+  userDAL: Pick<TUserDALFactory, "find" | "findById">;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  smtpService: Pick<TSmtpService, "sendMail">;
 };
 
 export type TPamFolderServiceFactory = ReturnType<typeof pamFolderServiceFactory>;
@@ -45,7 +62,11 @@ export const pamFolderServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
   permissionService,
-  pamAccessRequestService
+  pamAccessRequestService,
+  userDAL,
+  identityDAL,
+  notificationService,
+  smtpService
 }: TPamFolderServiceFactoryDep) => {
   const verifyMembership = (projectId: string, ctx: TActorContext) =>
     verifyProductMembership(permissionService, projectId, ctx);
@@ -179,7 +200,7 @@ export const pamFolderServiceFactory = ({
     } catch (err) {
       if (
         err instanceof DatabaseError &&
-        (err as DatabaseError & { code?: string }).code === DatabaseErrorCode.UniqueViolation
+        (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
       ) {
         throw new BadRequestError({ message: `A folder named "${name}" already exists` });
       }
@@ -204,7 +225,7 @@ export const pamFolderServiceFactory = ({
     } catch (err) {
       if (
         err instanceof DatabaseError &&
-        (err as DatabaseError & { code?: string }).code === DatabaseErrorCode.UniqueViolation
+        (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
       ) {
         throw new BadRequestError({ message: `A folder named "${name}" already exists` });
       }
@@ -282,6 +303,62 @@ export const pamFolderServiceFactory = ({
     };
   };
 
+  // Mirrors the org admin's project access, which notifies that project's admins. Runs after commit without
+  // being awaited and never throws: the access is already granted and audited by then.
+  const notifyFolderAdminsOfAdminAccess = async (folder: TPamFolders, ctx: TActorContext) => {
+    try {
+      const memberships = await membershipDAL.find({
+        scope: RESOURCE_SCOPE,
+        scopeProjectId: folder.projectId,
+        scopeResourceType: ResourceType.PamFolder,
+        scopeResourceId: folder.id,
+        isActive: true,
+        $notNull: ["actorUserId"]
+      });
+      const roles = memberships.length
+        ? await membershipRoleDAL.find({ $in: { membershipId: memberships.map((m) => m.id) } })
+        : [];
+      const adminMembershipIds = new Set(
+        roles.filter((r) => r.role === PamResourceRole.Admin && isActiveRole(r)).map((r) => r.membershipId)
+      );
+      const adminUserIds = memberships
+        .filter((m) => adminMembershipIds.has(m.id) && m.actorUserId !== ctx.actorId)
+        .map((m) => m.actorUserId as string);
+      if (adminUserIds.length === 0) return;
+
+      const [admins, actorName] = await Promise.all([
+        userDAL.find({ $in: { id: adminUserIds } }),
+        ctx.actor === ActorType.USER
+          ? userDAL.findById(ctx.actorId).then((user) => user?.email || user?.username)
+          : identityDAL.findById(ctx.actorId).then((identity) => identity?.name)
+      ]);
+      const name = actorName || "A PAM admin";
+
+      await notificationService.createUserNotifications(
+        admins.map((admin) => ({
+          userId: admin.id,
+          orgId: ctx.actorOrgId,
+          type: NotificationType.PAM_FOLDER_ADMIN_ACCESS_ISSUED,
+          title: "Direct Folder Access Issued",
+          body: `The PAM admin **${name}** has self-issued admin access to the folder **${folder.name}**.`,
+          link: `/organizations/${ctx.actorOrgId}/pam/accounts`
+        }))
+      );
+
+      const recipients = admins.map((admin) => admin.email).filter((email): email is string => Boolean(email));
+      if (recipients.length > 0) {
+        await smtpService.sendMail({
+          template: SmtpTemplates.PamFolderAdminAccess,
+          recipients,
+          subjectLine: "PAM Folder Direct Access Issued",
+          substitutions: { actorName: name, folderName: folder.name }
+        });
+      }
+    } catch (err) {
+      logger.error(err, `Failed to notify folder admins of a product admin joining [folderId=${folder.id}]`);
+    }
+  };
+
   // The product-admin counterpart of the org admin's "access project" flow: folder access never falls back to
   // the product admin, so entering a folder is an explicit, audited membership write.
   const grantAdminAccess = async ({ folderId, projectId, ...ctx }: TGrantPamFolderAdminAccessDTO & TActorContext) => {
@@ -292,17 +369,32 @@ export const pamFolderServiceFactory = ({
       throw new NotFoundError({ message: `Folder with ID '${folderId}' not found` });
     }
 
+    // Same test the folder list uses for callerAccess, so a temporary or group-held admin is refused too.
+    const { folderIds: adminFolderIds } = await getResourceIdsWithActions(
+      membershipDAL,
+      membershipRoleDAL,
+      projectId,
+      { allOf: [ResourcePermissionPamResourceActions.ManageMembers] },
+      ctx
+    );
+    if (adminFolderIds.includes(folderId)) {
+      throw new ConflictError({ message: `You're already an admin of folder "${folder.name}"` });
+    }
+
+    let result: { folder: TPamFolders; previousRole: string | null };
     try {
-      return await pamFolderDAL.transaction(async (tx) => {
-        const [existing] = await membershipDAL.find(
+      result = await pamFolderDAL.transaction(async (tx) => {
+        // Locked so a concurrent join waits for this one and then sees its admin role, instead of both
+        // replacing the same old role and each inserting an admin role.
+        const existing = await membershipDAL.lockResourceMembershipForActor(
           {
-            scope: RESOURCE_SCOPE,
-            scopeProjectId: projectId,
-            scopeResourceType: ResourceType.PamFolder,
-            scopeResourceId: folderId,
-            ...(ctx.actor === ActorType.USER ? { actorUserId: ctx.actorId } : { actorIdentityId: ctx.actorId })
+            projectId,
+            resourceType: ResourceType.PamFolder,
+            resourceId: folderId,
+            actorType: ctx.actor,
+            actorId: ctx.actorId
           },
-          { tx }
+          tx
         );
 
         if (!existing) {
@@ -310,15 +402,10 @@ export const pamFolderServiceFactory = ({
           return { folder, previousRole: null };
         }
 
-        const now = new Date();
         const roles = await membershipRoleDAL.find({ membershipId: existing.id }, { tx });
-        const activeRoles = existing.isActive
-          ? roles.filter(
-              (r) => !r.isTemporary || (r.temporaryAccessEndTime && now < new Date(r.temporaryAccessEndTime))
-            )
-          : [];
-        if (activeRoles.some((r) => r.role === PamResourceRole.Admin && !r.isTemporary)) {
-          throw new BadRequestError({ message: `You're already an admin of folder "${folder.name}"` });
+        const activeRoles = existing.isActive ? roles.filter(isActiveRole) : [];
+        if (activeRoles.some((r) => r.role === PamResourceRole.Admin)) {
+          throw new ConflictError({ message: `You're already an admin of folder "${folder.name}"` });
         }
 
         await membershipRoleDAL.delete({ membershipId: existing.id }, tx);
@@ -335,12 +422,15 @@ export const pamFolderServiceFactory = ({
         err instanceof DatabaseError &&
         (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
       ) {
-        throw new BadRequestError({
+        throw new ConflictError({
           message: `Your access to folder "${folder.name}" changed while this request was running. Refresh and try again.`
         });
       }
       throw err;
     }
+
+    void notifyFolderAdminsOfAdminAccess(folder, ctx);
+    return result;
   };
 
   return { list, getById, create, update, deleteFolder, getFolderPermissions, grantAdminAccess };

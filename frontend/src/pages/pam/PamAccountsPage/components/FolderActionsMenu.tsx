@@ -48,7 +48,8 @@ export const FolderActionsMenu = ({
     folder.id,
     isOpen && folder.callerAccess !== PamFolderCallerAccess.None
   );
-  const canJoinAsAdmin = Boolean(capabilities?.isProductAdmin) && folder.callerAccess !== PamFolderCallerAccess.Admin;
+  const canJoinAsAdmin =
+    Boolean(capabilities?.isProductAdmin) && folder.callerAccess !== PamFolderCallerAccess.Admin;
 
   // Treat an unresolved permission set as "not allowed" so nothing is actionable until it loads.
   const allowed = (action: PamResourcePermissionActions) => !isLoading && can(action);

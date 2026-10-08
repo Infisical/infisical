@@ -126,6 +126,8 @@ export const useGrantPamFolderAdminAccess = () => {
       queryClient.invalidateQueries({ queryKey: pamKeys.account() });
       queryClient.invalidateQueries({ queryKey: pamKeys.folder() });
       queryClient.invalidateQueries({ queryKey: pamKeys.folderPermissions(folderId) });
+      // Accounts in the folder inherit the new role.
+      queryClient.invalidateQueries({ queryKey: pamKeys.allAccountPermissions() });
       queryClient.invalidateQueries({ queryKey: pamKeys.folderMembers(folderId) });
       queryClient.invalidateQueries({ queryKey: pamKeys.accessCapabilities() });
     }

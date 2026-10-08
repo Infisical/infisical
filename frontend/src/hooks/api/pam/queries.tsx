@@ -73,15 +73,15 @@ export const pamKeys = {
   ) => [...pamKeys.session(), "list", projectId, params] as const,
   folderPermissions: (folderId: string) =>
     [...pamKeys.all, "folder-permissions", folderId] as const,
+  allAccountPermissions: () => [...pamKeys.all, "account-permissions"] as const,
   accountPermissions: (accountId: string) =>
-    [...pamKeys.all, "account-permissions", accountId] as const,
+    [...pamKeys.allAccountPermissions(), accountId] as const,
   template: () => [...pamKeys.all, "template"] as const,
   listTemplates: (params?: TListPamAccountTemplatesDTO) =>
     [...pamKeys.template(), "list", params] as const,
   getTemplate: (templateId: string) => [...pamKeys.template(), "get", templateId] as const,
   folder: () => [...pamKeys.all, "folder"] as const,
-  listFolders: (params?: TListPamFoldersParams) =>
-    [...pamKeys.folder(), "list", params] as const,
+  listFolders: (params?: TListPamFoldersParams) => [...pamKeys.folder(), "list", params] as const,
   listAccounts: (params?: { folderId?: string; templateId?: string; search?: string }) =>
     [...pamKeys.account(), "list", params] as const,
   accountMembers: (accountId: string) => [...pamKeys.all, "account-members", accountId] as const,

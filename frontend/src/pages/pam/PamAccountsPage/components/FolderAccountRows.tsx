@@ -62,7 +62,7 @@ export const FolderAccountRows = ({
             <Folder className="size-5 shrink-0 text-product-pam" />
             <span className="shrink-0 font-medium text-foreground">{folder.name}</span>
             {isNotMember ? (
-              <Badge variant="neutral">Not a member</Badge>
+              <Badge variant="neutral">Not a Member</Badge>
             ) : (
               <>
                 <span className="shrink-0 text-xs text-muted">({count})</span>

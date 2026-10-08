@@ -23,15 +23,15 @@ export const JoinFolderAsAdminModal = ({
   onOpenChange
 }: Props) => (
   <Dialog open={isOpen} onOpenChange={onOpenChange}>
-    <DialogContent className="max-w-xl">
+    <DialogContent>
       <DialogHeader>
         <DialogTitle>Join Folder as Admin</DialogTitle>
       </DialogHeader>
       <div className="grid gap-4">
         <p className="text-sm text-muted">
           You&apos;ll become an admin of{" "}
-          <span className="font-medium text-foreground">{folderName}</span>, with full access to
-          its accounts and members. Any role you already hold on this folder is replaced. This is
+          <span className="font-medium text-foreground">{folderName}</span>, with full access to its
+          accounts and members. Any role you already hold on this folder is replaced. This is
           recorded in the audit log.
         </p>
         <DialogFooter>

@@ -48,8 +48,8 @@ import {
   TPamAccountListItem,
   useDeletePamAccount,
   useDeletePamFolder,
-  useGrantPamFolderAdminAccess,
   useGetPamAccessCapabilities,
+  useGrantPamFolderAdminAccess,
   useListPamAccounts,
   useListPamFolders
 } from "@app/hooks/api/pam";

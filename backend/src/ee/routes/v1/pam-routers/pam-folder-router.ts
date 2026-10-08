@@ -81,6 +81,7 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  // RPC-shaped on purpose, to match the org admin's POST /organization-admin/projects/:projectId/grant-admin-access.
   server.route({
     method: "POST",
     url: "/:folderId/grant-admin-access",
