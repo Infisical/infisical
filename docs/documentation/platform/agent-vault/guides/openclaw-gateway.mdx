@@ -327,6 +327,10 @@ To stop OpenClaw from using the real credentials, open **Agent Vault** in Infisi
 
 To give the gateway a new session, [create a session](#create-a-session) in Infisical. Then, on the OpenClaw machine, run `openclaw config set proxy.proxyUrl` again with the new token, and run `openclaw gateway restart`.
 
+<Tip>
+To replace the session on a schedule instead of by hand, script these steps and [create the session with the API](/documentation/platform/agent-vault/sessions-api).
+</Tip>
+
 ## Troubleshooting
 
 To follow the gateway's logs, run `openclaw logs --follow`. To check the gateway's configuration and service, run `openclaw doctor`.

@@ -809,7 +809,8 @@
                     "pages": [
                       "documentation/platform/agent-vault/guides/openclaw-gateway"
                     ]
-                  }
+                  },
+                  "documentation/platform/agent-vault/guides/custom-agent"
                 ]
               },
               {
@@ -822,6 +823,8 @@
                     "group": "Sessions",
                     "root": "documentation/platform/agent-vault/sessions",
                     "pages": [
+                      "documentation/platform/agent-vault/sessions-cli",
+                      "documentation/platform/agent-vault/sessions-api",
                       "documentation/platform/agent-vault/session-logs"
                     ]
                   },
