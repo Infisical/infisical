@@ -55,6 +55,7 @@ import {
   mapExtendedKeyUsageToLegacy,
   mapKeyUsageToLegacy
 } from "../certificate-common/certificate-constants";
+import { tagErrorAsAfterAuthorization } from "../certificate-common/certificate-issuance-audit-fns";
 import {
   detectSanType,
   extractCertificateFromBuffer,
@@ -1069,20 +1070,23 @@ export const certificateRenewalServiceFactory = ({
     return application?.name ?? null;
   };
 
-  const renewCertificate = async ({
-    certificateId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    internal = false,
-    removeRootsFromChain,
-    renewalKeySource: requestedKeySource,
-    csr,
-    attributes
-  }: Omit<TRenewCertificateDTO, "certificateRequestId"> & {
-    internal?: boolean;
-  }): Promise<TCertificateIssuanceResponse> => {
+  const $renewCertificate = async (
+    {
+      certificateId,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      internal = false,
+      removeRootsFromChain,
+      renewalKeySource: requestedKeySource,
+      csr,
+      attributes
+    }: Omit<TRenewCertificateDTO, "certificateRequestId"> & {
+      internal?: boolean;
+    },
+    onAuthorized: () => void
+  ): Promise<TCertificateIssuanceResponse> => {
     const actorCtx: TRenewalActor = { actor, actorId, actorAuthMethod, actorOrgId };
     const keySource = resolveRenewalKeySource({ renewalKeySource: requestedKeySource, csr });
     let csrRenewalRequest: TCertificateRequest | null = null;
@@ -1119,6 +1123,7 @@ export const certificateRenewalServiceFactory = ({
         const renewalAuth = internal
           ? undefined
           : await $authorizeRenewal({ originalCert, profile, actorCtx, isEditingCertificate }, tx);
+        onAuthorized();
 
         const { issuerType, ca, caType, policy } = await $resolveRenewalIssuer(
           {
@@ -1507,6 +1512,18 @@ export const certificateRenewalServiceFactory = ({
       actorOrgId
     });
     return { ...response, changedAttributes };
+  };
+
+  const renewCertificate = async (dto: Parameters<typeof $renewCertificate>[0]) => {
+    let authorized = false;
+    try {
+      return await $renewCertificate(dto, () => {
+        authorized = true;
+      });
+    } catch (error) {
+      if (authorized) tagErrorAsAfterAuthorization(error);
+      throw error;
+    }
   };
 
   const $loadCertificateForRenewalConfig = async ({

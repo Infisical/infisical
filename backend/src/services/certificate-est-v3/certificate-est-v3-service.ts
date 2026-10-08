@@ -66,6 +66,63 @@ export const certificateEstV3ServiceFactory = ({
   pkiApplicationDAL,
   auditLogService
 }: TCertificateEstV3ServiceFactoryDep) => {
+  const $recordEstFailure = async ({
+    error,
+    profile,
+    csr,
+    applicationId,
+    auditLogInfo,
+    operation,
+    originalCertificateId
+  }: {
+    error: unknown;
+    profile: { id: string; projectId: string; slug: string; caId?: string | null };
+    csr: string;
+    applicationId?: string;
+    auditLogInfo?: AuditLogInfo;
+    operation: CertificateIssuanceOperation;
+    originalCertificateId?: string;
+  }) => {
+    if (!auditLogInfo) return;
+    let commonName: string | undefined;
+    try {
+      commonName = extractCertificateRequestFromCSR(csr).commonName;
+    } catch {
+      commonName = undefined;
+    }
+    await recordCertificateIssuanceFailure(
+      { auditLogService, certificateAuthorityDAL, pkiApplicationDAL },
+      {
+        auditLogInfo: { ...auditLogInfo, actor: { type: ActorType.EST_ACCOUNT, metadata: { profileId: profile.id } } },
+        projectId: profile.projectId,
+        error,
+        metadata: {
+          operation,
+          enrollmentType: EnrollmentType.EST,
+          certificateProfileId: profile.id,
+          profileName: profile.slug,
+          caId: profile.caId,
+          commonName,
+          originalCertificateId,
+          applicationId
+        }
+      }
+    );
+  };
+
+  const $resolveEstTtl = async (profile: {
+    certificatePolicyId: string;
+    defaults?: { ttlDays?: number | null } | null;
+  }) => {
+    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
+    return resolveEffectiveTtl({
+      requestTtl: undefined, // EST doesn't accept TTL in request
+      profileDefaultTtlDays: profile.defaults?.ttlDays,
+      policyMaxValidity: policy?.validity?.max,
+      flowDefaultTtl: "90d"
+    });
+  };
+
   const resolveEstConfigId = async (
     profile: { estConfigId?: string | null },
     profileId: string,
@@ -181,12 +238,16 @@ export const certificateEstV3ServiceFactory = ({
     }
 
     await validateEstClientCertificate(estConfig, profile.projectId, sslClientCert);
-    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
-    const ttl = resolveEffectiveTtl({
-      requestTtl: undefined, // EST doesn't accept TTL in request
-      profileDefaultTtlDays: profile.defaults?.ttlDays,
-      policyMaxValidity: policy?.validity?.max,
-      flowDefaultTtl: "90d"
+    const ttl = await $resolveEstTtl(profile).catch(async (error: unknown) => {
+      await $recordEstFailure({
+        error,
+        profile,
+        csr,
+        applicationId,
+        auditLogInfo,
+        operation: CertificateIssuanceOperation.SIGN
+      });
+      throw error;
     });
 
     const result = await certificateV3Service.signCertificateFromProfile({
@@ -311,32 +372,15 @@ export const certificateEstV3ServiceFactory = ({
 
     const $rejectReenrollCsr = async (message: string) => {
       const error = new BadRequestError({ message });
-      if (auditLogInfo) {
-        let commonName: string | undefined;
-        try {
-          commonName = extractCertificateRequestFromCSR(csr).commonName;
-        } catch {
-          commonName = undefined;
-        }
-        await recordCertificateIssuanceFailure(
-          { auditLogService, certificateAuthorityDAL, pkiApplicationDAL },
-          {
-            auditLogInfo: { ...auditLogInfo, actor: { type: ActorType.EST_ACCOUNT, metadata: { profileId } } },
-            projectId: profile.projectId,
-            error,
-            metadata: {
-              operation: CertificateIssuanceOperation.RENEW,
-              enrollmentType: EnrollmentType.EST,
-              certificateProfileId: profileId,
-              profileName: profile.slug,
-              caId: profile.caId,
-              commonName,
-              originalCertificateId: storedCert?.id,
-              applicationId
-            }
-          }
-        );
-      }
+      await $recordEstFailure({
+        error,
+        profile,
+        csr,
+        applicationId,
+        auditLogInfo,
+        operation: CertificateIssuanceOperation.RENEW,
+        originalCertificateId: storedCert?.id
+      });
       return error;
     };
 
@@ -363,12 +407,17 @@ export const certificateEstV3ServiceFactory = ({
       throw await $rejectReenrollCsr("Subject alternative names mismatch");
     }
 
-    const policy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
-    const ttl = resolveEffectiveTtl({
-      requestTtl: undefined, // EST doesn't accept TTL in request
-      profileDefaultTtlDays: profile.defaults?.ttlDays,
-      policyMaxValidity: policy?.validity?.max,
-      flowDefaultTtl: "90d"
+    const ttl = await $resolveEstTtl(profile).catch(async (error: unknown) => {
+      await $recordEstFailure({
+        error,
+        profile,
+        csr,
+        applicationId,
+        auditLogInfo,
+        operation: CertificateIssuanceOperation.RENEW,
+        originalCertificateId: storedCert?.id
+      });
+      throw error;
     });
 
     const result = await certificateV3Service.signCertificateFromProfile({

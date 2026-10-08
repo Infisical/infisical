@@ -46,7 +46,10 @@ import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "@app/services/certificate-common/certificate-csr-utils";
-import { recordCertificateIssuanceFailure } from "@app/services/certificate-common/certificate-issuance-audit-fns";
+import {
+  recordCertificateIssuanceFailure,
+  tagErrorWithCertificateRequest
+} from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { validateCertificateRequestLicense } from "@app/services/certificate-common/certificate-utils";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
@@ -1214,8 +1217,6 @@ export const pkiAcmeServiceFactory = ({
       // rejected finalization leaves the order in `ready` and the client can retry with a
       // corrected CSR. This mirrors the previous behaviour, where these errors rolled the
       // enclosing transaction back.
-      const certificateRequest = extractCertificateRequestFromCSR(csr);
-
       const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
       if (!ca) {
         throw new NotFoundError({ message: "Certificate Authority not found" });
@@ -1229,6 +1230,7 @@ export const pkiAcmeServiceFactory = ({
         ? await acmeAccountDAL.findApplicationIdByJunctionId(accountApplicationProfileId)
         : null;
 
+      let csrCommonName: string | undefined;
       const $recordFinalizeFailure = (error: unknown) =>
         recordCertificateIssuanceFailure(
           { auditLogService, pkiApplicationDAL },
@@ -1249,11 +1251,21 @@ export const pkiAcmeServiceFactory = ({
               profileName: profile.slug,
               caId: ca.id,
               caName: ca.name,
-              commonName: certificateRequest.commonName,
+              commonName: csrCommonName,
               applicationId: accountApplicationId
             }
           }
         );
+
+      const certificateRequest = await (async () => {
+        try {
+          return extractCertificateRequestFromCSR(csr);
+        } catch (error) {
+          await $recordFinalizeFailure(error);
+          throw error;
+        }
+      })();
+      csrCommonName = certificateRequest.commonName;
 
       const $rejectCsr = async (message: string) => {
         const error = new AcmeBadCSRError({ message });
@@ -1578,7 +1590,15 @@ export const pkiAcmeServiceFactory = ({
       if (certIssuanceJobData) {
         // We commit the order writes before queuing the job, otherwise the job may fail with a
         // not-found error.
-        await certificateIssuanceQueue.queueCertificateIssuance(certIssuanceJobData);
+        try {
+          await certificateIssuanceQueue.queueCertificateIssuance(certIssuanceJobData);
+        } catch (error) {
+          if (certIssuanceJobData.certificateRequestId) {
+            tagErrorWithCertificateRequest(error, certIssuanceJobData.certificateRequestId);
+          }
+          await $recordFinalizeFailure(error);
+          throw error;
+        }
       }
       const updatedOrder = (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId))!;
       const finalizedCsr = extractCertificateRequestFromCSR(updatedOrder.csr!);

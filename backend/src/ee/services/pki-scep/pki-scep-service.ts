@@ -504,7 +504,6 @@ export const pkiScepServiceFactory = ({
       });
     }
 
-    const { ttl } = await resolveIssuanceParams(profile);
     const csrPem = derToPem(csrDer, "CERTIFICATE REQUEST");
 
     let result: TIssuanceResult;
@@ -516,7 +515,6 @@ export const pkiScepServiceFactory = ({
         caType,
         parsed,
         csrPem,
-        ttl,
         applicationId,
         isRenewal: false,
         clientIp
@@ -769,7 +767,6 @@ export const pkiScepServiceFactory = ({
       });
     }
 
-    const { ttl } = await resolveIssuanceParams(profile);
     const csrPem = derToPem(Buffer.from(parsed.csr), "CERTIFICATE REQUEST");
 
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -779,7 +776,6 @@ export const pkiScepServiceFactory = ({
       caType,
       parsed,
       csrPem,
-      ttl,
       applicationId,
       isRenewal: true,
       clientIp
@@ -1045,9 +1041,10 @@ export const pkiScepServiceFactory = ({
     isRenewal,
     clientIp,
     ...params
-  }: Parameters<typeof $issueOrQueueCertificate>[0] & { isRenewal: boolean; clientIp: string }) => {
+  }: Omit<Parameters<typeof $issueOrQueueCertificate>[0], "ttl"> & { isRenewal: boolean; clientIp: string }) => {
     try {
-      return await $issueOrQueueCertificate(params);
+      const { ttl } = await resolveIssuanceParams(params.profile);
+      return await $issueOrQueueCertificate({ ...params, ttl });
     } catch (error) {
       let operation =
         params.caType === CaType.INTERNAL ? CertificateIssuanceOperation.SIGN : CertificateIssuanceOperation.ORDER;

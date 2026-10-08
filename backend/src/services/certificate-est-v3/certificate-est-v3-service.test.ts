@@ -316,6 +316,34 @@ describe("CertificateEstV3Service", () => {
       ).rejects.toThrow(BadRequestError);
     });
 
+    it("records an issuance failure when the profile's default TTL exceeds the policy maximum", async () => {
+      mockCertificateProfileDAL.findByIdWithConfigs.mockResolvedValue({ ...mockProfile, defaults: { ttlDays: 365 } });
+
+      await expect(
+        service.simpleEnrollByProfile({
+          csr: "mock-csr",
+          profileId: "profile-123",
+          sslClientCert: "",
+          auditLogInfo: { ipAddress: "127.0.0.1", actor: { type: ActorType.PLATFORM, metadata: {} } }
+        })
+      ).rejects.toThrow("exceeds the policy's maximum validity");
+
+      expect(mockCertificateV3Service.signCertificateFromProfile).not.toHaveBeenCalled();
+      expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actor: { type: ActorType.EST_ACCOUNT, metadata: { profileId: "profile-123" } },
+          event: expect.objectContaining({
+            type: EventType.CERTIFICATE_ISSUANCE_FAILED,
+            metadata: expect.objectContaining({
+              operation: CertificateIssuanceOperation.SIGN,
+              enrollmentType: EnrollmentType.EST,
+              certificateProfileId: "profile-123"
+            })
+          })
+        })
+      );
+    });
+
     it("should use flow default TTL when profile has no defaultTtlDays", async () => {
       mockCertificatePolicyDAL.findById.mockResolvedValue({
         id: "policy-123",

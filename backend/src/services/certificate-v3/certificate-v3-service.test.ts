@@ -43,6 +43,7 @@ import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
+import { tagErrorAsAfterAuthorization } from "../certificate-common/certificate-issuance-audit-fns";
 import { buildCertificateQuotaKey } from "../certificate-common/certificate-quota-key";
 import { certificateV3ServiceFactory, TCertificateV3ServiceFactory } from "./certificate-v3-service";
 import { CertificateRenewalKeySource } from "./certificate-v3-types";
@@ -3587,11 +3588,17 @@ describe("CertificateV3Service", () => {
       } as never);
     });
 
-    it("records the failure with the reason and rethrows the original error", async () => {
-      const failure = new BadRequestError({ message: "TTL exceeds the policy maximum of 90 days" });
-      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockRejectedValue(failure);
-
-      await expect(service.issueCertificateFromProfile({ ...issueDto, auditLogInfo })).rejects.toBe(failure);
+    it("records the failure with the profile's details once the caller is authorized", async () => {
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue({
+        id: "profile-123",
+        projectId: "project-123",
+        slug: "web-servers",
+        caId: "ca-123",
+        enrollmentType: EnrollmentType.API
+      } as never);
+      await expect(service.issueCertificateFromProfile({ ...issueDto, auditLogInfo })).rejects.toThrow(
+        "This profile must be issued through an Application"
+      );
 
       expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledTimes(1);
       expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
@@ -3608,11 +3615,31 @@ describe("CertificateV3Service", () => {
               profileName: "web-servers",
               caId: "ca-123",
               errorName: "BadRequest",
-              error: "TTL exceeds the policy maximum of 90 days"
+              error:
+                "This profile must be issued through an Application. Attach it to an Application and issue from there."
             }
           }
         })
       );
+    });
+
+    it("records only what the caller sent when issuance fails before authorization", async () => {
+      const failure = new NotFoundError({ message: "Application not found" });
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockRejectedValue(failure);
+
+      await expect(service.issueCertificateFromProfile({ ...issueDto, auditLogInfo })).rejects.toBe(failure);
+
+      const [[call]] = mockAuditLogService.createCollapsedAuditLog.mock.calls as [
+        [{ event: { metadata: Record<string, unknown> } }]
+      ];
+      expect(call.event.metadata).toEqual({
+        operation: CertificateIssuanceOperation.ISSUE,
+        enrollmentType: EnrollmentType.API,
+        commonName: "fail.example.com",
+        certificateProfileId: "profile-123",
+        errorName: "NotFound",
+        error: "Application not found"
+      });
     });
 
     it("records nothing without audit log info", async () => {
@@ -3710,28 +3737,31 @@ describe("CertificateV3Service", () => {
       );
     });
 
-    it("records a failed renewal against the original certificate", async () => {
-      vi.mocked(mockCertificateDAL.findById).mockResolvedValue({
-        id: "cert-123",
-        projectId: "project-123",
-        commonName: "renew.example.com",
-        profileId: "profile-123",
-        caId: "ca-123"
-      } as never);
-      vi.mocked(mockCertificateDAL.transaction).mockRejectedValueOnce(
-        new BadRequestError({ message: "CA is disabled" })
-      );
+    const renewDto = {
+      certificateId: "cert-123",
+      actor: ActorType.USER,
+      actorId: "user-123",
+      actorAuthMethod: AuthMethod.EMAIL,
+      actorOrgId: "org-123",
+      auditLogInfo
+    };
 
-      await expect(
-        service.renewCertificate({
-          certificateId: "cert-123",
-          actor: ActorType.USER,
-          actorId: "user-123",
-          actorAuthMethod: AuthMethod.EMAIL,
-          actorOrgId: "org-123",
-          auditLogInfo
-        })
-      ).rejects.toThrow("CA is disabled");
+    const storedCertificate = {
+      id: "cert-123",
+      projectId: "project-123",
+      commonName: "renew.example.com",
+      profileId: "profile-123",
+      caId: "ca-123",
+      applicationId: "app-123"
+    };
+
+    it("records a failed renewal with the certificate's details once the caller is authorized", async () => {
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(storedCertificate as never);
+      const failure = new BadRequestError({ message: "CA is disabled" });
+      tagErrorAsAfterAuthorization(failure);
+      vi.mocked(mockCertificateDAL.transaction).mockRejectedValueOnce(failure);
+
+      await expect(service.renewCertificate(renewDto)).rejects.toThrow("CA is disabled");
 
       expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -3741,11 +3771,32 @@ describe("CertificateV3Service", () => {
               operation: CertificateIssuanceOperation.RENEW,
               originalCertificateId: "cert-123",
               commonName: "renew.example.com",
-              certificateProfileId: "profile-123"
+              certificateProfileId: "profile-123",
+              applicationId: "app-123"
             })
           })
         })
       );
+    });
+
+    it("records only what the caller sent when renewal fails before authorization", async () => {
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(storedCertificate as never);
+      vi.mocked(mockCertificateDAL.transaction).mockRejectedValueOnce(
+        new BadRequestError({ message: "A CSR is required when renewalKeySource is csr" })
+      );
+
+      await expect(service.renewCertificate(renewDto)).rejects.toThrow("A CSR is required");
+
+      const [[call]] = mockAuditLogService.createCollapsedAuditLog.mock.calls as [
+        [{ event: { metadata: Record<string, unknown> } }]
+      ];
+      expect(call.event.metadata).toEqual({
+        operation: CertificateIssuanceOperation.RENEW,
+        enrollmentType: EnrollmentType.API,
+        originalCertificateId: "cert-123",
+        errorName: "BadRequest",
+        error: "A CSR is required when renewalKeySource is csr"
+      });
     });
   });
 });

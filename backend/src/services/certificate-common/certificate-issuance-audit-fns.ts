@@ -54,6 +54,15 @@ export const tagErrorWithCertificateRequest = (error: unknown, certificateReques
 const getTaggedCertificateRequestId = (error: unknown) =>
   error && typeof error === "object" ? certificateRequestIdByError.get(error) : undefined;
 
+const errorsAfterAuthorization = new WeakSet<object>();
+
+export const tagErrorAsAfterAuthorization = (error: unknown) => {
+  if (error && typeof error === "object") errorsAfterAuthorization.add(error);
+};
+
+export const isErrorAfterAuthorization = (error: unknown) =>
+  Boolean(error && typeof error === "object" && errorsAfterAuthorization.has(error));
+
 // Never throws, so callers can rethrow the original error untouched.
 export const recordCertificateIssuanceFailure = async (
   { auditLogService, certificateAuthorityDAL, pkiApplicationDAL }: TRecordCertificateIssuanceFailureDeps,
