@@ -47,7 +47,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         200: z.object({ projectId: z.string() })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const projectId = await server.services.secretScanningV2Instance.resolveActiveProjectId({
         actor: req.permission.type,
@@ -85,7 +85,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) =>
       server.services.secretScanningV2Instance.getInstanceState({
         actor: req.permission.type,
