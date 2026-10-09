@@ -260,7 +260,7 @@ export const AgentVaultSetupQuestions = () => {
   );
 };
 
-export const AgentVaultSetupDiagram = ({ inline }) => {
+export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
   const RULES = {
     personal: { model: "user", runs: ["computer", "server", "container"] },
     assistant: { model: "user", runs: ["computer", "server", "container"] },
@@ -450,6 +450,53 @@ export const AgentVaultSetupDiagram = ({ inline }) => {
     return active ? `${base} ${base}--focus` : `${base} ${base}--dim`;
   };
 
+  // In the walkthrough, the diagram builds up as the reader scrolls: "before step 1" shows only
+  // Infisical and the proxy, and each step adds its arrow and any part it reaches for the first
+  // time. Earlier arrows stay, faded, so the reader sees what's been built so far. Before the
+  // walkthrough starts it shows the "before step 1" stage, and after it ends it shows everything.
+  let revealed = null;
+  if (reveal) {
+    let stage = 0;
+    if (focus === null) {
+      stage = messages.length;
+    } else if (focus.startsWith("step-") && focus !== "step-before") {
+      stage = messages.findIndex((message) => `step-${message.id}` === focus) + 1;
+    }
+    const shown = messages.slice(0, stage);
+    const current = focus && focus.startsWith("step-") && stage > 0 ? shown[stage - 1] : null;
+    const shownLanes = new Set(["infisical", "proxy"]);
+    shown.forEach((message) => {
+      shownLanes.add(message.from);
+      shownLanes.add(message.to);
+    });
+    revealed = { shown: new Set(shown.map((message) => message.id)), shownLanes, current };
+  }
+
+  const laneClass = (id) => {
+    if (!revealed) return stateClass("ifx-avsp__lane", highlight && highlight.lanes.includes(id));
+    if (!revealed.shownLanes.has(id)) return "ifx-avsp__lane ifx-avsp__lane--hidden";
+    const focused = revealed.current
+      ? [revealed.current.from, revealed.current.to].includes(id)
+      : focus === "step-before";
+    return focused ? "ifx-avsp__lane ifx-avsp__lane--focus" : "ifx-avsp__lane";
+  };
+
+  const messageClass = (id) => {
+    if (!revealed) {
+      return stateClass("ifx-avsp__message", highlight && highlight.messages.includes(id));
+    }
+    if (!revealed.shown.has(id)) return "ifx-avsp__message ifx-avsp__message--hidden";
+    if (!revealed.current) return "ifx-avsp__message";
+    return revealed.current.id === id
+      ? "ifx-avsp__message ifx-avsp__message--focus"
+      : "ifx-avsp__message ifx-avsp__message--past";
+  };
+
+  const lifelineClass = (id) =>
+    revealed && !revealed.shownLanes.has(id)
+      ? "ifx-avsp__lifeline ifx-avsp__lifeline--hidden"
+      : "ifx-avsp__lifeline";
+
   const laneCount = lanes.length;
   const center = (index) => `${((index + 0.5) / laneCount) * 100}%`;
 
@@ -483,16 +530,13 @@ export const AgentVaultSetupDiagram = ({ inline }) => {
             .join(", ")}`}
         >
           <div className="ifx-avsp__lanes" aria-hidden="true">
-            {sharesHost && (
+            {sharesHost && (!revealed || revealed.shownLanes.has("creator")) && (
               <div className="ifx-avsp__boundary">
                 <span className="ifx-avsp__boundary-label">Same host</span>
               </div>
             )}
             {lanes.map((lane) => (
-              <div
-                key={lane.id}
-                className={stateClass("ifx-avsp__lane", highlight && highlight.lanes.includes(lane.id))}
-              >
+              <div key={lane.id} className={laneClass(lane.id)}>
                 <span className="ifx-avsp__lane-label">{lane.label}</span>
                 <span className="ifx-avsp__lane-sub">{lane.sub}</span>
               </div>
@@ -502,7 +546,7 @@ export const AgentVaultSetupDiagram = ({ inline }) => {
             {lanes.map((lane, index) => (
               <span
                 key={lane.id}
-                className="ifx-avsp__lifeline"
+                className={lifelineClass(lane.id)}
                 style={{ left: center(index) }}
               />
             ))}
@@ -517,13 +561,7 @@ export const AgentVaultSetupDiagram = ({ inline }) => {
               if (start === 0) classes.push("ifx-avsp__arrow--first-lane");
               else if (start + span === laneCount - 1) classes.push("ifx-avsp__arrow--last-lane");
               return (
-                <div
-                  key={message.id}
-                  className={stateClass(
-                    "ifx-avsp__message",
-                    highlight && highlight.messages.includes(message.id),
-                  )}
-                >
+                <div key={message.id} className={messageClass(message.id)}>
                   <div
                     className={classes.join(" ")}
                     style={{ left: center(start), width: `${(span / laneCount) * 100}%` }}
@@ -584,7 +622,7 @@ export const AgentVaultSetupStep = ({ step, children }) => {
   // short labels. Keep the numbering and order in sync with the diagram.
   const creator = CREATORS[model];
   const STEPS = {
-    before: { title: "Before step 1", route: "Set up once, before any agent runs" },
+    before: {  },
     create: {
       number: 1,
       title: {
@@ -628,7 +666,7 @@ export const AgentVaultSetupStep = ({ step, children }) => {
         ) : null}
         <div>
           <h3 className="ifx-avsp__walk-title">{current.title}</h3>
-          <p className="ifx-avsp__walk-route">{current.route}</p>
+          {current.route ? <p className="ifx-avsp__walk-route">{current.route}</p> : null}
         </div>
       </div>
       <div className="ifx-avsp__walk-body">{children}</div>
@@ -638,7 +676,7 @@ export const AgentVaultSetupStep = ({ step, children }) => {
 
 export const AgentVaultSetupSummary = () => {
   const BUILDS = {
-    personal: "a coding agent for yourself",
+    personal: "coding agent for yourself",
     assistant: "an always-on assistant",
     scheduled: "a scheduled or unattended job",
     platform: "a service that starts agents for tasks",
@@ -706,8 +744,9 @@ export const AgentVaultSetupSummary = () => {
   return (
     <p>
       You're building {buildText}
-      {agentText}. The steps that follow walk through how this setup works, one numbered arrow of
-      the diagram at a time.
+      {agentText}.
+      
+      Here's how the setup works:
       {missing.length > 0 && ` Choose ${missing.join(" and ")} to fill in the rest of the setup.`}
     </p>
   );

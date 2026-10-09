@@ -2044,6 +2044,16 @@ a.ifx-card__title:hover .ifx-card__chevron {
   border-top: 0;
 }
 
+/* While one question is current, the others fade back the same way, and come back on hover so
+   they're still easy to answer. */
+.ifx-avsp__step {
+  transition: opacity 0.2s ease;
+}
+
+.ifx-avsp__questions:has(.ifx-avsp__step[data-avsp-active]) .ifx-avsp__step:not([data-avsp-active]):not(:hover) {
+  opacity: 0.35;
+}
+
 /* While one step is current, the others fade back, matching the dimmed arrows in the diagram. */
 .ifx-avsp__layout:has(.ifx-avsp__walk-step[data-avsp-active]) .ifx-avsp__walk-step:not([data-avsp-active]) {
   opacity: 0.35;
@@ -2084,11 +2094,6 @@ a.ifx-card__title:hover .ifx-card__chevron {
 
 /* While part of the page is in view, the diagram highlights the lanes and messages that part
    explains and dims the rest. */
-.ifx-avsp__lane,
-.ifx-avsp__message {
-  transition: opacity 0.2s ease, border-color 0.2s ease;
-}
-
 .ifx-avsp__lane--dim,
 .ifx-avsp__message--dim {
   opacity: 0.3;
@@ -2096,6 +2101,25 @@ a.ifx-card__title:hover .ifx-card__chevron {
 
 .ifx-avsp__lane--focus {
   border-color: var(--ifx-accent-ink);
+}
+
+/* The walkthrough's diagram builds up step by step. Parts that haven't appeared yet keep their
+   space, so the diagram doesn't shift as they appear, and earlier arrows fade behind the current one. */
+.ifx-avsp__lane--hidden,
+.ifx-avsp__message--hidden,
+.ifx-avsp__lifeline--hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.ifx-avsp__message--past {
+  opacity: 0.45;
+}
+
+.ifx-avsp__lane,
+.ifx-avsp__message,
+.ifx-avsp__lifeline {
+  transition: opacity 0.3s ease, visibility 0.3s ease, border-color 0.2s ease;
 }
 
 /* ==========================================================================

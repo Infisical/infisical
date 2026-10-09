@@ -22,14 +22,6 @@ import {
 
 Configure the following options to get custom guidance and best practices tailored to your agent's setup.
 
-{/* Every Agent Vault setup uses the same parts
-
-- An [access bundle](/documentation/platform/agent-vault/access-bundles) of services
-- A [proxy](/documentation/platform/agent-vault/proxies)
-- A [session](/documentation/platform/agent-vault/sessions) for each agent.
-
-What changes from one setup to the next is who creates the sessions, how long each session lasts, and which machine holds which credential. Answer the three questions to see the setup we recommend, a diagram of how its parts connect, and the pages to follow to build it. */}
-
 <AgentVaultSetupLayout aside={<AgentVaultSetupDiagram />}>
 
 <AgentVaultSetupQuestions />
@@ -42,10 +34,10 @@ What changes from one setup to the next is who creates the sessions, how long ea
 
 <AgentVaultSetupSummary />
 
-<AgentVaultSetupLayout aside={<AgentVaultSetupDiagram />}>
+<AgentVaultSetupLayout aside={<AgentVaultSetupDiagram reveal />}>
 
 <AgentVaultSetupStep step="before">
-  Two things exist before any agent runs. You set them up once, and every session uses them:
+  Before running an agent, you set up two things:
 
   <ul>
     <li>An [access bundle](/documentation/platform/agent-vault/access-bundles) in Infisical: a list of the services (the APIs) that the agent can call, each with its real credential</li>
@@ -53,7 +45,9 @@ What changes from one setup to the next is who creates the sessions, how long ea
   </ul>
 
   <AgentVaultSetupBranch building="scheduled,platform">
-    One proxy stays running and handles the requests from every agent and every job, so there's no separate proxy for each job or each host.
+    <Note>
+    One proxy stays running and handles the requests from every agent and every job, so you don't need a separate proxy for each job or each host.
+    </Note>
   </AgentVaultSetupBranch>
 </AgentVaultSetupStep>
 
@@ -61,11 +55,11 @@ What changes from one setup to the next is who creates the sessions, how long ea
   A [session](/documentation/platform/agent-vault/sessions) gives an agent access to the services in one access bundle, until the session expires or someone revokes it.
 
   <AgentVaultSetupBranch building="personal">
-    You do this in the Infisical dashboard. We recommend a session that expires after 8 hours, so that it ends with your working day, and a new session each time you start working.
+    You create the session in the Infisical dashboard.
   </AgentVaultSetupBranch>
 
   <AgentVaultSetupBranch building="assistant">
-    You create one session in the Infisical dashboard that never expires, because the assistant keeps running. The [session logs](/documentation/platform/agent-vault/session-logs) for that one session show every request the assistant makes.
+    You create one session in the Infisical dashboard that never expires, since the assistant keeps running.
   </AgentVaultSetupBranch>
 
   <AgentVaultSetupBranch building="scheduled">
@@ -113,37 +107,38 @@ What changes from one setup to the next is who creates the sessions, how long ea
   </AgentVaultSetupBranch>
 
   <AgentVaultSetupBranch building="scheduled,platform" agent="claude-code">
-    Nobody is at the terminal while the agent runs, so Claude Code runs in its non-interactive mode, `claude -p "<prompt>"`.
+    Nobody is at the terminal while the agent runs, so Claude Code runs in its non-interactive mode: `claude -p "<prompt>"`.
   </AgentVaultSetupBranch>
 
   <AgentVaultSetupBranch building="scheduled,platform" agent="codex">
-    Nobody is at the terminal while the agent runs, so Codex runs in its non-interactive mode, `codex exec "<prompt>"`.
+    Nobody is at the terminal while the agent runs, so Codex runs in its non-interactive mode: `codex exec "<prompt>"`.
   </AgentVaultSetupBranch>
 
   <AgentVaultSetupBranch building="scheduled,platform" agent="opencode">
-    Nobody is at the terminal while the agent runs, so OpenCode runs in its non-interactive mode, `opencode run "<prompt>"`.
+    Nobody is at the terminal while the agent runs, so OpenCode runs in its non-interactive mode: `opencode run "<prompt>"`.
   </AgentVaultSetupBranch>
 
   <AgentVaultSetupBranch building="scheduled,platform" agent="hermes">
-    Nobody is at the terminal while the agent runs, so Hermes runs in its non-interactive mode, `hermes chat -q "<prompt>"`. Hermes won't start without the API keys in `~/.hermes/.env`, so that file holds placeholder values, and the proxy attaches the real keys.
+    Nobody is at the terminal while the agent runs, so Hermes runs in its non-interactive mode: `hermes chat -q "<prompt>"`.
+    
+    <Note> Hermes won't start without the API keys in `~/.hermes/.env`, so that file holds placeholder values, and the proxy attaches the real keys.</Note>
   </AgentVaultSetupBranch>
 
   <AgentVaultSetupBranch building="scheduled,platform" agent="openclaw">
-    Nobody is at the terminal while the agent runs, so OpenClaw runs in its non-interactive mode, `openclaw agent --agent <agent-id> --message "<prompt>" --local`. OpenClaw holds a placeholder instead of your model provider's key, and the proxy attaches the real key.
+    Nobody is at the terminal while the agent runs, so OpenClaw runs in its non-interactive mode: `openclaw agent --agent <agent-id> --message "<prompt>" --local`. OpenClaw holds a placeholder instead of your model provider's key, and the proxy attaches the real key.
   </AgentVaultSetupBranch>
 
   <AgentVaultSetupBranch runs="computer">
     <Warning>
-      The agent runs as your user account. If you're logged in to the Infisical CLI on the same computer, the agent can run Infisical CLI commands with your login. The computer should stay logged out of the Infisical CLI while the agent runs, or the agent should run on a separate server or VM.
+      The agent runs as your user account. If you're logged in to the Infisical CLI on the same computer, the agent can run Infisical CLI commands with your login.
     </Warning>
   </AgentVaultSetupBranch>
 </AgentVaultSetupStep>
 
 <AgentVaultSetupStep step="request">
-  The agent calls an API the same way it always does, and the request goes to the proxy with the session token attached instead of a real API key. If the agent won't start without an API key, a placeholder value is enough.
+  The agent calls an API the same way it always does, and the request goes to the proxy with the session token attached instead of a real API key.
 
   <ul>
-    <li>The proxy runs on a different machine from the agent, on the same private network: if the proxy ran on the agent's machine, the agent can read the proxy's [state directory](/documentation/platform/agent-vault/proxies#state-directory), which holds the proxy's access token</li>
     <AgentVaultSetupBranch runs="computer">
       <li>If you don't have a second machine, a small VM on your network can run the proxy</li>
     </AgentVaultSetupBranch>
@@ -154,10 +149,14 @@ What changes from one setup to the next is who creates the sessions, how long ea
       <li>The CI runner has to reach the proxy, so if the proxy is on a private network, the job runs on a [self-hosted runner](https://docs.github.com/en/actions/hosting-your-own-runners) in that network</li>
     </AgentVaultSetupBranch>
   </ul>
+
+  <Note>
+    The proxy runs on a different machine from the agent, on the same private network. If the proxy ran on the agent's machine, the agent could read the proxy's [state directory](/documentation/platform/agent-vault/proxies#state-directory), which holds the proxy's access token.
+  </Note>
 </AgentVaultSetupStep>
 
 <AgentVaultSetupStep step="fetch">
-  The credentials go from Infisical to the proxy, never to the agent. The proxy checks each session again every [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default), so after you revoke a session, it can keep working until the next check.
+  The credentials go from Infisical to the proxy, never to the agent. The proxy checks each session again every [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default).
 </AgentVaultSetupStep>
 
 <AgentVaultSetupStep step="forward">
@@ -172,9 +171,7 @@ What changes from one setup to the next is who creates the sessions, how long ea
   </AgentVaultSetupBranch>
 
   <AgentVaultSetupBranch building="platform">
-    The orchestrator revokes the session through the API even if the agent failed, so a failed task doesn't leave a working token behind.
-
-    Each task gets one session, not one for each turn of a conversation. A revoked session keeps working for up to one poll interval, so a new session for each turn wouldn't shorten the agent's access, and would split one task's requests across many sessions.
+    The orchestrator revokes the session through the API.
   </AgentVaultSetupBranch>
 </AgentVaultSetupStep>
 
