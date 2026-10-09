@@ -1,20 +1,31 @@
 ---
 title: "External storage"
 sidebarTitle: "External storage"
-description: "Store session recordings in your own S3 bucket."
+description: "Store session recordings in your own S3-compatible bucket."
 ---
 
-By default, [session recordings](/documentation/platform/pam/sessions/session-recording) are stored in Infisical's managed database. If you need control over where recordings live — for data residency, retention policies, or compliance requirements — you can store them in your own S3 bucket instead.
+By default, [session recordings](/documentation/platform/pam/sessions/session-recording) are stored in Infisical's managed database. If you need control over where recordings live — for data residency, retention policies, or compliance requirements — you can store them in your own S3-compatible bucket instead.
+
+## Supported providers
+
+| Provider | Endpoint | Access key |
+|----------|----------|------------|
+| AWS S3 | `https://s3.<region>.amazonaws.com` | An IAM user with the [required permissions](#required-permissions) |
+| Cloudflare R2 | `https://<account-id>.r2.cloudflarestorage.com` | An R2 API token with **Object Read & Write** on the bucket |
+| Google Cloud Storage | `https://storage.googleapis.com` | An HMAC key for a service account with **Storage Object User** on the bucket |
+| OCI Object Storage | `https://<namespace>.compat.objectstorage.<region>.oraclecloud.com` | A customer secret key for a user who can `inspect buckets` and `manage objects` |
+
+If you self-host Infisical, you can also store recordings on your own S3-compatible server, such as MinIO, after a server admin adds its hostname under [Allowed storage hostnames](/documentation/platform/admin-panel/server-admin#allowed-storage-hostnames).
 
 ## Prerequisites
 
-Before configuring external storage, you need an **AWS Connection** set up in your organization. This provides the credentials Infisical uses to write to your bucket.
+Before configuring external storage, you need an [AWS Connection](/integrations/app-connections/aws) or an S3-Compatible Storage connection in your organization. This provides the credentials Infisical uses to write to your bucket.
 
-If you don't have one, see the [AWS Connection guide](/integrations/app-connections/aws).
+To create an S3-Compatible Storage connection, go to **Integrations** > **App Connections**, select **Add Connection**, and select **S3-Compatible Storage**. Use the endpoint and access key for your provider from [Supported providers](#supported-providers).
 
 ### Required permissions
 
-The connection's IAM role needs these permissions on the bucket:
+For AWS S3, the connection's IAM role or user needs these permissions on the bucket:
 
 ```json
 {
@@ -39,24 +50,26 @@ The connection's IAM role needs these permissions on the bucket:
 External storage is set at the [template](/documentation/platform/pam/templates/overview) level. Each template can use a different bucket if needed.
 
 <Steps>
-  <Step title="Open the template">
+  <Step>
     Go to **Account Templates** and select the template you want to configure.
   </Step>
-  <Step title="Find Recording Storage">
-    In **System Settings**, find the **Recording Storage** section.
+  <Step>
+    Find the **Session Recording** section on the **General** tab.
   </Step>
-  <Step title="Select External S3">
-    Change from **Internal** to **External S3**.
+  <Step>
+    Set **Storage backend** to **S3 Bucket**.
   </Step>
-  <Step title="Configure the bucket">
+  <Step>
+    Configure the bucket:
+
     | Field | Description |
     |-------|-------------|
-    | **AWS Connection** | Select your AWS connection |
+    | **Connection** | Select your AWS or S3-Compatible Storage connection |
     | **Bucket Name** | Your S3 bucket |
-    | **Region** | AWS region |
+    | **Region** | AWS region (only for an AWS connection) |
     | **Key Prefix** | Optional prefix for object keys (e.g., `pam/prod/`) |
   </Step>
-  <Step title="Save">
+  <Step>
     Select **Save**. Infisical validates that it can reach the bucket before saving.
   </Step>
 </Steps>
@@ -78,10 +91,12 @@ For session playback to work in the browser, your bucket needs a CORS policy:
 
 Replace `https://app.infisical.com` with your Infisical URL if you have a custom domain.
 
-To configure:
+To configure it on AWS S3:
 1. Open the bucket in AWS Console
 2. Go to **Permissions → Cross-origin resource sharing (CORS)**
 3. Add the configuration above
+
+Cloudflare R2 takes the same configuration under the bucket's **Settings** > **CORS Policy**. For Google Cloud Storage, [configure CORS](https://cloud.google.com/storage/docs/using-cors) with the same origin and the `GET` method. OCI Object Storage allows requests from any origin, so it needs no CORS configuration.
 
 If CORS isn't set up correctly, session playback will fail with a network error.
 
@@ -99,7 +114,7 @@ Infisical encrypts recordings before upload, so the data in your bucket is encry
 
 ## Managing retention
 
-Since recordings are in your bucket, you control retention. Configure S3 lifecycle rules to automatically delete or transition objects after a certain period.
+Since recordings are in your bucket, you control retention. Configure lifecycle rules on the bucket to automatically delete or transition objects after a certain period.
 
 <Tip>
 This gives you full control over how long recordings are kept — essential for compliance requirements.

@@ -1,4 +1,4 @@
-import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
+import type { Agent } from "node:https";
 
 import { PamRecordingStorageBackend } from "./pam-recording-enums";
 
@@ -11,7 +11,9 @@ export type TPamRecordingChunkRef = {
 export type TPamRecordingResolvedConfig = {
   backend: PamRecordingStorageBackend;
   bucket?: string;
-  region?: AWSRegion;
+  region?: string;
+  endpoint?: string;
+  httpsAgent?: Agent;
   keyPrefix?: string | null;
 
   awsCredentials?: {

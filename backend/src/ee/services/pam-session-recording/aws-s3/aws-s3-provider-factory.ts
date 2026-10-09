@@ -1,17 +1,23 @@
 import {
-  DeleteObjectsCommand,
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
   ListObjectsV2Command,
   PutObjectCommand,
-  S3Client
+  S3ServiceException
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-import { CustomAWSHasher } from "@app/lib/aws/hashing";
+import { createS3Client } from "@app/lib/aws/s3";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
+import { TAppConnection } from "@app/services/app-connection/app-connection-types";
+import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
+import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
+import { getS3CompatibleConnectionConfig } from "@app/services/app-connection/s3-compatible";
 
 import { PAM_RECORDING_MAX_CHUNK_BYTES, PAM_RECORDING_PRESIGNED_URL_EXPIRY_SECONDS } from "../pam-recording-constants";
 import {
@@ -21,14 +27,44 @@ import {
   TPamRecordingStorageProvider
 } from "../pam-recording-storage-types";
 
+export const PAM_RECORDING_CONNECTION_APPS = [AppConnection.AWS, AppConnection.S3Compatible];
+
+export const resolveS3RecordingAccess = async (
+  appConnection: TAppConnection,
+  region: string | undefined
+): Promise<Pick<TPamRecordingResolvedConfig, "region" | "endpoint" | "httpsAgent" | "awsCredentials">> => {
+  if (appConnection.app === AppConnection.S3Compatible) {
+    const s3Config = await getS3CompatibleConnectionConfig(appConnection);
+    return {
+      region: s3Config.region,
+      endpoint: s3Config.endpoint,
+      httpsAgent: s3Config.httpsAgent,
+      awsCredentials: s3Config.credentials
+    };
+  }
+
+  if (appConnection.app !== AppConnection.AWS) {
+    throw new BadRequestError({
+      message: "Recording connection must be an AWS or S3-Compatible Storage connection"
+    });
+  }
+
+  if (!region) {
+    throw new BadRequestError({ message: "Select the AWS region of the recording bucket" });
+  }
+
+  const awsConfig = await getAwsConnectionConfig(appConnection as unknown as TAwsConnectionConfig, region as AWSRegion);
+  return { region, awsCredentials: awsConfig.credentials };
+};
+
 const buildClient = (config: TPamRecordingResolvedConfig) => {
   if (!config.region || !config.awsCredentials) {
-    throw new BadRequestError({ message: "AWS S3 storage backend requires region and credentials" });
+    throw new BadRequestError({ message: "S3 storage backend requires region and credentials" });
   }
-  return new S3Client({
+  return createS3Client({
     region: config.region,
-    useFipsEndpoint: crypto.isFipsModeEnabled(),
-    sha256: CustomAWSHasher,
+    endpoint: config.endpoint,
+    httpsAgent: config.httpsAgent,
     credentials: config.awsCredentials
   });
 };
@@ -36,16 +72,18 @@ const buildClient = (config: TPamRecordingResolvedConfig) => {
 export const AwsS3RecordingStorageProvider: TPamRecordingStorageProvider = () => ({
   validateConfig: async ({ config }) => {
     if (!config.bucket) {
-      throw new BadRequestError({ message: "Bucket is required for AWS S3 backend" });
+      throw new BadRequestError({ message: "Bucket is required for S3 storage backend" });
     }
     const client = buildClient(config);
     try {
       await client.send(new HeadBucketCommand({ Bucket: config.bucket }));
     } catch (err) {
       logger.warn({ err, bucket: config.bucket }, `S3 HeadBucket failed [bucket=${config.bucket}]`);
-      throw new BadRequestError({
-        message: `Unable to access bucket. Verify region, credentials, and bucket policy [bucket=${config.bucket}]`
-      });
+      if (!(err instanceof S3ServiceException && err.$metadata.httpStatusCode === 403)) {
+        throw new BadRequestError({
+          message: `Unable to access bucket. Verify ${config.endpoint ? "" : "region, "}credentials, and bucket policy [bucket=${config.bucket}]`
+        });
+      }
     }
 
     const testKey = `${normalizeKeyPrefix(config.keyPrefix)}.test/${crypto.nativeCrypto.randomUUID()}`;
@@ -67,12 +105,7 @@ export const AwsS3RecordingStorageProvider: TPamRecordingStorageProvider = () =>
     }
 
     try {
-      await client.send(
-        new DeleteObjectsCommand({
-          Bucket: config.bucket,
-          Delete: { Objects: [{ Key: testKey }], Quiet: true }
-        })
-      );
+      await client.send(new DeleteObjectCommand({ Bucket: config.bucket, Key: testKey }));
     } catch (err) {
       logger.warn({ err, bucket: config.bucket, testKey }, `S3 test object cleanup failed [testKey=${testKey}]`);
     }
@@ -140,14 +173,10 @@ export const AwsS3RecordingStorageProvider: TPamRecordingStorageProvider = () =>
         })
       );
       const keys = (listed.Contents ?? []).map((o) => o.Key).filter((k): k is string => Boolean(k));
-      if (keys.length > 0) {
+      // single-object deletes, since OCI rejects the CRC32 checksum the SDK sends with DeleteObjects
+      for (const batch of chunkArray(keys, 50)) {
         // eslint-disable-next-line no-await-in-loop
-        await client.send(
-          new DeleteObjectsCommand({
-            Bucket: config.bucket,
-            Delete: { Objects: keys.map((Key) => ({ Key })), Quiet: true }
-          })
-        );
+        await Promise.all(batch.map((Key) => client.send(new DeleteObjectCommand({ Bucket: config.bucket, Key }))));
       }
       continuationToken = listed.IsTruncated ? listed.NextContinuationToken : undefined;
     } while (continuationToken);

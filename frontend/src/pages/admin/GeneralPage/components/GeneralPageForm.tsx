@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AtSign } from "lucide-react";
@@ -27,10 +27,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  TagsInput,
   TextArea,
   Toggle
 } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
+import { isStorageHostname } from "@app/helpers/appConnections";
 import { allowedEmailDomainsSchema } from "@app/helpers/email";
 import { useGetOrganizations, useUpdateServerConfig } from "@app/hooks/api";
 
@@ -55,11 +57,17 @@ const signUpFormSchema = formSchema.pick({
 const defaultOrganizationFormSchema = formSchema.pick({ defaultAuthOrgId: true });
 const trustLdapEmailsFormSchema = formSchema.pick({ trustLdapEmails: true });
 const noticesFormSchema = formSchema.pick({ authConsentContent: true, pageFrameContent: true });
+const storageHostnamesFormSchema = z.object({
+  allowedStorageHostnames: z.string().array().max(50, "Add at most 50 hostnames")
+});
+
+const NO_STORAGE_HOSTNAMES: string[] = [];
 
 type TSignUpForm = z.infer<typeof signUpFormSchema>;
 type TDefaultOrganizationForm = z.infer<typeof defaultOrganizationFormSchema>;
 type TTrustLdapEmailsForm = z.infer<typeof trustLdapEmailsFormSchema>;
 type TNoticesForm = z.infer<typeof noticesFormSchema>;
+type TStorageHostnamesForm = z.infer<typeof storageHostnamesFormSchema>;
 
 type GeneralSettingsCardProps = {
   title: string;
@@ -431,6 +439,80 @@ const NoticesSettingsCard = ({
   );
 };
 
+type StorageHostnamesSettingsCardProps = {
+  allowedStorageHostnames: string[];
+};
+
+const StorageHostnamesSettingsCard = ({
+  allowedStorageHostnames
+}: StorageHostnamesSettingsCardProps) => {
+  const [hostnameError, setHostnameError] = useState<string | null>(null);
+  const { mutateAsync: updateServerConfig } = useUpdateServerConfig();
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting, isDirty }
+  } = useForm<TStorageHostnamesForm>({
+    resolver: zodResolver(storageHostnamesFormSchema),
+    defaultValues: { allowedStorageHostnames }
+  });
+
+  useEffect(() => {
+    reset({ allowedStorageHostnames });
+  }, [allowedStorageHostnames, reset]);
+
+  const onFormSubmit = async (formData: TStorageHostnamesForm) => {
+    await updateServerConfig(formData);
+    reset(formData);
+    createNotification({
+      text: "Allowed storage hostnames updated.",
+      type: "success"
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onFormSubmit)}>
+      <GeneralSettingsCard
+        title="Allowed Storage Hostnames"
+        description="Let S3-Compatible Storage connections and session playback use your own storage servers, such as MinIO."
+        isSubmitting={isSubmitting}
+        isDirty={isDirty}
+      >
+        <Controller
+          control={control}
+          name="allowedStorageHostnames"
+          render={({ field, fieldState: { error } }) => (
+            <Field className="max-w-lg" data-invalid={Boolean(hostnameError || error)}>
+              <FieldLabel htmlFor="allowed-storage-hostnames">Hostnames</FieldLabel>
+              <TagsInput
+                id="allowed-storage-hostnames"
+                value={field.value}
+                onValueChange={field.onChange}
+                validateTag={(tag, existing) => {
+                  if (!isStorageHostname(tag)) {
+                    return "Enter a lowercase hostname, with a port if it isn't 443, such as minio.example.com:9000";
+                  }
+                  return existing.includes(tag) ? `${tag} is already allowed` : null;
+                }}
+                onValidationError={setHostnameError}
+                isError={Boolean(hostnameError || error)}
+                aria-describedby="allowed-storage-hostnames-feedback"
+                placeholder="minio.example.com"
+              />
+              <FieldFeedback
+                id="allowed-storage-hostnames-feedback"
+                description="Include the port if it isn't 443."
+                error={hostnameError ?? error?.message}
+              />
+            </Field>
+          )}
+        />
+      </GeneralSettingsCard>
+    </form>
+  );
+};
+
 export const GeneralPageForm = () => {
   const { config } = useServerConfig();
 
@@ -445,6 +527,9 @@ export const GeneralPageForm = () => {
       <NoticesSettingsCard
         authConsentContent={config.authConsentContent ?? ""}
         pageFrameContent={config.pageFrameContent ?? ""}
+      />
+      <StorageHostnamesSettingsCard
+        allowedStorageHostnames={config.allowedStorageHostnames ?? NO_STORAGE_HOSTNAMES}
       />
     </div>
   );

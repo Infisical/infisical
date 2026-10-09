@@ -71,6 +71,7 @@ import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
 import { TRundeckConnection } from "./rundeck-connection";
+import { TS3CompatibleConnection } from "./s3-compatible-connection";
 import { TSalesforceConnection } from "./salesforce-connection";
 import { TSmbConnection } from "./smb-connection";
 import { TSnowflakeConnection } from "./snowflake-connection";
@@ -158,6 +159,7 @@ export * from "./railway-connection";
 export * from "./redis-connection";
 export * from "./render-connection";
 export * from "./rundeck-connection";
+export * from "./s3-compatible-connection";
 export * from "./salesforce-connection";
 export * from "./smb-connection";
 export * from "./snowflake-connection";
@@ -266,7 +268,8 @@ export type TAppConnection =
   | TDaytonaConnection
   | TStripeConnection
   | TKeeperConnection
-  | THpeIloConnection;
+  | THpeIloConnection
+  | TS3CompatibleConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

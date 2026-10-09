@@ -100,6 +100,8 @@ export const createS3Bucket = ({ bucket }: Parameters<typeof RealS3.createS3Buck
   };
 };
 
+export { createS3Client } from "../../src/lib/aws/s3";
+
 export const assertFakeMatchesRealS3: Pick<typeof RealS3, "createS3Bucket"> = { createS3Bucket };
 
 export const assertFakeBucketShapeMatches: { [K in keyof RealS3.TS3Bucket]: unknown } = {
