@@ -1,7 +1,11 @@
+import EksPodIdentitySessionTags from "/snippets/aws/eks-pod-identity-session-tags.mdx";
+
 <Accordion title="If you self-host Infisical" id="if-you-self-host-infisical">
     To assume a role, your Infisical instance needs AWS credentials of its own.
 
-    If your instance runs on AWS (for example on EC2, ECS, or EKS), leave `INF_APP_CONNECTION_AWS_ACCESS_KEY_ID` and `INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY` unset. Infisical then uses the credentials of the instance profile, task role, or IAM role for service accounts (IRSA), and that role needs the `sts:AssumeRole` policy below.
+    If your instance runs on AWS (for example on EC2, ECS, or EKS), leave `INF_APP_CONNECTION_AWS_ACCESS_KEY_ID` and `INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY` unset. Infisical then uses the credentials of the instance profile, task role, IAM role for service accounts (IRSA), or EKS Pod Identity role, and that role needs the `sts:AssumeRole` policy below.
+
+    <EksPodIdentitySessionTags />
 
     If your instance doesn't run on AWS, give it an IAM user:
 
