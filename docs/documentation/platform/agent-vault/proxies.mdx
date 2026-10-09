@@ -15,8 +15,6 @@ While you can technically run the agent and the proxy on a single machine, we re
 We also recommend keeping both machines on the same private network. This is because every request the agent makes goes through the proxy, and a round trip between networks adds latency to every request.
 </Tip>
 
-One proxy can serve every agent and every session in your organization. Keep the proxy running, and point each agent at it, rather than starting a proxy for each agent or each job.
-
 ## Supported connections
 
 The proxy attaches credentials to HTTP/1.1 requests, over both HTTPS and plain HTTP. These connections fail through the proxy:

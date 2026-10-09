@@ -83,7 +83,7 @@ Pick the `ttl` based on how long your agents run:
 
 ## Step 4: Start the agent with the session token
 
-The agent uses the session token to authenticate to the proxy. How you hand the token to the agent depends on how you start the agent:
+The agent uses the session token to authenticate to the proxy. How you pass the token to the agent depends on how you start the agent:
 
 <Tabs>
   <Tab title="With the CLI">
@@ -106,11 +106,9 @@ The agent uses the session token to authenticate to the proxy. How you hand the 
     export HTTP_PROXY=http://x-agent-vault:<session-token>@<proxy-host>:17323
     ```
 
-    If you wrote the agent yourself, you can instead set the proxy in the agent's HTTP client. [Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent) has examples for Python, Node.js, and Go.
+    If you built the agent yourself, you can instead set the proxy in the agent's HTTP client. [Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent) has examples for Python, Node.js, and Go.
   </Tab>
 </Tabs>
-
-Point every agent at the same long-running proxy, rather than starting a proxy for each job. One proxy can serve every session in your organization.
 
 ## Step 5: Revoke the session
 

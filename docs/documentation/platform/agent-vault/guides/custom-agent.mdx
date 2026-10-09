@@ -1,12 +1,12 @@
 ---
 title: "Connect your own agent to Agent Vault"
 sidebarTitle: "Your own agent"
-description: "Send the requests your own agent code makes through an Agent Vault proxy, so the agent calls APIs without holding their credentials."
+description: "Launch your custom agent with Agent Vault so it can make authenticated API calls without needing an actual token."
 ---
 
 import SeparateMachinesNote from "/snippets/agent-vault/SeparateMachinesNote.mdx";
 
-If you have a custom agent harness, you can connect it to Agent Vault without the Infisical CLI. The agent's HTTP client sends each request through an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) with a [session](/documentation/platform/agent-vault/sessions) token, and the proxy attaches the real credential before forwarding the request to the API.
+If you have a custom agent harness that you start from code rather than a CLI, you can connect it to Agent Vault via the Infisical API. The agent's HTTP client sends each request through an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) with a [session](/documentation/platform/agent-vault/sessions) token, and the proxy attaches the real credential before forwarding the request to the API.
 
 ## Prerequisites
 
@@ -70,7 +70,7 @@ The proxy listens on port `17323`. Make sure the agent's machine can reach that 
 
 ### Create a session
 
-Finally, create a session. The session token is the only credential your agent holds.
+Finally, create a session. The session token is the only credential your agent has.
 
 <Steps>
   <Step>
@@ -226,12 +226,12 @@ Keep the session token out of logs. Anyone who can reach the proxy with the toke
 
 ## Step 5: Verify it works
 
-Make a request from the agent to an API in the session's access bundle. For example, if the bundle has a GitHub service, request `https://api.github.com/user`. GitHub returns the account that the service's token belongs to, even though the agent's code holds no GitHub token.
+Make a request from the agent to an API in the session's access bundle. For example, if the bundle has a GitHub service, request `https://api.github.com/user`. GitHub returns the account that the service's token belongs to, even though the agent doesn't have a GitHub token.
 
 If you've [set up session logs](/documentation/platform/agent-vault/session-logs#setting-up-session-logs), [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to check which requests the agent made. Requests that got a credential have the outcome **Brokered**.
 
 <Check>
-  Your agent now calls APIs through the proxy. The only credential the agent holds is the session token, and if you revoke the session, the proxy stops attaching credentials to the agent's requests.
+  Your agent now calls APIs through the proxy. The only credential the agent has is the session token, and if you revoke the session, the proxy stops attaching credentials to the agent's requests.
 </Check>
 
 ## Replace the session token
