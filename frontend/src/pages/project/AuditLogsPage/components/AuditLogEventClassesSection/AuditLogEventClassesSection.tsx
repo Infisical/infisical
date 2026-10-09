@@ -5,9 +5,9 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
+import { getProjectTitle, isOrgScopedProduct } from "@app/helpers/project";
 import { useScopeVariant } from "@app/hooks";
 import { useGetProjectAuditLogSettings, useUpdateProjectAuditLogSettings } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/projects/types";
 
 export const AuditLogEventClassesSection = () => {
   const { currentProject } = useProject();
@@ -25,8 +25,8 @@ export const AuditLogEventClassesSection = () => {
     <AuditLogEventClassesForm
       title="Event Classes"
       description={
-        currentProject.type === ProjectType.CertificateManager
-          ? "Choose which classes of Certificate Manager events are recorded."
+        isOrgScopedProduct(currentProject.type)
+          ? `Choose which classes of ${getProjectTitle(currentProject.type)} events are recorded.`
           : "Choose which classes of events this project records."
       }
       settings={settings}

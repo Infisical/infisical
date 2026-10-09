@@ -33,3 +33,23 @@ export const resolveCertManagerProjectId = ({
   if (pinnedProjectId && memberProjectIds.includes(pinnedProjectId)) return pinnedProjectId;
   return activeProjectId;
 };
+
+// The cookie is shared by every tab, and the backend falls back to it for requests that name no
+// project. In an org with several instances, a tab that switched instances would then redirect another
+// tab's writes (an inventory import would store a private key in the wrong instance), so each tab names
+// the instance it is showing. Single-instance orgs pass null and keep sending no project.
+let tabCertManagerProjectId: string | null = null;
+
+export const setTabCertManagerProjectId = (projectId: string | null) => {
+  tabCertManagerProjectId = projectId;
+};
+
+const CERT_MANAGER_API_PREFIXES = ["/api/v1/cert-manager/", "/api/v1/pki/", "/api/v2/pki/"];
+const CERT_MANAGER_PAGE_RE = /^\/organizations\/[^/]+\/cert-manager(\/|$)/;
+
+export const getTabCertManagerProjectIdForRequest = (url: string | undefined): string | null => {
+  if (!tabCertManagerProjectId || !url) return null;
+  if (!CERT_MANAGER_API_PREFIXES.some((prefix) => url.startsWith(prefix))) return null;
+  if (!CERT_MANAGER_PAGE_RE.test(window.location.pathname)) return null;
+  return tabCertManagerProjectId;
+};

@@ -20,7 +20,7 @@ import {
   Separator
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { getProjectTitle, isOrgScopedProduct } from "@app/helpers/project";
+import { getProjectDisplayName, isOrgScopedProduct } from "@app/helpers/project";
 import { useScopeVariant } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
 import {
@@ -89,6 +89,8 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
   const scopeVariant = useScopeVariant();
 
   const workspacesInOrg = workspaces.filter((ws) => ws.orgId === currentOrg?.id);
+  const isCertManagerMultiInstance =
+    workspacesInOrg.filter((ws) => ws.type === ProjectType.CertificateManager).length > 1;
 
   const { control, watch, setValue, handleSubmit, formState } = useForm<TAuditLogFilterFormData>({
     resolver: zodResolver(auditLogFilterFormSchema),
@@ -298,9 +300,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                         }))}
                         getOptionValue={(option) => option.id}
                         getOptionLabel={(option) =>
-                          option.type === ProjectType.CertificateManager
-                            ? getProjectTitle(option.type)
-                            : option.name
+                          getProjectDisplayName(option, isCertManagerMultiInstance)
                         }
                         isError={Boolean(error)}
                       />

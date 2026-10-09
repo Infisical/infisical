@@ -193,6 +193,16 @@ export const getProjectTitle = (type: ProjectType) => {
   return titleConvert[type] || type;
 };
 
+// Certificate Manager is named after the product, except in legacy orgs that still have several
+// instances, where the instance name is the only thing telling them apart.
+export const getProjectDisplayName = (
+  project: Pick<Project, "name" | "type">,
+  isCertManagerMultiInstance: boolean
+) =>
+  project.type === ProjectType.CertificateManager && !isCertManagerMultiInstance
+    ? getProjectTitle(project.type)
+    : project.name;
+
 export const getProjectDescription = (type: ProjectType) => {
   const descriptions: Partial<Record<ProjectType, string>> = {
     [ProjectType.SecretManager]:

@@ -16,7 +16,8 @@ export const Route = createFileRoute(
     }
 
     // _splat arrives decoded, and a trailing slash leaves an empty segment behind.
-    const rest = (params._splat ?? "")
+    const { _splat: splat } = params;
+    const rest = (splat ?? "")
       .split("/")
       .filter(Boolean)
       .map((segment) => `/${encodeURIComponent(segment)}`)

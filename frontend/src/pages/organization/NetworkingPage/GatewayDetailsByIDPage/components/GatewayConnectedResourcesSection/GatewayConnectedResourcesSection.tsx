@@ -25,6 +25,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
+import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import {
   TGatewayConnectedResources,
   useGetGatewayConnectedResources
@@ -71,6 +72,7 @@ const ResourceRow = ({
 export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
   const { currentOrg } = useOrganization();
   const { data: resources, isPending } = useGetGatewayConnectedResources(gatewayId);
+  const { data: certManagerInstance } = useCertManagerInstanceState();
 
   const total = totalCountOf(resources);
 
@@ -234,7 +236,11 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                       <ResourceRow
                         key={c.id}
                         name={c.name}
-                        subtitle="Certificate Manager"
+                        subtitle={
+                          certManagerInstance?.isMultiInstance
+                            ? c.projectName
+                            : "Certificate Manager"
+                        }
                         to="/organizations/$orgId/cert-manager/discovery/$discoveryId"
                         params={{ orgId: currentOrg.id, discoveryId: c.id }}
                         onClick={() =>

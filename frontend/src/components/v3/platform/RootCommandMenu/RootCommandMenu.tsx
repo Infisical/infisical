@@ -67,9 +67,10 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
 import { getOrganizationSwitchDestination } from "@app/helpers/organizationSwitch";
-import { getProjectLucideIcon, getProjectTitle } from "@app/helpers/project";
+import { getProjectDisplayName, getProjectLucideIcon, getProjectTitle } from "@app/helpers/project";
 import { useImplicitProduct } from "@app/hooks";
 import { useGetOrganizationGroups, useGetOrganizationsWithSubOrgs } from "@app/hooks/api";
+import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useGetAccessibleProjectsWithSubOrgs } from "@app/hooks/api/projects/queries";
 import type { Project, TProjectNavigation } from "@app/hooks/api/projects/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -163,10 +164,6 @@ const NavigationCommandMenu = ({
   );
 };
 
-// Certificate Manager has no user-facing projects, so it is named after the product.
-const getProjectDisplayName = (project: Pick<Project, "name" | "type">) =>
-  project.type === ProjectType.CertificateManager ? getProjectTitle(project.type) : project.name;
-
 const navigateToProject = (
   navigate: ReturnType<typeof useNavigate>,
   project: TProjectNavigation
@@ -241,6 +238,14 @@ const useEntityCommandGroups = ({
     organizations.map((organization) => [organization.id, organization])
   );
 
+  const certManagerProjectCountByOrg = projects.reduce<Record<string, number>>(
+    (counts, project) =>
+      project.type === ProjectType.CertificateManager
+        ? { ...counts, [project.orgId]: (counts[project.orgId] ?? 0) + 1 }
+        : counts,
+    {}
+  );
+
   const projectItems: GlobalCommandMenuItem[] = projects.map((project) => {
     const organization = organizationsById.get(project.orgId);
     const organizationPath = [
@@ -252,7 +257,7 @@ const useEntityCommandGroups = ({
 
     return {
       id: `entity-project-${project.id}`,
-      label: getProjectDisplayName(project),
+      label: getProjectDisplayName(project, (certManagerProjectCountByOrg[project.orgId] ?? 0) > 1),
       breadcrumb: `${organizationPath} / ${getProjectTitle(project.type)}`,
       icon: getProjectLucideIcon(project.type),
       iconClassName: projectIconClassNames[project.type],
@@ -710,14 +715,16 @@ const getProjectLandingItem = ({
   navigate,
   project,
   organizationName,
-  isCertificateManagerAdmin
+  isCertificateManagerAdmin,
+  isCertManagerMultiInstance = false
 }: {
   navigate: ReturnType<typeof useNavigate>;
   project: Project;
   organizationName: string;
   isCertificateManagerAdmin?: boolean;
+  isCertManagerMultiInstance?: boolean;
 }): GlobalCommandMenuItem => {
-  const breadcrumb = `${organizationName} / ${getProjectDisplayName(project)}`;
+  const breadcrumb = `${organizationName} / ${getProjectDisplayName(project, isCertManagerMultiInstance)}`;
 
   if (project.type === ProjectType.CertificateManager && !isCertificateManagerAdmin) {
     return {
@@ -763,15 +770,17 @@ const getProjectPageItems = ({
   project,
   organizationName,
   pathname,
-  isCertificateManagerAdmin
+  isCertificateManagerAdmin,
+  isCertManagerMultiInstance = false
 }: {
   navigate: ReturnType<typeof useNavigate>;
   project: Project;
   organizationName: string;
   pathname: string;
   isCertificateManagerAdmin?: boolean;
+  isCertManagerMultiInstance?: boolean;
 }): GlobalCommandMenuItem[] => {
-  const breadcrumb = `${organizationName} / ${getProjectDisplayName(project)}`;
+  const breadcrumb = `${organizationName} / ${getProjectDisplayName(project, isCertManagerMultiInstance)}`;
   const item = (
     id: string,
     label: string,
@@ -890,7 +899,8 @@ const getProjectPageItems = ({
         navigate,
         project,
         organizationName,
-        isCertificateManagerAdmin
+        isCertificateManagerAdmin,
+        isCertManagerMultiInstance
       });
       if (!isCertificateManagerAdmin) return [landing];
       return sortByContext([
@@ -1002,29 +1012,30 @@ const CertificateProjectCommandMenu = ({
   const { currentProject } = useProject();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { data: certManagerInstance } = useCertManagerInstanceState();
+  const isCertManagerMultiInstance = Boolean(certManagerInstance?.isMultiInstance);
   const projectItems = filterProjectPageItems(
     getProjectPageItems({
       navigate,
       project: currentProject,
       organizationName: currentOrg.name,
       pathname,
-      isCertificateManagerAdmin: hasProjectRole("admin")
+      isCertificateManagerAdmin: hasProjectRole("admin"),
+      isCertManagerMultiInstance
     }),
     permission
   );
+  const menuHeading = getProjectDisplayName(currentProject, isCertManagerMultiInstance);
 
   return (
     <NavigationCommandMenu
       shell="organization"
       searchStatus={content.searchStatus}
       browseGroups={[
-        { heading: getProjectTitle(currentProject.type), items: projectItems.slice(0, 2) },
+        { heading: menuHeading, items: projectItems.slice(0, 2) },
         ...content.browseGroups
       ]}
-      searchGroups={[
-        { heading: getProjectTitle(currentProject.type), items: projectItems },
-        ...content.searchGroups
-      ]}
+      searchGroups={[{ heading: menuHeading, items: projectItems }, ...content.searchGroups]}
     />
   );
 };

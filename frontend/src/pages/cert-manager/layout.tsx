@@ -2,7 +2,8 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import {
   resolveCertManagerProjectId,
-  setCertManagerActiveProjectCookie
+  setCertManagerActiveProjectCookie,
+  setTabCertManagerProjectId
 } from "@app/helpers/certManagerActiveProject";
 import { projectKeys } from "@app/hooks/api";
 import {
@@ -54,6 +55,7 @@ export const Route = createFileRoute(
     // Requests that name no project resolve from this cookie on the backend, so keep it on the
     // project the UI is showing, including when a stale or inaccessible one was ignored above.
     setCertManagerActiveProjectCookie(params.orgId, projectId);
+    setTabCertManagerProjectId(instance.isMultiInstance ? projectId : null);
 
     const previousProjectId = resolvedProjectIdByOrg.get(params.orgId);
     resolvedProjectIdByOrg.set(params.orgId, projectId);

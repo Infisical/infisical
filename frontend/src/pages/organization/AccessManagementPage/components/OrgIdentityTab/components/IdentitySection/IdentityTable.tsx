@@ -52,7 +52,7 @@ import {
 } from "@app/components/v3";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
-import { getProjectBaseURL, getProjectTitle } from "@app/helpers/project";
+import { getProjectBaseURL, getProjectDisplayName } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -65,6 +65,7 @@ import {
   useCountOrgIdentityMemberships,
   useSearchOrgIdentityMemberships
 } from "@app/hooks/api";
+import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { IdentityMembershipSearchResult, SearchIdentitiesScope } from "@app/hooks/api/identities";
 import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
@@ -138,13 +139,15 @@ const ManagedByCell = ({
   isSubOrganization,
   isSubOrgIdentity
 }: ManagedByCellProps) => {
+  const { data: certManagerInstance } = useCertManagerInstanceState();
+
   if (scope === SearchIdentitiesScope.ProjectScope) {
     return (
       <Badge variant="project">
         <ProjectIcon />
-        {project?.type === ProjectType.CertificateManager
-          ? getProjectTitle(project.type)
-          : (project?.name ?? "Project")}
+        {project
+          ? getProjectDisplayName(project, Boolean(certManagerInstance?.isMultiInstance))
+          : "Project"}
       </Badge>
     );
   }
