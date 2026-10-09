@@ -31,8 +31,8 @@ export const JoinFolderAsAdminModal = ({
         <p className="text-sm text-muted">
           You&apos;ll become an admin of{" "}
           <span className="font-medium text-foreground">{folderName}</span>, with full access to its
-          accounts and members. Any role you already hold on this folder is replaced. This is
-          recorded in the audit log.
+          accounts and members. Any role you already hold on this folder is replaced. The
+          folder&apos;s existing admins will be notified, and this is recorded in the audit log.
         </p>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>

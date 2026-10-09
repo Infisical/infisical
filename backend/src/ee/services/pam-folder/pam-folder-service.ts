@@ -2,7 +2,14 @@ import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 
-import { OrganizationActionScope, OrgMembershipRole, RESOURCE_SCOPE, ResourceType, TPamFolders } from "@app/db/schemas";
+import {
+  OrganizationActionScope,
+  OrgMembershipRole,
+  RESOURCE_SCOPE,
+  ResourceType,
+  TMemberships,
+  TPamFolders
+} from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -205,6 +212,7 @@ export const pamFolderServiceFactory = ({
       tx
     );
     await membershipRoleDAL.create({ membershipId: membership.id, role: PamResourceRole.Admin }, tx);
+    return membership;
   };
 
   const create = async ({ projectId, name, description, ...ctx }: TCreatePamFolderDTO & TActorContext) => {
@@ -409,7 +417,7 @@ export const pamFolderServiceFactory = ({
       throw new ConflictError({ message: `You're already an admin of folder "${folder.name}"` });
     }
 
-    let result: { folder: TPamFolders; previousRole: string | null };
+    let result: { folder: TPamFolders; membership: TMemberships; previousRole: string | null };
     try {
       result = await pamFolderDAL.transaction(async (tx) => {
         // Locked so a concurrent join waits for this one and then sees its admin role, instead of both
@@ -426,8 +434,8 @@ export const pamFolderServiceFactory = ({
         );
 
         if (!existing) {
-          await grantFolderAdmin(folderId, projectId, ctx, tx);
-          return { folder, previousRole: null };
+          const membership = await grantFolderAdmin(folderId, projectId, ctx, tx);
+          return { folder, membership, previousRole: null };
         }
 
         const roles = await membershipRoleDAL.find({ membershipId: existing.id }, { tx });
@@ -442,7 +450,7 @@ export const pamFolderServiceFactory = ({
           await membershipDAL.updateById(existing.id, { isActive: true }, tx);
         }
 
-        return { folder, previousRole: activeRoles[0]?.role ?? null };
+        return { folder, membership: existing, previousRole: activeRoles[0]?.role ?? null };
       });
     } catch (err) {
       // Two concurrent joins both see no membership; the unique index lets only one of them insert.

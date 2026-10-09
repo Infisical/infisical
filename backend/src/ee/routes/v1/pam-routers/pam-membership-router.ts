@@ -30,6 +30,8 @@ const MemberResultSchema = z.object({
   createdAt: z.date()
 });
 
+export const FolderMemberResultSchema = MemberResultSchema.extend({ folderId: z.string().uuid() });
+
 const actorCtx = (req: {
   internalPamProjectId: string;
   permission: { id: string; type: ActorType; orgId: string; authMethod: ActorAuthMethod };
@@ -437,7 +439,6 @@ export const registerPamProductMembershipRouter = async (server: FastifyZodProvi
 };
 
 export const registerPamFolderMembershipRouter = async (server: FastifyZodProvider) => {
-  const FolderMemberResultSchema = MemberResultSchema.extend({ folderId: z.string().uuid() });
   const folderParam = z.object({ folderId: z.string().uuid().describe("The ID of the folder") });
 
   server.route({

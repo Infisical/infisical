@@ -2,7 +2,7 @@ import z from "zod";
 
 import { PamFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamFolderCallerAccess } from "@app/ee/services/pam/pam-enums";
+import { PamFolderCallerAccess, PamResourceRole } from "@app/ee/services/pam/pam-enums";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -11,6 +11,8 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+import { FolderMemberResultSchema } from "./pam-membership-router";
 
 const SanitizedFolderSchema = PamFoldersSchema.pick({
   id: true,
@@ -95,13 +97,13 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         folderId: z.string().uuid().describe("The ID of the folder")
       }),
       response: {
-        200: z.object({ folder: SanitizedFolderSchema })
+        200: FolderMemberResultSchema
       }
     },
     config: { rateLimit: writeLimit },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { folder, previousRole } = await server.services.pamFolder.grantAdminAccess({
+      const { folder, membership, previousRole } = await server.services.pamFolder.grantAdminAccess({
         folderId: req.params.folderId,
         projectId: req.internalPamProjectId,
         actorId: req.permission.id,
@@ -124,7 +126,13 @@ export const registerPamFolderRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { folder };
+      return {
+        membershipId: membership.id,
+        folderId: folder.id,
+        userId: req.permission.id,
+        role: PamResourceRole.Admin,
+        createdAt: membership.createdAt
+      };
     }
   });
 

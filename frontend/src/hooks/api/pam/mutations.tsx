@@ -32,6 +32,7 @@ import {
   TPamAccountTemplate,
   TPamDiscoverySource,
   TPamFolder,
+  TPamMember,
   TPamSession,
   TRemoveAccountGroupMemberDTO,
   TRemoveAccountIdentityMemberDTO,
@@ -116,11 +117,11 @@ export const useGrantPamFolderAdminAccess = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ folderId }: { folderId: string }) => {
-      const { data } = await apiRequest.post<{ folder: TPamFolder }>(
-        `/api/v1/pam/folders/${folderId}/grant-admin-access`
-      );
+      const { data } = await apiRequest.post<
+        Pick<TPamMember, "membershipId" | "userId" | "role" | "createdAt"> & { folderId: string }
+      >(`/api/v1/pam/folders/${folderId}/grant-admin-access`);
 
-      return data.folder;
+      return data;
     },
     onSuccess: (_, { folderId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.account() });
