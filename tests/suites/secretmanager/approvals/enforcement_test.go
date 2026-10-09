@@ -210,4 +210,76 @@ func TestSecretApprovalRequest_MachineIdentityBypass(t *testing.T) {
 		require.Equal(t, "open", getRequest(t, p.proj, held.ID).Status)
 		require.Empty(t, secretmanager.ListSecrets(t, p.proj, "dev"))
 	})
+
+	// Each write route decides on its own whether the policy applies, so every one needs
+	// its own proof that an identity's change goes straight through.
+	changes := []struct {
+		name  string
+		write func(t *testing.T, identity *harness.Principal, proj *fixture.Project) int
+		want  map[string]string
+	}{
+		{
+			name: "update",
+			write: func(t *testing.T, identity *harness.Principal, proj *fixture.Project) int {
+				res, err := identity.API.UpdateSecretV4WithResponse(t.Context(), "A",
+					api.UpdateSecretV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", SecretValue: new("new-a")})
+				require.NoError(t, err)
+				return res.StatusCode()
+			},
+			want: map[string]string{"A": "new-a", "B": "b"},
+		},
+		{
+			name: "delete",
+			write: func(t *testing.T, identity *harness.Principal, proj *fixture.Project) int {
+				res, err := identity.API.DeleteSecretV4WithResponse(t.Context(), "A",
+					api.DeleteSecretV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev"})
+				require.NoError(t, err)
+				return res.StatusCode()
+			},
+			want: map[string]string{"B": "b"},
+		},
+		{
+			name: "batch update",
+			write: func(t *testing.T, identity *harness.Principal, proj *fixture.Project) int {
+				body := api.UpdateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev"}
+				body.Secrets = slices.Grow(body.Secrets, 2)[:2]
+				body.Secrets[0].SecretKey, body.Secrets[0].SecretValue = "A", new("new-a")
+				body.Secrets[1].SecretKey, body.Secrets[1].SecretValue = "B", new("new-b")
+				res, err := identity.API.UpdateManySecretsV4WithResponse(t.Context(), body)
+				require.NoError(t, err)
+				return res.StatusCode()
+			},
+			want: map[string]string{"A": "new-a", "B": "new-b"},
+		},
+		{
+			name: "batch delete",
+			write: func(t *testing.T, identity *harness.Principal, proj *fixture.Project) int {
+				body := api.DeleteManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev"}
+				body.Secrets = slices.Grow(body.Secrets, 2)[:2]
+				body.Secrets[0].SecretKey, body.Secrets[1].SecretKey = "A", "B"
+				res, err := identity.API.DeleteManySecretsV4WithResponse(t.Context(), body)
+				require.NoError(t, err)
+				return res.StatusCode()
+			},
+			want: map[string]string{},
+		},
+	}
+
+	for _, change := range changes {
+		t.Run("should apply a machine identity's "+change.name+" directly when identities bypass", func(t *testing.T) {
+			t.Parallel()
+
+			// Setup
+			p := seededProject(t, map[string]string{"A": "a", "B": "b"}, bypassIdentities)
+			identity := p.proj.NewMachineIdentity(t, fixture.WithRoles("member"))
+
+			// Action
+			status := change.write(t, identity, p.proj)
+
+			// Assert
+			require.Equal(t, http.StatusOK, status)
+			require.Equal(t, change.want, valuesIn(t, p.proj, "dev"))
+			require.Zero(t, openRequestCount(t, p.proj))
+		})
+	}
 }

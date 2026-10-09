@@ -93,6 +93,35 @@ func TestSecret_PersonalOverride(t *testing.T) {
 		require.Equal(t, "shared", seen[0].Value)
 	})
 
+	t.Run("should remove every user's override when the shared secret is deleted", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		alice := proj.NewUser(t, fixture.WithPrincipalName("alice"))
+		bob := proj.NewUser(t, fixture.WithPrincipalName("bob"))
+		secretmanager.CreateSecret(t, proj, "dev", "DB_PASS", "shared")
+		secretmanager.CreateSecret(t, proj, "dev", "DB_PASS", "alice-only", secretmanager.As(alice), secretmanager.WithPersonal())
+		secretmanager.CreateSecret(t, proj, "dev", "DB_PASS", "bob-only", secretmanager.As(bob), secretmanager.WithPersonal())
+
+		// Action
+		secretmanager.DeleteSecret(t, proj, "dev", "DB_PASS")
+
+		// Assert
+		for _, owner := range []*harness.Principal{alice, bob} {
+			require.Emptyf(t, secretmanager.ListSecrets(t, proj, "dev", secretmanager.As(owner), secretmanager.WithPersonal()),
+				"%s still lists an override of the deleted secret", owner.Name)
+			res, err := owner.API.GetSecretByNameV4WithResponse(t.Context(), "DB_PASS", &api.GetSecretByNameV4Params{
+				ProjectId:   proj.ID,
+				Environment: new("dev"),
+				Type:        new(api.GetSecretByNameV4ParamsTypePersonal),
+			})
+			require.NoError(t, err)
+			require.Equalf(t, http.StatusNotFound, res.StatusCode(), "%s still reads an override: %s", owner.Name, res.Body)
+		}
+	})
+
 	t.Run("should refuse an override from a machine identity", func(t *testing.T) {
 		t.Parallel()
 

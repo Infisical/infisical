@@ -18,7 +18,7 @@ import (
 
 // seededProject is a project with secrets written before its dev:/ policy exists, for
 // tests about changing what is already there.
-func seededProject(t *testing.T, seed map[string]string) protectedProject {
+func seededProject(t *testing.T, seed map[string]string, configs ...policyConfig) protectedProject {
 	t.Helper()
 	tn := harness.From(t).NewTenant(t)
 	proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
@@ -27,7 +27,7 @@ func seededProject(t *testing.T, seed map[string]string) protectedProject {
 	}
 	committer := proj.NewUser(t, fixture.WithPrincipalName("committer"))
 	reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
-	policyID := newPolicy(t, proj, []policyMember{userMember(reviewer)})
+	policyID := newPolicy(t, proj, []policyMember{userMember(reviewer)}, configs...)
 	return protectedProject{tn: tn, proj: proj, committer: committer, reviewer: reviewer, policyID: policyID}
 }
 

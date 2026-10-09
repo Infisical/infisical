@@ -270,13 +270,15 @@ func TestSecretReference_Expand(t *testing.T) {
 
 		// Setup
 		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
-		dangling := "${MISSING} ${dev.nope.KEY} ${qa.KEY}"
+		dangling := "${MISSING} ${MISSING} ${dev.nope.KEY} ${qa.KEY}"
 
 		// Action
 		secretmanager.CreateSecret(t, proj, "dev", "DANGLING", dangling)
 
 		// Assert
 		require.Equal(t, dangling, secretmanager.GetSecret(t, proj, "dev", "DANGLING").Value)
+		require.Equal(t, dangling, valueIn(secretmanager.ListSecrets(t, proj, "dev"), "DANGLING"),
+			"listing expands references on its own path and must leave them literal too")
 	})
 
 	t.Run("should keep a reference padded with spaces literal", func(t *testing.T) {

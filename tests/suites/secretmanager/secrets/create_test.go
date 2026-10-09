@@ -198,6 +198,8 @@ func TestSecret_Create(t *testing.T) {
 		require.NotNil(t, got.JSON200.Secret.SecretMetadata)
 		require.Len(t, *got.JSON200.Secret.SecretMetadata, 1)
 		require.Equal(t, "team", (*got.JSON200.Secret.SecretMetadata)[0].Key)
+		require.NotNil(t, (*got.JSON200.Secret.SecretMetadata)[0].Value)
+		require.Equal(t, "payments", *(*got.JSON200.Secret.SecretMetadata)[0].Value)
 	})
 
 	t.Run("should refuse and create nothing when the tag belongs to another project", func(t *testing.T) {
