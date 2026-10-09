@@ -132,36 +132,36 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   // 'delivered' but retriable rows still 'processing'); either every write
   // commits or none do, and the stale-claim sweeper picks up an un-applied
   // claim on the next pass.
-  const commitDeliveryResult = async (input: {
-    successIds: number[];
-    retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
-    exhaustedIds: number[];
-    inTransaction?: (tx: Knex) => Promise<void>;
-  }) => {
+  //
+  // Pass `tx` to commit alongside other writes (eg the stream health flip and its alert event).
+  const commitDeliveryResult = async (
+    input: {
+      successIds: number[];
+      retriable: { groups: { ids: number[]; nextRetryDelayMs: number }[] } | null;
+      exhaustedIds: number[];
+    },
+    tx?: Knex
+  ) => {
     const retriableCount = input.retriable?.groups.reduce((n, g) => n + g.ids.length, 0) ?? 0;
-    if (
-      input.successIds.length === 0 &&
-      retriableCount === 0 &&
-      input.exhaustedIds.length === 0 &&
-      !input.inTransaction
-    )
-      return;
+    if (input.successIds.length === 0 && retriableCount === 0 && input.exhaustedIds.length === 0) return;
     try {
-      await db.transaction(async (tx) => {
+      const applyResult = async (trx: Knex) => {
         if (input.successIds.length > 0) {
-          await markBatchAsDelivered(input.successIds, tx);
+          await markBatchAsDelivered(input.successIds, trx);
         }
         if (input.retriable) {
           for (const group of input.retriable.groups) {
             // eslint-disable-next-line no-await-in-loop
-            await markBatchForRetry(group.ids, group.nextRetryDelayMs, tx);
+            await markBatchForRetry(group.ids, group.nextRetryDelayMs, trx);
           }
         }
         if (input.exhaustedIds.length > 0) {
-          await tx(TableName.AuditLogStreamOutbox).whereIn("id", input.exhaustedIds).del();
+          await trx(TableName.AuditLogStreamOutbox).whereIn("id", input.exhaustedIds).del();
         }
-        if (input.inTransaction) await input.inTransaction(tx);
-      });
+      };
+
+      if (tx) await applyResult(tx);
+      else await db.transaction(applyResult);
     } catch (error) {
       throw new DatabaseError({ error, name: "AuditLogStreamOutbox: commitDeliveryResult" });
     }
@@ -177,11 +177,11 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   const recoverStaleClaims = async (
     thresholdMs: number,
     maxAttempts: number,
-    onDropped?: (dropped: TDroppedStreamRow[], tx: Knex) => Promise<void>
+    tx?: Knex
   ): Promise<{ retried: number; dropped: TDroppedStreamRow[] }> => {
     try {
-      return await db.transaction(async (tx) => {
-        const staleRows = await tx(TableName.AuditLogStreamOutbox)
+      const recover = async (trx: Knex) => {
+        const staleRows = await trx(TableName.AuditLogStreamOutbox)
           .where("status", AuditLogStreamOutboxStatus.Processing)
           .andWhereRaw(`"lockedAt" < NOW() - (? || ' milliseconds')::INTERVAL`, [thresholdMs])
           .forUpdate()
@@ -201,7 +201,7 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
         }
 
         if (retriable.length > 0) {
-          await tx(TableName.AuditLogStreamOutbox)
+          await trx(TableName.AuditLogStreamOutbox)
             .whereIn(
               "id",
               retriable.map((row) => row.id)
@@ -209,21 +209,21 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
             .update({
               status: AuditLogStreamOutboxStatus.Retry,
               attempts: db.raw('"attempts" + 1'),
-              nextRetryAt: tx.fn.now(),
+              nextRetryAt: trx.fn.now(),
               lockedAt: null
             });
         }
 
         if (exhausted.length === 0) return { retried: retriable.length, dropped: [] };
 
-        await tx(TableName.AuditLogStreamOutbox)
+        await trx(TableName.AuditLogStreamOutbox)
           .whereIn(
             "id",
             exhausted.map((row) => row.id)
           )
           .del();
 
-        const streams = await tx(TableName.AuditLogStream)
+        const streams = await trx(TableName.AuditLogStream)
           .whereIn("id", [...new Set(exhausted.map((row) => row.streamId))])
           .select<{ id: string; provider: string }[]>("id", "provider");
         const providerByStreamId = new Map(streams.map((stream) => [stream.id, stream.provider]));
@@ -233,10 +233,11 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
           orgId: row.orgId,
           provider: providerByStreamId.get(row.streamId) ?? null
         }));
-        if (onDropped) await onDropped(dropped, tx);
 
         return { retried: retriable.length, dropped };
-      });
+      };
+
+      return tx ? await recover(tx) : await db.transaction(recover);
     } catch (error) {
       throw new DatabaseError({ error, name: "AuditLogStreamOutbox: recoverStaleClaims" });
     }
@@ -324,7 +325,10 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     }
   };
 
+  const transaction = async <T>(cb: (tx: Knex) => Promise<T>) => db.transaction(cb);
+
   return {
+    transaction,
     batchInsert,
     markStreamFailing,
     clearStreamFailing,

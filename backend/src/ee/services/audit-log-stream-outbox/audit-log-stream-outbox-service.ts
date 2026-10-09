@@ -204,6 +204,32 @@ export const auditLogStreamOutboxServiceFactory = ({
     );
   };
 
+  // Only the healthy -> failing edge emits: markStreamFailing returns null when the stream is already
+  // failing (or gone), so a stream that stays down does not page again on every drain.
+  const flagStreamFailing = async (
+    {
+      streamId,
+      orgId,
+      provider,
+      errorMessage,
+      droppedCount
+    }: { streamId: string; orgId: string; provider: string | null; errorMessage: string; droppedCount: number },
+    tx: Knex
+  ) => {
+    const truncatedError = truncateDeliveryError(errorMessage);
+    const failingSince = await auditLogStreamOutboxDAL.markStreamFailing(
+      { streamId, errorMessage: truncatedError },
+      tx
+    );
+    if (!failingSince) return;
+
+    await emitAuditLogStreamDeliveryFailed(
+      eventEmitter,
+      { orgId, streamId, provider, errorMessage: truncatedError, droppedCount, failingSince },
+      tx
+    );
+  };
+
   // Worker entrypoint. Loops claim→send→ack while there are still rows pending
   // for this stream, but bounded by MAX_BATCHES_PER_JOB so one wedged stream
   // can't hold the worker hostage. If rows remain when we bail, the next event
@@ -350,35 +376,27 @@ export const auditLogStreamOutboxServiceFactory = ({
       }
 
       // The state flip and the alert event commit with the drop itself, so an alert is never lost
-      // or sent for rows that are still retrying. Only the healthy -> failing edge emits: a stream
-      // that stays down keeps its first error rather than paging again on every drain.
+      // or sent for rows that are still retrying.
       const becameFailing = exhausted.length > 0 && !isFailing;
       const recovered = isFailing && streamFail.length === 0 && streamSuccess.length > 0;
-      const inTransaction =
-        becameFailing || recovered
-          ? async (tx: Knex) => {
-              if (recovered) {
-                await auditLogStreamOutboxDAL.clearStreamFailing(streamId, tx);
-                return;
-              }
-              const errorMessage = truncateDeliveryError(exhausted[0].errorMessage);
-              const failingSince = await auditLogStreamOutboxDAL.markStreamFailing({ streamId, errorMessage }, tx);
-              if (failingSince) {
-                await emitAuditLogStreamDeliveryFailed(
-                  eventEmitter,
-                  { orgId, streamId, provider, errorMessage, droppedCount: exhausted.length, failingSince },
-                  tx
-                );
-              }
-            }
-          : undefined;
-
       // eslint-disable-next-line no-await-in-loop
-      await auditLogStreamOutboxDAL.commitDeliveryResult({
-        successIds: streamSuccess.map((row) => row.id),
-        retriable: retriableInput,
-        exhaustedIds: exhausted.map((failed) => failed.row.id),
-        inTransaction
+      await auditLogStreamOutboxDAL.transaction(async (tx) => {
+        await auditLogStreamOutboxDAL.commitDeliveryResult(
+          {
+            successIds: streamSuccess.map((row) => row.id),
+            retriable: retriableInput,
+            exhaustedIds: exhausted.map((failed) => failed.row.id)
+          },
+          tx
+        );
+        if (becameFailing) {
+          await flagStreamFailing(
+            { streamId, orgId, provider, errorMessage: exhausted[0].errorMessage, droppedCount: exhausted.length },
+            tx
+          );
+        } else if (recovered) {
+          await auditLogStreamOutboxDAL.clearStreamFailing(streamId, tx);
+        }
       });
       if (becameFailing) isFailing = true;
       if (recovered) isFailing = false;
@@ -414,31 +432,31 @@ export const auditLogStreamOutboxServiceFactory = ({
   //   - claimBatchForStream's FOR UPDATE SKIP LOCKED + atomic flip to 'processing'
   //     so even concurrent workers claim disjoint rows.
   const sweepStaleClaims = async () => {
-    const { retried, dropped } = await auditLogStreamOutboxDAL.recoverStaleClaims(
-      STALE_CLAIM_THRESHOLD_MS,
-      MAX_ATTEMPTS,
-      async (droppedRows, tx) => {
-        const droppedByStream = new Map<string, { orgId: string; provider: string | null; count: number }>();
-        for (const { streamId, orgId, provider } of droppedRows) {
-          const existing = droppedByStream.get(streamId);
-          if (existing) existing.count += 1;
-          else droppedByStream.set(streamId, { orgId, provider, count: 1 });
-        }
-        for (const [streamId, { orgId, provider, count }] of droppedByStream) {
-          const errorMessage = "The delivery worker stopped before finishing and the retry limit was reached";
-          // eslint-disable-next-line no-await-in-loop
-          const failingSince = await auditLogStreamOutboxDAL.markStreamFailing({ streamId, errorMessage }, tx);
-          if (failingSince) {
-            // eslint-disable-next-line no-await-in-loop
-            await emitAuditLogStreamDeliveryFailed(
-              eventEmitter,
-              { orgId, streamId, provider, errorMessage, droppedCount: count, failingSince },
-              tx
-            );
-          }
-        }
+    const { retried, dropped } = await auditLogStreamOutboxDAL.transaction(async (tx) => {
+      const result = await auditLogStreamOutboxDAL.recoverStaleClaims(STALE_CLAIM_THRESHOLD_MS, MAX_ATTEMPTS, tx);
+
+      const droppedByStream = new Map<string, { orgId: string; provider: string | null; count: number }>();
+      for (const { streamId, orgId, provider } of result.dropped) {
+        const existing = droppedByStream.get(streamId);
+        if (existing) existing.count += 1;
+        else droppedByStream.set(streamId, { orgId, provider, count: 1 });
       }
-    );
+      for (const [streamId, { orgId, provider, count }] of droppedByStream) {
+        // eslint-disable-next-line no-await-in-loop
+        await flagStreamFailing(
+          {
+            streamId,
+            orgId,
+            provider,
+            errorMessage: "The delivery worker stopped before finishing and the retry limit was reached",
+            droppedCount: count
+          },
+          tx
+        );
+      }
+
+      return result;
+    });
     if (retried > 0 || dropped.length > 0) {
       logger.warn(
         `audit-log-stream-outbox: recovered stale claims [retried=${retried}] [dropped=${dropped.length}] [thresholdMs=${STALE_CLAIM_THRESHOLD_MS}]`
