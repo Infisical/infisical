@@ -3,10 +3,10 @@ import { Knex } from "knex";
 import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
-  const hasIdentityCreationLimitCol = await knex.schema.hasColumn(TableName.RateLimit, "identityCreationLimit");
-  const hasProjectCreationLimitCol = await knex.schema.hasColumn(TableName.RateLimit, "projectCreationLimit");
+  const hasIdentityCreationLimitCol = await knex.schema.hasColumn(TableName.DeprecatedRateLimit, "identityCreationLimit");
+  const hasProjectCreationLimitCol = await knex.schema.hasColumn(TableName.DeprecatedRateLimit, "projectCreationLimit");
 
-  await knex.schema.alterTable(TableName.RateLimit, (t) => {
+  await knex.schema.alterTable(TableName.DeprecatedRateLimit, (t) => {
     if (!hasIdentityCreationLimitCol) {
       t.integer("identityCreationLimit").defaultTo(30).notNullable();
     }
@@ -17,10 +17,10 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
-  const hasIdentityCreationLimitCol = await knex.schema.hasColumn(TableName.RateLimit, "identityCreationLimit");
-  const hasProjectCreationLimitCol = await knex.schema.hasColumn(TableName.RateLimit, "projectCreationLimit");
+  const hasIdentityCreationLimitCol = await knex.schema.hasColumn(TableName.DeprecatedRateLimit, "identityCreationLimit");
+  const hasProjectCreationLimitCol = await knex.schema.hasColumn(TableName.DeprecatedRateLimit, "projectCreationLimit");
 
-  await knex.schema.alterTable(TableName.RateLimit, (t) => {
+  await knex.schema.alterTable(TableName.DeprecatedRateLimit, (t) => {
     if (hasIdentityCreationLimitCol) {
       t.dropColumn("identityCreationLimit");
     }
