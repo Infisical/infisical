@@ -203,7 +203,7 @@ export const AgentVaultSetupQuestions = () => {
   return (
     <div className="ifx-avsp__questions not-prose">
       <section className="ifx-avsp__step" data-avsp-focus="building">
-        <h2 className="ifx-avsp__step-title">1. What are you building?</h2>
+        <h2 className="ifx-avsp__step-title">What are you building?</h2>
         <p className="ifx-avsp__step-desc">
           Your answer decides who creates each session and how long each session lasts.
         </p>
@@ -222,8 +222,8 @@ export const AgentVaultSetupQuestions = () => {
       <section className="ifx-avsp__step" data-avsp-focus="runs">
         <h2 className="ifx-avsp__step-title">
           {activeBuild.id === "platform"
-            ? "2. Where do the agents run?"
-            : "2. Where does the agent run?"}
+            ? "Where do the agents run?"
+            : "Where does the agent run?"}
         </h2>
         <p className="ifx-avsp__step-desc">
           Your answer decides where to run the proxy and how the agent starts.
@@ -241,7 +241,7 @@ export const AgentVaultSetupQuestions = () => {
       </section>
 
       <section className="ifx-avsp__step" data-avsp-focus="agent">
-        <h2 className="ifx-avsp__step-title">3. Which agent?</h2>
+        <h2 className="ifx-avsp__step-title">Which agent?</h2>
         <p className="ifx-avsp__step-desc">
           Your answer decides which guide to follow and which command starts the agent.
         </p>
