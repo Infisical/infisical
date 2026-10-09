@@ -26,7 +26,6 @@ const MAX_ACCOUNTS_PER_SCAN = 50000;
 const MAX_ACCOUNT_NAME_LENGTH = 64;
 const DEFAULT_PORT = 1433;
 const PROXY_HOST = "127.0.0.1";
-const REDIRECT_REFUSED = "EREDIRECTREFUSED";
 
 const SQL_LOGIN_AUTH_METHOD = "sql-login";
 
@@ -34,7 +33,17 @@ const SQL_LOGIN_AUTH_METHOD = "sql-login";
 const VISIBILITY_QUERY = `SELECT CASE WHEN HAS_PERMS_BY_NAME(NULL, NULL, 'VIEW ANY DEFINITION') = 1 OR HAS_PERMS_BY_NAME(NULL, NULL, 'VIEW ANY SECURITY DEFINITION') = 1 OR HAS_PERMS_BY_NAME(NULL, NULL, 'ALTER ANY LOGIN') = 1 THEN 1 ELSE 0 END AS canSeeLogins`;
 
 // one row past the cap so truncation is detectable; 63 is the longest username a PAM MSSQL account accepts
-const ENUMERATION_QUERY = `SELECT TOP (${MAX_ACCOUNTS_PER_HOST + 1}) name FROM sys.server_principals WHERE type = 'S' AND is_disabled = 0 AND name NOT LIKE '##%##' AND LEN(name) <= 63 ORDER BY name`;
+const ENUMERATION_QUERY = `SELECT TOP (${MAX_ACCOUNTS_PER_HOST + 1}) name, default_database_name AS defaultDatabase, CASE WHEN principal_id = 1 OR sid = SUSER_SID() THEN 1 ELSE 0 END AS alwaysVisible FROM sys.server_principals WHERE type = 'S' AND is_disabled = 0 AND name NOT LIKE '##%##' AND LEN(name) <= 63 ORDER BY name`;
+
+const VISIBILITY_MESSAGE =
+  "The credential account can only see its own login. Grant it VIEW ANY DEFINITION or ALTER ANY LOGIN to discover every login on the instance.";
+const OWN_LOGIN_ONLY_MESSAGE =
+  "Only sa and the credential account's own login were visible. If the instance has other logins, check that the credential account isn't denied permission to see them.";
+const REDIRECT_MESSAGE = "The instance redirected the connection to another server, which discovery doesn't follow";
+const GATEWAY_FAILURE_MESSAGE =
+  "Could not reach the instance through the gateway. Check that the gateway is online and can reach this host and port.";
+
+type TLogin = { name: string; defaultDatabase: string | null; alwaysVisible: number };
 
 const describeDriverError = (err: unknown): string => {
   const { code, name, cause } = err as { code?: string; name?: string; cause?: { code?: string } };
@@ -51,8 +60,6 @@ const describeDriverError = (err: unknown): string => {
   if (name === "KnexTimeoutError") return "Timed out connecting to the instance";
 
   switch (cause?.code) {
-    case REDIRECT_REFUSED:
-      return "The instance redirected the connection to another server, which discovery doesn't follow";
     case "ECONNREFUSED":
       return "Connection refused";
     case "ECONNRESET":
@@ -83,7 +90,7 @@ const toAccountName = (host: string, port: number, login: string) => {
     .replace(TRAILING_HYPHENS_REGEX, "");
   const room = MAX_ACCOUNT_NAME_LENGTH - suffix.length - 1;
   const prefix = room > 0 ? slugify(host, { lowercase: true }).slice(0, room).replace(TRAILING_HYPHENS_REGEX, "") : "";
-  return prefix ? `${prefix}-${suffix}` : suffix;
+  return [prefix, suffix].filter(Boolean).join("-");
 };
 
 const NO_USABLE_ACCOUNT_MESSAGE =
@@ -134,66 +141,79 @@ export const msSqlDiscoveryFactory: TPamDiscoveryFactory = ({
   const accounts = credentialAccounts.map(toMsSqlAccount);
   const config = configuration as { hosts: string[] };
 
-  const enumerateInstance = (host: string, port: number, account: TMsSqlAccount) =>
-    executeWithGateway(host, port, gatewayId, gatewayV2Service, async (proxyPort) => {
-      const connector = ({ host: dialHost, port: dialPort }: { host: string; port: number }) =>
-        new Promise<net.Socket>((resolve, reject) => {
-          if (dialHost !== PROXY_HOST || dialPort !== proxyPort) {
-            reject(Object.assign(new Error("Refused a server-sent redirect"), { code: REDIRECT_REFUSED }));
-            return;
-          }
-          const socket = net.connect({ host: PROXY_HOST, port: proxyPort });
-          socket.once("error", reject);
-          socket.once("connect", () => {
-            socket.off("error", reject);
-            resolve(socket);
+  const enumerateInstance = async (host: string, port: number, account: TMsSqlAccount) => {
+    let failure: string | undefined;
+    try {
+      return await executeWithGateway(host, port, gatewayId, gatewayV2Service, async (proxyPort) => {
+        let redirected = false;
+        const connector = ({ host: dialHost, port: dialPort }: { host: string; port: number }) =>
+          new Promise<net.Socket>((resolve, reject) => {
+            if (dialHost !== PROXY_HOST || dialPort !== proxyPort) {
+              redirected = true;
+              reject(new Error("Refused a server-sent redirect"));
+              return;
+            }
+            const socket = net.connect({ host: PROXY_HOST, port: proxyPort });
+            socket.once("error", reject);
+            socket.once("connect", () => {
+              socket.off("error", reject);
+              resolve(socket);
+            });
           });
+        const options = {
+          encrypt: account.sslEnabled,
+          connector,
+          // each transient-error retry would send the password to the instance again
+          maxRetriesOnTransientErrors: 0,
+          ...(account.sslEnabled
+            ? {
+                trustServerCertificate: !account.sslRejectUnauthorized,
+                // the driver dials the local proxy, so the certificate is checked against the real host instead
+                serverName: host,
+                cryptoCredentialsDetails: account.sslCertificate ? { ca: account.sslCertificate } : {}
+              }
+            : {})
+        };
+        const db = knex({
+          client: "mssql",
+          connection: {
+            server: PROXY_HOST,
+            port: proxyPort,
+            database: account.database,
+            user: account.username,
+            password: account.password,
+            connectionTimeout: QUERY_TIMEOUT_MS,
+            requestTimeout: QUERY_TIMEOUT_MS,
+            options
+          },
+          acquireConnectionTimeout: QUERY_TIMEOUT_MS,
+          pool: { min: 0, max: 1 }
         });
-      const options = account.sslEnabled
-        ? {
-            encrypt: true,
-            trustServerCertificate: !account.sslRejectUnauthorized,
-            // the driver dials the local proxy, so the certificate is checked against the real host instead
-            serverName: host,
-            cryptoCredentialsDetails: account.sslCertificate ? { ca: account.sslCertificate } : {},
-            connector
-          }
-        : { encrypt: false, connector };
-      const db = knex({
-        client: "mssql",
-        connection: {
-          server: PROXY_HOST,
-          port: proxyPort,
-          database: account.database,
-          user: account.username,
-          password: account.password,
-          connectionTimeout: QUERY_TIMEOUT_MS,
-          requestTimeout: QUERY_TIMEOUT_MS,
-          options
-        },
-        acquireConnectionTimeout: QUERY_TIMEOUT_MS,
-        pool: { min: 0, max: 1 }
-      });
 
-      try {
-        const [visibility] = await db.raw<{ canSeeLogins: number }[]>(VISIBILITY_QUERY);
-        if (visibility?.canSeeLogins !== 1) {
-          throw new BadRequestError({
-            message:
-              "The credential account can only see its own login. Grant it VIEW ANY DEFINITION or ALTER ANY LOGIN to discover every login on the instance."
-          });
+        try {
+          const [visibility] = await db.raw<{ canSeeLogins: number }[]>(VISIBILITY_QUERY);
+          if (visibility?.canSeeLogins !== 1) {
+            failure = VISIBILITY_MESSAGE;
+            throw new Error(failure);
+          }
+          return await db.raw<TLogin[]>(ENUMERATION_QUERY);
+        } catch (err) {
+          if (!failure) {
+            logger.warn({ err }, `PAM SQL Server discovery query failed [host=${host}] [port=${port}]`);
+            failure = redirected ? REDIRECT_MESSAGE : describeDriverError(err);
+          }
+          throw err;
+        } finally {
+          await db.destroy();
         }
-        const rows = await db.raw<{ name: string }[]>(ENUMERATION_QUERY);
-        return rows.map((row) => row.name);
-      } catch (err) {
-        if (err instanceof BadRequestError) throw err;
-        // withGatewayV2Proxy rethrows only the message, so the driver error code has to be mapped here
-        logger.warn({ err }, `PAM SQL Server discovery query failed [host=${host}] [port=${port}]`);
-        throw new BadRequestError({ message: describeDriverError(err) });
-      } finally {
-        await db.destroy();
-      }
-    });
+      });
+    } catch (err) {
+      // withGatewayV2Proxy rethrows only a message, sometimes its own transport error, so the mapped one wins
+      if (failure) throw new BadRequestError({ message: failure });
+      logger.warn({ err }, `PAM SQL Server discovery could not reach instance [host=${host}] [port=${port}]`);
+      throw new BadRequestError({ message: GATEWAY_FAILURE_MESSAGE });
+    }
+  };
 
   const scanInstance = async (
     host: string,
@@ -217,37 +237,34 @@ export const msSqlDiscoveryFactory: TPamDiscoveryFactory = ({
       try {
         // eslint-disable-next-line no-await-in-loop
         const logins = await enumerateInstance(host, port, account);
-        const complete = logins.length <= MAX_ACCOUNTS_PER_HOST;
-        if (!complete) {
+        let error: string | undefined;
+        if (logins.length > MAX_ACCOUNTS_PER_HOST) {
           logger.warn(
             `PAM SQL Server discovery truncated an instance at the per-instance limit [machine=${machine}] [limit=${MAX_ACCOUNTS_PER_HOST}]`
           );
+          error = `Instance has more than ${MAX_ACCOUNTS_PER_HOST} logins; only the first ${MAX_ACCOUNTS_PER_HOST} were staged`;
+        } else if (logins.every((login) => login.alwaysVisible === 1)) {
+          // a DENY can hide every other login without failing the permission check, so this list can't be trusted
+          error = OWN_LOGIN_ONLY_MESSAGE;
         }
         return {
           machine,
-          complete,
-          ...(complete
-            ? {}
-            : {
-                error: {
-                  machine,
-                  error: `Instance has more than ${MAX_ACCOUNTS_PER_HOST} logins; only the first ${MAX_ACCOUNTS_PER_HOST} were staged`
-                }
-              }),
+          complete: !error,
+          ...(error ? { error: { machine, error } } : {}),
           accounts: logins.slice(0, MAX_ACCOUNTS_PER_HOST).map((login) => ({
             accountType: PamAccountType.MsSQL,
-            name: toAccountName(host, port, login),
-            fingerprint: `${machine}:${login}`,
+            name: toAccountName(host, port, login.name),
+            fingerprint: `${machine}:${login.name}`,
             details: {
               connectionDetails: {
                 host,
                 port,
-                database: account.database,
+                database: login.defaultDatabase || account.database,
                 sslEnabled: account.sslEnabled,
                 sslRejectUnauthorized: account.sslRejectUnauthorized,
                 ...(account.sslCertificate ? { sslCertificate: account.sslCertificate } : {})
               },
-              credentials: { authMethod: SQL_LOGIN_AUTH_METHOD, username: login }
+              credentials: { authMethod: SQL_LOGIN_AUTH_METHOD, username: login.name }
             }
           }))
         };
