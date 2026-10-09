@@ -2891,6 +2891,7 @@ const OverviewPageContent = () => {
     // eslint-disable-next-line consistent-return
     return () => {
       resizeObserver.disconnect();
+      columnResize.current = null;
     };
   }, [tableRef, tableView, isTableEmpty, columnKey, savedWidths?.join(",")]);
 
