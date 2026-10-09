@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheckCircle, faFileSignature, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -6,20 +6,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  FormControl,
-  Modal,
-  ModalClose,
-  ModalContent,
-  Select,
-  SelectItem
-} from "@app/components/v2";
+import { Modal, ModalClose, ModalContent } from "@app/components/v2";
 import {
   Button,
   Field,
   FieldError,
   FieldLabel,
   IconButton,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   TextArea,
   Toggle,
   Tooltip,
@@ -49,6 +47,7 @@ type FormProps = Pick<Props, "cmek">;
 const SignForm = ({ cmek }: FormProps) => {
   const cmekSign = useCmekSign();
   const fieldId = useId();
+  const [portalContainer, setPortalContainer] = useState<HTMLFormElement | null>(null);
 
   const {
     handleSubmit,
@@ -86,7 +85,7 @@ const SignForm = ({ cmek }: FormProps) => {
   const allowedSigningAlgorithms = getAllowedSigningAlgorithms(cmek);
 
   return (
-    <form onSubmit={handleSubmit(handleSignData)}>
+    <form ref={setPortalContainer} onSubmit={handleSubmit(handleSignData)}>
       {signature ? (
         <Field className="mb-4">
           <FieldLabel htmlFor={`${fieldId}-signature`}>Data Signature</FieldLabel>
@@ -111,15 +110,34 @@ const SignForm = ({ cmek }: FormProps) => {
               control={control}
               name="signingAlgorithm"
               render={({ field: { onChange, value } }) => (
-                <FormControl label="Signing Algorithm">
-                  <Select onValueChange={onChange} value={value} className="w-full">
-                    {allowedSigningAlgorithms.map((a) => (
-                      <SelectItem key={a} value={a}>
-                        {a.replaceAll("_", " ")}
-                      </SelectItem>
-                    ))}
+                <Field className="mb-4" data-invalid={Boolean(errors.signingAlgorithm)}>
+                  <FieldLabel htmlFor={`${fieldId}-signing-algorithm`}>
+                    Signing Algorithm
+                  </FieldLabel>
+                  <Select onValueChange={onChange} value={value}>
+                    <SelectTrigger
+                      id={`${fieldId}-signing-algorithm`}
+                      className="w-full"
+                      isError={Boolean(errors.signingAlgorithm)}
+                      aria-describedby={
+                        errors.signingAlgorithm ? `${fieldId}-signing-algorithm-error` : undefined
+                      }
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent portalContainer={portalContainer} position="popper">
+                      {allowedSigningAlgorithms.map((a) => (
+                        <SelectItem key={a} value={a}>
+                          {a.replaceAll("_", " ")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
-                </FormControl>
+                  <FieldError
+                    id={`${fieldId}-signing-algorithm-error`}
+                    errors={[errors.signingAlgorithm]}
+                  />
+                </Field>
               )}
             />
 
