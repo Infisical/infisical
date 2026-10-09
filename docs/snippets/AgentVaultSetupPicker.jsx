@@ -292,7 +292,10 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
 
   const readSelection = () => {
     const params = new URLSearchParams(window.location.search);
-    const building = RULES[params.get("building")] ? params.get("building") : "personal";
+    // An own-key check, so a value such as "constructor" doesn't match an inherited property.
+    const building = Object.prototype.hasOwnProperty.call(RULES, params.get("building"))
+      ? params.get("building")
+      : "personal";
     const runs = params.get("runs");
     const agent = params.get("agent");
     return {
@@ -437,7 +440,9 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
 
   const scrollToStep = (id) => {
     const block = document.querySelector(`[data-avsp-focus="step-${id}"]`);
-    if (block) block.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!block) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    block.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
   };
 
   let highlight = null;
@@ -524,13 +529,9 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
         </a>
       </div>
       <div className="ifx-avsp__diagram-scroll">
-        <div
-          className="ifx-avsp__diagram"
-          role="img"
-          aria-label={`Sequence diagram: ${messages
-            .map((message, index) => `${index + 1}. ${message.label}`)
-            .join(", ")}`}
-        >
+        {/* The boxes and lines are hidden from screen readers. Each step's number is a button that
+            announces the step and jumps to its explanation in the walkthrough. */}
+        <div className="ifx-avsp__diagram" role="group" aria-label="Setup diagram">
           <div className="ifx-avsp__lanes" aria-hidden="true">
             {sharesHost && (!revealed || revealed.shownLanes.has("creator")) && (
               <div className="ifx-avsp__boundary">
@@ -544,12 +545,13 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
               </div>
             ))}
           </div>
-          <div className="ifx-avsp__messages" aria-hidden="true">
+          <div className="ifx-avsp__messages">
             {lanes.map((lane, index) => (
               <span
                 key={lane.id}
                 className={lifelineClass(lane.id)}
                 style={{ left: center(index) }}
+                aria-hidden="true"
               />
             ))}
             {messages.map((message, index) => {
@@ -569,15 +571,15 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
                     style={{ left: center(start), width: `${(span / laneCount) * 100}%` }}
                   >
                     <span className="ifx-avsp__arrow-label">
-                      {/* The number jumps to the step's block in the walkthrough. The block repeats
-                          what the arrow shows, so screen readers lose nothing by skipping the diagram. */}
-                      <span
+                      <button
+                        type="button"
                         className="ifx-avsp__arrow-num ifx-avsp__arrow-num--link"
+                        aria-label={`Go to step ${index + 1}: ${message.label}`}
                         onClick={() => scrollToStep(message.id)}
                       >
                         {index + 1}
-                      </span>
-                      {message.label}
+                      </button>
+                      <span aria-hidden="true">{message.label}</span>
                     </span>
                   </div>
                 </div>
@@ -603,7 +605,8 @@ export const AgentVaultSetupStep = ({ step, children }) => {
 
   const readModel = () => {
     const params = new URLSearchParams(window.location.search);
-    return MODELS[params.get("building")] ?? "user";
+    const building = params.get("building");
+    return Object.prototype.hasOwnProperty.call(MODELS, building) ? MODELS[building] : "user";
   };
 
   const [model, setModel] = useState("user");
@@ -708,13 +711,14 @@ export const AgentVaultSetupSummary = () => {
 
   const readSelection = () => {
     const params = new URLSearchParams(window.location.search);
-    const building = BUILDS[params.get("building")] ? params.get("building") : "personal";
+    const has = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+    const building = has(BUILDS, params.get("building")) ? params.get("building") : "personal";
     const runs = params.get("runs");
     const agent = params.get("agent");
     return {
       building,
       runs: RUNS[building].includes(runs) ? runs : null,
-      agent: AGENTS[agent] ? agent : null,
+      agent: has(AGENTS, agent) ? agent : null,
     };
   };
 
@@ -767,7 +771,9 @@ export const AgentVaultSetupBranch = ({ building, runs, agent, model, children }
 
   const readSelection = () => {
     const params = new URLSearchParams(window.location.search);
-    const buildingId = RULES[params.get("building")] ? params.get("building") : "personal";
+    const buildingId = Object.prototype.hasOwnProperty.call(RULES, params.get("building"))
+      ? params.get("building")
+      : "personal";
     const rule = RULES[buildingId];
     const runsId = params.get("runs");
     const agentId = params.get("agent");

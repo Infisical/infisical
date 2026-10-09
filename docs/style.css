@@ -2038,10 +2038,15 @@ a.ifx-card__title:hover .ifx-card__chevron {
 }
 
 .ifx-avsp__arrow-num--link {
+  padding: 0;
+  border: 0;
+  font-family: inherit;
+  line-height: 1;
   cursor: pointer;
 }
 
-.ifx-avsp__arrow-num--link:hover {
+.ifx-avsp__arrow-num--link:hover,
+.ifx-avsp__arrow-num--link:focus-visible {
   outline: 2px solid var(--ifx-card-hover-line);
   outline-offset: 1px;
 }
@@ -2062,19 +2067,31 @@ a.ifx-card__title:hover .ifx-card__chevron {
   border-top: 0;
 }
 
-/* While one question is current, the others fade back the same way, and come back on hover so
-   they're still easy to answer. */
+/* While one question is current, the others fade back the same way. A faded question comes back on
+   hover or keyboard focus, so it's still easy to read and answer. */
 .ifx-avsp__step {
   transition: opacity 0.2s ease;
 }
 
-.ifx-avsp__questions:has(.ifx-avsp__step[data-avsp-active]) .ifx-avsp__step:not([data-avsp-active]):not(:hover) {
+.ifx-avsp__questions:has(.ifx-avsp__step[data-avsp-active]) .ifx-avsp__step:not([data-avsp-active]):not(:hover):not(:focus-within) {
   opacity: 0.35;
 }
 
-/* While one step is current, the others fade back, matching the dimmed arrows in the diagram. */
-.ifx-avsp__layout:has(.ifx-avsp__walk-step[data-avsp-active]) .ifx-avsp__walk-step:not([data-avsp-active]) {
+/* While one step is current, the others fade back, matching the dimmed arrows in the diagram. A
+   faded step comes back when one of its links has keyboard focus. */
+.ifx-avsp__layout:has(.ifx-avsp__walk-step[data-avsp-active]) .ifx-avsp__walk-step:not([data-avsp-active]):not(:focus-within) {
   opacity: 0.35;
+}
+
+/* DESIGN.md: respect reduced-motion settings. The fades and reveals still happen, but instantly. */
+@media (prefers-reduced-motion: reduce) {
+  .ifx-avsp__step,
+  .ifx-avsp__walk-step,
+  .ifx-avsp__lane,
+  .ifx-avsp__message,
+  .ifx-avsp__lifeline {
+    transition: none;
+  }
 }
 
 .ifx-avsp__walk-head {
