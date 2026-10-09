@@ -27,6 +27,7 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
+import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -53,6 +54,7 @@ type TMembershipGroupServiceFactoryDep = {
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "find">;
   secretApprovalPolicyApproverDAL: Pick<TSecretApprovalPolicyApproverDALFactory, "find">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findPoliciesWhereSubjectIsApprover">;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findOpenSecretChangeRequestsWhereSubjectIsApprover">;
   roleDAL: Pick<TRoleDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
   orgDAL: TOrgDALFactory;
@@ -80,6 +82,7 @@ export const membershipGroupServiceFactory = ({
   secretApprovalPolicyDAL,
   secretApprovalPolicyApproverDAL,
   approvalPolicyDAL,
+  approvalRequestDAL,
   membershipRoleDAL,
   orgDAL,
   permissionService,
@@ -460,6 +463,17 @@ export const membershipGroupServiceFactory = ({
         const policyNames = secretChangePolicies.map((p) => p.name).join(", ");
         throw new BadRequestError({
           message: `Cannot remove group from project: group is an approver in secret approval ${secretChangePolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
+        });
+      }
+
+      const openSecretChangeRequests = await approvalRequestDAL.findOpenSecretChangeRequestsWhereSubjectIsApprover({
+        projectId: existingMembership.scopeProjectId,
+        groupId: dto.selector.groupId
+      });
+      if (openSecretChangeRequests.length > 0) {
+        const requestSlugs = openSecretChangeRequests.map((request) => request.slug).join(", ");
+        throw new BadRequestError({
+          message: `Cannot remove group from project: group is an approver on open secret approval ${openSecretChangeRequests.length > 1 ? "requests" : "request"}: ${requestSlugs}`
         });
       }
     }

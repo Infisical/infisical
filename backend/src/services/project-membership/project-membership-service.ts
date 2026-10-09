@@ -24,6 +24,7 @@ import { TSecretApprovalPolicyDALFactory } from "../../ee/services/secret-approv
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
+import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-dal";
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
@@ -69,6 +70,7 @@ type TProjectMembershipServiceFactoryDep = {
   secretApprovalPolicyApproverDAL: Pick<TSecretApprovalPolicyApproverDALFactory, "find">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "find">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findPoliciesWhereSubjectIsApprover">;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findOpenSecretChangeRequestsWhereSubjectIsApprover">;
   secretReminderRecipientsDAL: Pick<TSecretReminderRecipientsDALFactory, "delete">;
   groupProjectDAL: TGroupProjectDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -98,6 +100,7 @@ export const projectMembershipServiceFactory = ({
   secretApprovalPolicyApproverDAL,
   secretApprovalPolicyDAL,
   approvalPolicyDAL,
+  approvalRequestDAL,
   membershipUserDAL,
   userDAL,
   userAliasDAL,
@@ -169,6 +172,17 @@ export const projectMembershipServiceFactory = ({
       const policyNames = secretChangePolicies.map((p) => p.name).join(", ");
       throw new BadRequestError({
         message: `${actionLabel}: user is an approver in secret approval ${secretChangePolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
+      });
+    }
+
+    const openSecretChangeRequests = await approvalRequestDAL.findOpenSecretChangeRequestsWhereSubjectIsApprover({
+      projectId,
+      userIds
+    });
+    if (openSecretChangeRequests.length > 0) {
+      const requestSlugs = openSecretChangeRequests.map((request) => request.slug).join(", ");
+      throw new BadRequestError({
+        message: `${actionLabel}: user is an approver on open secret approval ${openSecretChangeRequests.length > 1 ? "requests" : "request"}: ${requestSlugs}`
       });
     }
   };

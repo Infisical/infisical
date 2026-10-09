@@ -148,6 +148,55 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findOpenSecretChangeRequestsWhereSubjectIsApprover = async (args: {
+    projectId: string;
+    userIds?: string[];
+    groupId?: string;
+  }) => {
+    try {
+      if (!args.userIds?.length && !args.groupId) return [];
+
+      const dbInstance = db.replicaNode();
+      const query = dbInstance(TableName.ApprovalRequestStepEligibleApprovers)
+        .innerJoin(
+          TableName.ApprovalRequestSteps,
+          `${TableName.ApprovalRequestSteps}.id`,
+          `${TableName.ApprovalRequestStepEligibleApprovers}.stepId`
+        )
+        .innerJoin(
+          TableName.ApprovalRequests,
+          `${TableName.ApprovalRequests}.id`,
+          `${TableName.ApprovalRequestSteps}.requestId`
+        )
+        .innerJoin(
+          TableName.SecretChangeRequests,
+          `${TableName.SecretChangeRequests}.approvalRequestId`,
+          `${TableName.ApprovalRequests}.id`
+        )
+        .where(`${TableName.ApprovalRequests}.projectId`, args.projectId)
+        .where(`${TableName.ApprovalRequests}.type`, ApprovalPolicyType.SecretChange)
+        .where(`${TableName.ApprovalRequests}.status`, ApprovalRequestStatus.Open);
+
+      if (args.userIds?.length) {
+        void query.whereIn(`${TableName.ApprovalRequestStepEligibleApprovers}.userId`, args.userIds);
+      } else if (args.groupId) {
+        void query.where(`${TableName.ApprovalRequestStepEligibleApprovers}.groupId`, args.groupId);
+      }
+
+      const rows = await query
+        .distinct(`${TableName.SecretChangeRequests}.slug`)
+        .orderBy(`${TableName.SecretChangeRequests}.slug`, "asc")
+        .select<{ slug: string }[]>();
+
+      return rows;
+    } catch (error) {
+      throw new DatabaseError({
+        error,
+        name: "Find open secret change requests where subject is approver"
+      });
+    }
+  };
+
   const markExpiredRequests = async (): Promise<number> => {
     try {
       const rows = await db(TableName.ApprovalRequests)
@@ -169,6 +218,7 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
     findByProjectId,
     findByIdForUpdate,
     findPendingByPolicyIdForUpdate,
+    findOpenSecretChangeRequestsWhereSubjectIsApprover,
     markExpiredRequests
   };
 };

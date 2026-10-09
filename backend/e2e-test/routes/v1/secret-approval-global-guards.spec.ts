@@ -67,6 +67,16 @@ const createGlobalPolicy = async (name: string, secretPath: string, approver: { 
   return policyId;
 };
 
+const replaceGlobalPolicyApprover = async (policyId: string, approver: { type: ApproverType; id: string }) => {
+  const res = await testServer.inject({
+    method: "PATCH",
+    url: `/api/v2/secret-approvals/${policyId}`,
+    headers: authHeaders(),
+    body: { approvers: [approver], approvals: 1 }
+  });
+  expect(res.statusCode).toBe(200);
+};
+
 const deleteGlobalPolicy = async (policyId: string) => {
   const res = await testServer.inject({
     method: "DELETE",
@@ -121,6 +131,44 @@ const seedOpenSecretChangeRequest = async (folderId: string) => {
     slug: `guard-${crypto.randomUUID().slice(0, 8)}`
   });
   return approvalRequestId;
+};
+
+const seedOpenRequestWithApprover = async (folderId: string, approver: { userId?: string; groupId?: string }) => {
+  const slug = `guard-${crypto.randomUUID().slice(0, 8)}`;
+  const [request] = await getDb()(TableName.ApprovalRequests)
+    .insert({
+      projectId,
+      organizationId: orgId,
+      policyId: null,
+      requesterId: seedData1.id,
+      requesterName: "test",
+      requesterEmail: seedData1.email,
+      type: ApprovalPolicyType.SecretChange,
+      status: "open",
+      currentStep: 1,
+      requestData: JSON.stringify({})
+    })
+    .returning("id");
+  const approvalRequestId = (request as { id: string }).id;
+  const [step] = await getDb()(TableName.ApprovalRequestSteps)
+    .insert({
+      requestId: approvalRequestId,
+      stepNumber: 1,
+      status: "in-progress",
+      requiredApprovals: 1
+    })
+    .returning("id");
+  await getDb()(TableName.ApprovalRequestStepEligibleApprovers).insert({
+    stepId: (step as { id: string }).id,
+    userId: approver.userId ?? null,
+    groupId: approver.groupId ?? null
+  });
+  await getDb()(TableName.SecretChangeRequests).insert({
+    approvalRequestId,
+    folderId,
+    slug
+  });
+  return { approvalRequestId, slug };
 };
 
 const seedOpenLegacyRequest = async (folderId: string, policyId: string) => {
@@ -218,6 +266,88 @@ describe("Global approval system guards outside the approval routes", () => {
 
     const removed = await removeProjectGroup(groupId);
     expect(removed.statusCode).toBe(200);
+  });
+
+  test("a user saved on an open request cannot be removed after the policy approver changes", async () => {
+    const { userId, username } = await createProjectUser("open-request-approver");
+    userIds.push(userId);
+    const folderName = `open-request-user-${crypto.randomUUID().slice(0, 8)}`;
+    const folder = await createFolder({
+      workspaceId: projectId,
+      environmentSlug: envSlug,
+      secretPath: "/",
+      name: folderName,
+      authToken: jwtAuthToken
+    });
+    const policyId = await createGlobalPolicy("open-request-user-guard", `/${folderName}`, {
+      type: ApproverType.User,
+      id: userId
+    });
+    policyIds.push(policyId);
+    const { approvalRequestId, slug } = await seedOpenRequestWithApprover(folder.id, { userId });
+    requestIds.push(approvalRequestId);
+
+    await replaceGlobalPolicyApprover(policyId, { type: ApproverType.User, id: seedData1.id });
+
+    const blocked = await removeProjectUser(username);
+    expect(blocked.statusCode).toBe(400);
+    expect(blocked.json().message).toBe(
+      `Cannot remove user from project: user is an approver on open secret approval request: ${slug}`
+    );
+
+    await getDb()(TableName.ApprovalRequests).where({ id: approvalRequestId }).update({ status: "close" });
+
+    const removed = await removeProjectUser(username);
+    expect(removed.statusCode).toBe(200);
+
+    await deleteFolder({
+      workspaceId: projectId,
+      environmentSlug: envSlug,
+      secretPath: "/",
+      id: folder.id,
+      authToken: jwtAuthToken
+    });
+  });
+
+  test("a group saved on an open request cannot be removed after the policy approver changes", async () => {
+    const groupId = await createProjectGroup("open-request-approver-group");
+    groupIds.push(groupId);
+    const folderName = `open-request-group-${crypto.randomUUID().slice(0, 8)}`;
+    const folder = await createFolder({
+      workspaceId: projectId,
+      environmentSlug: envSlug,
+      secretPath: "/",
+      name: folderName,
+      authToken: jwtAuthToken
+    });
+    const policyId = await createGlobalPolicy("open-request-group-guard", `/${folderName}`, {
+      type: ApproverType.Group,
+      id: groupId
+    });
+    policyIds.push(policyId);
+    const { approvalRequestId, slug } = await seedOpenRequestWithApprover(folder.id, { groupId });
+    requestIds.push(approvalRequestId);
+
+    await replaceGlobalPolicyApprover(policyId, { type: ApproverType.User, id: seedData1.id });
+
+    const blocked = await removeProjectGroup(groupId);
+    expect(blocked.statusCode).toBe(400);
+    expect(blocked.json().message).toBe(
+      `Cannot remove group from project: group is an approver on open secret approval request: ${slug}`
+    );
+
+    await getDb()(TableName.ApprovalRequests).where({ id: approvalRequestId }).update({ status: "close" });
+
+    const removed = await removeProjectGroup(groupId);
+    expect(removed.statusCode).toBe(200);
+
+    await deleteFolder({
+      workspaceId: projectId,
+      environmentSlug: envSlug,
+      secretPath: "/",
+      id: folder.id,
+      authToken: jwtAuthToken
+    });
   });
 
   test("a folder with an open global change request cannot be deleted, directly or through its parent", async () => {
