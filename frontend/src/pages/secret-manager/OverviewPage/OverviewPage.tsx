@@ -2688,6 +2688,7 @@ const OverviewPageContent = () => {
     startX: number;
     widths: number[];
     next?: number[];
+    handle: HTMLElement;
   } | null>(null);
   const columnKey = `${isSingleEnvView ? "single" : "multi"}:${visibleEnvs.map(({ id }) => id).join(":")}`;
   const columnMinWidths = isSingleEnvView ? [280, 368] : Array(visibleEnvs.length + 1).fill(240);
@@ -2792,7 +2793,8 @@ const OverviewPageContent = () => {
         columnResize.current = {
           index,
           startX: event.clientX,
-          widths: getCurrentColumnWidths()
+          widths: getCurrentColumnWidths(),
+          handle: event.currentTarget
         };
         event.currentTarget.setPointerCapture(event.pointerId);
       }}
@@ -2891,7 +2893,7 @@ const OverviewPageContent = () => {
     // eslint-disable-next-line consistent-return
     return () => {
       resizeObserver.disconnect();
-      columnResize.current = null;
+      if (!columnResize.current?.handle.isConnected) columnResize.current = null;
     };
   }, [tableRef, tableView, isTableEmpty, columnKey, savedWidths?.join(",")]);
 
