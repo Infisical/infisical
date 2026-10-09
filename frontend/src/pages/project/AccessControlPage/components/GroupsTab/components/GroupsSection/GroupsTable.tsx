@@ -271,13 +271,20 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                               onClick={(e) => e.stopPropagation()}
                             >
                               <DropdownMenuItem
-                                onClick={(e) => {
+                                onClick={async (e) => {
                                   e.stopPropagation();
-                                  navigator.clipboard.writeText(id);
-                                  createNotification({
-                                    text: "Group ID copied to clipboard",
-                                    type: "info"
-                                  });
+                                  try {
+                                    await navigator.clipboard.writeText(id);
+                                    createNotification({
+                                      text: "Group ID copied to clipboard",
+                                      type: "info"
+                                    });
+                                  } catch {
+                                    createNotification({
+                                      text: "Could not copy the group ID. Your browser blocked clipboard access.",
+                                      type: "error"
+                                    });
+                                  }
                                 }}
                               >
                                 <CopyIcon />
