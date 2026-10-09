@@ -323,31 +323,21 @@ describe("KafkaProvider.create", () => {
     ]);
   });
 
-  test.each(["{{identity.name}}", "lease-user"])(
-    "refuses the username template %s, which has no random part",
-    async (usernameTemplate) => {
-      await expect(KafkaProvider().create(createArgs(baseInputs, usernameTemplate))).rejects.toThrow(
-        "username template has no random part"
-      );
-      expect(FakeConnection.instances).toHaveLength(0);
-    }
-  );
+  test("adds a random suffix to the username the template generates", async () => {
+    const first = await KafkaProvider().create(createArgs(baseInputs, "{{identity.name}}"));
+    const second = await KafkaProvider().create(createArgs(baseInputs, "{{identity.name}}"));
 
-  test.each(["{{randomUsername}}", "{{identity.name}}-{{random 8}}", "{{truncate randomUsername 12}}"])(
-    "accepts the username template %s",
-    async (usernameTemplate) => {
-      await expect(KafkaProvider().create(createArgs(baseInputs, usernameTemplate))).resolves.toBeDefined();
-    }
-  );
+    expect(first.entityId).toMatch(/^tester-[0-9A-Za-z]{8}$/);
+    expect(second.entityId).not.toBe(first.entityId);
+  });
 
   test.each([
-    ["has SCRAM credentials", () => describeScramCredentials.mockResolvedValue({ results: [] } as never), undefined],
-    ["has ACLs", () => describeAcls.mockResolvedValue({ resources: [{}] } as never), undefined],
-    ["is the admin user", () => undefined, "admin{{random 0}}"]
-  ])("refuses a username that %s without changing it", async (_case, setUp, usernameTemplate) => {
+    ["has SCRAM credentials", () => describeScramCredentials.mockResolvedValue({ results: [] } as never)],
+    ["has ACLs", () => describeAcls.mockResolvedValue({ resources: [{}] } as never)]
+  ])("refuses a username that already %s without changing it", async (_case, setUp) => {
     setUp();
 
-    await expect(KafkaProvider().create(createArgs(baseInputs, usernameTemplate))).rejects.toThrow(
+    await expect(KafkaProvider().create(createArgs())).rejects.toThrow(
       "A Kafka user with the generated username already exists"
     );
     expect(alterScramCredentials).not.toHaveBeenCalled();

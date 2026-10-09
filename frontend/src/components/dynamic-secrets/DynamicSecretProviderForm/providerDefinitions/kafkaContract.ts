@@ -66,27 +66,11 @@ export const kafkaEditInputsSchema = kafkaCreateInputsSchema.extend({
 export type TKafkaFormInputs = z.input<typeof kafkaCreateInputsSchema>;
 export type TKafkaFormValues = TDynamicSecretProviderFormValues<TKafkaFormInputs>;
 
-// Same rule as the backend's lease check: a fixed name could take over a Kafka user that already exists
-const RANDOM_TEMPLATE_PART = /{{[^}]*\b(?:randomUsername\b|random\s+\d)/;
-
-const kafkaUsernameTemplateSchema = z
-  .string()
-  .trim()
-  .nullable()
-  .optional()
-  .refine((template) => !template || RANDOM_TEMPLATE_PART.test(template), {
-    message:
-      "Include a random part, such as {{randomUsername}} or {{random 8}}, so that each lease gets a new Kafka user"
-  });
-
 export const kafkaCreateFormSchema = createDynamicSecretProviderFormSchema(
-  kafkaCreateInputsSchema,
-  {
-    usernameTemplateSchema: kafkaUsernameTemplateSchema
-  }
+  kafkaCreateInputsSchema
 ) as z.ZodType<TKafkaFormValues>;
 export const kafkaEditFormSchema = editDynamicSecretProviderFormSchema(kafkaEditInputsSchema, {
-  usernameTemplateSchema: kafkaUsernameTemplateSchema
+  usernameTemplateSchema: z.string().trim().nullable().optional()
 }) as z.ZodType<TKafkaFormValues>;
 
 export const getDefaultKafkaBootstrapServer = (): TKafkaFormInputs["bootstrapServers"][number] => ({

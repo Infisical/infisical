@@ -27,6 +27,7 @@ import { TDynamicSecrets } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { getTlsServerNameOptions } from "@app/lib/tls";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
@@ -46,9 +47,6 @@ const SCRAM_CREDENTIALS = [
   { mechanism: ScramMechanisms.SCRAM_SHA_256, digest: "sha256", keyLength: 32 },
   { mechanism: ScramMechanisms.SCRAM_SHA_512, digest: "sha512", keyLength: 64 }
 ] as const;
-
-// {{randomUsername}} or {{random N}}, on its own or inside a helper such as {{truncate randomUsername 12}}
-const RANDOM_TEMPLATE_PART = /{{[^}]*\b(?:randomUsername\b|random\s+\d)/;
 
 const REQUIRED_APIS = [alterUserScramCredentialsV0.api, createAclsV3.api, deleteAclsV3.api];
 
@@ -100,7 +98,7 @@ const deleteKafkaUser = async (connection: Connection, username: string) => {
 
 // Writing credentials for an existing user would hand the lease that user's ACLs or super user rights, and revoking
 // the lease would then delete them
-const assertNewKafkaUser = async (connection: Connection, username: string, adminUsername: string) => {
+const assertNewKafkaUser = async (connection: Connection, username: string) => {
   const hasScramCredentials = () =>
     describeUserScramCredentialsV0.api.async(connection, [{ name: username }]).then(
       () => true,
@@ -112,10 +110,9 @@ const assertNewKafkaUser = async (connection: Connection, username: string, admi
   const hasAcls = async () =>
     (await describeAclsV3.api.async(connection, getPrincipalAclFilter(username))).resources.length > 0;
 
-  if (username === adminUsername || (await hasScramCredentials()) || (await hasAcls())) {
+  if ((await hasScramCredentials()) || (await hasAcls())) {
     throw new BadRequestError({
-      message:
-        "A Kafka user with the generated username already exists. Use a username template that generates a unique name for each lease, such as one that includes {{randomUsername}}."
+      message: "A Kafka user with the generated username already exists. Create the lease again to get a new username."
     });
   }
 };
@@ -229,21 +226,15 @@ export const KafkaProvider = (): TDynamicProviderFns => {
     dynamicSecret: TDynamicSecrets;
   }) => {
     const { inputs, usernameTemplate, identity, dynamicSecret } = data;
-    // A fixed name could match a user Infisical can't detect, such as a super user defined only in a broker's JAAS
-    // configuration, and the lease would take over that user's access
-    if (usernameTemplate && !RANDOM_TEMPLATE_PART.test(usernameTemplate)) {
-      throw new BadRequestError({
-        message:
-          "This dynamic secret's username template has no random part. Edit the dynamic secret and add one, such as {{randomUsername}} or {{random 8}}, so that each lease gets a new Kafka user."
-      });
-    }
     const providerInputs = await validateProviderInputs(inputs);
 
-    const username = await generateUsername(usernameTemplate, {
+    // A template can produce a fixed name, which could match a user Infisical can't detect, such as a super user
+    // defined only in a broker's JAAS configuration, so every lease user also gets a random suffix
+    const username = `${await generateUsername(usernameTemplate, {
       decryptedDynamicSecretInputs: inputs,
       dynamicSecret,
       identity
-    });
+    })}-${alphaNumericNanoId(8)}`;
     const password = generatePassword();
     const upsertions = await Promise.all(
       SCRAM_CREDENTIALS.map(async ({ mechanism, digest, keyLength }) => {
@@ -257,7 +248,7 @@ export const KafkaProvider = (): TDynamicProviderFns => {
       providerInputs,
       "Failed to create lease from provider",
       async (connection) => {
-        await assertNewKafkaUser(connection, username, providerInputs.username);
+        await assertNewKafkaUser(connection, username);
         try {
           // Kafka accepts one credential change per user per request
           await Promise.all(

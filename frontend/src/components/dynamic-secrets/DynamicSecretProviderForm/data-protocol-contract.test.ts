@@ -898,11 +898,6 @@ testDynamicSecretProviderContract({
           inputs: { ...kafkaCreateValues.inputs, acls: [getDefaultKafkaAcl()] }
         },
         issuePaths: [["inputs", "acls", 0, "resourceName"]]
-      },
-      {
-        name: "username template has no random part",
-        values: { ...kafkaCreateValues, usernameTemplate: "{{identity.name}}" },
-        issuePaths: [["usernameTemplate"]]
       }
     ]
   },
