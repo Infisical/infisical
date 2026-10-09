@@ -319,6 +319,12 @@ export const SECRET_SYNC_MAP: Record<
     image: "Daytona.png",
     category: "PLATFORM",
     description: "Organization secrets for Daytona sandboxes."
+  },
+  [SecretSync.Keeper]: {
+    name: "Keeper Password Manager",
+    image: "Keeper.png",
+    category: "PASSWORD MANAGER",
+    description: "Login records in a Keeper Password Manager shared folder."
   }
 };
 
@@ -379,7 +385,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Qovery]: AppConnection.Qovery,
   [SecretSync.Cloud66]: AppConnection.Cloud66,
   [SecretSync.Spacelift]: AppConnection.Spacelift,
-  [SecretSync.Daytona]: AppConnection.Daytona
+  [SecretSync.Daytona]: AppConnection.Daytona,
+  [SecretSync.Keeper]: AppConnection.Keeper
 };
 
 export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<

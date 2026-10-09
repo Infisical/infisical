@@ -30,6 +30,7 @@ import { THasuraCloudSync } from "./hasura-cloud-sync";
 import { THCVaultSync } from "./hc-vault-sync";
 import { THerokuSync } from "./heroku-sync";
 import { THumanitecSync } from "./humanitec-sync";
+import { TKeeperSync } from "./keeper-sync";
 import { TLaravelForgeSync } from "./laravel-forge-sync";
 import { TNetlifySync } from "./netlify-sync";
 import { TNorthflankSync } from "./northflank-sync";
@@ -112,7 +113,8 @@ export type TSecretSync =
   | TQoverySync
   | TCloud66Sync
   | TSpaceliftSync
-  | TDaytonaSync;
+  | TDaytonaSync
+  | TKeeperSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 
