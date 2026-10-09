@@ -6,8 +6,6 @@ import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 export const AUDIT_LOG_STREAM_RESOURCE_TYPE = "audit-log.stream";
 export const AUDIT_LOG_STREAM_DELIVERY_FAILED_EVENT = "audit-log.stream.delivery-failed";
 
-export const AUDIT_LOG_STREAM_ERROR_MAX_LENGTH = 500;
-
 export const AuditLogStreamDeliveryFailedPayloadSchema = z.object({
   provider: z.string(),
   errorMessage: z.string(),
@@ -23,11 +21,6 @@ export type TAuditLogStreamDeliveryFailedInput = {
   droppedCount: number;
   failingSince: Date;
 };
-
-export const truncateDeliveryError = (message: string): string =>
-  message.length > AUDIT_LOG_STREAM_ERROR_MAX_LENGTH
-    ? `${message.slice(0, AUDIT_LOG_STREAM_ERROR_MAX_LENGTH)}...`
-    : message;
 
 export const emitAuditLogStreamDeliveryFailed = (
   eventEmitter: TEventEmitter,

@@ -16,7 +16,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { chunkAuditLogsByBatchLimit } from "../audit-log-stream/audit-log-stream-batching";
 import { TAuditLogStreamDALFactory } from "../audit-log-stream/audit-log-stream-dal";
 import { LogProvider, StreamMode } from "../audit-log-stream/audit-log-stream-enums";
-import { emitAuditLogStreamDeliveryFailed, truncateDeliveryError } from "../audit-log-stream/audit-log-stream-events";
+import { emitAuditLogStreamDeliveryFailed } from "../audit-log-stream/audit-log-stream-events";
 import { LOG_STREAM_FACTORY_MAP } from "../audit-log-stream/audit-log-stream-factory";
 import {
   auditLogMatchesStreamFilter,
@@ -216,16 +216,16 @@ export const auditLogStreamOutboxServiceFactory = ({
     }: { streamId: string; orgId: string; provider: string | null; errorMessage: string; droppedCount: number },
     tx: Knex
   ) => {
-    const truncatedError = truncateDeliveryError(errorMessage);
-    const failingSince = await auditLogStreamOutboxDAL.markStreamFailing(
-      { streamId, errorMessage: truncatedError },
-      tx
-    );
+    // Delivery errors are short axios or network messages, so this is only a guard: the event outbox
+    // rejects payloads over 16KB, and a throw from emit here would roll back the drop and leave the
+    // stream unflagged with no alert.
+    const boundedError = errorMessage.slice(0, 500);
+    const failingSince = await auditLogStreamOutboxDAL.markStreamFailing({ streamId, errorMessage: boundedError }, tx);
     if (!failingSince) return;
 
     await emitAuditLogStreamDeliveryFailed(
       eventEmitter,
-      { orgId, streamId, provider, errorMessage: truncatedError, droppedCount, failingSince },
+      { orgId, streamId, provider, errorMessage: boundedError, droppedCount, failingSince },
       tx
     );
   };
