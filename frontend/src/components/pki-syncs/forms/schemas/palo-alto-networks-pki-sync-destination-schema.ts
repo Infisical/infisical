@@ -92,11 +92,12 @@ const PaloAltoNetworksSslTlsProfileDestinationConfigSchema =
 
 const buildPaloAltoNetworksDestinationSchemas = <
   TDestination extends PkiSync,
-  TConfig extends z.ZodTypeAny
+  TConfig extends z.ZodTypeAny,
+  TSyncOptions extends z.AnyZodObject
 >(
   destination: TDestination,
   destinationConfig: TConfig,
-  syncOptions: typeof PaloAltoNetworksSyncOptionsSchema
+  syncOptions: TSyncOptions
 ) => {
   const createSchema = BasePkiSyncSchema(syncOptions).merge(
     z.object({
