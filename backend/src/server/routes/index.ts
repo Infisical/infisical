@@ -4656,6 +4656,7 @@ export const registerRoutes = async (
     folderCommit: folderCommitService,
     secretScanningV2: secretScanningV2Service,
     secretScanningV2Instance: secretScanningV2InstanceService,
+    secretScanningV2ProjectResolver,
     reminder: reminderService,
     eventBus: eventBusService,
     projectEvents: projectEventsService,

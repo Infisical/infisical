@@ -3855,14 +3855,14 @@ export const SecretScanningDataSources = {
   LIST: (type?: SecretScanningDataSource) => ({
     projectId: `The ID of the project to list ${
       type ? SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type] : "Scanning"
-    } Data Sources from.`
+    } Data Sources from. Defaults to the organization's active Secret Scanning project.`
   }),
   GET_BY_ID: (type: SecretScanningDataSource) => ({
     dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to retrieve.`
   }),
   GET_BY_NAME: (type: SecretScanningDataSource) => ({
     sourceName: `The name of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to retrieve.`,
-    projectId: `The ID of the project the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source is located in.`
+    projectId: `The ID of the project the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source is located in. Defaults to the organization's active Secret Scanning project.`
   }),
   CREATE: (type: SecretScanningDataSource) => {
     const sourceType = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
@@ -3870,7 +3870,7 @@ export const SecretScanningDataSources = {
     return {
       name: `The name of the ${sourceType} Data Source to create. Must be slug-friendly.`,
       description: `An optional description for the ${sourceType} Data Source.`,
-      projectId: `The ID of the project to create the ${sourceType} Data Source in.`,
+      projectId: `The ID of the project to create the ${sourceType} Data Source in. Defaults to the organization's active Secret Scanning project.`,
       connectionId: `The ID of the ${
         APP_CONNECTION_NAME_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]]
       } Connection to use for this Data Source.`,
@@ -3924,7 +3924,7 @@ export const SecretScanningDataSources = {
 
 export const SecretScanningFindings = {
   LIST: {
-    projectId: `The ID of the project to list Secret Scanning Findings from.`
+    projectId: `The ID of the project to list Secret Scanning Findings from. Defaults to the organization's active Secret Scanning project.`
   },
   UPDATE: {
     findingId: "The ID of the Secret Scanning Finding to update.",
@@ -3935,10 +3935,11 @@ export const SecretScanningFindings = {
 
 export const SecretScanningConfigs = {
   GET_BY_PROJECT_ID: {
-    projectId: `The ID of the project to retrieve the Secret Scanning Configuration for.`
+    projectId: `The ID of the project to retrieve the Secret Scanning Configuration for. Defaults to the organization's active Secret Scanning project.`
   },
   UPDATE: {
-    projectId: "The ID of the project to update the Secret Scanning Configuration for.",
+    projectId:
+      "The ID of the project to update the Secret Scanning Configuration for. Defaults to the organization's active Secret Scanning project.",
     content: "The contents of the Secret Scanning Configuration file."
   }
 };

@@ -49,6 +49,7 @@ export const BaseCreateSecretScanningDataSourceSchema = ({
       .string()
       .trim()
       .min(1, "Project ID required")
+      .optional()
       .describe(SecretScanningDataSources.CREATE(type).projectId),
     description: z
       .string()

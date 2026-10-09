@@ -17,7 +17,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 type TResolverDeps = {
   db: Knex;
-  projectDAL: Pick<TProjectDALFactory, "find" | "create">;
+  projectDAL: Pick<TProjectDALFactory, "find" | "findById" | "create">;
   membershipDAL: Pick<TMembershipDALFactory, "insertMany">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany">;
 };
@@ -113,6 +113,11 @@ export const secretScanningV2ProjectResolverFactory = ({
     });
 
   return {
+    findActiveProjectId: (actorOrgId: string) => findDefaultProjectId(actorOrgId),
+    isSecretScanningProject: async (projectId: string, expectedOrgId: string): Promise<boolean> => {
+      const project = await projectDAL.findById(projectId);
+      return Boolean(project && project.orgId === expectedOrgId && project.type === ProjectType.SecretScanning);
+    },
     resolve: async (actorOrgId: string): Promise<string> => {
       const existingId = await findDefaultProjectId(actorOrgId);
       if (existingId) return existingId;
