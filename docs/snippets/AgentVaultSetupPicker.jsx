@@ -746,7 +746,7 @@ export const AgentVaultSetupSummary = () => {
       You're building {buildText}
       {agentText}.
       
-      Here's how the setup works:
+      {missing.length == 0 && ` Here's how the setup works:`}
       {missing.length > 0 && ` Choose ${missing.join(" and ")} to fill in the rest of the setup.`}
     </p>
   );
