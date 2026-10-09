@@ -61,6 +61,7 @@ export enum AppConnection {
   ExternalInfisical = "external-infisical",
   Doppler = "doppler",
   NetScaler = "netscaler",
+  PaloAltoNetworks = "palo-alto-networks",
   Anthropic = "anthropic",
   OVH = "ovh",
   Devin = "devin",

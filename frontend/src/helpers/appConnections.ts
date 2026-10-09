@@ -87,6 +87,7 @@ import { OnaConnectionMethod } from "@app/hooks/api/appConnections/types/ona-con
 import { OpenAIConnectionMethod } from "@app/hooks/api/appConnections/types/open-ai-connection";
 import { OpenRouterConnectionMethod } from "@app/hooks/api/appConnections/types/open-router-connection";
 import { OVHConnectionMethod } from "@app/hooks/api/appConnections/types/ovh-connection";
+import { PaloAltoNetworksConnectionMethod } from "@app/hooks/api/appConnections/types/palo-alto-networks-connection";
 import { PowerDnsConnectionMethod } from "@app/hooks/api/appConnections/types/powerdns-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
@@ -520,6 +521,12 @@ export const APP_CONNECTION_MAP: Record<
     category: "NETWORKING",
     description: "Manage a Citrix NetScaler appliance."
   },
+  [AppConnection.PaloAltoNetworks]: {
+    name: "Palo Alto Networks",
+    image: "Palo Alto Networks.png",
+    category: "NETWORKING",
+    description: "Connect to a Palo Alto Networks firewall or Panorama."
+  },
   [AppConnection.KempLoadMaster]: {
     name: "Kemp LoadMaster",
     image: "Kemp LoadMaster.png",
@@ -805,6 +812,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return { name: "Machine Identity - Universal Auth", icon: KeyRoundIcon };
     case NetScalerConnectionMethod.BasicAuth:
+    case PaloAltoNetworksConnectionMethod.BasicAuth:
     case KempLoadMasterConnectionMethod.BasicAuth:
     case NutanixPrismCentralConnectionMethod.BasicAuth:
     case F5BigIpConnectionMethod.BasicAuth:

@@ -1,0 +1,172 @@
+---
+title: "Palo Alto Networks"
+sidebarTitle: "Palo Alto Networks"
+description: "Deploy certificates to the certificate store of PAN-OS firewalls and Panorama templates."
+---
+
+A Palo Alto Networks sync imports certificates and their private keys into the certificate store of a PAN-OS firewall or a Panorama template, then commits the change.
+
+If a service on the device needs to use the certificate, such as the management web interface or a GlobalProtect portal, use a [Palo Alto Networks SSL/TLS Profile sync](/documentation/platform/pki/applications/certificate-syncs/palo-alto-networks-ssl-tls-profile) instead. That sync also points an SSL/TLS service profile at the certificate.
+
+## Prerequisites
+
+- An [application](/documentation/platform/pki/applications/overview) that holds the certificates to deploy
+- A [Palo Alto Networks connection](/integrations/app-connections/palo-alto-networks) to the firewall or Panorama
+- On a Panorama, a template. To push to firewalls, the template must belong to at least one template stack
+
+## Create a sync
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step>
+                In your application, open the **Certificate Syncs** tab and select **Add Sync**.
+            </Step>
+            <Step>
+                Select **Palo Alto Networks**.
+            </Step>
+            <Step>
+                Configure the destination, then select **Continue**:
+
+                - **Palo Alto Networks Connection**: the connection to the firewall or Panorama
+                - **Template** (Panorama only): the template to import the certificates into
+                - **Push to Devices** (Panorama only): whether the sync pushes the committed changes to firewalls (on by default)
+            </Step>
+            <Step>
+                Configure the sync options, then select **Continue**:
+
+                - **Allow to remove certificates from destination**: delete a certificate from the device when it's no longer active in Infisical
+                - **Preserve certificate on renewal**: replace the certificate in place when it's renewed (see [Certificate renewal](#certificate-renewal))
+                - **Certificate name schema**: the name of each certificate object on the device, up to 31 characters (use `{{shortCertificateId}}` rather than `{{certificateId}}`, which is too long; see [Certificate name schema](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-name-schema))
+                - **Auto-sync on change**: sync certificates as soon as they're issued or renewed
+            </Step>
+            <Step>
+                Enter a **Name** and an optional **Description** for the sync, then select **Continue**.
+            </Step>
+            <Step>
+                Select which certificates the sync holds, then select **Continue**.
+            </Step>
+            <Step>
+                Review the configuration and select **Create Sync**.
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a Palo Alto Networks sync, make an API request to the [Create Palo Alto Networks PKI sync](/api-reference/endpoints/pki/syncs/palo-alto-networks/create) endpoint.
+
+        <Note>
+          Pass `filters` to describe the certificates this sync holds. If a certificate in the application matches the filters, it's attached to the sync as soon as it's issued. If you omit `filters`, the sync starts empty and you can set filters later.
+          See [Certificate filters](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-filters).
+        </Note>
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+        --url https://app.infisical.com/api/v1/cert-manager/syncs/palo-alto-networks \
+        --header 'Authorization: Bearer <access-token>' \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-panorama-cert-sync",
+            "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "Branch firewall certificates",
+            "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+            "isAutoSyncEnabled": true,
+            "filters": {
+                "certificateOrderIds": ["550e8400-e29b-41d4-a716-446655440000"]
+            },
+            "syncOptions": {
+                "canRemoveCertificates": true,
+                "preserveItemOnRenewal": true,
+                "certificateNameSchema": "INF-{{shortCertificateId}}"
+            },
+            "destinationConfig": {
+                "template": "branch-template",
+                "pushToDevices": true
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```json Response
+        {
+            "pkiSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "my-panorama-cert-sync",
+                "description": "Branch firewall certificates",
+                "destination": "palo-alto-networks",
+                "isAutoSyncEnabled": true,
+                "destinationConfig": {
+                    "template": "branch-template",
+                    "pushToDevices": true
+                },
+                "syncOptions": {
+                    "canRemoveCertificates": true,
+                    "preserveItemOnRenewal": true,
+                    "certificateNameSchema": "INF-{{shortCertificateId}}"
+                },
+                "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+                "createdAt": "2026-10-08T00:00:00.000Z",
+                "updatedAt": "2026-10-08T00:00:00.000Z"
+            }
+        }
+        ```
+    </Tab>
+</Tabs>
+
+## How it works
+
+Each time it runs, the sync:
+
+- Imports each certificate and its private key into the shared certificate store of the firewall, or of the selected template on a Panorama
+- Imports the issuing CA certificates as separate objects named `INF-CA-<fingerprint>`, skipping any already on the device
+- Commits only the changes made by the connection's administrator account, so pending changes from other administrators stay uncommitted
+- On a Panorama with **Push to Devices** on, pushes every template stack that contains the template to its firewalls
+
+<Note>
+  A push also sends changes that other administrators committed on Panorama for those template stacks but haven't pushed yet. To push on your own schedule, turn off **Push to Devices**.
+</Note>
+
+## Certificate renewal
+
+When a certificate is renewed, the result depends on **Preserve certificate on renewal**:
+
+- **On (default)**: the sync replaces the certificate object in place, so anything that references it by name uses the renewed certificate
+- **Off**: the sync creates a new certificate object, and deletes the old one only if **Allow to remove certificates from destination** is on
+
+## Removing certificates
+
+If **Allow to remove certificates from destination** is on, the sync deletes the certificate object of a certificate that's no longer active in Infisical. The CA certificate objects stay on the device.
+
+PAN-OS doesn't delete a certificate that's still in use, such as by an SSL/TLS service profile. If that happens, the sync shows the PAN-OS error. Remove the reference on the device, then sync again.
+
+## Manual sync
+
+To remove certificates on demand, use the [Remove certificates from Palo Alto Networks](/api-reference/endpoints/pki/syncs/palo-alto-networks/remove-certificates) endpoint. To sync on demand, use the [Sync certificates to Palo Alto Networks](/api-reference/endpoints/pki/syncs/palo-alto-networks/sync-certificates) endpoint.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Can I import certificates from a Palo Alto Networks device into Infisical?">
+    No. Palo Alto Networks syncs only deploy certificates from Infisical to the device.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Palo Alto Networks SSL/TLS profile" icon="lock" href="/documentation/platform/pki/applications/certificate-syncs/palo-alto-networks-ssl-tls-profile">
+    Point an SSL/TLS service profile at a synced certificate.
+  </Card>
+  <Card title="Renewal" icon="rotate-cw" href="/documentation/platform/pki/applications/certificate-renewal">
+    Renew a certificate, and change its details as part of the renewal.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified about certificate lifecycle events.
+  </Card>
+  <Card title="Certificate syncs" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    View all supported sync destinations.
+  </Card>
+</CardGroup>

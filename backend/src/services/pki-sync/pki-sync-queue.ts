@@ -37,6 +37,7 @@ import { notifyPkiSyncFailure } from "./pki-sync-failure-notification-fns";
 import { withPkiSyncFilterLock } from "./pki-sync-filter-reconcile-fns";
 import {
   getPkiSyncProviderCapabilities,
+  isPkiSyncSerialisedPerConnection,
   parsePkiSyncErrorMessage,
   PkiSyncFns,
   truncateSyncMessage
@@ -833,7 +834,9 @@ export const pkiSyncQueueFactory = ({
     const needsConnectionSlot = job.name === QueueJobs.PkiSyncSyncCertificates;
 
     const needsHostSerialisation =
-      needsConnectionSlot && getPkiSyncProviderCapabilities(pkiSync.destination).canRunHealthCheckCommand;
+      (needsConnectionSlot && getPkiSyncProviderCapabilities(pkiSync.destination).canRunHealthCheckCommand) ||
+      (isPkiSyncSerialisedPerConnection(pkiSync.destination) &&
+        (job.name === QueueJobs.PkiSyncSyncCertificates || job.name === QueueJobs.PkiSyncRemoveCertificates));
 
     const targetHost = getPkiSyncTargetHost(pkiSync.destinationConfig);
 

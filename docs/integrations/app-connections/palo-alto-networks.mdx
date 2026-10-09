@@ -1,0 +1,95 @@
+---
+title: "Palo Alto Networks connection"
+sidebarTitle: "Palo Alto Networks"
+description: "Learn how to configure a Palo Alto Networks connection for Infisical."
+---
+
+A Palo Alto Networks connection authenticates Infisical to a PAN-OS firewall or a Panorama with the username and password of a PAN-OS administrator, so [Palo Alto Networks certificate syncs](/documentation/platform/pki/applications/certificate-syncs/overview) can import certificates and commit the changes. The same connection form works for both device types, and each sync detects whether the device is a firewall or a Panorama.
+
+<Note>
+    This guide only authenticates Infisical with your Palo Alto Networks device. Once the app connection is ready, you can [use it to set up integrations](#step-3-configure-integrations).
+</Note>
+
+## Prerequisites
+
+- A PAN-OS administrator account with the **Superuser** role on the firewall or Panorama, so you can create an Admin Role profile and another administrator
+- Network access from Infisical to the device's management interface over HTTPS, either directly or through an [Infisical Gateway](/documentation/platform/gateways/overview)
+
+## Step 1: Create a dedicated PAN-OS administrator
+
+The connection signs in as a PAN-OS administrator that can use the XML API. Create a dedicated account for it, because each sync commits every pending change made with that account, including a person's unfinished edits.
+
+<Steps>
+    <Step>
+        In the PAN-OS web interface, go to **Device** > **Admin Roles** and select **Add**. On a Panorama, go to **Panorama** > **Admin Roles** instead.
+    </Step>
+    <Step>
+        Enter a **Name** for the profile. On the **XML API** tab, enable only **Configuration**, **Operational Requests**, **Commit**, and **Import**.
+    </Step>
+    <Step>
+        On the **Web UI** and **REST API** tabs, disable every item, because the connection uses neither one. Then select **OK**.
+    </Step>
+    <Step>
+        Go to **Device** > **Administrators** (or **Panorama** > **Administrators** on a Panorama) and select **Add**.
+    </Step>
+    <Step>
+        Enter a **Name** and **Password** for the account. Set **Administrator Type** to **Role Based** and select the Admin Role profile you created as the **Profile**. Then select **OK**.
+    </Step>
+    <Step>
+        Commit the changes.
+    </Step>
+</Steps>
+
+## Step 2: Create the app connection
+
+Next, create the app connection in Infisical.
+
+<Tip>
+    To create the connection using the API, use the [Create Palo Alto Networks Connection](/api-reference/endpoints/app-connections/palo-alto-networks/create) endpoint.
+</Tip>
+
+<Steps>
+    <Step>
+        In Certificate Manager, go to **Settings** > **App Connections** and select **Add Connection**.
+    </Step>
+    <Step>
+        Select **Palo Alto Networks**.
+    </Step>
+    <Step>
+        Fill out the form's fields:
+
+        - **Name**: a name for the connection
+        - **Description** (optional): a description of the connection
+        - **Gateway** (optional): the [Infisical Gateway](/documentation/platform/gateways/overview) to connect through, if the device is on a private network
+        - **Hostname**: the IP address or hostname of the device's management interface, such as `firewall.example.com`
+        - **Username**: the username of the administrator from [Step 1](#step-1-create-a-dedicated-pan-os-administrator)
+        - **Password**: the password of that administrator
+        - **Port** (optional): the HTTPS port of the management interface (defaults to `443`)
+    </Step>
+    <Step>
+        On the **SSL** tab, set how the connection verifies the TLS certificate of the management interface. PAN-OS uses a self-signed certificate for the management interface by default, so do one of the following:
+
+        - Paste the certificate of the CA that issued the management interface certificate, in PEM format, into **SSL Certificate**
+        - Turn off **Reject Unauthorized** to skip verification
+    </Step>
+    <Step>
+        Select **Connect to Palo Alto Networks**.
+    </Step>
+</Steps>
+
+<Check>
+    Your Palo Alto Networks app connection is ready to use.
+</Check>
+
+## Step 3: Configure integrations
+
+Now that your Palo Alto Networks app connection is configured, you can use it to set up the following integrations:
+
+<CardGroup cols={2}>
+    <Card title="Palo Alto Networks" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/palo-alto-networks">
+        Deploy certificates to PAN-OS firewalls and Panorama templates.
+    </Card>
+    <Card title="Palo Alto Networks SSL/TLS profile" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/palo-alto-networks-ssl-tls-profile">
+        Point a PAN-OS SSL/TLS service profile at a synced certificate.
+    </Card>
+</CardGroup>

@@ -338,8 +338,10 @@ export const pkiSyncServiceFactory = ({
     connection: { id: string; app: AppConnection };
     destinationConfig: Record<string, unknown> | null | undefined;
   }) => {
-    if (connection.app !== AppConnection.LDAP) return;
-    if (!getPkiSyncTargetHost(destinationConfig)) return;
+    if (connection.app !== AppConnection.PaloAltoNetworks) {
+      if (connection.app !== AppConnection.LDAP) return;
+      if (!getPkiSyncTargetHost(destinationConfig)) return;
+    }
 
     await pkiSyncHealthCheckQueue.testTargetHostReachable({
       destination,

@@ -240,6 +240,11 @@ import {
 } from "./open-router";
 import { getOpenAIConnectionListItem, OpenAIConnectionMethod, validateOpenAIConnectionCredentials } from "./openai";
 import { getOvhConnectionListItem, OVHConnectionMethod, validateOvhConnectionCredentials } from "./ovh";
+import {
+  getPaloAltoNetworksConnectionListItem,
+  PaloAltoNetworksConnectionMethod,
+  validatePaloAltoNetworksConnectionCredentials
+} from "./palo-alto-networks";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import {
   getPowerDnsConnectionListItem,
@@ -346,6 +351,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.Venafi,
   AppConnection.VenafiTpp,
   AppConnection.NetScaler,
+  AppConnection.PaloAltoNetworks,
   AppConnection.KempLoadMaster,
   AppConnection.DigiCert,
   AppConnection.F5BigIp,
@@ -455,6 +461,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getExternalInfisicalConnectionListItem(),
     getDopplerConnectionListItem(),
     getNetScalerConnectionListItem(),
+    getPaloAltoNetworksConnectionListItem(),
     getKempLoadMasterConnectionListItem(),
     getOvhConnectionListItem(),
     getOnaConnectionListItem(),
@@ -686,6 +693,8 @@ export const validateAppConnectionCredentials = async (
         gatewayV2Service
       )) as TAppConnectionCredentialsValidator,
     [AppConnection.NetScaler]: validateNetScalerConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.PaloAltoNetworks]:
+      validatePaloAltoNetworksConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.KempLoadMaster]: validateKempLoadMasterConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Ona]: validateOnaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.TravisCI]: validateTravisCIConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -833,6 +842,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
     case NetScalerConnectionMethod.BasicAuth:
+    case PaloAltoNetworksConnectionMethod.BasicAuth:
     case KempLoadMasterConnectionMethod.BasicAuth:
     case F5BigIpConnectionMethod.BasicAuth:
     case NutanixPrismCentralConnectionMethod.BasicAuth:
@@ -972,6 +982,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.VenafiTpp]: platformManagedCredentialsNotSupported,
   [AppConnection.ExternalInfisical]: platformManagedCredentialsNotSupported,
   [AppConnection.NetScaler]: platformManagedCredentialsNotSupported,
+  [AppConnection.PaloAltoNetworks]: platformManagedCredentialsNotSupported,
   [AppConnection.KempLoadMaster]: platformManagedCredentialsNotSupported,
   [AppConnection.Doppler]: platformManagedCredentialsNotSupported,
   [AppConnection.OVH]: platformManagedCredentialsNotSupported,

@@ -64,6 +64,18 @@ export const PKI_SYNC_MAP: Record<
     category: "Networking",
     description: "Sync certificates to Citrix NetScaler / ADC."
   },
+  [PkiSync.PaloAltoNetworks]: {
+    name: "Palo Alto Networks",
+    image: "Palo Alto Networks.png",
+    category: "Networking",
+    description: "Push certificates to a Palo Alto Networks firewall or Panorama template."
+  },
+  [PkiSync.PaloAltoNetworksSslTlsProfile]: {
+    name: "Palo Alto Networks SSL/TLS Profile",
+    image: "Palo Alto Networks.png",
+    category: "Networking",
+    description: "Set the certificate of a Palo Alto Networks SSL/TLS service profile."
+  },
   [PkiSync.F5BigIp]: {
     name: "F5 BIG-IP",
     image: "F5 BIG-IP.png",
@@ -132,6 +144,8 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.GcpCertificateManager]: AppConnection.GCP,
   [PkiSync.CloudflareCustomCertificate]: AppConnection.Cloudflare,
   [PkiSync.NetScaler]: AppConnection.NetScaler,
+  [PkiSync.PaloAltoNetworks]: AppConnection.PaloAltoNetworks,
+  [PkiSync.PaloAltoNetworksSslTlsProfile]: AppConnection.PaloAltoNetworks,
   [PkiSync.F5BigIp]: AppConnection.F5BigIp,
   [PkiSync.KempLoadMaster]: AppConnection.KempLoadMaster,
   [PkiSync.LinuxServer]: AppConnection.SSH,
@@ -175,8 +189,28 @@ export const PRESERVE_ITEM_ON_RENEWAL_DESTINATIONS: PkiSync[] = [
   PkiSync.F5BigIp,
   PkiSync.GcpCertificateManager,
   PkiSync.KempLoadMaster,
-  PkiSync.NetScaler
+  PkiSync.NetScaler,
+  PkiSync.PaloAltoNetworks,
+  PkiSync.PaloAltoNetworksSslTlsProfile
 ];
+
+export const INCLUDE_ROOT_CA_UNSUPPORTED_DESTINATIONS: PkiSync[] = [
+  PkiSync.CloudflareCustomCertificate,
+  PkiSync.NutanixPrismCentral,
+  PkiSync.PaloAltoNetworks,
+  PkiSync.PaloAltoNetworksSslTlsProfile
+];
+
+export const isPaloAltoNetworksPkiSync = (destination?: PkiSync) =>
+  destination === PkiSync.PaloAltoNetworks || destination === PkiSync.PaloAltoNetworksSslTlsProfile;
+
+export const getPaloAltoNetworksProfileLabel = ({
+  name,
+  vsys
+}: {
+  name: string;
+  vsys?: string | null;
+}) => (vsys ? `${name} (${vsys})` : name);
 
 export const VALUE_SYNC_OPTION_FIELDS = [
   { key: "certificateNameSchema", label: "Certificate Name Schema" },

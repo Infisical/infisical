@@ -168,6 +168,10 @@ import { ValidateOpenRouterConnectionCredentialsSchema } from "./open-router";
 import { ValidateOpenAIConnectionCredentialsSchema } from "./openai";
 import { openaiConnectionService } from "./openai/openai-connection-service";
 import { ValidateOvhConnectionCredentialsSchema } from "./ovh";
+import {
+  paloAltoNetworksConnectionService,
+  ValidatePaloAltoNetworksConnectionCredentialsSchema
+} from "./palo-alto-networks";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { powerDnsConnectionService, ValidatePowerDnsConnectionCredentialsSchema } from "./powerdns";
 import { ValidateQoveryConnectionCredentialsSchema } from "./qovery";
@@ -301,6 +305,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.ExternalInfisical]: ValidateExternalInfisicalConnectionCredentialsSchema,
   [AppConnection.Doppler]: ValidateDopplerConnectionCredentialsSchema,
   [AppConnection.NetScaler]: ValidateNetScalerConnectionCredentialsSchema,
+  [AppConnection.PaloAltoNetworks]: ValidatePaloAltoNetworksConnectionCredentialsSchema,
   [AppConnection.KempLoadMaster]: ValidateKempLoadMasterConnectionCredentialsSchema,
   [AppConnection.Anthropic]: ValidateAnthropicConnectionCredentialsSchema,
   [AppConnection.OVH]: ValidateOvhConnectionCredentialsSchema,
@@ -1501,6 +1506,7 @@ export const appConnectionServiceFactory = ({
       gatewayPoolService
     ),
     powerDns: powerDnsConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
+    paloAltoNetworks: paloAltoNetworksConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     spacelift: spaceliftConnectionService(connectAppConnectionById)
   };
 };

@@ -63,6 +63,7 @@ import { registerOnaConnectionRouter } from "./ona-connection-router";
 import { registerOpenRouterConnectionRouter } from "./open-router-connection-router";
 import { registerOpenAIConnectionRouter } from "./openai-connection-router";
 import { registerOvhConnectionRouter } from "./ovh-connection-router";
+import { registerPaloAltoNetworksConnectionRouter } from "./palo-alto-networks-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerPowerDnsConnectionRouter } from "./powerdns-connection-router";
 import { registerQoveryConnectionRouter } from "./qovery-connection-router";
@@ -158,6 +159,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.ExternalInfisical]: registerExternalInfisicalConnectionRouter,
     [AppConnection.Doppler]: registerDopplerConnectionRouter,
     [AppConnection.NetScaler]: registerNetScalerConnectionRouter,
+    [AppConnection.PaloAltoNetworks]: registerPaloAltoNetworksConnectionRouter,
     [AppConnection.KempLoadMaster]: registerKempLoadMasterConnectionRouter,
     [AppConnection.Anthropic]: registerAnthropicConnectionRouter,
     [AppConnection.OVH]: registerOvhConnectionRouter,

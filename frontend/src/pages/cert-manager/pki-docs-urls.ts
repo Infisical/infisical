@@ -62,6 +62,8 @@ export const PkiDocsUrls = {
       azureKeyVault: `${PKI_DOCS_BASE_URL}/applications/certificate-syncs/azure-key-vault`,
       cloudflare: `${PKI_DOCS_BASE_URL}/applications/certificate-syncs/cloudflare-custom-certificate`,
       netscaler: `${PKI_DOCS_BASE_URL}/applications/certificate-syncs/netscaler`,
+      paloAltoNetworks: `${PKI_DOCS_BASE_URL}/applications/certificate-syncs/palo-alto-networks`,
+      paloAltoNetworksSslTlsProfile: `${PKI_DOCS_BASE_URL}/applications/certificate-syncs/palo-alto-networks-ssl-tls-profile`,
       chef: `${PKI_DOCS_BASE_URL}/applications/certificate-syncs/chef`
     }
   },

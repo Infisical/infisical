@@ -77,6 +77,7 @@ import { OpenAIConnectionForm } from "./OpenAIConnectionForm";
 import { OpenRouterConnectionForm } from "./OpenRouterConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { OVHConnectionForm } from "./OVHConnectionForm";
+import { PaloAltoNetworksConnectionForm } from "./PaloAltoNetworksConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { PowerDnsConnectionForm } from "./PowerDnsConnectionForm";
 import { QoveryConnectionForm } from "./QoveryConnectionForm";
@@ -347,6 +348,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
         return <DopplerConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.PaloAltoNetworks:
+        return <PaloAltoNetworksConnectionForm onSubmit={onSubmit} />;
       case AppConnection.KempLoadMaster:
         return <KempLoadMasterConnectionForm onSubmit={onSubmit} />;
       case AppConnection.OVH:
@@ -632,6 +635,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DopplerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.PaloAltoNetworks:
+        return <PaloAltoNetworksConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.KempLoadMaster:
         return <KempLoadMasterConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.OVH:

@@ -198,6 +198,10 @@ import {
 import { OpenAIConnectionListItemSchema, SanitizedOpenAIConnectionSchema } from "@app/services/app-connection/openai";
 import { OvhConnectionListItemSchema, SanitizedOvhConnectionSchema } from "@app/services/app-connection/ovh";
 import {
+  PaloAltoNetworksConnectionListItemSchema,
+  SanitizedPaloAltoNetworksConnectionSchema
+} from "@app/services/app-connection/palo-alto-networks";
+import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
@@ -343,6 +347,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedVenafiTppConnectionSchema.options,
   ...SanitizedExternalInfisicalConnectionSchema.options,
   ...SanitizedNetScalerConnectionSchema.options,
+  ...SanitizedPaloAltoNetworksConnectionSchema.options,
   ...SanitizedKempLoadMasterConnectionSchema.options,
   ...SanitizedDopplerConnectionSchema.options,
   ...SanitizedOvhConnectionSchema.options,
@@ -433,6 +438,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   ExternalInfisicalConnectionListItemSchema,
   DopplerConnectionListItemSchema,
   NetScalerConnectionListItemSchema,
+  PaloAltoNetworksConnectionListItemSchema,
   KempLoadMasterConnectionListItemSchema,
   AnthropicConnectionListItemSchema,
   OvhConnectionListItemSchema,
