@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { subject } from "@casl/ability";
 import {
   CodeXmlIcon,
@@ -54,6 +54,8 @@ import { CsvColumnMapContent } from "./CsvColumnMapDialog";
 import { CsvData, parseSecretFile } from "./parseSecretFile";
 import { PASTE_SECRETS_FORM_ID, PasteSecretsContent } from "./PasteSecretsDialog";
 import { TParsedEnv } from "./types";
+
+const MAX_BATCH_REQUEST_BYTES = 1024 * 1024;
 
 type Props = {
   isOpen: boolean;
@@ -139,6 +141,27 @@ const ImportSecretsContent = ({
         ([key, s]) => s.isFileSecret && !(keyOverrides[key] ?? key).trim()
       )
     : false;
+  const isOverRequestLimit = useMemo(() => {
+    if (!activeSecrets) return false;
+    const payload = JSON.stringify({
+      projectId,
+      environment: selectedEnvs.reduce(
+        (longest, env) => (env.slug.length > longest.length ? env.slug : longest),
+        ""
+      ),
+      secretPath,
+      secrets: Object.entries(activeSecrets).map(([key, s]) => ({
+        secretKey: keyOverrides[key] ?? key,
+        secretValue: s.value,
+        secretComment: s.comments.join("\n"),
+        type: SecretType.Shared,
+        tagIds: s.tagSlugs?.map(() => "00000000-0000-0000-0000-000000000000"),
+        secretMetadata: s.secretMetadata,
+        skipMultilineEncoding: s.skipMultilineEncoding
+      }))
+    });
+    return new TextEncoder().encode(payload).length > MAX_BATCH_REQUEST_BYTES;
+  }, [activeSecrets, keyOverrides, projectId, secretPath, selectedEnvs]);
 
   const handleParsedSecrets = useCallback((env: TParsedEnv) => {
     if (!Object.keys(env).length) {
@@ -157,6 +180,15 @@ const ImportSecretsContent = ({
         createNotification({
           text: "You can't inject files from VS Code. Click 'Reveal in finder', and drag your file directly from the directory where it's located.",
           type: "error"
+        });
+        return;
+      }
+
+      const isCsv = file.name.toLowerCase().endsWith(".csv") || file.type === "text/csv";
+      if (!isCsv && file.size > MAX_BATCH_REQUEST_BYTES) {
+        createNotification({
+          type: "error",
+          text: "This file exceeds the 1 MB upload limit. Split it into smaller files."
         });
         return;
       }
@@ -470,7 +502,7 @@ const ImportSecretsContent = ({
                   <FileDropzone
                     isDisabled={!isAllowed}
                     accept=".txt,.env,.yml,.yaml,.json,.csv,.pfx,.pem,.crt"
-                    description=".env, .json, .yml, .csv, .pfx, .pem, or .crt"
+                    description=".env, .json, .yml, .csv, .pfx, .pem, or .crt (1 MB request limit)"
                     onFilesSelect={(files) => parseFile(files[0])}
                   />
                 )}
@@ -512,6 +544,11 @@ const ImportSecretsContent = ({
           {secretCount} secret{secretCount !== 1 ? "s" : ""} found. Select environments to upload
           to.
         </SheetDescription>
+        {isOverRequestLimit && (
+          <p className="text-sm text-danger">
+            These secrets exceed the 1 MB upload limit. Split them into smaller uploads.
+          </p>
+        )}
       </SheetHeader>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
@@ -707,7 +744,13 @@ const ImportSecretsContent = ({
         <Button
           variant="project"
           onClick={handleImport}
-          isDisabled={!selectedEnvs.length || isImporting || isWaitingForTags || hasInvalidKey}
+          isDisabled={
+            !selectedEnvs.length ||
+            isImporting ||
+            isWaitingForTags ||
+            hasInvalidKey ||
+            isOverRequestLimit
+          }
           isPending={isImporting || isWaitingForTags}
         >
           Upload {secretCount} Secret{secretCount !== 1 ? "s" : ""}

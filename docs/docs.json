@@ -252,6 +252,7 @@
                       "integrations/secret-syncs/circleci",
                       "integrations/secret-syncs/cloud-66",
                       "integrations/secret-syncs/cloudflare-pages",
+                      "integrations/secret-syncs/cloudflare-secrets-store",
                       "integrations/secret-syncs/cloudflare-workers",
                       "integrations/secret-syncs/databricks",
                       "integrations/secret-syncs/daytona",
@@ -315,6 +316,7 @@
                       "documentation/platform/secret-rotation/auth0-client-secret",
                       "documentation/platform/secret-rotation/aws-iam-user-secret",
                       "documentation/platform/secret-rotation/azure-client-secret",
+                      "documentation/platform/secret-rotation/gcp-service-account-key",
                       "documentation/platform/secret-rotation/ldap-password",
                       "documentation/platform/secret-rotation/okta-client-secret"
                     ]
@@ -810,7 +812,8 @@
                     "pages": [
                       "documentation/platform/agent-vault/guides/openclaw-gateway"
                     ]
-                  }
+                  },
+                  "documentation/platform/agent-vault/guides/custom-agent"
                 ]
               },
               {
@@ -823,6 +826,8 @@
                     "group": "Sessions",
                     "root": "documentation/platform/agent-vault/sessions",
                     "pages": [
+                      "documentation/platform/agent-vault/sessions-cli",
+                      "documentation/platform/agent-vault/sessions-api",
                       "documentation/platform/agent-vault/session-logs"
                     ]
                   },
@@ -1096,6 +1101,7 @@
                   "integrations/app-connections/hashicorp-vault",
                   "integrations/app-connections/hasura-cloud",
                   "integrations/app-connections/heroku",
+                  "integrations/app-connections/hpe-ilo",
                   "integrations/app-connections/humanitec",
                   "integrations/app-connections/keeper",
                   "integrations/app-connections/kemp-loadmaster",
@@ -1137,6 +1143,7 @@
                   "integrations/app-connections/terraform-cloud",
                   "integrations/app-connections/travis-ci",
                   "integrations/app-connections/trigger-dev",
+                  "integrations/app-connections/ultradns",
                   "integrations/app-connections/venafi",
                   "integrations/app-connections/venafi-tpp",
                   "integrations/app-connections/vercel",
@@ -2088,6 +2095,18 @@
                         ]
                       },
                       {
+                        "group": "HPE iLO",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/hpe-ilo/list",
+                          "api-reference/endpoints/app-connections/hpe-ilo/available",
+                          "api-reference/endpoints/app-connections/hpe-ilo/get-by-id",
+                          "api-reference/endpoints/app-connections/hpe-ilo/get-by-name",
+                          "api-reference/endpoints/app-connections/hpe-ilo/create",
+                          "api-reference/endpoints/app-connections/hpe-ilo/update",
+                          "api-reference/endpoints/app-connections/hpe-ilo/delete"
+                        ]
+                      },
+                      {
                         "group": "Humanitec",
                         "pages": [
                           "api-reference/endpoints/app-connections/humanitec/list",
@@ -2499,6 +2518,18 @@
                         "group": "Travis CI",
                         "pages": [
                           "api-reference/endpoints/app-connections/travis-ci/create"
+                        ]
+                      },
+                      {
+                        "group": "UltraDNS",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/ultradns/list",
+                          "api-reference/endpoints/app-connections/ultradns/available",
+                          "api-reference/endpoints/app-connections/ultradns/get-by-id",
+                          "api-reference/endpoints/app-connections/ultradns/get-by-name",
+                          "api-reference/endpoints/app-connections/ultradns/create",
+                          "api-reference/endpoints/app-connections/ultradns/update",
+                          "api-reference/endpoints/app-connections/ultradns/delete"
                         ]
                       },
                       {
@@ -2979,6 +3010,19 @@
                         ]
                       },
                       {
+                        "group": "GCP service account key",
+                        "pages": [
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/create",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/delete",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/get-by-id",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/get-by-name",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/get-generated-credentials-by-id",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/list",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/rotate-secrets",
+                          "api-reference/endpoints/secret-rotations/gcp-service-account-key/update"
+                        ]
+                      },
+                      {
                         "group": "LDAP password",
                         "pages": [
                           "api-reference/endpoints/secret-rotations/ldap-password/create",
@@ -3412,6 +3456,19 @@
                           "api-reference/endpoints/secret-syncs/cloudflare-pages/delete",
                           "api-reference/endpoints/secret-syncs/cloudflare-pages/sync-secrets",
                           "api-reference/endpoints/secret-syncs/cloudflare-pages/remove-secrets"
+                        ]
+                      },
+                      {
+                        "group": "Cloudflare Secrets Store",
+                        "pages": [
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/list",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/get-by-id",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/get-by-name",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/create",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/update",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/delete",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/sync-secrets",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/remove-secrets"
                         ]
                       },
                       {

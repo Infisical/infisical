@@ -12,7 +12,8 @@ import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { getTlsServerNameOptions } from "@app/lib/tls";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import {
   decryptAppConnectionCredentials,
   encryptAppConnectionCredentials,
@@ -65,7 +66,7 @@ export const requestWithAzureKeyVaultGateway = async <T>(
 
   // If gateway isn't set up, don't proxy the request
   if (!gatewayId) {
-    return request.request(requestConfig);
+    return safeRequest.request({ ...requestConfig, url: requestConfig.url as string });
   }
 
   const [targetHost] = await verifyHostInputValidity({ host: url.hostname, isGateway: true, isDynamicSecret: false });
@@ -99,7 +100,7 @@ export const requestWithAzureKeyVaultGateway = async <T>(
         },
         ...(isHttps && {
           httpsAgent: new https.Agent({
-            servername: targetHost
+            ...getTlsServerNameOptions(targetHost)
           })
         })
       };

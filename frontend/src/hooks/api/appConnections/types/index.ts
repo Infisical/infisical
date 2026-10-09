@@ -41,6 +41,7 @@ import { TGoDaddyConnection } from "./godaddy-connection";
 import { THasuraCloudConnection } from "./hasura-cloud-connection";
 import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
+import { THpeIloConnection } from "./hpe-ilo-connection";
 import { THumanitecConnection } from "./humanitec-connection";
 import { TKeeperConnection } from "./keeper-connection";
 import { TKempLoadMasterConnection } from "./kemp-loadmaster-connection";
@@ -81,6 +82,7 @@ import { TTeamCityConnection } from "./teamcity-connection";
 import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TTravisCIConnection } from "./travis-ci-connection";
 import { TTriggerDevConnection } from "./trigger-dev-connection";
+import { TUltraDNSConnection } from "./ultradns-connection";
 import { TVenafiConnection } from "./venafi-connection";
 import { TVenafiTppConnection } from "./venafi-tpp-connection";
 import { TVercelConnection } from "./vercel-connection";
@@ -126,6 +128,7 @@ export * from "./gitlab-connection";
 export * from "./hasura-cloud-connection";
 export * from "./hc-vault-connection";
 export * from "./heroku-connection";
+export * from "./hpe-ilo-connection";
 export * from "./humanitec-connection";
 export * from "./keeper-connection";
 export * from "./kemp-loadmaster-connection";
@@ -166,6 +169,7 @@ export * from "./teamcity-connection";
 export * from "./terraform-cloud-connection";
 export * from "./travis-ci-connection";
 export * from "./trigger-dev-connection";
+export * from "./ultradns-connection";
 export * from "./venafi-connection";
 export * from "./venafi-tpp-connection";
 export * from "./vercel-connection";
@@ -220,6 +224,7 @@ export type TAppConnection =
   | TMongoDBConnection
   | TChefConnection
   | TDNSMadeEasyConnection
+  | TUltraDNSConnection
   | TAzureDNSConnection
   | TSshConnection
   | TDbtConnection
@@ -260,7 +265,8 @@ export type TAppConnection =
   | TSpaceliftConnection
   | TDaytonaConnection
   | TStripeConnection
-  | TKeeperConnection;
+  | TKeeperConnection
+  | THpeIloConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

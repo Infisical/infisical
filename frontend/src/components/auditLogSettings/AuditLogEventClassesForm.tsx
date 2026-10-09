@@ -2,7 +2,7 @@ import { Controller, useForm } from "react-hook-form";
 import { Link } from "@tanstack/react-router";
 import { Info } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { AuditLogsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Alert,
@@ -208,11 +208,14 @@ export const AuditLogEventClassesForm = ({
           </CardFooter>
         )}
       </Card>
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey={paywallKey}
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not include access to audit logs. To change which events are recorded, please upgrade to Infisical Pro plan."
+        intent={{
+          ...AuditLogsUpgradeIntent,
+          description: "Choose which audit events are recorded."
+        }}
       />
     </form>
   );

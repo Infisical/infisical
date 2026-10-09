@@ -43,6 +43,7 @@ import { registerGoDaddyConnectionRouter } from "./godaddy-connection-router";
 import { registerHasuraCloudConnectionRouter } from "./hasura-cloud-connection-router";
 import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
 import { registerHerokuConnectionRouter } from "./heroku-connection-router";
+import { registerHpeIloConnectionRouter } from "./hpe-ilo-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
 import { registerKeeperConnectionRouter } from "./keeper-connection-router";
 import { registerKempLoadMasterConnectionRouter } from "./kemp-loadmaster-connection-router";
@@ -81,6 +82,7 @@ import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
 import { registerTravisCIConnectionRouter } from "./travis-ci-connection-router";
 import { registerTriggerDevConnectionRouter } from "./trigger-dev-connection-router";
+import { registerUltraDNSConnectionRouter } from "./ultradns-connection-router";
 import { registerVenafiConnectionRouter } from "./venafi-connection-router";
 import { registerVenafiTppConnectionRouter } from "./venafi-tpp-connection-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
@@ -128,6 +130,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.GitLab]: registerGitLabConnectionRouter,
     [AppConnection.Cloudflare]: registerCloudflareConnectionRouter,
     [AppConnection.DNSMadeEasy]: registerDNSMadeEasyConnectionRouter,
+    [AppConnection.UltraDNS]: registerUltraDNSConnectionRouter,
     [AppConnection.Bitbucket]: registerBitbucketConnectionRouter,
     [AppConnection.Zabbix]: registerZabbixConnectionRouter,
     [AppConnection.Railway]: registerRailwayConnectionRouter,
@@ -178,5 +181,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Spacelift]: registerSpaceliftConnectionRouter,
     [AppConnection.Daytona]: registerDaytonaConnectionRouter,
     [AppConnection.Stripe]: registerStripeConnectionRouter,
-    [AppConnection.Keeper]: registerKeeperConnectionRouter
+    [AppConnection.Keeper]: registerKeeperConnectionRouter,
+    [AppConnection.HpeIloRedFish]: registerHpeIloConnectionRouter
   };

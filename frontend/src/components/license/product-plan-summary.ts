@@ -1,0 +1,58 @@
+import { SubscriptionPlan } from "@app/hooks/api/subscriptions/types";
+
+const PRODUCT_NAMES = new Map([
+  ["secrets_manager", "Secrets Management"],
+  ["cert_management", "Certificate Management"],
+  ["pam", "Privileged Access Management"],
+  ["agent_vault", "Agent Vault"]
+]);
+
+const PLAN_LABELS = new Map([
+  ["free", "Free"],
+  ["pro", "Pro"],
+  ["advanced", "Advanced"],
+  ["enterprise", "Enterprise"],
+  ["legacy_pro_annual", "Pro"],
+  ["legacy_team", "Team"],
+  ["legacy_team_annual", "Team"],
+  ["legacy_enterprise", "Enterprise"]
+]);
+
+export type ProductPlanSummary = {
+  productKey: string;
+  productName: string;
+  planLabel: string;
+  isTrialing: boolean;
+};
+
+export const getProductPlanSummaries = (plans: SubscriptionPlan["productPlans"]) => {
+  const summaries = new Map<string, ProductPlanSummary>();
+  (plans ?? []).forEach((plan) => {
+    if (!["active", "trialing", "grace"].includes(plan.status ?? "")) return;
+
+    const isTrialing = Boolean(plan.trialPlanKey || plan.status === "trialing");
+    const planKey = isTrialing ? (plan.trialPlanKey ?? plan.planKey) : plan.planKey;
+    if (!planKey || planKey === "free") return;
+
+    const productKey =
+      plan.productKey === "legacy_secret_management" ? "secrets_manager" : plan.productKey;
+    if (summaries.has(productKey) && plan.productKey !== productKey) return;
+
+    summaries.set(productKey, {
+      productKey,
+      productName:
+        PRODUCT_NAMES.get(productKey) ??
+        productKey
+          .split("_")
+          .map((word) =>
+            ["kms", "ai"].includes(word.toLowerCase())
+              ? word.toUpperCase()
+              : word.charAt(0).toUpperCase() + word.slice(1)
+          )
+          .join(" "),
+      planLabel: PLAN_LABELS.get(planKey) ?? planKey.replace(/_/g, " "),
+      isTrialing
+    });
+  });
+  return [...summaries.values()];
+};

@@ -20,6 +20,7 @@ import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { PamIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { assertWillRetainProjectAdmin } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
@@ -59,6 +60,7 @@ type TPamMembershipServiceFactoryDep = {
     | "deleteById"
     | "findResourceMembershipsForActor"
     | "findResourceMembershipsForActors"
+    | "lockById"
     | "transaction"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
@@ -566,22 +568,6 @@ export const pamMembershipServiceFactory = ({
     return { memberships, skipped };
   };
 
-  const assertNotLastAdmin = async (projectId: string, membershipId: string, tx?: Knex) => {
-    const allProductMemberships = await membershipDAL.find(
-      { scope: AccessScope.Project, scopeProjectId: projectId },
-      { tx }
-    );
-    const otherMemberships = allProductMemberships.filter((m) => m.id !== membershipId);
-
-    const otherRoles = await Promise.all(
-      otherMemberships.map((m) => membershipRoleDAL.find({ membershipId: m.id }, { tx }))
-    );
-    const hasOtherAdmin = otherRoles.some((roles) => roles.some((r) => r.role === PamProductRole.Admin));
-    if (!hasOtherAdmin) {
-      throw new BadRequestError({ message: "Cannot remove or demote the last product admin" });
-    }
-  };
-
   const updateProductMemberRole = async ({ projectId, role, ...dto }: TUpdatePamProductMemberDTO & TActorContext) => {
     await checkProductAdmin(projectId, dto);
 
@@ -612,10 +598,13 @@ export const pamMembershipServiceFactory = ({
         });
       }
 
-      const existingRoles = await membershipRoleDAL.find({ membershipId: membership.id }, { tx });
-      const wasAdmin = existingRoles.some((r) => r.role === PamProductRole.Admin);
-      if (wasAdmin && role !== PamProductRole.Admin) {
-        await assertNotLastAdmin(projectId, membership.id, tx);
+      if (role !== PamProductRole.Admin) {
+        await assertWillRetainProjectAdmin({
+          scopeProjectId: projectId,
+          excludeMembershipIds: [membership.id],
+          productLabel: "Privileged Access Manager",
+          tx
+        });
       }
 
       await upsertRole(membership.id, role, tx);
@@ -667,10 +656,12 @@ export const pamMembershipServiceFactory = ({
         });
       }
 
-      const roles = await membershipRoleDAL.find({ membershipId: membership.id }, { tx });
-      if (roles.some((r) => r.role === PamProductRole.Admin)) {
-        await assertNotLastAdmin(projectId, membership.id, tx);
-      }
+      await assertWillRetainProjectAdmin({
+        scopeProjectId: projectId,
+        excludeMembershipIds: [membership.id],
+        productLabel: "Privileged Access Manager",
+        tx
+      });
 
       await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
 
@@ -905,6 +896,7 @@ export const pamMembershipServiceFactory = ({
     let sendSessionCancellations: () => void = () => {};
 
     await membershipDAL.transaction(async (tx) => {
+      await membershipDAL.lockById(membership.id, tx);
       await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
       await membershipDAL.deleteById(membership.id, tx);
 
@@ -988,6 +980,7 @@ export const pamMembershipServiceFactory = ({
     let sendSessionCancellations: () => void = () => {};
 
     await membershipDAL.transaction(async (tx) => {
+      await membershipDAL.lockById(membership.id, tx);
       await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
       await membershipDAL.deleteById(membership.id, tx);
 

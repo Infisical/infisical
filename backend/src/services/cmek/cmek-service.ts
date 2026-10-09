@@ -4,7 +4,12 @@ import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionCmekActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, SigningAlgorithm, signingService } from "@app/lib/crypto/sign";
+import {
+  AsymmetricKeyAlgorithm,
+  getSigningAlgorithmsForKeyAlgorithm,
+  isPqcKeyAlgorithm,
+  signingService
+} from "@app/lib/crypto/sign";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
@@ -17,7 +22,6 @@ import {
   TCmekGenerateMacDTO,
   TCmekGetPrivateKeyDTO,
   TCmekGetPublicKeyDTO,
-  TCmekKeyEncryptionAlgorithm,
   TCmekListSigningAlgorithmsDTO,
   TCmekSignDTO,
   TCmekVerifyDTO,
@@ -296,30 +300,12 @@ export const cmekServiceFactory = ({
       throw new BadRequestError({ message: `Key with ID '${keyId}' is not intended for signing` });
     }
 
-    const encryptionAlgorithm = key.encryptionAlgorithm as TCmekKeyEncryptionAlgorithm;
-
-    if (isPqcKeyAlgorithm(encryptionAlgorithm as string)) {
-      return { signingAlgorithms: [encryptionAlgorithm as unknown as SigningAlgorithm], projectId: key.projectId };
+    const signingAlgorithms = getSigningAlgorithmsForKeyAlgorithm(key.encryptionAlgorithm as AsymmetricKeyAlgorithm);
+    if (signingAlgorithms.length === 0) {
+      throw new BadRequestError({ message: `Unsupported encryption algorithm: ${key.encryptionAlgorithm}` });
     }
 
-    const algos = [
-      {
-        keyAlgorithm: "rsa",
-        signingAlgorithms: Object.values(SigningAlgorithm).filter((a) => a.toLowerCase().startsWith("rsa"))
-      },
-      {
-        keyAlgorithm: "ecc",
-        signingAlgorithms: Object.values(SigningAlgorithm).filter((a) => a.toLowerCase().startsWith("ecdsa"))
-      }
-    ];
-
-    const selectedAlgorithm = algos.find((algo) => encryptionAlgorithm.toLowerCase().startsWith(algo.keyAlgorithm));
-
-    if (!selectedAlgorithm) {
-      throw new BadRequestError({ message: `Unsupported encryption algorithm: ${encryptionAlgorithm}` });
-    }
-
-    return { signingAlgorithms: selectedAlgorithm.signingAlgorithms, projectId: key.projectId };
+    return { signingAlgorithms, projectId: key.projectId };
   };
 
   const getPublicKey = async ({ keyId }: TCmekGetPublicKeyDTO, actor: OrgServiceActor) => {

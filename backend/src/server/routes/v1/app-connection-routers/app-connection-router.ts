@@ -141,6 +141,7 @@ import {
   SanitizedHCVaultConnectionSchema
 } from "@app/services/app-connection/hc-vault";
 import { HerokuConnectionListItemSchema, SanitizedHerokuConnectionSchema } from "@app/services/app-connection/heroku";
+import { HpeIloConnectionListItemSchema, SanitizedHpeIloConnectionSchema } from "@app/services/app-connection/hpe-ilo";
 import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
@@ -254,6 +255,10 @@ import {
   SanitizedTriggerDevConnectionSchema,
   TriggerDevConnectionListItemSchema
 } from "@app/services/app-connection/trigger-dev";
+import {
+  SanitizedUltraDNSConnectionSchema,
+  UltraDNSConnectionListItemSchema
+} from "@app/services/app-connection/ultradns/ultradns-connection-schema";
 import { SanitizedVenafiConnectionSchema, VenafiConnectionListItemSchema } from "@app/services/app-connection/venafi";
 import {
   SanitizedVenafiTppConnectionSchema,
@@ -323,6 +328,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedLaravelForgeConnectionSchema.options,
   ...SanitizedChefConnectionSchema.options,
   ...SanitizedDNSMadeEasyConnectionSchema.options,
+  ...SanitizedUltraDNSConnectionSchema.options,
   ...SanitizedAzureDnsConnectionSchema.options,
   ...SanitizedOctopusDeployConnectionSchema.options,
   ...SanitizedSmbConnectionSchema.options,
@@ -359,7 +365,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSpaceliftConnectionSchema.options,
   ...SanitizedDaytonaConnectionSchema.options,
   ...SanitizedStripeConnectionSchema.options,
-  ...SanitizedKeeperConnectionSchema.options
+  ...SanitizedKeeperConnectionSchema.options,
+  ...SanitizedHpeIloConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -413,6 +420,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   LaravelForgeConnectionListItemSchema,
   ChefConnectionListItemSchema,
   DNSMadeEasyConnectionListItemSchema,
+  UltraDNSConnectionListItemSchema,
   AzureDnsConnectionListItemSchema,
   OctopusDeployConnectionListItemSchema,
   SmbConnectionListItemSchema,
@@ -449,7 +457,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   SpaceliftConnectionListItemSchema,
   DaytonaConnectionListItemSchema,
   StripeConnectionListItemSchema,
-  KeeperConnectionListItemSchema
+  KeeperConnectionListItemSchema,
+  HpeIloConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

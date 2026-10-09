@@ -20,7 +20,7 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { ProductRoleField } from "./ProductRoleField";
 
 type Props = {
-  member: Pick<TAgentVaultProductMember, "role" | "actor"> | null;
+  member: Pick<TAgentVaultProductMember, "type" | "id" | "role"> | null;
   onOpenChange: (isOpen: boolean) => void;
   subject: string;
 };
@@ -38,7 +38,7 @@ export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
     try {
       // Guarded here, not by returning null, so the exit animation still runs.
       if (!member) return;
-      await updateRole.mutateAsync({ actor: member.actor, role });
+      await updateRole.mutateAsync({ actor: member, role });
       createNotification({
         text: `${subject} is now ${role === "admin" ? "an Admin" : "a Member"}`,
         type: "success"

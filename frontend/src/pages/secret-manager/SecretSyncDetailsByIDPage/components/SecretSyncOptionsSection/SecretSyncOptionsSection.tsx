@@ -77,6 +77,7 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
     case SecretSync.GitLab:
     case SecretSync.CloudflarePages:
     case SecretSync.CloudflareWorkers:
+    case SecretSync.CloudflareSecretsStore:
     case SecretSync.Zabbix:
     case SecretSync.Railway:
     case SecretSync.Supabase:

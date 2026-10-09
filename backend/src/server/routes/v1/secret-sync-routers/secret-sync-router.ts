@@ -36,6 +36,10 @@ import {
   CloudflarePagesSyncSchema
 } from "@app/services/secret-sync/cloudflare-pages/cloudflare-pages-schema";
 import {
+  CloudflareSecretsStoreSyncListItemSchema,
+  CloudflareSecretsStoreSyncSchema
+} from "@app/services/secret-sync/cloudflare-secrets-store/cloudflare-secrets-store-sync-schemas";
+import {
   CloudflareWorkersSyncListItemSchema,
   CloudflareWorkersSyncSchema
 } from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-schemas";
@@ -108,6 +112,7 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   GitLabSyncSchema,
   CloudflarePagesSyncSchema,
   CloudflareWorkersSyncSchema,
+  CloudflareSecretsStoreSyncSchema,
   SupabaseSyncSchema,
   RundeckSyncSchema,
   ZabbixSyncSchema,
@@ -161,6 +166,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   GitLabSyncListItemSchema,
   CloudflarePagesSyncListItemSchema,
   CloudflareWorkersSyncListItemSchema,
+  CloudflareSecretsStoreSyncListItemSchema,
   DigitalOceanAppPlatformSyncListItemSchema,
   ZabbixSyncListItemSchema,
   RailwaySyncListItemSchema,

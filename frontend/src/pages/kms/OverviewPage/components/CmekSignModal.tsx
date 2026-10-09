@@ -26,7 +26,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { getDefaultSigningAlgorithm } from "@app/helpers/kms";
+import { getAllowedSigningAlgorithms, getDefaultSigningAlgorithm } from "@app/helpers/kms";
 import { useTimedReset } from "@app/hooks";
 import { SigningAlgorithm, TCmek, useCmekSign } from "@app/hooks/api/cmeks";
 
@@ -83,11 +83,7 @@ const SignForm = ({ cmek }: FormProps) => {
     setCopySignature("Copied to Clipboard");
   };
 
-  const allowedSigningAlgorithms = Object.values(SigningAlgorithm).filter((a) => {
-    if (cmek?.algorithm?.startsWith("ML_DSA")) return (a as string) === (cmek.algorithm as string);
-    if (cmek?.algorithm?.startsWith("RSA")) return a.toLowerCase().startsWith("rsa");
-    return a.toLowerCase().startsWith("ecdsa");
-  });
+  const allowedSigningAlgorithms = getAllowedSigningAlgorithms(cmek);
 
   return (
     <form onSubmit={handleSubmit(handleSignData)}>

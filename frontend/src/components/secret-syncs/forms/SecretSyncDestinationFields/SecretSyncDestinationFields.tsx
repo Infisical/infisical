@@ -17,6 +17,7 @@ import { ChefSyncFields } from "./ChefSyncFields";
 import { CircleCISyncFields } from "./CircleCISyncFields";
 import { Cloud66SyncFields } from "./Cloud66SyncFields";
 import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
+import { CloudflareSecretsStoreSyncFields } from "./CloudflareSecretsStoreSyncFields";
 import { CloudflareWorkersSyncFields } from "./CloudflareWorkersSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { DaytonaSyncFields } from "./DaytonaSyncFields";
@@ -106,6 +107,8 @@ export const SecretSyncDestinationFields = () => {
       return <CloudflarePagesSyncFields />;
     case SecretSync.CloudflareWorkers:
       return <CloudflareWorkersSyncFields />;
+    case SecretSync.CloudflareSecretsStore:
+      return <CloudflareSecretsStoreSyncFields />;
     case SecretSync.Zabbix:
       return <ZabbixSyncFields />;
     case SecretSync.Railway:

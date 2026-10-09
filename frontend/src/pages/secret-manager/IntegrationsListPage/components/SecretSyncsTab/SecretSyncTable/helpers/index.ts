@@ -178,6 +178,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.scriptId;
       secondaryText = "Script ID";
       break;
+    case SecretSync.CloudflareSecretsStore:
+      primaryText = destinationConfig.storeName || destinationConfig.storeId;
+      secondaryText = "Secrets Store";
+      break;
     case SecretSync.Zabbix:
       if (destinationConfig.scope === ZabbixSyncScope.Host) {
         primaryText = destinationConfig.hostName;

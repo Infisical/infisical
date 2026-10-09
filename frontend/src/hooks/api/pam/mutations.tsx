@@ -32,6 +32,7 @@ import {
   TPamAccountTemplate,
   TPamDiscoverySource,
   TPamFolder,
+  TPamMember,
   TPamSession,
   TRemoveAccountGroupMemberDTO,
   TRemoveAccountIdentityMemberDTO,
@@ -112,6 +113,28 @@ export const useDeletePamFolder = () => {
   });
 };
 
+export const useGrantPamFolderAdminAccess = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ folderId }: { folderId: string }) => {
+      const { data } = await apiRequest.post<
+        Pick<TPamMember, "membershipId" | "userId" | "role" | "createdAt"> & { folderId: string }
+      >(`/api/v1/pam/folders/${folderId}/grant-admin-access`);
+
+      return data;
+    },
+    onSuccess: (_, { folderId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
+      queryClient.invalidateQueries({ queryKey: pamKeys.folder() });
+      queryClient.invalidateQueries({ queryKey: pamKeys.folderPermissions(folderId) });
+      // Accounts in the folder inherit the new role.
+      queryClient.invalidateQueries({ queryKey: pamKeys.allAccountPermissions() });
+      queryClient.invalidateQueries({ queryKey: pamKeys.folderMembers(folderId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.accessCapabilities() });
+    }
+  });
+};
+
 export const useTerminatePamSession = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -134,7 +157,7 @@ export const useCreatePamAccount = () => {
   const queryClient = useQueryClient();
   return useMutation({
     // Validation errors are mapped onto the form fields
-    meta: { skipValidationToast: true },
+    meta: { skipValidationToast: true, handledErrorCodes: ["PAM_ACCOUNT_LIMIT_REACHED"] },
     mutationFn: async ({ accountType, ...params }: TCreatePamAccountDTO) => {
       const { data } = await apiRequest.post(`/api/v1/pam/accounts/${accountType}`, params);
       return { ...data.account, corsProbeUrl: data.corsProbeUrl as string | null | undefined };

@@ -430,7 +430,8 @@ export const secretServiceFactory = ({
         ...inputSecret
       },
       oldSecret: secrets[0],
-      projectId
+      projectId,
+      actor: { actor, actorId, actorOrgId, actorAuthMethod }
     });
 
     const tags = inputSecret.tags ? await secretTagDAL.findManyTagsById(projectId, inputSecret.tags) : [];
@@ -741,7 +742,6 @@ export const secretServiceFactory = ({
         ...secret,
         workspace: projectId,
         environment,
-        secretReminderRecipients: [],
         secretPath: groupedPaths[secret.folderId][0].path
       }))
     };
@@ -1987,23 +1987,11 @@ export const secretServiceFactory = ({
         newSecretName,
         metadata,
         secretValue,
-        secretMetadata
+        secretMetadata,
+        secretReminderNote,
+        secretReminderRepeatDays,
+        secretReminderRecipients
       });
-
-      if (secretReminderRepeatDays) {
-        await reminderService.createReminder({
-          actor,
-          actorId,
-          actorOrgId,
-          actorAuthMethod,
-          reminder: {
-            secretId: secret.id,
-            message: secretReminderNote,
-            repeatDays: secretReminderRepeatDays,
-            recipients: secretReminderRecipients
-          }
-        });
-      }
       return { type: SecretProtectionType.Direct as const, secret };
     }
 
@@ -2092,6 +2080,7 @@ export const secretServiceFactory = ({
       metadata,
       secretReminderRepeatDays,
       secretReminderNote,
+      secretReminderRecipients,
       newSecretName,
       secretKeyIV: secretKeyEncrypted.iv,
       secretKeyTag: secretKeyEncrypted.tag,

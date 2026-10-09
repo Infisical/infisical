@@ -15,6 +15,7 @@ import { TChefSync } from "./chef-sync";
 import { TCircleCISync } from "./circleci-sync";
 import { TCloud66Sync } from "./cloud-66-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
+import { TCloudflareSecretsStoreSync } from "./cloudflare-secrets-store-sync";
 import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
 import { TDatabricksSync } from "./databricks-sync";
 import { TDaytonaSync } from "./daytona-sync";
@@ -86,6 +87,7 @@ export type TSecretSync =
   | TGitLabSync
   | TCloudflarePagesSync
   | TCloudflareWorkersSync
+  | TCloudflareSecretsStoreSync
   | TZabbixSync
   | TRailwaySync
   | TChecklySync
