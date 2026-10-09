@@ -1,6 +1,5 @@
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { KeyRoundIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -26,7 +25,7 @@ import { useScopeVariant } from "@app/hooks";
 import {
   ALERT_EVENT_TYPE_DESCRIPTIONS,
   ALERT_EVENT_TYPE_LABELS,
-  ALERT_RESOURCE_TYPE_LABELS,
+  ALERT_RESOURCE_EVENT_TYPES,
   AlertEventType,
   alertFormSchema,
   AlertResourceType,
@@ -45,6 +44,7 @@ import {
 import { ChannelsField } from "./ChannelsField";
 
 type Props = {
+  resourceType: AlertResourceType;
   projectId?: string;
   resourceId?: string;
   alert?: TAlert;
@@ -56,16 +56,18 @@ type Props = {
 const DEFAULT_ALERT_BEFORE_DAYS = 7;
 const DEFAULT_ALERT_NAMES: Record<AlertEventType, string> = {
   [AlertEventType.IdentityAuthenticationExpiry]: "Credential expiration alert",
-  [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert"
+  [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert",
+  [AlertEventType.AuditLogStreamDeliveryFailed]: "Stream delivery failure alert"
 };
 const AGENT_VAULT_ALERT_NAME_PLACEHOLDERS: Record<AlertEventType, string> = {
   [AlertEventType.IdentityAuthenticationExpiry]: "Credential expiration alert",
-  [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert"
+  [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert",
+  [AlertEventType.AuditLogStreamDeliveryFailed]: "Stream delivery failure alert"
 };
-const DEFAULT_EVENT_TYPE = AlertEventType.IdentityAuthenticationExpiry;
 
 const buildFormDefaults = (
   alert: TAlert | undefined,
+  resourceType: AlertResourceType,
   defaultEventType: AlertEventType,
   defaultName: string
 ): TAlertForm => {
@@ -73,7 +75,7 @@ const buildFormDefaults = (
     return {
       name: defaultName,
       description: "",
-      resourceType: AlertResourceType.IdentityAuthentication,
+      resourceType,
       eventType: defaultEventType,
       alertBeforeDays: DEFAULT_ALERT_BEFORE_DAYS,
       dailyReminder: false,
@@ -85,9 +87,8 @@ const buildFormDefaults = (
   return {
     name: alert.name,
     description: alert.description ?? "",
-    resourceType:
-      (alert.resourceType as AlertResourceType) ?? AlertResourceType.IdentityAuthentication,
-    eventType: (alert.eventType as AlertEventType) ?? DEFAULT_EVENT_TYPE,
+    resourceType,
+    eventType: alert.eventType as AlertEventType,
     alertBeforeDays:
       parseAlertBeforeDays(alert.condition?.alertBefore) ?? DEFAULT_ALERT_BEFORE_DAYS,
     dailyReminder: alert.condition?.dailyReminder ?? false,
@@ -97,6 +98,7 @@ const buildFormDefaults = (
 };
 
 export const AlertForm = ({
+  resourceType,
   projectId,
   resourceId,
   alert,
@@ -109,14 +111,15 @@ export const AlertForm = ({
   const isAgentVault = scopeVariant === "av";
   const createAlert = useCreateAlert();
   const updateAlert = useUpdateAlert();
+  const eventTypes = ALERT_RESOURCE_EVENT_TYPES[resourceType];
   const defaultEventType =
-    Object.values(AlertEventType).find((eventType) => !unavailableEventTypes.includes(eventType)) ??
-    DEFAULT_EVENT_TYPE;
+    eventTypes.find((eventType) => !unavailableEventTypes.includes(eventType)) ?? eventTypes[0];
 
   const formMethods = useForm<TAlertForm>({
     resolver: zodResolver(alertFormSchema),
     defaultValues: buildFormDefaults(
       alert,
+      resourceType,
       defaultEventType,
       isAgentVault ? "" : DEFAULT_ALERT_NAMES[defaultEventType]
     )
@@ -131,13 +134,11 @@ export const AlertForm = ({
     formState: { errors, isSubmitting }
   } = formMethods;
 
-  const resourceTypeValue = useWatch({ control, name: "resourceType" });
   const eventTypeValue = useWatch({ control, name: "eventType" });
   const isExpiryEvent = eventTypeValue === AlertEventType.IdentityAuthenticationExpiry;
   const alertNamePlaceholders = isAgentVault
     ? AGENT_VAULT_ALERT_NAME_PLACEHOLDERS
     : DEFAULT_ALERT_NAMES;
-  const isResourceScope = Boolean(resourceId ?? alert?.resourceId);
   const handleEventTypeChange = (previous: AlertEventType, next: AlertEventType) => {
     setValue("eventType", next, { shouldDirty: true });
     if (getValues("name") === DEFAULT_ALERT_NAMES[previous]) {
@@ -196,9 +197,7 @@ export const AlertForm = ({
               <Input
                 id="alert-name"
                 autoFocus
-                placeholder={
-                  alertNamePlaceholders[eventTypeValue] ?? alertNamePlaceholders[DEFAULT_EVENT_TYPE]
-                }
+                placeholder={alertNamePlaceholders[eventTypeValue]}
                 isError={Boolean(errors.name)}
                 {...register("name")}
                 autoComplete="off"
@@ -239,7 +238,7 @@ export const AlertForm = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent position="popper">
-                      {Object.values(AlertEventType).map((eventType) => (
+                      {eventTypes.map((eventType) => (
                         <SelectItem
                           key={eventType}
                           value={eventType}
@@ -274,38 +273,6 @@ export const AlertForm = ({
               </Label>
             )}
           />
-
-          {!isResourceScope && (
-            <Controller
-              control={control}
-              name="resourceType"
-              render={({ field: { value, onChange } }) => (
-                <Field>
-                  <FieldLabel>Resource type</FieldLabel>
-                  <FieldContent>
-                    <Select value={value} onValueChange={onChange}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent position="popper">
-                        {Object.values(AlertResourceType).map((resourceType) => (
-                          <SelectItem key={resourceType} value={resourceType}>
-                            <span className="flex items-center gap-2">
-                              <KeyRoundIcon className="size-4 text-muted" />
-                              <span className="font-medium">
-                                {ALERT_RESOURCE_TYPE_LABELS[resourceType]}
-                              </span>
-                              <span className="font-mono text-xs text-muted">{resourceType}</span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FieldContent>
-                </Field>
-              )}
-            />
-          )}
 
           {isExpiryEvent && (
             <div className="mb-1 flex flex-col gap-1.5">
@@ -344,7 +311,7 @@ export const AlertForm = ({
 
           <ChannelsField
             projectId={projectId}
-            resourceType={resourceTypeValue}
+            resourceType={resourceType}
             resourceId={resourceId ?? alert?.resourceId ?? null}
           />
         </div>

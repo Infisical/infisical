@@ -4,12 +4,14 @@ import { CertSource } from "@app/hooks/api/certificates/enums";
 
 export enum AlertResourceType {
   IdentityAuthentication = "identity.authentication",
-  SecretReminder = "secret.reminder"
+  SecretReminder = "secret.reminder",
+  AuditLogStream = "audit-log.stream"
 }
 
 export enum AlertEventType {
   IdentityAuthenticationExpiry = "identity.authentication.expiry",
-  IdentityAuthMethodChanged = "identity.authentication.auth-method-changed"
+  IdentityAuthMethodChanged = "identity.authentication.auth-method-changed",
+  AuditLogStreamDeliveryFailed = "audit-log.stream.delivery-failed"
 }
 
 export enum AlertChannelType {
@@ -67,19 +69,33 @@ export const MAX_CERTIFICATE_ALERT_FILTER_IDS = 100;
 
 export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
   [AlertResourceType.IdentityAuthentication]: "Machine Identity Authentication",
-  [AlertResourceType.SecretReminder]: "Secret Reminder"
+  [AlertResourceType.SecretReminder]: "Secret Reminder",
+  [AlertResourceType.AuditLogStream]: "Audit Log Stream"
+};
+
+// Secret reminders have their own form, so they list no events here.
+export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventType[]> = {
+  [AlertResourceType.IdentityAuthentication]: [
+    AlertEventType.IdentityAuthenticationExpiry,
+    AlertEventType.IdentityAuthMethodChanged
+  ],
+  [AlertResourceType.SecretReminder]: [],
+  [AlertResourceType.AuditLogStream]: [AlertEventType.AuditLogStreamDeliveryFailed]
 };
 
 export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
   [AlertEventType.IdentityAuthenticationExpiry]: "Credential Expiration",
-  [AlertEventType.IdentityAuthMethodChanged]: "Auth Method Change"
+  [AlertEventType.IdentityAuthMethodChanged]: "Auth Method Change",
+  [AlertEventType.AuditLogStreamDeliveryFailed]: "Delivery Failure"
 };
 
 export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
   [AlertEventType.IdentityAuthenticationExpiry]:
     "Notify a set number of days before a Universal Auth client secret or Token Auth access token expires.",
   [AlertEventType.IdentityAuthMethodChanged]:
-    "Notify whenever an auth method is added, updated, or removed, or one of its credentials is created, updated, or revoked."
+    "Notify whenever an auth method is added, updated, or removed, or one of its credentials is created, updated, or revoked.",
+  [AlertEventType.AuditLogStreamDeliveryFailed]:
+    "Notify when an external log stream cannot be reached and audit log events are being dropped."
 };
 
 export const ALERT_CHANNEL_TYPE_LABELS: Record<AlertChannelType, string> = {

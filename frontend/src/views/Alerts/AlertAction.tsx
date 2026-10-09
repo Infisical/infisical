@@ -31,6 +31,7 @@ import { usePopUp, useScopeVariant } from "@app/hooks";
 import {
   ALERT_CHANNEL_TYPE_LABELS,
   ALERT_EVENT_TYPE_LABELS,
+  ALERT_RESOURCE_EVENT_TYPES,
   AlertChannelType,
   AlertEventType,
   AlertResourceType,
@@ -44,7 +45,9 @@ import { AddAlertModal } from "./AddAlertModal";
 import { getChannelIcon } from "./channelIcons";
 
 type Props = {
-  identityId: string;
+  resourceType: AlertResourceType;
+  // Alerts that watch every resource of the type in scope when omitted.
+  resourceId?: string;
   // Org-scoped when omitted.
   projectId?: string;
   // Renders the alerts without any way to create, edit or remove them.
@@ -60,14 +63,15 @@ const getEnabledChannelTypes = (alert: TAlert): AlertChannelType[] =>
   );
 
 export const AlertAction = ({
-  identityId,
+  resourceType,
+  resourceId,
   projectId,
   readOnly = false,
   renderPermissionGate
 }: Props) => {
   const { data: alerts = [] } = useListAlerts({
-    resourceType: AlertResourceType.IdentityAuthentication,
-    resourceId: identityId,
+    resourceType,
+    ...(resourceId ? { resourceId } : {}),
     ...(projectId ? { projectId } : {})
   });
 
@@ -81,7 +85,7 @@ export const AlertAction = ({
 
   const enabledCount = alerts.filter((alert) => alert.enabled).length;
   const usedEventTypes = alerts.map((alert) => alert.eventType as AlertEventType);
-  const canAddAlert = Object.values(AlertEventType).some(
+  const canAddAlert = ALERT_RESOURCE_EVENT_TYPES[resourceType].some(
     (eventType) => !usedEventTypes.includes(eventType)
   );
 
@@ -257,8 +261,9 @@ export const AlertAction = ({
           <AddAlertModal
             isOpen={popUp.alert.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("alert", isOpen)}
+            resourceType={resourceType}
             projectId={projectId}
-            resourceId={identityId}
+            resourceId={resourceId}
             alert={selectedAlert}
             unavailableEventTypes={usedEventTypes}
           />
