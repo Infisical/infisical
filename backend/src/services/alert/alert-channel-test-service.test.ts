@@ -34,6 +34,7 @@ const buildProvider = (opts?: {
   resolvedProjectId?: string;
   blockedChannelTypes?: string[];
   webhookSource?: boolean;
+  getResourceNames?: IResourceAlertProvider["getResourceNames"];
 }) => {
   const provider: IResourceAlertProvider = {
     resourceType: RESOURCE_TYPE,
@@ -70,7 +71,8 @@ const buildProvider = (opts?: {
     ...(opts?.resolvedProjectId ? { resolveProjectId: async () => opts.resolvedProjectId as string } : {}),
     ...(opts?.webhookSource
       ? { getWebhookSource: ({ alertId, resourceId }) => `/resources/${resourceId}/alerts/${alertId}` }
-      : {})
+      : {}),
+    ...(opts?.getResourceNames ? { getResourceNames: opts.getResourceNames } : {})
   };
 
   const registry = alertProviderRegistryFactory();
@@ -179,6 +181,68 @@ describe("alertChannelTestService", () => {
       });
       expect(sent[1].payload.webhookSource).toBeUndefined();
       expect(sent[1].payload.alert.resourceId).toBeUndefined();
+    } finally {
+      restore();
+    }
+  });
+
+  test("returns the name of the resource the test was sent for", async () => {
+    const lookups: { orgId: string; resourceIds: string[] }[] = [];
+    const restore = stubSend("slack", async () => ({ success: true }));
+
+    try {
+      const { deps } = buildDeps({
+        registry: buildProvider({
+          getResourceNames: async (input) => {
+            lookups.push(input);
+            return new Map([["resource-1", "Payments API"]]);
+          }
+        })
+      });
+      const service = alertChannelTestServiceFactory(deps);
+
+      const result = await service.testChannel({
+        ...actor,
+        resourceType: RESOURCE_TYPE,
+        resourceId: "resource-1",
+        channelType: "slack" as never,
+        config: { webhookUrl: "https://hooks.slack.com/services/T/B/x" }
+      });
+
+      expect(lookups).toEqual([{ orgId: ORG_ID, resourceIds: ["resource-1"] }]);
+      expect(result.resourceName).toBe("Payments API");
+    } finally {
+      restore();
+    }
+  });
+
+  test("sends nothing when the resource name lookup fails", async () => {
+    const sent: TAlertChannelSendContext[] = [];
+    const restore = stubSend("slack", async (ctx) => {
+      sent.push(ctx);
+      return { success: true };
+    });
+
+    try {
+      const { deps } = buildDeps({
+        registry: buildProvider({
+          getResourceNames: async () => {
+            throw new Error("lookup failed");
+          }
+        })
+      });
+      const service = alertChannelTestServiceFactory(deps);
+
+      await expect(
+        service.testChannel({
+          ...actor,
+          resourceType: RESOURCE_TYPE,
+          resourceId: "resource-1",
+          channelType: "slack" as never,
+          config: { webhookUrl: "https://hooks.slack.com/services/T/B/x" }
+        })
+      ).rejects.toThrow("lookup failed");
+      expect(sent).toHaveLength(0);
     } finally {
       restore();
     }

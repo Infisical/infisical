@@ -236,8 +236,8 @@ export const alertChannelTestServiceFactory = ({
     }
 
     const config = await $resolveConfig(dto, projectId);
-    const result = await $sendTest(dto, projectId, provider, config);
     const resourceName = await getAlertResourceName(provider, dto.actorOrgId, dto.resourceId);
+    const result = await $sendTest(dto, projectId, provider, config);
     return { ...result, projectId, resourceName };
   };
 
