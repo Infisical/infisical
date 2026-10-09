@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, CreditCard } from "lucide-react";
 
@@ -13,11 +14,12 @@ type Props = {
 };
 
 export const OrganizationProductPlans = ({ plans, billingOrgId, isSubOrganization }: Props) => {
+  const [isOpen, setIsOpen] = useState(false);
   const summaries = getProductPlanSummaries(plans);
   if (!summaries.length) return null;
 
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="xs" aria-label="View Product Plans" className="shrink-0">
           <CreditCard />
@@ -40,7 +42,11 @@ export const OrganizationProductPlans = ({ plans, billingOrgId, isSubOrganizatio
             <>
               <Separator />
               <Button variant="outline" size="xs" className="self-end" asChild>
-                <Link to="/organizations/$orgId/billing" params={{ orgId: billingOrgId }}>
+                <Link
+                  to="/organizations/$orgId/billing"
+                  params={{ orgId: billingOrgId }}
+                  onClick={() => setIsOpen(false)}
+                >
                   View Billing
                 </Link>
               </Button>
