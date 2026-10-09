@@ -189,12 +189,12 @@ describe("assertPkiSyncCanHoldCertificateCount", () => {
   test("rejects a name schema with no placeholder once more than one certificate is held", () => {
     expect(() =>
       assertPkiSyncCanHoldCertificateCount(PkiSync.LinuxServer, { certificateNameSchema: "static" }, undefined, 2)
-    ).toThrow("no placeholder");
+    ).toThrow("gives every certificate the same name");
   });
 
   test("rejects a sync with no name schema at all once more than one certificate is held", () => {
     expect(() => assertPkiSyncCanHoldCertificateCount(PkiSync.LinuxServer, undefined, undefined, 2)).toThrow(
-      "no placeholder"
+      "gives every certificate the same name"
     );
   });
 
@@ -282,6 +282,18 @@ describe("getPkiSyncCertificateCap", () => {
 
   test("caps at 1 when the name schema has no placeholder", () => {
     expect(getPkiSyncCertificateCap(PkiSync.LinuxServer, { certificateNameSchema: "static" }, {})).toBe(1);
+  });
+
+  test("caps at 1 when the name schema only uses placeholders shared by every certificate", () => {
+    expect(
+      getPkiSyncCertificateCap(PkiSync.PaloAltoNetworks, { certificateNameSchema: "INF-{{applicationName}}" }, {})
+    ).toBe(1);
+  });
+
+  test("no name cap when the name schema uses the common name", () => {
+    expect(
+      getPkiSyncCertificateCap(PkiSync.PaloAltoNetworks, { certificateNameSchema: "INF-{{commonName}}" }, {})
+    ).toBeUndefined();
   });
 
   test("caps at 1 when a host command names a single certificate", () => {

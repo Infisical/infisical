@@ -64,11 +64,12 @@ export const SHORT_UUID_NAME_REGEX_FRAGMENT = "[0-9A-Za-z]{22}";
 export const certificateNameSchemaHasFreeTextPlaceholder = (schema?: string): boolean =>
   Boolean(schema && (schema.includes("{{commonName}}") || schema.includes("{{applicationName}}")));
 
-const ANY_PLACEHOLDER_REGEX = new RE2(
-  "\\{\\{(certificateId|shortCertificateId|profileId|applicationId|applicationName|commonName)\\}\\}"
+const CERTIFICATE_DISTINGUISHING_PLACEHOLDER_REGEX = new RE2(
+  "\\{\\{(certificateId|shortCertificateId|commonName)\\}\\}"
 );
+
 export const certificateNameSchemaAllowsMultipleCertificates = (schema?: string): boolean =>
-  Boolean(schema && ANY_PLACEHOLDER_REGEX.test(schema));
+  Boolean(schema && CERTIFICATE_DISTINGUISHING_PLACEHOLDER_REGEX.test(schema));
 
 const PLACEHOLDER_OR_CHAR_REGEX = new RE2(
   "\\{\\{(certificateId|shortCertificateId|profileId|applicationId|applicationName|commonName)\\}\\}|[\\s\\S]",

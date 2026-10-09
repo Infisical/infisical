@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { AppConnections } from "@app/lib/api-docs";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -31,12 +32,12 @@ export const registerPaloAltoNetworksConnectionRouter = async (server: FastifyZo
     schema: {
       operationId: "listPaloAltoNetworksTemplates",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().uuid().describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.connectionId)
       }),
       response: {
         200: z.object({
-          isPanorama: z.boolean(),
-          templates: z.string().array()
+          isPanorama: z.boolean().describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.isPanorama),
+          templates: z.string().array().describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.templates)
         })
       }
     },
@@ -57,14 +58,21 @@ export const registerPaloAltoNetworksConnectionRouter = async (server: FastifyZo
     schema: {
       operationId: "listPaloAltoNetworksSslTlsServiceProfiles",
       params: z.object({
-        connectionId: z.string().uuid()
+        connectionId: z.string().uuid().describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.connectionId)
       }),
       querystring: z.object({
-        template: PanOsObjectNameSchema("Template").optional()
+        template: PanOsObjectNameSchema("Template")
+          .optional()
+          .describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.template)
       }),
       response: {
         200: z.object({
-          sslTlsServiceProfiles: z.object({ name: z.string(), vsys: z.string().nullable() }).array()
+          sslTlsServiceProfiles: z
+            .object({
+              name: z.string().describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.profileName),
+              vsys: z.string().nullable().describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.profileVsys)
+            })
+            .array()
         })
       }
     },

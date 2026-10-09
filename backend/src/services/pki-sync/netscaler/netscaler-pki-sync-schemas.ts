@@ -22,7 +22,7 @@ export const NetScalerPkiSyncOptionsSchema = BasePkiSyncOptionsSchema.extend({
   certificateNameSchema: buildDestinationCertificateNameSchema({
     naming: NETSCALER_NAMING,
     message:
-      "Certificate name schema must result in names that contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.) and be 1-63 characters long for NetScaler. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}. A schema with no placeholder can be linked to only one certificate."
+      "Certificate name schema must result in names that contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.) and be 1-63 characters long for NetScaler. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}. A schema without {{certificateId}}, {{shortCertificateId}}, or {{commonName}} can be linked to only one certificate."
   })
 });
 

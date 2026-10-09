@@ -3168,6 +3168,15 @@ export const AppConnections = {
       apiKeyId: "The API Key ID used to authenticate with Spacelift.",
       apiKeySecret: "The API Key Secret used to authenticate with Spacelift."
     }
+  },
+  PALO_ALTO_NETWORKS_LOOKUPS: {
+    connectionId: "The ID of the Palo Alto Networks Connection to read from.",
+    template:
+      "The Panorama template to list SSL/TLS service profiles from. Leave it out when the connection points to a firewall.",
+    isPanorama: "Whether the connection points to a Panorama rather than a firewall.",
+    templates: "The names of the Panorama templates. Empty when the connection points to a firewall.",
+    profileName: "The name of the SSL/TLS service profile.",
+    profileVsys: "The virtual system the profile belongs to, or null for a shared profile."
   }
 };
 

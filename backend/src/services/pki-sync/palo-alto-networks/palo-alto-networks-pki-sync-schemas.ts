@@ -28,7 +28,7 @@ export const PaloAltoNetworksPkiSyncOptionsSchema = BasePkiSyncOptionsSchema.ext
   certificateNameSchema: buildDestinationCertificateNameSchema({
     naming: PALO_ALTO_NETWORKS_NAMING,
     message:
-      "Certificate name schema must result in names that contain only alphanumeric characters, hyphens (-), and underscores (_) and be 1-31 characters long for Palo Alto Networks. Use {{shortCertificateId}} rather than {{certificateId}} to stay within the limit. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}. A schema with no placeholder can be linked to only one certificate."
+      "Certificate name schema must result in names that contain only alphanumeric characters, hyphens (-), and underscores (_) and be 1-31 characters long for Palo Alto Networks. Use {{shortCertificateId}} rather than {{certificateId}} to stay within the limit. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}. A schema without {{certificateId}}, {{shortCertificateId}}, or {{commonName}} can be linked to only one certificate."
   })
 });
 

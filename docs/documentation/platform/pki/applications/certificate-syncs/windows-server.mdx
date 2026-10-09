@@ -59,7 +59,7 @@ Deploy certificates from Infisical to a directory on a Windows server over WinRM
             - **Include Private Key**: For PEM, controls whether the private key is written alongside the certificate. The sync fails for a certificate whose key is not available, for example one issued from an external CSR.
             - **Include Root CA in Certificate Chain**: Include the root CA in the delivered chain. Leave it off when the consuming service only needs the intermediates.
             - **Enable Removal of Certificates**: Delete the delivered files from the server when a certificate is removed from the sync, revoked, or expired.
-            - **Certificate Name Schema**: The base file name, using placeholders such as `{{commonName}}`, `{{certificateId}}`, or `{{shortCertificateId}}`. The export format adds the extension. A schema with no placeholder can be linked to only one certificate.
+            - **Certificate Name Schema**: The base file name, using placeholders such as `{{commonName}}`, `{{certificateId}}`, or `{{shortCertificateId}}`. The export format adds the extension. A schema without {{certificateId}}, {{shortCertificateId}}, or {{commonName}} can be linked to only one certificate.
             - **Auto-Sync Enabled**: Automatically sync certificates when changes occur.
 
         6. Configure the **Commands**, or leave them empty:

@@ -63,7 +63,7 @@ export const F5BigIpPkiSyncOptionsSchema = BasePkiSyncOptionsSchema.extend({
   certificateNameSchema: buildDestinationCertificateNameSchema({
     naming: F5_BIG_IP_NAMING,
     message:
-      "Certificate name schema must result in names that contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.) and be 1-255 characters long for F5 BIG-IP. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}. A schema with no placeholder can be linked to only one certificate."
+      "Certificate name schema must result in names that contain only alphanumeric characters, hyphens (-), underscores (_), and periods (.) and be 1-255 characters long for F5 BIG-IP. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}. A schema without {{certificateId}}, {{shortCertificateId}}, or {{commonName}} can be linked to only one certificate."
   })
 });
 
