@@ -213,9 +213,15 @@ export const secretFolderDALFactory = (db: TDbClient) => {
 
   // this is used to do an inverse query in folders
   // that is instances in which for a given folderid find the secret path
-  const findSecretPathByFolderIds = async (projectId: string, folderIds: string[], tx?: Knex) => {
+  const findSecretPathByFolderIds = async (
+    projectId: string,
+    folderIds: string[],
+    tx?: Knex,
+    { readFromPrimary = false }: { readFromPrimary?: boolean } = {}
+  ) => {
+    const conn = tx || (readFromPrimary ? db : db.replicaNode());
     try {
-      const targetFolders = await (tx || db.replicaNode())(TableName.SecretFolder)
+      const targetFolders = await conn(TableName.SecretFolder)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .whereIn(`${TableName.SecretFolder}.id`, folderIds)
         .where(`${TableName.Environment}.projectId`, projectId)
@@ -230,9 +236,9 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         return folderIds.map(() => undefined);
       }
 
-      const allEnvFolders = await (tx || db.replicaNode())(TableName.SecretFolder).whereIn(
+      const allEnvFolders = await conn(TableName.SecretFolder).whereIn(
         "envId",
-        (tx || db.replicaNode())(TableName.SecretFolder)
+        conn(TableName.SecretFolder)
           .select("envId")
           .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
           .whereIn(`${TableName.SecretFolder}.id`, folderIds)

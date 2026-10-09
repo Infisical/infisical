@@ -258,6 +258,8 @@ import { certManagerSignerAlertDALFactory } from "@app/services/alert/providers/
 import { certManagerSignerAlertProviderFactory } from "@app/services/alert/providers/cert-manager-signer-alert-provider";
 import { identityCredentialAlertDALFactory } from "@app/services/alert/providers/identity-credential-alert-dal";
 import { identityCredentialAlertProviderFactory } from "@app/services/alert/providers/identity-credential-alert-provider";
+import { secretReminderAlertDALFactory } from "@app/services/alert/providers/secret-reminder-alert-dal";
+import { secretReminderAlertProviderFactory } from "@app/services/alert/providers/secret-reminder-alert-provider";
 import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -509,7 +511,6 @@ import { projectMembershipServiceFactory } from "@app/services/project-membershi
 import { reminderDALFactory } from "@app/services/reminder/reminder-dal";
 import { dailyReminderQueueServiceFactory } from "@app/services/reminder/reminder-queue";
 import { reminderServiceFactory } from "@app/services/reminder/reminder-service";
-import { reminderRecipientDALFactory } from "@app/services/reminder-recipients/reminder-recipient-dal";
 import { dailyResourceCleanUpQueueServiceFactory } from "@app/services/resource-cleanup/resource-cleanup-queue";
 import { resourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { resourceMetadataServiceFactory } from "@app/services/resource-metadata/resource-metadata-service";
@@ -704,7 +705,6 @@ export const registerRoutes = async (
   const secretVersionTagV2BridgeDAL = secretVersionV2TagBridgeDALFactory(db);
 
   const reminderDAL = reminderDALFactory(db);
-  const reminderRecipientDAL = reminderRecipientDALFactory(db);
 
   const integrationDAL = integrationDALFactory(db);
   const offlineUsageReportDAL = offlineUsageReportDALFactory(db);
@@ -1112,6 +1112,13 @@ export const registerRoutes = async (
     })
   );
   alertProviderRegistry.register(
+    secretReminderAlertProviderFactory({
+      secretReminderAlertDAL: secretReminderAlertDALFactory(db),
+      folderDAL,
+      permissionService
+    })
+  );
+  alertProviderRegistry.register(
     certManagerApplicationAlertProviderFactory({
       certManagerCertificateAlertDAL,
       permissionService,
@@ -1139,6 +1146,8 @@ export const registerRoutes = async (
     userGroupMembershipDAL,
     orgDAL,
     projectDAL,
+    projectMembershipDAL,
+    groupProjectDAL,
     emailDomainDAL
   });
   const alertEngine = alertEngineFactory({
@@ -1188,6 +1197,7 @@ export const registerRoutes = async (
     alertDAL,
     alertChannelDAL,
     alertChannelMembershipDAL,
+    alertChannelRecipientDAL,
     alertChannelService,
     kmsService,
     alertProviderRegistry,
@@ -1597,9 +1607,8 @@ export const registerRoutes = async (
 
   const reminderService = reminderServiceFactory({
     reminderDAL,
-    reminderRecipientDAL,
-    smtpService,
-    projectMembershipDAL,
+    eventEmitter: eventOutboxService,
+    alertService,
     permissionService,
     secretV2BridgeDAL,
     folderDAL
@@ -2436,7 +2445,6 @@ export const registerRoutes = async (
     kmsService,
     resourceMetadataDAL,
     reminderService,
-    reminderDAL,
     keyStore,
     secretValidationRuleService,
     projectFolderGrantDAL,
@@ -2531,7 +2539,6 @@ export const registerRoutes = async (
     secretImportDAL,
     secretV2BridgeService,
     secretValidationRuleService,
-    reminderDAL,
     reminderService,
     keyStore
   });

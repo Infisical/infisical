@@ -629,7 +629,12 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .optional()
           .nullable()
           .describe(RAW_SECRETS.UPDATE.secretReminderRepeatDays),
-        secretReminderRecipients: z.string().array().optional().describe(RAW_SECRETS.UPDATE.secretReminderRecipients),
+        secretReminderRecipients: z
+          .string()
+          .uuid()
+          .array()
+          .optional()
+          .describe(RAW_SECRETS.UPDATE.secretReminderRecipients),
         newSecretName: SecretNameSchema.optional().describe(RAW_SECRETS.UPDATE.newSecretName),
         secretComment: z.string().optional().describe(RAW_SECRETS.UPDATE.secretComment)
       }),
