@@ -84,10 +84,17 @@ export const AlertAction = ({
   const deleteAlert = useDeleteAlert();
 
   const enabledCount = alerts.filter((alert) => alert.enabled).length;
-  const usedEventTypes = alerts.map((alert) => alert.eventType as AlertEventType);
-  const canAddAlert = ALERT_RESOURCE_EVENT_TYPES[resourceType].some(
-    (eventType) => !usedEventTypes.includes(eventType)
-  );
+  // The backend allows one alert per event only for an alert bound to a resource. Alerts that watch every
+  // resource of the type can repeat an event, eg to send the same failure to two teams.
+  const isResourceBound = Boolean(resourceId);
+  const usedEventTypes = isResourceBound
+    ? alerts.map((alert) => alert.eventType as AlertEventType)
+    : [];
+  const canAddAlert =
+    !isResourceBound ||
+    ALERT_RESOURCE_EVENT_TYPES[resourceType].some(
+      (eventType) => !usedEventTypes.includes(eventType)
+    );
 
   const openAlertForm = (alert?: TAlert) => {
     setSelectedAlert(alert);
