@@ -1509,6 +1509,186 @@ func (e LoginWithUniversalAuth500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for CreateGroup400JSONResponseBodyStatusCode.
+const (
+	CreateGroup400JSONResponseBodyStatusCodeN400 CreateGroup400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateGroup400JSONResponseBodyStatusCode enum.
+func (e CreateGroup400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGroup400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGroup401JSONResponseBodyStatusCode.
+const (
+	CreateGroup401JSONResponseBodyStatusCodeN401 CreateGroup401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateGroup401JSONResponseBodyStatusCode enum.
+func (e CreateGroup401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGroup401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGroup403JSONResponseBodyStatusCode.
+const (
+	CreateGroup403JSONResponseBodyStatusCodeN403 CreateGroup403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateGroup403JSONResponseBodyStatusCode enum.
+func (e CreateGroup403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGroup403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGroup404JSONResponseBodyStatusCode.
+const (
+	CreateGroup404JSONResponseBodyStatusCodeN404 CreateGroup404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateGroup404JSONResponseBodyStatusCode enum.
+func (e CreateGroup404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGroup404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGroup422JSONResponseBodyStatusCode.
+const (
+	CreateGroup422JSONResponseBodyStatusCodeN422 CreateGroup422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateGroup422JSONResponseBodyStatusCode enum.
+func (e CreateGroup422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGroup422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateGroup500JSONResponseBodyStatusCode.
+const (
+	CreateGroup500JSONResponseBodyStatusCodeN500 CreateGroup500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateGroup500JSONResponseBodyStatusCode enum.
+func (e CreateGroup500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateGroup500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AddUserToGroup400JSONResponseBodyStatusCode.
+const (
+	AddUserToGroup400JSONResponseBodyStatusCodeN400 AddUserToGroup400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the AddUserToGroup400JSONResponseBodyStatusCode enum.
+func (e AddUserToGroup400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case AddUserToGroup400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AddUserToGroup401JSONResponseBodyStatusCode.
+const (
+	AddUserToGroup401JSONResponseBodyStatusCodeN401 AddUserToGroup401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the AddUserToGroup401JSONResponseBodyStatusCode enum.
+func (e AddUserToGroup401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case AddUserToGroup401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AddUserToGroup403JSONResponseBodyStatusCode.
+const (
+	AddUserToGroup403JSONResponseBodyStatusCodeN403 AddUserToGroup403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the AddUserToGroup403JSONResponseBodyStatusCode enum.
+func (e AddUserToGroup403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case AddUserToGroup403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AddUserToGroup404JSONResponseBodyStatusCode.
+const (
+	AddUserToGroup404JSONResponseBodyStatusCodeN404 AddUserToGroup404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the AddUserToGroup404JSONResponseBodyStatusCode enum.
+func (e AddUserToGroup404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case AddUserToGroup404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AddUserToGroup422JSONResponseBodyStatusCode.
+const (
+	AddUserToGroup422JSONResponseBodyStatusCodeN422 AddUserToGroup422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the AddUserToGroup422JSONResponseBodyStatusCode enum.
+func (e AddUserToGroup422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case AddUserToGroup422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AddUserToGroup500JSONResponseBodyStatusCode.
+const (
+	AddUserToGroup500JSONResponseBodyStatusCodeN500 AddUserToGroup500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the AddUserToGroup500JSONResponseBodyStatusCode enum.
+func (e AddUserToGroup500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case AddUserToGroup500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateMachineIdentity400JSONResponseBodyStatusCode.
 const (
 	CreateMachineIdentity400JSONResponseBodyStatusCodeN400 CreateMachineIdentity400JSONResponseBodyStatusCode = 400
@@ -2667,6 +2847,141 @@ const (
 func (e InviteProjectMembers500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case InviteProjectMembers500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectGroupMembershipJSONBodyRoles0IsTemporary.
+const (
+	CreateProjectGroupMembershipJSONBodyRoles0IsTemporaryFalse CreateProjectGroupMembershipJSONBodyRoles0IsTemporary = false
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectGroupMembershipJSONBodyRoles0IsTemporary enum.
+func (e CreateProjectGroupMembershipJSONBodyRoles0IsTemporary) Valid() bool {
+	switch e {
+	case CreateProjectGroupMembershipJSONBodyRoles0IsTemporaryFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectGroupMembershipJSONBodyRoles1IsTemporary.
+const (
+	CreateProjectGroupMembershipJSONBodyRoles1IsTemporaryTrue CreateProjectGroupMembershipJSONBodyRoles1IsTemporary = true
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectGroupMembershipJSONBodyRoles1IsTemporary enum.
+func (e CreateProjectGroupMembershipJSONBodyRoles1IsTemporary) Valid() bool {
+	switch e {
+	case CreateProjectGroupMembershipJSONBodyRoles1IsTemporaryTrue:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectGroupMembershipJSONBodyRoles1TemporaryMode.
+const (
+	CreateProjectGroupMembershipJSONBodyRoles1TemporaryModeRelative CreateProjectGroupMembershipJSONBodyRoles1TemporaryMode = "relative"
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectGroupMembershipJSONBodyRoles1TemporaryMode enum.
+func (e CreateProjectGroupMembershipJSONBodyRoles1TemporaryMode) Valid() bool {
+	switch e {
+	case CreateProjectGroupMembershipJSONBodyRoles1TemporaryModeRelative:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectGroupMembership400JSONResponseBodyStatusCode.
+const (
+	CreateProjectGroupMembership400JSONResponseBodyStatusCodeN400 CreateProjectGroupMembership400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectGroupMembership400JSONResponseBodyStatusCode enum.
+func (e CreateProjectGroupMembership400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectGroupMembership400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectGroupMembership401JSONResponseBodyStatusCode.
+const (
+	CreateProjectGroupMembership401JSONResponseBodyStatusCodeN401 CreateProjectGroupMembership401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectGroupMembership401JSONResponseBodyStatusCode enum.
+func (e CreateProjectGroupMembership401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectGroupMembership401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectGroupMembership403JSONResponseBodyStatusCode.
+const (
+	CreateProjectGroupMembership403JSONResponseBodyStatusCodeN403 CreateProjectGroupMembership403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectGroupMembership403JSONResponseBodyStatusCode enum.
+func (e CreateProjectGroupMembership403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectGroupMembership403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectGroupMembership404JSONResponseBodyStatusCode.
+const (
+	CreateProjectGroupMembership404JSONResponseBodyStatusCodeN404 CreateProjectGroupMembership404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectGroupMembership404JSONResponseBodyStatusCode enum.
+func (e CreateProjectGroupMembership404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectGroupMembership404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectGroupMembership422JSONResponseBodyStatusCode.
+const (
+	CreateProjectGroupMembership422JSONResponseBodyStatusCodeN422 CreateProjectGroupMembership422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectGroupMembership422JSONResponseBodyStatusCode enum.
+func (e CreateProjectGroupMembership422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectGroupMembership422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectGroupMembership500JSONResponseBodyStatusCode.
+const (
+	CreateProjectGroupMembership500JSONResponseBodyStatusCodeN500 CreateProjectGroupMembership500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectGroupMembership500JSONResponseBodyStatusCode enum.
+func (e CreateProjectGroupMembership500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectGroupMembership500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -8661,6 +8976,54 @@ type LoginWithUniversalAuth422JSONResponseBodyStatusCode float32
 // LoginWithUniversalAuth500JSONResponseBodyStatusCode defines parameters for LoginWithUniversalAuth.
 type LoginWithUniversalAuth500JSONResponseBodyStatusCode float32
 
+// CreateGroupJSONBody defines parameters for CreateGroup.
+type CreateGroupJSONBody struct {
+	// Name The name of the group to create.
+	Name string `json:"name"`
+
+	// Role The role of the group to create.
+	Role *string `json:"role,omitempty"`
+
+	// Slug The slug of the group to create.
+	Slug *string `json:"slug,omitempty"`
+}
+
+// CreateGroup400JSONResponseBodyStatusCode defines parameters for CreateGroup.
+type CreateGroup400JSONResponseBodyStatusCode float32
+
+// CreateGroup401JSONResponseBodyStatusCode defines parameters for CreateGroup.
+type CreateGroup401JSONResponseBodyStatusCode float32
+
+// CreateGroup403JSONResponseBodyStatusCode defines parameters for CreateGroup.
+type CreateGroup403JSONResponseBodyStatusCode float32
+
+// CreateGroup404JSONResponseBodyStatusCode defines parameters for CreateGroup.
+type CreateGroup404JSONResponseBodyStatusCode float32
+
+// CreateGroup422JSONResponseBodyStatusCode defines parameters for CreateGroup.
+type CreateGroup422JSONResponseBodyStatusCode float32
+
+// CreateGroup500JSONResponseBodyStatusCode defines parameters for CreateGroup.
+type CreateGroup500JSONResponseBodyStatusCode float32
+
+// AddUserToGroup400JSONResponseBodyStatusCode defines parameters for AddUserToGroup.
+type AddUserToGroup400JSONResponseBodyStatusCode float32
+
+// AddUserToGroup401JSONResponseBodyStatusCode defines parameters for AddUserToGroup.
+type AddUserToGroup401JSONResponseBodyStatusCode float32
+
+// AddUserToGroup403JSONResponseBodyStatusCode defines parameters for AddUserToGroup.
+type AddUserToGroup403JSONResponseBodyStatusCode float32
+
+// AddUserToGroup404JSONResponseBodyStatusCode defines parameters for AddUserToGroup.
+type AddUserToGroup404JSONResponseBodyStatusCode float32
+
+// AddUserToGroup422JSONResponseBodyStatusCode defines parameters for AddUserToGroup.
+type AddUserToGroup422JSONResponseBodyStatusCode float32
+
+// AddUserToGroup500JSONResponseBodyStatusCode defines parameters for AddUserToGroup.
+type AddUserToGroup500JSONResponseBodyStatusCode float32
+
 // CreateMachineIdentityJSONBody defines parameters for CreateMachineIdentity.
 type CreateMachineIdentityJSONBody struct {
 	// HasDeleteProtection Prevents deletion of the identity when enabled.
@@ -9112,6 +9475,59 @@ type InviteProjectMembers422JSONResponseBodyStatusCode float32
 
 // InviteProjectMembers500JSONResponseBodyStatusCode defines parameters for InviteProjectMembers.
 type InviteProjectMembers500JSONResponseBodyStatusCode float32
+
+// CreateProjectGroupMembershipJSONBody defines parameters for CreateProjectGroupMembership.
+type CreateProjectGroupMembershipJSONBody struct {
+	Role  *string                                            `json:"role,omitempty"`
+	Roles *[]CreateProjectGroupMembershipJSONBody_Roles_Item `json:"roles,omitempty"`
+}
+
+// CreateProjectGroupMembershipJSONBodyRoles0 defines parameters for CreateProjectGroupMembership.
+type CreateProjectGroupMembershipJSONBodyRoles0 struct {
+	IsTemporary *CreateProjectGroupMembershipJSONBodyRoles0IsTemporary `json:"isTemporary,omitempty"`
+	Role        string                                                 `json:"role"`
+}
+
+// CreateProjectGroupMembershipJSONBodyRoles0IsTemporary defines parameters for CreateProjectGroupMembership.
+type CreateProjectGroupMembershipJSONBodyRoles0IsTemporary bool
+
+// CreateProjectGroupMembershipJSONBodyRoles1 defines parameters for CreateProjectGroupMembership.
+type CreateProjectGroupMembershipJSONBodyRoles1 struct {
+	IsTemporary              CreateProjectGroupMembershipJSONBodyRoles1IsTemporary   `json:"isTemporary"`
+	Role                     string                                                  `json:"role"`
+	TemporaryAccessStartTime time.Time                                               `json:"temporaryAccessStartTime"`
+	TemporaryMode            CreateProjectGroupMembershipJSONBodyRoles1TemporaryMode `json:"temporaryMode"`
+	TemporaryRange           string                                                  `json:"temporaryRange"`
+}
+
+// CreateProjectGroupMembershipJSONBodyRoles1IsTemporary defines parameters for CreateProjectGroupMembership.
+type CreateProjectGroupMembershipJSONBodyRoles1IsTemporary bool
+
+// CreateProjectGroupMembershipJSONBodyRoles1TemporaryMode defines parameters for CreateProjectGroupMembership.
+type CreateProjectGroupMembershipJSONBodyRoles1TemporaryMode string
+
+// CreateProjectGroupMembershipJSONBody_Roles_Item defines parameters for CreateProjectGroupMembership.
+type CreateProjectGroupMembershipJSONBody_Roles_Item struct {
+	union json.RawMessage
+}
+
+// CreateProjectGroupMembership400JSONResponseBodyStatusCode defines parameters for CreateProjectGroupMembership.
+type CreateProjectGroupMembership400JSONResponseBodyStatusCode float32
+
+// CreateProjectGroupMembership401JSONResponseBodyStatusCode defines parameters for CreateProjectGroupMembership.
+type CreateProjectGroupMembership401JSONResponseBodyStatusCode float32
+
+// CreateProjectGroupMembership403JSONResponseBodyStatusCode defines parameters for CreateProjectGroupMembership.
+type CreateProjectGroupMembership403JSONResponseBodyStatusCode float32
+
+// CreateProjectGroupMembership404JSONResponseBodyStatusCode defines parameters for CreateProjectGroupMembership.
+type CreateProjectGroupMembership404JSONResponseBodyStatusCode float32
+
+// CreateProjectGroupMembership422JSONResponseBodyStatusCode defines parameters for CreateProjectGroupMembership.
+type CreateProjectGroupMembership422JSONResponseBodyStatusCode float32
+
+// CreateProjectGroupMembership500JSONResponseBodyStatusCode defines parameters for CreateProjectGroupMembership.
+type CreateProjectGroupMembership500JSONResponseBodyStatusCode float32
 
 // CreateProjectIdentityMembershipJSONBody defines parameters for CreateProjectIdentityMembership.
 type CreateProjectIdentityMembershipJSONBody struct {
@@ -11448,6 +11864,9 @@ type CreateUniversalAuthClientSecretJSONRequestBody CreateUniversalAuthClientSec
 // LoginWithUniversalAuthJSONRequestBody defines body for LoginWithUniversalAuth for application/json ContentType.
 type LoginWithUniversalAuthJSONRequestBody LoginWithUniversalAuthJSONBody
 
+// CreateGroupJSONRequestBody defines body for CreateGroup for application/json ContentType.
+type CreateGroupJSONRequestBody CreateGroupJSONBody
+
 // CreateMachineIdentityJSONRequestBody defines body for CreateMachineIdentity for application/json ContentType.
 type CreateMachineIdentityJSONRequestBody CreateMachineIdentityJSONBody
 
@@ -11471,6 +11890,9 @@ type CreateProjectMachineIdentityJSONRequestBody CreateProjectMachineIdentityJSO
 
 // InviteProjectMembersJSONRequestBody defines body for InviteProjectMembers for application/json ContentType.
 type InviteProjectMembersJSONRequestBody InviteProjectMembersJSONBody
+
+// CreateProjectGroupMembershipJSONRequestBody defines body for CreateProjectGroupMembership for application/json ContentType.
+type CreateProjectGroupMembershipJSONRequestBody CreateProjectGroupMembershipJSONBody
 
 // CreateProjectIdentityMembershipJSONRequestBody defines body for CreateProjectIdentityMembership for application/json ContentType.
 type CreateProjectIdentityMembershipJSONRequestBody CreateProjectIdentityMembershipJSONBody
@@ -12929,6 +13351,68 @@ func (t CreateProjectMachineIdentityJSONBody_Roles_Item) MarshalJSON() ([]byte, 
 }
 
 func (t *CreateProjectMachineIdentityJSONBody_Roles_Item) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateProjectGroupMembershipJSONBodyRoles0 returns the union data inside the CreateProjectGroupMembershipJSONBody_Roles_Item as a CreateProjectGroupMembershipJSONBodyRoles0
+func (t CreateProjectGroupMembershipJSONBody_Roles_Item) AsCreateProjectGroupMembershipJSONBodyRoles0() (CreateProjectGroupMembershipJSONBodyRoles0, error) {
+	var body CreateProjectGroupMembershipJSONBodyRoles0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateProjectGroupMembershipJSONBodyRoles0 overwrites any union data inside the CreateProjectGroupMembershipJSONBody_Roles_Item as the provided CreateProjectGroupMembershipJSONBodyRoles0
+func (t *CreateProjectGroupMembershipJSONBody_Roles_Item) FromCreateProjectGroupMembershipJSONBodyRoles0(v CreateProjectGroupMembershipJSONBodyRoles0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateProjectGroupMembershipJSONBodyRoles0 performs a merge with any union data inside the CreateProjectGroupMembershipJSONBody_Roles_Item, using the provided CreateProjectGroupMembershipJSONBodyRoles0
+func (t *CreateProjectGroupMembershipJSONBody_Roles_Item) MergeCreateProjectGroupMembershipJSONBodyRoles0(v CreateProjectGroupMembershipJSONBodyRoles0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateProjectGroupMembershipJSONBodyRoles1 returns the union data inside the CreateProjectGroupMembershipJSONBody_Roles_Item as a CreateProjectGroupMembershipJSONBodyRoles1
+func (t CreateProjectGroupMembershipJSONBody_Roles_Item) AsCreateProjectGroupMembershipJSONBodyRoles1() (CreateProjectGroupMembershipJSONBodyRoles1, error) {
+	var body CreateProjectGroupMembershipJSONBodyRoles1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateProjectGroupMembershipJSONBodyRoles1 overwrites any union data inside the CreateProjectGroupMembershipJSONBody_Roles_Item as the provided CreateProjectGroupMembershipJSONBodyRoles1
+func (t *CreateProjectGroupMembershipJSONBody_Roles_Item) FromCreateProjectGroupMembershipJSONBodyRoles1(v CreateProjectGroupMembershipJSONBodyRoles1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateProjectGroupMembershipJSONBodyRoles1 performs a merge with any union data inside the CreateProjectGroupMembershipJSONBody_Roles_Item, using the provided CreateProjectGroupMembershipJSONBodyRoles1
+func (t *CreateProjectGroupMembershipJSONBody_Roles_Item) MergeCreateProjectGroupMembershipJSONBodyRoles1(v CreateProjectGroupMembershipJSONBodyRoles1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateProjectGroupMembershipJSONBody_Roles_Item) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateProjectGroupMembershipJSONBody_Roles_Item) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -14480,6 +14964,17 @@ type ClientInterface interface {
 	// Login with Universal Auth for machine identity.
 	LoginWithUniversalAuth(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateGroupWithBody performs a POST /api/v1/groups (the `CreateGroup` operationId) request,
+	// with any type of body and a specified content type.
+	CreateGroupWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateGroup performs a POST /api/v1/groups (the `CreateGroup` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateGroup(ctx context.Context, body CreateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddUserToGroup performs a POST /api/v1/groups/{id}/users/{username} (the `AddUserToGroup` operationId) request.
+	AddUserToGroup(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateMachineIdentityWithBody performs a POST /api/v1/identities (the `CreateMachineIdentity` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -14570,6 +15065,18 @@ type ClientInterface interface {
 	//
 	// Invite members to project.
 	InviteProjectMembers(ctx context.Context, projectId string, body InviteProjectMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateProjectGroupMembershipWithBody performs a POST /api/v1/projects/{projectId}/memberships/groups/{groupId} (the `CreateProjectGroupMembership` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Add a group from the organization to the project by creating a project group membership.
+	CreateProjectGroupMembershipWithBody(ctx context.Context, projectId string, groupId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateProjectGroupMembership performs a POST /api/v1/projects/{projectId}/memberships/groups/{groupId} (the `CreateProjectGroupMembership` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Add a group from the organization to the project by creating a project group membership.
+	CreateProjectGroupMembership(ctx context.Context, projectId string, groupId openapi_types.UUID, body CreateProjectGroupMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateProjectIdentityMembershipWithBody performs a POST /api/v1/projects/{projectId}/memberships/identities/{identityId} (the `CreateProjectIdentityMembership` operationId) request,
 	// with any type of body and a specified content type.
@@ -15111,6 +15618,47 @@ func (c *Client) LoginWithUniversalAuth(ctx context.Context, body LoginWithUnive
 	return c.Client.Do(req)
 }
 
+// CreateGroupWithBody performs a POST /api/v1/groups (the `CreateGroup` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateGroupWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateGroupRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateGroup performs a POST /api/v1/groups (the `CreateGroup` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateGroup(ctx context.Context, body CreateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateGroupRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddUserToGroup performs a POST /api/v1/groups/{id}/users/{username} (the `AddUserToGroup` operationId) request.
+func (c *Client) AddUserToGroup(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddUserToGroupRequest(c.Server, id, username)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // CreateMachineIdentityWithBody performs a POST /api/v1/identities (the `CreateMachineIdentity` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -15382,6 +15930,38 @@ func (c *Client) InviteProjectMembersWithBody(ctx context.Context, projectId str
 // Invite members to project.
 func (c *Client) InviteProjectMembers(ctx context.Context, projectId string, body InviteProjectMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewInviteProjectMembersRequest(c.Server, projectId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateProjectGroupMembershipWithBody performs a POST /api/v1/projects/{projectId}/memberships/groups/{groupId} (the `CreateProjectGroupMembership` operationId) request,
+// with any type of body and a specified content type.
+//
+// Add a group from the organization to the project by creating a project group membership.
+func (c *Client) CreateProjectGroupMembershipWithBody(ctx context.Context, projectId string, groupId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateProjectGroupMembershipRequestWithBody(c.Server, projectId, groupId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateProjectGroupMembership performs a POST /api/v1/projects/{projectId}/memberships/groups/{groupId} (the `CreateProjectGroupMembership` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Add a group from the organization to the project by creating a project group membership.
+func (c *Client) CreateProjectGroupMembership(ctx context.Context, projectId string, groupId openapi_types.UUID, body CreateProjectGroupMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateProjectGroupMembershipRequest(c.Server, projectId, groupId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -16706,6 +17286,87 @@ func NewLoginWithUniversalAuthRequestWithBody(server string, contentType string,
 	return req, nil
 }
 
+// NewCreateGroupRequest calls the generic CreateGroup builder with application/json body
+func NewCreateGroupRequest(server string, body CreateGroupJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateGroupRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateGroupRequestWithBody constructs an http.Request for the CreateGroup method, with any body, and a specified content type
+func NewCreateGroupRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/groups")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAddUserToGroupRequest constructs an http.Request for the AddUserToGroup method
+func NewAddUserToGroupRequest(server string, id string, username string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "username", username, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/groups/%s/users/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewCreateMachineIdentityRequest calls the generic CreateMachineIdentity builder with application/json body
 func NewCreateMachineIdentityRequest(server string, body CreateMachineIdentityJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -17231,6 +17892,60 @@ func NewInviteProjectMembersRequestWithBody(server string, projectId string, con
 	}
 
 	operationPath := fmt.Sprintf("/api/v1/projects/%s/memberships", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateProjectGroupMembershipRequest calls the generic CreateProjectGroupMembership builder with application/json body
+func NewCreateProjectGroupMembershipRequest(server string, projectId string, groupId openapi_types.UUID, body CreateProjectGroupMembershipJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateProjectGroupMembershipRequestWithBody(server, projectId, groupId, "application/json", bodyReader)
+}
+
+// NewCreateProjectGroupMembershipRequestWithBody constructs an http.Request for the CreateProjectGroupMembership method, with any body, and a specified content type
+func NewCreateProjectGroupMembershipRequestWithBody(server string, projectId string, groupId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "projectId", projectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "groupId", groupId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/projects/%s/memberships/groups/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -19537,6 +20252,21 @@ type ClientWithResponsesInterface interface {
 	// Login with Universal Auth for machine identity.
 	LoginWithUniversalAuthWithResponse(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginWithUniversalAuthResponse, error)
 
+	// CreateGroupWithBodyWithResponse performs a POST /api/v1/groups (the `CreateGroup` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateGroupWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGroupResponse, error)
+
+	// CreateGroupWithResponse performs a POST /api/v1/groups (the `CreateGroup` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateGroupWithResponse(ctx context.Context, body CreateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGroupResponse, error)
+
+	// AddUserToGroupWithResponse performs a POST /api/v1/groups/{id}/users/{username} (the `AddUserToGroup` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	AddUserToGroupWithResponse(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*AddUserToGroupResponse, error)
+
 	// CreateMachineIdentityWithBodyWithResponse performs a POST /api/v1/identities (the `CreateMachineIdentity` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -19649,6 +20379,20 @@ type ClientWithResponsesInterface interface {
 	//
 	// Invite members to project.
 	InviteProjectMembersWithResponse(ctx context.Context, projectId string, body InviteProjectMembersJSONRequestBody, reqEditors ...RequestEditorFn) (*InviteProjectMembersResponse, error)
+
+	// CreateProjectGroupMembershipWithBodyWithResponse performs a POST /api/v1/projects/{projectId}/memberships/groups/{groupId} (the `CreateProjectGroupMembership` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Add a group from the organization to the project by creating a project group membership.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateProjectGroupMembershipWithBodyWithResponse(ctx context.Context, projectId string, groupId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectGroupMembershipResponse, error)
+
+	// CreateProjectGroupMembershipWithResponse performs a POST /api/v1/projects/{projectId}/memberships/groups/{groupId} (the `CreateProjectGroupMembership` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Add a group from the organization to the project by creating a project group membership.
+	CreateProjectGroupMembershipWithResponse(ctx context.Context, projectId string, groupId openapi_types.UUID, body CreateProjectGroupMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectGroupMembershipResponse, error)
 
 	// CreateProjectIdentityMembershipWithBodyWithResponse performs a POST /api/v1/projects/{projectId}/memberships/identities/{identityId} (the `CreateProjectIdentityMembership` operationId) request,
 	// with any type of body and a specified content type.
@@ -21598,6 +22342,326 @@ func (r LoginWithUniversalAuthResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r LoginWithUniversalAuthResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateGroupResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CreatedAt time.Time          `json:"createdAt"`
+		Id        openapi_types.UUID `json:"id"`
+		Name      string             `json:"name"`
+		OrgId     openapi_types.UUID `json:"orgId"`
+		Slug      string             `json:"slug"`
+		UpdatedAt time.Time          `json:"updatedAt"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                              `json:"details,omitempty"`
+		Error      string                                   `json:"error"`
+		Message    string                                   `json:"message"`
+		ReqId      string                                   `json:"reqId"`
+		StatusCode CreateGroup400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                   `json:"error"`
+		Message    string                                   `json:"message"`
+		ReqId      string                                   `json:"reqId"`
+		StatusCode CreateGroup401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                              `json:"details,omitempty"`
+		Error      string                                   `json:"error"`
+		Message    string                                   `json:"message"`
+		ReqId      string                                   `json:"reqId"`
+		StatusCode CreateGroup403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                   `json:"error"`
+		Message    string                                   `json:"message"`
+		ReqId      string                                   `json:"reqId"`
+		StatusCode CreateGroup404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                   `json:"error"`
+		Message    interface{}                              `json:"message,omitempty"`
+		ReqId      string                                   `json:"reqId"`
+		StatusCode CreateGroup422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                   `json:"error"`
+		Message    string                                   `json:"message"`
+		ReqId      string                                   `json:"reqId"`
+		StatusCode CreateGroup500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateGroupResponse) GetJSON200() *struct {
+	CreatedAt time.Time          `json:"createdAt"`
+	Id        openapi_types.UUID `json:"id"`
+	Name      string             `json:"name"`
+	OrgId     openapi_types.UUID `json:"orgId"`
+	Slug      string             `json:"slug"`
+	UpdatedAt time.Time          `json:"updatedAt"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateGroupResponse) GetJSON400() *struct {
+	Details    interface{}                              `json:"details,omitempty"`
+	Error      string                                   `json:"error"`
+	Message    string                                   `json:"message"`
+	ReqId      string                                   `json:"reqId"`
+	StatusCode CreateGroup400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateGroupResponse) GetJSON401() *struct {
+	Error      string                                   `json:"error"`
+	Message    string                                   `json:"message"`
+	ReqId      string                                   `json:"reqId"`
+	StatusCode CreateGroup401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateGroupResponse) GetJSON403() *struct {
+	Details    interface{}                              `json:"details,omitempty"`
+	Error      string                                   `json:"error"`
+	Message    string                                   `json:"message"`
+	ReqId      string                                   `json:"reqId"`
+	StatusCode CreateGroup403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateGroupResponse) GetJSON404() *struct {
+	Error      string                                   `json:"error"`
+	Message    string                                   `json:"message"`
+	ReqId      string                                   `json:"reqId"`
+	StatusCode CreateGroup404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateGroupResponse) GetJSON422() *struct {
+	Error      string                                   `json:"error"`
+	Message    interface{}                              `json:"message,omitempty"`
+	ReqId      string                                   `json:"reqId"`
+	StatusCode CreateGroup422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateGroupResponse) GetJSON500() *struct {
+	Error      string                                   `json:"error"`
+	Message    string                                   `json:"message"`
+	ReqId      string                                   `json:"reqId"`
+	StatusCode CreateGroup500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateGroupResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateGroupResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateGroupResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateGroupResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AddUserToGroupResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Email     *string            `json:"email,omitempty"`
+		FirstName *string            `json:"firstName,omitempty"`
+		Id        openapi_types.UUID `json:"id"`
+		LastName  *string            `json:"lastName,omitempty"`
+		Username  string             `json:"username"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                 `json:"details,omitempty"`
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode AddUserToGroup400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode AddUserToGroup401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                 `json:"details,omitempty"`
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode AddUserToGroup403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode AddUserToGroup404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                      `json:"error"`
+		Message    interface{}                                 `json:"message,omitempty"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode AddUserToGroup422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode AddUserToGroup500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r AddUserToGroupResponse) GetJSON200() *struct {
+	Email     *string            `json:"email,omitempty"`
+	FirstName *string            `json:"firstName,omitempty"`
+	Id        openapi_types.UUID `json:"id"`
+	LastName  *string            `json:"lastName,omitempty"`
+	Username  string             `json:"username"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r AddUserToGroupResponse) GetJSON400() *struct {
+	Details    interface{}                                 `json:"details,omitempty"`
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode AddUserToGroup400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r AddUserToGroupResponse) GetJSON401() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode AddUserToGroup401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r AddUserToGroupResponse) GetJSON403() *struct {
+	Details    interface{}                                 `json:"details,omitempty"`
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode AddUserToGroup403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r AddUserToGroupResponse) GetJSON404() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode AddUserToGroup404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r AddUserToGroupResponse) GetJSON422() *struct {
+	Error      string                                      `json:"error"`
+	Message    interface{}                                 `json:"message,omitempty"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode AddUserToGroup422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r AddUserToGroupResponse) GetJSON500() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode AddUserToGroup500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r AddUserToGroupResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AddUserToGroupResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AddUserToGroupResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AddUserToGroupResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -23561,6 +24625,209 @@ func (r InviteProjectMembersResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r InviteProjectMembersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateProjectGroupMembershipResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		GroupMembership struct {
+			CreatedAt time.Time `json:"createdAt"`
+			Group     struct {
+				Id    openapi_types.UUID  `json:"id"`
+				Name  string              `json:"name"`
+				OrgId *openapi_types.UUID `json:"orgId,omitempty"`
+				Slug  string              `json:"slug"`
+			} `json:"group"`
+			GroupId   openapi_types.UUID `json:"groupId"`
+			Id        openapi_types.UUID `json:"id"`
+			ProjectId string             `json:"projectId"`
+			Roles     []struct {
+				CreatedAt                *time.Time `json:"createdAt,omitempty"`
+				CustomRoleId             *string    `json:"customRoleId,omitempty"`
+				CustomRoleName           *string    `json:"customRoleName,omitempty"`
+				CustomRoleSlug           *string    `json:"customRoleSlug,omitempty"`
+				Id                       string     `json:"id"`
+				IsTemporary              bool       `json:"isTemporary"`
+				Role                     string     `json:"role"`
+				TemporaryAccessEndTime   *time.Time `json:"temporaryAccessEndTime,omitempty"`
+				TemporaryAccessStartTime *time.Time `json:"temporaryAccessStartTime,omitempty"`
+				TemporaryMode            *string    `json:"temporaryMode,omitempty"`
+				TemporaryRange           *string    `json:"temporaryRange,omitempty"`
+				UpdatedAt                *time.Time `json:"updatedAt,omitempty"`
+			} `json:"roles"`
+			UpdatedAt time.Time `json:"updatedAt"`
+		} `json:"groupMembership"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                               `json:"details,omitempty"`
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode CreateProjectGroupMembership400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode CreateProjectGroupMembership401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                               `json:"details,omitempty"`
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode CreateProjectGroupMembership403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode CreateProjectGroupMembership404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                    `json:"error"`
+		Message    interface{}                                               `json:"message,omitempty"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode CreateProjectGroupMembership422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                    `json:"error"`
+		Message    string                                                    `json:"message"`
+		ReqId      string                                                    `json:"reqId"`
+		StatusCode CreateProjectGroupMembership500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateProjectGroupMembershipResponse) GetJSON200() *struct {
+	GroupMembership struct {
+		CreatedAt time.Time `json:"createdAt"`
+		Group     struct {
+			Id    openapi_types.UUID  `json:"id"`
+			Name  string              `json:"name"`
+			OrgId *openapi_types.UUID `json:"orgId,omitempty"`
+			Slug  string              `json:"slug"`
+		} `json:"group"`
+		GroupId   openapi_types.UUID `json:"groupId"`
+		Id        openapi_types.UUID `json:"id"`
+		ProjectId string             `json:"projectId"`
+		Roles     []struct {
+			CreatedAt                *time.Time `json:"createdAt,omitempty"`
+			CustomRoleId             *string    `json:"customRoleId,omitempty"`
+			CustomRoleName           *string    `json:"customRoleName,omitempty"`
+			CustomRoleSlug           *string    `json:"customRoleSlug,omitempty"`
+			Id                       string     `json:"id"`
+			IsTemporary              bool       `json:"isTemporary"`
+			Role                     string     `json:"role"`
+			TemporaryAccessEndTime   *time.Time `json:"temporaryAccessEndTime,omitempty"`
+			TemporaryAccessStartTime *time.Time `json:"temporaryAccessStartTime,omitempty"`
+			TemporaryMode            *string    `json:"temporaryMode,omitempty"`
+			TemporaryRange           *string    `json:"temporaryRange,omitempty"`
+			UpdatedAt                *time.Time `json:"updatedAt,omitempty"`
+		} `json:"roles"`
+		UpdatedAt time.Time `json:"updatedAt"`
+	} `json:"groupMembership"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateProjectGroupMembershipResponse) GetJSON400() *struct {
+	Details    interface{}                                               `json:"details,omitempty"`
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode CreateProjectGroupMembership400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateProjectGroupMembershipResponse) GetJSON401() *struct {
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode CreateProjectGroupMembership401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateProjectGroupMembershipResponse) GetJSON403() *struct {
+	Details    interface{}                                               `json:"details,omitempty"`
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode CreateProjectGroupMembership403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateProjectGroupMembershipResponse) GetJSON404() *struct {
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode CreateProjectGroupMembership404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateProjectGroupMembershipResponse) GetJSON422() *struct {
+	Error      string                                                    `json:"error"`
+	Message    interface{}                                               `json:"message,omitempty"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode CreateProjectGroupMembership422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateProjectGroupMembershipResponse) GetJSON500() *struct {
+	Error      string                                                    `json:"error"`
+	Message    string                                                    `json:"message"`
+	ReqId      string                                                    `json:"reqId"`
+	StatusCode CreateProjectGroupMembership500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateProjectGroupMembershipResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateProjectGroupMembershipResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateProjectGroupMembershipResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateProjectGroupMembershipResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -31826,6 +33093,39 @@ func (c *ClientWithResponses) LoginWithUniversalAuthWithResponse(ctx context.Con
 	return ParseLoginWithUniversalAuthResponse(rsp)
 }
 
+// CreateGroupWithBodyWithResponse performs a POST /api/v1/groups (the `CreateGroup` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateGroupWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateGroupResponse, error) {
+	rsp, err := c.CreateGroupWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateGroupResponse(rsp)
+}
+
+// CreateGroupWithResponse performs a POST /api/v1/groups (the `CreateGroup` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateGroupWithResponse(ctx context.Context, body CreateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGroupResponse, error) {
+	rsp, err := c.CreateGroup(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateGroupResponse(rsp)
+}
+
+// AddUserToGroupWithResponse performs a POST /api/v1/groups/{id}/users/{username} (the `AddUserToGroup` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) AddUserToGroupWithResponse(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*AddUserToGroupResponse, error) {
+	rsp, err := c.AddUserToGroup(ctx, id, username, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddUserToGroupResponse(rsp)
+}
+
 // CreateMachineIdentityWithBodyWithResponse performs a POST /api/v1/identities (the `CreateMachineIdentity` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -32051,6 +33351,32 @@ func (c *ClientWithResponses) InviteProjectMembersWithResponse(ctx context.Conte
 		return nil, err
 	}
 	return ParseInviteProjectMembersResponse(rsp)
+}
+
+// CreateProjectGroupMembershipWithBodyWithResponse performs a POST /api/v1/projects/{projectId}/memberships/groups/{groupId} (the `CreateProjectGroupMembership` operationId) request,
+// with any type of body and a specified content type.
+//
+// Add a group from the organization to the project by creating a project group membership.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateProjectGroupMembershipWithBodyWithResponse(ctx context.Context, projectId string, groupId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectGroupMembershipResponse, error) {
+	rsp, err := c.CreateProjectGroupMembershipWithBody(ctx, projectId, groupId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateProjectGroupMembershipResponse(rsp)
+}
+
+// CreateProjectGroupMembershipWithResponse performs a POST /api/v1/projects/{projectId}/memberships/groups/{groupId} (the `CreateProjectGroupMembership` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Add a group from the organization to the project by creating a project group membership.
+func (c *ClientWithResponses) CreateProjectGroupMembershipWithResponse(ctx context.Context, projectId string, groupId openapi_types.UUID, body CreateProjectGroupMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectGroupMembershipResponse, error) {
+	rsp, err := c.CreateProjectGroupMembership(ctx, projectId, groupId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateProjectGroupMembershipResponse(rsp)
 }
 
 // CreateProjectIdentityMembershipWithBodyWithResponse performs a POST /api/v1/projects/{projectId}/memberships/identities/{identityId} (the `CreateProjectIdentityMembership` operationId) request,
@@ -33861,6 +35187,219 @@ func ParseLoginWithUniversalAuthResponse(rsp *http.Response) (*LoginWithUniversa
 	return response, nil
 }
 
+// ParseCreateGroupResponse parses an HTTP response from a CreateGroupWithResponse call
+func ParseCreateGroupResponse(rsp *http.Response) (*CreateGroupResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateGroupResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CreatedAt time.Time          `json:"createdAt"`
+			Id        openapi_types.UUID `json:"id"`
+			Name      string             `json:"name"`
+			OrgId     openapi_types.UUID `json:"orgId"`
+			Slug      string             `json:"slug"`
+			UpdatedAt time.Time          `json:"updatedAt"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                              `json:"details,omitempty"`
+			Error      string                                   `json:"error"`
+			Message    string                                   `json:"message"`
+			ReqId      string                                   `json:"reqId"`
+			StatusCode CreateGroup400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                   `json:"error"`
+			Message    string                                   `json:"message"`
+			ReqId      string                                   `json:"reqId"`
+			StatusCode CreateGroup401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                              `json:"details,omitempty"`
+			Error      string                                   `json:"error"`
+			Message    string                                   `json:"message"`
+			ReqId      string                                   `json:"reqId"`
+			StatusCode CreateGroup403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                   `json:"error"`
+			Message    string                                   `json:"message"`
+			ReqId      string                                   `json:"reqId"`
+			StatusCode CreateGroup404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                   `json:"error"`
+			Message    interface{}                              `json:"message,omitempty"`
+			ReqId      string                                   `json:"reqId"`
+			StatusCode CreateGroup422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                   `json:"error"`
+			Message    string                                   `json:"message"`
+			ReqId      string                                   `json:"reqId"`
+			StatusCode CreateGroup500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAddUserToGroupResponse parses an HTTP response from a AddUserToGroupWithResponse call
+func ParseAddUserToGroupResponse(rsp *http.Response) (*AddUserToGroupResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AddUserToGroupResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Email     *string            `json:"email,omitempty"`
+			FirstName *string            `json:"firstName,omitempty"`
+			Id        openapi_types.UUID `json:"id"`
+			LastName  *string            `json:"lastName,omitempty"`
+			Username  string             `json:"username"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                 `json:"details,omitempty"`
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode AddUserToGroup400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode AddUserToGroup401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                 `json:"details,omitempty"`
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode AddUserToGroup403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode AddUserToGroup404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    interface{}                                 `json:"message,omitempty"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode AddUserToGroup422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode AddUserToGroup500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseCreateMachineIdentityResponse parses an HTTP response from a CreateMachineIdentityWithResponse call
 func ParseCreateMachineIdentityResponse(rsp *http.Response) (*CreateMachineIdentityResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -35123,6 +36662,134 @@ func ParseInviteProjectMembersResponse(rsp *http.Response) (*InviteProjectMember
 			Message    string                                            `json:"message"`
 			ReqId      string                                            `json:"reqId"`
 			StatusCode InviteProjectMembers500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateProjectGroupMembershipResponse parses an HTTP response from a CreateProjectGroupMembershipWithResponse call
+func ParseCreateProjectGroupMembershipResponse(rsp *http.Response) (*CreateProjectGroupMembershipResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateProjectGroupMembershipResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			GroupMembership struct {
+				CreatedAt time.Time `json:"createdAt"`
+				Group     struct {
+					Id    openapi_types.UUID  `json:"id"`
+					Name  string              `json:"name"`
+					OrgId *openapi_types.UUID `json:"orgId,omitempty"`
+					Slug  string              `json:"slug"`
+				} `json:"group"`
+				GroupId   openapi_types.UUID `json:"groupId"`
+				Id        openapi_types.UUID `json:"id"`
+				ProjectId string             `json:"projectId"`
+				Roles     []struct {
+					CreatedAt                *time.Time `json:"createdAt,omitempty"`
+					CustomRoleId             *string    `json:"customRoleId,omitempty"`
+					CustomRoleName           *string    `json:"customRoleName,omitempty"`
+					CustomRoleSlug           *string    `json:"customRoleSlug,omitempty"`
+					Id                       string     `json:"id"`
+					IsTemporary              bool       `json:"isTemporary"`
+					Role                     string     `json:"role"`
+					TemporaryAccessEndTime   *time.Time `json:"temporaryAccessEndTime,omitempty"`
+					TemporaryAccessStartTime *time.Time `json:"temporaryAccessStartTime,omitempty"`
+					TemporaryMode            *string    `json:"temporaryMode,omitempty"`
+					TemporaryRange           *string    `json:"temporaryRange,omitempty"`
+					UpdatedAt                *time.Time `json:"updatedAt,omitempty"`
+				} `json:"roles"`
+				UpdatedAt time.Time `json:"updatedAt"`
+			} `json:"groupMembership"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                               `json:"details,omitempty"`
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode CreateProjectGroupMembership400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode CreateProjectGroupMembership401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                               `json:"details,omitempty"`
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode CreateProjectGroupMembership403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode CreateProjectGroupMembership404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    interface{}                                               `json:"message,omitempty"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode CreateProjectGroupMembership422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                    `json:"error"`
+			Message    string                                                    `json:"message"`
+			ReqId      string                                                    `json:"reqId"`
+			StatusCode CreateProjectGroupMembership500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

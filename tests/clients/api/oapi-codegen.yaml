@@ -77,3 +77,6 @@ output-options:
     - reviewSecretApprovalRequest
     - updateSecretApprovalRequestStatus
     - mergeSecretApprovalRequest
+    - createGroup
+    - addUserToGroup
+    - createProjectGroupMembership
