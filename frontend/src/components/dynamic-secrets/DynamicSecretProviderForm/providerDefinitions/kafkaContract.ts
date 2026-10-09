@@ -67,7 +67,10 @@ export type TKafkaFormInputs = z.input<typeof kafkaCreateInputsSchema>;
 export type TKafkaFormValues = TDynamicSecretProviderFormValues<TKafkaFormInputs>;
 
 export const kafkaCreateFormSchema = createDynamicSecretProviderFormSchema(
-  kafkaCreateInputsSchema
+  kafkaCreateInputsSchema,
+  {
+    usernameTemplateSchema: z.string().trim().nullable().optional()
+  }
 ) as z.ZodType<TKafkaFormValues>;
 export const kafkaEditFormSchema = editDynamicSecretProviderFormSchema(kafkaEditInputsSchema, {
   usernameTemplateSchema: z.string().trim().nullable().optional()
