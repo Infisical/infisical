@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 
 import { createFakeWebhookServer, TFakeWebhookServer } from "e2e-test/fakes/webhook-destination";
+import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
 import { Knex } from "knex";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "vitest";
 
 import { TableName } from "@app/db/schemas";
-import { seedData1 } from "@app/db/seed-data";
 import { auditLogStreamDALFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-dal";
 import { LogProvider, StreamMode } from "@app/ee/services/audit-log-stream/audit-log-stream-enums";
 import {
@@ -25,6 +25,12 @@ import { eventOutboxServiceFactory } from "@app/services/event-outbox/event-outb
 
 declare const testDb: Knex;
 
+// This is an integration test, not an end-to-end one: it builds the outbox service on the test
+// database and calls it directly, so it never goes through the HTTP API. Streams are created with
+// the test DB because the e2e license has audit log streams off and nothing over HTTP triggers a
+// drain or exposes a stream's failing state. The org is a fresh isolated one, deleted at the end,
+// which cascades to its streams and outbox rows.
+//
 // Unit tests mock the DAL, so they cannot show that the stream health flip, the dropped rows and the
 // alert event really commit or roll back together, that two workers racing for the same drop emit
 // once, or that a receiver answering 500 ends in a failing stream. Real Postgres and a real HTTP
@@ -32,7 +38,8 @@ declare const testDb: Knex;
 // one that exhausts them, and the tests call the service and DAL directly instead of going through the
 // 5s flush debounce.
 
-const ORG_ID = seedData1.organization.id;
+let orgId: string;
+let cleanupOrg: () => Promise<void>;
 const CONSUMER = `e2e-als-${randomUUID().slice(0, 8)}`;
 const LAST_ATTEMPT = 4;
 
@@ -75,18 +82,15 @@ const service = auditLogStreamOutboxServiceFactory({
   eventEmitter
 });
 
-const createdStreamIds: string[] = [];
-
 const createStream = async (url: string) => {
   const encryptedCredentials = await encryptLogStreamCredentials({
-    orgId: ORG_ID,
+    orgId,
     credentials: { url, headers: [] },
     kmsService: kmsService as never
   });
   const [stream] = await testDb(TableName.AuditLogStream)
-    .insert({ orgId: ORG_ID, provider: LogProvider.Custom, encryptedCredentials, streamMode: StreamMode.Batch })
+    .insert({ orgId, provider: LogProvider.Custom, encryptedCredentials, streamMode: StreamMode.Batch })
     .returning("*");
-  createdStreamIds.push(stream.id);
   return stream as { id: string };
 };
 
@@ -98,9 +102,9 @@ const seedRow = async (
   const [row] = await testDb(TableName.AuditLogStreamOutbox)
     .insert({
       streamId,
-      orgId: ORG_ID,
+      orgId,
       auditLogId,
-      payload: JSON.stringify({ id: auditLogId, orgId: ORG_ID, eventType: "e2e.event" }),
+      payload: JSON.stringify({ id: auditLogId, orgId, eventType: "e2e.event" }),
       status: overrides.status ?? AuditLogStreamOutboxStatus.Pending,
       attempts: overrides.attempts ?? 0,
       nextRetryAt: new Date(Date.now() - 1_000),
@@ -115,16 +119,9 @@ const streamHealth = (id: string) =>
   testDb(TableName.AuditLogStream).where({ id }).first("failingSince", "lastDeliveryError");
 const events = () => testDb(TableName.EventOutbox).where({ consumer: CONSUMER }).orderBy("id", "asc").select("*");
 
-const drain = (streamId: string) => service.drainStream({ streamId, orgId: ORG_ID, provider: LogProvider.Custom });
+const drain = (streamId: string) => service.drainStream({ streamId, orgId, provider: LogProvider.Custom });
 
-const cleanup = async () => {
-  await testDb(TableName.EventOutbox).where({ consumer: CONSUMER }).del();
-  if (createdStreamIds.length > 0) {
-    await testDb(TableName.AuditLogStreamOutbox).whereIn("streamId", createdStreamIds).del();
-    await testDb(TableName.AuditLogStream).whereIn("id", createdStreamIds).del();
-    createdStreamIds.length = 0;
-  }
-};
+const cleanupEvents = () => testDb(TableName.EventOutbox).where({ consumer: CONSUMER }).del();
 
 describe("audit log stream outbox (postgres)", () => {
   beforeAll(async () => {
@@ -132,10 +129,14 @@ describe("audit log stream outbox (postgres)", () => {
     // outbox service and the providers read have to be initialized here as well.
     initLogger();
     await initEnvConfig(testHsmService, testKmsRootConfigDAL, testSuperAdminDAL, logger);
-    await cleanup();
+    ({ orgId, cleanup: cleanupOrg } = await createIsolatedOrgAndProject("audit-log-stream-outbox-e2e"));
+    await cleanupEvents();
   });
-  afterEach(cleanup);
-  afterAll(cleanup);
+  afterEach(cleanupEvents);
+  afterAll(async () => {
+    await cleanupEvents();
+    await cleanupOrg();
+  });
 
   describe("stream health and the alert event commit with the drop", () => {
     test("markStreamFailing flips a healthy stream exactly once under concurrent workers", async () => {
@@ -175,7 +176,7 @@ describe("audit log stream outbox (postgres)", () => {
           await emitAuditLogStreamDeliveryFailed(
             eventEmitter,
             {
-              orgId: ORG_ID,
+              orgId,
               streamId: stream.id,
               provider: LogProvider.Custom,
               errorMessage: "boom",
@@ -254,7 +255,7 @@ describe("audit log stream outbox (postgres)", () => {
       expect(emitted).toHaveLength(1);
       expect(emitted[0].eventType).toBe(AUDIT_LOG_STREAM_DELIVERY_FAILED_EVENT);
       expect(emitted[0].payload).toMatchObject({
-        orgId: ORG_ID,
+        orgId,
         resourceType: "audit-log.stream",
         resourceId: null,
         targetIds: [stream.id],
