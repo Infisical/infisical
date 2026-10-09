@@ -1148,7 +1148,7 @@ export const DynamicSecretKafkaSchema = z.object({
     .nativeEnum(KafkaSaslMechanism)
     .describe("SASL mechanism Infisical uses to authenticate as the admin user"),
   username: z.string().trim().min(1).max(255).describe("Admin username used to manage SCRAM users and ACLs"),
-  password: z.string().trim().min(1).max(1024).describe("Admin password used to manage SCRAM users and ACLs"),
+  password: z.string().min(1).max(1024).describe("Admin password used to manage SCRAM users and ACLs"),
   acls: z
     .array(
       z
@@ -1171,7 +1171,7 @@ export const DynamicSecretKafkaSchema = z.object({
     .min(1)
     .describe("ACLs granted to each lease user"),
   sslEnabled: z.boolean().default(false),
-  ca: z.string().optional(),
+  ca: z.string().max(10240).optional(),
   sslRejectUnauthorized: z.boolean().default(true)
 });
 

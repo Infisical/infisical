@@ -8,6 +8,7 @@ import {
   createAclsV3,
   deleteAclsV3,
   describeAclsV3,
+  describeUserScramCredentialsV0,
   metadataV9,
   ProtocolError,
   ResourcePatternTypes,
@@ -75,6 +76,7 @@ const mockedVerifyHost = vi.mocked(verifyHostInputValidity);
 const apiVersions = vi.spyOn(apiVersionsV3.api, "async");
 const metadataRequest = vi.spyOn(metadataV9.api, "async");
 const describeAcls = vi.spyOn(describeAclsV3.api, "async");
+const describeScramCredentials = vi.spyOn(describeUserScramCredentialsV0.api, "async");
 const createAcls = vi.spyOn(createAclsV3.api, "async");
 const deleteAcls = vi.spyOn(deleteAclsV3.api, "async");
 const alterScramCredentials = vi.spyOn(alterUserScramCredentialsV0.api, "async");
@@ -122,8 +124,17 @@ const baseInputs = {
 
 const metadata = { projectId: "proj-1" };
 
-const createArgs = (inputs: object = baseInputs) => ({
+const failoverInputs = {
+  ...baseInputs,
+  bootstrapServers: [
+    { host: "kafka-1.internal", port: 9092 },
+    { host: "kafka-2.internal", port: 9093 }
+  ]
+};
+
+const createArgs = (inputs: object = baseInputs, usernameTemplate?: string) => ({
   inputs,
+  usernameTemplate,
   expireAt: Date.now() + 60_000,
   identity: { name: "tester" },
   dynamicSecret: {} as TDynamicSecrets,
@@ -141,7 +152,8 @@ beforeEach(() => {
   FakeConnection.unreachablePorts.clear();
   mockedVerifyHost.mockImplementation(({ host }) => Promise.resolve([RESOLVED_IPS[host] ?? host]));
   apiVersions.mockResolvedValue(kraftCluster as never);
-  describeAcls.mockResolvedValue([] as never);
+  describeAcls.mockResolvedValue({ resources: [] } as never);
+  describeScramCredentials.mockRejectedValue(new ProtocolError("RESOURCE_NOT_FOUND"));
   createAcls.mockResolvedValue([] as never);
   deleteAcls.mockResolvedValue([] as never);
   alterScramCredentials.mockResolvedValue({} as never);
@@ -171,21 +183,22 @@ describe("KafkaProvider.validateConnection", () => {
   test("tries the bootstrap servers in order and checks every host", async () => {
     FakeConnection.unreachablePorts.add(9092);
 
-    await expect(
-      KafkaProvider().validateConnection(
-        {
-          ...baseInputs,
-          bootstrapServers: [
-            { host: "kafka-1.internal", port: 9092 },
-            { host: "kafka-2.internal", port: 9093 }
-          ]
-        },
-        metadata
-      )
-    ).resolves.toBe(true);
+    await expect(KafkaProvider().validateConnection(failoverInputs, metadata)).resolves.toBe(true);
 
     expect(mockedVerifyHost).toHaveBeenCalledWith({ host: "kafka-1.internal", isDynamicSecret: true });
     expect(mockedVerifyHost).toHaveBeenCalledWith({ host: "kafka-2.internal", isDynamicSecret: true });
+    expect(connectedTo(describeAcls.mock.calls[0][0])).toBe("10.0.0.2:9093");
+  });
+
+  test("moves on to the next bootstrap server when a host doesn't resolve", async () => {
+    mockedVerifyHost.mockImplementation(({ host }) =>
+      host === "kafka-1.internal"
+        ? Promise.reject(new Error("Could not resolve host"))
+        : Promise.resolve([RESOLVED_IPS[host]])
+    );
+
+    await expect(KafkaProvider().validateConnection(failoverInputs, metadata)).resolves.toBe(true);
+
     expect(connectedTo(describeAcls.mock.calls[0][0])).toBe("10.0.0.2:9093");
   });
 
@@ -295,6 +308,34 @@ describe("KafkaProvider.create", () => {
       [{ name: username, mechanism: ScramMechanisms.SCRAM_SHA_256 }],
       [{ name: username, mechanism: ScramMechanisms.SCRAM_SHA_512 }]
     ]);
+  });
+
+  test("still deletes the credentials when deleting the ACLs fails during cleanup", async () => {
+    createAcls.mockRejectedValue(new ProtocolError("CLUSTER_AUTHORIZATION_FAILED"));
+    deleteAcls.mockRejectedValue(new ProtocolError("CLUSTER_AUTHORIZATION_FAILED"));
+
+    await expect(KafkaProvider().create(createArgs())).rejects.toThrow("Failed to create lease from provider");
+
+    const username = alterScramCredentials.mock.calls[0][2][0].name;
+    expect(alterScramCredentials.mock.calls.slice(2).map(([, deletions]) => deletions)).toEqual([
+      [{ name: username, mechanism: ScramMechanisms.SCRAM_SHA_256 }],
+      [{ name: username, mechanism: ScramMechanisms.SCRAM_SHA_512 }]
+    ]);
+  });
+
+  test.each([
+    ["has SCRAM credentials", () => describeScramCredentials.mockResolvedValue({ results: [] } as never), undefined],
+    ["has ACLs", () => describeAcls.mockResolvedValue({ resources: [{}] } as never), undefined],
+    ["is the admin user", () => undefined, "admin"]
+  ])("refuses a username that %s without changing it", async (_case, setUp, usernameTemplate) => {
+    setUp();
+
+    await expect(KafkaProvider().create(createArgs(baseInputs, usernameTemplate))).rejects.toThrow(
+      "A Kafka user with the generated username already exists"
+    );
+    expect(alterScramCredentials).not.toHaveBeenCalled();
+    expect(createAcls).not.toHaveBeenCalled();
+    expect(deleteAcls).not.toHaveBeenCalled();
   });
 });
 

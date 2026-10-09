@@ -13,6 +13,7 @@ import {
   createAclsV3,
   deleteAclsV3,
   describeAclsV3,
+  describeUserScramCredentialsV0,
   findErrorBy,
   metadataV9,
   ResourcePatternTypes,
@@ -77,7 +78,11 @@ const getErrorMessage = (err: unknown): string => {
 
 const deleteKafkaUser = async (connection: Connection, username: string) => {
   // ACLs go first: deleting the credential only blocks new logins, while open connections lose access with their ACLs
-  await deleteAclsV3.api.async(connection, [getPrincipalAclFilter(username)]);
+  const aclError = await deleteAclsV3.api.async(connection, [getPrincipalAclFilter(username)]).then(
+    () => null,
+    (err: Error) => err
+  );
+  // The credentials are deleted even if the ACLs couldn't be, since a failed create leaves no lease to retry from.
   // One request per credential, as Kafka requires; a credential already gone counts as deleted so that a
   // revoke retried after a partial failure, or a cleanup after a partial create, can still finish
   await Promise.all(
@@ -87,16 +92,35 @@ const deleteKafkaUser = async (connection: Connection, username: string) => {
       })
     )
   );
+  if (aclError) throw aclError;
+};
+
+// Writing credentials for an existing user would hand the lease that user's ACLs or super user rights, and revoking
+// the lease would then delete them
+const assertNewKafkaUser = async (connection: Connection, username: string, adminUsername: string) => {
+  const hasScramCredentials = () =>
+    describeUserScramCredentialsV0.api.async(connection, [{ name: username }]).then(
+      () => true,
+      (err: Error) => {
+        if (findErrorBy(err, "apiId", "RESOURCE_NOT_FOUND")) return false;
+        throw err;
+      }
+    );
+  const hasAcls = async () =>
+    (await describeAclsV3.api.async(connection, getPrincipalAclFilter(username))).resources.length > 0;
+
+  if (username === adminUsername || (await hasScramCredentials()) || (await hasAcls())) {
+    throw new BadRequestError({
+      message:
+        "A Kafka user with the generated username already exists. Use a username template that generates a unique name for each lease, such as one that includes {{randomUsername}}."
+    });
+  }
 };
 
 export const KafkaProvider = (): TDynamicProviderFns => {
-  const validateProviderInputs = async (inputs: unknown) => {
-    const providerInputs = await DynamicSecretKafkaSchema.parseAsync(inputs);
-    await Promise.all(
-      providerInputs.bootstrapServers.map(({ host }) => verifyHostInputValidity({ host, isDynamicSecret: true }))
-    );
-    return providerInputs;
-  };
+  // Hosts are checked in $withConnection right before each connection, so a bootstrap server that doesn't resolve
+  // falls through to the next one instead of failing the whole operation
+  const validateProviderInputs = async (inputs: unknown) => DynamicSecretKafkaSchema.parseAsync(inputs);
 
   // KRaft brokers forward admin requests to the controller, so the configured broker is enough. ZooKeeper
   // clusters only accept SCRAM changes on the controller itself, so there every request goes to it instead.
@@ -107,7 +131,7 @@ export const KafkaProvider = (): TDynamicProviderFns => {
     sensitiveTokens: string[] = []
   ) => {
     const connections: Connection[] = [];
-    // the controller's address comes from the broker, so every host gets the same checks before connecting
+    // every host is checked right before connecting, including the controller's address, which comes from the broker
     const connect = async (host: string, port: number) => {
       const [hostIp] = await verifyHostInputValidity({ host, isDynamicSecret: true });
       const connection = new Connection("infisical", {
@@ -222,6 +246,7 @@ export const KafkaProvider = (): TDynamicProviderFns => {
       providerInputs,
       "Failed to create lease from provider",
       async (connection) => {
+        await assertNewKafkaUser(connection, username, providerInputs.username);
         try {
           // Kafka accepts one credential change per user per request
           await Promise.all(

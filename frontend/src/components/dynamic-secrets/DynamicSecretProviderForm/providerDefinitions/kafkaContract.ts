@@ -34,9 +34,15 @@ const aclSchema = z.object({
   permissionType: z.nativeEnum(KafkaAclPermissionType)
 });
 
+const PORT_RANGE_MESSAGE = "Port must be a whole number from 1 to 65535";
+
 const bootstrapServerSchema = z.object({
   host: z.string().trim().min(1, "Host is required"),
-  port: z.coerce.number()
+  port: z.coerce
+    .number()
+    .int(PORT_RANGE_MESSAGE)
+    .min(1, PORT_RANGE_MESSAGE)
+    .max(65535, PORT_RANGE_MESSAGE)
 });
 
 export const kafkaCreateInputsSchema = z.object({
@@ -45,10 +51,10 @@ export const kafkaCreateInputsSchema = z.object({
     .min(1, "At least one bootstrap server is required"),
   saslMechanism: z.nativeEnum(KafkaSaslMechanism),
   username: z.string().trim().min(1),
-  password: z.string().trim().min(1),
+  password: z.string().min(1),
   acls: z.array(aclSchema).min(1, "At least one ACL is required"),
   sslEnabled: z.boolean().default(false),
-  ca: z.string().optional(),
+  ca: z.string().max(10240).optional(),
   sslRejectUnauthorized: z.boolean().default(true)
 });
 
