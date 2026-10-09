@@ -33,7 +33,6 @@ describe("auditActorFields", () => {
     ).toEqual({ groupId: "group-1", groupName: "platform" });
   });
 
-  // An actor deleted between the write and the name lookup still has to be recorded by id.
   test("still records the id when the name could not be resolved", () => {
     expect(auditActorFields({ type: AgentVaultMemberType.Group, id: "group-1" })).toEqual({
       groupId: "group-1",
