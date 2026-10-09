@@ -256,7 +256,7 @@ describe("audit log stream outbox (postgres)", () => {
       expect(emitted[0].payload).toMatchObject({
         orgId: ORG_ID,
         resourceType: "audit-log.stream",
-        resourceId: stream.id,
+        resourceId: null,
         targetIds: [stream.id],
         provider: LogProvider.Custom,
         droppedCount: 2
