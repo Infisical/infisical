@@ -1664,15 +1664,22 @@ describe("Agent Vault V1 Router", async () => {
       expect(row?.role).toBe("member");
       expect(row?.name).toBeTruthy();
 
-      const promoted = await inject("PATCH", `${membersUrl}/machine-identities/${identity.id}`, { role: "admin" });
+      const promoted = await inject("PATCH", membersUrl, { machineIdentityIds: [identity.id], role: "admin" });
       expect(promoted.statusCode).toBe(200);
-      expect(JSON.parse(promoted.payload).member).toMatchObject({
-        type: "machineIdentity",
-        id: identity.id,
-        role: "admin"
+      expect(JSON.parse(promoted.payload)).toMatchObject({
+        members: [{ type: "machineIdentity", id: identity.id, role: "admin" }],
+        skipped: []
       });
 
-      const removed = await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
+      // Asking for the role a member already holds changes nothing, so it is reported as skipped.
+      const unchanged = await inject("PATCH", membersUrl, { machineIdentityIds: [identity.id], role: "admin" });
+      expect(unchanged.statusCode).toBe(200);
+      expect(JSON.parse(unchanged.payload)).toMatchObject({
+        members: [],
+        skipped: [{ type: "machineIdentity", id: identity.id }]
+      });
+
+      const removed = await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] });
       expect(removed.statusCode).toBe(200);
       expect(JSON.parse(removed.payload)).toEqual({
         members: [{ type: "machineIdentity", id: identity.id }],
@@ -1681,7 +1688,7 @@ describe("Agent Vault V1 Router", async () => {
 
       // A second revoke has nothing to remove, so it reports the actor as skipped rather than failing:
       // that is what makes the call safe to retry.
-      const again = await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
+      const again = await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] });
       expect(again.statusCode).toBe(200);
       expect(JSON.parse(again.payload)).toEqual({
         members: [],
@@ -1760,9 +1767,7 @@ describe("Agent Vault V1 Router", async () => {
 
       expect(await grantRows(bundle.id, { actorIdentityId: identity.id })).toHaveLength(1);
 
-      expect((await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] })).statusCode).toBe(
-        200
-      );
+      expect((await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] })).statusCode).toBe(200);
 
       expect(await grantRows(bundle.id, { actorIdentityId: identity.id })).toHaveLength(0);
 
@@ -1859,7 +1864,7 @@ describe("Agent Vault V1 Router", async () => {
 
         // Revoking each of these on its own would pass the guard, because the other two are still
         // standing. Naming all three in one call is what the batch check exists for.
-        const refused = await inject("POST", `${membersUrl}/revoke`, {
+        const refused = await inject("DELETE", membersUrl, {
           userIds: [seedData1.id],
           machineIdentityIds: [one.id, two.id]
         });
@@ -1867,7 +1872,7 @@ describe("Agent Vault V1 Router", async () => {
 
         // It refuses on the self check before it reaches the admin count, so take the caller out and the
         // batch still cannot go through.
-        const withoutSelf = await inject("POST", `${membersUrl}/revoke`, {
+        const withoutSelf = await inject("DELETE", membersUrl, {
           machineIdentityIds: [one.id, two.id]
         });
         expect(withoutSelf.statusCode).toBe(200);
@@ -1886,7 +1891,7 @@ describe("Agent Vault V1 Router", async () => {
           (await inject("POST", membersUrl, { machineIdentityIds: [identity.id], role: "member" })).statusCode
         ).toBe(200);
 
-        const refused = await inject("POST", `${membersUrl}/revoke`, {
+        const refused = await inject("DELETE", membersUrl, {
           userIds: [seedData1.id],
           machineIdentityIds: [identity.id]
         });
@@ -1897,7 +1902,7 @@ describe("Agent Vault V1 Router", async () => {
         const listed = await listMembers("actorType=machineIdentity");
         expect(listed.members.some((member) => member.id === identity.id)).toBe(true);
       } finally {
-        await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
+        await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] });
         await deleteOrgIdentity(identity.id);
       }
     });
@@ -1935,9 +1940,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(afterAdd.totalCount).toBe(before.totalCount - 1);
 
         // Revoking puts it back, so the list tracks membership rather than caching it.
-        expect((await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] })).statusCode).toBe(
-          200
-        );
+        expect((await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] })).statusCode).toBe(200);
         const afterRevoke = await listAvailable("limit=100");
         expect(idsOf(afterRevoke.actors)).toContain(identity.id);
         expect(afterRevoke.totalCount).toBe(before.totalCount);
@@ -1955,7 +1958,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(firstPage.actors).toHaveLength(1);
         expect(firstPage.totalCount).toBe(before.totalCount);
       } finally {
-        await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
+        await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] });
         await group.cleanup();
         await deleteOrgIdentity(identity.id);
       }
@@ -1999,7 +2002,7 @@ describe("Agent Vault V1 Router", async () => {
     });
 
     test("the guards that keep the product administrable hold", async () => {
-      const self = await inject("POST", `${membersUrl}/revoke`, { userIds: [seedData1.id] });
+      const self = await inject("DELETE", membersUrl, { userIds: [seedData1.id] });
       expect(self.statusCode).toBe(403);
 
       const unknown = await inject("POST", membersUrl, {
@@ -2016,13 +2019,16 @@ describe("Agent Vault V1 Router", async () => {
         skipped: [{ type: "user", id: seedData1.id }]
       });
 
-      const badRole = await inject("PATCH", `${membersUrl}/users/${seedData1.id}`, { role: "viewer" });
+      const badRole = await inject("PATCH", membersUrl, { userIds: [seedData1.id], role: "viewer" });
       expect(badRole.statusCode).toBe(422);
 
-      const badSegment = await inject("PATCH", `${membersUrl}/identities/${seedData1.id}`, { role: "member" });
-      expect(badSegment.statusCode).toBe(422);
+      const noActors = await inject("PATCH", membersUrl, { role: "member" });
+      expect(noActors.statusCode).toBe(422);
 
-      const notAnId = await inject("POST", `${membersUrl}/revoke`, { userIds: ["not-a-uuid"] });
+      const selfInBatch = await inject("PATCH", membersUrl, { userIds: [seedData1.id], role: "member" });
+      expect(selfInBatch.statusCode).toBe(403);
+
+      const notAnId = await inject("DELETE", membersUrl, { userIds: ["not-a-uuid"] });
       expect(notAnId.statusCode).toBe(422);
     });
   });
@@ -2067,7 +2073,7 @@ describe("Agent Vault V1 Router", async () => {
         ],
         // The bundle is the path resource, so a missing one is still 404 even though a missing actor in
         // the body is reported as skipped.
-        ["POST", `/api/v1/agent-vault/access-bundles/${unknown}/members/revoke`, { userIds: [seedData1.id] }]
+        ["DELETE", `/api/v1/agent-vault/access-bundles/${unknown}/members`, { userIds: [seedData1.id] }]
       ];
 
       for await (const [method, url, body] of routes) {
@@ -3427,7 +3433,8 @@ describe("Agent Vault V1 Router", async () => {
 
         await Promise.all(
           [one, two].map((identity) =>
-            inject("PATCH", `/api/v1/agent-vault/members/machine-identities/${identity.id}`, {
+            inject("PATCH", "/api/v1/agent-vault/members", {
+              machineIdentityIds: [identity.id],
               role: ProjectMembershipRole.Member
             })
           )
@@ -3447,7 +3454,6 @@ describe("Agent Vault V1 Router", async () => {
     });
 
     test("an actor from outside the organization is refused, and an unknown id does not 500", async () => {
-      // Users join through the bulk route; only groups and identities are named in the URL.
       const stranger = await inject("POST", "/api/v1/agent-vault/members", {
         userIds: ["99999999-8888-7777-6666-555555555555"],
         emails: [],
@@ -3561,7 +3567,7 @@ describe("Agent Vault V1 Router", async () => {
 
         expect(
           (
-            await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members/revoke`, {
+            await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
               groupIds: [group.id]
             })
           ).statusCode
@@ -3757,7 +3763,7 @@ describe("Agent Vault V1 Router", async () => {
 
         expect(
           (
-            await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members/revoke`, {
+            await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
               groupIds: [group.id]
             })
           ).statusCode
@@ -3814,7 +3820,7 @@ describe("Agent Vault V1 Router", async () => {
 
         const stillGranted = async () => (await grantRows(held.id, { actorGroupId: group.id })).length;
         const revoke = (accessBundleId: string, body: Record<string, unknown>) =>
-          inject("POST", `/api/v1/agent-vault/access-bundles/${accessBundleId}/members/revoke`, body);
+          inject("DELETE", `/api/v1/agent-vault/access-bundles/${accessBundleId}/members`, body);
 
         // Every miss below is a 200 with the actor reported in skipped, not a 404: a batch cannot fail
         // wholesale on one absent id and stay useful, and the grant it does not name has to survive.
@@ -3873,7 +3879,7 @@ describe("Agent Vault V1 Router", async () => {
       // The actor holds a project membership but no grant on this bundle, so the revoke reports it as
       // skipped and, crucially, leaves the project membership alone. That is the property this test
       // defends: the two scopes share one table, so a revoke that lost its scope filter would take it.
-      const refused = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members/revoke`, {
+      const refused = await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
         machineIdentityIds: [identity.id]
       });
       expect(refused.statusCode).toBe(200);

@@ -4463,6 +4463,8 @@ export const AGENT_VAULT = {
     identifier: "The ID or email address the request named, echoed back so a reply can be matched to it.",
     addSkipped: "The requested members who already had access to Agent Vault and were left as they were.",
     revokeSkipped: "The requested members who did not have access to Agent Vault, so nothing was removed.",
+    updateSkipped:
+      "The requested members who did not have access to Agent Vault or already had the role, so nothing was changed.",
     actorTypeFilter: "List only users, only groups or only machine identities.",
     search: "Match members by name, username or email address.",
     limit: "The maximum number of members to return.",

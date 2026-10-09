@@ -93,7 +93,6 @@ const buildService = ({
       find: vi
         .fn()
         .mockResolvedValue(adminMembershipIds.map((id) => ({ membershipId: id, role: ProjectMembershipRole.Admin }))),
-      create: vi.fn(({ role }: { role: string }) => Promise.resolve({ role })),
       insertMany: vi.fn().mockResolvedValue(undefined),
       delete: vi.fn().mockResolvedValue(undefined)
     },
@@ -365,30 +364,59 @@ describe("agentVaultMembership guards", () => {
     const { service, deps } = buildService();
 
     await expect(
-      service.updateProductMemberRole({
+      service.updateProductMemberRoles({
         projectId: PROJECT_ID,
-        actor: { type: AgentVaultMemberType.User, id: ACTOR_ID },
+        userIds: [OTHER_USER_ID, ACTOR_ID],
+        groupIds: [],
+        machineIdentityIds: [],
         role: ProjectMembershipRole.Member,
         ctx
       })
     ).rejects.toThrow("your own role");
 
-    expect(deps.membershipRoleDAL.create).not.toHaveBeenCalled();
+    expect(deps.membershipRoleDAL.insertMany).not.toHaveBeenCalled();
   });
 
   test("still changes someone else's role", async () => {
-    const { service } = buildService({
+    const { service, deps } = buildService({
       productMemberships: [{ id: "mem-1" }],
       adminMembershipIds: ["mem-other"]
     });
 
-    const { member } = await service.updateProductMemberRole({
+    const { members, skipped } = await service.updateProductMemberRoles({
       projectId: PROJECT_ID,
-      actor: { type: AgentVaultMemberType.MachineIdentity, id: IDENTITY_ID },
+      userIds: [],
+      groupIds: [],
+      machineIdentityIds: [IDENTITY_ID],
       role: ProjectMembershipRole.Member,
       ctx
     });
 
-    expect(member.role).toBe(ProjectMembershipRole.Member);
+    expect(members).toMatchObject([{ type: AgentVaultMemberType.MachineIdentity, role: ProjectMembershipRole.Member }]);
+    expect(skipped).toEqual([]);
+    expect(deps.membershipRoleDAL.insertMany).toHaveBeenCalledWith(
+      [{ membershipId: "mem-1", role: ProjectMembershipRole.Member }],
+      expect.anything()
+    );
+  });
+
+  test("skips a member who already has the role instead of rewriting it", async () => {
+    const { service, deps } = buildService({
+      productMemberships: [{ id: "mem-other" }],
+      adminMembershipIds: ["mem-other"]
+    });
+
+    const { members, skipped } = await service.updateProductMemberRoles({
+      projectId: PROJECT_ID,
+      userIds: [],
+      groupIds: [],
+      machineIdentityIds: [IDENTITY_ID],
+      role: ProjectMembershipRole.Admin,
+      ctx
+    });
+
+    expect(members).toEqual([]);
+    expect(skipped).toMatchObject([{ type: AgentVaultMemberType.MachineIdentity, id: IDENTITY_ID }]);
+    expect(deps.membershipRoleDAL.delete).not.toHaveBeenCalled();
   });
 });

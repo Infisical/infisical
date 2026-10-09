@@ -863,8 +863,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
   });
 
   server.route({
-    method: "POST",
-    url: "/:accessBundleId/members/revoke",
+    method: "DELETE",
+    url: "/:accessBundleId/members",
     config: { rateLimit: writeLimit },
     schema: {
       hide: false,

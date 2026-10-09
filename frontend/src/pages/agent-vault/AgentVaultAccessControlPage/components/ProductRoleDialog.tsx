@@ -13,11 +13,18 @@ import {
   FieldContent,
   FieldLabel
 } from "@app/components/v3";
-import { useUpdateAgentVaultMemberRole } from "@app/hooks/api/agentVault";
-import { TAgentVaultProductMember } from "@app/hooks/api/agentVault/types";
+import { useUpdateAgentVaultMemberRoles } from "@app/hooks/api/agentVault";
+import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
+import { TAgentVaultActorIdsDTO, TAgentVaultProductMember } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProductRoleField } from "./ProductRoleField";
+
+const ACTOR_IDS_KEY: Record<AgentVaultMemberType, keyof TAgentVaultActorIdsDTO> = {
+  [AgentVaultMemberType.User]: "userIds",
+  [AgentVaultMemberType.Group]: "groupIds",
+  [AgentVaultMemberType.MachineIdentity]: "machineIdentityIds"
+};
 
 type Props = {
   member: Pick<TAgentVaultProductMember, "type" | "id" | "role"> | null;
@@ -26,7 +33,7 @@ type Props = {
 };
 
 export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
-  const updateRole = useUpdateAgentVaultMemberRole();
+  const updateRole = useUpdateAgentVaultMemberRoles();
   const currentRole = member?.role ?? ProjectMembershipRole.Member;
   const [role, setRole] = useState(currentRole);
 
@@ -38,7 +45,7 @@ export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
     try {
       // Guarded here, not by returning null, so the exit animation still runs.
       if (!member) return;
-      await updateRole.mutateAsync({ actor: member, role });
+      await updateRole.mutateAsync({ [ACTOR_IDS_KEY[member.type]]: [member.id], role });
       createNotification({
         text: `${subject} is now ${role === "admin" ? "an Admin" : "a Member"}`,
         type: "success"

@@ -19,18 +19,10 @@ import {
   AgentVaultProductMemberAddSchema,
   AgentVaultProductMemberIdsSchema,
   AgentVaultProductMemberRefSchema,
+  AgentVaultProductMemberRoleUpdateSchema,
   AgentVaultProductMemberSchema,
-  AgentVaultProductRoleSchema,
   AgentVaultSkippedActorSchema
 } from "./agent-vault-schemas";
-
-const ACTOR_TYPE_SEGMENTS = ["users", "groups", "machine-identities"] as const;
-
-const ACTOR_TYPE_OF: Record<(typeof ACTOR_TYPE_SEGMENTS)[number], AgentVaultMemberType> = {
-  users: AgentVaultMemberType.User,
-  groups: AgentVaultMemberType.Group,
-  "machine-identities": AgentVaultMemberType.MachineIdentity
-};
 
 export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -140,60 +132,64 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
 
   server.route({
     method: "PATCH",
-    url: "/:actorType/:actorId",
+    url: "/",
     config: { rateLimit: writeLimit },
     schema: {
       hide: false,
-      operationId: "updateAgentVaultMemberRole",
-      description: "Change a member's Agent Vault role",
+      operationId: "updateAgentVaultMemberRoles",
+      description: "Change the Agent Vault role of users, groups and machine identities",
       tags: [ApiDocsTags.AgentVaultMembers],
-      params: z.object({
-        actorType: z.enum(ACTOR_TYPE_SEGMENTS).describe(AGENT_VAULT.MEMBER.actorType),
-        actorId: z.string().uuid().describe(AGENT_VAULT.MEMBER.actorId)
-      }),
-      body: z.object({ role: AgentVaultProductRoleSchema }),
-      response: { 200: z.object({ member: AgentVaultProductMemberRefSchema }) }
+      body: AgentVaultProductMemberRoleUpdateSchema,
+      response: {
+        200: z.object({
+          members: AgentVaultProductMemberRefSchema.array(),
+          skipped: AgentVaultActorRefSchema.array().describe(AGENT_VAULT.MEMBERSHIP.updateSkipped)
+        })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const actor = { type: ACTOR_TYPE_OF[req.params.actorType], id: req.params.actorId };
-      const { member } = await server.services.agentVaultMembership.updateProductMemberRole({
+      const { members, skipped } = await server.services.agentVaultMembership.updateProductMemberRoles({
         projectId: req.internalAgentVaultProjectId,
-        actor,
-        role: req.body.role,
+        ...req.body,
         ctx: actorContext(req)
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
-        event: {
-          type: EventType.AGENT_VAULT_MEMBER_UPDATE,
-          metadata: {
-            ...auditActorFields(member),
-            role: member.role
-          }
-        }
-      });
+      await Promise.all(
+        members.map((member) =>
+          server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            orgId: req.permission.orgId,
+            projectId: req.internalAgentVaultProjectId,
+            event: {
+              type: EventType.AGENT_VAULT_MEMBER_UPDATE,
+              metadata: {
+                ...auditActorFields(member),
+                role: member.role
+              }
+            }
+          })
+        )
+      );
 
-      emitAgentVaultTelemetry(server.services.telemetry, req, {
-        event: PostHogEventTypes.AgentVaultProductMemberUpdated,
-        properties: { memberType: member.type, role: member.role }
-      });
+      members.forEach((member) =>
+        emitAgentVaultTelemetry(server.services.telemetry, req, {
+          event: PostHogEventTypes.AgentVaultProductMemberUpdated,
+          properties: { memberType: member.type, role: member.role }
+        })
+      );
 
-      return { member };
+      return { members, skipped };
     }
   });
 
   server.route({
-    method: "POST",
-    url: "/revoke",
+    method: "DELETE",
+    url: "/",
     config: { rateLimit: writeLimit },
     schema: {
       hide: false,
       operationId: "revokeAgentVaultMembers",
-      // A deliberate REST deviation: DELETE cannot carry a body reliably, so bulk removal is a named action.
       description: "Remove members from Agent Vault, and with them every bundle they hold",
       tags: [ApiDocsTags.AgentVaultMembers],
       body: AgentVaultProductMemberIdsSchema,
