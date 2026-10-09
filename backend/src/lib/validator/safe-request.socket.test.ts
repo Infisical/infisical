@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { LookupAllOptions } from "node:dns";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 
@@ -14,7 +15,8 @@ import { buildSsrfSafeAgent } from "./safe-request";
 // or Docker, and never opens a socket to anything other than 127.0.0.1 (the
 // control test does a single DNS lookup of an RFC 6761 `.invalid` name, which
 // resolves nowhere and contacts no real external host).
-const { configState } = vi.hoisted(() => ({
+const { configState, validationAnswer } = vi.hoisted(() => ({
+  validationAnswer: { address: "127.0.0.1" },
   configState: {
     isDevelopmentMode: false,
     // Allow the loopback address to pass validation so we can pin to it.
@@ -25,6 +27,15 @@ const { configState } = vi.hoisted(() => ({
     DB_HOST: "internal-db"
   }
 }));
+
+vi.mock("node:dns/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:dns/promises")>();
+  const lookup = (hostname: string, options: LookupAllOptions) =>
+    hostname === "pinned-rebind.invalid"
+      ? Promise.resolve([{ address: validationAnswer.address, family: 4 }])
+      : actual.lookup(hostname, options);
+  return { ...actual, lookup, default: { ...actual, lookup } };
+});
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => configState
@@ -96,18 +107,23 @@ describe("safe-request real-socket pinning", () => {
     });
   });
 
-  it("pins the connection to the validated IP even when the connect-time hostname differs (anti-rebinding)", async () => {
-    // The agent was validated/pinned against 127.0.0.1. We then issue a request
-    // to a different, unresolvable hostname reusing that agent, simulating a
-    // DNS record that flipped between validation and connect. Because the pinned
-    // lookup ignores connect-time DNS, the socket still lands on the loopback
-    // server. If pinning were bypassed, this would fail with ENOTFOUND (proven
-    // by the control test above).
-    const agent = await buildSsrfSafeAgent(`http://127.0.0.1:${port}`, { keepAlive: false });
+  it("pins the connection to the validated IP when connect-time DNS for the same hostname differs (anti-rebinding)", async () => {
+    validationAnswer.address = "127.0.0.1";
+    const agent = await buildSsrfSafeAgent(`http://pinned-rebind.invalid:${port}`, { keepAlive: false });
 
     const res = await httpGet({ hostname: "pinned-rebind.invalid", port, path: "/rebind", agent });
 
     expect(res.status).toBe(200);
     expect(receivedPaths).toContain("/rebind");
+  });
+
+  it("resolves hostnames other than the validated one normally, so a forward proxy is reached at its own address", async () => {
+    validationAnswer.address = "192.0.2.1";
+    const agent = await buildSsrfSafeAgent(`http://pinned-rebind.invalid:${port}`, { keepAlive: false });
+
+    const res = await httpGet({ hostname: "localhost", port, path: "/proxy-host", agent });
+
+    expect(res.status).toBe(200);
+    expect(receivedPaths).toContain("/proxy-host");
   });
 });
