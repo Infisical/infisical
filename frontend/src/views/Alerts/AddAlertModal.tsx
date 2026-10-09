@@ -1,11 +1,12 @@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@app/components/v3";
-import { AlertEventType, TAlert } from "@app/hooks/api/alerts";
+import { AlertEventType, AlertResourceType, TAlert } from "@app/hooks/api/alerts";
 
 import { AlertForm } from "./AlertForm";
 
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  resourceType: AlertResourceType;
   projectId?: string;
   resourceId?: string;
   alert?: TAlert;
@@ -15,6 +16,7 @@ type Props = {
 export const AddAlertModal = ({
   isOpen,
   onOpenChange,
+  resourceType,
   projectId,
   resourceId,
   alert,
@@ -34,6 +36,7 @@ export const AddAlertModal = ({
         {isOpen && (
           <AlertForm
             key={alert?.id ?? "new"}
+            resourceType={resourceType}
             projectId={projectId}
             resourceId={resourceId}
             alert={alert}

@@ -251,6 +251,8 @@ import { alertProviderRegistryFactory } from "@app/services/alert/alert-provider
 import { alertQueueServiceFactory } from "@app/services/alert/alert-queue";
 import { alertRecipientResolverFactory } from "@app/services/alert/alert-recipient-resolver";
 import { alertServiceFactory } from "@app/services/alert/alert-service";
+import { auditLogStreamAlertDALFactory } from "@app/services/alert/providers/audit-log-stream-alert-dal";
+import { auditLogStreamAlertProviderFactory } from "@app/services/alert/providers/audit-log-stream-alert-provider";
 import { certManagerAlertProviderFactory } from "@app/services/alert/providers/cert-manager-alert-provider";
 import { certManagerApplicationAlertProviderFactory } from "@app/services/alert/providers/cert-manager-application-alert-provider";
 import { certManagerCertificateAlertDALFactory } from "@app/services/alert/providers/cert-manager-certificate-alert-dal";
@@ -1112,6 +1114,12 @@ export const registerRoutes = async (
     })
   );
   alertProviderRegistry.register(
+    auditLogStreamAlertProviderFactory({
+      auditLogStreamAlertDAL: auditLogStreamAlertDALFactory(db),
+      permissionService
+    })
+  );
+  alertProviderRegistry.register(
     secretReminderAlertProviderFactory({
       secretReminderAlertDAL: secretReminderAlertDALFactory(db),
       folderDAL,
@@ -1244,7 +1252,8 @@ export const registerRoutes = async (
     projectDAL,
     kmsService,
     keyStore,
-    queueService
+    queueService,
+    eventEmitter: eventOutboxService
   });
 
   const auditLogStreamOutboxQueue = auditLogStreamOutboxQueueFactory({

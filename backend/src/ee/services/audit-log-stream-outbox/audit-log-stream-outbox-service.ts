@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TAuditLogs } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { chunkArray } from "@app/lib/fn";
@@ -7,12 +9,14 @@ import {
   auditLogStreamDeliveryExhaustedCounter
 } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { chunkAuditLogsByBatchLimit } from "../audit-log-stream/audit-log-stream-batching";
 import { TAuditLogStreamDALFactory } from "../audit-log-stream/audit-log-stream-dal";
 import { LogProvider, StreamMode } from "../audit-log-stream/audit-log-stream-enums";
+import { emitAuditLogStreamDeliveryFailed } from "../audit-log-stream/audit-log-stream-events";
 import { LOG_STREAM_FACTORY_MAP } from "../audit-log-stream/audit-log-stream-factory";
 import {
   auditLogMatchesStreamFilter,
@@ -21,6 +25,8 @@ import {
   streamHasProductFilter
 } from "../audit-log-stream/audit-log-stream-fns";
 import { TAuditLogStreamFilters } from "../audit-log-stream/audit-log-stream-schemas";
+import { TAuditLogStreamCredentials } from "../audit-log-stream/audit-log-stream-types";
+import { FLUSH_DEBOUNCE_MS, MAX_ATTEMPTS } from "./audit-log-stream-outbox-constants";
 import { TAuditLogStreamOutboxDALFactory } from "./audit-log-stream-outbox-dal";
 import {
   TAuditLogStreamFlushJobData,
@@ -28,15 +34,9 @@ import {
   TFailedStreamRow
 } from "./audit-log-stream-outbox-types";
 
-// Debounce window: first writer for a stream enqueues a flush job delayed by this many ms.
-// Subsequent writers within the window are absorbed by the same job (SETNX is a no-op for them).
-const FLUSH_DEBOUNCE_MS = 5_000;
-const FLUSH_DEBOUNCE_SECONDS = Math.ceil(FLUSH_DEBOUNCE_MS / 1_000);
-
 // Worker drain settings.
 const BATCH_SIZE = 500;
 const MAX_BATCHES_PER_JOB = 10; // hard cap so one job can't monopolize the worker
-const MAX_ATTEMPTS = 5;
 // Single mode sends one request per row, so a full claim is up to BATCH_SIZE serial
 // POSTs. Dispatch them in parallel waves of this size instead — bounded so we don't
 // open BATCH_SIZE concurrent connections to a legacy webhook receiver at once.
@@ -50,6 +50,12 @@ const BACKOFF_BASE_MS = 30_000;
 // hold time is MAX_BATCHES_PER_JOB × AUDIT_LOG_STREAM_BATCH_TIMEOUT ≈ 5 min.
 // Anything older than this can't be a live worker.
 export const STALE_CLAIM_THRESHOLD_MS = 10 * 60_000;
+const STALE_SWEEP_BATCH_SIZE = 1_000;
+const STALE_SWEEP_MAX_BATCHES = 10;
+// Shown to customers in the delivery-failed alert, where a stale claim has no provider error to report.
+const STALE_CLAIM_DROP_MESSAGE = "Events were dropped because the delivery worker stopped during their final attempt.";
+const STREAM_CREDENTIALS_DECRYPT_MESSAGE =
+  "Could not decrypt this stream's credentials. Check that the organization's KMS key is available, then update the stream's credentials.";
 
 // Retention for 'delivered' outbox rows. The row is the dedup guard against a
 // re-fanout from the ingest consumer (e.g. after a Redis streamTrim failure),
@@ -74,6 +80,7 @@ export type TAuditLogStreamOutboxServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   queueService: TQueueServiceFactory;
+  eventEmitter: TEventEmitter;
 };
 
 export type TAuditLogStreamOutboxServiceFactory = {
@@ -89,7 +96,8 @@ export const auditLogStreamOutboxServiceFactory = ({
   projectDAL,
   kmsService,
   keyStore,
-  queueService
+  queueService,
+  eventEmitter
 }: TAuditLogStreamOutboxServiceFactoryDep): TAuditLogStreamOutboxServiceFactory => {
   // Try to win the 5s SETNX debounce for a stream and, on win, enqueue a delayed
   // flush job on the shared outbox queue (provider is carried in the payload and read
@@ -97,7 +105,7 @@ export const auditLogStreamOutboxServiceFactory = ({
   // window — there's nothing for the caller to do.
   const debounceAndEnqueueFlush = async (streamId: string, orgId: string, provider: LogProvider): Promise<boolean> => {
     const debounceKey = KeyStorePrefixes.AuditLogStreamFlushDebounce(streamId);
-    const acquired = await keyStore.setItemWithExpiryNX(debounceKey, FLUSH_DEBOUNCE_SECONDS, "1");
+    const acquired = await keyStore.setItemWithExpiryNX(debounceKey, Math.ceil(FLUSH_DEBOUNCE_MS / 1_000), "1");
     if (!acquired) return false;
 
     try {
@@ -197,6 +205,49 @@ export const auditLogStreamOutboxServiceFactory = ({
     );
   };
 
+  // Only the healthy -> failing edge emits: markStreamFailing returns null when the stream is already
+  // failing (or gone), so a stream that stays down does not page again on every drain.
+  const flagStreamFailing = async (
+    {
+      streamId,
+      orgId,
+      provider,
+      errorMessage,
+      droppedCount
+    }: { streamId: string; orgId: string; provider: string | null; errorMessage: string; droppedCount: number },
+    tx: Knex
+  ) => {
+    // Delivery errors are short axios or network messages, so this is only a guard: the event outbox
+    // rejects payloads over 16KB, and a throw from emit here would roll back the drop and leave the
+    // stream unflagged with no alert.
+    const boundedError = errorMessage.slice(0, 500);
+
+    // A savepoint, so a failed flag or emit rolls back on its own instead of taking the drop (or the
+    // sweeper's whole batch) with it. A plain try/catch is not enough: a failed insert aborts the
+    // outer transaction and its next statement fails with 25P02. The flag and the event roll back
+    // together, so the stream stays healthy and the next drop tries again.
+    try {
+      await tx.transaction(async (savepoint) => {
+        const failingSince = await auditLogStreamOutboxDAL.markStreamFailing(
+          { streamId, errorMessage: boundedError },
+          savepoint
+        );
+        if (!failingSince) return;
+
+        await emitAuditLogStreamDeliveryFailed(
+          eventEmitter,
+          { orgId, streamId, provider, errorMessage: boundedError, droppedCount, failingSince },
+          savepoint
+        );
+      });
+    } catch (error) {
+      logger.error(
+        error,
+        `audit-log-stream-outbox: failed to flag stream as failing, no alert was sent [streamId=${streamId}] [orgId=${orgId}] [provider=${provider}]`
+      );
+    }
+  };
+
   // Worker entrypoint. Loops claim→send→ack while there are still rows pending
   // for this stream, but bounded by MAX_BATCHES_PER_JOB so one wedged stream
   // can't hold the worker hostage. If rows remain when we bail, the next event
@@ -214,11 +265,25 @@ export const auditLogStreamOutboxServiceFactory = ({
       return;
     }
 
-    const credentials = await decryptLogStreamCredentials({
-      encryptedCredentials: stream.encryptedCredentials,
-      orgId: stream.orgId,
-      kmsService
-    });
+    // A stream whose credentials can't be decrypted (eg its org KMS key is broken) goes through the
+    // same claim, retry, drop and alert path as a failing endpoint. Throwing here instead would leave
+    // its rows unclaimed, so they would never use up their attempts and nobody would be told.
+    let credentials: TAuditLogStreamCredentials = {} as TAuditLogStreamCredentials;
+    let credentialsError: Error | null = null;
+    try {
+      credentials = await decryptLogStreamCredentials({
+        encryptedCredentials: stream.encryptedCredentials,
+        orgId: stream.orgId,
+        kmsService
+      });
+    } catch (error) {
+      // This message reaches the alert and the stream's lastDeliveryError, so the KMS detail stays in the log.
+      logger.error(
+        error,
+        `audit-log-stream-outbox: failed to decrypt stream credentials [streamId=${streamId}] [orgId=${orgId}] [provider=${provider}]`
+      );
+      credentialsError = new Error(STREAM_CREDENTIALS_DECRYPT_MESSAGE);
+    }
 
     const providerImpl = factory();
 
@@ -243,6 +308,7 @@ export const auditLogStreamOutboxServiceFactory = ({
           "audit_log_stream.provider": provider
         };
         try {
+          if (credentialsError) throw credentialsError;
           if (isSingleMode) {
             if (!providerImpl.streamLog) {
               throw new Error(`provider '${provider}' does not support single stream mode`);
@@ -330,11 +396,30 @@ export const auditLogStreamOutboxServiceFactory = ({
         });
       }
 
+      // The state flip and the alert event commit with the drop itself, so an alert is never lost
+      // or sent for rows that are still retrying.
+      // The clear runs on every clean batch rather than when the stream was read as failing: that
+      // read comes from a replica and can lag, and a missed clear would silence the next outage.
+      const droppedRows = exhausted.length > 0;
+      const shouldClearFailing = streamFail.length === 0 && streamSuccess.length > 0;
       // eslint-disable-next-line no-await-in-loop
-      await auditLogStreamOutboxDAL.commitDeliveryResult({
-        successIds: streamSuccess.map((row) => row.id),
-        retriable: retriableInput,
-        exhaustedIds: exhausted.map((failed) => failed.row.id)
+      await auditLogStreamOutboxDAL.transaction(async (tx) => {
+        await auditLogStreamOutboxDAL.commitDeliveryResult(
+          {
+            successIds: streamSuccess.map((row) => row.id),
+            retriable: retriableInput,
+            exhaustedIds: exhausted.map((failed) => failed.row.id)
+          },
+          tx
+        );
+        if (droppedRows) {
+          await flagStreamFailing(
+            { streamId, orgId, provider, errorMessage: exhausted[0].errorMessage, droppedCount: exhausted.length },
+            tx
+          );
+        } else if (shouldClearFailing) {
+          await auditLogStreamOutboxDAL.clearStreamFailing(streamId, tx);
+        }
       });
 
       if (streamFail.length > 0) {
@@ -367,33 +452,65 @@ export const auditLogStreamOutboxServiceFactory = ({
   //   - the SETNX debounce key inside debounceAndEnqueueFlush;
   //   - claimBatchForStream's FOR UPDATE SKIP LOCKED + atomic flip to 'processing'
   //     so even concurrent workers claim disjoint rows.
-  const sweepStaleClaims = async () => {
-    const { retried, dropped } = await auditLogStreamOutboxDAL.recoverStaleClaims(
-      STALE_CLAIM_THRESHOLD_MS,
-      MAX_ATTEMPTS
-    );
-    if (retried > 0 || dropped.length > 0) {
-      logger.warn(
-        `audit-log-stream-outbox: recovered stale claims [retried=${retried}] [dropped=${dropped.length}] [thresholdMs=${STALE_CLAIM_THRESHOLD_MS}]`
+  // Stale claims that used up their attempts are dropped (no DLQ), so they flag the stream and emit
+  // the alert event in the same transaction as the delete, exactly like a drop on the delivery path.
+  // The provider is resolved by the DAL and is null only when the stream itself is already gone,
+  // which is one of the reasons a claim goes stale; markStreamFailing then matches no row and
+  // nothing is emitted.
+  const recoverStaleClaimBatch = () =>
+    auditLogStreamOutboxDAL.transaction(async (tx) => {
+      const recovered = await auditLogStreamOutboxDAL.recoverStaleClaims(
+        STALE_CLAIM_THRESHOLD_MS,
+        MAX_ATTEMPTS,
+        STALE_SWEEP_BATCH_SIZE,
+        tx
       );
-    }
-    if (dropped.length > 0) {
-      // Stale claims that used up their attempts are dropped (no DLQ); count them alongside
-      // delivery-path exhaustions so both losses show up on the same counter, keyed the same way.
-      // The provider is resolved by the DAL and is null only when the stream itself is already gone,
-      // which is one of the reasons a claim goes stale.
-      const droppedCountByStream = new Map<string, { provider: string | null; count: number }>();
-      for (const { streamId, provider } of dropped) {
-        const existing = droppedCountByStream.get(streamId);
+
+      const droppedByStream = new Map<string, { orgId: string; provider: string | null; count: number }>();
+      for (const { streamId, orgId, provider } of recovered.dropped) {
+        const existing = droppedByStream.get(streamId);
         if (existing) existing.count += 1;
-        else droppedCountByStream.set(streamId, { provider, count: 1 });
+        else droppedByStream.set(streamId, { orgId, provider, count: 1 });
       }
-      for (const [streamId, { provider, count }] of droppedCountByStream) {
+
+      for (const [streamId, { orgId, provider, count }] of droppedByStream) {
+        // eslint-disable-next-line no-await-in-loop
+        await flagStreamFailing(
+          { streamId, orgId, provider, errorMessage: STALE_CLAIM_DROP_MESSAGE, droppedCount: count },
+          tx
+        );
+      }
+
+      return { retried: recovered.retried, dropped: recovered.dropped.length, droppedByStream };
+    });
+
+  const sweepStaleClaims = async () => {
+    let retried = 0;
+    let dropped = 0;
+    // Each batch is its own transaction so a backlog left by a worker outage never holds more than one
+    // batch of row locks at a time. Whatever is left past the cap is picked up by the next sweep.
+    for (let batch = 0; batch < STALE_SWEEP_MAX_BATCHES; batch += 1) {
+      // eslint-disable-next-line no-await-in-loop -- batches must run serially to stay paced
+      const outcome = await recoverStaleClaimBatch();
+      retried += outcome.retried;
+      dropped += outcome.dropped;
+
+      // Counted alongside delivery-path exhaustions so both losses show up on the same counter, keyed
+      // the same way.
+      for (const [streamId, { provider, count }] of outcome.droppedByStream) {
         auditLogStreamDeliveryExhaustedCounter.add(count, {
           "audit_log_stream.id": streamId,
           ...(provider && { "audit_log_stream.provider": provider })
         });
       }
+
+      if (outcome.retried + outcome.dropped < STALE_SWEEP_BATCH_SIZE) break;
+    }
+
+    if (retried > 0 || dropped > 0) {
+      logger.warn(
+        `audit-log-stream-outbox: recovered stale claims [retried=${retried}] [dropped=${dropped}] [thresholdMs=${STALE_CLAIM_THRESHOLD_MS}]`
+      );
     }
 
     const overdueStreams = await auditLogStreamOutboxDAL.findStreamsWithOverdueRows();
