@@ -136,6 +136,12 @@ import {
   TValidateConvexConnectionCredentialsSchema
 } from "./convex";
 import {
+  TCoolifyConnection,
+  TCoolifyConnectionConfig,
+  TCoolifyConnectionInput,
+  TValidateCoolifyConnectionCredentialsSchema
+} from "./coolify";
+import {
   TDatabricksConnection,
   TDatabricksConnectionConfig,
   TDatabricksConnectionInput,
@@ -612,6 +618,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TDaytonaConnection
   | TStripeConnection
   | THpeIloConnection
+  | TCoolifyConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -711,6 +718,7 @@ export type TAppConnectionInput = { id: string } & (
   | TDaytonaConnectionInput
   | TStripeConnectionInput
   | THpeIloConnectionInput
+  | TCoolifyConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -843,7 +851,8 @@ export type TAppConnectionConfig =
   | TSpaceliftConnectionConfig
   | TDaytonaConnectionConfig
   | TStripeConnectionConfig
-  | THpeIloConnectionConfig;
+  | THpeIloConnectionConfig
+  | TCoolifyConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -933,7 +942,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSpaceliftConnectionCredentialsSchema
   | TValidateDaytonaConnectionCredentialsSchema
   | TValidateStripeConnectionCredentialsSchema
-  | TValidateHpeIloConnectionCredentialsSchema;
+  | TValidateHpeIloConnectionCredentialsSchema
+  | TValidateCoolifyConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

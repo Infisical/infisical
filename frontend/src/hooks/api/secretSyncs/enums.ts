@@ -48,7 +48,8 @@ export enum SecretSync {
   Qovery = "qovery",
   Cloud66 = "cloud-66",
   Spacelift = "spacelift",
-  Daytona = "daytona"
+  Daytona = "daytona",
+  Coolify = "coolify"
 }
 
 export enum SecretSyncStatus {

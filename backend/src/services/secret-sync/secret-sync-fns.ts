@@ -55,6 +55,7 @@ import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare
 import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
 import { CLOUDFLARE_SECRETS_STORE_SYNC_LIST_OPTION, CloudflareSecretsStoreSyncFns } from "./cloudflare-secrets-store";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
+import { COOLIFY_SYNC_LIST_OPTION, CoolifySyncFns } from "./coolify";
 import { DAYTONA_SYNC_LIST_OPTION, DaytonaSyncFns } from "./daytona";
 import { DEVIN_SYNC_LIST_OPTION, DevinSyncFns } from "./devin";
 import {
@@ -146,7 +147,8 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Qovery]: QOVERY_SYNC_LIST_OPTION,
   [SecretSync.Cloud66]: CLOUD66_SYNC_LIST_OPTION,
   [SecretSync.Spacelift]: SPACELIFT_SYNC_LIST_OPTION,
-  [SecretSync.Daytona]: DAYTONA_SYNC_LIST_OPTION
+  [SecretSync.Daytona]: DAYTONA_SYNC_LIST_OPTION,
+  [SecretSync.Coolify]: COOLIFY_SYNC_LIST_OPTION
 };
 
 export const listSecretSyncOptions = () => {
@@ -401,6 +403,8 @@ export const SecretSyncFns = {
         return SpaceliftSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Daytona:
         return DaytonaSyncFns.syncSecrets(secretSync, payload);
+      case SecretSync.Coolify:
+        return CoolifySyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -582,6 +586,9 @@ export const SecretSyncFns = {
       case SecretSync.Daytona:
         secretMap = await DaytonaSyncFns.getSecrets();
         break;
+      case SecretSync.Coolify:
+        secretMap = await CoolifySyncFns.getSecrets(secretSync);
+        break;
       default:
         throw new Error(
           `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
@@ -718,6 +725,8 @@ export const SecretSyncFns = {
         return SpaceliftSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Daytona:
         return DaytonaSyncFns.removeSecrets(secretSync, payload);
+      case SecretSync.Coolify:
+        return CoolifySyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
         throw new Error(
           `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
