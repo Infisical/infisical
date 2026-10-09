@@ -3197,7 +3197,8 @@ export const secretServiceFactory = ({
       const destinationFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
         projectId,
         destinationFolder.environment.slug,
-        destinationFolder.path
+        destinationFolder.path,
+        tx
       );
 
       if (shouldApplyPolicy(destinationFolderPolicy, actor)) {
@@ -3317,7 +3318,8 @@ export const secretServiceFactory = ({
       const sourceFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
         projectId,
         sourceFolder.environment.slug,
-        sourceFolder.path
+        sourceFolder.path,
+        tx
       );
 
       if (shouldApplyPolicy(sourceFolderPolicy, actor)) {

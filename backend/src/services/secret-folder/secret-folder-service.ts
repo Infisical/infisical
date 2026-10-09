@@ -720,7 +720,8 @@ export const secretFolderServiceFactory = ({
       const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(
         projectId,
         env.slug,
-        folderPolicyPath.path
+        folderPolicyPath.path,
+        tx
       );
 
       // if there is an enforced policy and there are secrets under the given folder, throw error

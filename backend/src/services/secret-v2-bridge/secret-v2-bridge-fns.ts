@@ -1853,7 +1853,8 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
   const destinationFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
     projectId,
     destinationFolder.environment.slug,
-    destinationFolder.path
+    destinationFolder.path,
+    tx
   );
 
   let destinationSecretIdByKey: Record<string, string | undefined> = {};
@@ -2042,7 +2043,8 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
   const sourceFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
     projectId,
     sourceFolder.environment.slug,
-    sourceFolder.path
+    sourceFolder.path,
+    tx
   );
 
   if (shouldApplyPolicy(sourceFolderPolicy, actor)) {
