@@ -50,3 +50,30 @@ output-options:
     - deleteSecretV4
     - getSecretByNameV4
     - listSecretsV4
+    - updateSecretV4
+    - getSecretByIdV4
+    - moveSecretsV4
+    - duplicateSecretV4
+    - createManySecretsV4
+    - updateManySecretsV4
+    - deleteManySecretsV4
+    - getSecretReferencesV4
+    - getSecretReferenceTreeV4
+    - createSecretFolder
+    - createSecretTag
+    - createSecretImport
+    - createIdentityFolderAccess
+    - updateOrganization
+    - createProjectFolderGrant
+    - deleteProjectFolderGrant
+    - createSecretApprovalPolicy
+    - updateSecretApprovalPolicy
+    - deleteSecretApprovalPolicy
+    - getSecretApprovalPolicy
+    - getSecretApprovalPolicyBoard
+    - listSecretApprovalRequests
+    - getSecretApprovalRequestCount
+    - getSecretApprovalRequest
+    - reviewSecretApprovalRequest
+    - updateSecretApprovalRequestStatus
+    - mergeSecretApprovalRequest
