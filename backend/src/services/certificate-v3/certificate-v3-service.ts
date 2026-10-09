@@ -564,7 +564,7 @@ export const certificateV3ServiceFactory = ({
     actorOrgId,
     projectId,
     profileId,
-    authorized,
+    authorized = true,
     error,
     metadata
   }: {
@@ -572,7 +572,7 @@ export const certificateV3ServiceFactory = ({
     actorOrgId: string;
     projectId?: string;
     profileId?: string | null;
-    authorized: boolean;
+    authorized?: boolean;
     error: unknown;
     metadata: Omit<
       Parameters<typeof recordCertificateIssuanceFailure>[1]["metadata"],
@@ -617,20 +617,17 @@ export const certificateV3ServiceFactory = ({
     }
   };
 
-  const $issueCertificateFromProfile = async (
-    {
-      profileId,
-      certificateRequest,
-      metadata,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      removeRootsFromChain,
-      applicationId: explicitApplicationId
-    }: TIssueCertificateFromProfileDTO,
-    onAuthorized: () => void = () => {}
-  ): Promise<TCertificateIssuanceResponse> => {
+  const $issueCertificateFromProfile = async ({
+    profileId,
+    certificateRequest,
+    metadata,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    removeRootsFromChain,
+    applicationId: explicitApplicationId
+  }: TIssueCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
     const profile = await validateProfileAndPermissions({
       profileId,
       actor,
@@ -644,7 +641,6 @@ export const certificateV3ServiceFactory = ({
       isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
       applicationId: explicitApplicationId
     });
-    onAuthorized();
 
     const applicationId = await $resolveApplicationIdForProfile(
       profile,
@@ -1356,26 +1352,23 @@ export const certificateV3ServiceFactory = ({
     };
   };
 
-  const $signCertificateFromProfile = async (
-    {
-      profileId,
-      csr,
-      validity,
-      notBefore,
-      notAfter,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      enrollmentType,
-      metadata,
-      removeRootsFromChain,
-      basicConstraints,
-      applicationId: explicitApplicationId,
-      acmeOrderId
-    }: TSignCertificateFromProfileDTO,
-    onAuthorized: () => void = () => {}
-  ): Promise<TCertificateIssuanceResponse> => {
+  const $signCertificateFromProfile = async ({
+    profileId,
+    csr,
+    validity,
+    notBefore,
+    notAfter,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    enrollmentType,
+    metadata,
+    removeRootsFromChain,
+    basicConstraints,
+    applicationId: explicitApplicationId,
+    acmeOrderId
+  }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
     const profile = await validateProfileAndPermissions({
       profileId,
       actor,
@@ -1389,7 +1382,6 @@ export const certificateV3ServiceFactory = ({
       isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
       applicationId: explicitApplicationId
     });
-    onAuthorized();
     const applicationId = await $resolveApplicationIdForProfile(
       profile,
       explicitApplicationId,
@@ -1854,19 +1846,16 @@ export const certificateV3ServiceFactory = ({
     };
   };
 
-  const $orderCertificate = async (
-    {
-      profileId,
-      certificateOrder,
-      metadata,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      applicationId: explicitApplicationId
-    }: TOrderCertificateFromProfileDTO,
-    onAuthorized: () => void = () => {}
-  ): Promise<TCertificateIssuanceResponse> => {
+  const $orderCertificate = async ({
+    profileId,
+    certificateOrder,
+    metadata,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    applicationId: explicitApplicationId
+  }: TOrderCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
     const profile = await validateProfileAndPermissions({
       profileId,
       actor,
@@ -1880,7 +1869,6 @@ export const certificateV3ServiceFactory = ({
       isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
       applicationId: explicitApplicationId
     });
-    onAuthorized();
     const applicationId = await $resolveApplicationIdForProfile(
       profile,
       explicitApplicationId,
@@ -2396,17 +2384,13 @@ export const certificateV3ServiceFactory = ({
   });
 
   const issueCertificateFromProfile = async (dto: TIssueCertificateFromProfileDTO) => {
-    let authorized = false;
     try {
-      return await $issueCertificateFromProfile(dto, () => {
-        authorized = true;
-      });
+      return await $issueCertificateFromProfile(dto);
     } catch (error) {
       await $recordIssuanceFailure({
         auditLogInfo: dto.auditLogInfo,
         actorOrgId: dto.actorOrgId,
         profileId: dto.profileId,
-        authorized,
         error,
         metadata: {
           operation: CertificateIssuanceOperation.ISSUE,
@@ -2420,17 +2404,13 @@ export const certificateV3ServiceFactory = ({
   };
 
   const signCertificateFromProfile = async (dto: TSignCertificateFromProfileDTO) => {
-    let authorized = false;
     try {
-      return await $signCertificateFromProfile(dto, () => {
-        authorized = true;
-      });
+      return await $signCertificateFromProfile(dto);
     } catch (error) {
       await $recordIssuanceFailure({
         auditLogInfo: dto.auditLogInfo,
         actorOrgId: dto.actorOrgId,
         profileId: dto.profileId,
-        authorized,
         error,
         metadata: {
           operation: dto.issuanceOperation ?? CertificateIssuanceOperation.SIGN,
@@ -2445,17 +2425,13 @@ export const certificateV3ServiceFactory = ({
   };
 
   const orderCertificate = async (dto: TOrderCertificateFromProfileDTO) => {
-    let authorized = false;
     try {
-      return await $orderCertificate(dto, () => {
-        authorized = true;
-      });
+      return await $orderCertificate(dto);
     } catch (error) {
       await $recordIssuanceFailure({
         auditLogInfo: dto.auditLogInfo,
         actorOrgId: dto.actorOrgId,
         profileId: dto.profileId,
-        authorized,
         error,
         metadata: {
           operation: CertificateIssuanceOperation.ORDER,

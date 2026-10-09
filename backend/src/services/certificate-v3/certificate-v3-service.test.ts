@@ -3588,7 +3588,7 @@ describe("CertificateV3Service", () => {
       } as never);
     });
 
-    it("records the failure with the profile's details once the caller is authorized", async () => {
+    it("records the failure with the reason and the profile's details", async () => {
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue({
         id: "profile-123",
         projectId: "project-123",
@@ -3621,25 +3621,6 @@ describe("CertificateV3Service", () => {
           }
         })
       );
-    });
-
-    it("records only what the caller sent when issuance fails before authorization", async () => {
-      const failure = new NotFoundError({ message: "Application not found" });
-      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockRejectedValue(failure);
-
-      await expect(service.issueCertificateFromProfile({ ...issueDto, auditLogInfo })).rejects.toBe(failure);
-
-      const [[call]] = mockAuditLogService.createCollapsedAuditLog.mock.calls as [
-        [{ event: { metadata: Record<string, unknown> } }]
-      ];
-      expect(call.event.metadata).toEqual({
-        operation: CertificateIssuanceOperation.ISSUE,
-        enrollmentType: EnrollmentType.API,
-        commonName: "fail.example.com",
-        certificateProfileId: "profile-123",
-        errorName: "NotFound",
-        error: "Application not found"
-      });
     });
 
     it("records nothing without audit log info", async () => {
