@@ -206,12 +206,12 @@ export const Virtualized: Story = {
     docs: {
       description: {
         story:
-          "Use `TableVirtualBody` in place of `TableBody` when a table can render thousands of rows. Only the rows in view are mounted. Constrain the container height with `containerClassName`, and spread the `rowProps` from the render function onto each `TableRow` so rows of varying height are measured."
+          "Use `TableVirtualBody` in place of `TableBody` when a table can render thousands of rows. Only the rows in view are mounted. Constrain the container height with `containerClassName`, and spread the `rowProps` from the render function onto each `TableRow` so rows of varying height are measured. Give columns fixed widths (`table-fixed`, or fixed or truncated cell widths) so they don't resize as rows mount while scrolling."
       }
     }
   },
   render: () => (
-    <Table containerClassName="max-h-80 overflow-y-auto">
+    <Table className="w-full table-fixed" containerClassName="max-h-80 overflow-y-auto">
       <TableHeader sticky>
         <TableRow>
           <TableHead>Key</TableHead>
