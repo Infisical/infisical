@@ -64,7 +64,7 @@ const ProviderCard = ({
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-foreground">{name}</p>
-          {isNew && <Badge variant="info">New</Badge>}
+          {isNew && <Badge variant="project">New</Badge>}
         </div>
         <p className="text-xs leading-relaxed text-muted">{description}</p>
       </div>
@@ -80,7 +80,7 @@ export const SecretSyncSelect = ({ onSelect, onEnterpriseUpgrade }: Props) => {
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const { newSecretSyncReleases, hasUnseenSecretSyncs, markSecretSyncsSeen } =
+  const { newSecretSyncReleases, unseenSecretSyncCount, markSecretSyncsSeen } =
     useSecretSyncDiscovery();
   const { isPending, data: secretSyncOptions } = useSecretSyncOptions();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
@@ -227,7 +227,7 @@ export const SecretSyncSelect = ({ onSelect, onEnterpriseUpgrade }: Props) => {
                 <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
                   Recently Added
                 </p>
-                {hasUnseenSecretSyncs && (
+                {unseenSecretSyncCount > 0 && (
                   <Button variant="ghost" size="xs" onClick={() => markSecretSyncsSeen()}>
                     <CheckIcon />
                     Mark as Seen

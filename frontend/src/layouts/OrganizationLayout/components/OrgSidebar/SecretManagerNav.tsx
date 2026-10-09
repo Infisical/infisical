@@ -14,7 +14,7 @@ export const SecretManagerNav = ({
   onSubmenuOpen: (submenu: Submenu) => void;
 }) => {
   const { pendingRequestsCount } = useApprovalSubmenu();
-  const { hasUnseenSecretSyncs } = useSecretSyncDiscovery();
+  const { unseenSecretSyncCount } = useSecretSyncDiscovery();
 
   const generalItems: NavItem[] = [
     {
@@ -33,7 +33,9 @@ export const SecretManagerNav = ({
       label: "Integrations",
       icon: Blocks,
       pathSuffix: "integrations",
-      dotVariant: hasUnseenSecretSyncs ? "info" : undefined,
+      badgeCount: unseenSecretSyncCount || undefined,
+      badgeVariant: "project",
+      isBadgeSolid: true,
       // Keep highlighted on integration detail pages and the standalone app-connections page
       activeMatch: /\/app-connections|\/integrations\//
     },

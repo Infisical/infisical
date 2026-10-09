@@ -10,7 +10,7 @@ import {
 } from "@app/hooks/api/featureDiscoveries";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-// Matches the announcement grace period: no discovery dots during a user's first week.
+// Matches the announcement grace period: no discovery indicators during a user's first week.
 const NEW_USER_GRACE_PERIOD_MS = 7 * DAY_MS;
 
 // availableItems is what this instance offers in the area, so unavailable releases are never promoted.
@@ -46,7 +46,7 @@ export const useFeatureDiscovery = (area: FeatureArea, availableItems: string[] 
 
   return {
     newReleases,
-    hasUnseen: Boolean(discoveries) && !isInGracePeriod && unseenReleaseIds.length > 0,
+    unseenCount: discoveries && !isInGracePeriod ? unseenReleaseIds.length : 0,
     markSeen
   };
 };

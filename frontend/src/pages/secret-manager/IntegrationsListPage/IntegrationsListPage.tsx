@@ -5,6 +5,7 @@ import { TriangleAlertIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   PageHeader,
   Tabs,
   TabsContent,
@@ -42,7 +43,7 @@ export const IntegrationsListPage = () => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
-  const { hasUnseenSecretSyncs } = useSecretSyncDiscovery();
+  const { unseenSecretSyncCount } = useSecretSyncDiscovery();
 
   const { selectedTab } = useSearch({
     from: ROUTE_PATHS.SecretManager.IntegrationsListPage.id
@@ -88,11 +89,10 @@ export const IntegrationsListPage = () => {
               </TabsTrigger>
               <TabsTrigger value={IntegrationsListPageTabs.SecretSyncs}>
                 Secret Syncs
-                {hasUnseenSecretSyncs && (
-                  <>
-                    <span aria-hidden className="size-2 rounded-full bg-info" />
-                    <span className="sr-only">New syncs available</span>
-                  </>
+                {unseenSecretSyncCount > 0 && (
+                  <Badge variant="project" isSolid isSquare>
+                    {unseenSecretSyncCount}
+                  </Badge>
                 )}
               </TabsTrigger>
               <TabsTrigger value={IntegrationsListPageTabs.FrameworkIntegrations}>

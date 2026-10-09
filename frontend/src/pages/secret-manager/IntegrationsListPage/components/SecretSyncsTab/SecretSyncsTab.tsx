@@ -7,7 +7,6 @@ import { CreateSecretSyncModal } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import {
   Button,
-  ButtonBadge,
   Card,
   CardAction,
   CardContent,
@@ -37,7 +36,7 @@ export const SecretSyncsTab = () => {
 
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const { hasUnseenSecretSyncs } = useSecretSyncDiscovery();
+  const { unseenSecretSyncCount } = useSecretSyncDiscovery();
 
   useEffect(() => {
     if (!addSync) return;
@@ -117,7 +116,15 @@ export const SecretSyncsTab = () => {
                 >
                   <PlusIcon />
                   Add Sync
-                  {hasUnseenSecretSyncs && <ButtonBadge variant="info">New</ButtonBadge>}
+                  {unseenSecretSyncCount > 0 && (
+                    <>
+                      <span
+                        aria-hidden
+                        className="absolute -top-1 -right-1 size-2.5 rounded-full bg-project ring-2 ring-card"
+                      />
+                      <span className="sr-only">New sync destinations available</span>
+                    </>
+                  )}
                 </Button>
               )}
             </ProjectPermissionCan>

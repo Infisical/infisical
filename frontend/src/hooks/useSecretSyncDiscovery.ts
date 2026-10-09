@@ -5,7 +5,7 @@ import { useFeatureDiscovery } from "./useFeatureDiscovery";
 
 export const useSecretSyncDiscovery = () => {
   const { data: syncOptions } = useSecretSyncOptions();
-  const { newReleases, hasUnseen, markSeen } = useFeatureDiscovery(
+  const { newReleases, unseenCount, markSeen } = useFeatureDiscovery(
     FeatureArea.SecretSyncs,
     syncOptions?.map((option) => option.destination)
   );
@@ -15,7 +15,7 @@ export const useSecretSyncDiscovery = () => {
       ...release,
       destination: release.item as SecretSync
     })),
-    hasUnseenSecretSyncs: hasUnseen,
+    unseenSecretSyncCount: unseenCount,
     markSecretSyncsSeen: markSeen
   };
 };
