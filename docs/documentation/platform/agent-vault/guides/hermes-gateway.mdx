@@ -6,7 +6,7 @@ description: "Learn how to run the Hermes Agent gateway through Agent Vault so H
 
 import SeparateMachinesNote from "/snippets/agent-vault/SeparateMachinesNote.mdx";
 
-This guide walks you through running the [Hermes Agent](https://hermes-agent.nousresearch.com/docs/) [gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) through Agent Vault, so Hermes can make authenticated API calls without holding any real credentials. The gateway connects Hermes to a messaging platform such as Slack or Telegram.
+This guide walks you through running the [Hermes Agent](https://hermes-agent.nousresearch.com/docs/) [gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) through Agent Vault, so Hermes can make authenticated API calls without holding any real credentials. The gateway connects Hermes to a messaging platform such as Telegram.
 
 <Tip>
   If you use Hermes in your terminal, follow [Agent Vault with Hermes](/documentation/platform/agent-vault/guides/hermes) instead.
@@ -82,7 +82,7 @@ Most Hermes setups have three kinds of API keys:
 | Kind | Example keys | Service to add in Step 2 |
 | --- | --- | --- |
 | Model provider (the LLM API Hermes sends its prompts to) | `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` | The provider's template, such as **OpenRouter**, **Anthropic**, or **OpenAI** |
-| Messaging platform (where you chat with Hermes) | `SLACK_BOT_TOKEN` and `SLACK_APP_TOKEN`, `TELEGRAM_BOT_TOKEN` | The **Slack** template, or a **Custom** service for `api.telegram.org` |
+| Messaging platform (where you chat with Hermes) | `TELEGRAM_BOT_TOKEN` | A **Custom** service for `api.telegram.org` |
 | External APIs | `GITHUB_TOKEN` | The API's template, such as **GitHub** (or a **Custom** service if Infisical has no template for the API) |
 
 <Note>
@@ -116,7 +116,7 @@ First, create an [access bundle](/documentation/platform/agent-vault/access-bund
     [Add a substitution](/documentation/platform/agent-vault/services#add-a-substitution) for each key instead if either of these is true:
 
     - The API expects the key outside a header, such as in the URL path. For example, Telegram's bot token goes in the URL of every request: `https://api.telegram.org/bot<token>/getUpdates`
-    - The API uses more than one key, such as Slack's bot token and app token (one service can hold a substitution for each key, and an access bundle can't have two services for the same host)
+    - The API uses more than one key (one service can hold a substitution for each key, and an access bundle can't have two services for the same host)
 
     Note the placeholder you enter in **Replace**, because you'll put it in `~/.hermes/.env` in [Step 3](#replace-the-api-keys-with-placeholders).
     </Note>
@@ -317,6 +317,10 @@ To stop Hermes from using the real credentials, open **Agent Vault** in Infisica
 
 To give the gateway a new session, [create a session](#create-a-session) in Infisical. Then, on the Hermes machine, replace the token in both `HTTPS_PROXY` and `HTTP_PROXY` in `~/.hermes/.env` and run `hermes gateway restart`.
 
+<Tip>
+To replace the session on a schedule instead of by hand, script these steps and [create the session with the API](/documentation/platform/agent-vault/sessions-api).
+</Tip>
+
 ## Troubleshooting
 
 Hermes writes the gateway's logs to `~/.hermes/logs/gateway.log`. On Linux, you can also read them with `journalctl --user -u hermes-gateway`, or `journalctl -u hermes-gateway` for a gateway installed with `--system`.
@@ -406,6 +410,9 @@ Hermes writes the gateway's logs to `~/.hermes/logs/gateway.log`. On Linux, you 
     If a messaging platform rejects the gateway's token, Hermes exits instead of retrying, and the service manager doesn't start it again. The platform receives the placeholder instead of the real token if the placeholder doesn't match **Replace** exactly, or if the proxy runs an Infisical CLI earlier than 0.43.133.
     
     Fix the cause, then run `hermes gateway start`.
+  </Accordion>
+  <Accordion title="The gateway logs WebSocket connection errors">
+    The proxy doesn't carry [WebSocket connections](/documentation/platform/agent-vault/proxies#supported-connections). If Hermes connects to a messaging platform over a WebSocket, that platform doesn't work through Agent Vault.
   </Accordion>
 </AccordionGroup>
 

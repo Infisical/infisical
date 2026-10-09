@@ -17,6 +17,7 @@ import { ChefSyncFields } from "./ChefSyncFields";
 import { CircleCISyncFields } from "./CircleCISyncFields";
 import { Cloud66SyncFields } from "./Cloud66SyncFields";
 import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
+import { CloudflareSecretsStoreSyncFields } from "./CloudflareSecretsStoreSyncFields";
 import { CloudflareWorkersSyncFields } from "./CloudflareWorkersSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
 import { DaytonaSyncFields } from "./DaytonaSyncFields";
@@ -31,6 +32,7 @@ import { HasuraCloudSyncFields } from "./HasuraCloudSyncFields";
 import { HCVaultSyncFields } from "./HCVaultSyncFields";
 import { HerokuSyncFields } from "./HerokuSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
+import { KeeperSyncFields } from "./KeeperSyncFields";
 import { LaravelForgeSyncFields } from "./LaravelForgeSyncFields";
 import { NetlifySyncFields } from "./NetlifySyncFields";
 import { NorthflankSyncFields } from "./NorthflankSyncFields";
@@ -105,6 +107,8 @@ export const SecretSyncDestinationFields = () => {
       return <CloudflarePagesSyncFields />;
     case SecretSync.CloudflareWorkers:
       return <CloudflareWorkersSyncFields />;
+    case SecretSync.CloudflareSecretsStore:
+      return <CloudflareSecretsStoreSyncFields />;
     case SecretSync.Zabbix:
       return <ZabbixSyncFields />;
     case SecretSync.Railway:
@@ -155,6 +159,8 @@ export const SecretSyncDestinationFields = () => {
       return <Cloud66SyncFields />;
     case SecretSync.Daytona:
       return <DaytonaSyncFields />;
+    case SecretSync.Keeper:
+      return <KeeperSyncFields />;
     case SecretSync.Spacelift:
       return <SpaceliftSyncFields />;
     default:

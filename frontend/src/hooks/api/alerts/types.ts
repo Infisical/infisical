@@ -5,7 +5,8 @@ import { CertSource } from "@app/hooks/api/certificates/enums";
 
 export enum AlertResourceType {
   IdentityAuthentication = "identity.authentication",
-  PamFolder = "pam.folder"
+  PamFolder = "pam.folder",
+  SecretReminder = "secret.reminder"
 }
 
 export enum AlertEventType {
@@ -27,7 +28,9 @@ export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventTyp
     AlertEventType.PamAccessRequestApproved,
     AlertEventType.PamAccessRequestDenied,
     AlertEventType.PamAccessRequestBypassed
-  ]
+  ],
+  // Reminder alerts are edited from the secret's reminder form, not the generic alert form.
+  [AlertResourceType.SecretReminder]: []
 };
 
 export enum AlertChannelType {
@@ -40,7 +43,8 @@ export enum AlertChannelType {
 export enum AlertPrincipalType {
   User = "user",
   Group = "group",
-  Email = "email"
+  Email = "email",
+  ProjectMembers = "project-members"
 }
 
 export enum AlertRunStatus {
@@ -84,7 +88,8 @@ export const MAX_CERTIFICATE_ALERT_FILTER_IDS = 100;
 
 export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
   [AlertResourceType.IdentityAuthentication]: "Machine Identity Authentication",
-  [AlertResourceType.PamFolder]: "PAM Folder"
+  [AlertResourceType.PamFolder]: "PAM Folder",
+  [AlertResourceType.SecretReminder]: "Secret Reminder"
 };
 
 export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
@@ -282,6 +287,9 @@ export const channelFormSchema = z
   });
 
 export type TChannelForm = z.infer<typeof channelFormSchema>;
+
+// The part of an alert form the shared channel fields read and write.
+export type TChannelsForm = { channels: TChannelForm[] };
 
 const alertFormBaseSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),

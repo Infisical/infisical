@@ -281,6 +281,10 @@ export type TNetScalerConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.NetScaler;
 };
 
+export type TKeeperConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Keeper;
+};
+
 export type TKempLoadMasterConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.KempLoadMaster;
 };
@@ -333,6 +337,10 @@ export type TDatadogConnectionOption = TAppConnectionOptionBase & {
 
 export type TF5BigIpConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.F5BigIp;
+};
+
+export type THpeIloConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.HpeIloRedFish;
 };
 
 export type TConvexConnectionOption = TAppConnectionOptionBase & {
@@ -429,6 +437,7 @@ export type TAppConnectionOption =
   | TExternalInfisicalConnectionOption
   | TDopplerConnectionOption
   | TNetScalerConnectionOption
+  | TKeeperConnectionOption
   | TKempLoadMasterConnectionOption
   | TAnthropicConnectionOption
   | TOvhConnectionOption
@@ -441,6 +450,7 @@ export type TAppConnectionOption =
   | TSnowflakeConnectionOption
   | TDatadogConnectionOption
   | TF5BigIpConnectionOption
+  | THpeIloConnectionOption
   | TConvexConnectionOption
   | TTriggerDevConnectionOption
   | TRundeckConnectionOption
@@ -518,6 +528,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.ExternalInfisical]: TExternalInfisicalConnectionOption;
   [AppConnection.Doppler]: TDopplerConnectionOption;
   [AppConnection.NetScaler]: TNetScalerConnectionOption;
+  [AppConnection.Keeper]: TKeeperConnectionOption;
   [AppConnection.KempLoadMaster]: TKempLoadMasterConnectionOption;
   [AppConnection.Anthropic]: TAnthropicConnectionOption;
   [AppConnection.OVH]: TOvhConnectionOption;
@@ -530,6 +541,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Snowflake]: TSnowflakeConnectionOption;
   [AppConnection.Datadog]: TDatadogConnectionOption;
   [AppConnection.F5BigIp]: TF5BigIpConnectionOption;
+  [AppConnection.HpeIloRedFish]: THpeIloConnectionOption;
   [AppConnection.Convex]: TConvexConnectionOption;
   [AppConnection.TriggerDev]: TTriggerDevConnectionOption;
   [AppConnection.Rundeck]: TRundeckConnectionOption;

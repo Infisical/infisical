@@ -197,3 +197,9 @@ export enum PamNotificationEvent {
   AccessRequestDenied = "access-request-denied",
   AccessRequestBypassed = "access-request-bypassed"
 }
+
+export enum PamFolderCallerAccess {
+  Admin = "admin",
+  Member = "member",
+  None = "none"
+}

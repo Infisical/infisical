@@ -37,8 +37,8 @@ import {
   TAlert,
   TAlertChannelPaywall,
   TAlertForm,
-  TChannelForm,
   toAlertBefore,
+  toChannelForm,
   toChannelInput,
   useCreateAlert,
   useUpdateAlert
@@ -71,21 +71,6 @@ const AGENT_VAULT_ALERT_NAME_PLACEHOLDERS: Partial<Record<AlertEventType, string
   [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert"
 };
 const DEFAULT_EVENT_TYPE = AlertEventType.IdentityAuthenticationExpiry;
-
-const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm => ({
-  id: channel.id,
-  channelType: channel.channelType,
-  name: channel.name,
-  enabled: channel.enabled,
-  recipients: channel.recipients,
-  webhookUrl: "",
-  url: (channel.config.url as string) ?? "",
-  signingSecret: "",
-  integrationKey: "",
-  hasWebhookUrl: Boolean(channel.config.hasWebhookUrl),
-  hasSigningSecret: Boolean(channel.config.hasSigningSecret),
-  hasIntegrationKey: Boolean(channel.config.hasIntegrationKey)
-});
 
 const buildFormDefaults = (
   alert: TAlert | undefined,
