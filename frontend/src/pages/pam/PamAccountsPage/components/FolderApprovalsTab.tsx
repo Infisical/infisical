@@ -10,10 +10,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import {
-  PamSlackNotificationsUpgradeIntent,
-  useUpgradeGate
-} from "@app/components/license/UpgradeGate";
+import { PamEnterpriseAlertingUpgradeIntent } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
 import {
@@ -44,12 +41,13 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
-import { useOrganization, useSubscription } from "@app/context";
+import { useOrganization, useProject, useSubscription } from "@app/context";
 import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
+import { AlertChannelType, AlertResourceType } from "@app/hooks/api/alerts";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
   PamAccessRequestStatus,
@@ -65,6 +63,7 @@ import {
 } from "@app/hooks/api/pam";
 import { TPamAccessRequest, TPamNotificationConfig } from "@app/hooks/api/pam/types";
 import { useGetOrgUsers } from "@app/hooks/api/users/queries";
+import { AlertAction } from "@app/views/Alerts";
 
 import { AccessTypeBadge } from "../../components/AccessTypeBadge";
 import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
@@ -110,9 +109,8 @@ type Props = {
 
 export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const { subscription } = useSubscription();
-  const isPamSlackEnabled = Boolean(subscription?.pamSlackNotifications);
-  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const { data: config, isLoading } = useGetPamApprovalConfig(folderId);
   const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
@@ -318,19 +316,6 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   };
 
   const handleSave = () => {
-    const hasIncompleteConfig =
-      isPamSlackEnabled &&
-      notificationConfigs.some(
-        (c) => !c.workflowIntegrationId || c.channels.length === 0 || c.events.length === 0
-      );
-    if (hasIncompleteConfig) {
-      createNotification({
-        type: "error",
-        text: "Each notification needs a Slack workspace, at least one channel, and at least one event"
-      });
-      return;
-    }
-
     if (breakGlassUsers.length > 0 && approvers.length === 0) {
       createNotification({
         type: "error",
@@ -344,8 +329,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         folderId,
         steps: [{ approvers }],
         breakGlassUsers,
-        // undefined leaves server-side configs untouched when the plan doesn't include the feature
-        notificationConfigs: isPamSlackEnabled ? notificationConfigs : undefined
+        // Legacy Slack configs can only be removed, so they're sent only when one was.
+        notificationConfigs: isNotifDirty ? notificationConfigs : undefined
       },
       {
         onSuccess: () => {
@@ -551,37 +536,44 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         </CardContent>
       </Card>
 
-      {isPamSlackEnabled ? (
+      <Card>
+        <CardHeader>
+          <CardTitle>Alerts</CardTitle>
+          <CardDescription>
+            Notify email, Slack, webhook, or PagerDuty channels about access request activity for
+            accounts in this folder.
+          </CardDescription>
+          <CardAction>
+            <AlertAction
+              resourceType={AlertResourceType.PamFolder}
+              resourceId={folderId}
+              projectId={currentProject.id}
+              renderPermissionGate={(render) => render(true)}
+              channelPaywall={
+                subscription?.pamEnterpriseAlerting
+                  ? undefined
+                  : {
+                      lockedChannelTypes: [
+                        AlertChannelType.Slack,
+                        AlertChannelType.Webhook,
+                        AlertChannelType.PagerDuty
+                      ],
+                      intent: PamEnterpriseAlertingUpgradeIntent,
+                      paywallKey: "pam.folder-alert-channels"
+                    }
+              }
+            />
+          </CardAction>
+        </CardHeader>
+      </Card>
+
+      {savedNotificationConfigs.length > 0 && (
         <FolderNotificationsSection
           configs={notificationConfigs}
           integrationSlugById={integrationSlugById}
           onChange={setNotificationConfigs}
         />
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Slack Notifications</CardTitle>
-            <CardDescription>
-              Notify Slack channels when PAM access is requested, approved, or revoked.
-            </CardDescription>
-            <CardAction>
-              <Button
-                variant="pam"
-                onClick={() =>
-                  openUpgradeGate({
-                    intent: PamSlackNotificationsUpgradeIntent,
-                    paywallKey: "pam.folder-slack-notifications"
-                  })
-                }
-              >
-                View Plans
-              </Button>
-            </CardAction>
-          </CardHeader>
-        </Card>
       )}
-
-      {upgradeGate}
 
       <Card>
         <CardHeader className="border-b">

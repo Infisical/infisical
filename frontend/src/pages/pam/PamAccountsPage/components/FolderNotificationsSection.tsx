@@ -5,21 +5,15 @@ import {
   OptionProps,
   SingleValueProps
 } from "react-select";
-import { Bell, ChevronDown, Plus, Slack, Trash2 } from "lucide-react";
+import { Bell, Trash2 } from "lucide-react";
 
 import {
   Badge,
-  Button,
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   FilterableSelect,
   IconButton,
   Tooltip,
@@ -154,6 +148,7 @@ const NotificationConfigCard = ({
       <div className="flex items-start gap-2">
         <div className="flex-1">
           <FilterableSelect
+            isDisabled
             value={selectedIntegration}
             options={workspaceOptions}
             onChange={(opt) => {
@@ -189,6 +184,7 @@ const NotificationConfigCard = ({
             <span className="text-sm font-medium">Slack channels</span>
             <FilterableSelect
               isMulti
+              isDisabled
               value={config.channels}
               options={channelOptions}
               onChange={(selected) => {
@@ -215,6 +211,7 @@ const NotificationConfigCard = ({
             <span className="text-sm font-medium">Notify on</span>
             <FilterableSelect
               isMulti
+              isDisabled
               value={EVENT_OPTIONS.filter((opt) => config.events.includes(opt.value))}
               options={EVENT_OPTIONS}
               onChange={(selected) => {
@@ -254,43 +251,23 @@ export const FolderNotificationsSection = ({ configs, integrationSlugById, onCha
     [workflowIntegrations]
   );
 
-  const addConfig = () => {
-    onChange([...configs, { workflowIntegrationId: "", channels: [], events: [] }]);
-  };
-
   return (
     <Card>
       <CardHeader className="border-b">
         <CardTitle className="text-base">
           Notifications
+          <Badge variant="neutral">Legacy</Badge>
           <Badge variant="pam">{configs.length}</Badge>
         </CardTitle>
         <CardDescription>
-          Notify external channels about access request activity for accounts in this folder.
+          These Slack notifications keep posting, but they can no longer be added or edited. Add an
+          alert instead to notify Slack, email, webhook, or PagerDuty channels.
         </CardDescription>
-        <CardAction>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Plus className="size-4" />
-                Add
-                <ChevronDown className="size-4 text-muted" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" sideOffset={2}>
-              <DropdownMenuItem onSelect={addConfig}>
-                <Slack className="size-4" />
-                Slack
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {configs.length === 0 ? (
           <div className="rounded-md border border-border p-8 text-center text-sm text-muted">
-            No chat notifications yet. Add Slack to post this folder&apos;s approval activity to a
-            channel.
+            All Slack notifications removed. Save changes to apply.
           </div>
         ) : (
           configs.map((config, idx) => (

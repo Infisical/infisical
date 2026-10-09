@@ -39,7 +39,7 @@ export const UpgradeFeature = {
   CertificateIssuanceLimits: "certificate-issuance-limits",
   Pam: "pam",
   PamAccountLimit: "pam-account-limit",
-  PamSlackNotifications: "pam-slack-notifications",
+  PamEnterpriseAlerting: "pam-enterprise-alerting",
   EnterprisePamAccounts: "enterprise-pam-accounts"
 } as const;
 
@@ -330,14 +330,14 @@ export const PamAccountLimitUpgradeIntent = {
   description: "Compare PAM plans to increase your organization-wide account allowance."
 } satisfies UpgradeIntent;
 
-export const PamSlackNotificationsUpgradeIntent = {
-  featureKey: UpgradeFeature.PamSlackNotifications,
+export const PamEnterpriseAlertingUpgradeIntent = {
+  featureKey: UpgradeFeature.PamEnterpriseAlerting,
   productKey: BillingProduct.Pam,
   planKey: BillingPlan.Enterprise,
-  upgradeLabel: "Unlock Slack Notifications",
-  title: "Configure Slack Notifications",
+  upgradeLabel: "Unlock Enterprise Alert Channels",
+  title: "Add Enterprise Alert Channel",
   description:
-    "PAM Slack notifications are included with the Enterprise plan. Review the plan to continue."
+    "Webhook, Slack, and PagerDuty PAM alert channels are included with the Enterprise plan. Review the plan to continue."
 } satisfies UpgradeIntent;
 
 export const EnterprisePamAccountsUpgradeIntent = {

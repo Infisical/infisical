@@ -353,8 +353,8 @@ const pamMappings: TFeatureMapping[] = [
     v1Field: "enterprisePamAccount"
   },
   {
-    v2Key: "pam_slack_notifications",
-    v1Field: "pamSlackNotifications"
+    v2Key: "pam_enterprise_alerting",
+    v1Field: "pamEnterpriseAlerting"
   },
   {
     // Max PAM accounts allowed. null (v1 default) means uncapped.

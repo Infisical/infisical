@@ -48,7 +48,7 @@ export const getDefaultOnPremFeatures = () => {
     kmip: false,
     gateway: false,
     gatewayPool: false,
-    pamSlackNotifications: false,
+    pamEnterpriseAlerting: false,
     secretScanning: false,
     enterpriseSecretSyncs: false,
     enterpriseAppConnections: true,
