@@ -30,7 +30,7 @@ const CREATE_OPTION_ID = "_create";
 export const LinuxServerHostsFields = () => {
   const { permission } = useProjectPermission();
   const { currentProject } = useProject();
-  const { control, getValues, setValue } = useFormContext<TLinuxServerDiscoveryJobForm>();
+  const { control, getValues, setValue, setError } = useFormContext<TLinuxServerDiscoveryJobForm>();
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addConnection"] as const);
 
   const { connections, isPending } = useListAvailableAppConnectionsForApps(
@@ -124,6 +124,12 @@ export const LinuxServerHostsFields = () => {
         onComplete={(connection) => {
           const existing = getValues("connections") ?? [];
           if (existing.some((c) => c.id === connection.id)) return;
+          if (!connection.gatewayId && !connection.gatewayPoolId) {
+            setError("connections", {
+              message: `SSH connection '${connection.name}' has no gateway. Add one to the connection to scan this server.`
+            });
+            return;
+          }
           setValue("connections", [...existing, { id: connection.id, name: connection.name }], {
             shouldDirty: true,
             shouldValidate: true

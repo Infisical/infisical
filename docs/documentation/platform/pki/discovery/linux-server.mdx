@@ -47,16 +47,18 @@ Certificate files are often readable only by root. Give the SSH user read access
     The second command makes files created later in the folder readable too.
   </Tab>
   <Tab title="sudo">
-    Allow the SSH user to run `find`, `readlink`, and `head` as root without a password. Add a file under `/etc/sudoers.d/`:
+    Allow the SSH user to run `find`, `readlink`, `head`, and `timeout` as root without a password. Add a file under `/etc/sudoers.d/`:
 
     ```bash
-    <ssh-user> ALL=(root) NOPASSWD: /usr/bin/find, /usr/bin/readlink, /usr/bin/head
+    <ssh-user> ALL=(root) NOPASSWD: /usr/bin/find, /usr/bin/readlink, /usr/bin/head, /usr/bin/timeout
     ```
 
-    The gateway tries every folder and file as the SSH user first, and uses `sudo` only for the ones it can't read.
+    The gateway tries every folder and file as the SSH user first, and uses `sudo` only for the ones it can't read. It runs each command as root through `timeout`, so a command that runs too long is stopped on the server.
+
+    If the rule doesn't allow `timeout`, the gateway doesn't use `sudo`, and the folders the SSH user can't read are listed as skipped.
 
     <Warning>
-      This rule lets the SSH user read any file on the server and run commands as root through `find`. Use it only for a dedicated scan account that nothing else can sign in with, and prefer a group or ACL.
+      This rule lets the SSH user read any file on the server and run any command as root through `find` or `timeout`. Use it only for a dedicated scan account that nothing else can sign in with, and prefer a group or ACL.
     </Warning>
   </Tab>
 </Tabs>

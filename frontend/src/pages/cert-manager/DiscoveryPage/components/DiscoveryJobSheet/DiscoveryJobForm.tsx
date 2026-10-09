@@ -71,7 +71,7 @@ const STEP_META: Record<
     short: "Folders to search",
     subtitle: "Choose the folders to search and the ones to leave out.",
     rightDescription:
-      "Only files with certificate extensions are opened, such as .pem, .crt, .cer, .der, .p7b, .pfx, .p12, .jks and .keystore.\n\nThe SSH user needs read access to these folders. Give it access through a group or ACL, or allow it to run find, readlink and head with sudo without a password. Folders it still cannot read are listed in the scan."
+      "Only files with certificate extensions are opened, such as .pem, .crt, .cer, .der, .p7b, .pfx, .p12, .jks and .keystore.\n\nThe SSH user needs read access to these folders. Give it access through a group or ACL, or allow it to run find, readlink, head and timeout with sudo without a password. Folders it still cannot read are listed in the scan."
   },
   [DiscoveryJobStep.Options]: {
     name: "Options",

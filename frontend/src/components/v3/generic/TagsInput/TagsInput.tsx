@@ -16,6 +16,7 @@ import {
 import "../../utils/ScrollEdgeFade.css";
 
 const NO_ITEMS: string[] = [];
+const DEFAULT_SEPARATORS = [",", " "];
 
 type TagsInputProps = Omit<
   React.ComponentPropsWithoutRef<"input">,
@@ -29,6 +30,7 @@ type TagsInputProps = Omit<
   /** Returning a reason refuses the commit. `existing` never contains the value being checked. */
   validateTag?: (tag: string, existing: string[]) => string | null;
   onValidationError?: (reason: string | null) => void;
+  separators?: readonly string[];
   inputValue?: string;
   onInputValueChange?: (draft: string) => void;
   className?: string;
@@ -43,6 +45,7 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
       isError,
       validateTag,
       onValidationError,
+      separators = DEFAULT_SEPARATORS,
       inputValue,
       onInputValueChange,
       className,
@@ -89,7 +92,7 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
         return;
       }
 
-      if (event.key === "," || event.key === " ") {
+      if (separators.includes(event.key)) {
         event.preventDefault();
         commit(draft);
       }
@@ -97,13 +100,13 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
 
     const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
       const pasted = event.clipboardData.getData("text");
-      const splitOn = /[\n\r, ]/;
-      if (!splitOn.test(pasted)) return;
+      const lines = pasted.split(/[\n\r]/);
+      if (lines.length === 1 && !separators.some((separator) => pasted.includes(separator))) return;
 
       event.preventDefault();
 
-      const parts = pasted
-        .split(splitOn)
+      const parts = separators
+        .reduce((pieces, separator) => pieces.flatMap((piece) => piece.split(separator)), lines)
         .map((part) => part.trim())
         .filter(Boolean);
 
@@ -127,7 +130,7 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
         return;
       }
 
-      setDraft(parts.slice(refusedFrom).join(","));
+      setDraft(separators.length ? parts.slice(refusedFrom).join(separators[0]) : parts[refusedFrom]);
     };
 
     return (

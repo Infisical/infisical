@@ -10,6 +10,8 @@ import {
   validateLinuxFolder
 } from "./discovery-job-form-schema";
 
+const FOLDER_SEPARATORS: string[] = [];
+
 const FolderListField = ({
   name,
   label,
@@ -45,6 +47,7 @@ const FolderListField = ({
                 return validateLinuxFolder(tag);
               }}
               onValidationError={setTagError}
+              separators={FOLDER_SEPARATORS}
               placeholder={placeholder}
               isError={Boolean(message)}
               className="font-mono"
