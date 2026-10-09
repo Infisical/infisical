@@ -40,15 +40,29 @@ export const PaloAltoNetworksPkiSyncOptionsSchema = BasePkiSyncOptionsSchema.ext
     naming: PALO_ALTO_NETWORKS_NAMING,
     message:
       "Certificate name schema must result in names that contain only alphanumeric characters, hyphens (-), and underscores (_) and be 1-31 characters long for Palo Alto Networks. Use {{shortCertificateId}} rather than {{certificateId}} to stay within the limit. Available placeholders: {{certificateId}}, {{shortCertificateId}}, {{profileId}}, {{applicationId}}, {{applicationName}}, {{commonName}}. A schema with no placeholder can be linked to only one certificate."
-  }).refine((schema) => !schema || !ANY_NAME_PLACEHOLDER.test(schema) || CERTIFICATE_NAME_PLACEHOLDER.test(schema), {
-    message:
-      "Certificate name schema must include {{shortCertificateId}} or {{commonName}} so each certificate gets its own name, or use no placeholder for a single certificate."
   })
 });
 
-const buildPaloAltoNetworksPkiSyncSchemas = <TDestination extends PkiSync, TConfig extends z.AnyZodObject>(
+const PaloAltoNetworksMultiCertificatePkiSyncOptionsSchema = PaloAltoNetworksPkiSyncOptionsSchema.refine(
+  ({ certificateNameSchema }) =>
+    !certificateNameSchema ||
+    !ANY_NAME_PLACEHOLDER.test(certificateNameSchema) ||
+    CERTIFICATE_NAME_PLACEHOLDER.test(certificateNameSchema),
+  {
+    message:
+      "Certificate name schema must include {{shortCertificateId}} or {{commonName}} so each certificate gets its own name, or use no placeholder for a single certificate.",
+    path: ["certificateNameSchema"]
+  }
+);
+
+const buildPaloAltoNetworksPkiSyncSchemas = <
+  TDestination extends PkiSync,
+  TConfig extends z.AnyZodObject,
+  TInputOptions extends z.ZodTypeAny
+>(
   destination: TDestination,
-  destinationConfig: TConfig
+  destinationConfig: TConfig,
+  inputSyncOptions: TInputOptions
 ) => ({
   responseSchema: PkiSyncSchema.extend({
     destination: z.literal(destination),
@@ -60,7 +74,7 @@ const buildPaloAltoNetworksPkiSyncSchemas = <TDestination extends PkiSync, TConf
     description: pkiDescriptionSchema.optional(),
     isAutoSyncEnabled: z.boolean().default(true),
     destinationConfig: destinationConfig.strict(),
-    syncOptions: PaloAltoNetworksPkiSyncOptionsSchema,
+    syncOptions: inputSyncOptions,
     subscriberId: z.string().uuid().nullish(),
     connectionId: z.string().uuid(),
     projectId: z.string().trim().uuid().optional().describe(openApiHidden()),
@@ -73,7 +87,7 @@ const buildPaloAltoNetworksPkiSyncSchemas = <TDestination extends PkiSync, TConf
     description: pkiDescriptionSchema.optional(),
     isAutoSyncEnabled: z.boolean().optional(),
     destinationConfig: destinationConfig.strict().optional(),
-    syncOptions: PaloAltoNetworksPkiSyncOptionsSchema.optional(),
+    syncOptions: inputSyncOptions.optional(),
     subscriberId: z.string().uuid().nullish(),
     connectionId: z.string().uuid().optional(),
     filters: UpdatePkiSyncFiltersField
@@ -82,10 +96,12 @@ const buildPaloAltoNetworksPkiSyncSchemas = <TDestination extends PkiSync, TConf
 
 export const PaloAltoNetworksPkiSyncSchemas = buildPaloAltoNetworksPkiSyncSchemas(
   PkiSync.PaloAltoNetworks,
-  PaloAltoNetworksPkiSyncConfigSchema
+  PaloAltoNetworksPkiSyncConfigSchema,
+  PaloAltoNetworksMultiCertificatePkiSyncOptionsSchema
 );
 
 export const PaloAltoNetworksSslTlsProfilePkiSyncSchemas = buildPaloAltoNetworksPkiSyncSchemas(
   PkiSync.PaloAltoNetworksSslTlsProfile,
-  PaloAltoNetworksSslTlsProfilePkiSyncConfigSchema
+  PaloAltoNetworksSslTlsProfilePkiSyncConfigSchema,
+  PaloAltoNetworksPkiSyncOptionsSchema
 );

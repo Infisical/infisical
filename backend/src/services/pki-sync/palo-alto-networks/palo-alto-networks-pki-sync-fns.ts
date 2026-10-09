@@ -57,6 +57,7 @@ type TPaloAltoNetworksPkiSyncFactoryDeps = {
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
+const CERTIFICATE_ID_PLACEHOLDER = new RE2("\\{\\{(certificateId|shortCertificateId)\\}\\}");
 const DEPLOY_PENDING_FLAG = "panOsDeployPending";
 const REMOVE_PENDING_FLAG = "panOsRemovePending";
 const PASSPHRASE_VALUE_PATTERN = new RE2("value: \\S+", "g");
@@ -569,7 +570,12 @@ export const paloAltoNetworksPkiSyncFactory = ({
         )
     );
 
-    if (!certificateNameSchemaHasFreeTextPlaceholder(certificateNameSchema)) {
+    if (
+      CERTIFICATE_ID_PLACEHOLDER.test(
+        certificateNameSchema ?? PALO_ALTO_NETWORKS_PKI_SYNC_LIST_OPTION.defaultCertificateNameSchema
+      ) &&
+      !certificateNameSchemaHasFreeTextPlaceholder(certificateNameSchema)
+    ) {
       const managedPattern = buildManagedCertNamePattern(certificateNameSchema);
       existingCertificates.forEach((_, name) => {
         if (

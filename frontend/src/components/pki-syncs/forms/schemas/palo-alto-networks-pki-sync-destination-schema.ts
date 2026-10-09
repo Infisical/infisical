@@ -60,15 +60,17 @@ const PaloAltoNetworksSyncOptionsSchema = z.object({
           "Certificate name schema must be at most 31 characters once placeholders are filled in ({{shortCertificateId}} counts as 22). Outside placeholders, use only letters, numbers, hyphens (-), and underscores (_)."
       }
     )
-    .refine(
-      (val) =>
-        !/\{\{\w+\}\}/.test(val) ||
-        /\{\{(certificateId|shortCertificateId|commonName)\}\}/.test(val),
-      {
-        message:
-          "Certificate name schema must include {{shortCertificateId}} or {{commonName}} so each certificate gets its own name, or use no placeholder for a single certificate."
-      }
-    )
+});
+
+const PaloAltoNetworksMultiCertificateSyncOptionsSchema = PaloAltoNetworksSyncOptionsSchema.extend({
+  certificateNameSchema: PaloAltoNetworksSyncOptionsSchema.shape.certificateNameSchema.refine(
+    (val) =>
+      !/\{\{\w+\}\}/.test(val) || /\{\{(certificateId|shortCertificateId|commonName)\}\}/.test(val),
+    {
+      message:
+        "Certificate name schema must include {{shortCertificateId}} or {{commonName}} so each certificate gets its own name, or use no placeholder for a single certificate."
+    }
+  )
 });
 
 const clearablePanOsObjectNameSchema = (field: string) =>
@@ -93,9 +95,10 @@ const buildPaloAltoNetworksDestinationSchemas = <
   TConfig extends z.ZodTypeAny
 >(
   destination: TDestination,
-  destinationConfig: TConfig
+  destinationConfig: TConfig,
+  syncOptions: typeof PaloAltoNetworksSyncOptionsSchema
 ) => {
-  const createSchema = BasePkiSyncSchema(PaloAltoNetworksSyncOptionsSchema).merge(
+  const createSchema = BasePkiSyncSchema(syncOptions).merge(
     z.object({
       destination: z.literal(destination),
       destinationConfig
@@ -125,13 +128,15 @@ const buildPaloAltoNetworksDestinationSchemas = <
 
 export const PaloAltoNetworksDestinationSchemas = buildPaloAltoNetworksDestinationSchemas(
   PkiSync.PaloAltoNetworks,
-  PaloAltoNetworksDestinationConfigSchema
+  PaloAltoNetworksDestinationConfigSchema,
+  PaloAltoNetworksMultiCertificateSyncOptionsSchema
 );
 
 export const PaloAltoNetworksSslTlsProfileDestinationSchemas =
   buildPaloAltoNetworksDestinationSchemas(
     PkiSync.PaloAltoNetworksSslTlsProfile,
-    PaloAltoNetworksSslTlsProfileDestinationConfigSchema
+    PaloAltoNetworksSslTlsProfileDestinationConfigSchema,
+    PaloAltoNetworksSyncOptionsSchema
   );
 
 export const PALO_ALTO_NETWORKS_TEMPLATE_REQUIRED_MESSAGE =
