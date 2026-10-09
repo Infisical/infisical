@@ -642,8 +642,7 @@ export type TDynamicSecretProvider =
   | {
       type: DynamicSecretProviders.Kafka;
       inputs: {
-        host: string;
-        port: number;
+        bootstrapServers: { host: string; port: number }[];
         saslMechanism: KafkaSaslMechanism;
         username: string;
         password: string;

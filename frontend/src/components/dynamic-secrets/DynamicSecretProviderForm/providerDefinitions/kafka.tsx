@@ -1,4 +1,4 @@
-import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { Controller, FieldArray, Path, useFieldArray, useFormContext } from "react-hook-form";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 
 import {
@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
 import {
   DynamicSecretProviders,
   KafkaAclOperation,
@@ -27,13 +28,10 @@ import { DynamicSecretProviderFields } from "../DynamicSecretProviderFields";
 import { DynamicSecretProviderGroup } from "../DynamicSecretProviderGroup";
 import { DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE } from "../schemas";
 import { SslRejectUnauthorizedField } from "../shared";
-import {
-  defineDynamicSecretProvider,
-  TDynamicSecretProviderField,
-  TDynamicSecretProviderFormItem
-} from "../types";
+import { defineDynamicSecretProvider, TDynamicSecretProviderField } from "../types";
 import {
   getDefaultKafkaAcl,
+  getDefaultKafkaBootstrapServer,
   getKafkaCreateDefaultValues,
   getKafkaCreatePayload,
   getKafkaEditDefaultValues,
@@ -45,15 +43,6 @@ import {
 } from "./kafkaContract";
 
 const kafkaConnectionFields = [
-  {
-    name: "inputs.host",
-    type: "text",
-    label: "Host",
-    placeholder: "kafka.example.com",
-    description: "Any broker in the cluster.",
-    layout: "half"
-  },
-  { name: "inputs.port", type: "number", label: "Port", placeholder: "9092", layout: "half" },
   {
     name: "inputs.saslMechanism",
     type: "select",
@@ -103,6 +92,19 @@ const caField = {
   rows: 3
 } satisfies TDynamicSecretProviderField<TKafkaFormValues>;
 
+type TKafkaRowColumn = {
+  key: string;
+  label: string;
+  placeholder?: string;
+  type?: "number";
+  options?: readonly { label: string; value: string }[];
+};
+
+const bootstrapServerColumns = [
+  { key: "host", label: "Host", placeholder: "kafka-1.example.com" },
+  { key: "port", label: "Port", placeholder: "9092", type: "number" }
+] satisfies readonly TKafkaRowColumn[];
+
 const aclColumns = [
   {
     key: "resourceType",
@@ -122,7 +124,7 @@ const aclColumns = [
       { label: "Prefixed", value: KafkaAclPatternType.Prefixed }
     ]
   },
-  { key: "resourceName", label: "Resource Name" },
+  { key: "resourceName", label: "Resource Name", placeholder: "orders" },
   {
     key: "operation",
     label: "Operation",
@@ -147,24 +149,133 @@ const aclColumns = [
       { label: "Deny", value: KafkaAclPermissionType.Deny }
     ]
   }
-] as const;
+] satisfies readonly TKafkaRowColumn[];
 
-const kafkaFormFields = [
-  {
-    kind: "group",
-    id: "kafka-connection",
-    presentation: "panel",
-    fields: kafkaConnectionFields
-  }
-] satisfies readonly TDynamicSecretProviderFormItem<TKafkaFormValues>[];
+const KafkaRows = <TName extends "inputs.bootstrapServers" | "inputs.acls">({
+  name,
+  columns,
+  gridClassName,
+  getNewRow,
+  itemLabel
+}: {
+  name: TName;
+  columns: readonly TKafkaRowColumn[];
+  gridClassName: string;
+  getNewRow: () => FieldArray<TKafkaFormValues, TName>;
+  itemLabel: string;
+}) => {
+  const { control } = useFormContext<TKafkaFormValues>();
+  const rows = useFieldArray<TKafkaFormValues, TName>({ control, name });
+
+  return (
+    <div className="flex flex-col gap-3">
+      {rows.fields.map(({ id }, index) => (
+        <div key={id} className={cn("grid grid-cols-1 items-start gap-3", gridClassName)}>
+          {columns.map((column) => {
+            const fieldName = `${name}.${index}.${column.key}`;
+            const inputId = fieldName.replaceAll(".", "-");
+            return (
+              <Controller
+                key={column.key}
+                control={control}
+                name={fieldName as Path<TKafkaFormValues>}
+                render={({ field, fieldState: { error } }) => (
+                  <Field data-invalid={Boolean(error)}>
+                    <FieldLabel htmlFor={inputId}>{column.label}</FieldLabel>
+                    {column.options ? (
+                      <Select
+                        value={String(field.value)}
+                        onValueChange={(value) => {
+                          if (!value || value === field.value) return;
+                          field.onChange(value);
+                        }}
+                      >
+                        <SelectTrigger
+                          ref={field.ref}
+                          id={inputId}
+                          onBlur={field.onBlur}
+                          isError={Boolean(error)}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {column.options.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        {...field}
+                        value={field.value as string | number}
+                        id={inputId}
+                        type={column.type}
+                        placeholder={column.placeholder}
+                        isError={Boolean(error)}
+                      />
+                    )}
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
+                )}
+              />
+            );
+          })}
+          <div className="flex flex-col gap-2">
+            <FieldLabel className="pointer-events-none invisible select-none" aria-hidden>
+              &nbsp;
+            </FieldLabel>
+            <IconButton
+              type="button"
+              variant="outline"
+              aria-label={`Remove ${itemLabel} ${index + 1}`}
+              disabled={rows.fields.length === 1}
+              onClick={() => rows.remove(index)}
+            >
+              <Trash2Icon />
+            </IconButton>
+          </div>
+        </div>
+      ))}
+      <Button
+        type="button"
+        size="sm"
+        className="self-start"
+        onClick={() => rows.append(getNewRow())}
+      >
+        <PlusIcon /> Add {itemLabel}
+      </Button>
+    </div>
+  );
+};
 
 const KafkaFields = () => {
-  const { control, watch } = useFormContext<TKafkaFormValues>();
-  const acls = useFieldArray({ control, name: "inputs.acls" });
+  const { watch } = useFormContext<TKafkaFormValues>();
   const sslEnabled = watch("inputs.sslEnabled");
 
   return (
     <>
+      <DynamicSecretProviderGroup
+        id="kafka-bootstrap-servers"
+        presentation="panel"
+        surface
+        title="Bootstrap Servers"
+        description="Brokers Infisical tries in order until one connects."
+      >
+        <KafkaRows
+          name="inputs.bootstrapServers"
+          columns={bootstrapServerColumns}
+          gridClassName="sm:grid-cols-[minmax(0,1fr)_8rem_auto]"
+          getNewRow={getDefaultKafkaBootstrapServer}
+          itemLabel="Server"
+        />
+      </DynamicSecretProviderGroup>
+
+      <DynamicSecretProviderGroup id="kafka-connection" presentation="panel">
+        <DynamicSecretProviderFields fields={kafkaConnectionFields} />
+      </DynamicSecretProviderGroup>
+
       <DynamicSecretProviderGroup
         id="kafka-acls"
         presentation="panel"
@@ -172,84 +283,13 @@ const KafkaFields = () => {
         title="ACLs"
         description="Granted to each lease user. Kafka denies anything these ACLs do not allow."
       >
-        <div className="flex flex-col gap-3">
-          {acls.fields.map(({ id }, index) => (
-            <div
-              key={id}
-              className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[8rem_7rem_minmax(0,1fr)_9rem_6rem_auto]"
-            >
-              {aclColumns.map((column) => (
-                <Controller
-                  key={column.key}
-                  control={control}
-                  name={`inputs.acls.${index}.${column.key}`}
-                  render={({ field, fieldState: { error } }) => (
-                    <Field data-invalid={Boolean(error)}>
-                      <FieldLabel htmlFor={`kafka-acl-${index}-${column.key}`}>
-                        {column.label}
-                      </FieldLabel>
-                      {"options" in column ? (
-                        <Select
-                          value={field.value}
-                          onValueChange={(value) => {
-                            if (!value || value === field.value) return;
-                            field.onChange(value);
-                          }}
-                        >
-                          <SelectTrigger
-                            ref={field.ref}
-                            id={`kafka-acl-${index}-${column.key}`}
-                            onBlur={field.onBlur}
-                            isError={Boolean(error)}
-                          >
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {column.options.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Input
-                          {...field}
-                          id={`kafka-acl-${index}-${column.key}`}
-                          placeholder="orders"
-                          isError={Boolean(error)}
-                        />
-                      )}
-                      <FieldError>{error?.message}</FieldError>
-                    </Field>
-                  )}
-                />
-              ))}
-              <div className="flex flex-col gap-2">
-                <FieldLabel className="pointer-events-none invisible select-none" aria-hidden>
-                  &nbsp;
-                </FieldLabel>
-                <IconButton
-                  type="button"
-                  variant="outline"
-                  aria-label={`Remove ACL ${index + 1}`}
-                  disabled={acls.fields.length === 1}
-                  onClick={() => acls.remove(index)}
-                >
-                  <Trash2Icon />
-                </IconButton>
-              </div>
-            </div>
-          ))}
-          <Button
-            type="button"
-            size="sm"
-            className="self-start"
-            onClick={() => acls.append(getDefaultKafkaAcl())}
-          >
-            <PlusIcon /> Add ACL
-          </Button>
-        </div>
+        <KafkaRows
+          name="inputs.acls"
+          columns={aclColumns}
+          gridClassName="sm:grid-cols-[8rem_7rem_minmax(0,1fr)_9rem_6rem_auto]"
+          getNewRow={getDefaultKafkaAcl}
+          itemLabel="ACL"
+        />
       </DynamicSecretProviderGroup>
 
       <DynamicSecretProviderGroup id="kafka-advanced" presentation="collapse" title="Advanced">
@@ -265,7 +305,6 @@ const KafkaFields = () => {
 export const kafkaDynamicSecretProvider = defineDynamicSecretProvider({
   provider: DynamicSecretProviders.Kafka,
   label: "Kafka",
-  fields: kafkaFormFields,
   customRenderer: {
     reasons: KAFKA_CUSTOM_RENDERER_REASONS,
     Component: KafkaFields

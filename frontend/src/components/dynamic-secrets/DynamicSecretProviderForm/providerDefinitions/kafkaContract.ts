@@ -34,9 +34,15 @@ const aclSchema = z.object({
   permissionType: z.nativeEnum(KafkaAclPermissionType)
 });
 
+const bootstrapServerSchema = z.object({
+  host: z.string().trim().min(1, "Host is required"),
+  port: z.coerce.number()
+});
+
 export const kafkaCreateInputsSchema = z.object({
-  host: z.string().trim().min(1),
-  port: z.coerce.number(),
+  bootstrapServers: z
+    .array(bootstrapServerSchema)
+    .min(1, "At least one bootstrap server is required"),
   saslMechanism: z.nativeEnum(KafkaSaslMechanism),
   username: z.string().trim().min(1),
   password: z.string().trim().min(1),
@@ -61,6 +67,11 @@ export const kafkaEditFormSchema = editDynamicSecretProviderFormSchema(kafkaEdit
   usernameTemplateSchema: z.string().trim().nullable().optional()
 }) as z.ZodType<TKafkaFormValues>;
 
+export const getDefaultKafkaBootstrapServer = (): TKafkaFormInputs["bootstrapServers"][number] => ({
+  host: "",
+  port: 9092
+});
+
 export const getDefaultKafkaAcl = (): TKafkaFormInputs["acls"][number] => ({
   resourceType: KafkaAclResourceType.Topic,
   patternType: KafkaAclPatternType.Literal,
@@ -78,8 +89,7 @@ export const getKafkaCreateDefaultValues = (
   environment: context.isSingleEnvironmentMode ? context.environments[0] : undefined,
   usernameTemplate: DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE,
   inputs: {
-    host: "",
-    port: 9092,
+    bootstrapServers: [getDefaultKafkaBootstrapServer()],
     saslMechanism: KafkaSaslMechanism.ScramSha512,
     username: "",
     password: "",

@@ -848,7 +848,7 @@ const kafkaCreateValues = {
   name: "kafka-secret",
   inputs: {
     ...kafkaCreateDefaults.inputs,
-    host: "kafka.example.com",
+    bootstrapServers: [{ host: "kafka.example.com", port: 9092 }],
     username: "admin",
     password: "secret",
     acls: [{ ...getDefaultKafkaAcl(), resourceName: "orders" }]

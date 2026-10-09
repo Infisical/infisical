@@ -1140,8 +1140,10 @@ export enum KafkaAclPermissionType {
 const KAFKA_CLUSTER_RESOURCE_NAME = "kafka-cluster";
 
 export const DynamicSecretKafkaSchema = z.object({
-  host: z.string().trim().min(1).max(255).describe("Host of a Kafka broker"),
-  port: z.number().int().min(1).max(65535),
+  bootstrapServers: z
+    .array(z.object({ host: z.string().trim().min(1).max(255), port: z.number().int().min(1).max(65535) }))
+    .min(1)
+    .describe("Brokers Infisical tries in order until one connects"),
   saslMechanism: z
     .nativeEnum(KafkaSaslMechanism)
     .describe("SASL mechanism Infisical uses to authenticate as the admin user"),

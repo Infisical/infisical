@@ -14,6 +14,7 @@ import {
   deleteAclsV3,
   describeAclsV3,
   findErrorBy,
+  metadataV9,
   ResourcePatternTypes,
   ResourceTypes,
   ScramMechanisms
@@ -32,7 +33,7 @@ import { verifyHostInputValidity } from "../dynamic-secret-fns";
 import { DynamicSecretKafkaSchema, TDynamicProviderFns } from "./models";
 import { generateUsername } from "./templateUtils";
 
-type TKafkaProviderInputs = z.infer<typeof DynamicSecretKafkaSchema> & { hostIp: string };
+type TKafkaProviderInputs = z.infer<typeof DynamicSecretKafkaSchema>;
 
 const pbkdf2Async = promisify(pbkdf2);
 
@@ -91,86 +92,100 @@ const deleteKafkaUser = async (connection: Connection, username: string) => {
 export const KafkaProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretKafkaSchema.parseAsync(inputs);
-    const [hostIp] = await verifyHostInputValidity({ host: providerInputs.host, isDynamicSecret: true });
-    return { ...providerInputs, hostIp };
+    await Promise.all(
+      providerInputs.bootstrapServers.map(({ host }) => verifyHostInputValidity({ host, isDynamicSecret: true }))
+    );
+    return providerInputs;
   };
 
-  // Admin requests are accepted by any KRaft broker, so a single connection to the configured one is enough
+  // KRaft brokers forward admin requests to the controller, so the configured broker is enough. ZooKeeper
+  // clusters only accept SCRAM changes on the controller itself, so there every request goes to it instead.
   const $withConnection = async <T>(
     providerInputs: TKafkaProviderInputs,
     errorPrefix: string,
     callback: (connection: Connection) => Promise<T>,
     sensitiveTokens: string[] = []
   ) => {
-    const connection = new Connection("infisical", {
-      sasl: {
-        mechanism: providerInputs.saslMechanism,
-        username: providerInputs.username,
-        password: providerInputs.password
-      },
-      ...(providerInputs.sslEnabled && {
-        tls: {
-          ca: providerInputs.ca || undefined,
-          rejectUnauthorized: providerInputs.sslRejectUnauthorized,
-          ...getTlsServerNameOptions(providerInputs.host)
-        }
-      })
-    });
+    const connections: Connection[] = [];
+    // the controller's address comes from the broker, so every host gets the same checks before connecting
+    const connect = async (host: string, port: number) => {
+      const [hostIp] = await verifyHostInputValidity({ host, isDynamicSecret: true });
+      const connection = new Connection("infisical", {
+        sasl: {
+          mechanism: providerInputs.saslMechanism,
+          username: providerInputs.username,
+          password: providerInputs.password
+        },
+        ...(providerInputs.sslEnabled && {
+          tls: {
+            ca: providerInputs.ca || undefined,
+            rejectUnauthorized: providerInputs.sslRejectUnauthorized,
+            ...getTlsServerNameOptions(host)
+          }
+        })
+      });
+      connections.push(connection);
+      await connection.connect(hostIp, port);
+      return connection;
+    };
 
     try {
-      await connection.connect(providerInputs.hostIp, providerInputs.port);
-      return await callback(connection);
+      // like Kafka clients, use the first bootstrap server that connects
+      const connection = await providerInputs.bootstrapServers.reduce<Promise<Connection>>(
+        (previous, { host, port }) => previous.catch(() => connect(host, port)),
+        Promise.reject(new Error("No bootstrap servers configured"))
+      );
+      const { apiKeys, finalizedFeatures } = await apiVersionsV3.api.async(
+        connection,
+        clientSoftwareName,
+        String(clientSoftwareVersion)
+      );
+      const isSupportedCluster = REQUIRED_APIS.every(({ key, version }) =>
+        apiKeys.some(
+          ({ apiKey, minVersion, maxVersion }) => apiKey === key && minVersion <= version && version <= maxVersion
+        )
+      );
+      if (!isSupportedCluster) {
+        throw new BadRequestError({
+          message: "Kafka dynamic secrets require Kafka 2.7 or later with ZooKeeper, or 3.5 or later with KRaft."
+        });
+      }
+      // only KRaft clusters report metadata.version
+      if (finalizedFeatures?.some(({ name }) => name === "metadata.version")) return await callback(connection);
+
+      const { brokers, controllerId } = await metadataV9.api.async(connection, []);
+      const controller = brokers.find(({ nodeId }) => nodeId === controllerId);
+      if (!controller) throw new BadRequestError({ message: "The Kafka cluster has no active controller." });
+      return await callback(await connect(controller.host, controller.port));
     } catch (err) {
       const sanitizedErrorMessage = sanitizeString({
         unsanitizedString: getErrorMessage(err),
-        tokens: [...sensitiveTokens, providerInputs.password, providerInputs.username, providerInputs.host]
+        tokens: [
+          ...sensitiveTokens,
+          providerInputs.password,
+          providerInputs.username,
+          ...providerInputs.bootstrapServers.map(({ host }) => host)
+        ]
       });
       throw new BadRequestError({ message: `${errorPrefix}: ${sanitizedErrorMessage}` });
     } finally {
-      await connection.close();
+      await Promise.all(connections.map((connection) => connection.close()));
     }
   };
 
   const validateConnection = async (inputs: unknown) => {
     const providerInputs = await validateProviderInputs(inputs);
 
-    const { isSupportedCluster, isAuthorizerEnabled } = await $withConnection(
-      providerInputs,
-      "Failed to connect with provider",
-      async (connection) => {
-        const { apiKeys, finalizedFeatures } = await apiVersionsV3.api.async(
-          connection,
-          clientSoftwareName,
-          String(clientSoftwareVersion)
-        );
-
-        return {
-          // only KRaft clusters report metadata.version, and they support managing SCRAM users from Kafka 3.5
-          isSupportedCluster:
-            Boolean(finalizedFeatures?.some(({ name }) => name === "metadata.version")) &&
-            REQUIRED_APIS.every(({ key, version }) =>
-              apiKeys.some(
-                ({ apiKey, minVersion, maxVersion }) => apiKey === key && minVersion <= version && version <= maxVersion
-              )
-            ),
-          isAuthorizerEnabled: await describeAclsV3.api
-            .async(connection, getPrincipalAclFilter(providerInputs.username))
-            .then(
-              () => true,
-              (err: Error) => {
-                if (findErrorBy(err, "apiId", "SECURITY_DISABLED")) return false;
-                throw err;
-              }
-            )
-        };
-      }
+    const isAuthorizerEnabled = await $withConnection(providerInputs, "Failed to connect with provider", (connection) =>
+      describeAclsV3.api.async(connection, getPrincipalAclFilter(providerInputs.username)).then(
+        () => true,
+        (err: Error) => {
+          if (findErrorBy(err, "apiId", "SECURITY_DISABLED")) return false;
+          throw err;
+        }
+      )
     );
 
-    if (!isSupportedCluster) {
-      throw new BadRequestError({
-        message: "Kafka dynamic secrets require Kafka 3.5 or later running in KRaft mode."
-      });
-    }
     if (!isAuthorizerEnabled) {
       throw new BadRequestError({
         message:
