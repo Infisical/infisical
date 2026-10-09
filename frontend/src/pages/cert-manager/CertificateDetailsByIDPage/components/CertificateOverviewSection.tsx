@@ -62,8 +62,8 @@ const getProviderReference = (metadata?: TCertificateExternalMetadata | null) =>
 };
 
 export const CertificateOverviewSection = ({ certificateId }: Props) => {
-  const { orgId, projectId } = useParams({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificates/$certificateId"
+  const { orgId } = useParams({
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/certificates/$certificateId"
   });
   const { data: certificateData, isLoading } = useGetCertificateById(certificateId);
   const certificate = certificateData?.certificate;
@@ -194,8 +194,8 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
               <DetailValue>
                 {showCaLink && (
                   <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/ca/$caId"
-                    params={{ orgId, projectId, caId: certificate.caId }}
+                    to="/organizations/$orgId/cert-manager/ca/$caId"
+                    params={{ orgId, caId: certificate.caId }}
                     className="inline-flex items-center gap-1 underline"
                   >
                     {certificate.caName}
@@ -219,10 +219,9 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                 <DetailLabel>Application</DetailLabel>
                 <DetailValue>
                   <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+                    to="/organizations/$orgId/cert-manager/applications/$applicationName"
                     params={{
                       orgId,
-                      projectId,
                       applicationName: certificate.applicationName
                     }}
                     className="inline-flex items-center gap-1 underline"
@@ -272,10 +271,9 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                 <DetailLabel>Renewed From</DetailLabel>
                 <DetailValue>
                   <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId"
+                    to="/organizations/$orgId/cert-manager/certificates/$certificateId"
                     params={{
                       orgId,
-                      projectId,
                       certificateId: certificate.renewedFromCertificateId
                     }}
                     className="inline-flex items-center gap-1 underline"
@@ -297,10 +295,9 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                 <DetailLabel>Renewed By</DetailLabel>
                 <DetailValue>
                   <Link
-                    to="/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId"
+                    to="/organizations/$orgId/cert-manager/certificates/$certificateId"
                     params={{
                       orgId,
-                      projectId,
                       certificateId: certificate.renewedByCertificateId
                     }}
                     className="inline-flex items-center gap-1 underline"

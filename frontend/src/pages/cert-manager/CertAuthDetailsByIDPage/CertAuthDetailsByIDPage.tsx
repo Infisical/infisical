@@ -63,8 +63,6 @@ const Page = () => {
     type: CaType.INTERNAL
   }) as { data: TInternalCertificateAuthority };
 
-  const projectId = currentProject?.id || "";
-
   const cameFromProfile = search.from === "profile" && Boolean(search.profileId);
 
   const { data: sourceProfile } = useGetCertificateProfileById({
@@ -95,10 +93,9 @@ const Page = () => {
 
     handlePopUpClose("deleteCa");
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities",
+      to: "/organizations/$orgId/cert-manager/certificate-authorities",
       params: {
-        orgId: currentOrg.id,
-        projectId
+        orgId: currentOrg.id
       }
     });
   };
@@ -120,10 +117,9 @@ const Page = () => {
                   backLink={
                     cameFromProfile && search.profileId ? (
                       <Link
-                        to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId"
+                        to="/organizations/$orgId/cert-manager/certificate-profiles/$profileId"
                         params={{
                           orgId: currentOrg.id,
-                          projectId,
                           profileId: search.profileId
                         }}
                         search={{
@@ -136,10 +132,9 @@ const Page = () => {
                       </Link>
                     ) : (
                       <Link
-                        to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
+                        to="/organizations/$orgId/cert-manager/certificate-authorities"
                         params={{
-                          orgId: currentOrg.id,
-                          projectId
+                          orgId: currentOrg.id
                         }}
                       >
                         <FontAwesomeIcon icon={faChevronLeft} />

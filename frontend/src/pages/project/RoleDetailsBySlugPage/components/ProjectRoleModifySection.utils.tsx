@@ -2891,12 +2891,12 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Read",
         value: ProjectPermissionApplicationActions.Read,
         description:
-          "See all applications in the project. An application's details stay hidden unless you are a member of it"
+          "See all applications in Certificate Manager. An application's details stay hidden unless you are a member of it"
       },
       {
         label: "List",
         value: ProjectPermissionApplicationActions.List,
-        description: "List the applications in the project"
+        description: "List the applications in Certificate Manager"
       },
       {
         label: "Create",

@@ -12,7 +12,7 @@ import { ExternalLinkIcon } from "lucide-react";
 
 import { Skeleton } from "@app/components/v2";
 import { Badge, ButtonGroup } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization } from "@app/context";
 import { CertRequestRequestData, TApprovalRequest } from "@app/hooks/api/approvalRequests";
 import { useGetCertificateProfileById } from "@app/hooks/api/certificateProfiles";
 import {
@@ -61,7 +61,6 @@ const formatValidity = (ttl: string): string => {
 
 export const CertificateDetailsSection = ({ request }: Props) => {
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
   const requestData = request.requestData.requestData as CertRequestRequestData;
   const certRequest = requestData.certificateRequest;
 
@@ -158,10 +157,9 @@ export const CertificateDetailsSection = ({ request }: Props) => {
             {!isProfileLoading && isInternalCa && caId && (
               <Badge variant="outline" asChild className="mt-1">
                 <Link
-                  to="/organizations/$orgId/projects/cert-manager/$projectId/ca/$caId"
+                  to="/organizations/$orgId/cert-manager/ca/$caId"
                   params={{
                     orgId: currentOrg.id,
-                    projectId: currentProject.id,
                     caId
                   }}
                 >

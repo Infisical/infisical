@@ -45,7 +45,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { useSubscription } from "@app/context";
+import { useProject, useSubscription } from "@app/context";
 import {
   ProjectPermissionHsmConnectorActions,
   ProjectPermissionSub
@@ -66,7 +66,9 @@ import { EditHsmConnectorSheet } from "./EditHsmConnectorSheet";
 
 export const HsmConnectorsTab = () => {
   const navigate = useNavigate();
-  const { orgId, projectId } = useParams({ strict: false });
+  const { orgId } = useParams({ strict: false });
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const { subscription } = useSubscription();
   const isLicensed = Boolean(subscription?.hsm);
   const [addOpen, setAddOpen] = useState(false);
@@ -80,8 +82,8 @@ export const HsmConnectorsTab = () => {
   const openDetail = (connectorId: string) => {
     if (!orgId || !projectId) return;
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/hsm-connectors/$connectorId",
-      params: { orgId, projectId, connectorId }
+      to: "/organizations/$orgId/cert-manager/hsm-connectors/$connectorId",
+      params: { orgId, connectorId }
     });
   };
 

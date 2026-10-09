@@ -3,7 +3,7 @@ import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { PkiSubscriberDetailsByIDPage } from "./PkiSubscriberDetailsByIDPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/subscribers/$subscriberName"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/subscribers/$subscriberName"
 )({
   component: PkiSubscriberDetailsByIDPage,
   beforeLoad: ({ context, params }) => {
@@ -13,10 +13,9 @@ export const Route = createFileRoute(
         {
           label: "Subscribers",
           link: linkOptions({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/subscribers",
+            to: "/organizations/$orgId/cert-manager/subscribers",
             params: {
-              orgId: params.orgId,
-              projectId: params.projectId
+              orgId: params.orgId
             }
           })
         },

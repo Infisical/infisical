@@ -4,6 +4,7 @@ import { addSeconds, formatISO } from "date-fns";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { SessionStorageKeys } from "@app/const";
+import { getTabCertManagerProjectIdForRequest } from "@app/helpers/certManagerActiveProject";
 import { fetchAuthToken } from "@app/hooks/api/auth/refresh";
 import {
   getAuthToken,
@@ -20,6 +21,17 @@ export const apiRequest = axios.create({
 });
 
 apiRequest.interceptors.request.use((config) => {
+  const tabProjectId = getTabCertManagerProjectIdForRequest(config.url);
+  const body = config.data as { projectId?: unknown } | undefined;
+  const namesProject =
+    Boolean((config.params as { projectId?: unknown } | undefined)?.projectId) ||
+    Boolean(config.url?.includes("projectId=")) ||
+    (typeof body === "object" && body !== null && "projectId" in body);
+  if (tabProjectId && !namesProject) {
+    // eslint-disable-next-line no-param-reassign
+    config.params = { ...config.params, projectId: tabProjectId };
+  }
+
   // Skip auto-injection if the caller already set an Authorization header
   if (config.headers?.Authorization) return config;
 

@@ -24,6 +24,8 @@ import {
   Skeleton
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
+import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import {
   TGatewayConnectedResources,
   useGetGatewayConnectedResources
@@ -46,16 +48,18 @@ const ResourceRow = ({
   subtitle,
   to,
   params,
-  search
+  search,
+  onClick
 }: {
   name: string;
   subtitle: string;
   to: string;
   params: Record<string, string>;
   search?: Record<string, unknown>;
+  onClick?: () => void;
 }) => (
   <Item asChild variant="outline" size="xs">
-    <Link to={to as "/"} params={params} search={search as never}>
+    <Link to={to as "/"} params={params} search={search as never} onClick={onClick}>
       <ItemContent>
         <ItemTitle>{name}</ItemTitle>
         <ItemDescription className="text-muted">{subtitle}</ItemDescription>
@@ -68,6 +72,7 @@ const ResourceRow = ({
 export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
   const { currentOrg } = useOrganization();
   const { data: resources, isPending } = useGetGatewayConnectedResources(gatewayId);
+  const { data: certManagerInstance } = useCertManagerInstanceState();
 
   const total = totalCountOf(resources);
 
@@ -231,9 +236,16 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                       <ResourceRow
                         key={c.id}
                         name={c.name}
-                        subtitle={c.projectName}
-                        to="/organizations/$orgId/projects/cert-manager/$projectId/discovery/$discoveryId"
-                        params={{ orgId: currentOrg.id, projectId: c.projectId, discoveryId: c.id }}
+                        subtitle={
+                          certManagerInstance?.isMultiInstance
+                            ? c.projectName
+                            : "Certificate Manager"
+                        }
+                        to="/organizations/$orgId/cert-manager/discovery/$discoveryId"
+                        params={{ orgId: currentOrg.id, discoveryId: c.id }}
+                        onClick={() =>
+                          setCertManagerActiveProjectCookie(currentOrg.id, c.projectId)
+                        }
                       />
                     ))}
                   </ItemGroup>

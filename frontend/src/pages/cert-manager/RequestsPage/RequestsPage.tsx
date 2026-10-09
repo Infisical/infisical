@@ -36,6 +36,7 @@ import {
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
@@ -109,10 +110,9 @@ const getCodeSigningData = (data: unknown): CodeSigningRequestData | null => {
 };
 
 export const RequestsPage = () => {
-  const { projectId, orgId } = useParams({ strict: false }) as {
-    projectId?: string;
-    orgId?: string;
-  };
+  const { orgId } = useParams({ strict: false }) as { orgId?: string };
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const search = useSearch({ strict: false }) as { selectedTab?: string };
   const navigate = useNavigate();
   const selectedTab = search.selectedTab ?? "application-requests";
@@ -153,7 +153,7 @@ export const RequestsPage = () => {
     approvalRequestQuery.list({
       policyType: ApprovalPolicyType.CertRequest,
       scope: ApprovalPolicyScope.Project,
-      scopeId: projectId ?? ""
+      scopeId: projectId
     })
   );
 
@@ -161,7 +161,7 @@ export const RequestsPage = () => {
     approvalRequestQuery.list({
       policyType: ApprovalPolicyType.CertCodeSigning,
       scope: ApprovalPolicyScope.Project,
-      scopeId: projectId ?? ""
+      scopeId: projectId
     })
   );
 
@@ -258,8 +258,8 @@ export const RequestsPage = () => {
               value={selectedTab}
               onValueChange={(v) =>
                 navigate({
-                  to: "/organizations/$orgId/projects/cert-manager/$projectId/requests",
-                  params: { orgId: orgId ?? "", projectId: projectId ?? "" },
+                  to: "/organizations/$orgId/cert-manager/requests",
+                  params: { orgId: orgId ?? "" },
                   search: { selectedTab: v as "application-requests" | "signing-requests" }
                 })
               }
@@ -384,10 +384,9 @@ export const RequestsPage = () => {
                                 className="cursor-pointer [&>td]:py-3"
                                 onClick={() =>
                                   navigate({
-                                    to: "/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId",
+                                    to: "/organizations/$orgId/cert-manager/approvals/$approvalRequestId",
                                     params: {
                                       orgId: orgId ?? "",
-                                      projectId: projectId ?? "",
                                       approvalRequestId: r.id
                                     },
                                     search: {
@@ -404,10 +403,9 @@ export const RequestsPage = () => {
                                 <TableCell className="font-mono text-xs">
                                   {app ? (
                                     <Link
-                                      to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+                                      to="/organizations/$orgId/cert-manager/applications/$applicationName"
                                       params={{
                                         orgId: orgId ?? "",
-                                        projectId: projectId ?? "",
                                         applicationName: app.name
                                       }}
                                       className="text-foreground hover:text-project"
@@ -534,10 +532,9 @@ export const RequestsPage = () => {
                                 className="cursor-pointer [&>td]:py-3"
                                 onClick={() =>
                                   navigate({
-                                    to: "/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId",
+                                    to: "/organizations/$orgId/cert-manager/approvals/$approvalRequestId",
                                     params: {
                                       orgId: orgId ?? "",
-                                      projectId: projectId ?? "",
                                       approvalRequestId: r.id
                                     },
                                     search: {

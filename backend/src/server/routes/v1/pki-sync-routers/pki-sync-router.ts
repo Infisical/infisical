@@ -165,7 +165,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
       hide: false,
       ...(enableOperationId ? { operationId: "listPkiSyncs" } : {}),
       tags: [ApiDocsTags.PkiSyncs],
-      description: "List all the PKI Syncs for the specified project.",
+      description: "List all the PKI Syncs.",
       querystring: z.object({
         projectId: z.string().trim().optional().describe(openApiHidden()),
         certificateId: z.string().uuid().optional(),

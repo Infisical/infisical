@@ -17,6 +17,7 @@ export { usePopUp } from "./usePopUp";
 export { useResetPageHelper } from "./useResetPageHelper";
 export { useResetPageOnSearch } from "./useResetPageOnSearch";
 export * from "./useResizableHeaderHeight";
+export { useRouteProjectId } from "./useRouteProjectId";
 export { useScopeVariant } from "./useScopeVariant";
 export { useSecretsActivationNudge } from "./useSecretsActivationNudge";
 export { useSlashFocusSearch } from "./useSlashFocusSearch";

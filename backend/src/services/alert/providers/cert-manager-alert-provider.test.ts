@@ -342,7 +342,7 @@ describe("cert manager alert provider", () => {
     const viewUrl = await provider.buildViewUrl(alert);
     const payload = provider.buildPayload(alert, [sampleCertificate()], viewUrl);
 
-    expect(viewUrl).toBe("https://app.infisical.com/organizations/org-1/projects/cert-manager/proj-1/inventory");
+    expect(viewUrl).toBe("https://app.infisical.com/organizations/org-1/cert-manager/inventory");
     expect(payload.alert.resourceType).toBe("cert-manager");
     expect(payload.alert).not.toHaveProperty("resourceId");
     expect(payload.eventKey).toBe(ISSUANCE_EVENT);

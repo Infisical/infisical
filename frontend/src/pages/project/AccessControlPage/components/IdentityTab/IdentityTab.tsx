@@ -188,7 +188,7 @@ export const IdentityTab = withProjectPermission(
         });
 
         createNotification({
-          text: "Successfully deleted project machine identity",
+          text: `Successfully deleted ${isCertManager ? productLabel : "project"} machine identity`,
           type: "success"
         });
       } else {
@@ -199,7 +199,7 @@ export const IdentityTab = withProjectPermission(
         });
 
         createNotification({
-          text: "Successfully removed machine identity from project",
+          text: `Successfully removed machine identity from ${isCertManager ? productLabel : "project"}`,
           type: "success"
         });
       }
@@ -650,7 +650,7 @@ export const IdentityTab = withProjectPermission(
           }
           description={
             popUp.deleteIdentity.data?.isProjectIdentity
-              ? "This permanently deletes the project machine identity and revokes its access. This cannot be undone."
+              ? `This permanently deletes the ${isCertManager ? productLabel : "project"} machine identity and revokes its access. This cannot be undone.`
               : `The machine identity will lose access to this ${productLabel.toLowerCase()} but remain available in its organization.`
           }
           descriptionAsAlert

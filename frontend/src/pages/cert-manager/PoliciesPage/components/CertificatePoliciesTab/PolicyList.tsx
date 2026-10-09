@@ -118,10 +118,9 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
             key={policy.id}
             onClick={() =>
               navigate({
-                to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies/$policyId",
+                to: "/organizations/$orgId/cert-manager/certificate-policies/$policyId",
                 params: {
                   orgId: currentOrg.id,
-                  projectId: currentProject.id,
                   policyId: policy.id
                 }
               })
@@ -130,10 +129,9 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
             <TableCell>
               <div className="flex items-center gap-2">
                 <Link
-                  to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies/$policyId"
+                  to="/organizations/$orgId/cert-manager/certificate-policies/$policyId"
                   params={{
                     orgId: currentOrg.id,
-                    projectId: currentProject.id,
                     policyId: policy.id
                   }}
                   className="rounded-sm hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"

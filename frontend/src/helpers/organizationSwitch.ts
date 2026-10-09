@@ -56,6 +56,10 @@ export const getOrganizationSwitchDestination = (
     selectedTab = "relays";
   } else if (path.startsWith("app-connections")) {
     section = "integrations";
+  } else if (path === "cert-manager" || path.startsWith("cert-manager/")) {
+    // The other org may have no Certificate Manager yet, which the product landing page handles.
+    section = "projects/cert-manager";
+    selectedTab = undefined;
   }
 
   if (isSubOrganization) {

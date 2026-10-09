@@ -13,7 +13,7 @@ const SearchSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/applications/$applicationName"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/applications/$applicationName"
 )({
   component: ApplicationDetailsByIDPage,
   validateSearch: zodValidator(SearchSchema),
