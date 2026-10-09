@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 
 // Mintlify evaluates each export on its own, so the components can't share module-level constants.
 // The rules for which answers fit together live in AgentVaultSetupQuestions (BUILDS), and are
-// repeated in AgentVaultSetupDiagram, AgentVaultSetupSummary, and AgentVaultSetupBranch. Keep the
-// four in sync.
+// repeated in AgentVaultSetupDiagram, AgentVaultSetupStep, AgentVaultSetupSummary, and
+// AgentVaultSetupBranch. Keep them in sync.
 
 export const AgentVaultSetupPage = ({ title, description, children }) => {
   const rootRef = useRef(null);
@@ -274,31 +274,70 @@ export const AgentVaultSetupDiagram = ({ inline }) => {
     ci: "CI runner",
   };
 
-  // Each question decides part of the diagram. While a question is in view, the diagram highlights
-  // those lanes and messages and dims the rest.
+  // Each question and each walkthrough step explains part of the diagram. While one is in view, the
+  // diagram highlights those lanes and messages and dims the rest. A step-<message id> focus
+  // highlights that one message and the two lanes it connects.
   const FOCUS = {
     building: { lanes: ["infisical", "creator"], messages: ["create", "token", "start", "revoke"] },
     runs: { lanes: ["agent", "proxy"], messages: ["start", "request"] },
     agent: { lanes: ["agent"], messages: ["start", "request"] },
+    "step-before": { lanes: ["infisical", "proxy"], messages: [] },
   };
 
   const SELECTION_EVENT = "av-setup-selection-change";
+
+  const AGENT_IDS = ["claude-code", "codex", "opencode", "hermes", "openclaw", "custom"];
 
   const readSelection = () => {
     const params = new URLSearchParams(window.location.search);
     const building = RULES[params.get("building")] ? params.get("building") : "personal";
     const runs = params.get("runs");
+    const agent = params.get("agent");
     return {
+      building,
       model: RULES[building].model,
       runs: RULES[building].runs.includes(runs) ? runs : null,
+      agent: AGENT_IDS.includes(agent) ? agent : null,
     };
   };
 
-  const [selection, setSelection] = useState({ model: "user", runs: null });
+  const [selection, setSelection] = useState({
+    building: "personal",
+    model: "user",
+    runs: null,
+    agent: null,
+  });
   const [focus, setFocus] = useState(null);
-  const [expanded, setExpanded] = useState(false);
-  const expandRef = useRef(null);
-  const closeRef = useRef(null);
+  const buildRef = useRef(null);
+
+  // A setup that one guide covers links straight to that guide. The others take several pages,
+  // so the button jumps to the list of them in "Build your setup".
+  const GUIDES = "/documentation/platform/agent-vault";
+  let buildHref = "#build-your-setup";
+  if (selection.model === "user") {
+    const guide = {
+      "claude-code": "guides/claude-code",
+      codex: "guides/codex",
+      opencode: "guides/opencode",
+      hermes: selection.building === "assistant" ? "guides/hermes-gateway" : "guides/hermes",
+      openclaw: selection.building === "assistant" ? "guides/openclaw-gateway" : "guides/openclaw",
+      custom: "guides/custom-agent",
+    }[selection.agent];
+    buildHref = `${GUIDES}/${guide ?? "quickstart"}`;
+  }
+
+  // Mintlify doesn't reliably add the /docs base path to links in snippets, so add it here only
+  // when the page is under /docs and the rendered link doesn't already have it.
+  useEffect(() => {
+    const link = buildRef.current;
+    if (!link) return;
+    const href = link.getAttribute("href") || "";
+    const underDocs =
+      window.location.pathname === "/docs" || window.location.pathname.startsWith("/docs/");
+    if (underDocs && href.startsWith("/") && !href.startsWith("/docs/")) {
+      link.setAttribute("href", `/docs${href}`);
+    }
+  }, [buildHref]);
 
   useEffect(() => {
     const sync = () => setSelection(readSelection());
@@ -320,6 +359,8 @@ export const AgentVaultSetupDiagram = ({ inline }) => {
         });
         const last = sections[sections.length - 1];
         if (current === last && last.getBoundingClientRect().bottom <= line) current = null;
+        // Marking the current part on the page lets CSS dim the other walkthrough steps.
+        sections.forEach((el) => el.toggleAttribute("data-avsp-active", el === current));
         setFocus(current ? current.getAttribute("data-avsp-focus") : null);
       });
     };
@@ -336,71 +377,20 @@ export const AgentVaultSetupDiagram = ({ inline }) => {
     };
   }, []);
 
-  useEffect(() => {
-    if (!expanded) return undefined;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    if (closeRef.current) closeRef.current.focus();
-    const onKey = (event) => {
-      if (event.key === "Escape") setExpanded(false);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", onKey);
-      if (expandRef.current) expandRef.current.focus();
-    };
-  }, [expanded]);
-
   const sharesHost = selection.model === "job";
 
   const creator = {
-    user: {
-      label: "You",
-      sub: "Infisical dashboard",
-      detail: "Signs in to Infisical with your own account",
-    },
-    job: {
-      label: "Infisical CLI",
-      sub: "Machine identity",
-      detail: "Holds the credentials of a machine identity granted one access bundle",
-    },
-    orchestrator: {
-      label: "Orchestrator",
-      sub: "Machine identity",
-      detail: "Holds the credentials of a machine identity granted an access bundle for each kind of task",
-    },
+    user: { label: "You", sub: "Infisical dashboard" },
+    job: { label: "Infisical CLI", sub: "Machine identity" },
+    orchestrator: { label: "Orchestrator", sub: "Machine identity" },
   }[selection.model];
 
   const lanes = [
-    {
-      id: "infisical",
-      label: "Infisical",
-      sub: "Cloud or self-hosted",
-      detail: "Stores the access bundles and the real credentials for each service",
-    },
-    { id: "creator", label: creator.label, sub: creator.sub, detail: creator.detail },
-    {
-      id: "agent",
-      label: "Agent",
-      sub: selection.runs ? HOSTS[selection.runs] : "Agent's host",
-      detail:
-        selection.model === "job"
-          ? "Holds the session token, and can read the machine identity's credentials from its environment"
-          : "Holds only the session token",
-    },
-    {
-      id: "proxy",
-      label: "Proxy",
-      sub: "Its own host",
-      detail: "Holds its own access token and the private key of its certificate authority",
-    },
-    {
-      id: "api",
-      label: "API",
-      sub: "Such as GitHub",
-      detail: "Receives each request with the real credential attached",
-    },
+    { id: "infisical", label: "Infisical", sub: "Cloud or self-hosted" },
+    { id: "creator", label: creator.label, sub: creator.sub },
+    { id: "agent", label: "Agent", sub: selection.runs ? HOSTS[selection.runs] : "Agent's host" },
+    { id: "proxy", label: "Proxy", sub: "Its own host" },
+    { id: "api", label: "API", sub: "Such as GitHub" },
   ];
   const laneIndex = (id) => lanes.findIndex((lane) => lane.id === id);
 
@@ -414,52 +404,17 @@ export const AgentVaultSetupDiagram = ({ inline }) => {
         job: "Log in and create a session",
         orchestrator: "Create a session for the task",
       }[selection.model],
-      detail: {
-        user: "In the dashboard, choose the access bundle and when the session expires",
-        job: "The infisical agent-vault run command logs in as the machine identity",
-        orchestrator: "Through the Infisical API, with the access bundle for the task",
-      }[selection.model],
     },
-    {
-      id: "token",
-      from: "infisical",
-      to: "creator",
-      label: "Session token",
-      detail: "Works for one access bundle until the session expires or is revoked",
-      reply: true,
-    },
+    { id: "token", from: "infisical", to: "creator", label: "Session token", reply: true },
     {
       id: "start",
       from: "creator",
       to: "agent",
       label: selection.model === "orchestrator" ? "Start an agent with the token" : "Start the agent with the token",
-      detail: {
-        user: "infisical agent-vault run sends the agent's requests through the proxy",
-        job: "The CLI sends the agent's requests through the proxy",
-        orchestrator: "Only the session token goes to the agent's host",
-      }[selection.model],
     },
-    {
-      id: "request",
-      from: "agent",
-      to: "proxy",
-      label: "API request",
-      detail: "Sent with the session token instead of a real API key",
-    },
-    {
-      id: "fetch",
-      from: "proxy",
-      to: "infisical",
-      label: "Get the session's credentials",
-      detail: "The proxy checks each session again every poll interval, 60 seconds by default",
-    },
-    {
-      id: "forward",
-      from: "proxy",
-      to: "api",
-      label: "Request with the real credential",
-      detail: "The proxy attaches the service's credential and sends the request on",
-    },
+    { id: "request", from: "agent", to: "proxy", label: "API request" },
+    { id: "fetch", from: "proxy", to: "infisical", label: "Get the session's credentials" },
+    { id: "forward", from: "proxy", to: "api", label: "Request with the real credential" },
   ];
   if (selection.model === "job") {
     messages.push({
@@ -467,7 +422,6 @@ export const AgentVaultSetupDiagram = ({ inline }) => {
       from: "creator",
       to: "infisical",
       label: "Revoke the session when the agent exits",
-      detail: "The CLI revokes the session, so the token stops working",
     });
   }
   if (selection.model === "orchestrator") {
@@ -476,24 +430,53 @@ export const AgentVaultSetupDiagram = ({ inline }) => {
       from: "creator",
       to: "infisical",
       label: "Revoke the session when the task ends",
-      detail: "Revoke it even if the agent fails, so the token stops working",
     });
   }
+
+  const scrollToStep = (id) => {
+    const block = document.querySelector(`[data-avsp-focus="step-${id}"]`);
+    if (block) block.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  let highlight = null;
+  if (focus) {
+    const stepMessage = messages.find((message) => `step-${message.id}` === focus);
+    highlight = stepMessage
+      ? { lanes: [stepMessage.from, stepMessage.to], messages: [stepMessage.id] }
+      : FOCUS[focus] ?? null;
+  }
+  const stateClass = (base, active) => {
+    if (!highlight) return base;
+    return active ? `${base} ${base}--focus` : `${base} ${base}--dim`;
+  };
 
   const laneCount = lanes.length;
   const center = (index) => `${((index + 0.5) / laneCount) * 100}%`;
 
-  const renderDiagram = (detailed) => {
-    const highlight = !detailed && focus ? FOCUS[focus] : null;
-    const stateClass = (base, active) => {
-      if (!highlight) return base;
-      return active ? `${base} ${base}--focus` : `${base} ${base}--dim`;
-    };
-
-    return (
+  return (
+    <div className={inline ? "ifx-avsp__diagram-inline not-prose" : "not-prose"}>
+      <div className="ifx-avsp__panel-head">
+        <a ref={buildRef} href={buildHref} className="ifx-btn ifx-btn--primary ifx-avsp__build-button">
+          Build
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M5 12h14" />
+            <path d="m12 5 7 7-7 7" />
+          </svg>
+        </a>
+      </div>
       <div className="ifx-avsp__diagram-scroll">
         <div
-          className={detailed ? "ifx-avsp__diagram ifx-avsp__diagram--detailed" : "ifx-avsp__diagram"}
+          className="ifx-avsp__diagram"
           role="img"
           aria-label={`Sequence diagram: ${messages
             .map((message, index) => `${index + 1}. ${message.label}`)
@@ -512,7 +495,6 @@ export const AgentVaultSetupDiagram = ({ inline }) => {
               >
                 <span className="ifx-avsp__lane-label">{lane.label}</span>
                 <span className="ifx-avsp__lane-sub">{lane.sub}</span>
-                {detailed && <span className="ifx-avsp__lane-detail">{lane.detail}</span>}
               </div>
             ))}
           </div>
@@ -529,42 +511,34 @@ export const AgentVaultSetupDiagram = ({ inline }) => {
               const to = laneIndex(message.to);
               const start = Math.min(from, to);
               const span = Math.abs(to - from);
-              const lineClasses = ["ifx-avsp__arrow"];
-              lineClasses.push(to > from ? "ifx-avsp__arrow--right" : "ifx-avsp__arrow--left");
-              if (message.reply) lineClasses.push("ifx-avsp__arrow--reply");
-              let edgeClass = "";
-              if (start === 0) edgeClass = "ifx-avsp__arrow--first-lane";
-              else if (start + span === laneCount - 1) edgeClass = "ifx-avsp__arrow--last-lane";
-              const rowClass = stateClass(
-                "ifx-avsp__message",
-                highlight && highlight.messages.includes(message.id),
-              );
-              const position = { left: center(start), width: `${(span / laneCount) * 100}%` };
-              const label = (
-                <>
-                  <span className="ifx-avsp__arrow-num">{index + 1}</span>
-                  {message.label}
-                </>
-              );
-
-              if (!detailed) {
-                return (
-                  <div key={message.id} className={rowClass}>
-                    <div className={[...lineClasses, edgeClass].join(" ")} style={position}>
-                      <span className="ifx-avsp__arrow-label">{label}</span>
-                    </div>
-                  </div>
-                );
-              }
-
-              // With room for detail, the text sits in the flow above its arrow, so each row
-              // grows to fit its text instead of having a fixed height.
+              const classes = ["ifx-avsp__arrow"];
+              classes.push(to > from ? "ifx-avsp__arrow--right" : "ifx-avsp__arrow--left");
+              if (message.reply) classes.push("ifx-avsp__arrow--reply");
+              if (start === 0) classes.push("ifx-avsp__arrow--first-lane");
+              else if (start + span === laneCount - 1) classes.push("ifx-avsp__arrow--last-lane");
               return (
-                <div key={message.id} className={rowClass}>
-                  <div className={`ifx-avsp__step-span ${edgeClass}`} style={position}>
-                    <span className="ifx-avsp__step-label">{label}</span>
-                    <span className="ifx-avsp__step-detail">{message.detail}</span>
-                    <div className={lineClasses.join(" ")} />
+                <div
+                  key={message.id}
+                  className={stateClass(
+                    "ifx-avsp__message",
+                    highlight && highlight.messages.includes(message.id),
+                  )}
+                >
+                  <div
+                    className={classes.join(" ")}
+                    style={{ left: center(start), width: `${(span / laneCount) * 100}%` }}
+                  >
+                    <span className="ifx-avsp__arrow-label">
+                      {/* The number jumps to the step's block in the walkthrough. The block repeats
+                          what the arrow shows, so screen readers lose nothing by skipping the diagram. */}
+                      <span
+                        className="ifx-avsp__arrow-num ifx-avsp__arrow-num--link"
+                        onClick={() => scrollToStep(message.id)}
+                      >
+                        {index + 1}
+                      </span>
+                      {message.label}
+                    </span>
                   </div>
                 </div>
               );
@@ -572,87 +546,93 @@ export const AgentVaultSetupDiagram = ({ inline }) => {
           </div>
         </div>
       </div>
-    );
+    </div>
+  );
+};
+
+export const AgentVaultSetupStep = ({ step, children }) => {
+  const MODELS = {
+    personal: "user",
+    assistant: "user",
+    scheduled: "job",
+    platform: "orchestrator",
+  };
+  const CREATORS = { user: "You", job: "Infisical CLI", orchestrator: "Orchestrator" };
+
+  const SELECTION_EVENT = "av-setup-selection-change";
+
+  const readModel = () => {
+    const params = new URLSearchParams(window.location.search);
+    return MODELS[params.get("building")] ?? "user";
   };
 
-  const expandIcon = (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M15 3h6v6" />
-      <path d="M9 21H3v-6" />
-      <path d="M21 3l-7 7" />
-      <path d="M3 21l7-7" />
-    </svg>
-  );
+  const [model, setModel] = useState("user");
 
-  const closeIcon = (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M18 6 6 18" />
-      <path d="m6 6 12 12" />
-    </svg>
-  );
+  useEffect(() => {
+    const sync = () => setModel(readModel());
+    sync();
+    window.addEventListener(SELECTION_EVENT, sync);
+    window.addEventListener("popstate", sync);
+    return () => {
+      window.removeEventListener(SELECTION_EVENT, sync);
+      window.removeEventListener("popstate", sync);
+    };
+  }, []);
+
+  // These numbers match the arrows in AgentVaultSetupDiagram, so the reader can find each step in
+  // the diagram. The titles describe the same arrows in full sentences, while the diagram keeps its
+  // short labels. Keep the numbering and order in sync with the diagram.
+  const creator = CREATORS[model];
+  const STEPS = {
+    before: { title: "Before step 1", route: "Set up once, before any agent runs" },
+    create: {
+      number: 1,
+      title: {
+        user: "You create a session",
+        job: "The CLI logs in and creates a session",
+        orchestrator: "The orchestrator creates a session for the task",
+      }[model],
+      route: `${creator} → Infisical`,
+    },
+    token: { number: 2, title: "Infisical returns a session token", route: `Infisical → ${creator}` },
+    start: {
+      number: 3,
+      title: {
+        user: "You start the agent with the token",
+        job: "The CLI starts the agent with the token",
+        orchestrator: "The orchestrator starts an agent with the token",
+      }[model],
+      route: `${creator} → Agent`,
+    },
+    request: { number: 4, title: "The agent sends an API request", route: "Agent → Proxy" },
+    fetch: { number: 5, title: "The proxy gets the session's credentials", route: "Proxy → Infisical" },
+    forward: { number: 6, title: "The proxy sends the request with the real credential", route: "Proxy → API" },
+    revoke: {
+      number: 7,
+      title:
+        model === "orchestrator"
+          ? "The orchestrator revokes the session when the task ends"
+          : "The CLI revokes the session when the agent exits",
+      route: `${creator} → Infisical`,
+    },
+  };
+
+  const current = STEPS[step];
+  if (!current || (step === "revoke" && model === "user")) return null;
 
   return (
-    <div className={inline ? "ifx-avsp__diagram-inline not-prose" : "not-prose"}>
-      <div className="ifx-avsp__panel-head">
-        <p className="ifx-avsp__panel-title">How your setup connects</p>
-        <button
-          ref={expandRef}
-          type="button"
-          className="ifx-avsp__panel-button"
-          onClick={() => setExpanded(true)}
-        >
-          {expandIcon}
-          Expand
-        </button>
-      </div>
-      {renderDiagram(false)}
-
-      {expanded && (
-        <div className="ifx-avsp__overlay" onClick={() => setExpanded(false)}>
-          <div
-            className="ifx-avsp__overlay-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-label="How your setup connects"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="ifx-avsp__panel-head">
-              <p className="ifx-avsp__panel-title">How your setup connects</p>
-              <button
-                ref={closeRef}
-                type="button"
-                className="ifx-avsp__panel-button"
-                onClick={() => setExpanded(false)}
-              >
-                {closeIcon}
-                Close
-              </button>
-            </div>
-            {renderDiagram(true)}
-          </div>
+    <section className="ifx-avsp__walk-step" data-avsp-focus={`step-${step}`}>
+      <div className="ifx-avsp__walk-head not-prose">
+        {current.number ? (
+          <span className="ifx-avsp__walk-num">{current.number}</span>
+        ) : null}
+        <div>
+          <h3 className="ifx-avsp__walk-title">{current.title}</h3>
+          <p className="ifx-avsp__walk-route">{current.route}</p>
         </div>
-      )}
-    </div>
+      </div>
+      <div className="ifx-avsp__walk-body">{children}</div>
+    </section>
   );
 };
 
@@ -726,8 +706,8 @@ export const AgentVaultSetupSummary = () => {
   return (
     <p>
       You're building {buildText}
-      {agentText}. Each section that follows covers one part of this setup and names the steps in
-      the diagram that it explains.
+      {agentText}. The steps that follow walk through how this setup works, one numbered arrow of
+      the diagram at a time.
       {missing.length > 0 && ` Choose ${missing.join(" and ")} to fill in the rest of the setup.`}
     </p>
   );
