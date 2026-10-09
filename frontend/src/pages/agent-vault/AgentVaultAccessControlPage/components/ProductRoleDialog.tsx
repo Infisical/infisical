@@ -45,11 +45,22 @@ export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
     try {
       // Guarded here, not by returning null, so the exit animation still runs.
       if (!member) return;
-      await updateRole.mutateAsync({ [ACTOR_IDS_KEY[member.type]]: [member.id], role });
-      createNotification({
-        text: `${subject} is now ${role === "admin" ? "an Admin" : "a Member"}`,
-        type: "success"
+      const { members } = await updateRole.mutateAsync({
+        [ACTOR_IDS_KEY[member.type]]: [member.id],
+        role
       });
+      // Save is disabled for the current role, so a skip means the member changed under the dialog.
+      createNotification(
+        members.length
+          ? {
+              text: `${subject} is now ${role === "admin" ? "an Admin" : "a Member"}`,
+              type: "success"
+            }
+          : {
+              text: `${subject}'s role wasn't changed. They may have been removed from Agent Vault or already have that role.`,
+              type: "info"
+            }
+      );
       onOpenChange(false);
     } catch {
       // A failed request returns a 4xx that the global request handler surfaces as a toast

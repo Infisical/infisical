@@ -27,7 +27,7 @@ const ctx = {
 
 const buildTx = (adminCount: number) => {
   const chain: Record<string, unknown> = {};
-  ["join", "where", "orWhere", "whereNotIn", "countDistinct"].forEach((method) => {
+  ["join", "where", "orWhere", "whereNotIn", "whereIn", "countDistinct"].forEach((method) => {
     chain[method] = vi.fn((arg: unknown) => {
       if (typeof arg === "function") (arg as (qb: unknown) => void)(chain);
       return chain;
@@ -38,8 +38,9 @@ const buildTx = (adminCount: number) => {
     .mockResolvedValueOnce({ count: String(adminCount) })
     .mockResolvedValue({ count: "1" });
 
-  const tx = vi.fn(() => chain) as unknown as { raw: ReturnType<typeof vi.fn> };
+  const tx = vi.fn(() => chain) as unknown as { raw: ReturnType<typeof vi.fn>; chain: typeof chain };
   tx.raw = vi.fn();
+  tx.chain = chain;
   return tx;
 };
 
@@ -47,9 +48,10 @@ const buildTx = (adminCount: number) => {
 // fails to short-circuit shows up as a crash rather than a silent pass.
 const buildService = ({
   identityProjectId = null as string | null,
-  productMemberships = [] as { id: string }[],
+  productMemberships = [] as ({ id: string } & Record<string, string | null>)[],
   adminMembershipIds = [] as string[]
 } = {}) => {
+  const txs: ReturnType<typeof buildTx>[] = [];
   const deps = {
     permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ hasRole: () => true }) },
     identityDAL: {
@@ -74,7 +76,7 @@ const buildService = ({
       find: vi.fn(({ scope, $in }: { scope: string; $in?: Record<string, string[] | undefined> }) =>
         Promise.resolve(
           scope === AccessScope.Project
-            ? productMemberships.map((row) => ({ ...row, actorIdentityId: IDENTITY_ID, createdAt: new Date() }))
+            ? productMemberships.map((row) => ({ actorIdentityId: IDENTITY_ID, createdAt: INSERTED_AT, ...row }))
             : Object.entries($in ?? {}).flatMap(([column, ids]) =>
                 (ids ?? []).map((id) => ({ id: `org-${id}`, [column]: id, isActive: true }))
               )
@@ -83,7 +85,11 @@ const buildService = ({
       // assertWillRetainProjectAdmin takes an advisory lock through tx.raw, then counts live admins
       // with a query built off tx() itself. The chain answers with the fixture's admin count, so
       // adminMembershipIds still decides whether the guard lets the write through.
-      transaction: vi.fn((cb: (tx: unknown) => unknown) => Promise.resolve(cb(buildTx(adminMembershipIds.length)))),
+      transaction: vi.fn((cb: (tx: unknown) => unknown) => {
+        const tx = buildTx(adminMembershipIds.length);
+        txs.push(tx);
+        return Promise.resolve(cb(tx));
+      }),
       insertMany: vi.fn((rows: Record<string, unknown>[]) =>
         Promise.resolve(rows.map((row) => ({ ...row, id: "mem-new", createdAt: INSERTED_AT })))
       ),
@@ -103,7 +109,7 @@ const buildService = ({
   const service = agentVaultMembershipServiceFactory(
     deps as unknown as Parameters<typeof agentVaultMembershipServiceFactory>[0]
   );
-  return { service, deps };
+  return { service, deps, txs };
 };
 
 describe("agentVaultMembership guards", () => {
@@ -418,5 +424,64 @@ describe("agentVaultMembership guards", () => {
     expect(members).toEqual([]);
     expect(skipped).toMatchObject([{ type: AgentVaultMemberType.MachineIdentity, id: IDENTITY_ID }]);
     expect(deps.membershipRoleDAL.delete).not.toHaveBeenCalled();
+  });
+
+  test("a batch changes the members it can and reports the rest as skipped", async () => {
+    const { service, deps } = buildService({
+      productMemberships: [{ id: "mem-identity" }, { id: "mem-group", actorIdentityId: null, actorGroupId: GROUP_ID }],
+      adminMembershipIds: ["mem-group"]
+    });
+
+    const { members, skipped } = await service.updateProductMemberRoles({
+      projectId: PROJECT_ID,
+      userIds: [OTHER_USER_ID],
+      groupIds: [GROUP_ID],
+      machineIdentityIds: [IDENTITY_ID],
+      role: ProjectMembershipRole.Admin,
+      ctx
+    });
+
+    expect(members).toEqual([
+      expect.objectContaining({ type: AgentVaultMemberType.MachineIdentity, id: IDENTITY_ID, role: "admin" })
+    ]);
+    expect(skipped).toHaveLength(2);
+    expect(skipped).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: AgentVaultMemberType.User, id: OTHER_USER_ID }),
+        expect.objectContaining({ type: AgentVaultMemberType.Group, id: GROUP_ID })
+      ])
+    );
+    expect(deps.membershipRoleDAL.delete).toHaveBeenCalledWith(
+      { $in: { membershipId: ["mem-identity"] } },
+      expect.anything()
+    );
+    expect(deps.membershipRoleDAL.insertMany).toHaveBeenCalledWith(
+      [{ membershipId: "mem-identity", role: ProjectMembershipRole.Admin }],
+      expect.anything()
+    );
+  });
+
+  test("refuses one batch that would demote every remaining admin", async () => {
+    const { service, deps, txs } = buildService({
+      productMemberships: [{ id: "mem-identity" }, { id: "mem-group", actorIdentityId: null, actorGroupId: GROUP_ID }]
+    });
+
+    await expect(
+      service.updateProductMemberRoles({
+        projectId: PROJECT_ID,
+        userIds: [],
+        groupIds: [GROUP_ID],
+        machineIdentityIds: [IDENTITY_ID],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow("must keep at least one admin");
+
+    expect(txs[0].chain.whereNotIn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.arrayContaining(["mem-identity", "mem-group"])
+    );
+    expect(deps.membershipRoleDAL.delete).not.toHaveBeenCalled();
+    expect(deps.membershipRoleDAL.insertMany).not.toHaveBeenCalled();
   });
 });
