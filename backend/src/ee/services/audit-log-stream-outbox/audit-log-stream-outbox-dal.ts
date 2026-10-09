@@ -313,7 +313,12 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
         .returning<{ failingSince: Date }[]>("failingSince");
       if (row) return row.failingSince;
 
-      await tx(TableName.AuditLogStream).where("id", streamId).update({ lastDeliveryError: errorMessage });
+      // Guarded so a credential update that cleared the health fields between the two statements is
+      // not undone, since clearStreamFailing would then never clear the stale error.
+      await tx(TableName.AuditLogStream)
+        .where("id", streamId)
+        .whereNotNull("failingSince")
+        .update({ lastDeliveryError: errorMessage });
       return null;
     } catch (error) {
       throw new DatabaseError({ error, name: "AuditLogStreamOutbox: markStreamFailing" });
