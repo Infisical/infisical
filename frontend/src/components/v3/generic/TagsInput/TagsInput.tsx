@@ -111,26 +111,28 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
         .filter(Boolean);
 
       const accepted: string[] = [];
-      let refusedFrom = -1;
+      const refused: string[] = [];
+      let refusalReason: string | null = null;
 
-      for (let index = 0; index < parts.length; index += 1) {
-        const reason = validateTag?.(parts[index], [...tags, ...accepted]) ?? null;
+      parts.forEach((part) => {
+        const reason = validateTag?.(part, [...tags, ...accepted]) ?? null;
         if (reason) {
-          onValidationError?.(reason);
-          refusedFrom = index;
-          break;
+          refused.push(part);
+          refusalReason = refusalReason ?? reason;
+          return;
         }
-        accepted.push(parts[index]);
-      }
+        accepted.push(part);
+      });
 
       if (accepted.length) onValueChange([...tags, ...accepted]);
-      if (refusedFrom === -1) {
-        onValidationError?.(null);
+      onValidationError?.(refusalReason);
+
+      if (!refused.length) {
         setDraft("");
         return;
       }
 
-      setDraft(separators.length ? parts.slice(refusedFrom).join(separators[0]) : parts[refusedFrom]);
+      setDraft(separators.length ? refused.join(separators[0]) : refused[0]);
     };
 
     return (
