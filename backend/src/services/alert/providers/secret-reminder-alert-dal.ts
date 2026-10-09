@@ -64,8 +64,7 @@ export const secretReminderAlertDALFactory = (db: TDbClient) => {
   const findSecretKeysByIds = async (secretIds: string[], orgId: string): Promise<{ id: string; key: string }[]> => {
     if (secretIds.length === 0) return [];
     try {
-      return (await db
-        .replicaNode()(TableName.SecretV2)
+      return (await db(TableName.SecretV2)
         .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
