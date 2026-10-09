@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { cn } from "@app/components/v3/utils";
 
@@ -61,13 +62,64 @@ function TableHeader({
   );
 }
 
-function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
+const TableBody = React.forwardRef<HTMLTableSectionElement, React.ComponentProps<"tbody">>(
+  ({ className, ...props }, ref) => {
+    return (
+      <tbody
+        ref={ref}
+        data-slot="table-body"
+        className={cn(
+          "[&>tr:last-of-type]:border-b-0 [&>tr:last-of-type>td]:border-b-0",
+          className
+        )}
+        {...props}
+      />
+    );
+  }
+);
+
+TableBody.displayName = "TableBody";
+
+type TableVirtualRowProps = {
+  ref: (element: HTMLTableRowElement | null) => void;
+  "data-index": number;
+};
+
+function TableVirtualBody({
+  className,
+  count,
+  estimateRowHeight = 41,
+  children
+}: {
+  className?: string;
+  count: number;
+  estimateRowHeight?: number;
+  children: (index: number, rowProps: TableVirtualRowProps) => React.ReactNode;
+}) {
+  const bodyRef = React.useRef<HTMLTableSectionElement>(null);
+  const virtualizer = useVirtualizer({
+    count,
+    getScrollElement: () => bodyRef.current?.closest("[data-slot=table-container]") ?? null,
+    estimateSize: () => estimateRowHeight,
+    overscan: 10
+  });
+  const virtualRows = virtualizer.getVirtualItems();
+  const padTop = virtualRows[0]?.start ?? 0;
+  const padBottom = virtualRows.length
+    ? virtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end
+    : 0;
+
   return (
-    <tbody
-      data-slot="table-body"
-      className={cn("[&>tr:last-of-type]:border-b-0 [&>tr:last-of-type>td]:border-b-0", className)}
-      {...props}
-    />
+    <TableBody ref={bodyRef} className={className}>
+      {padTop > 0 && <tr aria-hidden style={{ height: padTop }} />}
+      {virtualRows.map((virtualRow) =>
+        children(virtualRow.index, {
+          ref: virtualizer.measureElement,
+          "data-index": virtualRow.index
+        })
+      )}
+      {padBottom > 0 && <tr aria-hidden style={{ height: padBottom }} />}
+    </TableBody>
   );
 }
 
@@ -226,5 +278,7 @@ export {
   TableHeader,
   TableHeadLabel,
   TableRow,
-  type TableSortDirection
+  type TableSortDirection,
+  TableVirtualBody,
+  type TableVirtualRowProps
 };

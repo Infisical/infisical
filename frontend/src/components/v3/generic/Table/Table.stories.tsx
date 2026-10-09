@@ -32,7 +32,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  type TableSortDirection
+  type TableSortDirection,
+  TableVirtualBody
 } from "./Table";
 
 type Identity = {
@@ -190,6 +191,44 @@ export const StickyHeader: Story = {
           </TableRow>
         ))}
       </TableBody>
+    </Table>
+  )
+};
+
+const virtualizedRows = Array.from({ length: 10000 }, (_, i) => ({
+  key: `SECRET_KEY_${String(i + 1).padStart(5, "0")}`,
+  value: `value-${i + 1}`
+}));
+
+export const Virtualized: Story = {
+  name: "Example: Virtualized Rows",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use `TableVirtualBody` in place of `TableBody` when a table can render thousands of rows. Only the rows in view are mounted. Constrain the container height with `containerClassName`, and spread the `rowProps` from the render function onto each `TableRow` so rows of varying height are measured."
+      }
+    }
+  },
+  render: () => (
+    <Table containerClassName="max-h-80 overflow-y-auto">
+      <TableHeader sticky>
+        <TableRow>
+          <TableHead>Key</TableHead>
+          <TableHead>Value</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableVirtualBody count={virtualizedRows.length}>
+        {(index, rowProps) => {
+          const row = virtualizedRows[index];
+          return (
+            <TableRow key={row.key} {...rowProps}>
+              <TableCell className="font-mono text-xs">{row.key}</TableCell>
+              <TableCell className="font-mono text-xs">{row.value}</TableCell>
+            </TableRow>
+          );
+        }}
+      </TableVirtualBody>
     </Table>
   )
 };
