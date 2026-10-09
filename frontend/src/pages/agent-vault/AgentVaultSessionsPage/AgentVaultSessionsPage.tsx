@@ -255,7 +255,7 @@ export const AgentVaultSessionsPage = () => {
             </Alert>
           )}
 
-        {isAdmin && <SessionLogReadAccessAlert />}
+        {isAdmin && !sessionLogHealth?.connectionError && <SessionLogReadAccessAlert />}
 
         <Card>
           <CardHeader>

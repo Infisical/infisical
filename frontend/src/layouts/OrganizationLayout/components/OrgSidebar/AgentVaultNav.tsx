@@ -38,14 +38,14 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
     { label: "Proxies", icon: Server, pathSuffix: "proxies" }
   ];
 
-  let settingsDot: NavItem["dotVariant"];
-  if (
+  let settingsAlert: NavItem["alertVariant"];
+  if (sessionLogHealth?.connectionError) settingsAlert = "danger";
+  else if (
     sessionLogSettings?.bucket &&
     (!areAgentVaultSessionLogsOn(sessionLogSettings) ||
       isAgentVaultSessionLogPlanLapsed(sessionLogSettings, subscription))
   )
-    settingsDot = "warning";
-  else if (sessionLogHealth?.connectionError) settingsDot = "danger";
+    settingsAlert = "warning";
 
   const administrationItems: NavItem[] = isAdmin
     ? [
@@ -56,7 +56,7 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
           activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//
         },
         { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
-        { label: "Settings", icon: Settings, pathSuffix: "settings", dotVariant: settingsDot }
+        { label: "Settings", icon: Settings, pathSuffix: "settings", alertVariant: settingsAlert }
       ]
     : [];
 
