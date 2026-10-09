@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useState } from "react";
 // repeated in AgentVaultSetupDiagram, AgentVaultSetupStep, AgentVaultSetupSummary, and
 // AgentVaultSetupBranch. Keep them in sync.
 
-export const AgentVaultSetupPage = ({ title, description, children }) => {
+export const AgentVaultSetupPage = ({ eyebrow, title, description, children }) => {
   const rootRef = useRef(null);
 
   useEffect(() => {
@@ -20,7 +20,9 @@ export const AgentVaultSetupPage = ({ title, description, children }) => {
 
   return (
     <div className="ifx-avsp" ref={rootRef}>
+      {/* Frame mode drops Mintlify's page header, so this rebuilds it to match #header on other pages. */}
       <header className="ifx-avsp__hero">
+        {eyebrow ? <div className="ifx-avsp__eyebrow">{eyebrow}</div> : null}
         <h1 className="ifx-avsp__title">{title}</h1>
         {description ? <div className="ifx-avsp__description">{description}</div> : null}
       </header>

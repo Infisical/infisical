@@ -1638,28 +1638,44 @@ a.ifx-card__title:hover .ifx-card__chevron {
   }
 }
 
+/* Matches the #header block that Mintlify renders on regular pages, including this site's left
+   rule and background from the #header override above. */
 .ifx-avsp__hero {
-  margin-bottom: 2.5rem;
-  padding: 3rem 0 2.5rem;
-  border-bottom: 1px solid var(--ifx-line);
+  margin: 4.5rem 0 2rem;
+  padding: 10px 16px;
+  border-left: 2px solid var(--ifx-accent);
+  background-color: var(--ifx-surface-soft);
+}
+
+.ifx-avsp__eyebrow {
+  margin-top: 2px;
+  color: var(--ifx-muted);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 }
 
 .ifx-avsp__title {
-  margin: 0;
+  margin: 0.625rem 0 0;
   font-family: var(--font-family-headings-custom, inherit);
   font-size: 2.25rem;
-  font-weight: 400;
-  line-height: 1.15;
-  letter-spacing: -0.015em;
-  color: var(--ifx-text);
+  font-weight: 600;
+  line-height: 2.5rem;
+  letter-spacing: -0.025em;
+  color: var(--ifx-text-dim);
 }
 
 .ifx-avsp__description {
-  margin-top: 0.75rem;
-  max-width: 42rem;
-  font-size: 1.0625rem;
-  line-height: 1.6;
-  color: var(--ifx-muted);
+  margin-top: 0.5rem;
+  color: var(--ifx-text-soft);
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
+@media (max-width: 639px) {
+  .ifx-avsp__title {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
 }
 
 /* The prose classes cap the width for reading, but the body also holds the two-column layout, so
@@ -1681,7 +1697,7 @@ a.ifx-card__title:hover .ifx-card__chevron {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 3rem;
-  margin-top: 2.5rem;
+  margin: 2.5rem 0;
 }
 
 .ifx-avsp__aside {
@@ -1715,7 +1731,9 @@ a.ifx-card__title:hover .ifx-card__chevron {
   display: flex;
   flex-direction: column;
   gap: 2.25rem;
-  margin: 0 0 2.5rem;
+  /* No bottom margin: the layout's column ends at the last answer card, so the pinned diagram
+     beside the questions stops exactly there. The space below comes from .ifx-avsp__layout. */
+  margin: 0;
 }
 
 .ifx-avsp__diagram-inline {
