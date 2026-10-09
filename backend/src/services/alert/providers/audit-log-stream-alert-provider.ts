@@ -119,7 +119,8 @@ export const auditLogStreamAlertProviderFactory = ({
   };
 
   // The delivery-failed event carries no resourceId, so only org-wide alerts can hear it. An alert bound
-  // to one stream would never fire.
+  // to one stream would never fire. It carries no projectId either, so a project alert would fire for
+  // every stream in the org while staying hidden from the org-level list where these are managed.
   const assertResourceInScope = async (input: {
     orgId: string;
     projectId?: string | null;
@@ -128,6 +129,11 @@ export const auditLogStreamAlertProviderFactory = ({
     if (input.resourceId) {
       throw new BadRequestError({
         message: "Audit log stream alerts apply to every stream in the organization and cannot target one stream"
+      });
+    }
+    if (input.projectId) {
+      throw new BadRequestError({
+        message: "Audit log stream alerts apply to the whole organization and cannot be scoped to a project"
       });
     }
   };
