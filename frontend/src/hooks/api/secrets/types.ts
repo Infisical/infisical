@@ -9,15 +9,6 @@ export enum SecretType {
   Personal = "personal"
 }
 
-export type SecretReminderRecipient = {
-  user: {
-    id: string;
-    username: string;
-    email: string;
-  };
-  id: string;
-};
-
 // both personal and shared secret stitched together for dashboard
 export type SecretV3RawSanitized = {
   id: string;
@@ -43,7 +34,6 @@ export type SecretV3RawSanitized = {
   isReminderEvent?: boolean;
   isRotatedSecret?: boolean;
   isHoneyTokenSecret?: boolean;
-  secretReminderRecipients?: SecretReminderRecipient[];
   rotationId?: string;
   isPending?: boolean;
   hasPendingValueChange?: boolean;
@@ -77,7 +67,6 @@ export type SecretV3Raw = {
   isRotatedSecret?: boolean;
   isHoneyTokenSecret?: boolean;
   rotationId?: string;
-  secretReminderRecipients?: SecretReminderRecipient[];
   reminder?: Reminder;
   isEmpty?: boolean;
   revokedProjectFolderGrant?: boolean;

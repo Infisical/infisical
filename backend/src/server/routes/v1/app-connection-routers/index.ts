@@ -45,6 +45,7 @@ import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
 import { registerHerokuConnectionRouter } from "./heroku-connection-router";
 import { registerHpeIloConnectionRouter } from "./hpe-ilo-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
+import { registerKeeperConnectionRouter } from "./keeper-connection-router";
 import { registerKempLoadMasterConnectionRouter } from "./kemp-loadmaster-connection-router";
 import { registerLaravelForgeConnectionRouter } from "./laravel-forge-connection-router";
 import { registerLdapConnectionRouter } from "./ldap-connection-router";
@@ -181,6 +182,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Spacelift]: registerSpaceliftConnectionRouter,
     [AppConnection.Daytona]: registerDaytonaConnectionRouter,
     [AppConnection.Stripe]: registerStripeConnectionRouter,
+    [AppConnection.Keeper]: registerKeeperConnectionRouter,
     [AppConnection.HpeIloRedFish]: registerHpeIloConnectionRouter,
     [AppConnection.S3Compatible]: registerS3CompatibleConnectionRouter
   };

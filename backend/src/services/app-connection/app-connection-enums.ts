@@ -86,6 +86,7 @@ export enum AppConnection {
   Spacelift = "spacelift",
   Daytona = "daytona",
   Stripe = "stripe",
+  Keeper = "keeper",
   HpeIloRedFish = "hpe-ilo",
   S3Compatible = "s3-compatible"
 }

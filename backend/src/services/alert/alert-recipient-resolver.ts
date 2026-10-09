@@ -1,8 +1,10 @@
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { logger } from "@app/lib/logger";
+import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAlertRecipient } from "./alert-channel-types";
@@ -14,6 +16,8 @@ type TAlertRecipientResolverDep = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
+  groupProjectDAL: Pick<TGroupProjectDALFactory, "findAllProjectGroupMembers">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
 
@@ -28,6 +32,8 @@ export const alertRecipientResolverFactory = ({
   userGroupMembershipDAL,
   orgDAL,
   projectDAL,
+  projectMembershipDAL,
+  groupProjectDAL,
   emailDomainDAL
 }: TAlertRecipientResolverDep) => {
   const resolveMany = async (
@@ -59,6 +65,28 @@ export const alertRecipientResolverFactory = ({
       });
     }
 
+    const wantsProjectMembers =
+      Boolean(scope.projectId) &&
+      [...rowsByChannel.values()].some((rows) =>
+        rows.some(
+          (recipient) =>
+            recipient.principalType === AlertPrincipalType.PROJECT_MEMBERS && recipient.principalId === scope.projectId
+        )
+      );
+    const projectMemberIds = new Set<string>();
+    if (wantsProjectMembers && scope.projectId) {
+      // Direct members and members through a project group, so "everyone in the project" matches who
+      // the scope check below lets through.
+      const [directMembers, projectGroupMembers] = await Promise.all([
+        projectMembershipDAL.findAllProjectMembers(scope.projectId),
+        groupProjectDAL.findAllProjectGroupMembers(scope.projectId)
+      ]);
+      [...directMembers, ...projectGroupMembers].forEach((member) => {
+        projectMemberIds.add(member.user.id);
+        allUserIds.add(member.user.id);
+      });
+    }
+
     const { userIds: inScopeUserIds, groupIds: inScopeGroupIds } = await resolvePrincipalsInScope(
       { orgDAL, projectDAL },
       { orgId: scope.orgId, projectId: scope.projectId, userIds: [...allUserIds], groupIds: [...allGroupIds] }
@@ -82,6 +110,11 @@ export const alertRecipientResolverFactory = ({
           case AlertPrincipalType.GROUP:
             if (inScopeGroupIds.has(recipient.principalId)) {
               (groupMembers.get(recipient.principalId) ?? []).forEach((userId) => userIds.add(userId));
+            }
+            break;
+          case AlertPrincipalType.PROJECT_MEMBERS:
+            if (scope.projectId && recipient.principalId === scope.projectId) {
+              projectMemberIds.forEach((userId) => userIds.add(userId));
             }
             break;
           case AlertPrincipalType.EMAIL:

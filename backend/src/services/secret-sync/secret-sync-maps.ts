@@ -31,6 +31,7 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.GitLab]: "GitLab",
   [SecretSync.CloudflarePages]: "Cloudflare Pages",
   [SecretSync.CloudflareWorkers]: "Cloudflare Workers",
+  [SecretSync.CloudflareSecretsStore]: "Cloudflare Secrets Store",
   [SecretSync.Supabase]: "Supabase",
   [SecretSync.Rundeck]: "Rundeck",
   [SecretSync.Zabbix]: "Zabbix",
@@ -55,7 +56,8 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Qovery]: "Qovery",
   [SecretSync.Cloud66]: "Cloud 66",
   [SecretSync.Spacelift]: "Spacelift",
-  [SecretSync.Daytona]: "Daytona"
+  [SecretSync.Daytona]: "Daytona",
+  [SecretSync.Keeper]: "Keeper Password Manager"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -83,6 +85,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.GitLab]: AppConnection.GitLab,
   [SecretSync.CloudflarePages]: AppConnection.Cloudflare,
   [SecretSync.CloudflareWorkers]: AppConnection.Cloudflare,
+  [SecretSync.CloudflareSecretsStore]: AppConnection.Cloudflare,
   [SecretSync.Supabase]: AppConnection.Supabase,
   [SecretSync.Rundeck]: AppConnection.Rundeck,
   [SecretSync.Zabbix]: AppConnection.Zabbix,
@@ -107,7 +110,8 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Qovery]: AppConnection.Qovery,
   [SecretSync.Cloud66]: AppConnection.Cloud66,
   [SecretSync.Spacelift]: AppConnection.Spacelift,
-  [SecretSync.Daytona]: AppConnection.Daytona
+  [SecretSync.Daytona]: AppConnection.Daytona,
+  [SecretSync.Keeper]: AppConnection.Keeper
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -135,6 +139,7 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.GitLab]: SecretSyncPlanType.Regular,
   [SecretSync.CloudflarePages]: SecretSyncPlanType.Regular,
   [SecretSync.CloudflareWorkers]: SecretSyncPlanType.Regular,
+  [SecretSync.CloudflareSecretsStore]: SecretSyncPlanType.Regular,
   [SecretSync.Supabase]: SecretSyncPlanType.Regular,
   [SecretSync.Rundeck]: SecretSyncPlanType.Regular,
   [SecretSync.Zabbix]: SecretSyncPlanType.Regular,
@@ -159,7 +164,8 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.Qovery]: SecretSyncPlanType.Regular,
   [SecretSync.Cloud66]: SecretSyncPlanType.Regular,
   [SecretSync.Spacelift]: SecretSyncPlanType.Regular,
-  [SecretSync.Daytona]: SecretSyncPlanType.Regular
+  [SecretSync.Daytona]: SecretSyncPlanType.Regular,
+  [SecretSync.Keeper]: SecretSyncPlanType.Regular
 };
 
 export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
@@ -196,6 +202,7 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   ],
   [SecretSync.CloudflarePages]: [],
   [SecretSync.CloudflareWorkers]: [],
+  [SecretSync.CloudflareSecretsStore]: ["storeName", "scopes"],
   [SecretSync.Supabase]: ["projectName"],
   [SecretSync.Rundeck]: [],
   [SecretSync.Zabbix]: ["hostName", "macroType"],
@@ -220,7 +227,8 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.Qovery]: ["organizationName", "projectName", "environmentName"],
   [SecretSync.Cloud66]: ["stackName"],
   [SecretSync.Spacelift]: ["contextName"],
-  [SecretSync.Daytona]: []
+  [SecretSync.Daytona]: [],
+  [SecretSync.Keeper]: ["folderName"]
 };
 
 const defaultDuplicateCheck: DestinationDuplicateCheckFn = async () => true;
@@ -337,6 +345,7 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   },
   [SecretSync.CloudflarePages]: defaultDuplicateCheck,
   [SecretSync.CloudflareWorkers]: defaultDuplicateCheck,
+  [SecretSync.CloudflareSecretsStore]: defaultDuplicateCheck,
   [SecretSync.Supabase]: defaultDuplicateCheck,
   [SecretSync.Rundeck]: defaultDuplicateCheck,
   [SecretSync.Zabbix]: defaultDuplicateCheck,
@@ -361,7 +370,8 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Qovery]: defaultDuplicateCheck,
   [SecretSync.Cloud66]: defaultDuplicateCheck,
   [SecretSync.Spacelift]: defaultDuplicateCheck,
-  [SecretSync.Daytona]: daytonaDuplicateCheck
+  [SecretSync.Daytona]: daytonaDuplicateCheck,
+  [SecretSync.Keeper]: defaultDuplicateCheck
 };
 
 /**

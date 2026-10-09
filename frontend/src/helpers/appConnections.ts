@@ -74,6 +74,7 @@ import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/god
 import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { HpeIloConnectionMethod } from "@app/hooks/api/appConnections/types/hpe-ilo-connection";
+import { KeeperConnectionMethod } from "@app/hooks/api/appConnections/types/keeper-connection";
 import { KempLoadMasterConnectionMethod } from "@app/hooks/api/appConnections/types/kemp-loadmaster-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { LiteLLMConnectionMethod } from "@app/hooks/api/appConnections/types/litellm-connection";
@@ -287,6 +288,12 @@ export const APP_CONNECTION_MAP: Record<
     image: "1Password.png",
     category: "PASSWORD MANAGER",
     description: "Read and manage items in 1Password vaults."
+  },
+  [AppConnection.Keeper]: {
+    name: "Keeper",
+    image: "Keeper.png",
+    category: "PASSWORD MANAGER",
+    description: "Connect to Keeper Commander Service Mode."
   },
   [AppConnection.Heroku]: {
     name: "Heroku",
@@ -833,6 +840,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case DatadogConnectionMethod.ApiKey:
     case DaytonaConnectionMethod.ApiKey:
     case PowerDnsConnectionMethod.ApiKey:
+    case KeeperConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: KeyRoundIcon };

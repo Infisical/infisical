@@ -54,6 +54,12 @@ For automated issuance, configure an [enrollment method](/documentation/platform
 - [EST](/documentation/platform/pki/applications/enrollment-methods/est) — RFC 7030 enrollment
 - [SCEP](/documentation/platform/pki/applications/enrollment-methods/scep) — Mobile device management (Jamf, Intune)
 
+### When issuance fails
+
+If Infisical creates a certificate request and then can't issue the certificate, the request shows a **Failed** status on the **Certificate Requests** tab. Hover over the status to see the reason.
+
+Some requests are rejected before Infisical creates a certificate request, such as a request for a TTL longer than the certificate policy allows, so they don't appear on the tab. Infisical records these rejections and the failed requests as `certificate-issuance-failed` events in the [audit logs](/documentation/platform/audit-logs#certificate-issuance-failures), with the reason and the certificate the request was for. The audit logs page lists the failures that aren't recorded, such as EST requests whose client certificate is rejected.
+
 ## Importing certificates
 
 Select **Import** on the Certificates tab to bring in a certificate you already hold, either as PEM files or as a `.p12` / `.pfx` keystore with its password.

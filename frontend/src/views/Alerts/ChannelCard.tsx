@@ -23,7 +23,7 @@ import {
   ALERT_CHANNEL_TYPE_LABELS,
   AlertChannelType,
   TAlertChannelRecipient,
-  TAlertForm,
+  TChannelsForm,
   toChannelInput,
   useTestAlertChannel
 } from "@app/hooks/api/alerts";
@@ -102,7 +102,7 @@ export const ChannelCard = ({
     getValues,
     trigger,
     formState: { errors }
-  } = useFormContext<TAlertForm>();
+  } = useFormContext<TChannelsForm>();
   const testChannel = useTestAlertChannel();
 
   const channel = useWatch({ control, name: `channels.${index}` });

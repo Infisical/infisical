@@ -876,7 +876,6 @@ export const orgServiceFactory = ({
       for await (const project of projects) {
         await fnDeleteProjectSecretReminders(project.id, {
           secretDAL,
-          secretV2BridgeDAL,
           reminderService,
           projectBotService,
           folderDAL

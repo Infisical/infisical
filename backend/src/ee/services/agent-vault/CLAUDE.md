@@ -55,9 +55,15 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   on project removal, org removal, SCIM and every FK cascade. Do not add an Agent Vault reaper.
 - `scopeResourceId` has no FK, so `deleteAccessBundle` deletes the bundle row first and then the grants in one
   transaction, and `addMembers` locks the bundle row (`lockByIdInProject`) before inserting. Keep that order.
-- Granting is batch: one POST carries `{ userIds, identityIds, groupIds }`. That lock is what makes
+- Granting is batch: one POST carries `{ userIds, machineIdentityIds, groupIds }`. That lock is what makes
   the dedupe read inside it authoritative, so an actor who already holds the bundle is returned in
   `skipped` rather than erroring; the unique index is only the backstop.
+- Member responses, for bundles and for the product, are the actor itself, flat (`type`, the actor's `id`,
+  its profile) plus what the membership adds (`role`, `addedAt`, `grantedAt`). There is no membership id:
+  every write names a member by its actor, so the id a client reads is the one it sends back.
+- Audit events name actors through `agent-vault-actor-name-fns.ts`. Resolve names before the write, so a
+  failed lookup can't leave a committed change unaudited, and attach a name only to an actor already proven
+  to be in the org: the lookup isn't org-scoped.
 - Reachability has one implementation, `findReachableAccessBundleIds` over the platform's
   `findResourceMembershipsForActor`, and mint, member-facing reads and resolve all call it. A group's grants
   count only while the group confers a live role (`liveGroupIdsFrom`). Write no group-expansion SQL here.

@@ -189,6 +189,7 @@ import {
   HumanitecConnectionMethod,
   validateHumanitecConnectionCredentials
 } from "./humanitec";
+import { getKeeperConnectionListItem, KeeperConnectionMethod, validateKeeperConnectionCredentials } from "./keeper";
 import {
   getKempLoadMasterConnectionListItem,
   KempLoadMasterConnectionMethod,
@@ -480,6 +481,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getSpaceliftConnectionListItem(),
     getDaytonaConnectionListItem(),
     getStripeConnectionListItem(),
+    getKeeperConnectionListItem(),
     getHpeIloConnectionListItem(),
     getS3CompatibleConnectionListItem()
   ]
@@ -719,6 +721,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Spacelift]: validateSpaceliftConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Daytona]: validateDaytonaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Stripe]: validateStripeConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Keeper]: validateKeeperConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.HpeIloRedFish]: validateHpeIloConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.S3Compatible]: validateS3CompatibleConnectionCredentials as TAppConnectionCredentialsValidator
   };
@@ -834,6 +837,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case NutanixPrismCentralConnectionMethod.ApiKey:
     case PowerDnsConnectionMethod.ApiKey:
     case DaytonaConnectionMethod.ApiKey:
+    case KeeperConnectionMethod.ApiKey:
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
@@ -1001,6 +1005,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Spacelift]: platformManagedCredentialsNotSupported,
   [AppConnection.Daytona]: platformManagedCredentialsNotSupported,
   [AppConnection.Stripe]: platformManagedCredentialsNotSupported,
+  [AppConnection.Keeper]: platformManagedCredentialsNotSupported,
   [AppConnection.HpeIloRedFish]: platformManagedCredentialsNotSupported,
   [AppConnection.S3Compatible]: platformManagedCredentialsNotSupported
 };
