@@ -377,7 +377,7 @@ export const auditLogStreamOutboxServiceFactory = ({
 
       // The state flip and the alert event commit with the drop itself, so an alert is never lost
       // or sent for rows that are still retrying.
-      const becameFailing = exhausted.length > 0 && !isFailing;
+      const becameFailing = exhausted.length > 0;
       const recovered = isFailing && streamFail.length === 0 && streamSuccess.length > 0;
       // eslint-disable-next-line no-await-in-loop
       await auditLogStreamOutboxDAL.transaction(async (tx) => {
@@ -398,7 +398,6 @@ export const auditLogStreamOutboxServiceFactory = ({
           await auditLogStreamOutboxDAL.clearStreamFailing(streamId, tx);
         }
       });
-      if (becameFailing) isFailing = true;
       if (recovered) isFailing = false;
 
       if (streamFail.length > 0) {

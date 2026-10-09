@@ -7,6 +7,7 @@ import {
   AUDIT_LOG_STREAM_RESOURCE_TYPE,
   AuditLogStreamDeliveryFailedPayloadSchema
 } from "@app/ee/services/audit-log-stream/audit-log-stream-events";
+import { listProviderOptions } from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
@@ -27,14 +28,7 @@ export { AUDIT_LOG_STREAM_DELIVERY_FAILED_EVENT, AUDIT_LOG_STREAM_RESOURCE_TYPE 
 
 const DeliveryFailedConditionSchema = z.object({}).nullish();
 
-const PROVIDER_LABELS: Record<string, string> = {
-  azure: "Azure",
-  cribl: "Cribl",
-  custom: "Custom",
-  datadog: "Datadog",
-  splunk: "Splunk",
-  "sumo-logic": "Sumo Logic"
-};
+const PROVIDER_LABELS = new Map<string, string>(listProviderOptions().map((option) => [option.provider, option.name]));
 
 type TAuditLogStreamTarget = {
   streamId: string;
@@ -90,7 +84,7 @@ export const auditLogStreamAlertProviderFactory = ({
 
   const buildPayload = (alert: TAlertContext, targets: TAuditLogStreamTarget[], viewUrl: string): TAlertPayload => {
     const [first] = targets;
-    const providerLabel = (target: TAuditLogStreamTarget) => PROVIDER_LABELS[target.provider] ?? target.provider;
+    const providerLabel = (target: TAuditLogStreamTarget) => PROVIDER_LABELS.get(target.provider) ?? target.provider;
 
     return {
       alert: {

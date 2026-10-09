@@ -710,8 +710,8 @@ describe("audit-log-stream-outbox-service delivery failure alerting", () => {
   });
 
   test("stays quiet when a stream that is already failing exhausts more rows", async () => {
-    const { service, auditLogStreamOutboxDAL, auditLogStreamDAL, eventEmitter } = createService();
-    auditLogStreamDAL.findById.mockResolvedValueOnce(failingStream);
+    const { service, auditLogStreamOutboxDAL, eventEmitter } = createService();
+    auditLogStreamOutboxDAL.markStreamFailing.mockResolvedValueOnce(null);
     auditLogStreamOutboxDAL.claimBatchForStream
       .mockResolvedValueOnce([buildRow({ attempts: 4 })])
       .mockResolvedValueOnce([]);
@@ -719,7 +719,6 @@ describe("audit-log-stream-outbox-service delivery failure alerting", () => {
 
     await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
 
-    expect(auditLogStreamOutboxDAL.markStreamFailing).not.toHaveBeenCalled();
     expect(eventEmitter.emit).not.toHaveBeenCalled();
   });
 

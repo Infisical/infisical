@@ -44,7 +44,7 @@ export const emitAuditLogStreamDeliveryFailed = (
         resourceId: streamId,
         targetIds: [streamId],
         provider: provider ?? "unknown",
-        errorMessage: truncateDeliveryError(errorMessage),
+        errorMessage,
         droppedCount,
         failingSince: failingSince.toISOString()
       }
