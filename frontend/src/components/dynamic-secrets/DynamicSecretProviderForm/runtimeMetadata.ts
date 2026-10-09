@@ -261,6 +261,10 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
       ttlDescription:
         "Must fit within the token lifetime the authorization server sets. Not checked if the server doesn't report a lifetime."
     }
+  },
+  [DynamicSecretProviders.Kafka]: {
+    presentation: { providerFamily: "Kafka", logoFileName: "Kafka.png" },
+    leaseCapabilities: createDefaultLeaseCapabilities(credentials)
   }
 } as const satisfies Record<DynamicSecretProviders, TDynamicSecretProviderRuntimeMetadata>;
 

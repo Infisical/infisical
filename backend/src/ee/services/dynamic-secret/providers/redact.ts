@@ -28,7 +28,8 @@ export const DYNAMIC_SECRET_SECRET_FIELDS: Record<DynamicSecretProviders, readon
   [DynamicSecretProviders.Milvus]: [],
   [DynamicSecretProviders.IbmApiConnect]: [],
   [DynamicSecretProviders.Tailscale]: [],
-  [DynamicSecretProviders.OAuth2]: ["clientAuth.clientSecret"]
+  [DynamicSecretProviders.OAuth2]: ["clientAuth.clientSecret"],
+  [DynamicSecretProviders.Kafka]: []
 };
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>

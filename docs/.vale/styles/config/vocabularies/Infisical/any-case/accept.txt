@@ -86,6 +86,7 @@ I
 (?i)async
 (?i)auditability
 (?i)auditable
+(?i)authorizer
 (?i)autoscale
 (?i)autoscaled
 (?i)autoscaler

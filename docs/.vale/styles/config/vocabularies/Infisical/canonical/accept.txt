@@ -398,7 +398,7 @@ Notion
 # The `(?:s|'s)?` suffix accepts the plural and possessive forms.
 2FA
 ABAC
-ACL
+ACL(?:s|'s)?
 ACM
 ACME
 AD

@@ -395,6 +395,7 @@
                     "group": "Other",
                     "pages": [
                       "documentation/platform/dynamic-secrets/ibm-api-connect",
+                      "documentation/platform/dynamic-secrets/kafka",
                       "documentation/platform/dynamic-secrets/rabbit-mq",
                       "documentation/platform/dynamic-secrets/ssh",
                       "documentation/platform/dynamic-secrets/totp"

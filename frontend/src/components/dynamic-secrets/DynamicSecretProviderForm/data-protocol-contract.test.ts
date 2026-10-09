@@ -36,6 +36,16 @@ import {
   normalizeIbmApiConnectGatewayValueForMode
 } from "./providerDefinitions/ibmApiConnectContract";
 import {
+  getDefaultKafkaAcl,
+  getKafkaCreateDefaultValues,
+  getKafkaCreatePayload,
+  getKafkaEditDefaultValues,
+  getKafkaEditPayload,
+  KAFKA_CUSTOM_RENDERER_REASONS,
+  kafkaCreateFormSchema,
+  kafkaEditFormSchema
+} from "./providerDefinitions/kafkaContract";
+import {
   getKubernetesCreateDefaultValues,
   getKubernetesCreatePayload,
   getKubernetesEditDefaultValues,
@@ -232,6 +242,28 @@ const rabbitMqDynamicSecretProvider = defineDynamicSecretProvider({
     schema: rabbitMqEditFormSchema,
     getDefaultValues: getRabbitMqEditDefaultValues,
     toPayload: getRabbitMqEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
+});
+
+const kafkaDynamicSecretProvider = defineDynamicSecretProvider({
+  provider: DynamicSecretProviders.Kafka,
+  label: "Kafka",
+  customRenderer: {
+    reasons: KAFKA_CUSTOM_RENDERER_REASONS,
+    Component: NoopRenderer
+  },
+  create: {
+    schema: kafkaCreateFormSchema,
+    getDefaultValues: getKafkaCreateDefaultValues,
+    toPayload: getKafkaCreatePayload,
+    submitLabel: "Submit"
+  },
+  edit: {
+    schema: kafkaEditFormSchema,
+    getDefaultValues: getKafkaEditDefaultValues,
+    toPayload: getKafkaEditPayload,
     submitLabel: "Save",
     successMessage: "Successfully updated dynamic secret"
   }
@@ -796,6 +828,99 @@ testDynamicSecretProviderContract({
         defaultTTL: "1h",
         inputs: rabbitMqEditInputs,
         newName: "renamed-rabbitmq-secret",
+        usernameTemplate: null
+      }
+    },
+    maskedValues: [
+      {
+        name: "password",
+        expected: "********",
+        defaultValuePath: ["inputs", "password"],
+        payloadValuePath: ["data", "inputs", "password"]
+      }
+    ]
+  }
+});
+
+const kafkaCreateDefaults = getKafkaCreateDefaultValues(createContext);
+const kafkaCreateValues = {
+  ...kafkaCreateDefaults,
+  name: "kafka-secret",
+  inputs: {
+    ...kafkaCreateDefaults.inputs,
+    bootstrapServers: [{ host: "kafka.example.com", port: 9092 }],
+    username: "admin",
+    password: "secret",
+    acls: [{ ...getDefaultKafkaAcl(), resourceName: "orders" }]
+  }
+};
+const kafkaEditInputs = { ...kafkaCreateValues.inputs, password: "********" };
+const kafkaEditContext = getEditContext({
+  provider: DynamicSecretProviders.Kafka,
+  inputs: kafkaEditInputs,
+  usernameTemplate: null
+});
+const kafkaEditValues = {
+  name: "renamed-kafka-secret",
+  defaultTTL: "1h",
+  maxTTL: "24h",
+  usernameTemplate: DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE,
+  inputs: kafkaEditInputs
+};
+
+testDynamicSecretProviderContract({
+  name: "Kafka",
+  definition: kafkaDynamicSecretProvider,
+  create: {
+    context: createContext,
+    defaultValues: kafkaCreateDefaults,
+    validValues: kafkaCreateValues,
+    payload: {
+      provider: { type: DynamicSecretProviders.Kafka, inputs: kafkaCreateValues.inputs },
+      maxTTL: "24h",
+      name: "kafka-secret",
+      path: "/folder",
+      defaultTTL: "1h",
+      projectSlug: "project",
+      environmentSlug: "dev",
+      usernameTemplate: undefined
+    },
+    invalidValues: [
+      {
+        name: "no ACLs",
+        values: { ...kafkaCreateValues, inputs: { ...kafkaCreateValues.inputs, acls: [] } },
+        issuePaths: [["inputs", "acls"]]
+      },
+      {
+        name: "ACL resource name is missing",
+        values: {
+          ...kafkaCreateValues,
+          inputs: { ...kafkaCreateValues.inputs, acls: [getDefaultKafkaAcl()] }
+        },
+        issuePaths: [["inputs", "acls", 0, "resourceName"]]
+      }
+    ]
+  },
+  edit: {
+    context: kafkaEditContext,
+    defaultValues: {
+      name: "existing-secret",
+      defaultTTL: "1h",
+      maxTTL: "24h",
+      usernameTemplate: DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE,
+      inputs: kafkaEditInputs
+    },
+    validValues: kafkaEditValues,
+    payload: {
+      name: "existing-secret",
+      path: "/folder",
+      projectSlug: "project",
+      environmentSlug: "dev",
+      data: {
+        maxTTL: "24h",
+        defaultTTL: "1h",
+        inputs: kafkaEditInputs,
+        newName: "renamed-kafka-secret",
         usernameTemplate: null
       }
     },
