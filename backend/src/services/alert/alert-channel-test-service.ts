@@ -15,7 +15,7 @@ import { TAlertChannelServiceFactory } from "./alert-channel-service";
 import { TAlertChannelDeps, TAlertRecipient } from "./alert-channel-types";
 import { TAlertDALFactory } from "./alert-dal";
 import { getRecipientScope } from "./alert-principal-scope-fns";
-import { resolveAlertProjectId, TAlertProviderRegistry } from "./alert-provider-registry";
+import { getAlertResourceName, resolveAlertProjectId, TAlertProviderRegistry } from "./alert-provider-registry";
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
 import { TTestAlertChannelDTO, TTestAlertChannelResponse, TTestAlertChannelResult } from "./alert-service-types";
 import { buildTestAlertPayload } from "./alert-test-payload-fns";
@@ -237,7 +237,8 @@ export const alertChannelTestServiceFactory = ({
 
     const config = await $resolveConfig(dto, projectId);
     const result = await $sendTest(dto, projectId, provider, config);
-    return { ...result, projectId };
+    const resourceName = await getAlertResourceName(provider, dto.actorOrgId, dto.resourceId);
+    return { ...result, projectId, resourceName };
   };
 
   return { testChannel };

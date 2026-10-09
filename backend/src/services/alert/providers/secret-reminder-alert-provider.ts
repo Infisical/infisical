@@ -237,6 +237,12 @@ export const secretReminderAlertProviderFactory = ({
     buildPayload,
     targetId: (target) => `${target.secretId}:${target.occurrenceDate}`,
     assertPermission,
-    assertResourceInScope
+    assertResourceInScope,
+    getResourceNames: async ({ orgId, resourceIds }) =>
+      new Map(
+        (await secretReminderAlertDAL.findSecretsByIds(resourceIds))
+          .filter((secret) => secret.orgId === orgId)
+          .map((secret) => [secret.secretId, secret.secretKey])
+      )
   };
 };
