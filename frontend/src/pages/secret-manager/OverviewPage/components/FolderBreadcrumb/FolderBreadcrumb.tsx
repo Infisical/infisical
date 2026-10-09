@@ -96,6 +96,7 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
   // Initial measurement and re-measure on path change
   useEffect(() => {
     measureElements();
+    document.fonts.ready.then(measureElements).catch(() => {});
   }, [measureElements, folderPaths]);
 
   // Track container width with ResizeObserver
