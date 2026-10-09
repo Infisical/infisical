@@ -103,14 +103,19 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
     const element = containerRef.current;
     if (!element) return () => {};
 
-    const observer = new ResizeObserver(() => {
-      measureElements();
+    // The observer entry carries the new width; re-measuring here would force a layout of the
+    // whole page on every resize frame
+    const observer = new ResizeObserver(([entry]) => {
+      const containerWidth = entry.borderBoxSize[0].inlineSize;
+      setMeasurements((prev) =>
+        prev.containerWidth === containerWidth ? prev : { ...prev, containerWidth }
+      );
     });
     observer.observe(element);
     return () => {
       observer.disconnect();
     };
-  }, [measureElements]);
+  }, []);
 
   // Calculate visible segments based on actual measurements
   const { startCount, endCount, needsEllipsis } = useMemo(() => {

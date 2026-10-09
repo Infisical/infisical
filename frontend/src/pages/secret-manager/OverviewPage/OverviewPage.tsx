@@ -2728,12 +2728,16 @@ const OverviewPageContent = () => {
 
   // Column and table widths are written to the DOM directly so resizing a column or the
   // page doesn't re-render every row on each frame
-  const applyColumnWidths = (saved: number[] | undefined) => {
+  const applyColumnWidths = (
+    saved: number[] | undefined,
+    tableWidth = tableRef.current?.clientWidth ?? 0
+  ) => {
     const element = tableRef.current;
     const table = element?.querySelector<HTMLTableElement>(":scope > table");
     if (!element || !table) return;
-    const widths = getColumnWidths(element.clientWidth, saved);
-    element.style.setProperty("--overview-table-width", `${element.clientWidth}px`);
+    const widths = getColumnWidths(tableWidth, saved);
+    element.style.setProperty("--overview-table-width", `${tableWidth}px`);
+    element.style.setProperty("--name-column-width", `${widths[0]}px`);
     table.querySelectorAll<HTMLTableColElement>(":scope > colgroup > col").forEach((col, index) => {
       if (index > 0) col.style.setProperty("width", `${widths[index - 1]}px`);
     });
@@ -2873,24 +2877,14 @@ const OverviewPageContent = () => {
   useLayoutEffect(() => {
     const element = tableRef.current;
     if (!element) return;
-    const table = element.querySelector<HTMLTableElement>(":scope > table");
-    const nameHeader = table?.querySelector("thead > tr > th:nth-child(2)");
 
-    const handleResize = () => {
-      if (!columnResize.current) applyColumnWidths(savedWidths);
-      if (nameHeader) {
-        element.style.setProperty(
-          "--name-column-width",
-          `${nameHeader.getBoundingClientRect().width}px`
-        );
-      }
-    };
-
-    const resizeObserver = new ResizeObserver(handleResize);
+    // Sizes come from the observer entry: reading layout here would force an extra full-table
+    // layout on every frame of a sidebar or window resize
+    const resizeObserver = new ResizeObserver(([entry]) => {
+      if (!columnResize.current) applyColumnWidths(savedWidths, entry.contentRect.width);
+    });
     resizeObserver.observe(element);
-    if (table) resizeObserver.observe(table);
-    if (nameHeader) resizeObserver.observe(nameHeader);
-    handleResize();
+    applyColumnWidths(savedWidths);
 
     // eslint-disable-next-line consistent-return
     return () => {
