@@ -205,7 +205,9 @@ You can view a session's logs if you created the session or you're an Agent Vaul
   The script runs outside a browser, so the bucket's CORS rule doesn't apply to it.
   </Note>
 
-  To receive new logs as they arrive, call [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail) without a cursor, then call it every few seconds with the previous response's `nextCursor`. The first response can repeat chunks you already read from [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list), so skip any chunk whose `chunkId` and `proxyId` you've already read. If a chunk's download returns 404, the proxy hasn't finished uploading it, so try again a few seconds later.
+  To receive new logs as they arrive, call [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail) without a cursor, then call it every few seconds with the previous response's `nextCursor`. Any response can repeat a chunk you already read, so skip any chunk whose `chunkId` and `proxyId` you've already read. If a chunk's download returns 404, the proxy may still be uploading it, so try again a few seconds later. If the download still returns 404 after about 2 minutes, stop retrying. If the proxy finishes the upload later, [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list) returns the chunk.
+
+  To export every chunk, page through [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list). The tail is for following new logs as they arrive.
 </Tab>
 </Tabs>
 
@@ -255,6 +257,8 @@ Infisical doesn't copy existing records when you change the bucket or the key pr
 ### Retention
 
 Infisical never deletes sessions or their session logs. To delete older logs automatically, add an [S3 Lifecycle rule](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html) to the bucket.
+
+Don't modify or add files under the key prefix or bucket that session logs use.
 
 ## Troubleshooting
 

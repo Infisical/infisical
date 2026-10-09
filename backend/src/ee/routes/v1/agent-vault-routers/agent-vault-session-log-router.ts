@@ -52,7 +52,7 @@ export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvi
       hide: false,
       operationId: "tailAgentVaultSessionLogs",
       description:
-        "Lists chunks added since your last call. Call it every few seconds with the previous `nextCursor`. The first call can repeat chunks you already have, so skip any whose `chunkId` and `proxyId` you've read. The chunks decrypt the same way as the ones from [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list). If Infisical can't read the bucket, the request fails with the error `AgentVaultSessionLogStorageUnavailable`.",
+        "Lists chunks added since your last call. Call it every few seconds with the previous `nextCursor`. Any call can return a chunk you already have, so skip any whose `chunkId` and `proxyId` you've read. The chunks decrypt the same way as the ones from [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list). If Infisical can't read the bucket, the request fails with the error `AgentVaultSessionLogStorageUnavailable`.",
       tags: [ApiDocsTags.AgentVaultSessionLogs],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
       querystring: AgentVaultSessionLogTailQuerySchema,
