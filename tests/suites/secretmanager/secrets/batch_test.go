@@ -197,8 +197,30 @@ func TestSecret_Batch(t *testing.T) {
 
 		// Assert
 		require.NoError(t, err)
-		// Status only: the message names the keys that do exist rather than the missing one.
 		require.Equal(t, http.StatusNotFound, res.StatusCode())
+		require.Equal(t, "One or more secrets does not exist: MISSING", res.JSON404.Message)
 		require.Equal(t, map[string]string{"A": "value"}, valuesOf(t, proj))
+	})
+
+	t.Run("should refuse the whole delete and keep every secret when one name is listed twice", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateSecret(t, proj, "dev", "A", "value")
+		secretmanager.CreateSecret(t, proj, "dev", "B", "value")
+		body := api.DeleteManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev"}
+		body.Secrets = slices.Grow(body.Secrets, 3)[:3]
+		body.Secrets[0].SecretKey, body.Secrets[1].SecretKey, body.Secrets[2].SecretKey = "A", "B", "A"
+
+		// Action
+		res, err := tn.Admin.API.DeleteManySecretsV4WithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t, "Each secret can only be deleted once per request: A", res.JSON400.Message)
+		require.Equal(t, map[string]string{"A": "value", "B": "value"}, valuesOf(t, proj))
 	})
 }

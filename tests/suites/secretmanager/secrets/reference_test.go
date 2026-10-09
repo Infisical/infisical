@@ -11,6 +11,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/stretchr/testify/require"
 )
 
@@ -200,6 +201,50 @@ func TestSecretReference_Expand(t *testing.T) {
 			imported[s.SecretKey] = s.SecretValue
 		}
 		require.Equal(t, "hello world", imported["GREETING"])
+	})
+
+	t.Run("should expand local and nested references inside a replicated import once it has replicated", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateFolder(t, proj, "prod", "/deep/nested")
+		secretmanager.CreateSecret(t, proj, "prod", "DEEP_KEY", "testing", secretmanager.WithPath("/deep"))
+		secretmanager.CreateSecret(t, proj, "prod", "NESTED_KEY", "reference", secretmanager.WithPath("/deep/nested"))
+		secretmanager.CreateSecret(t, proj, "prod", "COMBINED", "secret ${NESTED_KEY} ${prod.deep.DEEP_KEY}",
+			secretmanager.WithPath("/deep/nested"))
+
+		// Action
+		imp, err := tn.Admin.API.CreateSecretImportWithResponse(t.Context(), api.CreateSecretImportJSONRequestBody{
+			ProjectId:     proj.ID,
+			Environment:   "dev",
+			IsReplication: new(true),
+			Import: struct {
+				Environment     string  `json:"environment"`
+				Path            string  `json:"path"`
+				SourceProjectId *string `json:"sourceProjectId,omitempty"`
+			}{Environment: "prod", Path: "/deep/nested"},
+		})
+		require.NoError(t, err)
+		require.NotNilf(t, imp.JSON200, "creating the import returned %d: %s", imp.StatusCode(), apierr.Body(imp.Body))
+
+		// Assert
+		var imported map[string]string
+		wait.Until(t, "the replicated import to carry the expanded secret", func() bool {
+			res, err := tn.Admin.API.ListSecretsV4WithResponse(t.Context(), &api.ListSecretsV4Params{
+				ProjectId: &proj.ID, Environment: new("dev"),
+			})
+			if err != nil || res.JSON200 == nil || res.JSON200.Imports == nil || len(*res.JSON200.Imports) == 0 {
+				return false
+			}
+			imported = map[string]string{}
+			for _, s := range (*res.JSON200.Imports)[0].Secrets {
+				imported[s.SecretKey] = s.SecretValue
+			}
+			return imported["COMBINED"] != ""
+		})
+		require.Equal(t, "secret reference testing", imported["COMBINED"])
 	})
 
 	t.Run("should resolve to the actor's own override of the referenced secret when overrides are included", func(t *testing.T) {

@@ -25,6 +25,8 @@ the harness image with `NODE_ENV=development`.
   not inherit `MarshalJSON`, so it serialises as `{}`. Build the union, `json.Marshal` it,
   and post with `...WithBodyWithResponse`. A union field inside an ordinary struct is
   fine.
-- **Union responses.** `createSecretV4` returns a secret or an approval request. Unwrap
-  with `AsCreateSecretV4200JSONResponseBody0()` and fail on the other branch, so an
-  approval request never reads as success.
+- **Union responses.** A response that can take more than one shape is generated as a
+  union with one `As…N()` method per branch. Those methods only `json.Unmarshal`, so
+  every one of them succeeds whichever branch the server sent, and the wrong one hands
+  back zero values instead of an error. After unwrapping, require a field that only the
+  expected branch carries before trusting the result.
