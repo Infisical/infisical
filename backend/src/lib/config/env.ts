@@ -580,6 +580,11 @@ const envSchema = z
     SAFE_REQUEST_FORCE_DIRECT_EGRESS: zodStrBool.default("false"),
 
     // aws
+    // Standard AWS SDK endpoint overrides (e.g. for LocalStack or VPC endpoints). SDK clients read these
+    // directly from the environment; they are declared here so non-SDK AWS calls can honour them too.
+    AWS_ENDPOINT_URL: zpStr(z.string().url().optional()),
+    AWS_ENDPOINT_URL_STS: zpStr(z.string().url().optional()),
+    AWS_IGNORE_CONFIGURED_ENDPOINT_URLS: zodStrBool.default("false"),
     INF_APP_CONNECTION_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()),
 

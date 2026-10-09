@@ -874,6 +874,32 @@ You can configure third-party app connections for re-use across Infisical Projec
 
 </Accordion>
 
+<Accordion title="AWS Endpoint Overrides">
+    Infisical honors the standard AWS SDK endpoint environment variables. Use them to point Infisical's AWS calls
+    (Secret Syncs, App Connections, AWS KMS, dynamic secrets and AWS IAM Auth login verification) at an alternative
+    endpoint, such as a VPC endpoint proxy or an AWS emulator like LocalStack for local development and testing.
+    An AWS App Connection with its own STS endpoint configured keeps using that endpoint for assume-role requests.
+
+    <ParamField query="AWS_ENDPOINT_URL" type="string" default="none" optional>
+        Endpoint URL used for all AWS services, e.g. `http://localstack:4566`.
+    </ParamField>
+
+    <ParamField query="AWS_ENDPOINT_URL_STS" type="string" default="none" optional>
+        Endpoint URL used for AWS STS. Takes precedence over `AWS_ENDPOINT_URL`. AWS IAM Auth replays the client's
+        signed `sts:GetCallerIdentity` request to this URL instead of `https://sts.<region>.amazonaws.com`.
+        Other `AWS_ENDPOINT_URL_<SERVICE>` variables (for example `AWS_ENDPOINT_URL_SECRETS_MANAGER`) are read by the AWS SDK directly.
+    </ParamField>
+
+    <ParamField query="AWS_IGNORE_CONFIGURED_ENDPOINT_URLS" type="boolean" default="false" optional>
+        Ignore the endpoint overrides above.
+    </ParamField>
+
+    <Warning>
+        These variables redirect AWS IAM Auth verification. Only set them to an endpoint you trust, since it decides
+        which AWS identity a login request belongs to.
+    </Warning>
+</Accordion>
+
 <Accordion title="GitHub App Connection">
     <ParamField query="INF_APP_CONNECTION_GITHUB_APP_ID" type="string" default="none" optional>
         The ID of the GitHub App
