@@ -22,6 +22,7 @@ export enum SecretSync {
   GitLab = "gitlab",
   CloudflarePages = "cloudflare-pages",
   CloudflareWorkers = "cloudflare-workers",
+  CloudflareSecretsStore = "cloudflare-secrets-store",
   Supabase = "supabase",
   Zabbix = "zabbix",
   Railway = "railway",

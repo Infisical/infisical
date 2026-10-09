@@ -131,6 +131,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
       AdditionalSyncOptionsFieldsComponent = <CloudflareWorkersSyncOptionsFields />;
       break;
     case SecretSync.CloudflarePages:
+    case SecretSync.CloudflareSecretsStore:
     case SecretSync.Zabbix:
     case SecretSync.Railway:
     case SecretSync.Checkly:

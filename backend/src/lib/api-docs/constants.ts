@@ -3457,6 +3457,12 @@ export const SecretSyncs = {
     CLOUDFLARE_WORKERS: {
       scriptId: "The ID of the Cloudflare Workers script to sync secrets to."
     },
+    CLOUDFLARE_SECRETS_STORE: {
+      storeId: "The ID of the Cloudflare Secrets Store to sync secrets to.",
+      storeName: "An optional display name for the Cloudflare Secrets Store.",
+      scopes:
+        "The Cloudflare services allowed to use the synced secrets. Applied every time a secret is written, so it replaces scopes set in Cloudflare."
+    },
     ZABBIX: {
       scope: "The Zabbix scope that secrets should be synced to.",
       hostId: "The ID of the Zabbix host to sync secrets to.",
