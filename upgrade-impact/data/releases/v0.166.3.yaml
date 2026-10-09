@@ -1,0 +1,20 @@
+version: v0.166.3
+releasedAt: 2026-10-08T17:23:41-03:00
+sourceTag: v0.166.3
+previousTag: v0.166.2
+impactLevel: none
+summary: No self-hosted upgrade actions or operator-facing risks were found.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges: []
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-10-08T22:00:20.276Z
+  sourceRange:
+    from: v0.166.2
+    to: v0.166.3

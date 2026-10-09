@@ -69,6 +69,31 @@ Unit tests go next to source as `*.test.ts` and test pure functions with Vitest 
 
 E2E tests live in `e2e-test/routes/`. The custom Vitest environment (`e2e-test/vitest-environment-knex.ts`) bootstraps a full server with DB, Redis, and encryption. Tests use injected globals: `testServer` (Fastify instance), `jwtAuthToken` (pre-authenticated JWT). Use `testServer.inject()` for HTTP assertions. Test helpers in `e2e-test/testUtils/` provide CRUD wrappers for secrets, folders, and secret imports. See `e2e-test/routes/v1/org.spec.ts` for a representative e2e test.
 
+#### Writing e2e tests with `testUtils`
+
+**Build test state with the helpers in `e2e-test/testUtils/`, not by hand.** Before writing a
+`testServer.inject` call or a `testDb` insert to set something up, check `testUtils/` for a helper
+that already does it. If none exists, add one there rather than a local helper in the spec: two
+specs had each written their own `createTargetUser` before `testUtils/users.ts` existed, and every
+copy drifts on its own.
+
+- **Isolate each test.** `createIsolatedOrgAndProject` (`fixtures.ts`) gives a test its own org and
+  project, a token scoped to it, and a `cleanup` that deletes the org. Prefer it over the shared
+  `seedData1` org and project, whose state leaks between tests and files.
+- **Don't lean on the seed user as a participant.** When a test needs someone other than the caller
+  (a recipient, a member, a target), create them with `createUser` and `addUserMembership`
+  (`users.ts`). Those write rows directly because signup needs SRP, so the user can be named but
+  cannot log in.
+- **Go through the API for everything else**, with the domain helpers (`secrets.ts`, `folders.ts`,
+  `alerts.ts`, `reminders.ts`, `identities.ts`, ...). Write a helper with `request()` (`request.ts`)
+  so a call is sent when made and a caller can `.expect()` a non-200 or take the `.raw()` response.
+- **Assert on outcomes a user would see**: an API response, an email in `testSmtp`, a message at a
+  fake destination. Read `testDb` only when the API cannot show the thing under test (eg an alert
+  orphaned by a cascade), and say why in a comment.
+- **Wait with `pollUntil`** (`poll.ts`) for anything asynchronous, never a fixed sleep.
+- **Run background jobs on demand** through a pass-through wrapper in `e2e-test/fakes/` (eg
+  `reminder-queue.ts` and `event-outbox-queue.ts`, driven by `runDailyReminders` in `reminders.ts`).
+
 #### Faking a third-party provider
 
 **Never add test-only code to `src/`** — no test-mode enum members, no lookup map entries, no

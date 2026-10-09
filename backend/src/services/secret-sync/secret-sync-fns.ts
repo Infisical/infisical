@@ -53,6 +53,7 @@ import { CIRCLECI_SYNC_LIST_OPTION, CircleCISyncFns } from "./circleci";
 import { CLOUD66_SYNC_LIST_OPTION, Cloud66SyncFns } from "./cloud66";
 import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare-pages-constants";
 import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
+import { CLOUDFLARE_SECRETS_STORE_SYNC_LIST_OPTION, CloudflareSecretsStoreSyncFns } from "./cloudflare-secrets-store";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
 import { DAYTONA_SYNC_LIST_OPTION, DaytonaSyncFns } from "./daytona";
 import { DEVIN_SYNC_LIST_OPTION, DevinSyncFns } from "./devin";
@@ -120,6 +121,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.GitLab]: GITLAB_SYNC_LIST_OPTION,
   [SecretSync.CloudflarePages]: CLOUDFLARE_PAGES_SYNC_LIST_OPTION,
   [SecretSync.CloudflareWorkers]: CLOUDFLARE_WORKERS_SYNC_LIST_OPTION,
+  [SecretSync.CloudflareSecretsStore]: CLOUDFLARE_SECRETS_STORE_SYNC_LIST_OPTION,
   [SecretSync.Supabase]: SUPABASE_SYNC_LIST_OPTION,
   [SecretSync.Rundeck]: RUNDECK_SYNC_LIST_OPTION,
   [SecretSync.Zabbix]: ZABBIX_SYNC_LIST_OPTION,
@@ -347,6 +349,8 @@ export const SecretSyncFns = {
         return CloudflarePagesSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.CloudflareWorkers:
         return CloudflareWorkersSyncFns.syncSecrets(secretSync, payload);
+      case SecretSync.CloudflareSecretsStore:
+        return CloudflareSecretsStoreSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Zabbix:
         return ZabbixSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Railway:
@@ -499,6 +503,9 @@ export const SecretSyncFns = {
         break;
       case SecretSync.CloudflareWorkers:
         secretMap = await CloudflareWorkersSyncFns.getSecrets(secretSync);
+        break;
+      case SecretSync.CloudflareSecretsStore:
+        secretMap = await CloudflareSecretsStoreSyncFns.getSecrets();
         break;
       case SecretSync.Zabbix:
         secretMap = await ZabbixSyncFns.getSecrets(secretSync);
@@ -659,6 +666,8 @@ export const SecretSyncFns = {
         return CloudflarePagesSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.CloudflareWorkers:
         return CloudflareWorkersSyncFns.removeSecrets(secretSync, payload);
+      case SecretSync.CloudflareSecretsStore:
+        return CloudflareSecretsStoreSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Zabbix:
         return ZabbixSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Railway:

@@ -83,3 +83,17 @@ export type TAlertLastRun = {
   timestamp: Date;
   status: AlertRunStatus;
 };
+
+// The alert a domain service keeps on one of its own resources, set in full each time. `channels` is either
+// the alert's complete channel list, or the recipients of its channels of one type, which leaves every other
+// channel (eg a Slack or webhook channel added through the alert API) as it is.
+export type TPrepareAlertForResourceDTO = TGenericPermission & {
+  resourceType: string;
+  resourceId: string;
+  projectId: string;
+  eventType: string;
+  name: string;
+  channels:
+    | { replaceAll: TAlertChannelInput[] }
+    | { replaceRecipients: { channelType: AlertChannelType; recipients: TChannelRecipientInput[] } };
+};

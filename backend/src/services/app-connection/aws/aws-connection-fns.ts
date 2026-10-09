@@ -100,11 +100,14 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
       // v1 (legacy) always used orgId; v2+ uses projectId when available, orgId otherwise.
       // Certificate Manager connections try orgId first (the recommended ExternalID),
       // then fall back to projectId for backwards compatibility with existing trust policies.
+      // Agent Vault's project is implicit and never shown to users, so its connections use orgId.
       const externalIds: string[] = [];
       if ((version ?? 1) >= 2) {
         if (projectType === ProjectType.CertificateManager) {
           externalIds.push(orgId);
           if (projectId && projectId !== orgId) externalIds.push(projectId);
+        } else if (projectType === ProjectType.AgentVault) {
+          externalIds.push(orgId);
         } else {
           externalIds.push(projectId ?? orgId);
         }

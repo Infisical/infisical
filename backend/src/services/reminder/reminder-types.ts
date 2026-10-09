@@ -1,5 +1,7 @@
 import { Knex } from "knex";
 
+import { TAlertChannelInput } from "../alert/alert-channel-service-types";
+import { TPreparedAlert } from "../alert/alert-service";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
 export type TReminder = {
@@ -25,20 +27,34 @@ export type TCreateReminderDTO = {
     fromDate?: string | null;
     nextReminderDate?: string | null;
     recipients?: string[] | null;
+    channels?: TAlertChannelInput[];
   };
 };
 
-export type TBatchCreateReminderDTO = {
+export type TPrepareReminderDTO = TCreateReminderDTO;
+
+// A reminder that has passed every check, ready to be written with applyReminder in the caller's
+// transaction.
+export type TPreparedReminder = {
   secretId: string;
-  message?: string | null;
-  repeatDays?: number | null;
-  nextReminderDate?: string | Date | null;
-  fromDate?: Date | null;
-  recipients?: string[] | null;
-  projectId?: string;
-}[];
+  projectId: string;
+  schedule: {
+    message?: string | null;
+    repeatDays?: number | null;
+    nextReminderDate: Date;
+    fromDate?: Date;
+  };
+  alert: TPreparedAlert;
+};
+
+// A secret recreated under a new id (eg by a move between folders).
+export type TReminderMove = { fromSecretId: string; toSecretId: string };
 
 export interface TReminderServiceFactory {
+  prepareReminder: (dto: TPrepareReminderDTO) => Promise<TPreparedReminder>;
+
+  applyReminder: (prepared: TPreparedReminder, tx: Knex) => Promise<{ id: string; created: boolean }>;
+
   createReminder: ({ actor, actorId, actorOrgId, actorAuthMethod, reminder }: TCreateReminderDTO) => Promise<{
     id: string;
     created: boolean;
@@ -58,7 +74,9 @@ export interface TReminderServiceFactory {
     actorAuthMethod: ActorAuthMethod;
   }) => Promise<(TReminder & { recipients: string[] }) | null>;
 
-  sendDailyReminders: () => Promise<void>;
+  dispatchDueReminders: (opts?: { now?: Date }) => Promise<void>;
+
+  reapOrphanedReminderAlerts: () => Promise<void>;
 
   deleteReminder: ({
     actor,
@@ -76,33 +94,9 @@ export interface TReminderServiceFactory {
 
   deleteReminderBySecretId: (secretId: string, projectId: string, tx?: Knex) => Promise<void>;
 
-  batchCreateReminders: (
-    remindersData: TBatchCreateReminderDTO,
-    tx?: Knex
-  ) => Promise<{
-    created: number;
-    reminderIds: string[];
-  }>;
+  moveReminders: (moves: TReminderMove[], tx: Knex) => Promise<void>;
 
-  createReminderInternal: ({
-    secretId,
-    message,
-    repeatDays,
-    nextReminderDate,
-    recipients,
-    projectId
-  }: {
-    secretId?: string;
-    message?: string | null;
-    repeatDays?: number | null;
-    nextReminderDate?: string | null;
-    recipients?: string[] | null;
-    projectId: string;
-    fromDate?: string | null;
-  }) => Promise<{
-    id: string;
-    created: boolean;
-  }>;
+  copyReminders: (moves: TReminderMove[], tx: Knex) => Promise<void>;
 
   getRemindersForDashboard: (secretIds: string[]) => Promise<Record<string, TReminder & { recipients: string[] }>>;
 }

@@ -252,6 +252,7 @@
                       "integrations/secret-syncs/circleci",
                       "integrations/secret-syncs/cloud-66",
                       "integrations/secret-syncs/cloudflare-pages",
+                      "integrations/secret-syncs/cloudflare-secrets-store",
                       "integrations/secret-syncs/cloudflare-workers",
                       "integrations/secret-syncs/databricks",
                       "integrations/secret-syncs/daytona",
@@ -810,7 +811,8 @@
                     "pages": [
                       "documentation/platform/agent-vault/guides/openclaw-gateway"
                     ]
-                  }
+                  },
+                  "documentation/platform/agent-vault/guides/custom-agent"
                 ]
               },
               {
@@ -823,6 +825,8 @@
                     "group": "Sessions",
                     "root": "documentation/platform/agent-vault/sessions",
                     "pages": [
+                      "documentation/platform/agent-vault/sessions-cli",
+                      "documentation/platform/agent-vault/sessions-api",
                       "documentation/platform/agent-vault/session-logs"
                     ]
                   },
@@ -1096,6 +1100,7 @@
                   "integrations/app-connections/hashicorp-vault",
                   "integrations/app-connections/hasura-cloud",
                   "integrations/app-connections/heroku",
+                  "integrations/app-connections/hpe-ilo",
                   "integrations/app-connections/humanitec",
                   "integrations/app-connections/kemp-loadmaster",
                   "integrations/app-connections/external-infisical",
@@ -2085,6 +2090,18 @@
                           "api-reference/endpoints/app-connections/heroku/create",
                           "api-reference/endpoints/app-connections/heroku/update",
                           "api-reference/endpoints/app-connections/heroku/delete"
+                        ]
+                      },
+                      {
+                        "group": "HPE iLO",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/hpe-ilo/list",
+                          "api-reference/endpoints/app-connections/hpe-ilo/available",
+                          "api-reference/endpoints/app-connections/hpe-ilo/get-by-id",
+                          "api-reference/endpoints/app-connections/hpe-ilo/get-by-name",
+                          "api-reference/endpoints/app-connections/hpe-ilo/create",
+                          "api-reference/endpoints/app-connections/hpe-ilo/update",
+                          "api-reference/endpoints/app-connections/hpe-ilo/delete"
                         ]
                       },
                       {
@@ -3425,6 +3442,19 @@
                           "api-reference/endpoints/secret-syncs/cloudflare-pages/delete",
                           "api-reference/endpoints/secret-syncs/cloudflare-pages/sync-secrets",
                           "api-reference/endpoints/secret-syncs/cloudflare-pages/remove-secrets"
+                        ]
+                      },
+                      {
+                        "group": "Cloudflare Secrets Store",
+                        "pages": [
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/list",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/get-by-id",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/get-by-name",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/create",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/update",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/delete",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/sync-secrets",
+                          "api-reference/endpoints/secret-syncs/cloudflare-secrets-store/remove-secrets"
                         ]
                       },
                       {
