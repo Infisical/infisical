@@ -592,6 +592,22 @@ describe("audit-log-stream-outbox-service sweepStaleClaims", () => {
     return { auditLogStreamOutboxDAL, eventEmitter };
   };
 
+  // Every batch comes back full, as it would under a large backlog, so the sweep must still stop and
+  // never hold more than one batch of locks in a transaction.
+  test("recovers a backlog in bounded batches, each in its own transaction, up to a cap", async () => {
+    const { service, auditLogStreamOutboxDAL } = createService();
+    const recoverStaleClaims = vi.fn(async (_thresholdMs: number, _maxAttempts: number, limit: number) => ({
+      retried: limit,
+      dropped: []
+    }));
+    auditLogStreamOutboxDAL.recoverStaleClaims = recoverStaleClaims as never;
+
+    await service.sweepStaleClaims();
+
+    expect(recoverStaleClaims.mock.calls.length).toBeGreaterThan(1);
+    expect(auditLogStreamOutboxDAL.transaction).toHaveBeenCalledTimes(recoverStaleClaims.mock.calls.length);
+  });
+
   test("emits one alert per stream with drops, carrying that stream's own count", async () => {
     const { eventEmitter } = await sweepWith([
       { streamId: "stream-a", orgId: ORG_ID, provider: LogProvider.Datadog },

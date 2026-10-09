@@ -171,12 +171,15 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   const recoverStaleClaims = async (
     thresholdMs: number,
     maxAttempts: number,
+    limit: number,
     tx: Knex
   ): Promise<{ retried: number; dropped: { streamId: string; orgId: string; provider: string | null }[] }> => {
     try {
       const staleRows = await tx(TableName.AuditLogStreamOutbox)
         .where("status", AuditLogStreamOutboxStatus.Processing)
         .andWhereRaw(`"lockedAt" < NOW() - (? || ' milliseconds')::INTERVAL`, [thresholdMs])
+        .orderBy("lockedAt", "asc")
+        .limit(limit)
         .forUpdate()
         .skipLocked()
         .select<TAuditLogStreamOutboxRow[]>("*");

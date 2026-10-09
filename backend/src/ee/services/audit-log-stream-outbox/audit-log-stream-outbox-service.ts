@@ -50,6 +50,8 @@ const BACKOFF_BASE_MS = 30_000;
 // hold time is MAX_BATCHES_PER_JOB × AUDIT_LOG_STREAM_BATCH_TIMEOUT ≈ 5 min.
 // Anything older than this can't be a live worker.
 export const STALE_CLAIM_THRESHOLD_MS = 10 * 60_000;
+const STALE_SWEEP_BATCH_SIZE = 1_000;
+const STALE_SWEEP_MAX_BATCHES = 10;
 // Shown to customers in the delivery-failed alert, where a stale claim has no provider error to report.
 const STALE_CLAIM_DROP_MESSAGE = "Events were dropped because the delivery worker stopped during their final attempt.";
 
@@ -426,23 +428,28 @@ export const auditLogStreamOutboxServiceFactory = ({
   //   - the SETNX debounce key inside debounceAndEnqueueFlush;
   //   - claimBatchForStream's FOR UPDATE SKIP LOCKED + atomic flip to 'processing'
   //     so even concurrent workers claim disjoint rows.
-  const sweepStaleClaims = async () => {
-    // Stale claims that used up their attempts are dropped (no DLQ), so they flag the stream and emit
-    // the alert event in the same transaction as the delete, exactly like a drop on the delivery path.
-    // The provider is resolved by the DAL and is null only when the stream itself is already gone,
-    // which is one of the reasons a claim goes stale; markStreamFailing then matches no row and
-    // nothing is emitted.
-    const { retried, droppedByStream } = await auditLogStreamOutboxDAL.transaction(async (tx) => {
-      const recovered = await auditLogStreamOutboxDAL.recoverStaleClaims(STALE_CLAIM_THRESHOLD_MS, MAX_ATTEMPTS, tx);
+  // Stale claims that used up their attempts are dropped (no DLQ), so they flag the stream and emit
+  // the alert event in the same transaction as the delete, exactly like a drop on the delivery path.
+  // The provider is resolved by the DAL and is null only when the stream itself is already gone,
+  // which is one of the reasons a claim goes stale; markStreamFailing then matches no row and
+  // nothing is emitted.
+  const recoverStaleClaimBatch = () =>
+    auditLogStreamOutboxDAL.transaction(async (tx) => {
+      const recovered = await auditLogStreamOutboxDAL.recoverStaleClaims(
+        STALE_CLAIM_THRESHOLD_MS,
+        MAX_ATTEMPTS,
+        STALE_SWEEP_BATCH_SIZE,
+        tx
+      );
 
-      const grouped = new Map<string, { orgId: string; provider: string | null; count: number }>();
+      const droppedByStream = new Map<string, { orgId: string; provider: string | null; count: number }>();
       for (const { streamId, orgId, provider } of recovered.dropped) {
-        const existing = grouped.get(streamId);
+        const existing = droppedByStream.get(streamId);
         if (existing) existing.count += 1;
-        else grouped.set(streamId, { orgId, provider, count: 1 });
+        else droppedByStream.set(streamId, { orgId, provider, count: 1 });
       }
 
-      for (const [streamId, { orgId, provider, count }] of grouped) {
+      for (const [streamId, { orgId, provider, count }] of droppedByStream) {
         // eslint-disable-next-line no-await-in-loop
         await flagStreamFailing(
           { streamId, orgId, provider, errorMessage: STALE_CLAIM_DROP_MESSAGE, droppedCount: count },
@@ -450,22 +457,36 @@ export const auditLogStreamOutboxServiceFactory = ({
         );
       }
 
-      return { retried: recovered.retried, droppedByStream: grouped };
+      return { retried: recovered.retried, dropped: recovered.dropped.length, droppedByStream };
     });
 
-    const droppedTotal = Array.from(droppedByStream.values()).reduce((sum, { count }) => sum + count, 0);
-    if (retried > 0 || droppedTotal > 0) {
-      logger.warn(
-        `audit-log-stream-outbox: recovered stale claims [retried=${retried}] [dropped=${droppedTotal}] [thresholdMs=${STALE_CLAIM_THRESHOLD_MS}]`
-      );
+  const sweepStaleClaims = async () => {
+    let retried = 0;
+    let dropped = 0;
+    // Each batch is its own transaction so a backlog left by a worker outage never holds more than one
+    // batch of row locks at a time. Whatever is left past the cap is picked up by the next sweep.
+    for (let batch = 0; batch < STALE_SWEEP_MAX_BATCHES; batch += 1) {
+      // eslint-disable-next-line no-await-in-loop -- batches must run serially to stay paced
+      const outcome = await recoverStaleClaimBatch();
+      retried += outcome.retried;
+      dropped += outcome.dropped;
+
+      // Counted alongside delivery-path exhaustions so both losses show up on the same counter, keyed
+      // the same way.
+      for (const [streamId, { provider, count }] of outcome.droppedByStream) {
+        auditLogStreamDeliveryExhaustedCounter.add(count, {
+          "audit_log_stream.id": streamId,
+          ...(provider && { "audit_log_stream.provider": provider })
+        });
+      }
+
+      if (outcome.retried + outcome.dropped < STALE_SWEEP_BATCH_SIZE) break;
     }
-    // Counted alongside delivery-path exhaustions so both losses show up on the same counter, keyed
-    // the same way.
-    for (const [streamId, { provider, count }] of droppedByStream) {
-      auditLogStreamDeliveryExhaustedCounter.add(count, {
-        "audit_log_stream.id": streamId,
-        ...(provider && { "audit_log_stream.provider": provider })
-      });
+
+    if (retried > 0 || dropped > 0) {
+      logger.warn(
+        `audit-log-stream-outbox: recovered stale claims [retried=${retried}] [dropped=${dropped}] [thresholdMs=${STALE_CLAIM_THRESHOLD_MS}]`
+      );
     }
 
     const overdueStreams = await auditLogStreamOutboxDAL.findStreamsWithOverdueRows();
