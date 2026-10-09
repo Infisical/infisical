@@ -1067,12 +1067,14 @@ describe("secretChangeGlobalRequestBridge updateSecretChangeRequestStatus", () =
     expect(queueChangeRequestWebhook).not.toHaveBeenCalled();
   });
 
-  test("refuses when the plan lacks secret approvals", async () => {
+  test("closes a request when the plan lacks secret approvals and refuses reopening one", async () => {
     const { service, deps } = buildService();
     deps.licenseService.getPlan.mockResolvedValue({ secretApproval: false });
 
-    await expect(setStatus(service)).rejects.toThrow("plan restriction");
+    await expect(setStatus(service, { status: RequestState.Open })).rejects.toThrow("plan restriction");
     expect(deps.approvalRequestDAL.findById).not.toHaveBeenCalled();
+
+    await expect(setStatus(service)).resolves.toMatchObject({ status: ApprovalRequestStatus.Closed });
   });
 
   test("reads an unknown id or a request of another type as not found", async () => {
