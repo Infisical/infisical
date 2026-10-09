@@ -30,7 +30,8 @@ export const AgentVaultSessionLogChunkCreateSchema = z.object({
     .min(AGENT_VAULT_SESSION_LOG_MIN_CHUNK_BYTES)
     .max(AGENT_VAULT_SESSION_LOG_MAX_CHUNK_BYTES)
     .describe(AGENT_VAULT.SESSION_LOGS.ciphertextBytes),
-  ciphertextSha256: CiphertextSha256Schema
+  ciphertextSha256: CiphertextSha256Schema,
+  iv: z.string().max(64).optional().describe(AGENT_VAULT.SESSION_LOGS.legacyIv)
 });
 
 export const AgentVaultSessionLogChunkCreateResponseSchema = z.object({

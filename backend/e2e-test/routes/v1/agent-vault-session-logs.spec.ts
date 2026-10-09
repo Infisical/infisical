@@ -141,13 +141,17 @@ const nextChunkId = () => uuidv7();
 const CHUNK_BYTES = 1024;
 const CHUNK_SHA256 = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU";
 
-const chunkBody = (overrides: Record<string, unknown> = {}) => ({
-  chunkId: nextChunkId(),
-  endedAt: new Date(Date.now() - 1_000),
-  ciphertextBytes: CHUNK_BYTES,
-  ciphertextSha256: CHUNK_SHA256,
-  ...overrides
-});
+// Infisical refuses a chunk whose id time doesn't match its endedAt, so endedAt defaults to the id's time.
+const chunkBody = (overrides: Record<string, unknown> = {}) => {
+  const chunkId = (overrides.chunkId as string | undefined) ?? uuidv7({ msecs: Date.now() - 1_000 });
+  return {
+    chunkId,
+    endedAt: new Date(chunkIdTimeMs(chunkId)),
+    ciphertextBytes: CHUNK_BYTES,
+    ciphertextSha256: CHUNK_SHA256,
+    ...overrides
+  };
+};
 
 const requestUploadUrl = async (
   proxy: Awaited<ReturnType<typeof createProxy>>,
@@ -670,8 +674,10 @@ describe("Agent Vault session logs", async () => {
 
     test.each([
       { why: "endedAt is far in the future", patch: { endedAt: new Date(Date.now() + 10 * 60_000) } },
-      { why: "endedAt is more than 30 days ago", patch: { endedAt: new Date(Date.now() - 31 * 24 * 60 * 60_000) } }
-    ])("rejects a chunk that cannot be true when $why", async ({ patch }) => {
+      { why: "endedAt is more than 30 days ago", patch: { endedAt: new Date(Date.now() - 31 * 24 * 60 * 60_000) } },
+      { why: "endedAt is minutes off the chunk id's time", patch: { endedAt: new Date(Date.now() - 6 * 60_000) } },
+      { why: "it comes from a CLI that still sends the IV", patch: { iv: "AAAAAAAAAAAAAAAA" } }
+    ])("rejects a chunk it can't accept when $why", async ({ patch }) => {
       await configure();
       const { session, proxy } = await setup("semantic");
 
@@ -748,11 +754,11 @@ describe("Agent Vault session logs", async () => {
       proxy: Awaited<ReturnType<typeof createProxy>>,
       sessionId: string,
       count: number,
-      { sealedFrom = Date.now() - count, bytes = CHUNK_BYTES }: { sealedFrom?: number; bytes?: number } = {}
+      { lastRecordFrom = Date.now() - count, bytes = CHUNK_BYTES }: { lastRecordFrom?: number; bytes?: number } = {}
     ) => {
       const chunkIds: string[] = [];
       for (let i = 0; i < count; i += 1) {
-        const chunkId = uuidv7({ msecs: sealedFrom + i });
+        const chunkId = uuidv7({ msecs: lastRecordFrom + i });
         // eslint-disable-next-line no-await-in-loop
         const { uploadUrl } = await requestUploadUrl(proxy, sessionId, chunkBody({ chunkId, ciphertextBytes: bytes }));
         fakeS3Bucket.put(uploadUrl, Buffer.alloc(bytes));
@@ -837,15 +843,15 @@ describe("Agent Vault session logs", async () => {
       expect((await tail(session.id)).sessionLogs).toMatchObject({ enabled: true, isRecordable: false });
     });
 
-    test("a time window lists the chunks sealed in it, and those sealed shortly after its end", async () => {
+    test("a time window lists the chunks whose last request is in it, and those just after its end", async () => {
       await configure();
       const { session, proxy } = await seedSession();
 
       const hour = 60 * 60 * 1000;
-      const [threeHoursAgo] = await upload(proxy, session.id, 1, { sealedFrom: Date.now() - 3 * hour });
-      const [twoHoursAgo] = await upload(proxy, session.id, 1, { sealedFrom: Date.now() - 2 * hour });
-      const [justAfter] = await upload(proxy, session.id, 1, { sealedFrom: Date.now() - 1.5 * hour + 60_000 });
-      await upload(proxy, session.id, 1, { sealedFrom: Date.now() });
+      const [threeHoursAgo] = await upload(proxy, session.id, 1, { lastRecordFrom: Date.now() - 3 * hour });
+      const [twoHoursAgo] = await upload(proxy, session.id, 1, { lastRecordFrom: Date.now() - 2 * hour });
+      const [justAfter] = await upload(proxy, session.id, 1, { lastRecordFrom: Date.now() - 1.5 * hour + 60_000 });
+      await upload(proxy, session.id, 1, { lastRecordFrom: Date.now() });
 
       const windowed = await read(
         session.id,
@@ -929,7 +935,7 @@ describe("Agent Vault session logs", async () => {
       expect(later.chunks.map((chunk) => chunk.chunkId)).toEqual([next.chunkId]);
     });
 
-    test("the tail returns a chunk sealed long ago but registered now", async () => {
+    test("the tail returns a chunk from long ago that asked for its upload link now", async () => {
       await configure();
       const { session, proxy } = await seedSession();
       const late = await requestUploadUrl(

@@ -7,7 +7,7 @@ import { BadRequestError, DatabaseError, InternalServerError } from "@app/lib/er
 
 import {
   AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
-  AGENT_VAULT_SESSION_LOG_RANGE_SEAL_MARGIN_MS,
+  AGENT_VAULT_SESSION_LOG_RANGE_MARGIN_MS,
   AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE,
   AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
 } from "./agent-vault-session-log-constants";
@@ -25,6 +25,7 @@ import {
 import { unwrapSessionLogKey } from "./agent-vault-session-log-secrets";
 import { agentVaultSessionLogServiceFactory } from "./agent-vault-session-log-service";
 import { buildSessionLogStorage } from "./agent-vault-session-log-storage-fns";
+import { TCreateChunkUploadUrlDTO } from "./agent-vault-session-log-types";
 
 const PROJECT_ID = "c4a1e0d2-5b7f-4c1e-9a3d-2f6b8e0c7a11";
 const SESSION_ID = "5d2e9b41-0c3a-4f8e-b7d2-91a4c6e8f035";
@@ -76,15 +77,16 @@ const enabledConfig = () => ({
   keyPrefix: "logs"
 });
 
-const validChunk = () => ({
-  chunkId: uuidv7(),
-  endedAt: new Date(Date.now() - 1_000),
+// The id carries the time of the chunk's last request, which Infisical checks against endedAt.
+const validChunk = (endedAt = new Date(Date.now() - 1_000)) => ({
+  chunkId: uuidv7({ msecs: endedAt.getTime() }),
+  endedAt,
   ciphertextBytes: 4096,
   ciphertextSha256: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU"
 });
 
-const objectFor = (sealedAtMs: number, proxyId = PROXY_ID) => {
-  const chunkId = uuidv7({ msecs: sealedAtMs });
+const objectFor = (lastRecordAtMs: number, proxyId = PROXY_ID) => {
+  const chunkId = uuidv7({ msecs: lastRecordAtMs });
   return { chunkId, key: buildSessionLogObjectKey({ folder: FOLDER, proxyId, chunkId }) };
 };
 
@@ -156,8 +158,10 @@ const build = (overrides: TOverrides = {}) => {
   return { service, validateConnection, findConnection, updateConfig, streamAdd, streamRange, findSession };
 };
 
-const record = (service: ReturnType<typeof build>["service"], chunk = validChunk()) =>
-  service.createChunkUploadUrl({ proxyId: PROXY_ID, sessionId: SESSION_ID, chunk });
+const record = (
+  service: ReturnType<typeof build>["service"],
+  chunk: TCreateChunkUploadUrlDTO["chunk"] = validChunk()
+) => service.createChunkUploadUrl({ proxyId: PROXY_ID, sessionId: SESSION_ID, chunk });
 
 const scope = {
   projectId: PROJECT_ID,
@@ -271,7 +275,7 @@ describe("createChunkUploadUrl: when session logs are off", () => {
 describe("createChunkUploadUrl: the proxy's clock", () => {
   test("a proxy clock too far ahead is refused with the named error, saying how far", async () => {
     const { service } = build();
-    const refusal = record(service, { ...validChunk(), endedAt: new Date(Date.now() + 10 * 60_000) });
+    const refusal = record(service, validChunk(new Date(Date.now() + 10 * 60_000)));
     await expect(refusal).rejects.toMatchObject({ name: AgentVaultSessionLogErrorName.ClockSkew });
     await expect(refusal).rejects.toThrow(/about 10 minutes ahead/);
     expect(presignPut).not.toHaveBeenCalled();
@@ -280,12 +284,12 @@ describe("createChunkUploadUrl: the proxy's clock", () => {
   test("a small clock skew forward is tolerated", async () => {
     const { service } = build();
     const soon = new Date(Date.now() + 60_000);
-    await expect(record(service, { ...validChunk(), endedAt: soon })).resolves.toBeTruthy();
+    await expect(record(service, validChunk(soon))).resolves.toBeTruthy();
   });
 
   test("a proxy clock more than 30 days behind is refused with the named error", async () => {
     const { service } = build();
-    const refusal = record(service, { ...validChunk(), endedAt: new Date(Date.now() - 31 * 24 * 60 * 60_000) });
+    const refusal = record(service, validChunk(new Date(Date.now() - 31 * 24 * 60 * 60_000)));
     await expect(refusal).rejects.toMatchObject({ name: AgentVaultSessionLogErrorName.ClockSkew });
     await expect(refusal).rejects.toThrow(/more than 30 days behind/);
     expect(presignPut).not.toHaveBeenCalled();
@@ -293,9 +297,34 @@ describe("createChunkUploadUrl: the proxy's clock", () => {
 
   test("a proxy clock a few days behind is tolerated", async () => {
     const { service } = build();
-    await expect(
-      record(service, { ...validChunk(), endedAt: new Date(Date.now() - 3 * 24 * 60 * 60_000) })
-    ).resolves.toBeTruthy();
+    await expect(record(service, validChunk(new Date(Date.now() - 3 * 24 * 60 * 60_000)))).resolves.toBeTruthy();
+  });
+});
+
+describe("createChunkUploadUrl: what the chunk says about itself", () => {
+  test("a chunk whose id time is minutes off its endedAt is refused before it is signed", async () => {
+    const { service, streamAdd } = build();
+    const endedAt = new Date(Date.now() - 1_000);
+    const chunk = { ...validChunk(endedAt), chunkId: uuidv7({ msecs: endedAt.getTime() - 5 * 60_000 }) };
+    await expect(record(service, chunk)).rejects.toThrow("The chunk ID's time must match the chunk's endedAt");
+    expect(presignPut).not.toHaveBeenCalled();
+    expect(streamAdd).not.toHaveBeenCalled();
+  });
+
+  test("an endedAt that rounds differently from the id is still accepted", async () => {
+    const { service } = build();
+    const endedAt = new Date(Date.now() - 1_000);
+    const chunk = { ...validChunk(endedAt), chunkId: uuidv7({ msecs: endedAt.getTime() - 500 }) };
+    await expect(record(service, chunk)).resolves.toBeTruthy();
+  });
+
+  test("a chunk from a CLI that still sends the IV is refused with a message that says to update it", async () => {
+    const { service, streamAdd } = build();
+    await expect(record(service, { ...validChunk(), iv: "AAAAAAAAAAAAAAAA" })).rejects.toThrow(
+      "This proxy's Infisical CLI is too old to record session logs. Update the Infisical CLI on this machine."
+    );
+    expect(presignPut).not.toHaveBeenCalled();
+    expect(streamAdd).not.toHaveBeenCalled();
   });
 });
 
@@ -420,8 +449,8 @@ describe("listSessionLogs: paging through the bucket", () => {
   });
 
   test("returns each chunk with its proxy, size and a download link", async () => {
-    const sealedAt = Date.now() - 60_000;
-    const { chunkId, key } = objectFor(sealedAt);
+    const lastRecordAt = Date.now() - 60_000;
+    const { chunkId, key } = objectFor(lastRecordAt);
     listChunks.mockResolvedValueOnce({ objects: [{ key, size: 4096 }], isTruncated: false });
     const { service } = build();
 
@@ -495,17 +524,17 @@ describe("listSessionLogs: paging through the bucket", () => {
     expect(listChunks).toHaveBeenCalledWith({ folder: FOLDER, startAfter: `${FOLDER}8208694117999_x` });
   });
 
-  test("a date range starts listing at its end plus the seal margin", async () => {
+  test("a date range starts listing at its end plus the margin", async () => {
     const to = new Date("2026-10-07T10:00:00.000Z");
     const { service } = build();
     await service.listSessionLogs({ ...scope, from: new Date("2026-10-07T09:00:00.000Z"), to });
     expect(listChunks).toHaveBeenCalledWith({
       folder: FOLDER,
-      startAfter: `${FOLDER}${toRev(to.getTime() + AGENT_VAULT_SESSION_LOG_RANGE_SEAL_MARGIN_MS)}`
+      startAfter: `${FOLDER}${toRev(to.getTime() + AGENT_VAULT_SESSION_LOG_RANGE_MARGIN_MS)}`
     });
   });
 
-  test("stops at the first chunk sealed before the range starts, with nothing older to load", async () => {
+  test("stops at the first chunk whose last request is before the range starts, with nothing older to load", async () => {
     const from = new Date(Date.now() - 60_000);
     const inside = objectFor(from.getTime() + 1_000);
     const before = objectFor(from.getTime() - 1_000);

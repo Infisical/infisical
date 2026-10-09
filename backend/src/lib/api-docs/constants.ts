@@ -4487,6 +4487,8 @@ export const AGENT_VAULT = {
     ciphertextBytes: "The size of the encrypted chunk in bytes.",
     ciphertextSha256:
       "The SHA-256 digest of the encrypted chunk, including its IV, as base64 without padding. The bucket refuses an upload with a different digest.",
+    legacyIv:
+      "Sent only by Infisical CLI versions that can't record session logs. A request that includes it is refused.",
     uploadUrl:
       "The URL to upload the encrypted chunk to with a PUT request. The body must be exactly `ciphertextBytes` bytes.",
     presignedGetUrl: "The URL to download the chunk from.",

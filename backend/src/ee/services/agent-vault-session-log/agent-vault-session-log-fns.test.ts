@@ -52,7 +52,7 @@ describe("session log object names", () => {
     expect(parseSessionLogObjectKey(folder, buildSessionLogObjectKey({ folder, proxyId, chunkId }))).toEqual({
       chunkId,
       proxyId,
-      sealedAt: new Date(1791305882000)
+      lastRecordAt: new Date(1791305882000)
     });
   });
 

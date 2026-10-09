@@ -28,6 +28,7 @@ import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault
 import { isOwnerlessSession, isSessionOwnedBy } from "../agent-vault-session/agent-vault-session-fns";
 import { TAgentVaultSessionLogConfigDALFactory } from "./agent-vault-session-log-config-dal";
 import {
+  AGENT_VAULT_SESSION_LOG_CHUNK_ID_TIME_TOLERANCE_MS,
   AGENT_VAULT_SESSION_LOG_CLOCK_SKEW_MS,
   AGENT_VAULT_SESSION_LOG_FEED_MAX_ENTRIES,
   AGENT_VAULT_SESSION_LOG_FEED_TTL_SECONDS,
@@ -35,7 +36,7 @@ import {
   AGENT_VAULT_SESSION_LOG_MAX_CHUNK_AGE_MS,
   AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
   AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS,
-  AGENT_VAULT_SESSION_LOG_RANGE_SEAL_MARGIN_MS,
+  AGENT_VAULT_SESSION_LOG_RANGE_MARGIN_MS,
   AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE,
   AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
 } from "./agent-vault-session-log-constants";
@@ -46,6 +47,7 @@ import {
 import {
   buildSessionLogFolder,
   buildSessionLogObjectKey,
+  chunkIdTimeMs,
   describeListFailure,
   encodeHistoryCursor,
   encodeTailCursor,
@@ -115,6 +117,14 @@ export const agentVaultSessionLogServiceFactory = ({
   };
 
   const createChunkUploadUrl = async ({ proxyId, sessionId, chunk }: TCreateChunkUploadUrlDTO) => {
+    // Older CLIs send the IV here instead of writing it into the object, so nothing they upload could be opened.
+    if (chunk.iv !== undefined) {
+      throw new BadRequestError({
+        message:
+          "This proxy's Infisical CLI is too old to record session logs. Update the Infisical CLI on this machine."
+      });
+    }
+
     const sessionNotFound = () => new NotFoundError({ message: "Session not found" });
 
     const proxy = await agentVaultProxyDAL.findByIdWithOrg(proxyId);
@@ -173,6 +183,12 @@ export const agentVaultSessionLogServiceFactory = ({
         name: AgentVaultSessionLogErrorName.ClockSkew,
         message: `This proxy's clock is more than ${AGENT_VAULT_SESSION_LOG_MAX_CHUNK_AGE_MS / (24 * 60 * 60_000)} days behind Infisical's. Fix its clock for session logs to be recorded`
       });
+    }
+    if (
+      Math.abs(chunkIdTimeMs(chunk.chunkId) - chunk.endedAt.getTime()) >
+      AGENT_VAULT_SESSION_LOG_CHUNK_ID_TIME_TOLERANCE_MS
+    ) {
+      throw new BadRequestError({ message: "The chunk ID's time must match the chunk's endedAt" });
     }
 
     let sessionLogStorage: TAgentVaultSessionLogStorage;
@@ -336,7 +352,7 @@ export const agentVaultSessionLogServiceFactory = ({
     });
     let startAfter: string | undefined;
     if (cursor !== undefined) startAfter = `${folder}${cursor}`;
-    else if (to) startAfter = `${folder}${toRev(to.getTime() + AGENT_VAULT_SESSION_LOG_RANGE_SEAL_MARGIN_MS)}`;
+    else if (to) startAfter = `${folder}${toRev(to.getTime() + AGENT_VAULT_SESSION_LOG_RANGE_MARGIN_MS)}`;
 
     let listed: Awaited<ReturnType<TAgentVaultSessionLogStorage["listChunks"]>>;
     try {
@@ -355,7 +371,7 @@ export const agentVaultSessionLogServiceFactory = ({
     for (const object of listed.objects) {
       if (found.length && pageBytes + object.size > AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES) break;
       const parsed = parseSessionLogObjectKey(folder, object.key);
-      if (parsed && from && parsed.sealedAt < from) {
+      if (parsed && from && parsed.lastRecordAt < from) {
         isBeforeRange = true;
         break;
       }

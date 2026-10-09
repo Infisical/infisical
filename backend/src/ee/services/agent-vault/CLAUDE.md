@@ -256,8 +256,15 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
 - **Infisical builds the name and signs it into a create-only PUT** (`If-None-Match: *`, the proxy reads 412 as
   uploaded) with the length and `x-amz-checksum-sha256` signed, so S3 refuses any other body. The `proxyId` in the
   name comes from the proxy's login, and the browser checks every record's `proxyId` against it.
+- **A chunk id carries the time of the chunk's last request**, and the proxy never puts requests more than 2
+  minutes apart in one chunk, so a date range lists from 3 minutes past its end and stops at the first chunk whose
+  last request is before its start. The upload link is refused when the id's time is more than a second off
+  `endedAt`, and when the body still carries `iv` (CLIs from before the IV moved into the object).
 - **Reads list only the current bucket and prefix**, so changing either hides older logs until it is switched
   back. One LIST per request, never a loop, so a folder full of other files can't make a request walk the bucket.
+- **A read that can't reach the bucket fails with `AgentVaultSessionLogStorageUnavailable`**: 400 when the
+  settings or AWS side need fixing, 500 when S3 isn't responding. Never a 200 with no chunks, which callers read
+  as "no logs". Only admins see the cause.
 - **Chunks are accepted for 24 hours after a session ends**, including when its owner is deleted (read from
   `updatedAt`, which the FK's `SET NULL` bumps). Deleting an identity must not erase its last minute.
 - **History (`/logs`) is one LIST paged by size; the tail (`/logs/tail`) never LISTs.** Registering a chunk adds

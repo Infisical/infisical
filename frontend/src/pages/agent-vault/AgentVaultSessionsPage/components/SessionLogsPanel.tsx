@@ -195,12 +195,12 @@ export const SessionLogsPanel = ({ session }: Props) => {
             (sum, chunk) => sum + (page.decrypted[sessionLogChunkKey(chunk)]?.records.length ?? 0),
             0
           );
-          const created = page.chunks.map((chunk) => chunkIdTime(chunk.chunkId).getTime());
+          const lastRequestTimes = page.chunks.map((chunk) => chunkIdTime(chunk.chunkId).getTime());
           return {
             searched: totals.searched + opened,
             emptyRun: opened ? 0 : totals.emptyRun + 1,
-            oldestChunkAt: created.length
-              ? Math.min(totals.oldestChunkAt ?? Infinity, ...created)
+            oldestChunkAt: lastRequestTimes.length
+              ? Math.min(totals.oldestChunkAt ?? Infinity, ...lastRequestTimes)
               : totals.oldestChunkAt
           };
         },

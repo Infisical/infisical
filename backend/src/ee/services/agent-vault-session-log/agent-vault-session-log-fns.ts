@@ -53,9 +53,9 @@ export const parseSessionLogObjectKey = (folder: string, key: string) => {
   const match = SESSION_LOG_OBJECT_NAME_REGEX.exec(key.slice(folder.length));
   if (!match) return null;
   const [, rev, chunkId, proxyId] = match;
-  const sealedAtMs = chunkIdTimeMs(chunkId);
-  if (rev !== toRev(sealedAtMs)) return null;
-  return { chunkId, proxyId, sealedAt: new Date(sealedAtMs) };
+  const lastRecordAtMs = chunkIdTimeMs(chunkId);
+  if (rev !== toRev(lastRecordAtMs)) return null;
+  return { chunkId, proxyId, lastRecordAt: new Date(lastRecordAtMs) };
 };
 
 export const resolveStorageConfig = (
