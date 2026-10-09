@@ -591,8 +591,9 @@ export const identityLdapAuthServiceFactory = ({
     const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId });
 
     if (
-      (accessTokenMaxTTL || identityLdapAuth.accessTokenMaxTTL) > 0 &&
-      (accessTokenTTL || identityLdapAuth.accessTokenTTL) > (accessTokenMaxTTL || identityLdapAuth.accessTokenMaxTTL)
+      Number(accessTokenMaxTTL || identityLdapAuth.accessTokenMaxTTL) > 0 &&
+      Number(accessTokenTTL || identityLdapAuth.accessTokenTTL) >
+        Number(accessTokenMaxTTL || identityLdapAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }

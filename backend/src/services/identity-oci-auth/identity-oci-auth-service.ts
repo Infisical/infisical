@@ -421,8 +421,9 @@ export const identityOciAuthServiceFactory = ({
     const identityOciAuth = await identityOciAuthDAL.findOne({ identityId });
 
     if (
-      (accessTokenMaxTTL || identityOciAuth.accessTokenMaxTTL) > 0 &&
-      (accessTokenTTL || identityOciAuth.accessTokenTTL) > (accessTokenMaxTTL || identityOciAuth.accessTokenMaxTTL)
+      Number(accessTokenMaxTTL || identityOciAuth.accessTokenMaxTTL) > 0 &&
+      Number(accessTokenTTL || identityOciAuth.accessTokenTTL) >
+        Number(accessTokenMaxTTL || identityOciAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }

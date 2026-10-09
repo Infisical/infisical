@@ -668,9 +668,9 @@ export const identitySpiffeAuthServiceFactory = ({
     const identitySpiffeAuth = await identitySpiffeAuthDAL.findOne({ identityId });
 
     if (
-      (accessTokenMaxTTL || identitySpiffeAuth.accessTokenMaxTTL) > 0 &&
-      (accessTokenTTL || identitySpiffeAuth.accessTokenTTL) >
-        (accessTokenMaxTTL || identitySpiffeAuth.accessTokenMaxTTL)
+      Number(accessTokenMaxTTL || identitySpiffeAuth.accessTokenMaxTTL) > 0 &&
+      Number(accessTokenTTL || identitySpiffeAuth.accessTokenTTL) >
+        Number(accessTokenMaxTTL || identitySpiffeAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
