@@ -432,31 +432,10 @@ export const auditLogStreamOutboxServiceFactory = ({
   //   - claimBatchForStream's FOR UPDATE SKIP LOCKED + atomic flip to 'processing'
   //     so even concurrent workers claim disjoint rows.
   const sweepStaleClaims = async () => {
-    const { retried, dropped } = await auditLogStreamOutboxDAL.transaction(async (tx) => {
-      const result = await auditLogStreamOutboxDAL.recoverStaleClaims(STALE_CLAIM_THRESHOLD_MS, MAX_ATTEMPTS, tx);
-
-      const droppedByStream = new Map<string, { orgId: string; provider: string | null; count: number }>();
-      for (const { streamId, orgId, provider } of result.dropped) {
-        const existing = droppedByStream.get(streamId);
-        if (existing) existing.count += 1;
-        else droppedByStream.set(streamId, { orgId, provider, count: 1 });
-      }
-      for (const [streamId, { orgId, provider, count }] of droppedByStream) {
-        // eslint-disable-next-line no-await-in-loop
-        await flagStreamFailing(
-          {
-            streamId,
-            orgId,
-            provider,
-            errorMessage: "The delivery worker stopped before finishing and the retry limit was reached",
-            droppedCount: count
-          },
-          tx
-        );
-      }
-
-      return result;
-    });
+    const { retried, dropped } = await auditLogStreamOutboxDAL.recoverStaleClaims(
+      STALE_CLAIM_THRESHOLD_MS,
+      MAX_ATTEMPTS
+    );
     if (retried > 0 || dropped.length > 0) {
       logger.warn(
         `audit-log-stream-outbox: recovered stale claims [retried=${retried}] [dropped=${dropped.length}] [thresholdMs=${STALE_CLAIM_THRESHOLD_MS}]`

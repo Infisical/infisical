@@ -747,26 +747,4 @@ describe("audit-log-stream-outbox-service delivery failure alerting", () => {
     };
     expect(call.retriable?.groups.flatMap((g) => g.ids)).toEqual([1]);
   });
-
-  test("stale-claim drops emit once per stream with the dropped count", async () => {
-    const { service, auditLogStreamOutboxDAL, eventEmitter } = createService();
-    const row = { streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER as string | null };
-    auditLogStreamOutboxDAL.recoverStaleClaims.mockResolvedValueOnce({
-      retried: 0,
-      dropped: [row, row, { ...row, streamId: "stream-2" }]
-    });
-    auditLogStreamOutboxDAL.markStreamFailing.mockResolvedValue(FAILING_SINCE);
-
-    await service.sweepStaleClaims();
-
-    expect(auditLogStreamOutboxDAL.recoverStaleClaims.mock.calls[0][2]).toBe(TX);
-    expect(eventEmitter.emit).toHaveBeenCalledTimes(2);
-    expect(eventEmitter.emit).toHaveBeenCalledWith(
-      {
-        eventType: "audit-log.stream.delivery-failed",
-        payload: containing({ resourceId: STREAM_ID, droppedCount: 2 })
-      },
-      TX
-    );
-  });
 });

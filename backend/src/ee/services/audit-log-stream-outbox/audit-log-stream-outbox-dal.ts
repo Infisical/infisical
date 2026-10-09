@@ -11,8 +11,6 @@ import { AuditLogStreamOutboxStatus, TAuditLogStreamOutboxRow } from "./audit-lo
 
 export type TAuditLogStreamOutboxDALFactory = ReturnType<typeof auditLogStreamOutboxDALFactory>;
 
-export type TDroppedStreamRow = { streamId: string; orgId: string; provider: string | null };
-
 export type TInsertOutboxRow = {
   streamId: string;
   orgId: string;
@@ -172,64 +170,66 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   // emits a metric for the dropped count.
   const recoverStaleClaims = async (
     thresholdMs: number,
-    maxAttempts: number,
-    tx: Knex
-  ): Promise<{ retried: number; dropped: TDroppedStreamRow[] }> => {
+    maxAttempts: number
+  ): Promise<{ retried: number; dropped: { streamId: string; orgId: string; provider: string | null }[] }> => {
     try {
-      const staleRows = await tx(TableName.AuditLogStreamOutbox)
-        .where("status", AuditLogStreamOutboxStatus.Processing)
-        .andWhereRaw(`"lockedAt" < NOW() - (? || ' milliseconds')::INTERVAL`, [thresholdMs])
-        .forUpdate()
-        .skipLocked()
-        .select<TAuditLogStreamOutboxRow[]>("*");
+      return await db.transaction(async (tx) => {
+        const staleRows = await tx(TableName.AuditLogStreamOutbox)
+          .where("status", AuditLogStreamOutboxStatus.Processing)
+          .andWhereRaw(`"lockedAt" < NOW() - (? || ' milliseconds')::INTERVAL`, [thresholdMs])
+          .forUpdate()
+          .skipLocked()
+          .select<TAuditLogStreamOutboxRow[]>("*");
 
-      if (staleRows.length === 0) return { retried: 0, dropped: [] };
+        if (staleRows.length === 0) return { retried: 0, dropped: [] };
 
-      const exhausted: TAuditLogStreamOutboxRow[] = [];
-      const retriable: TAuditLogStreamOutboxRow[] = [];
-      for (const row of staleRows) {
-        if (row.attempts + 1 >= maxAttempts) {
-          exhausted.push(row);
-        } else {
-          retriable.push(row);
+        const exhausted: TAuditLogStreamOutboxRow[] = [];
+        const retriable: TAuditLogStreamOutboxRow[] = [];
+        for (const row of staleRows) {
+          if (row.attempts + 1 >= maxAttempts) {
+            exhausted.push(row);
+          } else {
+            retriable.push(row);
+          }
         }
-      }
 
-      if (retriable.length > 0) {
+        if (retriable.length > 0) {
+          await tx(TableName.AuditLogStreamOutbox)
+            .whereIn(
+              "id",
+              retriable.map((row) => row.id)
+            )
+            .update({
+              status: AuditLogStreamOutboxStatus.Retry,
+              attempts: db.raw('"attempts" + 1'),
+              nextRetryAt: tx.fn.now(),
+              lockedAt: null
+            });
+        }
+
+        if (exhausted.length === 0) return { retried: retriable.length, dropped: [] };
+
         await tx(TableName.AuditLogStreamOutbox)
           .whereIn(
             "id",
-            retriable.map((row) => row.id)
+            exhausted.map((row) => row.id)
           )
-          .update({
-            status: AuditLogStreamOutboxStatus.Retry,
-            attempts: db.raw('"attempts" + 1'),
-            nextRetryAt: tx.fn.now(),
-            lockedAt: null
-          });
-      }
+          .del();
 
-      if (exhausted.length === 0) return { retried: retriable.length, dropped: [] };
+        const streams = await tx(TableName.AuditLogStream)
+          .whereIn("id", [...new Set(exhausted.map((row) => row.streamId))])
+          .select<{ id: string; provider: string }[]>("id", "provider");
+        const providerByStreamId = new Map(streams.map((stream) => [stream.id, stream.provider]));
 
-      await tx(TableName.AuditLogStreamOutbox)
-        .whereIn(
-          "id",
-          exhausted.map((row) => row.id)
-        )
-        .del();
-
-      const streams = await tx(TableName.AuditLogStream)
-        .whereIn("id", [...new Set(exhausted.map((row) => row.streamId))])
-        .select<{ id: string; provider: string }[]>("id", "provider");
-      const providerByStreamId = new Map(streams.map((stream) => [stream.id, stream.provider]));
-
-      const dropped = exhausted.map((row) => ({
-        streamId: row.streamId,
-        orgId: row.orgId,
-        provider: providerByStreamId.get(row.streamId) ?? null
-      }));
-
-      return { retried: retriable.length, dropped };
+        return {
+          retried: retriable.length,
+          dropped: exhausted.map((row) => ({
+            streamId: row.streamId,
+            orgId: row.orgId,
+            provider: providerByStreamId.get(row.streamId) ?? null
+          }))
+        };
+      });
     } catch (error) {
       throw new DatabaseError({ error, name: "AuditLogStreamOutbox: recoverStaleClaims" });
     }
