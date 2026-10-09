@@ -43,7 +43,6 @@ import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
-import { tagErrorAsAfterAuthorization } from "../certificate-common/certificate-issuance-audit-fns";
 import { buildCertificateQuotaKey } from "../certificate-common/certificate-quota-key";
 import { certificateV3ServiceFactory, TCertificateV3ServiceFactory } from "./certificate-v3-service";
 import { CertificateRenewalKeySource } from "./certificate-v3-types";
@@ -3736,11 +3735,11 @@ describe("CertificateV3Service", () => {
       applicationId: "app-123"
     };
 
-    it("records a failed renewal with the certificate's details once the caller is authorized", async () => {
+    it("records a failed renewal against the original certificate", async () => {
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(storedCertificate as never);
-      const failure = new BadRequestError({ message: "CA is disabled" });
-      tagErrorAsAfterAuthorization(failure);
-      vi.mocked(mockCertificateDAL.transaction).mockRejectedValueOnce(failure);
+      vi.mocked(mockCertificateDAL.transaction).mockRejectedValueOnce(
+        new BadRequestError({ message: "CA is disabled" })
+      );
 
       await expect(service.renewCertificate(renewDto)).rejects.toThrow("CA is disabled");
 
@@ -3758,26 +3757,6 @@ describe("CertificateV3Service", () => {
           })
         })
       );
-    });
-
-    it("records only what the caller sent when renewal fails before authorization", async () => {
-      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(storedCertificate as never);
-      vi.mocked(mockCertificateDAL.transaction).mockRejectedValueOnce(
-        new BadRequestError({ message: "A CSR is required when renewalKeySource is csr" })
-      );
-
-      await expect(service.renewCertificate(renewDto)).rejects.toThrow("A CSR is required");
-
-      const [[call]] = mockAuditLogService.createCollapsedAuditLog.mock.calls as [
-        [{ event: { metadata: Record<string, unknown> } }]
-      ];
-      expect(call.event.metadata).toEqual({
-        operation: CertificateIssuanceOperation.RENEW,
-        enrollmentType: EnrollmentType.API,
-        originalCertificateId: "cert-123",
-        errorName: "BadRequest",
-        error: "A CSR is required when renewalKeySource is csr"
-      });
     });
   });
 });

@@ -51,7 +51,6 @@ import {
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import {
-  isErrorAfterAuthorization,
   recordCertificateIssuanceFailure,
   tagErrorWithCertificateRequest
 } from "@app/services/certificate-common/certificate-issuance-audit-fns";
@@ -564,7 +563,6 @@ export const certificateV3ServiceFactory = ({
     actorOrgId,
     projectId,
     profileId,
-    authorized = true,
     error,
     metadata
   }: {
@@ -572,7 +570,6 @@ export const certificateV3ServiceFactory = ({
     actorOrgId: string;
     projectId?: string;
     profileId?: string | null;
-    authorized?: boolean;
     error: unknown;
     metadata: Omit<
       Parameters<typeof recordCertificateIssuanceFailure>[1]["metadata"],
@@ -589,9 +586,8 @@ export const certificateV3ServiceFactory = ({
       const project = await projectDAL.findById(resolvedProjectId);
       if (project?.orgId !== actorOrgId) return;
 
-      // Before the caller is authorized, record only what they sent and look nothing up by name.
       await recordCertificateIssuanceFailure(
-        authorized ? { auditLogService, certificateAuthorityDAL, pkiApplicationDAL } : { auditLogService },
+        { auditLogService, certificateAuthorityDAL, pkiApplicationDAL },
         {
           auditLogInfo,
           projectId: resolvedProjectId,
@@ -599,7 +595,8 @@ export const certificateV3ServiceFactory = ({
           metadata: {
             ...metadata,
             certificateProfileId: profile?.id,
-            ...(authorized && { profileName: profile?.slug, caId: metadata.caId ?? profile?.caId })
+            profileName: profile?.slug,
+            caId: metadata.caId ?? profile?.caId
           }
         }
       );
@@ -2452,23 +2449,19 @@ export const certificateV3ServiceFactory = ({
         ? await certificateDAL.findById(dto.certificateId).catch(() => undefined)
         : undefined;
       if (certificate) {
-        const authorized = isErrorAfterAuthorization(error);
         await $recordIssuanceFailure({
           auditLogInfo: dto.auditLogInfo,
           actorOrgId: dto.actorOrgId,
           projectId: certificate.projectId,
-          profileId: authorized ? certificate.profileId : null,
-          authorized,
+          profileId: certificate.profileId,
           error,
           metadata: {
             operation: CertificateIssuanceOperation.RENEW,
             enrollmentType: EnrollmentType.API,
-            originalCertificateId: dto.certificateId,
-            ...(authorized && {
-              commonName: certificate.commonName,
-              caId: certificate.caId,
-              applicationId: certificate.applicationId
-            })
+            originalCertificateId: certificate.id,
+            commonName: certificate.commonName,
+            caId: certificate.caId,
+            applicationId: certificate.applicationId
           }
         });
       }
