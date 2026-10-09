@@ -83,6 +83,7 @@ TableBody.displayName = "TableBody";
 type TableVirtualRowProps = {
   ref: (element: HTMLTableRowElement | null) => void;
   "data-index": number;
+  "aria-rowindex": number;
 };
 
 function TableVirtualBody({
@@ -103,6 +104,15 @@ function TableVirtualBody({
     estimateSize: () => estimateRowHeight,
     overscan: 10
   });
+  const [headerRowCount, setHeaderRowCount] = React.useState(1);
+  React.useLayoutEffect(() => {
+    const table = bodyRef.current?.closest("table");
+    if (!table) return;
+    const headerRows = Array.from(table.tHead?.rows ?? []);
+    headerRows.forEach((row, index) => row.setAttribute("aria-rowindex", String(index + 1)));
+    table.setAttribute("aria-rowcount", String(headerRows.length + count));
+    setHeaderRowCount(headerRows.length);
+  }, [count]);
   const virtualRows = virtualizer.getVirtualItems();
   const padTop = virtualRows[0]?.start ?? 0;
   const padBottom = virtualRows.length
@@ -115,7 +125,8 @@ function TableVirtualBody({
       {virtualRows.map((virtualRow) =>
         children(virtualRow.index, {
           ref: virtualizer.measureElement,
-          "data-index": virtualRow.index
+          "data-index": virtualRow.index,
+          "aria-rowindex": headerRowCount + virtualRow.index + 1
         })
       )}
       {padBottom > 0 && <tr aria-hidden style={{ height: padBottom }} />}
