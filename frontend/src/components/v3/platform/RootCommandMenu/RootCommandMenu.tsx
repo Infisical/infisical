@@ -238,13 +238,13 @@ const useEntityCommandGroups = ({
     organizations.map((organization) => [organization.id, organization])
   );
 
-  const certManagerProjectCountByOrg = projects.reduce<Record<string, number>>(
-    (counts, project) =>
-      project.type === ProjectType.CertificateManager
-        ? { ...counts, [project.orgId]: (counts[project.orgId] ?? 0) + 1 }
-        : counts,
-    {}
-  );
+  const certManagerProjectCountByOrg: Record<string, number> = {};
+  projects.forEach((project) => {
+    if (project.type === ProjectType.CertificateManager) {
+      certManagerProjectCountByOrg[project.orgId] =
+        (certManagerProjectCountByOrg[project.orgId] ?? 0) + 1;
+    }
+  });
 
   const projectItems: GlobalCommandMenuItem[] = projects.map((project) => {
     const organization = organizationsById.get(project.orgId);
