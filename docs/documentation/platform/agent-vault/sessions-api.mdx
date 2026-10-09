@@ -1,0 +1,156 @@
+---
+title: "Create Agent Vault sessions with the API"
+sidebarTitle: "Create sessions with the API"
+description: "Create a session for each agent run from your own code, using a machine identity instead of the Infisical dashboard."
+---
+
+import MachineIdentitySetup from "/snippets/agent-vault/MachineIdentitySetup.mdx";
+
+You can use the Infisical API to create a new [session](/documentation/platform/agent-vault/sessions) every time your agent starts. Your code authenticates as a [machine identity](/documentation/platform/identities/machine-identities), creates a session with an [access bundle](/documentation/platform/agent-vault/access-bundles), passes the session token to the agent, and revokes the session when the agent finishes.
+
+This is useful if your code starts your agents or creates sessions for agents on other machines, such as a job runner, an orchestrator, or a backend that runs an agent for each task.
+
+<Tip>
+  If a shell command starts the agent on the machine where it runs, such as a cron job or a container entrypoint, the [Infisical CLI can create and revoke each session](/documentation/platform/agent-vault/sessions-cli) for you without any code.
+</Tip>
+
+## Prerequisites
+
+- An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each API the agent calls
+- A running [proxy](/documentation/platform/agent-vault/proxies) that the agent's machine can reach
+- The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership), or an Agent Vault admin who can complete [Step 1](#step-1-set-up-a-machine-identity) for you
+
+## Step 1: Set up a machine identity
+
+Your code creates sessions as a machine identity, so that sessions don't depend on a person's account.
+
+<MachineIdentitySetup />
+
+## Step 2: Log in as the machine identity
+
+Call [the login endpoint for Universal Auth](/api-reference/endpoints/universal-auth/login) with the client ID and client secret:
+
+```bash
+curl -X POST https://app.infisical.com/api/v1/auth/universal-auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"clientId": "<client-id>", "clientSecret": "<client-secret>"}'
+```
+
+If you self-host Infisical, replace `https://app.infisical.com` with the address of your instance, here and in every later request.
+
+The response includes an `accessToken`, which you send with each request in the next steps, and `expiresIn`, the number of seconds until the access token expires. Log in again when the access token expires.
+
+<Tip>
+  If your code runs on a cloud provider or in Kubernetes, you can use another [authentication method](/documentation/platform/identities/overview), such as AWS Auth or Kubernetes Auth, so that your code doesn't need a client secret. Each method returns an access token that works the same way in the next steps.
+</Tip>
+
+## Step 3: Create a session
+
+Call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) with the name of the access bundle and how long the session should last:
+
+```bash
+curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
+  -H "Authorization: Bearer <access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"accessBundles": ["<access-bundle-name>"], "ttl": "1h"}'
+```
+
+- `accessBundles` takes a list, but a session can have only one access bundle, so the list must have exactly one name
+- `ttl` accepts a duration of at least one minute, such as `30m`, `8h`, or `7d`, or `never`, and defaults to `7d` (see [Choose how long a session lasts](#choose-how-long-a-session-lasts) to pick a value)
+
+The response includes the session's ID, the session token, and when the session expires:
+
+```json
+{
+  "session": {
+    "id": "6f1c2a9e-3b7d-4e8a-9c41-2d5f7b8e0a13",
+    "token": "<session-token>",
+    "expiresAt": "2026-10-07T19:00:00.000Z"
+  }
+}
+```
+
+Save the ID, which you need to revoke the session in [Step 5](#step-5-revoke-the-session). You can't retrieve the session token again after this response.
+
+### Choose how long a session lasts
+
+Pick the `ttl` based on how long your agents run:
+
+| How your agents run | What to do |
+|------|------------|
+| A job that finishes, such as a task from a queue or a scheduled run | Create a session for each job, with a `ttl` a little longer than the longest job, and revoke the session when the job ends |
+| A process that keeps running, such as a service or a chat bot | Create a session with a `ttl` such as `24h`. Before the session expires, create a new session, switch the agent to the new token, then revoke the old session |
+
+## Step 4: Start the agent with the session token
+
+The agent uses the session token to authenticate to the proxy. How you pass the token to the agent depends on how you start the agent:
+
+<Tabs>
+  <Tab title="With the CLI">
+    Start the agent with `infisical agent-vault run`, and pass the session token and the proxy's address:
+
+    ```bash
+    infisical agent-vault run \
+      --session-token <session-token> \
+      --proxy <proxy-host>:17323 \
+      -- <agent-command>
+    ```
+
+    The CLI trusts the proxy's certificate for the agent and sends the agent's requests through the proxy.
+  </Tab>
+  <Tab title="Without the CLI">
+    Set these environment variables for the agent's process, and point its certificate variables at the proxy's certificate, as [Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent) describes:
+
+    ```bash
+    export HTTPS_PROXY=http://x-agent-vault:<session-token>@<proxy-host>:17323
+    export HTTP_PROXY=http://x-agent-vault:<session-token>@<proxy-host>:17323
+    ```
+
+    If you built the agent yourself, you can instead set the proxy in the agent's HTTP client. [Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent) has examples for Python, Node.js, and Go.
+  </Tab>
+</Tabs>
+
+## Step 5: Revoke the session
+
+When the agent finishes, call [the endpoint that revokes a session](/api-reference/endpoints/agent-vault-sessions/revoke) with the session's ID:
+
+```bash
+curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions/<session-id>/revoke \
+  -H "Authorization: Bearer <access-token>"
+```
+
+The proxy stops attaching credentials for the session within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
+
+Revoke the session even if the agent fails, for example in a `finally` block or an exit handler. If your code exits before it can revoke the session, the session stops working when its `ttl` runs out.
+
+## Step 6: Verify it works
+
+In Agent Vault, go to **Sessions** and select **All Sessions**. The **Identity** column shows the machine identity's name for the session you created. The session's **Status** is **Active** while the agent runs, and **Revoked** after [Step 5](#step-5-revoke-the-session).
+
+If you've [set up session logs](/documentation/platform/agent-vault/session-logs#setting-up-session-logs), [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to check which requests the agent made during the session.
+
+<Check>
+  Your code now creates a session for each agent run, and the agent's credentials stop working when you revoke the session or its `ttl` runs out.
+</Check>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Creating the session fails with &quot;No access bundle named ... is granted to you&quot;">
+    The machine identity doesn't have a grant on the access bundle, or the name in `accessBundles` is wrong. Check the name on the **Access Bundles** page, and [grant the bundle](#step-1-set-up-a-machine-identity) to the machine identity.
+  </Accordion>
+  <Accordion title="Creating or revoking a session fails with 401 after your code has run for a while">
+    The machine identity's access token expired. [Log in again](#step-2-log-in-as-the-machine-identity) to get a new access token. Sessions you already created keep working, because a session doesn't depend on the access token that created it.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Your own agent" icon="code" href="/documentation/platform/agent-vault/guides/custom-agent">
+    Send your agent's requests through the proxy from your own code.
+  </Card>
+  <Card title="Session logs" icon="list" href="/documentation/platform/agent-vault/session-logs">
+    Record every request an agent makes during a session.
+  </Card>
+</CardGroup>

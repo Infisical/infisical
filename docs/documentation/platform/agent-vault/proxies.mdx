@@ -15,6 +15,15 @@ While you can technically run the agent and the proxy on a single machine, we re
 We also recommend keeping both machines on the same private network. This is because every request the agent makes goes through the proxy, and a round trip between networks adds latency to every request.
 </Tip>
 
+## Supported connections
+
+The proxy attaches credentials to HTTP/1.1 requests, over both HTTPS and plain HTTP. These connections fail through the proxy:
+
+- WebSocket connections, such as to a `wss://` URL
+- Clients that only speak HTTP/2, such as gRPC clients
+
+If an API offers both, configure the agent to use its plain HTTPS requests. Many SDKs fall back to HTTPS when a WebSocket connection fails.
+
 ## Create and enroll a proxy
 
 <Steps>
@@ -197,6 +206,8 @@ The proxy decrypts HTTPS traffic to attach the credential, so each agent has to 
         ```
       </Step>
     </Steps>
+
+    To set the proxy and the certificate in your own agent's code instead, see [Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent).
   </Tab>
 </Tabs>
 
