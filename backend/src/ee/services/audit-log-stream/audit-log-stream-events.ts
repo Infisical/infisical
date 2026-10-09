@@ -26,7 +26,7 @@ export type TAuditLogStreamDeliveryFailedPayload = {
   orgId: string;
   projectId: null;
   resourceType: typeof AUDIT_LOG_STREAM_RESOURCE_TYPE;
-  resourceId: string;
+  resourceId: null;
   targetIds: string[];
   provider: string;
   errorMessage: string;
@@ -43,7 +43,7 @@ export const emitAuditLogStreamDeliveryFailed = (
     orgId,
     projectId: null,
     resourceType: AUDIT_LOG_STREAM_RESOURCE_TYPE,
-    resourceId: streamId,
+    resourceId: null,
     targetIds: [streamId],
     provider: provider ?? "unknown",
     errorMessage,

@@ -1,5 +1,3 @@
-import { Knex } from "knex";
-
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -12,22 +10,6 @@ export type TAuditLogStreamRef = {
 };
 
 export const auditLogStreamAlertDALFactory = (db: TDbClient) => {
-  const findStreamInOrg = async (
-    streamId: string,
-    orgId: string,
-    tx?: Knex
-  ): Promise<TAuditLogStreamRef | undefined> => {
-    try {
-      const row = (await (tx || db.replicaNode())(TableName.AuditLogStream)
-        .where({ id: streamId, orgId })
-        .select("id", "provider")
-        .first()) as TAuditLogStreamRef | undefined;
-      return row;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "AuditLogStreamAlert: findStreamInOrg" });
-    }
-  };
-
   // Primary on purpose: the event is emitted in the transaction that flips the stream to failing, and
   // an empty read here is terminal, so a lagging replica would swallow the notification.
   const findStreamsByIds = async (streamIds: string[], orgId: string): Promise<TAuditLogStreamRef[]> => {
@@ -43,5 +25,5 @@ export const auditLogStreamAlertDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { findStreamInOrg, findStreamsByIds };
+  return { findStreamsByIds };
 };

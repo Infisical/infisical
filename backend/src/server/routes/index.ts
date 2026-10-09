@@ -1243,8 +1243,7 @@ export const registerRoutes = async (
     licenseService,
     permissionService,
     auditLogStreamDAL,
-    kmsService,
-    alertService
+    kmsService
   });
 
   const auditLogStreamOutboxService = auditLogStreamOutboxServiceFactory({

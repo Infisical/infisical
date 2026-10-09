@@ -11,7 +11,7 @@ import { listProviderOptions } from "@app/ee/services/audit-log-stream/audit-log
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError } from "@app/lib/errors";
 
 import { TAlertPayload } from "../alert-channel-types";
 import {
@@ -118,16 +118,17 @@ export const auditLogStreamAlertProviderFactory = ({
     };
   };
 
+  // The delivery-failed event carries no resourceId, so only org-wide alerts can hear it. An alert bound
+  // to one stream would never fire.
   const assertResourceInScope = async (input: {
     orgId: string;
     projectId?: string | null;
     resourceId?: string | null;
   }): Promise<void> => {
-    if (!input.resourceId) return;
-
-    const stream = await auditLogStreamAlertDAL.findStreamInOrg(input.resourceId, input.orgId);
-    if (!stream) {
-      throw new NotFoundError({ message: `Audit Log Stream '${input.resourceId}' was not found in this organization` });
+    if (input.resourceId) {
+      throw new BadRequestError({
+        message: "Audit log stream alerts apply to every stream in the organization and cannot target one stream"
+      });
     }
   };
 
