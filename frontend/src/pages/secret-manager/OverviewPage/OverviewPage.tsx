@@ -2812,6 +2812,7 @@ const OverviewPageContent = () => {
       }}
       onPointerCancel={() => {
         columnResize.current = null;
+        applyColumnWidths(savedWidths);
       }}
       onKeyDown={(event) => {
         if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
@@ -2850,6 +2851,21 @@ const OverviewPageContent = () => {
     if (!isOverviewPending) prevPageSize.current = Math.min(perPage, totalCount);
   }, [isOverviewPending, totalCount, perPage]);
 
+  // This is needed to also show imports from other paths – right now those are missing.
+  // const combinedKeys = [...secKeys, ...secretImports.map((impSecrets) => impSecrets?.data?.map((impSec) => impSec.secrets?.map((impSecKey) => impSecKey.key))).flat().flat()];
+
+  const isTableFiltered = isFilteredByResources;
+
+  const tableView = (() => {
+    if (userAvailableEnvs.length === 0) return "no-environments" as const;
+    if (isTagFilterEmpty) return "tag-filter-empty" as const;
+    if (isTableEmpty) {
+      if (isTableFiltered || searchFilter || !canCreateSecrets) return "filter-empty" as const;
+      return "table" as const;
+    }
+    return "table" as const;
+  })();
+
   useLayoutEffect(() => {
     const element = tableRef.current;
     if (!element) return;
@@ -2876,22 +2892,7 @@ const OverviewPageContent = () => {
     return () => {
       resizeObserver.disconnect();
     };
-  }, [tableRef, isTableEmpty, columnKey, savedWidths?.join(",")]);
-
-  // This is needed to also show imports from other paths – right now those are missing.
-  // const combinedKeys = [...secKeys, ...secretImports.map((impSecrets) => impSecrets?.data?.map((impSec) => impSec.secrets?.map((impSecKey) => impSecKey.key))).flat().flat()];
-
-  const isTableFiltered = isFilteredByResources;
-
-  const tableView = (() => {
-    if (userAvailableEnvs.length === 0) return "no-environments" as const;
-    if (isTagFilterEmpty) return "tag-filter-empty" as const;
-    if (isTableEmpty) {
-      if (isTableFiltered || searchFilter || !canCreateSecrets) return "filter-empty" as const;
-      return "table" as const;
-    }
-    return "table" as const;
-  })();
+  }, [tableRef, tableView, isTableEmpty, columnKey, savedWidths?.join(",")]);
 
   let quickAddSaveLabel: string | undefined;
   if (isBatchModeActive) quickAddSaveLabel = "Add Pending Change";
