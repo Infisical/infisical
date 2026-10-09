@@ -3,7 +3,6 @@ import { z } from "zod";
 import { OrgServiceActor, TGenericPermission } from "@app/lib/types";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 
-import { AgentVaultSessionLogStorageUnavailableReason } from "./agent-vault-session-log-enums";
 import type {
   AgentVaultSessionLogChunkCreateSchema,
   AgentVaultSessionLogSettingsUpdateSchema
@@ -38,9 +37,4 @@ export type TResolvedSessionLogStorageConfig = {
   bucket: string;
   region: AWSRegion;
   keyPrefix: string | null;
-};
-
-export type TAgentVaultSessionLogStorageUnavailable = {
-  reason: AgentVaultSessionLogStorageUnavailableReason;
-  message: string | null;
 };

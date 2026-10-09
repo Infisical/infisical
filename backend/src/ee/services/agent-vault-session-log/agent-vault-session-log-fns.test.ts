@@ -1,3 +1,4 @@
+import { S3ServiceException } from "@aws-sdk/client-s3";
 import { describe, expect, test, vi } from "vitest";
 
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
@@ -6,6 +7,7 @@ import {
   buildSessionLogFolder,
   buildSessionLogObjectKey,
   chunkIdTimeMs,
+  describeListFailure,
   getSessionLogEntitlement,
   parseSessionLogObjectKey,
   resolveStorageConfig,
@@ -132,5 +134,41 @@ describe("getSessionLogEntitlement", () => {
     { why: "a fallback with no real answer on record", service: { paid: false, fallback: true }, expected: "unknown" }
   ])("reads $why as $expected", async ({ service, expected }) => {
     expect(await getSessionLogEntitlement(licenseService(service), "org-1")).toBe(expected);
+  });
+});
+
+describe("describeListFailure", () => {
+  const s3Error = (name: string, fault: "client" | "server" = "client") =>
+    new S3ServiceException({ name, $fault: fault, $metadata: {}, message: name });
+  const networkError = (code: string) => Object.assign(new Error(`connect ${code}`), { code });
+
+  test.each([
+    { error: s3Error("InvalidAccessKeyId"), isTemporary: false, hint: "Check the AWS connection's credentials." },
+    { error: s3Error("ExpiredToken"), isTemporary: false, hint: "Check the AWS connection's credentials." },
+    {
+      error: s3Error("AccessDenied"),
+      isTemporary: false,
+      hint: "Check that the connection's credentials allow s3:ListBucket on it."
+    },
+    { error: s3Error("NoSuchBucket"), isTemporary: false, hint: "Check the bucket name and region in Settings." },
+    { error: s3Error("PermanentRedirect"), isTemporary: false, hint: "Check the bucket name and region in Settings." },
+    { error: s3Error("SlowDown"), isTemporary: true, hint: "S3 isn't responding. Try again in a bit." },
+    { error: s3Error("SomethingNew", "server"), isTemporary: true, hint: "S3 isn't responding. Try again in a bit." },
+    {
+      error: Object.assign(new Error("timed out"), { name: "TimeoutError" }),
+      isTemporary: true,
+      hint: "S3 isn't responding. Try again in a bit."
+    },
+    { error: networkError("ECONNREFUSED"), isTemporary: true, hint: "S3 isn't responding. Try again in a bit." },
+    { error: s3Error("SomethingNew"), isTemporary: false, hint: "Check the AWS connection and the bucket settings." }
+  ])("$error.name ($error.message) reads as temporary: $isTemporary", ({ error, isTemporary, hint }) => {
+    const failure = describeListFailure(error, "my-bucket");
+    expect(failure.isTemporary).toBe(isTemporary);
+    expect(failure.message.startsWith("Infisical couldn't list session logs in bucket 'my-bucket' (")).toBe(true);
+    expect(failure.message.endsWith(hint)).toBe(true);
+  });
+
+  test("a network error is labelled by its code, not its generic name", () => {
+    expect(describeListFailure(networkError("ENOTFOUND"), "my-bucket").message).toContain("(ENOTFOUND)");
   });
 });

@@ -8,7 +8,6 @@ import {
   AGENT_VAULT_SESSION_LOG_MAX_CHUNK_BYTES,
   AGENT_VAULT_SESSION_LOG_MIN_CHUNK_BYTES
 } from "./agent-vault-session-log-constants";
-import { AgentVaultSessionLogStorageUnavailableReason } from "./agent-vault-session-log-enums";
 import { HistoryCursorSchema, TailCursorSchema } from "./agent-vault-session-log-fns";
 
 const BUCKET_NAME_RULE =
@@ -61,16 +60,7 @@ const AgentVaultSessionLogSchema = z
   .object({
     enabled: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.enabled),
     isRecordable: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.isRecordable),
-    sessionKey: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.sessionKey),
-    storageUnavailable: z
-      .object({
-        reason: z
-          .nativeEnum(AgentVaultSessionLogStorageUnavailableReason)
-          .describe(AGENT_VAULT.SESSION_LOGS.storageUnavailableReason),
-        message: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.storageUnavailableMessage)
-      })
-      .nullable()
-      .describe(AGENT_VAULT.SESSION_LOGS.storageUnavailable)
+    sessionKey: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.sessionKey)
   })
   .describe(AGENT_VAULT.SESSION_LOGS.sessionLogs);
 

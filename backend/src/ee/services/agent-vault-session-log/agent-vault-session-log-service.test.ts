@@ -3,14 +3,18 @@ import { createMongoAbility } from "@casl/ability";
 import { v7 as uuidv7 } from "uuid";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { BadRequestError, DatabaseError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, InternalServerError } from "@app/lib/errors";
 
 import {
   AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
   AGENT_VAULT_SESSION_LOG_RANGE_SEAL_MARGIN_MS,
+  AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE,
   AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
 } from "./agent-vault-session-log-constants";
-import { AgentVaultSessionLogErrorName } from "./agent-vault-session-log-enums";
+import {
+  AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE,
+  AgentVaultSessionLogErrorName
+} from "./agent-vault-session-log-enums";
 import {
   buildSessionLogFolder,
   buildSessionLogObjectKey,
@@ -18,6 +22,7 @@ import {
   encodeTailCursor,
   toRev
 } from "./agent-vault-session-log-fns";
+import { unwrapSessionLogKey } from "./agent-vault-session-log-secrets";
 import { agentVaultSessionLogServiceFactory } from "./agent-vault-session-log-service";
 import { buildSessionLogStorage } from "./agent-vault-session-log-storage-fns";
 
@@ -330,36 +335,39 @@ describe("when the AWS connection can't be used", () => {
     expect(presignPut).not.toHaveBeenCalled();
   });
 
-  test("a read returns no chunks and tells an admin why", async () => {
+  const storageUnavailable = (message: string): unknown =>
+    expect.objectContaining({ name: AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE, message });
+
+  test("a read fails with the named error and tells an admin why", async () => {
     vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
     const { service } = build();
-    const page = await service.listSessionLogs(scope);
-    expect(page.sessionLogs.storageUnavailable).toEqual({ reason: "connection-unusable", message: unusable.message });
-    expect(page.sessionLogs.sessionKey).toBeNull();
-    expect(page.chunks).toEqual([]);
+    const error = await service.listSessionLogs(scope).catch((err: unknown) => err);
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect(error).toEqual(storageUnavailable(unusable.message));
   });
 
-  test("a read further back keeps its cursor, so a retry continues from the same place", async () => {
-    vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
-    const { service } = build();
-    const page = await service.listSessionLogs({ ...scope, cursor: "some-name" });
-    expect(page.nextCursor).toBe(encodeHistoryCursor("some-name"));
+  test("a read without a connection tells an admin to choose one", async () => {
+    const { service } = build({ config: { ...enabledConfig(), enabled: false, appConnectionId: null } });
+    await expect(service.listSessionLogs(scope)).rejects.toEqual(
+      storageUnavailable("No AWS connection is set for session logs. Choose one in Settings.")
+    );
   });
 
-  test("a live read holds its cursor so nothing is skipped once the connection is back", async () => {
+  test("a live read fails too, so the caller keeps its cursor and nothing is skipped", async () => {
     vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
     const { key } = objectFor(Date.now());
     const { service } = build({ feed: [["1791278402731-0", ["key", key, "bucket", "my-bucket", "bytes", "4096"]]] });
-    const page = await service.tailSessionLogs({ ...scope, cursor: "1791278402000-0" });
-    expect(page.chunks).toEqual([]);
-    expect(page.nextCursor).toBe(encodeTailCursor("1791278402000-0"));
+    await expect(service.tailSessionLogs({ ...scope, cursor: "1791278402000-0" })).rejects.toEqual(
+      storageUnavailable(unusable.message)
+    );
   });
 
-  test("a member who isn't an admin is told storage is unavailable, without the AWS error", async () => {
+  test("a member who isn't an admin gets the plain message, without the AWS error", async () => {
     vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
     const { service } = build({ isAdmin: false });
-    const page = await service.listSessionLogs(scope);
-    expect(page.sessionLogs.storageUnavailable).toEqual({ reason: "connection-unusable", message: null });
+    await expect(service.listSessionLogs(scope)).rejects.toEqual(
+      storageUnavailable(AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE)
+    );
   });
 
   test("a member who isn't an admin gets no bucket detail when listing fails", async () => {
@@ -367,33 +375,32 @@ describe("when the AWS connection can't be used", () => {
       new S3ServiceException({ name: "AccessDenied", $fault: "client", $metadata: {}, message: "Access Denied" })
     );
     const { service } = build({ isAdmin: false });
-    const page = await service.listSessionLogs(scope);
-    expect(page.sessionLogs.storageUnavailable).toEqual({ reason: "connection-unusable", message: null });
+    await expect(service.listSessionLogs(scope)).rejects.toEqual(
+      storageUnavailable(AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE)
+    );
   });
 
-  test("a bucket that refuses to list reads as unusable storage, not a 500", async () => {
+  test("a bucket that refuses to list is a 400 that points at s3:ListBucket", async () => {
     listChunks.mockRejectedValueOnce(
       new S3ServiceException({ name: "AccessDenied", $fault: "client", $metadata: {}, message: "Access Denied" })
     );
     const { service } = build();
-    const page = await service.listSessionLogs(scope);
-    expect(page.sessionLogs.storageUnavailable).toMatchObject({ reason: "connection-unusable" });
-    expect(page.sessionLogs.storageUnavailable?.message).toContain("s3:ListBucket");
+    const error = await service.listSessionLogs(scope).catch((err: unknown) => err);
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect((error as Error).message).toContain("s3:ListBucket");
   });
 
-  test("a bucket that can't be found points the admin at its name and region, not its permissions", async () => {
+  test("an S3 that isn't responding is a 500, so callers know to try again", async () => {
     listChunks.mockRejectedValueOnce(
-      new S3ServiceException({
-        name: "NoSuchBucket",
-        $fault: "client",
-        $metadata: {},
-        message: "The specified bucket does not exist"
-      })
+      new S3ServiceException({ name: "SlowDown", $fault: "server", $metadata: {}, message: "Slow down" })
     );
     const { service } = build();
-    const page = await service.listSessionLogs(scope);
-    expect(page.sessionLogs.storageUnavailable?.message).toBe(
-      "Infisical couldn't list session logs in bucket 'my-bucket' (NoSuchBucket). Check the bucket name and region in Settings"
+    const error = await service.listSessionLogs(scope).catch((err: unknown) => err);
+    expect(error).toBeInstanceOf(InternalServerError);
+    expect(error).toEqual(
+      storageUnavailable(
+        "Infisical couldn't list session logs in bucket 'my-bucket' (SlowDown). S3 isn't responding. Try again in a bit."
+      )
     );
   });
 
@@ -573,6 +580,22 @@ describe("tailSessionLogs: reading the live feed", () => {
     const page = await service.tailSessionLogs(scope);
     expect(page.chunks).toEqual([]);
     expect(page.nextCursor).toBe(encodeTailCursor("100-0"));
+  });
+
+  test("an uppercase session id reads the same folder and feed as the stored one", async () => {
+    const upper = { ...scope, sessionId: SESSION_ID.toUpperCase() };
+    const { key } = objectFor(Date.now() - 60_000);
+    listChunks.mockResolvedValueOnce({ objects: [{ key, size: 100 }], isTruncated: false });
+    const { service, streamRange } = build();
+    await service.tailSessionLogs(upper);
+    const page = await service.listSessionLogs(upper);
+    expect(streamRange).toHaveBeenCalledWith(`agent-vault-session-log-feed:${SESSION_ID}`, "(0-0", "+");
+    expect(listChunks).toHaveBeenCalledWith(expect.objectContaining({ folder: FOLDER }));
+    expect(page.chunks).toHaveLength(1);
+    expect(unwrapSessionLogKey).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: SESSION_ID }),
+      expect.anything()
+    );
   });
 
   test("an empty feed keeps the cursor and never touches the AWS connection", async () => {

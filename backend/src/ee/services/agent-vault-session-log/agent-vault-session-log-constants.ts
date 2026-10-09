@@ -47,5 +47,10 @@ export const AGENT_VAULT_SESSION_LOG_RANGE_SEAL_MARGIN_MS = 3 * 60_000; // 3 min
 export const AGENT_VAULT_SESSION_LOG_FEED_MAX_ENTRIES = 10;
 export const AGENT_VAULT_SESSION_LOG_FEED_TTL_SECONDS = 120; // 2 minutes
 
+// What everyone but an Agent Vault admin sees when Infisical can't read the bucket. The admin message names the cause,
+// which can mention the AWS account, bucket and connection.
+export const AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE =
+  "Session logs can't be read right now. Try again in a bit, or ask an Agent Vault admin if it keeps happening.";
+
 export const AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN =
   "Session logs are not available on your current plan. Please upgrade to continue.";

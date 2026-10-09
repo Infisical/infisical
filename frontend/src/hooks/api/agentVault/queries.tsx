@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
@@ -43,6 +44,13 @@ export const fetchAgentVaultProjectId = async () => {
 };
 
 export const AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS = 15_000;
+
+// The server's message when it can't read the bucket: the cause for an admin, a plain one for everyone else.
+export const getSessionLogStorageError = (error: unknown) =>
+  axios.isAxiosError<{ error?: string; message?: string }>(error) &&
+  error.response?.data?.error === "AgentVaultSessionLogStorageUnavailable"
+    ? (error.response.data.message ?? null)
+    : null;
 
 // Every key carries the org, because Agent Vault is org-scoped through the JWT rather than through a
 // path parameter: without it a switch to another org would serve the previous org's data from cache.
@@ -379,12 +387,10 @@ export const useGetAgentVaultSessionLogs = (
         },
         signal
       });
-      // Past the first page, rows are already on screen: fail the page so they stay, with a Retry.
-      if (pageParam && data.sessionLogs.storageUnavailable) {
-        throw new Error("Session logs can't be read right now");
-      }
       return decryptSessionLogPage(data, cache, signal);
     },
+    // Trying again at once won't fix a bucket Infisical can't read; the panel offers Reload instead.
+    retry: (failureCount, error) => !getSessionLogStorageError(error) && failureCount < 1,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     placeholderData: (prev, prevQuery) =>
       sessionId && prevQuery?.queryKey.includes(sessionId) ? prev : undefined,
@@ -433,9 +439,6 @@ export const useGetAgentVaultSessionLogs = (
         params: arrived ? { cursor: arrived.nextCursor } : {},
         signal
       });
-      if (data.sessionLogs.storageUnavailable) {
-        throw new Error("Session logs can't be read right now");
-      }
       return mergeSessionLogPages(
         arrived,
         await decryptSessionLogPage(data, cache, signal, { isTail: true })

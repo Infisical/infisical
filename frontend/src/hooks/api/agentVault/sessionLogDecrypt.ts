@@ -204,8 +204,7 @@ export const decryptSessionLogPage = async <P extends TAgentVaultSessionLogPage>
   if (page.sessionLogs.sessionKey) cache.rememberSessionKey(page.sessionLogs.sessionKey);
   const sessionKey = cache.sessionKey();
   if (!sessionKey || !page.chunks.length) {
-    // Rows that could not be opened have not been shown, so the load that finally opens them is the first one.
-    if (!page.sessionLogs.storageUnavailable) cache.settle();
+    cache.settle();
     return { ...page, decrypted };
   }
 

@@ -36,15 +36,17 @@ import {
   AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
   AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS,
   AGENT_VAULT_SESSION_LOG_RANGE_SEAL_MARGIN_MS,
+  AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE,
   AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
 } from "./agent-vault-session-log-constants";
 import {
-  AgentVaultSessionLogErrorName,
-  AgentVaultSessionLogStorageUnavailableReason
+  AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE,
+  AgentVaultSessionLogErrorName
 } from "./agent-vault-session-log-enums";
 import {
   buildSessionLogFolder,
   buildSessionLogObjectKey,
+  describeListFailure,
   encodeHistoryCursor,
   encodeTailCursor,
   getSessionLogEntitlement,
@@ -59,7 +61,6 @@ import { unwrapSessionLogKey } from "./agent-vault-session-log-secrets";
 import { buildSessionLogStorage, TAgentVaultSessionLogStorage } from "./agent-vault-session-log-storage-fns";
 import {
   TAgentVaultSessionLogScoped,
-  TAgentVaultSessionLogStorageUnavailable,
   TAgentVaultSessionScoped,
   TCreateChunkUploadUrlDTO,
   TListSessionLogsDTO,
@@ -245,13 +246,29 @@ export const agentVaultSessionLogServiceFactory = ({
         isSessionLogIngestEnabled(config) &&
         (await getSessionLogEntitlement(licenseService, ctx.actorOrgId)) !== "unlicensed",
       isRecordable: Boolean(session.encryptedSessionLogKey),
-      sessionKey: null as string | null,
-      storageUnavailable: null as TAgentVaultSessionLogStorageUnavailable | null
+      sessionKey: null as string | null
     };
     return { session, config, isAdmin, sessionLogs };
   };
 
   type TLoadedSessionLogs = Awaited<ReturnType<typeof $loadSessionLogs>>;
+
+  // A 500 when trying again later can help, a 400 when the settings or the AWS side need fixing.
+  const $storageUnavailable = ({
+    isAdmin,
+    adminMessage,
+    isTemporary = false
+  }: {
+    isAdmin: boolean;
+    adminMessage: string;
+    isTemporary?: boolean;
+  }) => {
+    const error = {
+      name: AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE,
+      message: isAdmin ? adminMessage : AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE
+    };
+    return isTemporary ? new InternalServerError(error) : new BadRequestError(error);
+  };
 
   // Reading doesn't check the plan or whether session logs are on, so logs recorded before a downgrade or before they
   // were turned off can still be read.
@@ -259,13 +276,13 @@ export const agentVaultSessionLogServiceFactory = ({
     ctx,
     config,
     isAdmin
-  }: Pick<TLoadedSessionLogs, "config" | "isAdmin"> & { ctx: TAgentVaultSessionScoped["ctx"] }): Promise<
-    | { storage: TAgentVaultSessionLogStorage; bucket: string; keyPrefix: string | null }
-    | { unavailable: TAgentVaultSessionLogStorageUnavailable }
-  > => {
+  }: Pick<TLoadedSessionLogs, "config" | "isAdmin"> & { ctx: TAgentVaultSessionScoped["ctx"] }) => {
     const storage = resolveStorageConfig(config);
     if (!storage) {
-      return { unavailable: { reason: AgentVaultSessionLogStorageUnavailableReason.NoConnection, message: null } };
+      throw $storageUnavailable({
+        isAdmin,
+        adminMessage: "No AWS connection is set for session logs. Choose one in Settings."
+      });
     }
     try {
       return {
@@ -275,12 +292,7 @@ export const agentVaultSessionLogServiceFactory = ({
       };
     } catch (error) {
       if (!(error instanceof BadRequestError)) throw error;
-      return {
-        unavailable: {
-          reason: AgentVaultSessionLogStorageUnavailableReason.ConnectionUnusable,
-          message: isAdmin ? error.message : null
-        }
-      };
+      throw $storageUnavailable({ isAdmin, adminMessage: error.message });
     }
   };
 
@@ -314,20 +326,13 @@ export const agentVaultSessionLogServiceFactory = ({
     const { session, config, isAdmin, sessionLogs } = await $loadSessionLogs(scope);
     if (!config || !session.encryptedSessionLogKey) return { sessionLogs, chunks: [], nextCursor: null };
 
-    // Unreadable storage keeps the cursor, so a retry continues from the same place.
-    const unreadable = (storageUnavailable: TAgentVaultSessionLogStorageUnavailable) => ({
-      sessionLogs: { ...sessionLogs, storageUnavailable },
-      chunks: [],
-      nextCursor: cursor === undefined ? null : encodeHistoryCursor(cursor)
-    });
-
     const opened = await $openStorage({ ctx: scope.ctx, config, isAdmin });
-    if ("unavailable" in opened) return unreadable(opened.unavailable);
 
+    // The stored id, not the route's: Postgres matches a uuid in any case, but S3 keys and the key's scope don't.
     const folder = buildSessionLogFolder({
       keyPrefix: opened.keyPrefix,
       projectId: scope.projectId,
-      sessionId: scope.sessionId
+      sessionId: session.id
     });
     let startAfter: string | undefined;
     if (cursor !== undefined) startAfter = `${folder}${cursor}`;
@@ -338,16 +343,9 @@ export const agentVaultSessionLogServiceFactory = ({
       listed = await opened.storage.listChunks({ folder, startAfter });
     } catch (error) {
       if (!isStorageError(error)) throw error;
-      logger.warn(error, `agentVaultSessionLog: could not list session logs [sessionId=${scope.sessionId}]`);
-      const { name } = error as Error;
-      const hint =
-        name === "AccessDenied"
-          ? "Check that the connection's credentials allow s3:ListBucket on it"
-          : "Check the bucket name and region in Settings";
-      return unreadable({
-        reason: AgentVaultSessionLogStorageUnavailableReason.ConnectionUnusable,
-        message: isAdmin ? `Infisical couldn't list session logs in bucket '${opened.bucket}' (${name}). ${hint}` : null
-      });
+      logger.warn(error, `agentVaultSessionLog: could not list session logs [sessionId=${session.id}]`);
+      const failure = describeListFailure(error as Error, opened.bucket);
+      throw $storageUnavailable({ isAdmin, adminMessage: failure.message, isTemporary: failure.isTemporary });
     }
 
     const found: Parameters<typeof $presignChunks>[2] = [];
@@ -375,7 +373,7 @@ export const agentVaultSessionLogServiceFactory = ({
     const { chunks, sessionKey } = await $presignChunks(
       {
         projectId: scope.projectId,
-        sessionId: scope.sessionId,
+        sessionId: session.id,
         encryptedSessionLogKey: session.encryptedSessionLogKey
       },
       opened.storage,
@@ -390,22 +388,20 @@ export const agentVaultSessionLogServiceFactory = ({
     if (!config || !session.encryptedSessionLogKey) return unchanged;
 
     const entries = await keyStore.streamRange(
-      KeyStorePrefixes.AgentVaultSessionLogFeed(scope.sessionId),
+      KeyStorePrefixes.AgentVaultSessionLogFeed(session.id),
       `(${cursor}`,
       "+"
     );
     if (!entries.length) return unchanged;
 
-    // Held rather than advanced, so a short outage loses nothing. After a longer one the feed has moved on, and
-    // the chunks show on the next full read.
+    // Fails rather than advancing, so the caller's cursor stays put and a short outage loses nothing. After a longer
+    // one the feed has moved on, and the chunks show on the next full read.
     const opened = await $openStorage({ ctx: scope.ctx, config, isAdmin });
-    if ("unavailable" in opened)
-      return { ...unchanged, sessionLogs: { ...sessionLogs, storageUnavailable: opened.unavailable } };
 
     const folder = buildSessionLogFolder({
       keyPrefix: opened.keyPrefix,
       projectId: scope.projectId,
-      sessionId: scope.sessionId
+      sessionId: session.id
     });
     const found = new Map<string, Parameters<typeof $presignChunks>[2][number]>();
     entries.forEach(([, fieldValues]) => {
@@ -424,7 +420,7 @@ export const agentVaultSessionLogServiceFactory = ({
     const { chunks, sessionKey } = await $presignChunks(
       {
         projectId: scope.projectId,
-        sessionId: scope.sessionId,
+        sessionId: session.id,
         encryptedSessionLogKey: session.encryptedSessionLogKey
       },
       opened.storage,

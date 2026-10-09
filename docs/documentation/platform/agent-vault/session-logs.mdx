@@ -141,7 +141,7 @@ You can view a session's logs if you created the session or you're an Agent Vaul
       Call [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list). It returns the newest chunks first. To get older chunks, call it again with the response's `nextCursor` as `cursor`.
 
       <Note>
-        If Infisical can't read the bucket, the response has no chunks, and `sessionLogs.storageUnavailable` holds the reason.
+        If Infisical can't read the bucket, the request fails with the error `AgentVaultSessionLogStorageUnavailable`, and the message says why.
       </Note>
     </Step>
     <Step>

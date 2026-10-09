@@ -4493,14 +4493,8 @@ export const AGENT_VAULT = {
     expiresInSeconds: "The number of seconds before the URL expires.",
     isRecordable: "False if this session's requests can't be recorded.",
     sessionKey: "The key that decrypts every chunk in this response, as base64. Null if the response has no chunks.",
-    storageUnavailable:
-      "The reason Infisical can't read the bucket right now, in which case the response has no chunks. Null if it can.",
-    storageUnavailableReason:
-      "`no-connection` if no AWS connection is set for session logs, or `connection-unusable` if Infisical can't use the AWS connection or list the bucket.",
-    storageUnavailableMessage:
-      "The error Infisical got from the AWS connection or the bucket. Returned only to Agent Vault admins.",
     sessionLogs:
-      "Whether session logs are on, the key that decrypts the chunks, and why they can't be downloaded, if they can't.",
+      "Whether session logs are on, whether this session can be recorded, and the key that decrypts the chunks.",
     historyCursor: "The `nextCursor` from the previous response. Leave it out to start from the newest logs.",
     historyNextCursor:
       "Pass this as `cursor` to get older logs. Null when there's nothing older. A page can have no chunks and still have a `nextCursor`.",

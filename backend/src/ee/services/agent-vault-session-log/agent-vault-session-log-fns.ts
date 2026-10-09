@@ -70,6 +70,46 @@ export const resolveStorageConfig = (
   };
 };
 
+const TEMPORARY_S3_ERRORS = new Set([
+  "SlowDown",
+  "InternalError",
+  "ServiceUnavailable",
+  "RequestTimeout",
+  "TimeoutError"
+]);
+const NETWORK_ERROR_CODES = new Set(["ECONNREFUSED", "ECONNRESET", "ETIMEDOUT", "ENOTFOUND", "EAI_AGAIN", "EPIPE"]);
+const CREDENTIAL_ERRORS = new Set(["InvalidAccessKeyId", "SignatureDoesNotMatch", "ExpiredToken", "InvalidToken"]);
+const ACCESS_ERRORS = new Set(["AccessDenied", "AllAccessDisabled"]);
+const LOCATION_ERRORS = new Set([
+  "NoSuchBucket",
+  "PermanentRedirect",
+  "AuthorizationHeaderMalformed",
+  "IllegalLocationConstraintException"
+]);
+
+// Names the cause of a failed bucket listing for an admin, and whether trying again later can help.
+export const describeListFailure = (error: Error, bucket: string) => {
+  const { $fault, $metadata, code } = error as Error & {
+    $fault?: string;
+    $metadata?: { httpStatusCode?: number };
+    code?: string;
+  };
+  const label = error.name === "Error" && code ? code : error.name;
+  const isTemporary =
+    $fault === "server" ||
+    ($metadata?.httpStatusCode ?? 0) >= 500 ||
+    TEMPORARY_S3_ERRORS.has(error.name) ||
+    NETWORK_ERROR_CODES.has(code ?? "");
+
+  let hint = "Check the AWS connection and the bucket settings.";
+  if (isTemporary) hint = "S3 isn't responding. Try again in a bit.";
+  else if (CREDENTIAL_ERRORS.has(error.name)) hint = "Check the AWS connection's credentials.";
+  else if (ACCESS_ERRORS.has(error.name)) hint = "Check that the connection's credentials allow s3:ListBucket on it.";
+  else if (LOCATION_ERRORS.has(error.name)) hint = "Check the bucket name and region in Settings.";
+
+  return { isTemporary, message: `Infisical couldn't list session logs in bucket '${bucket}' (${label}). ${hint}` };
+};
+
 export const isSessionLogIngestEnabled = (config?: TAgentVaultSessionLogConfigs) =>
   Boolean(config?.enabled && resolveStorageConfig(config));
 

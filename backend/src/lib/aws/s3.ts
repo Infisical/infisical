@@ -30,7 +30,9 @@ export const createS3Bucket = ({
     region,
     useFipsEndpoint: crypto.isFipsModeEnabled(),
     sha256: CustomAWSHasher,
-    credentials
+    credentials,
+    // Without these the SDK waits on a stalled S3 indefinitely, past the point Infisical drops the request.
+    requestHandler: { connectionTimeout: 5_000, requestTimeout: 15_000, throwOnRequestTimeout: true }
   });
 
   // These headers are signed so S3 enforces them: the body must be the declared size and hash to the declared

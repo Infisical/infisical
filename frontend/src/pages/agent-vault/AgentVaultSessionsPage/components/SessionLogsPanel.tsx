@@ -37,6 +37,7 @@ import { useOrganization, useProjectPermission, useSubscription } from "@app/con
 import {
   AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
   AgentVaultSessionLogDecision,
+  getSessionLogStorageError,
   sessionLogRecordKey,
   useAgentVaultSessionLogTimeline,
   useGetAgentVaultSessionLogs
@@ -166,8 +167,8 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const isEnabled = pages?.[0]?.sessionLogs.enabled ?? false;
   const isRecordable = pages?.[0]?.sessionLogs.isRecordable ?? true;
   const hasChunks = (pages ?? []).some((page) => page.chunks.length > 0);
-  // Only the first page: a later one that can't be read fails as a page, so the rows above it stay.
-  const storageUnavailable = data?.pages[0]?.sessionLogs.storageUnavailable ?? null;
+  // Only without data: a failed reload or older page keeps the rows already on screen.
+  const storageError = data ? null : getSessionLogStorageError(history.error);
 
   const visible = useMemo(
     () =>
@@ -371,25 +372,16 @@ export const SessionLogsPanel = ({ session }: Props) => {
     </Button>
   );
 
-  if (!isPending && !isPlaceholderData && !isLoadError && storageUnavailable) {
-    const isConnectionUnusable = storageUnavailable.reason === "connection-unusable";
-    let unreadableDescription = "This session's recorded requests aren't available. Ask an admin.";
-    if (isAdmin) {
-      unreadableDescription = isConnectionUnusable
-        ? (storageUnavailable.message ??
-          "The AWS connection for session logs can't be used right now.")
-        : "No AWS connection is set for session logs, so this session's recorded requests can't be loaded.";
-    }
-
+  if (storageError) {
     return (
       <Empty className="border">
         <EmptyHeader>
           <EmptyTitle>Session logs can&apos;t be read</EmptyTitle>
-          <EmptyDescription>{unreadableDescription}</EmptyDescription>
+          <EmptyDescription>{storageError}</EmptyDescription>
         </EmptyHeader>
-        {isAdmin && (
-          <div className="flex gap-2">
-            {isConnectionUnusable && retryButton}
+        <div className="flex gap-2">
+          {retryButton}
+          {isAdmin && (
             <Button variant="av" asChild>
               <Link
                 to="/organizations/$orgId/agent-vault/settings"
@@ -398,8 +390,8 @@ export const SessionLogsPanel = ({ session }: Props) => {
                 Go to Settings
               </Link>
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </Empty>
     );
   }

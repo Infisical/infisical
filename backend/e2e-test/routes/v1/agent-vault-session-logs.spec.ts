@@ -772,7 +772,6 @@ describe("Agent Vault session logs", async () => {
         enabled: boolean;
         isRecordable: boolean;
         sessionKey: string | null;
-        storageUnavailable: { reason: string; message: string | null } | null;
       };
       chunks: {
         chunkId: string;
@@ -1028,45 +1027,50 @@ describe("Agent Vault session logs", async () => {
       expect(body.chunks).toHaveLength(2);
     });
 
-    test("without a connection, a read says why and the tail holds its place", async () => {
+    const readFails = async (sessionId: string, path = "logs") => {
+      const res = await inject("GET", `/api/v1/agent-vault/sessions/${sessionId}/${path}`);
+      return { statusCode: res.statusCode, body: JSON.parse(res.payload) as { error: string; message: string } };
+    };
+
+    test("without a connection, a read and the tail fail with the named error and say why", async () => {
       await configure();
       const { session } = await seedChunks(2);
 
       expect((await saveConfig({ enabled: false, appConnectionId: null })).statusCode).toBe(200);
 
-      const body = await read(session.id);
-      expect(body.sessionLogs.storageUnavailable).toEqual({ reason: "no-connection", message: null });
-      expect(body.sessionLogs.sessionKey).toBeNull();
-      expect(body.chunks).toEqual([]);
-
-      const live = await tail(session.id);
-      expect(live.chunks).toEqual([]);
-      expect(live.nextCursor).toBe(encodeTailCursor("0-0"));
-      expect(live.sessionLogs.storageUnavailable?.reason).toBe("no-connection");
+      for (const path of ["logs", "logs/tail"]) {
+        // eslint-disable-next-line no-await-in-loop
+        const { statusCode, body } = await readFails(session.id, path);
+        expect(statusCode).toBe(400);
+        expect(body).toMatchObject({
+          error: "AgentVaultSessionLogStorageUnavailable",
+          message: "No AWS connection is set for session logs. Choose one in Settings."
+        });
+      }
     });
 
-    test("when the connection can't be used, a read says why", async () => {
+    test("when the connection can't be used, a read fails with the named error and says why", async () => {
       await configure();
       const { session } = await seedChunks(1);
       fakeAwsConnection.failsConfigWith("AWS refused to assume the role");
 
-      const body = await read(session.id);
-      expect(body.sessionLogs.storageUnavailable).toEqual({
-        reason: "connection-unusable",
+      const { statusCode, body } = await readFails(session.id);
+      expect(statusCode).toBe(400);
+      expect(body).toMatchObject({
+        error: "AgentVaultSessionLogStorageUnavailable",
         message: `Couldn't use the AWS connection '${connectionName}' for session logs: AWS refused to assume the role`
       });
-      expect(body.chunks).toEqual([]);
     });
 
-    test("when the bucket refuses to list, a read says so instead of failing", async () => {
+    test("when the bucket refuses to list, a read fails with the named error instead of looking empty", async () => {
       await configure();
       const { session } = await seedChunks(1);
       fakeS3Bucket.failsListWith(true);
 
-      const body = await read(session.id);
-      expect(body.sessionLogs.storageUnavailable?.reason).toBe("connection-unusable");
-      expect(body.sessionLogs.storageUnavailable?.message).toContain("s3:ListBucket");
-      expect(body.chunks).toEqual([]);
+      const { statusCode, body } = await readFails(session.id);
+      expect(statusCode).toBe(400);
+      expect(body.error).toBe("AgentVaultSessionLogStorageUnavailable");
+      expect(body.message).toContain("s3:ListBucket");
     });
 
     test("a session with no logs comes back empty rather than erroring", async () => {

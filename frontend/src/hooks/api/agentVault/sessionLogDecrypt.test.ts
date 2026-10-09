@@ -66,8 +66,7 @@ describe("decryptSessionLogPage", () => {
     sessionLogs: {
       enabled: true,
       isRecordable: true,
-      sessionKey: btoa("\0".repeat(32)),
-      storageUnavailable: null
+      sessionKey: btoa("\0".repeat(32))
     },
     chunks: [
       {
@@ -91,8 +90,7 @@ describe("decryptSessionLogPage", () => {
     sessionLogs: {
       enabled: true,
       isRecordable: true,
-      sessionKey: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
-      storageUnavailable: null
+      sessionKey: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="
     },
     chunks: [{ ...page.chunks[0], ciphertextBytes: sealed.length }]
   };
@@ -260,7 +258,7 @@ describe("mergeSessionLogPages", () => {
     presignedGetUrl: `https://bucket.example/${proxyId}`
   });
   const decryptedPage = (proxyId: string, path: string) => ({
-    sessionLogs: { enabled: true, isRecordable: true, sessionKey: null, storageUnavailable: null },
+    sessionLogs: { enabled: true, isRecordable: true, sessionKey: null },
     chunks: [chunk(proxyId)],
     decrypted: {
       [sessionLogChunkKey(chunk(proxyId))]: {

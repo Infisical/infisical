@@ -22,7 +22,7 @@ const record = {
 } as TAgentVaultDecryptedChunk["records"][number];
 
 const pageWith = (result: TAgentVaultDecryptedChunk): TAgentVaultDecryptedSessionLogPage => ({
-  sessionLogs: { enabled: true, isRecordable: true, sessionKey: null, storageUnavailable: null },
+  sessionLogs: { enabled: true, isRecordable: true, sessionKey: null },
   chunks: [
     {
       chunkId,

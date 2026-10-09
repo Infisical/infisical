@@ -349,10 +349,6 @@ export type TAgentVaultSessionLog = {
   enabled: boolean;
   isRecordable: boolean;
   sessionKey: string | null;
-  storageUnavailable: {
-    reason: "no-connection" | "connection-unusable";
-    message: string | null;
-  } | null;
 };
 
 export type TAgentVaultSessionLogPage = {
