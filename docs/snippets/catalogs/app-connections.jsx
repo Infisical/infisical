@@ -600,6 +600,14 @@ export const appConnections = [
     category: "Networking & DNS",
   },
   {
+    name: "Palo Alto Networks",
+    slug: "palo-alto-networks",
+    path: "/integrations/app-connections/palo-alto-networks",
+    description:
+      "Learn how to connect Palo Alto Networks firewalls and Panorama to deploy certificates with Infisical.",
+    category: "Networking & DNS",
+  },
+  {
     name: "GoDaddy",
     slug: "godaddy",
     path: "/integrations/app-connections/godaddy",

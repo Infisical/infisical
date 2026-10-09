@@ -47,6 +47,11 @@ import { netScalerPkiSyncFactory } from "./netscaler/netscaler-pki-sync-fns";
 import { NUTANIX_PRISM_CENTRAL_PKI_SYNC_LIST_OPTION } from "./nutanix-prism-central/nutanix-prism-central-pki-sync-constants";
 import { nutanixPrismCentralPkiSyncFactory } from "./nutanix-prism-central/nutanix-prism-central-pki-sync-fns";
 import {
+  PALO_ALTO_NETWORKS_PKI_SYNC_LIST_OPTION,
+  PALO_ALTO_NETWORKS_SSL_TLS_PROFILE_PKI_SYNC_LIST_OPTION
+} from "./palo-alto-networks/palo-alto-networks-pki-sync-constants";
+import { paloAltoNetworksPkiSyncFactory } from "./palo-alto-networks/palo-alto-networks-pki-sync-fns";
+import {
   buildManagedCertificateNameRegexSource,
   certificateNameSchemaAllowsMultipleCertificates,
   SHORT_UUID_NAME_REGEX_FRAGMENT,
@@ -84,6 +89,8 @@ const PKI_SYNC_LIST_OPTIONS = {
   [PkiSync.GcpCertificateManager]: GCP_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION,
   [PkiSync.CloudflareCustomCertificate]: CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_LIST_OPTION,
   [PkiSync.NetScaler]: NETSCALER_PKI_SYNC_LIST_OPTION,
+  [PkiSync.PaloAltoNetworks]: PALO_ALTO_NETWORKS_PKI_SYNC_LIST_OPTION,
+  [PkiSync.PaloAltoNetworksSslTlsProfile]: PALO_ALTO_NETWORKS_SSL_TLS_PROFILE_PKI_SYNC_LIST_OPTION,
   [PkiSync.F5BigIp]: F5_BIG_IP_PKI_SYNC_LIST_OPTION,
   [PkiSync.KempLoadMaster]: KEMP_LOADMASTER_PKI_SYNC_LIST_OPTION,
   [PkiSync.LinuxServer]: LINUX_SERVER_PKI_SYNC_LIST_OPTION,
@@ -247,6 +254,10 @@ export const PkiSyncFns = {
           "NetScaler does not support importing certificates into Infisical (private keys cannot be extracted)"
         );
       }
+      case PkiSync.PaloAltoNetworks:
+      case PkiSync.PaloAltoNetworksSslTlsProfile: {
+        throw new Error("Palo Alto Networks does not support importing certificates into Infisical");
+      }
       case PkiSync.F5BigIp: {
         throw new Error("F5 BIG-IP does not support importing certificates into Infisical");
       }
@@ -355,6 +366,16 @@ export const PkiSyncFns = {
           gatewayPoolService: dependencies.gatewayPoolService
         });
         return netScalerPkiSync.syncCertificates(pkiSync, certificateMap);
+      }
+      case PkiSync.PaloAltoNetworks:
+      case PkiSync.PaloAltoNetworksSslTlsProfile: {
+        const paloAltoNetworksPkiSync = paloAltoNetworksPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
+        });
+        return paloAltoNetworksPkiSync.syncCertificates(pkiSync, certificateMap);
       }
       case PkiSync.F5BigIp: {
         checkPkiSyncDestination(pkiSync, PkiSync.F5BigIp as PkiSync);
@@ -471,12 +492,25 @@ export const PkiSyncFns = {
     pkiSync: THealthCheckTarget,
     dependencies: {
       certificateSyncDAL: TCertificateSyncDALFactory;
-      certificateDAL: Pick<TCertificateDALFactory, "findActiveCertificatesByIds">;
+      certificateDAL: Pick<TCertificateDALFactory, "findActiveCertificatesByIds" | "find">;
       gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
       gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
       keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
     }
   ): Promise<void> => {
+    if (
+      pkiSync.destination === PkiSync.PaloAltoNetworks ||
+      pkiSync.destination === PkiSync.PaloAltoNetworksSslTlsProfile
+    ) {
+      await paloAltoNetworksPkiSyncFactory({
+        certificateDAL: dependencies.certificateDAL,
+        certificateSyncDAL: dependencies.certificateSyncDAL,
+        gatewayV2Service: dependencies.gatewayV2Service,
+        gatewayPoolService: dependencies.gatewayPoolService
+      }).testReachability(pkiSync as unknown as TPkiSyncWithCredentials);
+      return;
+    }
+
     if (pkiSync.destination === PkiSync.LinuxServer) {
       const linuxServerPkiSync = linuxServerPkiSyncFactory({
         certificateSyncDAL: dependencies.certificateSyncDAL,
@@ -609,6 +643,19 @@ export const PkiSyncFns = {
         });
         await netScalerPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,
+          certificateMap: dependencies.certificateMap
+        });
+        break;
+      }
+      case PkiSync.PaloAltoNetworks:
+      case PkiSync.PaloAltoNetworksSslTlsProfile: {
+        const paloAltoNetworksPkiSync = paloAltoNetworksPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
+        });
+        await paloAltoNetworksPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateMap: dependencies.certificateMap
         });
         break;

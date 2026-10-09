@@ -568,6 +568,8 @@
                           "documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate",
                           "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
                           "documentation/platform/pki/applications/certificate-syncs/netscaler",
+                          "documentation/platform/pki/applications/certificate-syncs/palo-alto-networks",
+                          "documentation/platform/pki/applications/certificate-syncs/palo-alto-networks-ssl-tls-profile",
                           "documentation/platform/pki/applications/certificate-syncs/kemp-loadmaster",
                           "documentation/platform/pki/applications/certificate-syncs/linux-server",
                           "documentation/platform/pki/applications/certificate-syncs/windows-server",
@@ -1118,6 +1120,7 @@
                   "integrations/app-connections/openrouter",
                   "integrations/app-connections/oracledb",
                   "integrations/app-connections/ovh",
+                  "integrations/app-connections/palo-alto-networks",
                   "integrations/app-connections/postgres",
                   "integrations/app-connections/powerdns",
                   "integrations/app-connections/qovery",
@@ -2324,6 +2327,18 @@
                         "group": "OVH",
                         "pages": [
                           "api-reference/endpoints/app-connections/ovh/create"
+                        ]
+                      },
+                      {
+                        "group": "Palo Alto Networks",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/palo-alto-networks/list",
+                          "api-reference/endpoints/app-connections/palo-alto-networks/available",
+                          "api-reference/endpoints/app-connections/palo-alto-networks/get-by-id",
+                          "api-reference/endpoints/app-connections/palo-alto-networks/get-by-name",
+                          "api-reference/endpoints/app-connections/palo-alto-networks/create",
+                          "api-reference/endpoints/app-connections/palo-alto-networks/update",
+                          "api-reference/endpoints/app-connections/palo-alto-networks/delete"
                         ]
                       },
                       {
@@ -4109,6 +4124,30 @@
                               "api-reference/endpoints/pki/syncs/netscaler/delete",
                               "api-reference/endpoints/pki/syncs/netscaler/sync-certificates",
                               "api-reference/endpoints/pki/syncs/netscaler/remove-certificates"
+                            ]
+                          },
+                          {
+                            "group": "Palo Alto Networks",
+                            "pages": [
+                              "api-reference/endpoints/pki/syncs/palo-alto-networks/list",
+                              "api-reference/endpoints/pki/syncs/palo-alto-networks/get-by-id",
+                              "api-reference/endpoints/pki/syncs/palo-alto-networks/create",
+                              "api-reference/endpoints/pki/syncs/palo-alto-networks/update",
+                              "api-reference/endpoints/pki/syncs/palo-alto-networks/delete",
+                              "api-reference/endpoints/pki/syncs/palo-alto-networks/sync-certificates",
+                              "api-reference/endpoints/pki/syncs/palo-alto-networks/remove-certificates"
+                            ]
+                          },
+                          {
+                            "group": "Palo Alto Networks SSL/TLS Profile",
+                            "pages": [
+                              "api-reference/endpoints/pki/syncs/palo-alto-networks-ssl-tls-profile/list",
+                              "api-reference/endpoints/pki/syncs/palo-alto-networks-ssl-tls-profile/get-by-id",
+                              "api-reference/endpoints/pki/syncs/palo-alto-networks-ssl-tls-profile/create",
+                              "api-reference/endpoints/pki/syncs/palo-alto-networks-ssl-tls-profile/update",
+                              "api-reference/endpoints/pki/syncs/palo-alto-networks-ssl-tls-profile/delete",
+                              "api-reference/endpoints/pki/syncs/palo-alto-networks-ssl-tls-profile/sync-certificates",
+                              "api-reference/endpoints/pki/syncs/palo-alto-networks-ssl-tls-profile/remove-certificates"
                             ]
                           },
                           {

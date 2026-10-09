@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Controller, FormProvider, useForm } from "react-hook-form";
+import { Controller, FieldPath, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangleIcon } from "lucide-react";
 
@@ -25,8 +25,13 @@ import {
   StepperStep,
   Toggle
 } from "@app/components/v3";
-import { getCertificateDisplayName, PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
+import {
+  getCertificateDisplayName,
+  isPaloAltoNetworksPkiSync,
+  PKI_SYNC_MAP
+} from "@app/helpers/pkiSyncs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { usePaloAltoNetworksConnectionListTemplates } from "@app/hooks/api/appConnections/palo-alto-networks";
 import {
   PkiSync,
   TPkiSync,
@@ -38,6 +43,10 @@ import {
 } from "@app/hooks/api/pkiSyncs";
 import { TPkiSyncFilterPreview } from "@app/hooks/api/pkiSyncs/types";
 
+import {
+  isPaloAltoNetworksTemplateMissing,
+  PALO_ALTO_NETWORKS_TEMPLATE_REQUIRED_MESSAGE
+} from "./schemas/palo-alto-networks-pki-sync-destination-schema";
 import {
   removeUnusedKeystoreOptions,
   TUpdatePkiSyncForm,
@@ -233,8 +242,14 @@ export const EditPkiSyncForm = ({
   const {
     handleSubmit,
     control,
+    getValues,
+    setError,
     formState: { isSubmitting, isDirty }
   } = formMethods;
+  const { data: paloAltoNetworksDevice, isLoading: isDetectingPaloAltoNetworksDevice } =
+    usePaloAltoNetworksConnectionListTemplates(formMethods.watch("connection.id"), {
+      enabled: isPaloAltoNetworksPkiSync(pkiSync.destination)
+    });
 
   const previewFilters = usePreviewPkiSyncFilters();
   const [pendingUnlink, setPendingUnlink] = useState<{
@@ -271,6 +286,21 @@ export const EditPkiSyncForm = ({
   };
 
   const onSubmit = async (formData: TUpdatePkiSyncForm) => {
+    if (
+      isPaloAltoNetworksPkiSync(pkiSync.destination) &&
+      isPaloAltoNetworksTemplateMissing(
+        paloAltoNetworksDevice?.isPanorama,
+        getValues("destinationConfig")
+      )
+    ) {
+      setError("destinationConfig.template" as FieldPath<TUpdatePkiSyncForm>, {
+        type: "manual",
+        message: PALO_ALTO_NETWORKS_TEMPLATE_REQUIRED_MESSAGE
+      });
+      setSelectedStepIndex(steps.findIndex((step) => step.key === "destination"));
+      return;
+    }
+
     const haveFiltersChanged =
       JSON.stringify(formData.filters ?? null) !== JSON.stringify(pkiSync.filters ?? null);
 
@@ -422,7 +452,7 @@ export const EditPkiSyncForm = ({
               variant="project"
               type="submit"
               isPending={isSubmitting}
-              isDisabled={!isDirty || isSubmitting}
+              isDisabled={!isDirty || isSubmitting || isDetectingPaloAltoNetworksDevice}
             >
               Save
             </Button>

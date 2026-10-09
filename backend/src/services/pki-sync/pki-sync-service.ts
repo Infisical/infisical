@@ -329,7 +329,7 @@ export const pkiSyncServiceFactory = ({
     );
   };
 
-  const $assertTargetHostReachable = async ({
+  const $assertDestinationReachable = async ({
     destination,
     connection,
     destinationConfig
@@ -338,8 +338,10 @@ export const pkiSyncServiceFactory = ({
     connection: { id: string; app: AppConnection };
     destinationConfig: Record<string, unknown> | null | undefined;
   }) => {
-    if (connection.app !== AppConnection.LDAP) return;
-    if (!getPkiSyncTargetHost(destinationConfig)) return;
+    const isValidatedOnSave =
+      connection.app === AppConnection.PaloAltoNetworks ||
+      (connection.app === AppConnection.LDAP && Boolean(getPkiSyncTargetHost(destinationConfig)));
+    if (!isValidatedOnSave) return;
 
     await pkiSyncHealthCheckQueue.testTargetHostReachable({
       destination,
@@ -749,7 +751,7 @@ export const pkiSyncServiceFactory = ({
       );
     }
 
-    await $assertTargetHostReachable({ destination, connection, destinationConfig });
+    await $assertDestinationReachable({ destination, connection, destinationConfig });
 
     const encryptedCredentials =
       credentials?.exportPassword && !isBlankExportPassword(credentials.exportPassword)
@@ -947,7 +949,7 @@ export const pkiSyncServiceFactory = ({
     }
 
     if (isConnectionChanging || isDestinationConfigChanging) {
-      await $assertTargetHostReachable({
+      await $assertDestinationReachable({
         destination: pkiSync.destination,
         connection: isConnectionChanging
           ? await resolveConnection()
@@ -972,14 +974,20 @@ export const pkiSyncServiceFactory = ({
       resolveConnection
     });
 
+    const storedFilters = pkiSync.filters as TPkiSyncFilters | null;
+    const areFiltersChanging =
+      filters !== undefined && JSON.stringify(filters ?? null) !== JSON.stringify(storedFilters ?? null);
+
     if (syncOptions || destinationConfig) {
-      const existingCount = (await certificateSyncDAL.findByPkiSyncId(id)).length;
-      assertPkiSyncCertificateCapsAllowCount(
-        pkiSync.destination,
-        effectiveSyncOptions,
-        effectiveDestinationConfig,
-        existingCount
-      );
+      if (!areFiltersChanging) {
+        const existingCount = (await certificateSyncDAL.findByPkiSyncId(id)).length;
+        assertPkiSyncCertificateCapsAllowCount(
+          pkiSync.destination,
+          effectiveSyncOptions,
+          effectiveDestinationConfig,
+          existingCount
+        );
+      }
       assertFiltersCannotExceedCertificateCap(
         pkiSync.destination,
         effectiveSyncOptions,
@@ -1031,10 +1039,6 @@ export const pkiSyncServiceFactory = ({
     if (Object.values(update).every((value) => value === undefined)) {
       return pkiSync as TPkiSync;
     }
-
-    const storedFilters = pkiSync.filters as TPkiSyncFilters | null;
-    const areFiltersChanging =
-      filters !== undefined && JSON.stringify(filters ?? null) !== JSON.stringify(storedFilters ?? null);
 
     if (areFiltersChanging) $assertSyncAcceptsFilters(pkiSync);
 

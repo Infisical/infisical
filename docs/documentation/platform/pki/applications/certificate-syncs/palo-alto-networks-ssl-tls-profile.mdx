@@ -1,0 +1,183 @@
+---
+title: "Palo Alto Networks SSL/TLS profile"
+sidebarTitle: "Palo Alto Networks SSL/TLS profile"
+description: "Deploy a certificate to a PAN-OS firewall or Panorama template and point an SSL/TLS service profile at it."
+---
+
+A Palo Alto Networks SSL/TLS Profile sync deploys one certificate to a PAN-OS firewall or a Panorama template, then points an existing SSL/TLS service profile at that certificate. Use this sync for a service that reads its certificate from an SSL/TLS service profile, such as the management web interface or a GlobalProtect portal.
+
+To deploy several certificates without changing a profile, use a [Palo Alto Networks sync](/documentation/platform/pki/applications/certificate-syncs/palo-alto-networks) instead.
+
+## Prerequisites
+
+- An [application](/documentation/platform/pki/applications/overview) that holds the certificate to deploy
+- A [Palo Alto Networks connection](/integrations/app-connections/palo-alto-networks) to the firewall or Panorama
+- On a Panorama, a template. To push to firewalls, the template must belong to at least one template stack
+- An SSL/TLS service profile on the firewall or in the template, either shared or in a virtual system
+
+## Create a sync
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step>
+                In your application, open the **Certificate Syncs** tab and select **Add Sync**.
+            </Step>
+            <Step>
+                Select **Palo Alto Networks SSL/TLS Profile**.
+            </Step>
+            <Step>
+                Configure the destination, then select **Continue**:
+
+                - **Palo Alto Networks Connection**: the connection to the firewall or Panorama
+                - **Template** (Panorama only): the template to import the certificate into
+                - **SSL/TLS Service Profile**: the profile to point at the synced certificate
+                - **Push to Devices** (Panorama only): whether the sync pushes the committed changes to firewalls (on by default)
+            </Step>
+            <Step>
+                Configure the sync options, then select **Continue**:
+
+                - **Allow to remove certificates from destination**: delete the old certificate from the device when it's replaced or no longer active in Infisical
+                - **Preserve certificate on renewal**: replace the certificate in place when it's renewed (see [Certificate renewal](#certificate-renewal))
+                - **Certificate name schema**: the name of the certificate object on the device, up to 31 characters (use `{{shortCertificateId}}` rather than `{{certificateId}}`, which is too long)
+                - **Auto-sync on change**: sync the certificate as soon as it's issued or renewed
+            </Step>
+            <Step>
+                Enter a **Name** and an optional **Description** for the sync, then select **Continue**.
+            </Step>
+            <Step>
+                Select the **Certificate Order** the sync holds, then select **Continue**. A certificate order is a certificate together with its renewals.
+            </Step>
+            <Step>
+                Review the configuration and select **Create Sync**.
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a Palo Alto Networks SSL/TLS Profile sync, make an API request to the [Create Palo Alto Networks SSL/TLS Profile PKI sync](/api-reference/endpoints/pki/syncs/palo-alto-networks-ssl-tls-profile/create) endpoint.
+
+        In `destinationConfig`, set `sslTlsServiceProfileName` to the name of the profile. If the profile belongs to a virtual system, also set `sslTlsServiceProfileVsys`, such as `vsys1`. Leave `sslTlsServiceProfileVsys` out for a shared profile.
+
+        <Note>
+          Pass `filters` to describe the certificate this sync holds. The filters must match a single certificate or certificate order. If you omit `filters`, the sync starts empty and you can set filters later.
+          See [Certificate filters](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-filters).
+        </Note>
+
+        ### Sample request
+
+        ```bash Request
+        curl --request POST \
+        --url https://app.infisical.com/api/v1/cert-manager/syncs/palo-alto-networks-ssl-tls-profile \
+        --header 'Authorization: Bearer <access-token>' \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "gp-portal-cert-sync",
+            "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "GlobalProtect portal certificate",
+            "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+            "isAutoSyncEnabled": true,
+            "filters": {
+                "certificateOrderIds": ["550e8400-e29b-41d4-a716-446655440000"]
+            },
+            "syncOptions": {
+                "canRemoveCertificates": true,
+                "preserveItemOnRenewal": true,
+                "certificateNameSchema": "INF-{{shortCertificateId}}"
+            },
+            "destinationConfig": {
+                "template": "branch-template",
+                "pushToDevices": true,
+                "sslTlsServiceProfileName": "gp-portal-profile",
+                "sslTlsServiceProfileVsys": "vsys1"
+            }
+        }'
+        ```
+
+        ### Sample response
+
+        ```json Response expandable
+        {
+            "pkiSync": {
+                "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "name": "gp-portal-cert-sync",
+                "description": "GlobalProtect portal certificate",
+                "destination": "palo-alto-networks-ssl-tls-profile",
+                "isAutoSyncEnabled": true,
+                "destinationConfig": {
+                    "template": "branch-template",
+                    "pushToDevices": true,
+                    "sslTlsServiceProfileName": "gp-portal-profile",
+                    "sslTlsServiceProfileVsys": "vsys1"
+                },
+                "syncOptions": {
+                    "canRemoveCertificates": true,
+                    "preserveItemOnRenewal": true,
+                    "certificateNameSchema": "INF-{{shortCertificateId}}"
+                },
+                "applicationId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+                "connectionId": "550e8400-e29b-41d4-a716-446655440000",
+                "createdAt": "2026-10-08T00:00:00.000Z",
+                "updatedAt": "2026-10-08T00:00:00.000Z"
+            }
+        }
+        ```
+    </Tab>
+</Tabs>
+
+## How it works
+
+Each time it runs, the sync imports the certificate the same way a [Palo Alto Networks sync](/documentation/platform/pki/applications/certificate-syncs/palo-alto-networks#how-it-works) does, then points the SSL/TLS service profile at it. The sync doesn't create the profile or change its other settings.
+
+## Certificate renewal
+
+When the certificate is renewed, the result depends on **Preserve certificate on renewal**:
+
+- **On (default)**: the sync replaces the certificate object in place, so the profile keeps using it
+- **Off**: the sync creates a new certificate object, points the profile at it, and deletes the old one only if **Allow to remove certificates from destination** is on
+
+## Removing the certificate
+
+PAN-OS doesn't let the sync delete the certificate while the profile uses it. If you change the sync's certificate order, the sync points the profile at the new certificate before it deletes the old one.
+
+To remove the certificate without replacing it:
+
+<Steps>
+    <Step>
+        On the device, point the SSL/TLS service profile at another certificate, then commit the change.
+    </Step>
+    <Step>
+        Use the [Remove certificates from Palo Alto Networks SSL/TLS Profile](/api-reference/endpoints/pki/syncs/palo-alto-networks-ssl-tls-profile/remove-certificates) endpoint.
+    </Step>
+</Steps>
+
+## Manual sync
+
+To sync on demand, use the [Sync certificates to Palo Alto Networks SSL/TLS Profile](/api-reference/endpoints/pki/syncs/palo-alto-networks-ssl-tls-profile/sync-certificates) endpoint.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Why can this sync hold only one certificate?">
+    An SSL/TLS service profile uses one certificate at a time. To deploy more certificates to the same device, create a [Palo Alto Networks sync](/documentation/platform/pki/applications/certificate-syncs/palo-alto-networks).
+  </Accordion>
+  <Accordion title="Can I point several profiles at the same certificate?">
+    Yes. Each sync updates one profile, so create one sync for each profile.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Palo Alto Networks" icon="shield" href="/documentation/platform/pki/applications/certificate-syncs/palo-alto-networks">
+    Deploy certificates to the certificate store without changing a profile.
+  </Card>
+  <Card title="Renewal" icon="rotate-cw" href="/documentation/platform/pki/applications/certificate-renewal">
+    Renew a certificate, and change its details as part of the renewal.
+  </Card>
+  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified about certificate lifecycle events.
+  </Card>
+  <Card title="Certificate syncs" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    View all supported sync destinations.
+  </Card>
+</CardGroup>

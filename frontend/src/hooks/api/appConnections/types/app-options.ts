@@ -281,6 +281,10 @@ export type TNetScalerConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.NetScaler;
 };
 
+export type TPaloAltoNetworksConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.PaloAltoNetworks;
+};
+
 export type TKempLoadMasterConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.KempLoadMaster;
 };
@@ -429,6 +433,7 @@ export type TAppConnectionOption =
   | TExternalInfisicalConnectionOption
   | TDopplerConnectionOption
   | TNetScalerConnectionOption
+  | TPaloAltoNetworksConnectionOption
   | TKempLoadMasterConnectionOption
   | TAnthropicConnectionOption
   | TOvhConnectionOption
@@ -518,6 +523,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.ExternalInfisical]: TExternalInfisicalConnectionOption;
   [AppConnection.Doppler]: TDopplerConnectionOption;
   [AppConnection.NetScaler]: TNetScalerConnectionOption;
+  [AppConnection.PaloAltoNetworks]: TPaloAltoNetworksConnectionOption;
   [AppConnection.KempLoadMaster]: TKempLoadMasterConnectionOption;
   [AppConnection.Anthropic]: TAnthropicConnectionOption;
   [AppConnection.OVH]: TOvhConnectionOption;

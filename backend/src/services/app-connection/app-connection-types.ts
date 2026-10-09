@@ -366,6 +366,12 @@ import {
   TValidateOvhConnectionCredentialsSchema
 } from "./ovh";
 import {
+  TPaloAltoNetworksConnection,
+  TPaloAltoNetworksConnectionConfig,
+  TPaloAltoNetworksConnectionInput,
+  TValidatePaloAltoNetworksConnectionCredentialsSchema
+} from "./palo-alto-networks";
+import {
   TPostgresConnection,
   TPostgresConnectionInput,
   TValidatePostgresConnectionCredentialsSchema
@@ -582,6 +588,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TExternalInfisicalConnection
   | TDopplerConnection
   | TNetScalerConnection
+  | TPaloAltoNetworksConnection
   | TKempLoadMasterConnection
   | TAnthropicConnection
   | TOvhConnection
@@ -680,6 +687,7 @@ export type TAppConnectionInput = { id: string } & (
   | TExternalInfisicalConnectionInput
   | TDopplerConnectionInput
   | TNetScalerConnectionInput
+  | TPaloAltoNetworksConnectionInput
   | TKempLoadMasterConnectionInput
   | TAnthropicConnectionInput
   | TOvhConnectionInput
@@ -812,6 +820,7 @@ export type TAppConnectionConfig =
   | TExternalInfisicalConnectionConfig
   | TDopplerConnectionConfig
   | TNetScalerConnectionConfig
+  | TPaloAltoNetworksConnectionConfig
   | TKempLoadMasterConnectionConfig
   | TAnthropicConnectionConfig
   | TOvhConnectionConfig
@@ -901,6 +910,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateExternalInfisicalConnectionCredentialsSchema
   | TValidateDopplerConnectionCredentialsSchema
   | TValidateNetScalerConnectionCredentialsSchema
+  | TValidatePaloAltoNetworksConnectionCredentialsSchema
   | TValidateKempLoadMasterConnectionCredentialsSchema
   | TValidateAnthropicConnectionCredentialsSchema
   | TValidateOvhConnectionCredentialsSchema
