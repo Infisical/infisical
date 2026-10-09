@@ -3630,7 +3630,8 @@ export const registerRoutes = async (
     telemetryService,
     keyStore,
     pkiAlertV2Queue,
-    certificateAlertEventEmitter
+    certificateAlertEventEmitter,
+    auditLogService
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -3739,7 +3740,10 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     queueService,
     userDAL,
-    identityDAL
+    identityDAL,
+    certificateProfileDAL,
+    certificateAuthorityDAL,
+    auditLogService
   });
 
   const certificateIssuanceQueue = certificateIssuanceQueueFactory({
@@ -3820,7 +3824,8 @@ export const registerRoutes = async (
     [ApprovalPolicyType.CertRequest]: certRequestApprovalResourceFactory({
       approvalPolicyDAL,
       certificateApprovalService,
-      certificateRequestDAL
+      certificateRequestDAL,
+      certificateRequestService
     }) as TApprovalResourceRegistry[ApprovalPolicyType],
     [ApprovalPolicyType.CertCodeSigning]: codeSigningApprovalResourceFactory({
       approvalPolicyDAL,
@@ -4040,7 +4045,8 @@ export const registerRoutes = async (
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
     licenseService,
-    telemetryService
+    telemetryService,
+    auditLogService
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({
@@ -4102,7 +4108,9 @@ export const registerRoutes = async (
     certificateProfileDAL,
     estEnrollmentConfigDAL,
     certificatePolicyDAL,
-    pkiApplicationProfileDAL
+    pkiApplicationProfileDAL,
+    pkiApplicationDAL,
+    auditLogService
   });
 
   const pkiScepService = pkiScepServiceFactory({
@@ -4168,6 +4176,7 @@ export const registerRoutes = async (
     approvalPolicyService,
     certificateRequestDAL,
     pkiApplicationProfileDAL,
+    pkiApplicationDAL,
     acmeEnrollmentConfigDAL
   });
 
