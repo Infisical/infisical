@@ -17,7 +17,7 @@ import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
-import { blockLocalAndPrivateIpAddresses, ipGuardedAgents } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -462,9 +462,16 @@ export const executeAcmeOrder = async (
 
   await reportProgress("Submitting order to the certificate authority");
 
-  const ipGuardInterceptorId = acme.axios.interceptors.request.use(async (config) => {
-    if (config.url) await blockLocalAndPrivateIpAddresses(config.url);
-    return { ...config, ...ipGuardedAgents, maxRedirects: 0 };
+  const ssrfInterceptorId = acme.axios.interceptors.request.use(async (config) => {
+    if (!config.url) return config;
+    const agent = await buildSsrfSafeAgent(config.url);
+    return {
+      ...config,
+      httpAgent: agent,
+      httpsAgent: agent,
+      maxRedirects: 0,
+      ...(getConfig().SAFE_REQUEST_FORCE_DIRECT_EGRESS && { proxy: false as const })
+    };
   });
 
   const order = acmeClient.auto({
@@ -634,7 +641,7 @@ export const executeAcmeOrder = async (
     }
   });
 
-  const pem = await order.finally(() => acme.axios.interceptors.request.eject(ipGuardInterceptorId));
+  const pem = await order.finally(() => acme.axios.interceptors.request.eject(ssrfInterceptorId));
 
   if (isCancelled && (await isCancelled())) {
     throw new CertificateRequestCancelledError();

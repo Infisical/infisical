@@ -1,7 +1,6 @@
 import RE2 from "re2";
 
-import { request } from "@app/lib/config/request";
-import { blockLocalAndPrivateIpAddresses, ipGuardedAgents } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
@@ -58,8 +57,7 @@ const listZabbixSecrets = async (apiToken: string, instanceUrl: string, hostId?:
   };
 
   try {
-    const response: ZabbixApiResponse<TZabbixSecret[]> = await request.post(apiUrl, payload, {
-      ...ipGuardedAgents,
+    const response: ZabbixApiResponse<TZabbixSecret[]> = await safeRequest.post(apiUrl, payload, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiToken}`
@@ -106,8 +104,7 @@ const putZabbixSecrets = async (
         };
 
         // eslint-disable-next-line no-await-in-loop
-        const response: ZabbixApiResponse<ZabbixMacroCreateResponse> = await request.post(apiUrl, updatePayload, {
-          ...ipGuardedAgents,
+        const response: ZabbixApiResponse<ZabbixMacroCreateResponse> = await safeRequest.post(apiUrl, updatePayload, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${apiToken}`
@@ -138,8 +135,7 @@ const putZabbixSecrets = async (
         };
 
         // eslint-disable-next-line no-await-in-loop
-        const response: ZabbixApiResponse<ZabbixMacroCreateResponse> = await request.post(apiUrl, createPayload, {
-          ...ipGuardedAgents,
+        const response: ZabbixApiResponse<ZabbixMacroCreateResponse> = await safeRequest.post(apiUrl, createPayload, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${apiToken}`
@@ -183,8 +179,7 @@ const deleteZabbixSecrets = async (
       id: 1
     };
 
-    const response: ZabbixApiResponse<ZabbixMacroDeleteResponse> = await request.post(apiUrl, payload, {
-      ...ipGuardedAgents,
+    const response: ZabbixApiResponse<ZabbixMacroDeleteResponse> = await safeRequest.post(apiUrl, payload, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiToken}`

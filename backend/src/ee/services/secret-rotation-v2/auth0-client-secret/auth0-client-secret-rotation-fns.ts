@@ -12,10 +12,9 @@ import {
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { blockLocalAndPrivateIpAddresses, ipGuardedAgents } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { getAuth0ConnectionAccessToken } from "@app/services/app-connection/auth0/auth0-connection-fns";
 
 import { generatePassword } from "../shared/utils";
@@ -36,10 +35,9 @@ export const auth0ClientSecretRotationFactory: TRotationFactory<
     await blockLocalAndPrivateIpAddresses(audience);
     const clientSecret = generatePassword();
 
-    await request.request({
+    await safeRequest.request({
       method: "PATCH",
       url: `${audience}clients/${clientId}`,
-      ...ipGuardedAgents,
       headers: { authorization: `Bearer ${accessToken}` },
       data: {
         client_secret: clientSecret
@@ -66,10 +64,9 @@ export const auth0ClientSecretRotationFactory: TRotationFactory<
     await blockLocalAndPrivateIpAddresses(audience);
 
     // we just trigger an auth0 rotation to negate our credentials
-    await request.request({
+    await safeRequest.request({
       method: "POST",
       url: `${audience}clients/${clientId}/rotate-secret`,
-      ...ipGuardedAgents,
       headers: { authorization: `Bearer ${accessToken}` }
     });
 
@@ -110,10 +107,9 @@ export const auth0ClientSecretRotationFactory: TRotationFactory<
     await blockLocalAndPrivateIpAddresses(instanceUrl);
 
     try {
-      await request.request({
+      await safeRequest.request({
         method: "POST",
         url: `${removeTrailingSlash(instanceUrl)}/oauth/token`,
-        ...ipGuardedAgents,
         headers: { "content-type": "application/x-www-form-urlencoded" },
         data: new URLSearchParams({
           grant_type: "client_credentials",

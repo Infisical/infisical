@@ -1,9 +1,8 @@
 import { AxiosError } from "axios";
 import RE2 from "re2";
 
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { blockLocalAndPrivateIpAddresses, ipGuardedAgents } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { ZabbixConnectionMethod } from "./zabbix-connection-enums";
@@ -40,13 +39,16 @@ export const validateZabbixConnectionCredentials = async (config: TZabbixConnect
       id: 1
     };
 
-    const response: { data: { error?: { message: string }; result?: string } } = await request.post(apiUrl, payload, {
-      ...ipGuardedAgents,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiToken}`
+    const response: { data: { error?: { message: string }; result?: string } } = await safeRequest.post(
+      apiUrl,
+      payload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiToken}`
+        }
       }
-    });
+    );
 
     if (response.data.error) {
       throw new BadRequestError({
@@ -83,8 +85,7 @@ export const listZabbixHosts = async (appConnection: TZabbixConnection): Promise
       id: 1
     };
 
-    const response: { data: TZabbixHostListResponse } = await request.post(apiUrl, payload, {
-      ...ipGuardedAgents,
+    const response: { data: TZabbixHostListResponse } = await safeRequest.post(apiUrl, payload, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiToken}`

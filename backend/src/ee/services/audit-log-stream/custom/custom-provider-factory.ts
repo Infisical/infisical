@@ -1,10 +1,10 @@
 import { RawAxiosRequestHeaders } from "axios";
 
-import { request } from "@app/lib/config/request";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
+import { safeRequest } from "@app/lib/validator";
 
 import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
-import { auditLogStreamAgents, blockAuditLogStreamInternalIps } from "../audit-log-stream-fns";
 import {
   TLogStreamFactoryBatchStreamLog,
   TLogStreamFactoryGetProviderBatchLimit,
@@ -19,8 +19,6 @@ export const CustomProviderFactory = () => {
   }) => {
     const { url, headers } = credentials;
 
-    await blockAuditLogStreamInternalIps(url);
-
     const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
     if (headers.length) {
       headers.forEach(({ key, value }) => {
@@ -28,15 +26,14 @@ export const CustomProviderFactory = () => {
       });
     }
 
-    await request
+    await safeRequest
       .post(
         url,
         { ping: "ok" },
         {
-          ...auditLogStreamAgents,
           headers: streamHeaders,
           timeout: AUDIT_LOG_STREAM_TIMEOUT,
-          maxRedirects: 0
+          allowPrivateIps: getConfig().AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP
         }
       )
       .catch((err) => {
@@ -54,8 +51,6 @@ export const CustomProviderFactory = () => {
 
     const { url, headers } = credentials;
 
-    await blockAuditLogStreamInternalIps(url);
-
     const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
 
     if (headers.length) {
@@ -64,18 +59,16 @@ export const CustomProviderFactory = () => {
       });
     }
 
-    await request.post(url, auditLogs, {
-      ...auditLogStreamAgents,
+    await safeRequest.post(url, auditLogs, {
       headers: streamHeaders,
-      timeout: AUDIT_LOG_STREAM_BATCH_TIMEOUT
+      timeout: AUDIT_LOG_STREAM_BATCH_TIMEOUT,
+      allowPrivateIps: getConfig().AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP
     });
   };
 
   const streamLog: TLogStreamFactoryStreamLog<TCustomProviderCredentials> = async ({ credentials, auditLog }) => {
     const { url, headers } = credentials;
 
-    await blockAuditLogStreamInternalIps(url);
-
     const streamHeaders: RawAxiosRequestHeaders = { "Content-Type": "application/json" };
 
     if (headers.length) {
@@ -84,10 +77,10 @@ export const CustomProviderFactory = () => {
       });
     }
 
-    await request.post(url, auditLog, {
-      ...auditLogStreamAgents,
+    await safeRequest.post(url, auditLog, {
       headers: streamHeaders,
-      timeout: AUDIT_LOG_STREAM_TIMEOUT
+      timeout: AUDIT_LOG_STREAM_TIMEOUT,
+      allowPrivateIps: getConfig().AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP
     });
   };
 

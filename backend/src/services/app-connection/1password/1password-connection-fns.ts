@@ -1,9 +1,8 @@
 import { AxiosError } from "axios";
 
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { blockLocalAndPrivateIpAddresses, ipGuardedAgents } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { OnePassConnectionMethod } from "./1password-connection-enums";
@@ -31,8 +30,7 @@ export const validateOnePassConnectionCredentials = async (config: TOnePassConne
   const { apiToken } = config.credentials;
 
   try {
-    const res = await request.get(`${instanceUrl}/v1/vaults`, {
-      ...ipGuardedAgents,
+    const res = await safeRequest.get(`${instanceUrl}/v1/vaults`, {
       headers: {
         Authorization: `Bearer ${apiToken}`,
         Accept: "application/json"
@@ -60,8 +58,7 @@ export const listOnePassVaults = async (appConnection: TOnePassConnection) => {
   const instanceUrl = await getOnePassInstanceUrl(appConnection);
   const { apiToken } = appConnection.credentials;
 
-  const resp = await request.get<TOnePassVault[]>(`${instanceUrl}/v1/vaults`, {
-    ...ipGuardedAgents,
+  const resp = await safeRequest.get<TOnePassVault[]>(`${instanceUrl}/v1/vaults`, {
     headers: {
       Authorization: `Bearer ${apiToken}`,
       Accept: "application/json"

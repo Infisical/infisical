@@ -8,22 +8,16 @@ import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { getTlsServerNameOptions } from "@app/lib/tls";
-import { blockLocalAndPrivateIpAddresses, ipGuardedLookup } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { NetScalerConnectionMethod } from "./netscaler-connection-enums";
 import { TNetScalerConnectionConfig } from "./netscaler-connection-types";
 
-export const createNetScalerHttpsAgent = (credentials: {
-  sslRejectUnauthorized?: boolean;
-  sslCertificate?: string;
-}): https.Agent => {
-  return new https.Agent({
-    rejectUnauthorized: credentials.sslRejectUnauthorized,
-    ca: credentials.sslCertificate ? [credentials.sslCertificate] : undefined,
-    lookup: ipGuardedLookup
-  });
-};
+const getNetScalerTlsOptions = (credentials: { sslRejectUnauthorized?: boolean; sslCertificate?: string }) => ({
+  rejectUnauthorized: credentials.sslRejectUnauthorized,
+  ca: credentials.sslCertificate ? [credentials.sslCertificate] : undefined
+});
 
 export const getNetScalerConnectionListItem = () => {
   return {
@@ -86,10 +80,10 @@ const requestWithNetScalerGateway = async <T>(
 
   await blockLocalAndPrivateIpAddresses(`https://${hostname}`, false);
 
-  const httpsAgent = createNetScalerHttpsAgent(credentials);
-  const resp = await request.request<T>({
+  const resp = await safeRequest.request<T>({
     ...requestConfig,
-    httpsAgent
+    url: requestConfig.url as string,
+    ...getNetScalerTlsOptions(credentials)
   });
   return resp.data;
 };
@@ -213,12 +207,11 @@ export const executeNetScalerOperationWithGateway = async <T>(
 
   await blockLocalAndPrivateIpAddresses(`https://${hostname}`, false);
 
-  const httpsAgent = createNetScalerHttpsAgent(credentials);
-
   const makeRequest = async <R>(requestCfg: AxiosRequestConfig): Promise<R> => {
-    const resp = await request.request<R>({
+    const resp = await safeRequest.request<R>({
       ...requestCfg,
-      httpsAgent
+      url: requestCfg.url as string,
+      ...getNetScalerTlsOptions(credentials)
     });
     return resp.data;
   };

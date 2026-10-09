@@ -1,7 +1,6 @@
-import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { blockLocalAndPrivateIpAddresses, ipGuardedAgents } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
@@ -27,10 +26,9 @@ const authorizeAuth0Connection = async ({
   const instanceUrl = domain.startsWith("http") ? domain : `https://${domain}`;
   await blockLocalAndPrivateIpAddresses(instanceUrl);
 
-  const { data } = await request.request<TAuth0AccessTokenResponse>({
+  const { data } = await safeRequest.request<TAuth0AccessTokenResponse>({
     method: "POST",
     url: `${removeTrailingSlash(instanceUrl)}/oauth/token`,
-    ...ipGuardedAgents,
     headers: { "content-type": "application/x-www-form-urlencoded" },
     data: new URLSearchParams({
       grant_type: "client_credentials", // this will need to be resolved if we support methods other than client credentials

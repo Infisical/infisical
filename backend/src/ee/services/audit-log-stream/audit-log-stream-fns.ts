@@ -1,6 +1,4 @@
 import { TAuditLogs, TAuditLogStreams } from "@app/db/schemas";
-import { getConfig } from "@app/lib/config/env";
-import { blockLocalAndPrivateIpAddresses, createIpGuardedAgents } from "@app/lib/validator";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
@@ -13,11 +11,6 @@ import { getCustomProviderListItem } from "./custom/custom-provider-fns";
 import { getDatadogProviderListItem } from "./datadog/datadog-provider-fns";
 import { getSplunkProviderListItem } from "./splunk/splunk-provider-fns";
 import { getSumoLogicProviderListItem } from "./sumo-logic/sumo-logic-provider-fns";
-
-export const blockAuditLogStreamInternalIps = (url: string) =>
-  blockLocalAndPrivateIpAddresses(url, false, getConfig().AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP);
-
-export const auditLogStreamAgents = createIpGuardedAgents(() => getConfig().AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP);
 
 // The instant a provider should report the event at. Delivery can lag the event by minutes
 // (retry backoff tops out around 240s) or by months during a backfill, so a provider that

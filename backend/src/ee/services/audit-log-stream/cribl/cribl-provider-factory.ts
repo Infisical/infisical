@@ -1,10 +1,10 @@
 import { RawAxiosRequestHeaders } from "axios";
 
-import { request } from "@app/lib/config/request";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
+import { safeRequest } from "@app/lib/validator";
 
 import { AUDIT_LOG_STREAM_BATCH_TIMEOUT, AUDIT_LOG_STREAM_TIMEOUT } from "../../audit-log/audit-log-queue";
-import { auditLogStreamAgents, blockAuditLogStreamInternalIps } from "../audit-log-stream-fns";
 import {
   TLogStreamFactoryBatchStreamLog,
   TLogStreamFactoryGetProviderBatchLimit,
@@ -19,18 +19,16 @@ export const CriblProviderFactory = () => {
   }) => {
     const { url, token } = credentials;
 
-    await blockAuditLogStreamInternalIps(url);
-
     const streamHeaders: RawAxiosRequestHeaders = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`
     };
 
-    await request
+    await safeRequest
       .post(url, JSON.stringify({ ping: "ok" }), {
-        ...auditLogStreamAgents,
         headers: streamHeaders,
-        timeout: AUDIT_LOG_STREAM_TIMEOUT
+        timeout: AUDIT_LOG_STREAM_TIMEOUT,
+        allowPrivateIps: getConfig().AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP
       })
       .catch((err) => {
         throw new BadRequestError({ message: `Failed to connect with Cribl: ${(err as Error)?.message}` });
@@ -48,8 +46,6 @@ export const CriblProviderFactory = () => {
 
     const { url, token } = credentials;
 
-    await blockAuditLogStreamInternalIps(url);
-
     const streamHeaders: RawAxiosRequestHeaders = {
       "Content-Type": "application/x-ndjson",
       Authorization: `Bearer ${token}`
@@ -57,27 +53,25 @@ export const CriblProviderFactory = () => {
 
     const body = auditLogs.map((auditLog) => JSON.stringify(auditLog)).join("\n");
 
-    await request.post(url, body, {
-      ...auditLogStreamAgents,
+    await safeRequest.post(url, body, {
       headers: streamHeaders,
-      timeout: AUDIT_LOG_STREAM_BATCH_TIMEOUT
+      timeout: AUDIT_LOG_STREAM_BATCH_TIMEOUT,
+      allowPrivateIps: getConfig().AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP
     });
   };
 
   const streamLog: TLogStreamFactoryStreamLog<TCriblProviderCredentials> = async ({ credentials, auditLog }) => {
     const { url, token } = credentials;
 
-    await blockAuditLogStreamInternalIps(url);
-
     const streamHeaders: RawAxiosRequestHeaders = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`
     };
 
-    await request.post(url, JSON.stringify(auditLog), {
-      ...auditLogStreamAgents,
+    await safeRequest.post(url, JSON.stringify(auditLog), {
       headers: streamHeaders,
-      timeout: AUDIT_LOG_STREAM_TIMEOUT
+      timeout: AUDIT_LOG_STREAM_TIMEOUT,
+      allowPrivateIps: getConfig().AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP
     });
   };
 
