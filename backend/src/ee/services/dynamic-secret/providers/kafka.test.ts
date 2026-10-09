@@ -323,10 +323,27 @@ describe("KafkaProvider.create", () => {
     ]);
   });
 
+  test.each(["{{identity.name}}", "lease-user"])(
+    "refuses the username template %s, which has no random part",
+    async (usernameTemplate) => {
+      await expect(KafkaProvider().create(createArgs(baseInputs, usernameTemplate))).rejects.toThrow(
+        "username template has no random part"
+      );
+      expect(FakeConnection.instances).toHaveLength(0);
+    }
+  );
+
+  test.each(["{{randomUsername}}", "{{identity.name}}-{{random 8}}", "{{truncate randomUsername 12}}"])(
+    "accepts the username template %s",
+    async (usernameTemplate) => {
+      await expect(KafkaProvider().create(createArgs(baseInputs, usernameTemplate))).resolves.toBeDefined();
+    }
+  );
+
   test.each([
     ["has SCRAM credentials", () => describeScramCredentials.mockResolvedValue({ results: [] } as never), undefined],
     ["has ACLs", () => describeAcls.mockResolvedValue({ resources: [{}] } as never), undefined],
-    ["is the admin user", () => undefined, "admin"]
+    ["is the admin user", () => undefined, "admin{{random 0}}"]
   ])("refuses a username that %s without changing it", async (_case, setUp, usernameTemplate) => {
     setUp();
 

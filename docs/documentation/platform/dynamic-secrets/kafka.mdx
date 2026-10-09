@@ -75,9 +75,9 @@ Lease users log in with SCRAM-SHA-256 or SCRAM-SHA-512. To learn how leases work
 
     <DynamicSecretUsernameTemplateParamField />
 
-    <Warning>
-      If you change the template, make sure it generates a different name for each lease, for example by including `{{randomUsername}}`. Infisical refuses a name that matches the admin user or a Kafka user with SCRAM credentials or ACLs, but it can't see users defined only in the brokers' JAAS configuration. If a lease gets the name of a super user defined there, the lease user has super user access.
-    </Warning>
+    <Note>
+      The template must include a random part, such as `{{randomUsername}}` or `{{random 8}}` (for example, `{{identity.name}}-{{random 8}}`), so that each lease gets a new Kafka user. A fixed name could match a user that already exists, and the lease would take over that user's access.
+    </Note>
 
     <ParamField path="Enable SSL" type="boolean" default="false">
       Connect to the brokers over TLS. Turn this on if the listener uses `SASL_SSL`.
@@ -183,7 +183,7 @@ These examples show the ACLs to add in [Step 1](#step-1-create-the-dynamic-secre
     The broker rejected the admin user's login. Check the **Password**, and check that the admin user has a credential for the **SASL Mechanism** you selected. For example, a user defined only in the brokers' JAAS configuration for PLAIN has no SCRAM credential.
   </Accordion>
   <Accordion title="A Kafka user with the generated username already exists">
-    The username template generated the name of the admin user or of a Kafka user that already has SCRAM credentials or ACLs. Infisical doesn't change existing users, so change the **Username Template** to one that generates a different name for each lease, such as one that includes `{{randomUsername}}`.
+    The username template generated the name of the admin user or of a Kafka user that already has SCRAM credentials or ACLs, which can happen if the random part of the template is short. Infisical doesn't change existing users, so use a longer random part in the **Username Template**, such as `{{randomUsername}}`.
   </Accordion>
   <Accordion title="On a ZooKeeper cluster, Infisical can't connect to a broker you didn't add">
     With ZooKeeper, only the controller broker accepts changes to SCRAM users, so Infisical connects to the controller at the address the controller advertises. Any broker can become the controller, so make sure Infisical can reach every broker's advertised address.

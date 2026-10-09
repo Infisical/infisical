@@ -47,6 +47,9 @@ const SCRAM_CREDENTIALS = [
   { mechanism: ScramMechanisms.SCRAM_SHA_512, digest: "sha512", keyLength: 64 }
 ] as const;
 
+// {{randomUsername}} or {{random N}}, on its own or inside a helper such as {{truncate randomUsername 12}}
+const RANDOM_TEMPLATE_PART = /{{[^}]*\b(?:randomUsername\b|random\s+\d)/;
+
 const REQUIRED_APIS = [alterUserScramCredentialsV0.api, createAclsV3.api, deleteAclsV3.api];
 
 const generatePassword = () => {
@@ -226,6 +229,14 @@ export const KafkaProvider = (): TDynamicProviderFns => {
     dynamicSecret: TDynamicSecrets;
   }) => {
     const { inputs, usernameTemplate, identity, dynamicSecret } = data;
+    // A fixed name could match a user Infisical can't detect, such as a super user defined only in a broker's JAAS
+    // configuration, and the lease would take over that user's access
+    if (usernameTemplate && !RANDOM_TEMPLATE_PART.test(usernameTemplate)) {
+      throw new BadRequestError({
+        message:
+          "This dynamic secret's username template has no random part. Edit the dynamic secret and add one, such as {{randomUsername}} or {{random 8}}, so that each lease gets a new Kafka user."
+      });
+    }
     const providerInputs = await validateProviderInputs(inputs);
 
     const username = await generateUsername(usernameTemplate, {
