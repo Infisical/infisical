@@ -18,6 +18,8 @@ import {
 
 export const KEEPER_UID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
+// Commander parses a positional UID starting with "-" as a flag and Service Mode blocks the "--" separator.
+// record-add never generates such a UID, so this only skips records created by other Keeper clients.
 export const isAddressableKeeperUid = (uid: string) => KEEPER_UID_PATTERN.test(uid) && !uid.startsWith("-");
 
 export const quoteKeeperArg = (value: string) => `'${value.replace(/'/g, `'"'"'`)}'`;
