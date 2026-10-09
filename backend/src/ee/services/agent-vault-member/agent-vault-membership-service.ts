@@ -32,6 +32,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { resolveUsersBySsoExternalId } from "@app/services/user-alias/user-alias-fns";
 
+import { resolveAgentVaultActorNames, TAgentVaultActorName } from "../agent-vault/agent-vault-actor-name-fns";
 import { AgentVaultMemberType } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultMemberDALFactory } from "./agent-vault-member-dal";
 
@@ -95,16 +96,15 @@ export type TRevokeAgentVaultProductMembersDTO = TAgentVaultMemberIds & {
 };
 
 // actorName is for the audit body; the response schemas do not select it.
-type TAgentVaultWrittenMember = {
-  id: string;
+type TAgentVaultAuditedActor = TAgentVaultActorRef & { actorName?: TAgentVaultActorName };
+
+type TAgentVaultWrittenMember = TAgentVaultAuditedActor & {
   role: string;
-  createdAt: Date;
-  actor: TAgentVaultActorRef;
-  actorName?: string;
+  addedAt: Date;
 };
 
-type TAgentVaultMemberWriteResult = Promise<{
-  members: TAgentVaultWrittenMember[];
+type TAgentVaultMemberWriteResult<TMember> = Promise<{
+  members: TMember[];
   skipped: TAgentVaultNamedActor[];
 }>;
 
@@ -313,27 +313,8 @@ export const agentVaultMembershipServiceFactory = ({
     return [...byKey.values()];
   };
 
-  const resolveActorNames = async (actors: TAgentVaultNamedActor[]) => {
-    const [users, groups, identities] = await Promise.all([
-      named(actors, AgentVaultMemberType.User).length
-        ? userDAL.find({ $in: { id: named(actors, AgentVaultMemberType.User) } })
-        : [],
-      named(actors, AgentVaultMemberType.Group).length
-        ? groupDAL.find({ $in: { id: named(actors, AgentVaultMemberType.Group) } })
-        : [],
-      named(actors, AgentVaultMemberType.MachineIdentity).length
-        ? identityDAL.find({ $in: { id: named(actors, AgentVaultMemberType.MachineIdentity) } })
-        : []
-    ]);
-
-    const nameByKey = new Map<string, string>();
-    users.forEach((user) => nameByKey.set(`${AgentVaultMemberType.User}:${user.id}`, user.username));
-    groups.forEach((group) => nameByKey.set(`${AgentVaultMemberType.Group}:${group.id}`, group.name));
-    identities.forEach((identity) =>
-      nameByKey.set(`${AgentVaultMemberType.MachineIdentity}:${identity.id}`, identity.name)
-    );
-    return nameByKey;
-  };
+  const resolveActorNames = (actors: TAgentVaultActorRef[]) =>
+    resolveAgentVaultActorNames({ userDAL, groupDAL, identityDAL }, actors);
 
   // resolveSession refuses an actor with no active org membership, so one added without it could never mint.
   const assertActorsAreAddable = async (actors: TAgentVaultNamedActor[], orgId: string, projectId: string) => {
@@ -420,7 +401,7 @@ export const agentVaultMembershipServiceFactory = ({
       // stranger would hand back another tenant's email, and tell a real id apart from a made-up one.
       const nameByKey = await resolveActorNames(deactivated);
       const listOf = (refused: TAgentVaultNamedActor[]) =>
-        refused.map((actor) => `'${nameByKey.get(actorKey(actor)) ?? actor.identifier}'`).join(", ");
+        refused.map((actor) => `'${nameByKey.get(actorKey(actor))?.name ?? actor.identifier}'`).join(", ");
 
       // Both, when a batch holds both: fixing one and retrying to discover the other is a wasted round
       // trip, and a bulk change is where that hurts.
@@ -476,7 +457,7 @@ export const agentVaultMembershipServiceFactory = ({
     ctx,
     emails,
     ...ids
-  }: TAddAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult => {
+  }: TAddAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultWrittenMember> => {
     await checkProductAdmin(projectId, ctx);
     assertValidRole(role);
 
@@ -523,10 +504,10 @@ export const agentVaultMembershipServiceFactory = ({
         created: toCreate.map((actor) => {
           const membership = membershipByActor.get(actorKey(actor))!;
           return {
-            id: membership.id,
+            type: actor.type,
+            id: actor.id,
             role,
-            createdAt: membership.createdAt,
-            actor: { type: actor.type, id: actor.id },
+            addedAt: membership.createdAt,
             actorName: nameByKey.get(actorKey(actor))
           };
         }),
@@ -571,10 +552,10 @@ export const agentVaultMembershipServiceFactory = ({
 
       return {
         member: {
-          id: membership.id,
+          type: actor.type,
+          id: actor.id,
           role: membershipRole.role,
-          createdAt: membership.createdAt,
-          actor,
+          addedAt: membership.createdAt,
           actorName: nameByKey.get(actorKey(actor))
         }
       };
@@ -585,7 +566,7 @@ export const agentVaultMembershipServiceFactory = ({
     projectId,
     ctx,
     ...ids
-  }: TRevokeAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult => {
+  }: TRevokeAgentVaultProductMembersDTO): TAgentVaultMemberWriteResult<TAgentVaultAuditedActor> => {
     await checkProductAdmin(projectId, ctx);
 
     const actors = await resolveNamedActors({ ...ids, emails: [] }, ctx.actorOrgId);
@@ -647,16 +628,11 @@ export const agentVaultMembershipServiceFactory = ({
       await membershipDAL.delete({ $in: { id: membershipIds } }, tx);
 
       return {
-        removed: held.map((actor) => {
-          const membership = existing.get(actorKey(actor))!;
-          return {
-            id: membership.id,
-            role: "",
-            createdAt: membership.createdAt,
-            actor: { type: actor.type, id: actor.id },
-            actorName: nameByKey.get(actorKey(actor))
-          };
-        }),
+        removed: held.map((actor) => ({
+          type: actor.type,
+          id: actor.id,
+          actorName: nameByKey.get(actorKey(actor))
+        })),
         skipped
       };
     });
