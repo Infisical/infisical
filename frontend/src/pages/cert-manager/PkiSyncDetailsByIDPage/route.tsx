@@ -11,7 +11,7 @@ const PkiSyncDetailsSearchSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/integrations/$syncId"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/integrations/$syncId"
 )({
   component: PkiSyncDetailsByIDPage,
   validateSearch: zodValidator(PkiSyncDetailsSearchSchema),
@@ -22,7 +22,7 @@ export const Route = createFileRoute(
         {
           label: "Certificate Syncs",
           link: linkOptions({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/integrations",
+            to: "/organizations/$orgId/cert-manager/integrations",
             params,
             search: {
               selectedTab: IntegrationsListPageTabs.PkiSyncs

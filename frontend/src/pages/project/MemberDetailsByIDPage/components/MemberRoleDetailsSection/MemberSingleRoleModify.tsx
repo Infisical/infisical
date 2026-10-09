@@ -85,7 +85,10 @@ export const MemberSingleRoleModify = ({
     return (
       <Alert variant="danger">
         <CircleAlertIcon />
-        <AlertTitle>Could not load project roles</AlertTitle>
+        <AlertTitle>
+          Could not load{" "}
+          {currentProject?.type === ProjectType.CertificateManager ? "roles" : "project roles"}
+        </AlertTitle>
         <AlertDescription>
           <span>Retry to edit this role.</span>
           <Button size="xs" variant="danger" onClick={() => refetchRoles().catch(() => undefined)}>

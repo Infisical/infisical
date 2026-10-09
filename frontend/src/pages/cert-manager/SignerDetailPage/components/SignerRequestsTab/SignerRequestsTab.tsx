@@ -36,7 +36,7 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization } from "@app/context";
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
   SIGNER_TABLE_PAGE_SIZE,
@@ -72,7 +72,6 @@ type Props = {
 export const SignerRequestsTab = ({ signerId, canPreApprove, canRequestSign }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
   const [statusFilters, setStatusFilters] = useState<Set<FilterStatus>>(new Set());
   const [isRequestOpen, setIsRequestOpen] = useState(false);
   const [isPreApproveOpen, setIsPreApproveOpen] = useState(false);
@@ -254,10 +253,9 @@ export const SignerRequestsTab = ({ signerId, canPreApprove, canRequestSign }: P
                       className="group cursor-pointer transition-colors hover:bg-surface-hover [&>td]:py-3"
                       onClick={() =>
                         navigate({
-                          to: "/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId",
+                          to: "/organizations/$orgId/cert-manager/approvals/$approvalRequestId",
                           params: {
                             orgId: currentOrg.id,
-                            projectId: currentProject.id,
                             approvalRequestId: req.id
                           },
                           search: {

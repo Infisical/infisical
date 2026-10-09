@@ -75,7 +75,7 @@ const Page = () => {
     });
 
     createNotification({
-      text: "Successfully deleted project role",
+      text: isCertManager ? "Successfully deleted role" : "Successfully deleted project role",
       type: "success"
     });
     handlePopUpClose("deleteRole");
@@ -218,7 +218,7 @@ const Page = () => {
                 <AlertDescription>
                   In the new Certificate Manager flow, access is granted through Application
                   memberships (Admin or Member). Permissions defined here only apply to legacy
-                  endpoints — users with this role are treated as Member at the project level and
+                  endpoints — users with this role are treated as Member in Certificate Manager and
                   only see resources inside Applications they are explicitly added to.
                 </AlertDescription>
               </Alert>
@@ -237,7 +237,7 @@ const Page = () => {
       />
       <DeleteProjectRoleDialog
         isOpen={popUp.deleteRole.isOpen}
-        roleName={data?.name ?? "project role"}
+        roleName={data?.name ?? (isCertManager ? "role" : "project role")}
         confirmationKey="confirm"
         isPending={isDeletingRole}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
@@ -254,10 +254,14 @@ const Page = () => {
 
 export const RoleDetailsBySlugPage = () => {
   const { t } = useTranslation();
+  const { currentProject } = useProject();
+  const isCertManager = currentProject.type === ProjectType.CertificateManager;
   return (
     <>
       <Helmet>
-        <title>{t("common.head-title", { title: "Project Settings" })}</title>
+        <title>
+          {t("common.head-title", { title: isCertManager ? "Role" : "Project Settings" })}
+        </title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <ProjectPermissionCan

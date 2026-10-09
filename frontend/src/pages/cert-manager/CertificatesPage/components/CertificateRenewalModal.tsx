@@ -592,10 +592,9 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
 
     if (currentOrg?.id && currentProject?.id && result.certificateId && result.certificate) {
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId",
+        to: "/organizations/$orgId/cert-manager/certificates/$certificateId",
         params: {
           orgId: currentOrg.id,
-          projectId: currentProject.id,
           certificateId: result.certificateId
         },
         ...(applicationName && { search: { fromApplication: applicationName } })

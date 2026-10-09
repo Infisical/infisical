@@ -107,6 +107,8 @@ const Page = () => {
   let removeMenuItemLabel = "Remove From Project";
   if (isProjectIdentity) {
     removeMenuItemLabel = "Delete Machine Identity";
+  } else if (isCertManager) {
+    removeMenuItemLabel = "Remove From Certificate Manager";
   } else if (isPam) {
     removeMenuItemLabel = "Remove From PAM";
   } else if (isAgentVault) {
@@ -199,7 +201,9 @@ const Page = () => {
     } catch {
       createNotification({
         type: "error",
-        text: "Failed to delete project machine identity"
+        text: isCertManager
+          ? "Failed to delete Certificate Manager machine identity"
+          : "Failed to delete project machine identity"
       });
     }
   };
@@ -442,7 +446,9 @@ const Page = () => {
           <IdentityActionConfirmationDialog
             open={popUp.deleteIdentity.isOpen}
             title={`Delete ${identity?.name || "machine identity"}?`}
-            description="This permanently deletes the project machine identity and revokes its access. This cannot be undone."
+            description={`This permanently deletes the ${
+              isCertManager ? "Certificate Manager" : "project"
+            } machine identity and revokes its access. This cannot be undone.`}
             descriptionAsAlert
             descriptionAlertVariant="danger"
             confirmationText="confirm"

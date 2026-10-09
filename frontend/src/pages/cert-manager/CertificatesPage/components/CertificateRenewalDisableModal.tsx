@@ -21,7 +21,7 @@ export const CertificateRenewalDisableModal = ({ popUp, handlePopUpToggle }: Pro
   const onDisableConfirm = async () => {
     if (!currentProject?.slug) {
       createNotification({
-        text: "Project not found",
+        text: "Certificate Manager could not be loaded. Please refresh and try again.",
         type: "error"
       });
       return;

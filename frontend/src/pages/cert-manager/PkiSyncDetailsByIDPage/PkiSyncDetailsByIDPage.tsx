@@ -24,6 +24,7 @@ import {
   ProviderIcon
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { useProject } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { usePopUp } from "@app/hooks";
 import { useGetPkiSync } from "@app/hooks/api/pkiSyncs";
@@ -43,7 +44,9 @@ import {
 
 const PageContent = () => {
   const navigate = useNavigate();
-  const { syncId, projectId, orgId } = useParams({
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
+  const { syncId, orgId } = useParams({
     from: ROUTE_PATHS.CertManager.PkiSyncDetailsByIDPage.id
   });
   const { applicationName } = useSearch({
@@ -84,15 +87,15 @@ const PageContent = () => {
   const handleBack = () => {
     if (applicationName) {
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
-        params: { orgId, projectId, applicationName },
+        to: "/organizations/$orgId/cert-manager/applications/$applicationName",
+        params: { orgId, applicationName },
         search: { selectedTab: ApplicationTab.Syncs }
       });
       return;
     }
     navigate({
       to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
-      params: { projectId, orgId },
+      params: { orgId },
       search: { selectedTab: IntegrationsListPageTabs.PkiSyncs }
     });
   };

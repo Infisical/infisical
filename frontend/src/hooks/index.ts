@@ -8,6 +8,7 @@ export { useDiscardChangesGuard } from "./useDiscardChangesGuard";
 export * from "./useGetProjectTypeFromRoute";
 export { useImplicitProduct } from "./useImplicitProduct";
 export { useImplicitProjectId } from "./useImplicitProjectId";
+export { useRouteProjectId } from "./useRouteProjectId";
 export { useLastLogin } from "./useLastLogin";
 export { useLocalStorageState } from "./useLocalStorageState";
 export { useOnboarding } from "./useOnboarding";

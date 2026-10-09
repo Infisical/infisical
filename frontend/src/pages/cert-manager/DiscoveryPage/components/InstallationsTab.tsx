@@ -147,10 +147,9 @@ export const InstallationsTab = ({ projectId }: Props) => {
                     className="cursor-pointer"
                     onClick={() =>
                       navigate({
-                        to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery/installations/$installationId",
+                        to: "/organizations/$orgId/cert-manager/discovery/installations/$installationId",
                         params: {
                           orgId: currentOrg.id,
-                          projectId,
                           installationId: installation.id
                         }
                       })

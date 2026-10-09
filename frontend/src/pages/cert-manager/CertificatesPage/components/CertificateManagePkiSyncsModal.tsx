@@ -111,10 +111,9 @@ export const CertificateManagePkiSyncsModal = ({
 
     if (applicationName) {
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+        to: "/organizations/$orgId/cert-manager/applications/$applicationName",
         params: {
           orgId: currentOrg.id,
-          projectId: currentProject.id,
           applicationName
         },
         search: { selectedTab: ApplicationTab.Syncs }
@@ -123,8 +122,7 @@ export const CertificateManagePkiSyncsModal = ({
       navigate({
         to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
         params: {
-          orgId: currentOrg.id,
-          projectId: currentProject.id
+          orgId: currentOrg.id
         },
         search: {
           selectedTab: IntegrationsListPageTabs.PkiSyncs

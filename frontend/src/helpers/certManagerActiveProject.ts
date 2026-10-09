@@ -16,3 +16,20 @@ export const setCertManagerActiveProjectCookie = (orgId: string, projectId: stri
   if (typeof document === "undefined") return;
   document.cookie = `${cookieName(orgId)}=${projectId}; path=/; max-age=${COOKIE_MAX_AGE_SECONDS}; SameSite=Lax`;
 };
+
+// Which Certificate Manager project a request in this org is for, now that the URL carries none: the
+// instance the user last opened, while they are still a member of it, otherwise the org's active
+// instance. The layout, the product switcher and the 403 page must all agree, so they share this.
+export const resolveCertManagerProjectId = ({
+  orgId,
+  activeProjectId,
+  memberProjectIds
+}: {
+  orgId: string;
+  activeProjectId: string | null;
+  memberProjectIds: string[];
+}): string | null => {
+  const pinnedProjectId = getCertManagerActiveProjectCookie(orgId);
+  if (pinnedProjectId && memberProjectIds.includes(pinnedProjectId)) return pinnedProjectId;
+  return activeProjectId;
+};

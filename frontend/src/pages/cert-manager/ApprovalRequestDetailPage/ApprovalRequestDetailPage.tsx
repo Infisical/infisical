@@ -34,7 +34,7 @@ import {
 } from "./components";
 
 const ROUTE_ID =
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/approvals/$approvalRequestId" as const;
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/approvals/$approvalRequestId" as const;
 
 const CodeSigningDetailsSection = ({
   requestData,
@@ -158,10 +158,9 @@ const PageContent = () => {
           });
           if (applicationName) {
             navigate({
-              to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+              to: "/organizations/$orgId/cert-manager/applications/$applicationName",
               params: {
                 orgId: currentProject.orgId,
-                projectId: currentProject.id,
                 applicationName
               },
               search: { selectedTab: ApplicationTab.Requests }
@@ -170,17 +169,16 @@ const PageContent = () => {
           }
           if (from === "root-requests") {
             navigate({
-              to: "/organizations/$orgId/projects/cert-manager/$projectId/requests",
-              params: { orgId: currentProject.orgId, projectId: currentProject.id }
+              to: "/organizations/$orgId/cert-manager/requests",
+              params: { orgId: currentProject.orgId }
             });
             return;
           }
           if (signerId) {
             navigate({
-              to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
+              to: "/organizations/$orgId/cert-manager/code-signing/$signerId",
               params: {
                 orgId: currentOrg.id,
-                projectId: currentProject.id,
                 signerId
               },
               search: { selectedTab: "approvals" }
@@ -189,11 +187,10 @@ const PageContent = () => {
           }
           navigate({
             to: isCodeSigning
-              ? "/organizations/$orgId/projects/cert-manager/$projectId/code-signing"
-              : "/organizations/$orgId/projects/cert-manager/$projectId/approvals",
+              ? "/organizations/$orgId/cert-manager/code-signing"
+              : "/organizations/$orgId/cert-manager/approvals",
             params: {
-              orgId: currentProject.orgId,
-              projectId: currentProject.id
+              orgId: currentProject.orgId
             },
             search: undefined
           });
@@ -284,10 +281,9 @@ const PageContent = () => {
               {" "}
               on application{" "}
               <Link
-                to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+                to="/organizations/$orgId/cert-manager/applications/$applicationName"
                 params={{
                   orgId: currentOrg.id,
-                  projectId: currentProject.id,
                   applicationName: requestApplication.name
                 }}
                 className="font-medium text-foreground-secondary underline hover:text-foreground"
@@ -322,10 +318,9 @@ const PageContent = () => {
     if (applicationName) {
       return (
         <Link
-          to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+          to="/organizations/$orgId/cert-manager/applications/$applicationName"
           params={{
             orgId: currentOrg.id,
-            projectId: currentProject.id,
             applicationName
           }}
           search={{ selectedTab: ApplicationTab.Requests }}
@@ -340,8 +335,8 @@ const PageContent = () => {
     if (from === "root-requests") {
       return (
         <Link
-          to="/organizations/$orgId/projects/cert-manager/$projectId/requests"
-          params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+          to="/organizations/$orgId/cert-manager/requests"
+          params={{ orgId: currentOrg.id }}
           className={linkClass}
         >
           <FontAwesomeIcon icon={faChevronLeft} />
@@ -353,10 +348,9 @@ const PageContent = () => {
     if (signerId) {
       return (
         <Link
-          to="/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId"
+          to="/organizations/$orgId/cert-manager/code-signing/$signerId"
           params={{
             orgId: currentOrg.id,
-            projectId: currentProject.id,
             signerId
           }}
           search={{ selectedTab: "approvals" }}
@@ -372,10 +366,10 @@ const PageContent = () => {
       <Link
         to={
           isCodeSigning
-            ? "/organizations/$orgId/projects/cert-manager/$projectId/code-signing"
-            : "/organizations/$orgId/projects/cert-manager/$projectId/approvals"
+            ? "/organizations/$orgId/cert-manager/code-signing"
+            : "/organizations/$orgId/cert-manager/approvals"
         }
-        params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+        params={{ orgId: currentOrg.id }}
         search={isCodeSigning ? undefined : { section: "certificates" }}
         className={linkClass}
       >

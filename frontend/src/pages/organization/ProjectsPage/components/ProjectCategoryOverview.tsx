@@ -241,9 +241,10 @@ export const ProjectCategoryOverview = () => {
   };
 
   const navigateToCertManager = (projectId: string) => {
+    if (currentOrg?.id) setCertManagerActiveProjectCookie(currentOrg.id, projectId);
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
-      params: { orgId: currentOrg?.id ?? "", projectId }
+      to: "/organizations/$orgId/cert-manager/overview",
+      params: { orgId: currentOrg?.id ?? "" }
     });
   };
 

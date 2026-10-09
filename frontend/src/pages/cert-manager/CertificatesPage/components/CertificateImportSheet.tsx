@@ -482,8 +482,8 @@ export const CertificateImportSheet = ({ popUp, handlePopUpToggle, applicationId
 
       if (currentOrg && currentProject) {
         await navigate({
-          to: "/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId",
-          params: { orgId: currentOrg.id, projectId: currentProject.id, certificateId }
+          to: "/organizations/$orgId/cert-manager/certificates/$certificateId",
+          params: { orgId: currentOrg.id, certificateId }
         });
       }
     } catch (error) {

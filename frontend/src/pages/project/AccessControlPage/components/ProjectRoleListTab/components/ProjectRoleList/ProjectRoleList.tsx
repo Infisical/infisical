@@ -101,7 +101,10 @@ export const ProjectRoleList = () => {
       projectType: currentProject?.type,
       id
     });
-    createNotification({ type: "success", text: `Project role "${name}" deleted` });
+    createNotification({
+      type: "success",
+      text: `${isCertManager ? "Role" : "Project role"} "${name}" deleted`
+    });
     handlePopUpClose("deleteRole");
   };
 
@@ -449,7 +452,10 @@ export const ProjectRoleList = () => {
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteProjectRoleDialog
         isOpen={popUp.deleteRole.isOpen}
-        roleName={(popUp?.deleteRole?.data as TProjectRole)?.name || "project role"}
+        roleName={
+          (popUp?.deleteRole?.data as TProjectRole)?.name ||
+          (isCertManager ? "role" : "project role")
+        }
         confirmationKey={(popUp?.deleteRole?.data as TProjectRole)?.slug || ""}
         isPending={isDeletingRole}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}

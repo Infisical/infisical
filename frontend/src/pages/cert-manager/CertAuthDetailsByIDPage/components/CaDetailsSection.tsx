@@ -259,10 +259,9 @@ export const CaDetailsSection = ({ caId }: Props) => {
                     {ca.configuration.parentCaId ? (
                       <Badge variant="neutral" asChild>
                         <Link
-                          to="/organizations/$orgId/projects/cert-manager/$projectId/ca/$caId"
+                          to="/organizations/$orgId/cert-manager/ca/$caId"
                           params={{
                             orgId: currentOrg.id,
-                            projectId: currentProject.id,
                             caId: ca.configuration.parentCaId
                           }}
                         >

@@ -54,8 +54,8 @@ export const HsmConnectorLinkedResourcesSection = ({ connectorId }: Props) => {
   const openCert = (certificateId: string) => {
     if (!currentProject?.id || !currentOrg?.id) return;
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId",
-      params: { orgId: currentOrg.id, projectId: currentProject.id, certificateId },
+      to: "/organizations/$orgId/cert-manager/certificates/$certificateId",
+      params: { orgId: currentOrg.id, certificateId },
       search: { fromHsmConnector: connectorId }
     });
   };

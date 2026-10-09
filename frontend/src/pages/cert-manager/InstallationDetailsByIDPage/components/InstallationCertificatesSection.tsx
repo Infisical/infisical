@@ -31,8 +31,8 @@ type Props = {
 
 export const InstallationCertificatesSection = ({ certificates }: Props) => {
   const navigate = useNavigate();
-  const { orgId, projectId } = useParams({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/installations/$installationId"
+  const { orgId } = useParams({
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/discovery/installations/$installationId"
   });
 
   return (
@@ -71,10 +71,9 @@ export const InstallationCertificatesSection = ({ certificates }: Props) => {
                     key={cert.id}
                     onClick={() =>
                       navigate({
-                        to: "/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId",
+                        to: "/organizations/$orgId/cert-manager/certificates/$certificateId",
                         params: {
                           orgId,
-                          projectId,
                           certificateId: cert.certificateId
                         }
                       })

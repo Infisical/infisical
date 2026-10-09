@@ -27,6 +27,7 @@ import {
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { usePopUp } from "@app/hooks";
 import { useUpdateWorkspaceAuditLogsRetention } from "@app/hooks/api/projects/queries";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 const formSchema = z.object({
   auditLogsRetentionDays: z.coerce.number().min(0)
@@ -98,7 +99,9 @@ export const AuditLogsRetentionSection = () => {
           <CardHeader>
             <CardTitle>Audit Logs Retention</CardTitle>
             <CardDescription>
-              Set the number of days to keep your project audit logs.
+              {currentProject.type === ProjectType.CertificateManager
+                ? "Set the number of days to keep your Certificate Manager audit logs."
+                : "Set the number of days to keep your project audit logs."}
             </CardDescription>
           </CardHeader>
           <CardContent>

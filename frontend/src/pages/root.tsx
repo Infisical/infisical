@@ -17,8 +17,9 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 type TRouterContext = {
   serverConfig: TServerConfig | null;
   queryClient: QueryClient;
-  // Published by the PAM and Agent Vault layouts, whose URLs carry no $projectId. Optional because
-  // only those two branches of the tree set them; see useImplicitProjectId and useImplicitProduct.
+  // Published by the Certificate Manager, PAM and Agent Vault layouts, whose URLs carry no $projectId.
+  // Optional because only those branches of the tree set them; see useImplicitProjectId and
+  // useImplicitProduct.
   implicitProjectId?: string;
   implicitProductType?: ProjectType;
 };

@@ -15,7 +15,7 @@ const inventoryPageSearchSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/inventory"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/inventory"
 )({
   component: InventoryPage,
   validateSearch: zodValidator(inventoryPageSearchSchema),

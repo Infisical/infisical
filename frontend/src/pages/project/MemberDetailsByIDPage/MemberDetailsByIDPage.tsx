@@ -100,7 +100,9 @@ export const Page = () => {
       orgId: currentOrg.id
     });
     createNotification({
-      text: "Successfully removed user from project",
+      text: `Successfully removed user from ${
+        currentProject?.type === ProjectType.CertificateManager ? "Certificate Manager" : "project"
+      }`,
       type: "success"
     });
     navigate({

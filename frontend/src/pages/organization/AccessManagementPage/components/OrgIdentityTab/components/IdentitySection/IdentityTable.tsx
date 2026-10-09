@@ -51,7 +51,8 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
+import { getProjectBaseURL, getProjectTitle } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -67,6 +68,7 @@ import {
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { IdentityMembershipSearchResult, SearchIdentitiesScope } from "@app/hooks/api/identities";
 import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 import { IdentityAuthMethodModal } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
 import { IdentityAuthMethodSheet } from "@app/views/IdentityAuthMethods";
@@ -140,7 +142,9 @@ const ManagedByCell = ({
     return (
       <Badge variant="project">
         <ProjectIcon />
-        {project?.name ?? "Project"}
+        {project?.type === ProjectType.CertificateManager
+          ? getProjectTitle(project.type)
+          : (project?.name ?? "Project")}
       </Badge>
     );
   }
@@ -389,6 +393,9 @@ const IdentityRow = ({ membership, onDelete, onManageAuth, onAddAuthMethod }: Id
 
   const navigateToIdentity = () => {
     if (isProjectScoped && project) {
+      if (project.type === ProjectType.CertificateManager) {
+        setCertManagerActiveProjectCookie(currentOrg.id, project.id);
+      }
       navigate({
         to: `${getProjectBaseURL(project.type)}/identities/$identityId` as const,
         params: {

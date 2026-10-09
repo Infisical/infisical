@@ -244,10 +244,9 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
                     className="cursor-pointer"
                     onClick={() =>
                       navigate({
-                        to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery/$discoveryId",
+                        to: "/organizations/$orgId/cert-manager/discovery/$discoveryId",
                         params: {
                           orgId: currentOrg.id,
-                          projectId,
                           discoveryId: discovery.id
                         }
                       })

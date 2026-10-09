@@ -457,8 +457,9 @@ export const MemberRoleDetailsSection = ({
           <SheetHeader className="border-b">
             <SheetTitle>Roles</SheetTitle>
             <SheetDescription>
-              Select one or more of the pre-defined or custom roles to configure project
-              permissions.
+              {isCertManager
+                ? "Select one or more of the pre-defined or custom roles to configure Certificate Manager permissions."
+                : "Select one or more of the pre-defined or custom roles to configure project permissions."}
             </SheetDescription>
           </SheetHeader>
           <MemberMultiRoleModify

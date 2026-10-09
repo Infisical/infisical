@@ -43,10 +43,9 @@ export const DashboardPage = () => {
   const navigateToInventory = useCallback(
     (filters: Record<string, string | undefined>) => {
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/inventory",
+        to: "/organizations/$orgId/cert-manager/inventory",
         params: {
-          orgId: currentProject?.orgId || "",
-          projectId: currentProject?.id || ""
+          orgId: currentProject?.orgId || ""
         },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         search: filters as any

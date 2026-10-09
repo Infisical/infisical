@@ -551,10 +551,7 @@ export const CreateProfileModal = ({
 }: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
-  const { orgId, projectId } = useParams({ strict: false }) as {
-    orgId?: string;
-    projectId?: string;
-  };
+  const { orgId } = useParams({ strict: false }) as { orgId?: string };
   const [policyStepIndex, setPolicyStepIndex] = useState<number | null>(null);
   const [isPolicySubmitting, setIsPolicySubmitting] = useState(false);
   const policyWizardRef = useRef<CertificatePolicyWizardHandle>(null);
@@ -878,7 +875,7 @@ export const CreateProfileModal = ({
       await updateProfile.mutateAsync(updateData);
     } else {
       if (!currentProject?.id) {
-        throw new Error("Project ID is required for creating a profile");
+        throw new Error("Certificate Manager could not be loaded. Please refresh and try again.");
       }
 
       const createData: TCreateCertificateProfileDTO = {
@@ -1216,8 +1213,8 @@ export const CreateProfileModal = ({
                                   <FieldDescription className="text-warning">
                                     No certificate authorities available.{" "}
                                     <Link
-                                      to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities"
-                                      params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
+                                      to="/organizations/$orgId/cert-manager/certificate-authorities"
+                                      params={{ orgId: orgId ?? "" }}
                                       className="underline hover:text-warning"
                                     >
                                       Create one in Certificate Authorities

@@ -126,7 +126,11 @@ export const hasIntermediateProjectsView = (type: ProjectType) =>
 
 // Products that live at /organizations/$orgId/<slug> over a single implicit project, with no $projectId
 // in the URL.
-const ORG_SCOPED_PRODUCT_TYPES = new Set<ProjectType>([ProjectType.PAM, ProjectType.AgentVault]);
+const ORG_SCOPED_PRODUCT_TYPES = new Set<ProjectType>([
+  ProjectType.CertificateManager,
+  ProjectType.PAM,
+  ProjectType.AgentVault
+]);
 
 export const isOrgScopedProduct = (type: ProjectType) => ORG_SCOPED_PRODUCT_TYPES.has(type);
 
@@ -135,7 +139,8 @@ const PRODUCTS_WITHOUT_ASSUME_PRIVILEGES = new Set<ProjectType>([ProjectType.Age
 export const supportsAssumePrivileges = (type: ProjectType) =>
   !PRODUCTS_WITHOUT_ASSUME_PRIVILEGES.has(type);
 
-const ORG_SCOPED_PRODUCT_PATH_RE = /^\/organizations\/[^/]+\/(pam|agent-vault)(?:\/|$)/;
+const ORG_SCOPED_PRODUCT_PATH_RE =
+  /^\/organizations\/[^/]+\/(cert-manager|pam|agent-vault)(?:\/|$)/;
 
 export const getOrgScopedProductFromPath = (pathname: string): ProjectType | null => {
   const slug = pathname.match(ORG_SCOPED_PRODUCT_PATH_RE)?.[1];
@@ -147,7 +152,7 @@ export const getProjectBaseURL = (type: ProjectType) => {
     case ProjectType.SecretManager:
       return "/organizations/$orgId/projects/secret-management/$projectId";
     case ProjectType.CertificateManager:
-      return "/organizations/$orgId/projects/cert-manager/$projectId";
+      return "/organizations/$orgId/cert-manager" as const;
     case ProjectType.PAM:
       return "/organizations/$orgId/pam" as const;
     case ProjectType.AgentVault:
@@ -164,7 +169,7 @@ export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]
     case ProjectType.SecretManager:
       return "/organizations/$orgId/projects/secret-management/$projectId/overview" as const;
     case ProjectType.CertificateManager:
-      return "/organizations/$orgId/projects/cert-manager/$projectId/overview" as const;
+      return "/organizations/$orgId/cert-manager/overview" as const;
     case ProjectType.SecretScanning:
       return `/organizations/$orgId/projects/${type}/$projectId/data-sources` as const;
     case ProjectType.PAM:

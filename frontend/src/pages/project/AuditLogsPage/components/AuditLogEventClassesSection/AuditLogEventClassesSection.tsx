@@ -7,6 +7,7 @@ import {
 } from "@app/context";
 import { useScopeVariant } from "@app/hooks";
 import { useGetProjectAuditLogSettings, useUpdateProjectAuditLogSettings } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 export const AuditLogEventClassesSection = () => {
   const { currentProject } = useProject();
@@ -23,7 +24,11 @@ export const AuditLogEventClassesSection = () => {
   return (
     <AuditLogEventClassesForm
       title="Event Classes"
-      description="Choose which classes of events this project records."
+      description={
+        currentProject.type === ProjectType.CertificateManager
+          ? "Choose which classes of Certificate Manager events are recorded."
+          : "Choose which classes of events this project records."
+      }
       settings={settings}
       isPending={isPending}
       isError={isError}

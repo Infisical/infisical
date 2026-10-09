@@ -20,7 +20,7 @@ import {
   Separator
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { isOrgScopedProduct } from "@app/helpers/project";
+import { getProjectTitle, isOrgScopedProduct } from "@app/helpers/project";
 import { useScopeVariant } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
 import {
@@ -36,7 +36,7 @@ import {
 } from "@app/hooks/api/auditLogSettings/constants";
 import { AuditLogEventClass } from "@app/hooks/api/auditLogSettings/types";
 import { UserAgentType } from "@app/hooks/api/auth/types";
-import { Project } from "@app/hooks/api/projects/types";
+import { Project, ProjectType } from "@app/hooks/api/projects/types";
 
 import { LogFilterItem } from "./LogFilterItem";
 import { auditLogFilterFormSchema, Presets, TAuditLogFilterFormData } from "./types";
@@ -297,7 +297,11 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                           type
                         }))}
                         getOptionValue={(option) => option.id}
-                        getOptionLabel={(option) => option.name}
+                        getOptionLabel={(option) =>
+                          option.type === ProjectType.CertificateManager
+                            ? getProjectTitle(option.type)
+                            : option.name
+                        }
                         isError={Boolean(error)}
                       />
                       <FieldError errors={[error]} />

@@ -152,7 +152,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       hide: false,
       operationId: "listSigners",
       tags: [ApiDocsTags.PkiSigners],
-      description: "List code signing signers for a project",
+      description: "List code signing signers",
       querystring: z.object({
         projectId: z.string().trim().optional().describe(openApiHidden()),
         offset: z.coerce.number().int().min(0).default(0),

@@ -32,7 +32,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization } from "@app/context";
 import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
@@ -54,7 +54,6 @@ type Props = {
 
 export const ProfileOverviewSection = ({ profile, onEdit, onDelete, backContext }: Props) => {
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
   const [, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
@@ -200,10 +199,9 @@ export const ProfileOverviewSection = ({ profile, onEdit, onDelete, backContext 
                   <DetailValue className="min-w-0">
                     {isInternalCa && profile.caId ? (
                       <Link
-                        to="/organizations/$orgId/projects/cert-manager/$projectId/ca/$caId"
+                        to="/organizations/$orgId/cert-manager/ca/$caId"
                         params={{
                           orgId: currentOrg.id,
-                          projectId: currentProject.id,
                           caId: profile.caId
                         }}
                         search={{
@@ -241,10 +239,9 @@ export const ProfileOverviewSection = ({ profile, onEdit, onDelete, backContext 
               <DetailLabel>Policy</DetailLabel>
               <DetailValue className="min-w-0">
                 <Link
-                  to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies/$policyId"
+                  to="/organizations/$orgId/cert-manager/certificate-policies/$policyId"
                   params={{
                     orgId: currentOrg.id,
-                    projectId: currentProject.id,
                     policyId: profile.certificatePolicyId
                   }}
                   search={{

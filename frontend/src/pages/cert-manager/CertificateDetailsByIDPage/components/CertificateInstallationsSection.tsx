@@ -17,6 +17,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { useListPkiInstallations } from "@app/hooks/api";
 import { getEndpoint, getGatewayLabel } from "@app/pages/cert-manager/pki-discovery-utils";
 
@@ -28,8 +29,10 @@ const PER_PAGE_INIT = 10;
 
 export const CertificateInstallationsSection = ({ certificateId }: Props) => {
   const navigate = useNavigate();
-  const { orgId, projectId } = useParams({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/certificates/$certificateId"
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
+  const { orgId } = useParams({
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/certificates/$certificateId"
   });
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
@@ -87,10 +90,9 @@ export const CertificateInstallationsSection = ({ certificateId }: Props) => {
                 key={installation.id}
                 onClick={() =>
                   navigate({
-                    to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery/installations/$installationId",
+                    to: "/organizations/$orgId/cert-manager/discovery/installations/$installationId",
                     params: {
                       orgId,
-                      projectId,
                       installationId: installation.id
                     }
                   })

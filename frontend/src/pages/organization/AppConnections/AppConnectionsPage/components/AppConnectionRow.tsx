@@ -41,7 +41,8 @@ import {
   buildGitHubAppUrl,
   getAppConnectionMethodDetails
 } from "@app/helpers/appConnections";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
+import { getProjectBaseURL, getProjectTitle } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import { GitHubConnectionMethod, TAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -206,11 +207,18 @@ export const AppConnectionRow = ({
                 orgId: currentOrg?.id || "",
                 projectId: project.id
               }}
+              onClick={() => {
+                if (project.type === ProjectType.CertificateManager && currentOrg?.id) {
+                  setCertManagerActiveProjectCookie(currentOrg.id, project.id);
+                }
+              }}
               className="underline"
             >
               <p className="flex items-center gap-1.5 truncate">
                 <ProjectIcon className="size-3.5 text-label/75" />
-                {project.name}
+                {project.type === ProjectType.CertificateManager
+                  ? getProjectTitle(project.type)
+                  : project.name}
               </p>
             </Link>
           ) : (
