@@ -5,9 +5,10 @@ import { useSearch } from "@tanstack/react-router";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { LookingForOrgPageLink } from "@app/components/v3";
 import { PageHeader } from "@app/components/v3/platform";
-import { ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionSecretScanningConfigActions } from "@app/context/ProjectPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { useGetSecretScanningInstanceState } from "@app/hooks/api/secretScanningV2";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
 import { ProjectScanningConfigTab } from "./components/ProjectScanningConfigTab";
@@ -18,7 +19,15 @@ export const SettingsPage = () => {
     from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout/settings"
   });
 
-  const activeTab = selectedTab || "general";
+  const { currentOrg } = useOrganization();
+  const { data: instanceState } = useGetSecretScanningInstanceState(currentOrg.id);
+  const hasMultipleProjects = Boolean(instanceState?.isMultiInstance);
+
+  // General only exists while there are several projects to rename or delete.
+  const activeTab =
+    !hasMultipleProjects && (!selectedTab || selectedTab === "general")
+      ? "scanning-settings"
+      : selectedTab || "general";
 
   return (
     <div className="flex h-full w-full justify-center bg-page text-foreground-inverse">

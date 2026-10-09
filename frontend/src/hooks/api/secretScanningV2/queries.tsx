@@ -70,7 +70,10 @@ export type TSecretScanningInstanceState = {
   isMultiInstance: boolean;
 };
 
-export const useGetSecretScanningInstanceState = (orgId: string) =>
+export const useGetSecretScanningInstanceState = (
+  orgId: string,
+  { enabled = true }: { enabled?: boolean } = {}
+) =>
   useQuery({
     queryKey: secretScanningV2Keys.instanceState(orgId),
     queryFn: async () => {
@@ -79,7 +82,7 @@ export const useGetSecretScanningInstanceState = (orgId: string) =>
       );
       return data;
     },
-    enabled: Boolean(orgId)
+    enabled: Boolean(orgId) && enabled
   });
 
 export const useSecretScanningDataSourceOptions = (
