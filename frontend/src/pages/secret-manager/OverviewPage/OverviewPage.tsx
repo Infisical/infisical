@@ -1,4 +1,12 @@
-import { SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
@@ -2672,27 +2680,33 @@ const OverviewPageContent = () => {
   //   localStorage.setItem("overview-header-height", debouncedHeaderHeight.toString());
   // }, [debouncedHeaderHeight]);
 
-  const [tableWidth, setTableWidth] = useState(0);
   const [storedColumnWidths, setStoredColumnWidths] = useLocalStorageState<
     Record<string, number[]>
   >(`overview-column-widths-${projectId}`, {});
-  const columnResize = useRef<{ index: number; startX: number; widths: number[] } | null>(null);
+  const columnResize = useRef<{
+    index: number;
+    startX: number;
+    widths: number[];
+    next?: number[];
+  } | null>(null);
   const columnKey = `${isSingleEnvView ? "single" : "multi"}:${visibleEnvs.map(({ id }) => id).join(":")}`;
-  const nameMaxWidth = Math.max(isSingleEnvView ? 280 : 240, tableWidth * 0.8);
   const columnMinWidths = isSingleEnvView ? [280, 368] : Array(visibleEnvs.length + 1).fill(240);
   const minColumnTotal = columnMinWidths.reduce((total, width) => total + width, 0);
   const savedWidths = storedColumnWidths?.[columnKey];
-  const columnWidths = (() => {
+  const getNameMaxWidth = (tableWidth: number) =>
+    Math.max(isSingleEnvView ? 280 : 240, tableWidth * 0.8);
+
+  const getColumnWidths = (tableWidth: number, saved: number[] | undefined) => {
     const hasSavedWidths =
-      Array.isArray(savedWidths) &&
-      savedWidths.length === columnMinWidths.length &&
-      savedWidths.every((width) => Number.isFinite(width) && width > 0);
+      Array.isArray(saved) &&
+      saved.length === columnMinWidths.length &&
+      saved.every((width) => Number.isFinite(width) && width > 0);
     const defaultWidth =
       tableWidth >= 40 + minColumnTotal ? (tableWidth - 40) / columnMinWidths.length : 0;
     const widths = columnMinWidths.map((minWidth, index) =>
       Math.min(
-        index === 0 ? nameMaxWidth : Infinity,
-        Math.max(minWidth, hasSavedWidths ? savedWidths[index] : defaultWidth)
+        index === 0 ? getNameMaxWidth(tableWidth) : Infinity,
+        Math.max(minWidth, hasSavedWidths ? saved[index] : defaultWidth)
       )
     );
     if (tableWidth < 40 + minColumnTotal) return widths;
@@ -2708,16 +2722,31 @@ const OverviewPageContent = () => {
       excess -= shrink;
     }
     return widths;
-  })();
+  };
+
+  // Column and table widths are written to the DOM directly so resizing a column or the
+  // page doesn't re-render every row on each frame
+  const applyColumnWidths = (saved: number[] | undefined) => {
+    const element = tableRef.current;
+    const table = element?.querySelector<HTMLTableElement>(":scope > table");
+    if (!element || !table) return;
+    const widths = getColumnWidths(element.clientWidth, saved);
+    element.style.setProperty("--overview-table-width", `${element.clientWidth}px`);
+    table.querySelectorAll<HTMLTableColElement>(":scope > colgroup > col").forEach((col, index) => {
+      if (index > 0) col.style.setProperty("width", `${widths[index - 1]}px`);
+    });
+    table.style.width = `max(100%, ${40 + widths.reduce((total, width) => total + width, 0)}px)`;
+  };
 
   const getCurrentColumnWidths = () =>
     Array.from(tableRef.current?.querySelectorAll(":scope > table > thead > tr > th") ?? [])
       .slice(1)
       .map((header) => header.getBoundingClientRect().width);
 
-  const resizeColumns = (widths: number[], index: number, delta: number) => {
+  const getResizedColumnWidths = (widths: number[], index: number, delta: number) => {
     const next = [...widths];
-    const availableWidth = (tableRef.current?.clientWidth ?? 40) - 40;
+    const tableWidth = tableRef.current?.clientWidth ?? 40;
+    const availableWidth = tableWidth - 40;
     const spareWidth = Math.max(
       0,
       availableWidth - widths.reduce((total, width) => total + width, 0)
@@ -2728,7 +2757,7 @@ const OverviewPageContent = () => {
       Math.min(
         widths[index] + delta,
         availableWidth >= minColumnTotal ? widths[index] + maxGrowth : Infinity,
-        index === 0 ? nameMaxWidth : Infinity
+        index === 0 ? getNameMaxWidth(tableWidth) : Infinity
       )
     );
     next[index] = left;
@@ -2744,8 +2773,11 @@ const OverviewPageContent = () => {
         widths[index + 1] - (left - widths[index])
       );
     }
-    setStoredColumnWidths((current) => ({ ...current, [columnKey]: next }));
+    return next;
   };
+
+  const saveColumnWidths = (widths: number[]) =>
+    setStoredColumnWidths((current) => ({ ...current, [columnKey]: widths }));
 
   const resizeHandle = (index: number) => (
     <button
@@ -2767,13 +2799,15 @@ const OverviewPageContent = () => {
       onPointerMove={(event) => {
         if (!columnResize.current) return;
         if (Math.abs(event.clientX - columnResize.current.startX) < 3) return;
-        resizeColumns(
+        columnResize.current.next = getResizedColumnWidths(
           columnResize.current.widths,
           columnResize.current.index,
           event.clientX - columnResize.current.startX
         );
+        applyColumnWidths(columnResize.current.next);
       }}
       onPointerUp={() => {
+        if (columnResize.current?.next) saveColumnWidths(columnResize.current.next);
         columnResize.current = null;
       }}
       onPointerCancel={() => {
@@ -2782,7 +2816,13 @@ const OverviewPageContent = () => {
       onKeyDown={(event) => {
         if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
         event.preventDefault();
-        resizeColumns(getCurrentColumnWidths(), index, event.key === "ArrowRight" ? 16 : -16);
+        saveColumnWidths(
+          getResizedColumnWidths(
+            getCurrentColumnWidths(),
+            index,
+            event.key === "ArrowRight" ? 16 : -16
+          )
+        );
       }}
     >
       <span className="pointer-events-none absolute top-0 left-0 h-full w-full group-focus-visible:outline-2 group-focus-visible:outline-ring" />
@@ -2810,14 +2850,14 @@ const OverviewPageContent = () => {
     if (!isOverviewPending) prevPageSize.current = Math.min(perPage, totalCount);
   }, [isOverviewPending, totalCount, perPage]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = tableRef.current;
     if (!element) return;
     const table = element.querySelector<HTMLTableElement>(":scope > table");
     const nameHeader = table?.querySelector("thead > tr > th:nth-child(2)");
 
     const handleResize = () => {
-      setTableWidth(element.clientWidth);
+      if (!columnResize.current) applyColumnWidths(savedWidths);
       if (nameHeader) {
         element.style.setProperty(
           "--name-column-width",
@@ -2836,7 +2876,7 @@ const OverviewPageContent = () => {
     return () => {
       resizeObserver.disconnect();
     };
-  }, [tableRef, isTableEmpty]);
+  }, [tableRef, isTableEmpty, columnKey, savedWidths?.join(",")]);
 
   // This is needed to also show imports from other paths – right now those are missing.
   // const combinedKeys = [...secKeys, ...secretImports.map((impSecrets) => impSecrets?.data?.map((impSec) => impSec.secrets?.map((impSecKey) => impSecKey.key))).flat().flat()];
@@ -3183,23 +3223,12 @@ const OverviewPageContent = () => {
                   ref={tableRef}
                   className="w-full table-fixed border-separate border-spacing-0 [&_tbody>tr>td:nth-child(2)]:pl-1 [&_thead>tr>th:nth-child(2)>button]:pl-1"
                   containerClassName="overscroll-x-none rounded-t-none"
-                  style={{
-                    minWidth: 40 + minColumnTotal,
-                    width: columnWidths
-                      ? `max(100%, ${40 + columnWidths.reduce((total, width) => total + width, 0)}px)`
-                      : undefined
-                  }}
+                  style={{ minWidth: 40 + minColumnTotal }}
                 >
                   <colgroup>
                     <col className="w-10" />
-                    <col style={{ width: columnWidths?.[0] }} />
-                    {isSingleEnvView ? (
-                      <col style={{ width: columnWidths?.[1] }} />
-                    ) : (
-                      visibleEnvs.map(({ id }, index) => (
-                        <col key={id} style={{ width: columnWidths?.[index + 1] }} />
-                      ))
-                    )}
+                    <col />
+                    {isSingleEnvView ? <col /> : visibleEnvs.map(({ id }) => <col key={id} />)}
                   </colgroup>
                   <TableHeader className="relative z-20">
                     <TableRow className="h-10 has-[>th:nth-child(2):hover]:[&>th:nth-child(-n+2)]:bg-container-hover">
@@ -3573,7 +3602,6 @@ const OverviewPageContent = () => {
                               environments={visibleEnvs}
                               isSecretImportInEnv={isSecretImportInEnv}
                               getSecretImportByEnv={getSecretImportByEnv}
-                              tableWidth={tableWidth}
                               secretPath={secretPath}
                               searchFilter={searchFilter}
                               onDelete={(secretImport) =>
@@ -3597,7 +3625,6 @@ const OverviewPageContent = () => {
                                 environments={visibleEnvs}
                                 isSecretImportInEnv={isSecretImportInEnv}
                                 getSecretImportByEnv={getSecretImportByEnv}
-                                tableWidth={tableWidth}
                                 secretPath={secretPath}
                                 searchFilter={searchFilter}
                                 onDelete={(secretImport) =>
@@ -3658,7 +3685,6 @@ const OverviewPageContent = () => {
                             getDynamicSecretByName={getDynamicSecretByName}
                             getDynamicSecretStatusesByName={getDynamicSecretStatusesByName}
                             environments={visibleEnvs}
-                            tableWidth={tableWidth}
                             secretPath={secretPath}
                             key={`overview-${dynamicSecretName}-${index + 1}`}
                             onEdit={(dynamicSecret) =>
@@ -3689,7 +3715,6 @@ const OverviewPageContent = () => {
                             getSecretRotationByName={getSecretRotationByName}
                             getSecretRotationStatusesByName={getSecretRotationStatusesByName}
                             key={`overview-${secretRotationName}-${index + 1}`}
-                            tableWidth={tableWidth}
                             isSelected={Boolean(selectedEntries.secretRotation[secretRotationName])}
                             onToggleRotationSelect={(_, isShiftKey) =>
                               toggleSelectedEntry(
@@ -3740,7 +3765,6 @@ const OverviewPageContent = () => {
                             isHoneyTokenInEnv={isHoneyTokenPresentInEnv}
                             environments={visibleEnvs}
                             getHoneyTokenByName={getHoneyTokenByName}
-                            tableWidth={tableWidth}
                             key={`overview-ht-${honeyTokenName}-${index + 1}`}
                             onEdit={(honeyToken) => handlePopUpOpen("editHoneyToken", honeyToken)}
                             onRevoke={(honeyToken) =>
@@ -3758,7 +3782,6 @@ const OverviewPageContent = () => {
                             environments={visibleEnvs}
                             isProxiedServiceInEnv={isProxiedServicePresentInEnv}
                             getProxiedServiceByName={getProxiedServiceByName}
-                            tableWidth={tableWidth}
                             onEdit={(proxiedService) =>
                               handlePopUpOpen("editProxiedService", proxiedService)
                             }
@@ -3777,7 +3800,6 @@ const OverviewPageContent = () => {
                                 toggleSelectedEntry(EntryType.SECRET, key, isShiftKey);
                             }}
                             secretPath={secretPath}
-                            tableWidth={tableWidth}
                             getImportedSecretByKey={getImportedSecretByKey}
                             isImportedSecretPresentInEnv={handleIsImportedSecretPresentInEnv}
                             onSecretCreate={handleSecretCreate}
@@ -3872,7 +3894,7 @@ const OverviewPageContent = () => {
                 <DragOverlay
                   tag="table"
                   className="w-full caption-bottom text-sm"
-                  style={{ width: tableWidth }}
+                  style={{ width: tableRef.current?.clientWidth }}
                 >
                   {null}
                 </DragOverlay>
