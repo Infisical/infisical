@@ -2,7 +2,6 @@ import {
   CircleAlert,
   CreditCard,
   ExternalLink,
-  Info,
   type LucideIcon,
   TriangleAlert
 } from "lucide-react";
@@ -63,9 +62,6 @@ const PAYMENT_ALERT: Record<
   }
 };
 
-// Top-of-page notice: a managed org shows the "managed by your account team" note; a self-serve org in
-// dunning (past-due / suspended) shows a payment-recovery prompt. A renewal payment alert replaces the
-// generic dunning prompt so a past-due org never sees two payment banners. Nothing otherwise.
 export const Banner = ({
   mode,
   subState,
@@ -75,16 +71,7 @@ export const Banner = ({
   onManageSubscription
 }: BannerProps) => {
   if (mode === "managed") {
-    return (
-      <Alert variant="info">
-        <Info />
-        <AlertTitle>Your plan is managed by your account team</AlertTitle>
-        <AlertDescription>
-          Products and limits on this organization are set by contract. Contact your account manager
-          to make changes.
-        </AlertDescription>
-      </Alert>
-    );
+    return null;
   }
 
   if (paymentAlert) {
