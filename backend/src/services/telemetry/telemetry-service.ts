@@ -563,6 +563,16 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       }
       const properties = aggregateGroupProperties(groupedEvents, breakdownDimensions);
 
+      if (eventType === PostHogEventTypes.SecretPulled) {
+        const numberOfSecretsByChannel: Record<string, number> = {};
+        for (const event of groupedEvents) {
+          const { channel, numberOfSecrets } = event.properties as TSecretModifiedEvent["properties"];
+          const channelKey = channel ?? "unknown";
+          numberOfSecretsByChannel[channelKey] = (numberOfSecretsByChannel[channelKey] ?? 0) + numberOfSecrets;
+        }
+        properties.numberOfSecretsByChannel = numberOfSecretsByChannel;
+      }
+
       for (const dim of breakdownDimensions) {
         if (key[dim] !== undefined) {
           properties[dim] = key[dim];
