@@ -683,7 +683,7 @@ const Content = ({
                   onCheckedChange={(checked) =>
                     handleChangeResourceTypes(
                       QUICK_SEARCH_RESOURCE_TYPES.filter(({ type }) =>
-                        type === option.type ? checked === true : showType(type as ResourceType)
+                        type === option.type ? checked === true : showFilter[type as ResourceType]
                       )
                     )
                   }
