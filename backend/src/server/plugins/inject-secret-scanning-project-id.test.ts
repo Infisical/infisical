@@ -25,7 +25,7 @@ const buildServer = async ({
   const app = Fastify({ logger: false }).withTypeProvider<ZodTypeProvider>();
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
-  app.setErrorHandler((error, _req, reply) => {
+  app.setErrorHandler((error: Error, _req, reply) => {
     let statusCode = 500;
     if (error instanceof NotFoundError) statusCode = 404;
     else if (error instanceof BadRequestError) statusCode = 400;
@@ -139,7 +139,7 @@ describe("injectSecretScanningProjectId", () => {
     });
 
     expect(res.statusCode).toBe(404);
-    expect(res.json().message).toContain(UNKNOWN_PROJECT_ID);
+    expect(res.json<{ message: string }>().message).toContain(UNKNOWN_PROJECT_ID);
   });
 
   test("fails with a clear error when the org has no project, without creating one", async () => {
@@ -149,7 +149,7 @@ describe("injectSecretScanningProjectId", () => {
     const res = await app.inject({ method: "GET", url: "/api/v2/secret-scanning/data-sources" });
 
     expect(res.statusCode).toBe(400);
-    expect(res.json().message).toContain("no Secret Scanning project yet");
+    expect(res.json<{ message: string }>().message).toContain("no Secret Scanning project yet");
   });
 
   test("reads a body-declared projectId and ignores one in the query", async () => {
