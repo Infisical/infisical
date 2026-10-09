@@ -374,7 +374,13 @@ describe("alert service", () => {
     expect(
       service.getAuditEvent({
         action: AlertAuditAction.TestChannel,
-        test: { resourceType: RESOURCE_TYPE, resourceId: "resource-1", channelType: "slack", success: true }
+        test: {
+          resourceType: RESOURCE_TYPE,
+          resourceId: "resource-1",
+          resourceName: null,
+          channelType: "slack",
+          success: true
+        }
       })
     ).toEqual({
       type: "test-alert-channel",

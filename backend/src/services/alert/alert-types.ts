@@ -147,7 +147,7 @@ type TAlertAuditAlert = {
 type TAlertChannelTestAudit = {
   resourceType: string;
   resourceId?: string | null;
-  resourceName?: string | null;
+  resourceName: string | null;
   channelId?: string;
   channelType: string;
   success: boolean;

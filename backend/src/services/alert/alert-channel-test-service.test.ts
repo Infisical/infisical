@@ -186,6 +186,14 @@ describe("alertChannelTestService", () => {
     }
   });
 
+  const boundSlackTest = {
+    ...actor,
+    resourceType: RESOURCE_TYPE,
+    resourceId: "resource-1",
+    channelType: "slack" as never,
+    config: { webhookUrl: "https://hooks.slack.com/services/T/B/x" }
+  };
+
   test("returns the name of the resource the test was sent for", async () => {
     const lookups: { orgId: string; resourceIds: string[] }[] = [];
     const restore = stubSend("slack", async () => ({ success: true }));
@@ -201,13 +209,7 @@ describe("alertChannelTestService", () => {
       });
       const service = alertChannelTestServiceFactory(deps);
 
-      const result = await service.testChannel({
-        ...actor,
-        resourceType: RESOURCE_TYPE,
-        resourceId: "resource-1",
-        channelType: "slack" as never,
-        config: { webhookUrl: "https://hooks.slack.com/services/T/B/x" }
-      });
+      const result = await service.testChannel(boundSlackTest);
 
       expect(lookups).toEqual([{ orgId: ORG_ID, resourceIds: ["resource-1"] }]);
       expect(result.resourceName).toBe("Payments API");
@@ -233,15 +235,7 @@ describe("alertChannelTestService", () => {
       });
       const service = alertChannelTestServiceFactory(deps);
 
-      await expect(
-        service.testChannel({
-          ...actor,
-          resourceType: RESOURCE_TYPE,
-          resourceId: "resource-1",
-          channelType: "slack" as never,
-          config: { webhookUrl: "https://hooks.slack.com/services/T/B/x" }
-        })
-      ).rejects.toThrow("lookup failed");
+      await expect(service.testChannel(boundSlackTest)).rejects.toThrow("lookup failed");
       expect(sent).toHaveLength(0);
     } finally {
       restore();

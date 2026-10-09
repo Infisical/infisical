@@ -61,5 +61,21 @@ export const secretReminderAlertDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { findSecretsByIds };
+  const findSecretKeysByIds = async (secretIds: string[], orgId: string): Promise<{ id: string; key: string }[]> => {
+    if (secretIds.length === 0) return [];
+    try {
+      return (await db
+        .replicaNode()(TableName.SecretV2)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereIn(`${TableName.SecretV2}.id`, secretIds)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .select(`${TableName.SecretV2}.id`, `${TableName.SecretV2}.key`)) as { id: string; key: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSecretKeysByIds" });
+    }
+  };
+
+  return { findSecretsByIds, findSecretKeysByIds };
 };

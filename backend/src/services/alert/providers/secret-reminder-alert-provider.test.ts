@@ -39,7 +39,11 @@ const buildProvider = (
   const provider = secretReminderAlertProviderFactory({
     secretReminderAlertDAL: {
       findSecretsByIds: async (ids: string[]) =>
-        (opts.secrets ?? [SECRET]).filter((secret) => ids.includes(secret.secretId))
+        (opts.secrets ?? [SECRET]).filter((secret) => ids.includes(secret.secretId)),
+      findSecretKeysByIds: async (ids: string[], orgId: string) =>
+        (opts.secrets ?? [SECRET])
+          .filter((secret) => ids.includes(secret.secretId) && secret.orgId === orgId)
+          .map((secret) => ({ id: secret.secretId, key: secret.secretKey }))
     },
     folderDAL: {
       findSecretPathByFolderIds: async (_projectId: string, _folderIds: string[], _tx: unknown, options: unknown) => {
@@ -88,6 +92,14 @@ const dueEvent = (payload: Record<string, unknown> = {}) => ({
 const actor = { actor: "user", actorId: "user-1", actorAuthMethod: null, actorOrgId: "org-1" } as never;
 
 describe("secret reminder alert provider", () => {
+  test("getResourceNames returns secret keys only from the caller's org", async () => {
+    const { provider } = buildProvider();
+    const names = await provider.getResourceNames?.({ orgId: "org-1", resourceIds: [SECRET.secretId] });
+    expect(names?.get(SECRET.secretId)).toBe(SECRET.secretKey);
+    const foreign = await provider.getResourceNames?.({ orgId: "org-2", resourceIds: [SECRET.secretId] });
+    expect(foreign?.size).toBe(0);
+  });
+
   test("delivers what the reminder cron emits", async () => {
     let emitted: Record<string, unknown> | undefined;
     await emitSecretReminderDue(

@@ -35,7 +35,7 @@ export type TSecretReminderTarget = TSecretWithLocation & {
 };
 
 export type TSecretReminderAlertProviderDep = {
-  secretReminderAlertDAL: Pick<TSecretReminderAlertDALFactory, "findSecretsByIds">;
+  secretReminderAlertDAL: Pick<TSecretReminderAlertDALFactory, "findSecretsByIds" | "findSecretKeysByIds">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
@@ -240,9 +240,7 @@ export const secretReminderAlertProviderFactory = ({
     assertResourceInScope,
     getResourceNames: async ({ orgId, resourceIds }) =>
       new Map(
-        (await secretReminderAlertDAL.findSecretsByIds(resourceIds))
-          .filter((secret) => secret.orgId === orgId)
-          .map((secret) => [secret.secretId, secret.secretKey])
+        (await secretReminderAlertDAL.findSecretKeysByIds(resourceIds, orgId)).map((secret) => [secret.id, secret.key])
       )
   };
 };

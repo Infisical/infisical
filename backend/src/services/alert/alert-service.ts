@@ -108,7 +108,7 @@ const getAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
         channelType: test.channelType,
         resourceType: test.resourceType,
         resourceId: test.resourceId,
-        resourceName: test.resourceName ?? null,
+        resourceName: test.resourceName,
         success: test.success,
         deliveredTo: test.deliveredTo,
         error: test.error
