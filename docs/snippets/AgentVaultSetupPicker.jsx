@@ -276,9 +276,6 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
     ci: "CI runner",
   };
 
-  // Each question and each walkthrough step explains part of the diagram. While one is in view, the
-  // diagram highlights those lanes and messages and dims the rest. A step-<message id> focus
-  // highlights that one message and the two lanes it connects.
   const FOCUS = {
     building: { lanes: ["infisical", "creator"], messages: ["create", "token", "start", "revoke"] },
     runs: { lanes: ["agent", "proxy"], messages: ["start", "request"] },
@@ -315,8 +312,6 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
   const [focus, setFocus] = useState(null);
   const buildRef = useRef(null);
 
-  // A setup that one guide covers links straight to that guide. The others take several pages,
-  // so the button jumps to the list of them in "Build your setup".
   const GUIDES = "/documentation/platform/agent-vault";
   let buildHref = "#build-your-setup";
   if (selection.model === "user") {
@@ -457,10 +452,8 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
     return active ? `${base} ${base}--focus` : `${base} ${base}--dim`;
   };
 
-  // In the walkthrough, the diagram builds up as the reader scrolls: "before step 1" shows only
-  // Infisical and the proxy, and each step adds its arrow and any part it reaches for the first
-  // time. Earlier arrows stay, faded, so the reader sees what's been built so far. Before the
-  // walkthrough starts it shows the "before step 1" stage, and after it ends it shows everything.
+  // No current part means the reader is past the last step (this diagram is never on screen above
+  // the questions), so the whole diagram shows.
   let revealed = null;
   if (reveal) {
     let stage = 0;
@@ -622,9 +615,7 @@ export const AgentVaultSetupStep = ({ step, children }) => {
     };
   }, []);
 
-  // These numbers match the arrows in AgentVaultSetupDiagram, so the reader can find each step in
-  // the diagram. The titles describe the same arrows in full sentences, while the diagram keeps its
-  // short labels. Keep the numbering and order in sync with the diagram.
+  // Keep the numbering and order in sync with the arrows in AgentVaultSetupDiagram.
   const creator = CREATORS[model];
   const STEPS = {
     before: {  },

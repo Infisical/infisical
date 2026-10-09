@@ -1618,10 +1618,8 @@ a.ifx-card__title:hover .ifx-card__chevron {
 /* ==========================================================================
    Agent Vault setup planner (snippets/AgentVaultSetupPicker.jsx)
 
-   A frame-mode page laid out like .cli-ref: a hero, then the questions and
-   the MDX content on the left, with the diagram in a sticky column on the
-   right. Only the answers are cards. The diagram is a sequence diagram: a
-   lane per participant and an arrow per message, positioned by lane index.
+   The diagram is a sequence diagram: a lane per participant and an arrow
+   per message, positioned by lane index.
    ========================================================================== */
 
 .ifx-avsp {
@@ -1989,9 +1987,8 @@ a.ifx-card__title:hover .ifx-card__chevron {
   justify-content: flex-end;
 }
 
-/* Step numbers follow Mintlify's <Steps> indicator: a gray square (white at 10% in dark mode) with
-   gray-900 semibold text. Light mode uses gray-200 instead of Mintlify's gray-50, which was too faint
-   against the diagram's panel. The diagram's numbers are scaled down to fit an arrow's row. */
+/* Step numbers follow Mintlify's <Steps> indicator, except that light mode uses gray-200 instead of
+   Mintlify's gray-50, which was too faint against the diagram's panel. */
 .ifx-avsp__arrow-num,
 .ifx-avsp__walk-num {
   display: inline-flex;
@@ -2023,7 +2020,6 @@ a.ifx-card__title:hover .ifx-card__chevron {
   margin-bottom: 0.5rem;
 }
 
-/* .ifx-btn sized down to sit next to the expand button. */
 .ifx-avsp__build-button {
   gap: 0.375rem;
   height: 1.875rem;
@@ -2051,8 +2047,6 @@ a.ifx-card__title:hover .ifx-card__chevron {
   outline-offset: 1px;
 }
 
-/* Walkthrough steps in "Your setup". Each one opens with the same number and label as its arrow
-   in the diagram, plus which two parts of the diagram the arrow connects. */
 .ifx-avsp__walk-step {
   margin-top: 2rem;
   padding-top: 1.5rem;
@@ -2060,15 +2054,14 @@ a.ifx-card__title:hover .ifx-card__chevron {
   transition: opacity 0.2s ease;
 }
 
-/* The first step lines up with the top of the diagram beside it, so it has no divider above it. */
+/* No divider above the first step, so it lines up with the top of the diagram beside it. */
 .ifx-avsp__content > .ifx-avsp__walk-step:first-child {
   margin-top: 0;
   padding-top: 0;
   border-top: 0;
 }
 
-/* While one question is current, the others fade back the same way. A faded question comes back on
-   hover or keyboard focus, so it's still easy to read and answer. */
+/* A faded question comes back on hover or keyboard focus, so it's still easy to read and answer. */
 .ifx-avsp__step {
   transition: opacity 0.2s ease;
 }
@@ -2077,8 +2070,7 @@ a.ifx-card__title:hover .ifx-card__chevron {
   opacity: 0.35;
 }
 
-/* While one step is current, the others fade back, matching the dimmed arrows in the diagram. A
-   faded step comes back when one of its links has keyboard focus. */
+/* A faded step comes back when one of its links has keyboard focus. */
 .ifx-avsp__layout:has(.ifx-avsp__walk-step[data-avsp-active]) .ifx-avsp__walk-step:not([data-avsp-active]):not(:focus-within) {
   opacity: 0.35;
 }
@@ -2127,8 +2119,6 @@ a.ifx-card__title:hover .ifx-card__chevron {
   margin-top: 0;
 }
 
-/* While part of the page is in view, the diagram highlights the lanes and messages that part
-   explains and dims the rest. */
 .ifx-avsp__lane--dim,
 .ifx-avsp__message--dim {
   opacity: 0.3;
@@ -2138,8 +2128,7 @@ a.ifx-card__title:hover .ifx-card__chevron {
   border-color: var(--ifx-accent-ink);
 }
 
-/* The walkthrough's diagram builds up step by step. Parts that haven't appeared yet keep their
-   space, so the diagram doesn't shift as they appear, and earlier arrows fade behind the current one. */
+/* Parts that haven't appeared yet keep their space, so the diagram doesn't shift as they appear. */
 .ifx-avsp__lane--hidden,
 .ifx-avsp__message--hidden,
 .ifx-avsp__lifeline--hidden {
