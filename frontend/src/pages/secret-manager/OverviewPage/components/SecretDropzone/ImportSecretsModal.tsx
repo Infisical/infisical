@@ -184,7 +184,8 @@ const ImportSecretsContent = ({
         return;
       }
 
-      if (file.size > MAX_BATCH_REQUEST_BYTES) {
+      const isCsv = file.name.toLowerCase().endsWith(".csv") || file.type === "text/csv";
+      if (!isCsv && file.size > MAX_BATCH_REQUEST_BYTES) {
         createNotification({
           type: "error",
           text: "This file exceeds the 1 MB upload limit. Split it into smaller files."
