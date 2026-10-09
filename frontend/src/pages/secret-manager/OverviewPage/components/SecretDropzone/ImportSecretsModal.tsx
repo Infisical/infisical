@@ -155,7 +155,7 @@ const ImportSecretsContent = ({
         secretValue: s.value,
         secretComment: s.comments.join("\n"),
         type: SecretType.Shared,
-        tagIds: s.tagSlugs?.map(() => crypto.randomUUID()),
+        tagIds: s.tagSlugs?.map(() => "00000000-0000-0000-0000-000000000000"),
         secretMetadata: s.secretMetadata,
         skipMultilineEncoding: s.skipMultilineEncoding
       }))
