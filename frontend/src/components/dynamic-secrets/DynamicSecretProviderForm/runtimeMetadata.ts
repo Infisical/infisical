@@ -263,7 +263,7 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
     }
   },
   [DynamicSecretProviders.Kafka]: {
-    presentation: { providerFamily: "Kafka" },
+    presentation: { providerFamily: "Kafka", logoFileName: "Kafka.png" },
     leaseCapabilities: createDefaultLeaseCapabilities(credentials)
   }
 } as const satisfies Record<DynamicSecretProviders, TDynamicSecretProviderRuntimeMetadata>;
