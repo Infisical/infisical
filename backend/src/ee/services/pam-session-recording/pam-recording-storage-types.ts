@@ -1,3 +1,5 @@
+import type { Agent } from "node:https";
+
 import { PamRecordingStorageBackend } from "./pam-recording-enums";
 
 export type TPamRecordingChunkRef = {
@@ -11,6 +13,7 @@ export type TPamRecordingResolvedConfig = {
   bucket?: string;
   region?: string;
   endpoint?: string;
+  httpsAgent?: Agent;
   keyPrefix?: string | null;
 
   awsCredentials?: {

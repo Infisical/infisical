@@ -1,3 +1,5 @@
+import type { Agent } from "node:https";
+
 import { GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -14,16 +16,19 @@ export type TS3Bucket = ReturnType<typeof createS3Bucket>;
 export const createS3Client = ({
   region,
   credentials,
-  endpoint
+  endpoint,
+  httpsAgent
 }: {
   region: string;
   credentials: TS3Credentials;
   endpoint?: string;
+  httpsAgent?: Agent;
 }) =>
   new S3Client({
     region,
     sha256: CustomAWSHasher,
     credentials,
+    ...(httpsAgent && { requestHandler: { httpsAgent } }),
     ...(endpoint
       ? {
           endpoint,

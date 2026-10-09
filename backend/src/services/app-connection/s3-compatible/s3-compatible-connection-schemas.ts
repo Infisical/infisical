@@ -86,14 +86,15 @@ export const parseS3CompatibleEndpoint = (endpoint: string, allowedStorageHostna
   const url = parseEndpointUrl(endpoint);
   if (!url) return null;
 
+  if (!url.port) {
+    for (const provider of Object.keys(S3_COMPATIBLE_PROVIDER_MAP) as (keyof typeof S3_COMPATIBLE_PROVIDER_MAP)[]) {
+      const region = S3_COMPATIBLE_PROVIDER_MAP[provider].getSigningRegion(url.hostname);
+      if (region) return { provider, region, origin: url.origin };
+    }
+  }
+
   if (allowedStorageHostnames.includes(url.host)) {
     return { provider: S3CompatibleProvider.Custom, region: CUSTOM_HOSTNAME_SIGNING_REGION, origin: url.origin };
-  }
-  if (url.port) return null;
-
-  for (const provider of Object.keys(S3_COMPATIBLE_PROVIDER_MAP) as (keyof typeof S3_COMPATIBLE_PROVIDER_MAP)[]) {
-    const region = S3_COMPATIBLE_PROVIDER_MAP[provider].getSigningRegion(url.hostname);
-    if (region) return { provider, region, origin: url.origin };
   }
   return null;
 };

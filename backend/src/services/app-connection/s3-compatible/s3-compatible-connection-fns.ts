@@ -1,8 +1,11 @@
+import type { Agent } from "node:https";
+
 import { ListBucketsCommand, S3ServiceException } from "@aws-sdk/client-s3";
 
 import { createS3Client } from "@app/lib/aws/s3";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { buildSsrfSafeAgent } from "@app/lib/validator";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { AppConnection } from "../app-connection-enums";
@@ -33,13 +36,26 @@ export const getS3CompatibleConnectionConfig = async ({
     throw new BadRequestError({ message: S3_COMPATIBLE_ENDPOINT_ERROR });
   }
 
+  const providerName =
+    parsed.provider === S3CompatibleProvider.Custom
+      ? new URL(parsed.origin).host
+      : S3_COMPATIBLE_PROVIDER_MAP[parsed.provider].name;
+
+  const httpsAgent =
+    parsed.provider === S3CompatibleProvider.Custom
+      ? ((await buildSsrfSafeAgent(parsed.origin).catch((error: NodeJS.ErrnoException) => {
+          if (error.code !== "ENOTFOUND" && error.code !== "EAI_AGAIN") throw error;
+          throw new BadRequestError({
+            message: `Could not resolve ${providerName}. Verify the hostname and try again.`
+          });
+        })) as Agent | undefined)
+      : undefined;
+
   return {
-    providerName:
-      parsed.provider === S3CompatibleProvider.Custom
-        ? new URL(parsed.origin).host
-        : S3_COMPATIBLE_PROVIDER_MAP[parsed.provider].name,
+    providerName,
     region: parsed.region,
     endpoint: parsed.provider === S3CompatibleProvider.AwsS3 ? undefined : parsed.origin,
+    httpsAgent,
     credentials: { accessKeyId: credentials.accessKeyId, secretAccessKey: credentials.secretAccessKey }
   };
 };

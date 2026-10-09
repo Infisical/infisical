@@ -65,7 +65,7 @@ Select **Save** to apply either change.
 
 ### Allowed storage hostnames
 
-If you store [PAM session recordings](/documentation/platform/pam/sessions/external-storage) on your own S3-compatible server, such as MinIO, add the server's hostname under **Hostnames** and select **Save**. Include the port if it isn't 443, such as `minio.example.com:9000`, and make sure the server accepts HTTPS connections.
+If you store [PAM session recordings](/documentation/platform/pam/sessions/external-storage) on your own S3-compatible server, such as MinIO, add the server's hostname under **Hostnames** and select **Save**. Include the port if it isn't 443, such as `minio.example.com:9000`, and make sure the server accepts HTTPS connections. If the hostname resolves to a private IP address, also set [`ALLOW_INTERNAL_IP_CONNECTIONS`](/self-hosting/configuration/envars#param-allow-internal-ip-connections) to `true`.
 
 An S3-Compatible Storage connection can then use the server as its endpoint, and browsers can play back recordings stored there.
 

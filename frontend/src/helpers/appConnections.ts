@@ -714,11 +714,11 @@ export const getS3CompatibleProviderName = (
     ) {
       return null;
     }
-    if (allowedStorageHostnames.includes(url.host)) return url.host;
-    if (url.port) return null;
-    return (
-      S3_COMPATIBLE_PROVIDERS.find(({ hostname }) => hostname.test(url.hostname))?.name ?? null
-    );
+    const providerName = url.port
+      ? undefined
+      : S3_COMPATIBLE_PROVIDERS.find(({ hostname }) => hostname.test(url.hostname))?.name;
+    if (providerName) return providerName;
+    return allowedStorageHostnames.includes(url.host) ? url.host : null;
   } catch {
     return null;
   }

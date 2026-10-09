@@ -32,10 +32,15 @@ export const PAM_RECORDING_CONNECTION_APPS = [AppConnection.AWS, AppConnection.S
 export const resolveS3RecordingAccess = async (
   appConnection: TAppConnection,
   region: string | undefined
-): Promise<Pick<TPamRecordingResolvedConfig, "region" | "endpoint" | "awsCredentials">> => {
+): Promise<Pick<TPamRecordingResolvedConfig, "region" | "endpoint" | "httpsAgent" | "awsCredentials">> => {
   if (appConnection.app === AppConnection.S3Compatible) {
     const s3Config = await getS3CompatibleConnectionConfig(appConnection);
-    return { region: s3Config.region, endpoint: s3Config.endpoint, awsCredentials: s3Config.credentials };
+    return {
+      region: s3Config.region,
+      endpoint: s3Config.endpoint,
+      httpsAgent: s3Config.httpsAgent,
+      awsCredentials: s3Config.credentials
+    };
   }
 
   if (appConnection.app !== AppConnection.AWS) {
@@ -56,7 +61,12 @@ const buildClient = (config: TPamRecordingResolvedConfig) => {
   if (!config.region || !config.awsCredentials) {
     throw new BadRequestError({ message: "S3 storage backend requires region and credentials" });
   }
-  return createS3Client({ region: config.region, endpoint: config.endpoint, credentials: config.awsCredentials });
+  return createS3Client({
+    region: config.region,
+    endpoint: config.endpoint,
+    httpsAgent: config.httpsAgent,
+    credentials: config.awsCredentials
+  });
 };
 
 export const AwsS3RecordingStorageProvider: TPamRecordingStorageProvider = () => ({

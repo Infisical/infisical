@@ -50,16 +50,18 @@ For AWS S3, the connection's IAM role or user needs these permissions on the buc
 External storage is set at the [template](/documentation/platform/pam/templates/overview) level. Each template can use a different bucket if needed.
 
 <Steps>
-  <Step title="Open the template">
+  <Step>
     Go to **Account Templates** and select the template you want to configure.
   </Step>
-  <Step title="Find Session Recording">
-    On the **General** tab, find the **Session Recording** section.
+  <Step>
+    Find the **Session Recording** section on the **General** tab.
   </Step>
-  <Step title="Select S3 Bucket">
+  <Step>
     Set **Storage backend** to **S3 Bucket**.
   </Step>
-  <Step title="Configure the bucket">
+  <Step>
+    Configure the bucket:
+
     | Field | Description |
     |-------|-------------|
     | **Connection** | Select your AWS or S3-Compatible Storage connection |
@@ -67,7 +69,7 @@ External storage is set at the [template](/documentation/platform/pam/templates/
     | **Region** | AWS region (only for an AWS connection) |
     | **Key Prefix** | Optional prefix for object keys (e.g., `pam/prod/`) |
   </Step>
-  <Step title="Save">
+  <Step>
     Select **Save**. Infisical validates that it can reach the bucket before saving.
   </Step>
 </Steps>
