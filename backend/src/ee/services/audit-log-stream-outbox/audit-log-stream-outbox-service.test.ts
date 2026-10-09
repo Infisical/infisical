@@ -107,7 +107,6 @@ const createService = () => {
         orgId: string;
         encryptedCredentials: Buffer;
         streamMode: StreamMode;
-        failingSince?: Date | null;
       }> => ({
         id: STREAM_ID,
         provider: PROVIDER,
@@ -203,6 +202,31 @@ describe("audit-log-stream-outbox-service drainStream failure handling", () => {
     expect(call.successIds).toEqual([1]);
     expect(call.retriable).toBeNull();
     expect(call.exhaustedIds).toEqual([]);
+  });
+
+  test("clears the failing flag after a clean batch even when the stream was read as healthy", async () => {
+    const { service, auditLogStreamOutboxDAL } = createService();
+
+    auditLogStreamOutboxDAL.claimBatchForStream.mockResolvedValueOnce([buildRow()]).mockResolvedValueOnce([]);
+    batchStreamLog.mockResolvedValueOnce(undefined);
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    expect(auditLogStreamOutboxDAL.clearStreamFailing).toHaveBeenCalledWith(STREAM_ID, expect.anything());
+  });
+
+  test("does not clear the failing flag when any row in the batch failed", async () => {
+    const { service, auditLogStreamOutboxDAL } = createService();
+
+    getProviderBatchLimit.mockReturnValue({ maxLogs: 1, maxBytes: 4 * 1024 * 1024 });
+    auditLogStreamOutboxDAL.claimBatchForStream
+      .mockResolvedValueOnce([buildRow({ id: 1, auditLogId: "log-1" }), buildRow({ id: 2, auditLogId: "log-2" })])
+      .mockResolvedValueOnce([]);
+    batchStreamLog.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error(FAILURE_MESSAGE));
+
+    await service.drainStream({ streamId: STREAM_ID, orgId: ORG_ID, provider: PROVIDER });
+
+    expect(auditLogStreamOutboxDAL.clearStreamFailing).not.toHaveBeenCalled();
   });
 
   test("stops draining after the first failed batch — does not claim another batch", async () => {
@@ -562,11 +586,30 @@ describe("audit-log-stream-outbox-service sweepStaleClaims", () => {
   });
 
   const sweepWith = async (dropped: { streamId: string; orgId: string; provider: string | null }[], retried = 0) => {
-    const { service, auditLogStreamOutboxDAL } = createService();
+    const { service, auditLogStreamOutboxDAL, eventEmitter } = createService();
     auditLogStreamOutboxDAL.recoverStaleClaims = vi.fn(async () => ({ retried, dropped })) as never;
     await service.sweepStaleClaims();
-    return auditLogStreamOutboxDAL;
+    return { auditLogStreamOutboxDAL, eventEmitter };
   };
+
+  test("emits one alert per stream with drops, carrying that stream's own count", async () => {
+    const { eventEmitter } = await sweepWith([
+      { streamId: "stream-a", orgId: ORG_ID, provider: LogProvider.Datadog },
+      { streamId: "stream-a", orgId: ORG_ID, provider: LogProvider.Datadog },
+      { streamId: "stream-b", orgId: ORG_ID, provider: LogProvider.Splunk }
+    ]);
+
+    const payloads = eventEmitter.emit.mock.calls.map(
+      ([event]) => (event as { payload: { targetIds: string[]; droppedCount: number } }).payload
+    );
+    expect(payloads).toHaveLength(2);
+    expect(payloads).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ targetIds: ["stream-a"], droppedCount: 2 }),
+        expect.objectContaining({ targetIds: ["stream-b"], droppedCount: 1 })
+      ])
+    );
+  });
 
   test("labels a drop with the stream's provider so sum by(provider) accounts for it", async () => {
     await sweepWith([{ streamId: STREAM_ID, orgId: ORG_ID, provider: LogProvider.Datadog }]);

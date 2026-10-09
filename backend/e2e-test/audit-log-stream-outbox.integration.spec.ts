@@ -195,6 +195,28 @@ describe("audit log stream outbox (postgres)", () => {
     });
   });
 
+  describe("sweepStaleClaims", () => {
+    test("dropping an exhausted stale claim flags the stream and emits one event", async () => {
+      const stream = await createStream("http://127.0.0.1:1/");
+      const lockedAt = new Date(Date.now() - 11 * 60_000);
+      const rowIds = [
+        await seedRow(stream.id, { attempts: LAST_ATTEMPT, status: AuditLogStreamOutboxStatus.Processing, lockedAt }),
+        await seedRow(stream.id, { attempts: LAST_ATTEMPT, status: AuditLogStreamOutboxStatus.Processing, lockedAt })
+      ];
+
+      await service.sweepStaleClaims();
+
+      expect(await Promise.all(rowIds.map(outboxRow))).toEqual([undefined, undefined]);
+      const health = await streamHealth(stream.id);
+      expect(health?.failingSince).toBeInstanceOf(Date);
+      expect(health?.lastDeliveryError).toContain("delivery worker stopped");
+
+      const emitted = await events();
+      expect(emitted).toHaveLength(1);
+      expect(emitted[0].payload).toMatchObject({ targetIds: [stream.id], droppedCount: 2 });
+    });
+  });
+
   describe("drainStream against a real receiver", () => {
     let receiver: TFakeWebhookServer;
 
