@@ -137,10 +137,6 @@ const platformMappings: TFeatureMapping[] = [
     v1Field: "gatewayPool"
   },
   {
-    v2Key: "custom_rate_limits",
-    v1Field: "customRateLimits"
-  },
-  {
     v2Key: "custom_alerts",
     v1Field: "customAlerts"
   },

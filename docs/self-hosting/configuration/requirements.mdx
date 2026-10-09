@@ -54,8 +54,8 @@ Recommended resource allocation based on deployment size. You may require more r
 ### Redis
 
 Infisical treats Redis as a **required, persistent datastore**. Beyond
-caching, it holds the background job queue, distributed locks, cross-instance coordination state
-for scheduled jobs, and rate-limit counters. An instance refuses to start unless a Redis
+caching, it holds the background job queue, distributed locks, and cross-instance coordination
+state for scheduled jobs. An instance refuses to start unless a Redis
 connection is configured, and a running instance is degraded for as long as Redis is unreachable.
 
 <Info>

@@ -60,7 +60,6 @@ export type TFeatureSet = {
   pitRecovery: false;
   ipAllowlisting: false;
   rbac: false;
-  customRateLimits: false;
   customAlerts: false;
   auditLogs: false;
   auditLogsRetentionDays: 0;

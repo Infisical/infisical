@@ -15,7 +15,6 @@ export const getDefaultOnPremFeatures = () => {
     pitRecovery: false,
     ipAllowlisting: true,
     rbac: false,
-    customRateLimits: false,
     customAlerts: false,
     auditLogs: false,
     auditLogsRetentionDays: 0,

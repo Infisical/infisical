@@ -4,7 +4,16 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 
 export async function up(knex: Knex): Promise<void> {
-  if (!(await knex.schema.hasTable(TableName.DeprecatedRateLimit))) {
+  const hasTable = await knex.schema.hasTable(TableName.DeprecatedRateLimit);
+  if (hasTable) {
+    await dropOnUpdateTrigger(knex, TableName.DeprecatedRateLimit);
+    await knex.schema.dropTable(TableName.DeprecatedRateLimit);
+  }
+}
+
+export async function down(knex: Knex): Promise<void> {
+  const hasTable = await knex.schema.hasTable(TableName.DeprecatedRateLimit);
+  if (!hasTable) {
     await knex.schema.createTable(TableName.DeprecatedRateLimit, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.integer("readRateLimit").defaultTo(600).notNullable();
@@ -13,19 +22,11 @@ export async function up(knex: Knex): Promise<void> {
       t.integer("authRateLimit").defaultTo(60).notNullable();
       t.integer("inviteUserRateLimit").defaultTo(30).notNullable();
       t.integer("mfaRateLimit").defaultTo(20).notNullable();
-      t.integer("creationLimit").defaultTo(30).notNullable();
       t.integer("publicEndpointLimit").defaultTo(30).notNullable();
+      t.integer("identityCreationLimit").defaultTo(30).notNullable();
+      t.integer("projectCreationLimit").defaultTo(30).notNullable();
       t.timestamps(true, true, true);
     });
-
     await createOnUpdateTrigger(knex, TableName.DeprecatedRateLimit);
-
-    // create init rate limit entry with defaults
-    await knex(TableName.DeprecatedRateLimit).insert({});
   }
-}
-
-export async function down(knex: Knex): Promise<void> {
-  await knex.schema.dropTableIfExists(TableName.DeprecatedRateLimit);
-  await dropOnUpdateTrigger(knex, TableName.DeprecatedRateLimit);
 }

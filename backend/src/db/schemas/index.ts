@@ -212,7 +212,6 @@ export * from "./project-user-membership-roles";
 export * from "./projects";
 export * from "./proxied-service-credentials";
 export * from "./proxied-services";
-export * from "./rate-limit";
 export * from "./relays";
 export * from "./resource-auth-methods";
 export * from "./resource-aws-auths";
