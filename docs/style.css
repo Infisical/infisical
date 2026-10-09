@@ -1616,6 +1616,537 @@ a.ifx-card__title:hover .ifx-card__chevron {
 }
 
 /* ==========================================================================
+   Agent Vault setup planner (snippets/AgentVaultSetupPicker.jsx)
+
+   The diagram is a sequence diagram: a lane per participant and an arrow
+   per message, positioned by lane index.
+   ========================================================================== */
+
+.ifx-avsp {
+  --avsp-top: 64px;
+  width: 100%;
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 0 2.5rem 6rem;
+}
+
+@media (max-width: 767px) {
+  .ifx-avsp {
+    padding: 0 1rem 4rem;
+  }
+}
+
+/* Matches the #header block that Mintlify renders on regular pages, including this site's left
+   rule and background from the #header override above. */
+.ifx-avsp__hero {
+  margin: 4.5rem 0 2rem;
+  padding: 10px 16px;
+  border-left: 2px solid var(--ifx-accent);
+  background-color: var(--ifx-surface-soft);
+}
+
+.ifx-avsp__eyebrow {
+  margin-top: 2px;
+  color: var(--ifx-muted);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.ifx-avsp__title {
+  margin: 0.625rem 0 0;
+  font-family: var(--font-family-headings-custom, inherit);
+  font-size: 2.25rem;
+  font-weight: 600;
+  line-height: 2.5rem;
+  letter-spacing: -0.025em;
+  color: var(--ifx-text-dim);
+}
+
+.ifx-avsp__description {
+  margin-top: 0.5rem;
+  color: var(--ifx-text-soft);
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
+@media (max-width: 639px) {
+  .ifx-avsp__title {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+}
+
+/* The prose classes cap the width for reading, but the body also holds the two-column layout, so
+   it takes the page's full width. */
+.ifx-avsp__body.prose {
+  max-width: none;
+}
+
+/* MDX renders paragraphs as <span data-as="p">, which the prose classes don't style, so two in a
+   row would run together on one line. */
+.ifx-avsp__body [data-as="p"] {
+  display: block;
+  margin: 1.25em 0;
+}
+
+/* The page renders the diagram twice: in a sticky column on the right when there's room for two
+   columns, and inline after the questions when there isn't. Only one of the two shows. */
+.ifx-avsp__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3rem;
+  margin: 2.5rem 0;
+}
+
+.ifx-avsp__aside {
+  display: none;
+}
+
+@media (min-width: 1200px) {
+  .ifx-avsp__layout {
+    grid-template-columns: minmax(0, 28rem) minmax(0, 1fr);
+  }
+
+  .ifx-avsp__aside {
+    display: block;
+  }
+
+  .ifx-avsp__aside-inner {
+    position: sticky;
+    top: calc(var(--avsp-top) + 1.5rem);
+  }
+
+  .ifx-avsp__diagram-inline {
+    display: none;
+  }
+}
+
+.ifx-avsp__content {
+  min-width: 0;
+}
+
+.ifx-avsp__questions {
+  display: flex;
+  flex-direction: column;
+  gap: 2.25rem;
+  /* No bottom margin: the layout's column ends at the last answer card, so the pinned diagram
+     beside the questions stops exactly there. The space below comes from .ifx-avsp__layout. */
+  margin: 0;
+}
+
+.ifx-avsp__diagram-inline {
+  margin: 2.5rem 0;
+  padding: 1.25rem 1rem;
+  border: 1px solid var(--ifx-card-line);
+  background-color: var(--ifx-card-bg);
+}
+
+.ifx-avsp__step-title {
+  margin: 0;
+  color: var(--ifx-text);
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.ifx-avsp__step-desc {
+  margin: 0.35rem 0 1rem;
+  color: var(--ifx-text-soft);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.ifx-avsp__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ifx-avsp__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--ifx-card-line);
+  background-color: var(--ifx-card-bg);
+  color: var(--ifx-card-body);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ifx-avsp__card:hover {
+  border-color: var(--ifx-hover-line);
+}
+
+/* The inset shadow doubles the border without changing the card's size. */
+.ifx-avsp__card--active,
+.ifx-avsp__card--active:hover {
+  border-color: var(--ifx-accent-ink);
+  box-shadow: inset 0 0 0 1px var(--ifx-accent-ink);
+  background-color: var(--ifx-accent-soft);
+}
+
+.ifx-avsp__card:focus-visible {
+  outline-style: solid;
+  outline-width: 2px;
+  outline-offset: 2px;
+}
+
+.ifx-avsp__card-label {
+  color: var(--ifx-card-title);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.ifx-avsp__card--active .ifx-avsp__card-label {
+  color: var(--ifx-accent-ink);
+}
+
+.ifx-avsp__card-desc {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.ifx-avsp__card-agent {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ifx-avsp__card-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--ifx-card-title);
+}
+
+.ifx-avsp__card-icon img,
+.ifx-avsp__card-icon svg {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.ifx-avsp__aside-inner {
+  padding: 1.25rem 1rem;
+  border: 1px solid var(--ifx-card-line);
+  background-color: var(--ifx-card-bg);
+}
+
+/* The lanes need room for their labels, so the diagram scrolls sideways on a phone instead of
+   squeezing them. */
+.ifx-avsp__diagram-scroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.ifx-avsp__diagram {
+  min-width: 26rem;
+}
+
+.ifx-avsp__lanes {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding-top: 1.1rem;
+}
+
+.ifx-avsp__lane {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.45rem 0.25rem;
+  margin: 0 0.25rem;
+  border: 1px solid var(--ifx-control-line);
+  background-color: var(--ifx-page);
+  text-align: center;
+}
+
+.ifx-avsp__lane-label {
+  color: var(--ifx-card-title);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.ifx-avsp__lane-sub {
+  color: var(--ifx-muted);
+  font-size: 0.6875rem;
+  line-height: 1.3;
+}
+
+/* Lanes 2 and 3 (the session creator and the agent) are the ones that can share a host. The grid
+   has no gap, so the box spans exactly those two columns and the lifelines sit at each lane's center. */
+.ifx-avsp__boundary {
+  position: absolute;
+  top: 0;
+  bottom: -0.3rem;
+  left: 20%;
+  width: 40%;
+  border: 1px dashed var(--ifx-hover-line);
+  background-color: var(--ifx-hover-fill);
+}
+
+.ifx-avsp__boundary-label {
+  position: absolute;
+  top: 0.1rem;
+  left: 0.4rem;
+  color: var(--ifx-muted);
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.ifx-avsp__messages {
+  position: relative;
+  padding: 0.75rem 0 0.25rem;
+}
+
+.ifx-avsp__lifeline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px dashed var(--ifx-control-line);
+}
+
+.ifx-avsp__message {
+  position: relative;
+  height: 2.6rem;
+}
+
+.ifx-avsp__arrow {
+  position: absolute;
+  bottom: 0.7rem;
+  height: 0;
+  border-top: 1.5px solid var(--ifx-control-text);
+}
+
+.ifx-avsp__arrow--reply {
+  border-top-style: dashed;
+  border-top-color: var(--ifx-muted);
+}
+
+.ifx-avsp__arrow::after {
+  content: "";
+  position: absolute;
+  top: -5px;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+}
+
+.ifx-avsp__arrow--right::after {
+  right: -1px;
+  border-left: 7px solid var(--ifx-control-text);
+}
+
+.ifx-avsp__arrow--left::after {
+  left: -1px;
+  border-right: 7px solid var(--ifx-control-text);
+}
+
+.ifx-avsp__arrow--reply.ifx-avsp__arrow--left::after {
+  border-right-color: var(--ifx-muted);
+}
+
+.ifx-avsp__arrow-label {
+  position: absolute;
+  bottom: 0.3rem;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  color: var(--ifx-text-soft);
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* A centered label wider than its arrow spills past the diagram when the arrow touches the first
+   or last lane, so those labels start or end at the outer lane instead. */
+.ifx-avsp__arrow--first-lane .ifx-avsp__arrow-label {
+  right: auto;
+  justify-content: flex-start;
+}
+
+.ifx-avsp__arrow--last-lane .ifx-avsp__arrow-label {
+  left: auto;
+  justify-content: flex-end;
+}
+
+/* Step numbers follow Mintlify's <Steps> indicator, except that light mode uses gray-200 instead of
+   Mintlify's gray-50, which was too faint against the diagram's panel. */
+.ifx-avsp__arrow-num,
+.ifx-avsp__walk-num {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  background-color: rgb(var(--gray-200, 223 223 223));
+  color: rgb(var(--gray-900, 23 23 24));
+  font-weight: 600;
+}
+
+.dark .ifx-avsp__arrow-num,
+.dark .ifx-avsp__walk-num {
+  background-color: rgb(255 255 255 / 0.1);
+  color: rgb(var(--gray-50, 244 244 244));
+}
+
+.ifx-avsp__arrow-num {
+  width: 1.125rem;
+  height: 1.125rem;
+  font-size: 0.625rem;
+}
+
+.ifx-avsp__panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.ifx-avsp__build-button {
+  gap: 0.375rem;
+  height: 1.875rem;
+  padding: 0 0.75rem;
+  font-size: 0.8125rem;
+}
+
+/* Frame mode gives headings no ids, so "Build your setup" has an anchor before it. The margin
+   keeps the heading clear of the sticky navbar after a jump. */
+.ifx-avsp__anchor {
+  scroll-margin-top: calc(var(--avsp-top) + 1.5rem);
+}
+
+.ifx-avsp__arrow-num--link {
+  padding: 0;
+  border: 0;
+  font-family: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ifx-avsp__arrow-num--link:hover,
+.ifx-avsp__arrow-num--link:focus-visible {
+  outline: 2px solid var(--ifx-card-hover-line);
+  outline-offset: 1px;
+}
+
+.ifx-avsp__walk-step {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--ifx-line);
+  transition: opacity 0.2s ease;
+}
+
+/* No divider above the first step, so it lines up with the top of the diagram beside it. */
+.ifx-avsp__content > .ifx-avsp__walk-step:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* A faded question comes back on hover or keyboard focus, so it's still easy to read and answer. */
+.ifx-avsp__step {
+  transition: opacity 0.2s ease;
+}
+
+.ifx-avsp__questions:has(.ifx-avsp__step[data-avsp-active]) .ifx-avsp__step:not([data-avsp-active]):not(:hover):not(:focus-within) {
+  opacity: 0.35;
+}
+
+/* A faded step comes back when one of its links has keyboard focus. */
+.ifx-avsp__layout:has(.ifx-avsp__walk-step[data-avsp-active]) .ifx-avsp__walk-step:not([data-avsp-active]):not(:focus-within) {
+  opacity: 0.35;
+}
+
+/* DESIGN.md: respect reduced-motion settings. The fades and reveals still happen, but instantly. */
+@media (prefers-reduced-motion: reduce) {
+  .ifx-avsp__step,
+  .ifx-avsp__walk-step,
+  .ifx-avsp__lane,
+  .ifx-avsp__message,
+  .ifx-avsp__lifeline {
+    transition: none;
+  }
+}
+
+.ifx-avsp__walk-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.ifx-avsp__walk-num {
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.ifx-avsp__walk-title {
+  margin: 0;
+  color: var(--ifx-text);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.ifx-avsp__walk-route {
+  margin: 0.1rem 0 0;
+  color: var(--ifx-muted);
+  font-size: 0.8125rem;
+}
+
+/* The body is MDX inside the prose classes, which would add a top margin to its first paragraph. */
+.ifx-avsp__walk-body > :first-child {
+  margin-top: 0;
+}
+
+.ifx-avsp__lane--dim,
+.ifx-avsp__message--dim {
+  opacity: 0.3;
+}
+
+.ifx-avsp__lane--focus {
+  border-color: var(--ifx-accent-ink);
+}
+
+/* Parts that haven't appeared yet keep their space, so the diagram doesn't shift as they appear. */
+.ifx-avsp__lane--hidden,
+.ifx-avsp__message--hidden,
+.ifx-avsp__lifeline--hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.ifx-avsp__message--past {
+  opacity: 0.45;
+}
+
+.ifx-avsp__lane,
+.ifx-avsp__message,
+.ifx-avsp__lifeline {
+  transition: opacity 0.3s ease, visibility 0.3s ease, border-color 0.2s ease;
+}
+
+/* ==========================================================================
    Combined IAM policy (snippets/AwsIamPolicy.jsx)
    ========================================================================== */
 

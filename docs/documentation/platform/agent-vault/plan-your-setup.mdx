@@ -1,0 +1,246 @@
+---
+title: "Plan your Agent Vault setup"
+sidebarTitle: "Plan your setup"
+description: "Get a recommended Agent Vault setup for what you're building."
+mode: "frame"
+---
+
+import {
+  AgentVaultSetupPage,
+  AgentVaultSetupLayout,
+  AgentVaultSetupQuestions,
+  AgentVaultSetupDiagram,
+  AgentVaultSetupStep,
+  AgentVaultSetupSummary,
+  AgentVaultSetupBranch,
+} from "/snippets/AgentVaultSetupPicker.jsx";
+
+<AgentVaultSetupPage
+  eyebrow="Get started"
+  title="Plan your Agent Vault setup"
+  description="Get a recommended Agent Vault setup for what you're building."
+>
+
+Configure the following options to get custom guidance and best practices tailored to your agent's setup.
+
+<AgentVaultSetupLayout aside={<AgentVaultSetupDiagram />}>
+
+<AgentVaultSetupQuestions />
+
+<AgentVaultSetupDiagram inline />
+
+</AgentVaultSetupLayout>
+
+## Your setup
+
+<AgentVaultSetupSummary />
+
+<AgentVaultSetupLayout aside={<AgentVaultSetupDiagram reveal />}>
+
+<AgentVaultSetupStep step="before">
+  Before running an agent, you set up two things:
+
+  <ul>
+    <li>An [access bundle](/documentation/platform/agent-vault/access-bundles) in Infisical: a list of the [services](/documentation/platform/agent-vault/services) (the APIs) that the agent can call, each with its real credential</li>
+    <li>A running [proxy](/documentation/platform/agent-vault/proxies): a program on its own machine that every request from the agent goes through</li>
+  </ul>
+
+  <AgentVaultSetupBranch building="scheduled,platform">
+    <Note>
+    One proxy stays running and handles the requests from every agent and every job, so you don't need a separate proxy for each job or each host.
+    </Note>
+  </AgentVaultSetupBranch>
+</AgentVaultSetupStep>
+
+<AgentVaultSetupStep step="create">
+  A [session](/documentation/platform/agent-vault/sessions) gives an agent access to the services in one access bundle, until the session expires or someone [revokes it](/documentation/platform/agent-vault/sessions#revoke-a-session).
+
+  <AgentVaultSetupBranch building="personal">
+    You [create the session in the Infisical dashboard](/documentation/platform/agent-vault/sessions#create-a-session).
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="assistant">
+    You [create one session in the Infisical dashboard](/documentation/platform/agent-vault/sessions#create-a-session) that never expires, since the assistant keeps running.
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="scheduled">
+    Each time the job runs, the [Infisical CLI](/cli/overview) logs in as a [machine identity](/documentation/platform/identities/machine-identities) and creates a session. [Each session lasts](/documentation/platform/agent-vault/sessions-cli#choose-how-long-each-session-lasts) a little longer than the longest run you expect, because the agent loses access to the APIs if a run outlasts its session.
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="platform">
+    For each task, the orchestrator logs in as a [machine identity](/documentation/platform/identities/machine-identities) and creates a session through the [Infisical API](/api-reference/endpoints/agent-vault-sessions/create). Each kind of task has its own access bundle, and the orchestrator chooses the access bundle when it creates the session.
+  </AgentVaultSetupBranch>
+</AgentVaultSetupStep>
+
+<AgentVaultSetupStep step="token">
+  The session token only works for the services in the session's access bundle, and only until the session expires or is revoked.
+
+  <AgentVaultSetupBranch building="personal,assistant">
+    The dashboard shows the token in a command that starts the agent with it.
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="assistant">
+    Because the session never expires, revoking it is what stops the assistant from using the real credentials.
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="scheduled">
+    The CLI keeps the token and passes it to the agent in the next step, so you never handle the token yourself.
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="platform">
+    The orchestrator receives the token in the API response.
+  </AgentVaultSetupBranch>
+</AgentVaultSetupStep>
+
+<AgentVaultSetupStep step="start">
+  The agent gets the session token instead of real API keys. [`infisical agent-vault run`](/cli/reference#agent-vault-run) starts the agent with its requests set to go through the proxy.
+
+  <AgentVaultSetupBranch building="personal,assistant">
+    You run the command from the dashboard on the agent's host.
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="scheduled">
+    The CLI starts the agent right after it creates the session. The agent can read the machine identity's credentials [from its environment](/documentation/platform/agent-vault/sessions-cli#step-2-start-the-agent), and could use them to create a session for any access bundle the machine identity has. That's why the machine identity only has the access bundle that this agent uses.
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="platform">
+    The orchestrator starts the agent on a different host and passes it only the session token. The orchestrator stays off the agents' hosts because the machine identity it uses can create sessions for every access bundle it's granted. An agent that read those credentials could reach every service in those access bundles.
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="scheduled,platform" agent="claude-code">
+    Nobody is at the terminal while the agent runs, so Claude Code runs in its [non-interactive mode](https://code.claude.com/docs/en/headless): `claude -p "<prompt>"`.
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="scheduled,platform" agent="codex">
+    Nobody is at the terminal while the agent runs, so Codex runs in its [non-interactive mode](https://developers.openai.com/codex/noninteractive): `codex exec "<prompt>"`.
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="scheduled,platform" agent="opencode">
+    Nobody is at the terminal while the agent runs, so OpenCode runs in its [non-interactive mode](https://opencode.ai/docs/cli/#run-1): `opencode run "<prompt>"`.
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="scheduled,platform" agent="hermes">
+    Nobody is at the terminal while the agent runs, so Hermes runs in its [non-interactive mode](https://hermes-agent.nousresearch.com/docs/user-guide/cli): `hermes chat -q "<prompt>"`.
+    
+    <Note> Hermes won't start without the API keys in `~/.hermes/.env`, so that file holds [placeholder values](/documentation/platform/agent-vault/guides/hermes#step-2-launch-your-agent), and the proxy attaches the real keys.</Note>
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="scheduled,platform" agent="openclaw">
+    Nobody is at the terminal while the agent runs, so OpenClaw runs in its [non-interactive mode](https://docs.openclaw.ai/cli/agent): `openclaw agent --agent <agent-id> --message "<prompt>" --local`. OpenClaw holds a [placeholder](/documentation/platform/agent-vault/guides/openclaw#step-2-launch-your-agent) instead of your model provider's key, and the proxy attaches the real key.
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch runs="computer">
+    <Warning>
+      The agent runs as your user account. If you're logged in to the [Infisical CLI](/cli/overview) on the same computer, the agent can run Infisical CLI commands with your login.
+    </Warning>
+  </AgentVaultSetupBranch>
+</AgentVaultSetupStep>
+
+<AgentVaultSetupStep step="request">
+  The agent calls an API the same way it always does, and the request goes to the proxy with the session token attached instead of a real API key.
+
+  <ul>
+    <AgentVaultSetupBranch runs="computer">
+      <li>If you don't have a second machine, a small VM on your network can run the proxy</li>
+    </AgentVaultSetupBranch>
+    <AgentVaultSetupBranch runs="container">
+      <li>The agents' containers don't have access to the proxy's state directory</li>
+    </AgentVaultSetupBranch>
+    <AgentVaultSetupBranch runs="ci">
+      <li>The CI runner has to reach the proxy, so if the proxy is on a private network, the job runs on a [self-hosted runner](https://docs.github.com/en/actions/hosting-your-own-runners) in that network</li>
+    </AgentVaultSetupBranch>
+  </ul>
+
+  <Note>
+    The proxy [runs on a different machine](/documentation/platform/agent-vault/proxies#choose-where-to-run-the-proxy) from the agent, on the same private network. If the proxy ran on the agent's machine, the agent could read the proxy's [state directory](/documentation/platform/agent-vault/proxies#state-directory), which holds the proxy's access token.
+  </Note>
+</AgentVaultSetupStep>
+
+<AgentVaultSetupStep step="fetch">
+  The credentials go from Infisical to the proxy, never to the agent. The proxy checks each session again every [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default).
+</AgentVaultSetupStep>
+
+<AgentVaultSetupStep step="forward">
+  The [real credential](/documentation/platform/agent-vault/services#credential-types) is added to the request at the proxy, so it never passes through the agent. If you've [set up session logs](/documentation/platform/agent-vault/session-logs#setting-up-session-logs), the request appears in the session's logs.
+
+  The proxy only attaches credentials for the services in the access bundle. Requests to any other host go out without a credential, unless the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) blocks them.
+</AgentVaultSetupStep>
+
+<AgentVaultSetupStep step="revoke">
+  <AgentVaultSetupBranch building="scheduled">
+    From then on, the session token stops working. If the machine shuts down before the CLI can revoke the session, the session keeps working until its `--ttl` runs out.
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="platform">
+    The orchestrator revokes the session through the [Infisical API](/api-reference/endpoints/agent-vault-sessions/revoke).
+  </AgentVaultSetupBranch>
+</AgentVaultSetupStep>
+
+</AgentVaultSetupLayout>
+
+<div id="build-your-setup" className="ifx-avsp__anchor" />
+
+## Build your setup
+
+Follow these pages in order:
+
+<ol>
+  <AgentVaultSetupBranch building="personal,assistant" agent="none">
+    <li>[Quickstart](/documentation/platform/agent-vault/quickstart): create an access bundle, enroll a proxy, create a session, and start your agent with the session token</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="personal,assistant" agent="claude-code">
+    <li>[Agent Vault with Claude Code](/documentation/platform/agent-vault/guides/claude-code): create an access bundle, enroll a proxy, create a session, and start Claude Code with the session token</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="personal,assistant" agent="codex">
+    <li>[Agent Vault with Codex](/documentation/platform/agent-vault/guides/codex): create an access bundle, enroll a proxy, create a session, and start Codex with the session token</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="personal,assistant" agent="opencode">
+    <li>[Agent Vault with OpenCode](/documentation/platform/agent-vault/guides/opencode): create an access bundle, enroll a proxy, create a session, and start OpenCode with the session token</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="personal" agent="hermes">
+    <li>[Agent Vault with Hermes Agent](/documentation/platform/agent-vault/guides/hermes): create an access bundle, enroll a proxy, create a session, and start Hermes in your terminal with the session token</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="personal" agent="openclaw">
+    <li>[Agent Vault with OpenClaw](/documentation/platform/agent-vault/guides/openclaw): create an access bundle, enroll a proxy, create a session, and start OpenClaw in your terminal with the session token</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="assistant" agent="hermes">
+    <li>[Agent Vault with the Hermes gateway](/documentation/platform/agent-vault/guides/hermes-gateway): create a session that never expires, then send the Hermes gateway's requests through the proxy</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="assistant" agent="openclaw">
+    <li>[Agent Vault with the OpenClaw gateway](/documentation/platform/agent-vault/guides/openclaw-gateway): create a session that never expires, then send the OpenClaw gateway's requests through the proxy</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="personal,assistant" agent="custom">
+    <li>[Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent): create an access bundle, enroll a proxy, create a session, and send your agent's requests through the proxy</li>
+  </AgentVaultSetupBranch>
+
+  <AgentVaultSetupBranch building="scheduled,platform">
+    <li>[Create an access bundle](/documentation/platform/agent-vault/access-bundles#create-an-access-bundle), with a service for each API the agent calls</li>
+    <li>[Enroll a proxy](/documentation/platform/agent-vault/proxies#create-and-enroll-a-proxy), and run it with Docker or systemd so that it keeps running between jobs</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="scheduled" runs="none,computer,server">
+    <li>[Create sessions with the CLI](/documentation/platform/agent-vault/sessions-cli): set up a machine identity, then run the agent from cron or systemd</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="scheduled" runs="container">
+    <li>[Create sessions with the CLI](/documentation/platform/agent-vault/sessions-cli): set up a machine identity, then start the agent from the container's entrypoint</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="scheduled" runs="ci">
+    <li>[Create sessions with the CLI](/documentation/platform/agent-vault/sessions-cli): set up a machine identity, then start the agent in a GitHub Actions step</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="platform">
+    <li>[Create sessions with the API](/documentation/platform/agent-vault/sessions-api): set up a machine identity for the orchestrator, then create a session for each task and revoke it when the task ends</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="platform" agent="none,claude-code,codex,opencode,hermes,openclaw">
+    <li>[Start each agent with its session token](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token): install the Infisical CLI on each agent's host, and start the agent with `infisical agent-vault run --session-token`</li>
+  </AgentVaultSetupBranch>
+  <AgentVaultSetupBranch building="scheduled,platform" agent="custom">
+    <li>[Send your agent's requests through the proxy](/documentation/platform/agent-vault/guides/custom-agent#step-4-send-requests-through-the-proxy): set the proxy and the proxy's certificate in your agent's HTTP client</li>
+  </AgentVaultSetupBranch>
+</ol>
+
+<AgentVaultSetupBranch building="assistant" agent="none,claude-code,codex,opencode,custom">
+  <Note>
+    When the guide has you create a session, set **Expires** to **Never**. The assistant keeps running, so a session that expires would cut off its access to the APIs.
+  </Note>
+</AgentVaultSetupBranch>
+
+</AgentVaultSetupPage>
