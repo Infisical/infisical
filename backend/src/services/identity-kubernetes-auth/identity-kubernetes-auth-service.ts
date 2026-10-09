@@ -21,6 +21,7 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
 import { IdentityAuthTemplateMethod } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
+import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
 import { TKubernetesTemplateFields } from "@app/ee/services/identity-auth-template/identity-auth-template-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
@@ -108,7 +109,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
     "create" | "findOne" | "transaction" | "updateById" | "delete"
   >;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
-  identityAuthTemplateDAL: Pick<TIdentityAuthTemplateDALFactory, "findByIdAndOrgId">;
+  identityAuthTemplateDAL: Pick<TIdentityAuthTemplateDALFactory, "findByIdAndOrgId" | "findByIdForShare">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   permissionService: Pick<
@@ -1087,6 +1088,9 @@ export const identityKubernetesAuthServiceFactory = ({
     }
 
     const identityKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
+      if (template) {
+        await assertTemplateUnchangedForLink(identityAuthTemplateDAL, template, tx);
+      }
       const doc = await identityKubernetesAuthDAL.create(
         {
           identityId: identityMembershipOrg.identity.id,
@@ -1581,6 +1585,9 @@ export const identityKubernetesAuthServiceFactory = ({
     }
 
     const updatedKubernetesAuth = await identityKubernetesAuthDAL.transaction(async (tx) => {
+      if (template) {
+        await assertTemplateUnchangedForLink(identityAuthTemplateDAL, template, tx);
+      }
       const doc = await identityKubernetesAuthDAL.updateById(identityKubernetesAuth.id, updateQuery, tx);
       await emitIdentityAuthMethodChanged(
         eventEmitter,

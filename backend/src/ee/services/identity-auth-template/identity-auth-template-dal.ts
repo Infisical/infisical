@@ -100,11 +100,26 @@ export const identityAuthTemplateDALFactory = (db: TDbClient) => {
     return doc?.[0];
   };
 
+  const findByIdForUpdate = async (id: string, tx: Knex) => {
+    const doc = await tx(TableName.IdentityAuthTemplate).where({ id }).forUpdate().first();
+    return doc;
+  };
+
+  const findByIdForShare = async (id: string, tx: Knex) => {
+    const doc = await tx(TableName.IdentityAuthTemplate).where({ id }).forShare().first();
+    return doc;
+  };
+
+  const primaryNode = () => db.primaryNode();
+
   return {
     ...identityAuthTemplateOrm,
     findByOrgId,
     findByAuthMethod,
     findTemplateUsages,
-    findByIdAndOrgId
+    findByIdAndOrgId,
+    findByIdForUpdate,
+    findByIdForShare,
+    primaryNode
   };
 };

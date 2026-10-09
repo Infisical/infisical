@@ -5,6 +5,7 @@ import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { IdentityAuthTemplateMethod, TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template";
+import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
 import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
@@ -436,73 +437,76 @@ export const identityLdapAuthServiceFactory = ({
 
     if (allowedFields) AllowedFieldsSchema.array().parse(allowedFields);
 
-    const identityLdapAuth = await identityLdapAuthDAL.transaction(async (tx) => {
-      const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.Organization,
-        orgId: identityMembershipOrg.scopeOrgId
-      });
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.scopeOrgId
+    });
 
-      const template = templateId
-        ? await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.scopeOrgId)
-        : undefined;
-      if (templateId && (!template || template.authMethod !== IdentityAuthTemplateMethod.LDAP)) {
-        throw new NotFoundError({ message: `LDAP auth template with ID '${templateId}' not found` });
-      }
+    const template = templateId
+      ? await identityAuthTemplateDAL.findByIdAndOrgId(templateId, identityMembershipOrg.scopeOrgId)
+      : undefined;
+    if (templateId && (!template || template.authMethod !== IdentityAuthTemplateMethod.LDAP)) {
+      throw new NotFoundError({ message: `LDAP auth template with ID '${templateId}' not found` });
+    }
 
-      let ldapConfig: { bindDN: string; bindPass: string; searchBase: string; url: string; ldapCaCertificate?: string };
-      if (template) {
-        ldapConfig = JSON.parse(decryptor({ cipherTextBlob: template.templateFields }).toString());
-        if (!ldapConfig.bindDN || !ldapConfig.bindPass || !ldapConfig.searchBase || !ldapConfig.url) {
-          throw new BadRequestError({
-            message: `LDAP auth template '${template.name}' is missing a bind DN, bind password, search base, or URL. Update the template before attaching it to an identity.`
-          });
-        }
-      } else {
-        if (!bindDN || !bindPass || !searchBase || !url) {
-          throw new BadRequestError({
-            message: "Invalid request. Missing bind DN, bind pass, search base, or URL."
-          });
-        }
-        ldapConfig = {
-          bindDN,
-          bindPass,
-          searchBase,
-          url,
-          ldapCaCertificate
-        };
-      }
-
-      const { cipherTextBlob: encryptedBindPass } = encryptor({
-        plainText: Buffer.from(ldapConfig.bindPass)
-      });
-
-      const { cipherTextBlob: encryptedBindDN } = encryptor({
-        plainText: Buffer.from(ldapConfig.bindDN)
-      });
-
-      let encryptedLdapCaCertificate: Buffer | undefined;
-      if (ldapConfig.ldapCaCertificate) {
-        const { cipherTextBlob: encryptedCertificate } = encryptor({
-          plainText: Buffer.from(ldapConfig.ldapCaCertificate)
-        });
-
-        encryptedLdapCaCertificate = encryptedCertificate;
-      }
-
-      const isConnected = await testLDAPConfig({
-        bindDN: ldapConfig.bindDN,
-        bindPass: ldapConfig.bindPass,
-        caCert: ldapConfig.ldapCaCertificate || "",
-        url: ldapConfig.url
-      });
-
-      if (!isConnected) {
+    let ldapConfig: { bindDN: string; bindPass: string; searchBase: string; url: string; ldapCaCertificate?: string };
+    if (template) {
+      ldapConfig = JSON.parse(decryptor({ cipherTextBlob: template.templateFields }).toString());
+      if (!ldapConfig.bindDN || !ldapConfig.bindPass || !ldapConfig.searchBase || !ldapConfig.url) {
         throw new BadRequestError({
-          message:
-            "Failed to connect to LDAP server. Please ensure that the LDAP server is running and your credentials are correct."
+          message: `LDAP auth template '${template.name}' is missing a bind DN, bind password, search base, or URL. Update the template before attaching it to an identity.`
         });
       }
+    } else {
+      if (!bindDN || !bindPass || !searchBase || !url) {
+        throw new BadRequestError({
+          message: "Invalid request. Missing bind DN, bind pass, search base, or URL."
+        });
+      }
+      ldapConfig = {
+        bindDN,
+        bindPass,
+        searchBase,
+        url,
+        ldapCaCertificate
+      };
+    }
 
+    const { cipherTextBlob: encryptedBindPass } = encryptor({
+      plainText: Buffer.from(ldapConfig.bindPass)
+    });
+
+    const { cipherTextBlob: encryptedBindDN } = encryptor({
+      plainText: Buffer.from(ldapConfig.bindDN)
+    });
+
+    let encryptedLdapCaCertificate: Buffer | undefined;
+    if (ldapConfig.ldapCaCertificate) {
+      const { cipherTextBlob: encryptedCertificate } = encryptor({
+        plainText: Buffer.from(ldapConfig.ldapCaCertificate)
+      });
+
+      encryptedLdapCaCertificate = encryptedCertificate;
+    }
+
+    const isConnected = await testLDAPConfig({
+      bindDN: ldapConfig.bindDN,
+      bindPass: ldapConfig.bindPass,
+      caCert: ldapConfig.ldapCaCertificate || "",
+      url: ldapConfig.url
+    });
+
+    if (!isConnected) {
+      throw new BadRequestError({
+        message:
+          "Failed to connect to LDAP server. Please ensure that the LDAP server is running and your credentials are correct."
+      });
+    }
+
+    const identityLdapAuth = await identityLdapAuthDAL.transaction(async (tx) => {
+      if (template) {
+        await assertTemplateUnchangedForLink(identityAuthTemplateDAL, template, tx);
+      }
       const doc = await identityLdapAuthDAL.create(
         {
           identityId: identityMembershipOrg.identity.id,
@@ -750,6 +754,9 @@ export const identityLdapAuthServiceFactory = ({
     }
 
     const updatedLdapAuth = await identityLdapAuthDAL.transaction(async (tx) => {
+      if (template) {
+        await assertTemplateUnchangedForLink(identityAuthTemplateDAL, template, tx);
+      }
       const doc = await identityLdapAuthDAL.updateById(
         identityLdapAuth.id,
         {

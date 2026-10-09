@@ -15,7 +15,7 @@ import {
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { sanitizeUrlForLog } from "@app/lib/logger";
@@ -434,14 +434,20 @@ export const identityAuthTemplateServiceFactory = ({
     }
 
     // captured before the propagation writes so the audit entries can carry readable
-    // identity names alongside the ids
+    // identity names alongside the ids. read from the primary so a link that just committed
+    // is in the checked set rather than tripping the conflict check inside the transaction
     const linkedIdentities = fieldPatch
-      ? ((await identityAuthTemplateDAL.findTemplateUsages(templateId, template.authMethod)) as {
+      ? ((await identityAuthTemplateDAL.findTemplateUsages(
+          templateId,
+          template.authMethod,
+          identityAuthTemplateDAL.primaryNode()
+        )) as {
           identityId: string;
           identityName: string;
           identityProjectId: string | null;
         }[])
       : [];
+    const checkedIdentityIds = linkedIdentities.map(({ identityId }) => identityId);
 
     // a field patch rewrites every linked identity's auth, so the editor needs edit-auth on each.
     // otherwise EditTemplates alone lets you point them at an LDAP server or OIDC issuer you control
@@ -590,6 +596,28 @@ export const identityAuthTemplateServiceFactory = ({
     }
 
     const { updatedTemplate, propagatedIdentityIds } = await identityAuthTemplateDAL.transaction(async (tx) => {
+      if (fieldPatch) {
+        const lockedTemplate = await identityAuthTemplateDAL.findByIdForUpdate(templateId, tx);
+        if (!lockedTemplate) {
+          throw new NotFoundError({ message: "Template not found" });
+        }
+        const currentUsages = (await identityAuthTemplateDAL.findTemplateUsages(
+          templateId,
+          template.authMethod,
+          tx
+        )) as {
+          identityId: string;
+        }[];
+        const uncheckedCount = currentUsages.filter(
+          ({ identityId }) => !checkedIdentityIds.includes(identityId)
+        ).length;
+        if (uncheckedCount > 0) {
+          throw new ConflictError({
+            message: `${uncheckedCount} ${uncheckedCount === 1 ? "identity was" : "identities were"} linked to auth template '${template.name}' while it was being edited. Retry the update.`
+          });
+        }
+      }
+
       const authTemplate = await identityAuthTemplateDAL.updateById(
         templateId,
         {
@@ -640,14 +668,18 @@ export const identityAuthTemplateServiceFactory = ({
         }
 
         if (Object.keys(ldapUpdateData).length > 0) {
-          const updatedRows = await identityLdapAuthDAL.updateByTemplateId({ templateId }, ldapUpdateData, tx);
+          const updatedRows = await identityLdapAuthDAL.updateByTemplateId(
+            { templateId, identityIds: checkedIdentityIds },
+            ldapUpdateData,
+            tx
+          );
           identityIds = updatedRows.map((row) => row.identityId);
         }
       }
 
       if (kubernetesPropagationData) {
         const updatedRows = await identityKubernetesAuthDAL.updateByTemplateId(
-          { templateId },
+          { templateId, identityIds: checkedIdentityIds },
           kubernetesPropagationData,
           tx
         );
@@ -655,7 +687,11 @@ export const identityAuthTemplateServiceFactory = ({
       }
 
       if (oidcPropagationData) {
-        const updatedRows = await identityOidcAuthDAL.updateByTemplateId({ templateId }, oidcPropagationData, tx);
+        const updatedRows = await identityOidcAuthDAL.updateByTemplateId(
+          { templateId, identityIds: checkedIdentityIds },
+          oidcPropagationData,
+          tx
+        );
         identityIds = updatedRows.map((row) => row.identityId);
       }
 
@@ -711,6 +747,10 @@ export const identityAuthTemplateServiceFactory = ({
     }[];
 
     const { deletedTemplate, unlinkedIdentityIds } = await identityAuthTemplateDAL.transaction(async (tx) => {
+      const lockedTemplate = await identityAuthTemplateDAL.findByIdForUpdate(templateId, tx);
+      if (!lockedTemplate) {
+        throw new NotFoundError({ message: "Template not found" });
+      }
       // Unlink identity auth records; the copied config values are kept so linked
       // identities keep authenticating
       let identityIds: string[] = [];

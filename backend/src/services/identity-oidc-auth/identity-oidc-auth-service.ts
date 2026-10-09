@@ -14,6 +14,7 @@ import {
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
 import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
 import { IdentityAuthTemplateMethod } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
+import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
 import { TOidcTemplateFields } from "@app/ee/services/identity-auth-template/identity-auth-template-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
@@ -72,7 +73,7 @@ import {
 type TIdentityOidcAuthServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityOidcAuthDAL: TIdentityOidcAuthDALFactory;
-  identityAuthTemplateDAL: Pick<TIdentityAuthTemplateDALFactory, "findByIdAndOrgId">;
+  identityAuthTemplateDAL: Pick<TIdentityAuthTemplateDALFactory, "findByIdAndOrgId" | "findByIdForShare">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "delete">;
@@ -740,6 +741,9 @@ export const identityOidcAuthServiceFactory = ({
     await blockLocalAndPrivateIpAddresses(resolvedOidcDiscoveryUrl);
 
     const identityOidcAuth = await identityOidcAuthDAL.transaction(async (tx) => {
+      if (template) {
+        await assertTemplateUnchangedForLink(identityAuthTemplateDAL, template, tx);
+      }
       const doc = await identityOidcAuthDAL.create(
         {
           identityId: identityMembershipOrg.identity.id,
@@ -960,6 +964,9 @@ export const identityOidcAuthServiceFactory = ({
     }
 
     const updatedOidcAuth = await identityOidcAuthDAL.transaction(async (tx) => {
+      if (template) {
+        await assertTemplateUnchangedForLink(identityAuthTemplateDAL, template, tx);
+      }
       const doc = await identityOidcAuthDAL.updateById(identityOidcAuth.id, updateQuery, tx);
       await emitIdentityAuthMethodChanged(
         eventEmitter,

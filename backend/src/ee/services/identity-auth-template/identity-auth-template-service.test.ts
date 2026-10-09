@@ -7,7 +7,7 @@ import {
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, ConflictError } from "@app/lib/errors";
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 
 import { IdentityAuthTemplateMethod } from "./identity-auth-template-enums";
@@ -79,8 +79,11 @@ const createService = ({
     ...gatewayColumns
   };
 
+  const primaryNode = { marker: "primary" };
   const identityAuthTemplateDAL = {
     findByIdAndOrgId: vi.fn().mockResolvedValue(templateRow),
+    findByIdForUpdate: vi.fn().mockResolvedValue(templateRow),
+    primaryNode: vi.fn().mockReturnValue(primaryNode),
     findTemplateUsages: vi.fn().mockResolvedValue(linkedIdentities),
     updateById: vi.fn().mockImplementation((id: string, data: Record<string, unknown>) => ({
       ...templateRow,
@@ -131,6 +134,7 @@ const createService = ({
     identityOidcAuthDAL,
     identityLdapAuthDAL,
     identityAuthTemplateDAL,
+    primaryNode,
     auditLogCreate,
     getProjectPermission
   };
@@ -177,7 +181,7 @@ describe("identityAuthTemplateServiceFactory kubernetes host validation", () => 
     await patchTemplate(service, { kubernetesHost: PRIVATE_HOST });
 
     expect(identityKubernetesAuthDAL.updateByTemplateId).toHaveBeenCalledWith(
-      { templateId: TEMPLATE_ID },
+      { templateId: TEMPLATE_ID, identityIds: ["identity-id"] },
       expect.objectContaining({ kubernetesHost: PRIVATE_HOST }),
       expect.anything()
     );
@@ -246,7 +250,7 @@ describe("identityAuthTemplateServiceFactory gateway column storage", () => {
     await patchTemplate(service, { gatewayId: GATEWAY_V2_ID });
 
     expect(identityKubernetesAuthDAL.updateByTemplateId).toHaveBeenCalledWith(
-      { templateId: TEMPLATE_ID },
+      { templateId: TEMPLATE_ID, identityIds: ["identity-id"] },
       expect.objectContaining({ gatewayV2Id: GATEWAY_V2_ID, gatewayPoolId: null }),
       expect.anything()
     );
@@ -276,7 +280,7 @@ describe("identityAuthTemplateServiceFactory gateway column storage", () => {
     expect(update).not.toHaveProperty("gatewayV2Id");
     // linked rows still get the row's existing gateway, so they cannot drift from the template
     expect(identityKubernetesAuthDAL.updateByTemplateId).toHaveBeenCalledWith(
-      { templateId: TEMPLATE_ID },
+      { templateId: TEMPLATE_ID, identityIds: ["identity-id"] },
       expect.objectContaining({ gatewayV2Id: GATEWAY_V2_ID }),
       expect.anything()
     );
@@ -302,7 +306,7 @@ describe("identityAuthTemplateServiceFactory oidc templates", () => {
     await patchTemplate(service, { boundIssuer: "https://other-issuer.example.com" });
 
     expect(identityOidcAuthDAL.updateByTemplateId).toHaveBeenCalledWith(
-      { templateId: TEMPLATE_ID },
+      { templateId: TEMPLATE_ID, identityIds: ["identity-id"] },
       {
         oidcDiscoveryUrl: PUBLIC_HOST,
         boundIssuer: "https://other-issuer.example.com",
@@ -319,7 +323,7 @@ describe("identityAuthTemplateServiceFactory oidc templates", () => {
     await patchTemplate(service, { caCert: "" });
 
     expect(identityOidcAuthDAL.updateByTemplateId).toHaveBeenCalledWith(
-      { templateId: TEMPLATE_ID },
+      { templateId: TEMPLATE_ID, identityIds: ["identity-id"] },
       expect.objectContaining({ encryptedCaCertificate: null }),
       expect.anything()
     );
@@ -592,7 +596,7 @@ describe("identityAuthTemplateServiceFactory ldap url validation", () => {
     await patchTemplate(service, { searchBase: "dc=other" });
 
     expect(identityLdapAuthDAL.updateByTemplateId).toHaveBeenCalledWith(
-      { templateId: TEMPLATE_ID },
+      { templateId: TEMPLATE_ID, identityIds: ["identity-id"] },
       { searchBase: "dc=other" },
       expect.anything()
     );
@@ -632,5 +636,139 @@ describe("identityAuthTemplateServiceFactory ldap url validation", () => {
       } as unknown as Parameters<typeof service.createTemplate>[0])
     ).rejects.toThrow("Local IPs not allowed as URL");
     expect(identityAuthTemplateDAL.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("identityAuthTemplateServiceFactory propagation serialization", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("builds the checked set from the primary, not a replica", async () => {
+    const { service, identityAuthTemplateDAL, primaryNode } = createLdapService();
+
+    await patchTemplate(service, { searchBase: "dc=other" });
+
+    expect(identityAuthTemplateDAL.findTemplateUsages).toHaveBeenNthCalledWith(
+      1,
+      TEMPLATE_ID,
+      IdentityAuthTemplateMethod.LDAP,
+      primaryNode
+    );
+  });
+
+  it("locks the template row and re-reads usages inside the transaction before writing", async () => {
+    const { service, identityAuthTemplateDAL, identityLdapAuthDAL } = createLdapService();
+    const order: string[] = [];
+    identityAuthTemplateDAL.findByIdForUpdate.mockImplementation(async () => {
+      order.push("lock");
+      return { id: TEMPLATE_ID };
+    });
+    identityAuthTemplateDAL.findTemplateUsages.mockImplementation(async (_id: string, _m: string, tx: unknown) => {
+      order.push(tx === identityAuthTemplateDAL.primaryNode() ? "read:primary" : "read:tx");
+      return [{ identityId: "identity-id", identityName: "identity", identityProjectId: null }];
+    });
+    identityLdapAuthDAL.updateByTemplateId.mockImplementation(async () => {
+      order.push("write");
+      return [{ identityId: "identity-id" }];
+    });
+
+    await patchTemplate(service, { searchBase: "dc=other" });
+
+    expect(order).toEqual(["read:primary", "lock", "read:tx", "write"]);
+  });
+
+  it("rejects the edit when an identity was linked after the permission check", async () => {
+    const { service, identityAuthTemplateDAL, identityLdapAuthDAL, auditLogCreate } = createLdapService();
+    identityAuthTemplateDAL.findTemplateUsages
+      .mockResolvedValueOnce([{ identityId: "identity-id", identityName: "identity", identityProjectId: null }])
+      .mockResolvedValueOnce([
+        { identityId: "identity-id", identityName: "identity", identityProjectId: null },
+        { identityId: "late-identity-id", identityName: "late", identityProjectId: null }
+      ]);
+
+    const error = await patchTemplate(service, { searchBase: "dc=other" }).catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(ConflictError);
+    expect((error as ConflictError).message).toBe(
+      "1 identity was linked to auth template 'auth-template' while it was being edited. Retry the update."
+    );
+    expect(identityAuthTemplateDAL.updateById).not.toHaveBeenCalled();
+    expect(identityLdapAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
+    expect(auditLogCreate).not.toHaveBeenCalled();
+  });
+
+  it("treats an identity unlinked mid-edit as a shrink, not a conflict", async () => {
+    const { service, identityAuthTemplateDAL, identityLdapAuthDAL } = createLdapService({
+      linkedIdentities: [
+        { identityId: "identity-id", identityName: "identity", identityProjectId: null },
+        { identityId: "leaving-id", identityName: "leaving", identityProjectId: null }
+      ]
+    });
+    identityAuthTemplateDAL.findTemplateUsages.mockResolvedValueOnce([
+      { identityId: "identity-id", identityName: "identity", identityProjectId: null },
+      { identityId: "leaving-id", identityName: "leaving", identityProjectId: null }
+    ]);
+    identityAuthTemplateDAL.findTemplateUsages.mockResolvedValueOnce([
+      { identityId: "identity-id", identityName: "identity", identityProjectId: null }
+    ]);
+
+    await patchTemplate(service, { searchBase: "dc=other" });
+
+    expect(identityLdapAuthDAL.updateByTemplateId).toHaveBeenCalledWith(
+      { templateId: TEMPLATE_ID, identityIds: ["identity-id", "leaving-id"] },
+      { searchBase: "dc=other" },
+      expect.anything()
+    );
+  });
+
+  it("fails cleanly when the template is deleted before the lock is taken", async () => {
+    const { service, identityAuthTemplateDAL, identityLdapAuthDAL } = createLdapService();
+    identityAuthTemplateDAL.findByIdForUpdate.mockResolvedValueOnce(undefined);
+
+    await expect(patchTemplate(service, { searchBase: "dc=other" })).rejects.toThrow("Template not found");
+    expect(identityLdapAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
+  });
+
+  it("does not lock or re-read on a rename, since nothing propagates", async () => {
+    const { service, identityAuthTemplateDAL } = createLdapService();
+
+    await service.updateTemplate({
+      templateId: TEMPLATE_ID,
+      name: "renamed",
+      actorId: "actor-id",
+      actor: "user",
+      actorAuthMethod: undefined,
+      actorOrgId: ORG_ID
+    } as unknown as Parameters<typeof service.updateTemplate>[0]);
+
+    expect(identityAuthTemplateDAL.findByIdForUpdate).not.toHaveBeenCalled();
+    expect(identityAuthTemplateDAL.findTemplateUsages).not.toHaveBeenCalled();
+  });
+
+  it("locks the template row before unlinking on delete", async () => {
+    const { service, identityAuthTemplateDAL, identityLdapAuthDAL } = createLdapService();
+    const order: string[] = [];
+    identityAuthTemplateDAL.findByIdForUpdate.mockImplementation(async () => {
+      order.push("lock");
+      return { id: TEMPLATE_ID };
+    });
+    identityLdapAuthDAL.updateByTemplateId.mockImplementation(async () => {
+      order.push("unlink");
+      return [{ identityId: "identity-id" }];
+    });
+
+    await service.deleteTemplate({
+      templateId: TEMPLATE_ID,
+      actorId: "actor-id",
+      actor: "user",
+      actorAuthMethod: undefined,
+      actorOrgId: ORG_ID
+    } as unknown as Parameters<typeof service.deleteTemplate>[0]);
+
+    expect(order).toEqual(["lock", "unlink"]);
+    expect(identityLdapAuthDAL.updateByTemplateId).toHaveBeenCalledWith(
+      { templateId: TEMPLATE_ID },
+      { templateId: null },
+      expect.anything()
+    );
   });
 });
