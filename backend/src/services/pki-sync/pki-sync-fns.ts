@@ -47,6 +47,7 @@ import { netScalerPkiSyncFactory } from "./netscaler/netscaler-pki-sync-fns";
 import { NUTANIX_PRISM_CENTRAL_PKI_SYNC_LIST_OPTION } from "./nutanix-prism-central/nutanix-prism-central-pki-sync-constants";
 import { nutanixPrismCentralPkiSyncFactory } from "./nutanix-prism-central/nutanix-prism-central-pki-sync-fns";
 import {
+  PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATIONS,
   PALO_ALTO_NETWORKS_PKI_SYNC_LIST_OPTION,
   PALO_ALTO_NETWORKS_SSL_TLS_PROFILE_PKI_SYNC_LIST_OPTION
 } from "./palo-alto-networks/palo-alto-networks-pki-sync-constants";
@@ -132,6 +133,11 @@ export const listPkiSyncOptions = () => {
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 };
+
+const CONNECTION_SERIALISED_PKI_SYNC_DESTINATIONS = new Set<PkiSync>(PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATIONS);
+
+export const isPkiSyncSerialisedPerConnection = (destination: PkiSync) =>
+  CONNECTION_SERIALISED_PKI_SYNC_DESTINATIONS.has(destination);
 
 export const getPkiSyncProviderCapabilities = (destination: PkiSync) => {
   const providerOption = PKI_SYNC_LIST_OPTIONS[destination];

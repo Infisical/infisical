@@ -49,7 +49,7 @@ const buildPaloAltoNetworksPkiSyncSchemas = <TDestination extends PkiSync, TConf
     syncOptions: PaloAltoNetworksPkiSyncOptionsSchema,
     subscriberId: z.string().uuid().nullish(),
     connectionId: z.string().uuid(),
-    projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
+    projectId: z.string().trim().uuid().optional().describe(openApiHidden()),
     applicationId: z.string().uuid().optional(),
     certificateIds: z.array(z.string().uuid()).optional(),
     filters: PkiSyncFiltersField

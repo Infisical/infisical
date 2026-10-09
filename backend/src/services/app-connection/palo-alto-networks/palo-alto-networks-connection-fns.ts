@@ -13,7 +13,7 @@ import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { RETRYABLE_NETWORK_ERRORS } from "@app/lib/retry/network-errors";
-import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator";
 import { getSharedHttpsAgent } from "@app/lib/validator/safe-request";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -115,8 +115,6 @@ const executePaloAltoNetworksOperationWithGateway = async <T>(
     if (!gatewayV2Service) {
       throw new BadRequestError({ message: getMissingGatewayMessage(gatewayId) });
     }
-
-    await blockLocalAndPrivateIpAddresses(`https://${hostname}`, true);
 
     const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
       gatewayId,

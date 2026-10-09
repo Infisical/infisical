@@ -331,7 +331,6 @@ export const PaloAltoNetworksConnectionForm = ({ appConnection, onSubmit }: Prop
                   </FieldLabel>
                   <TextArea
                     id="ssl-certificate"
-                    className="h-[3.6rem] resize-none!"
                     {...field}
                     placeholder="-----BEGIN CERTIFICATE----- ... -----END CERTIFICATE-----"
                     isError={Boolean(error?.message)}

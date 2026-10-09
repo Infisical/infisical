@@ -300,6 +300,7 @@ type TPlannedUpload = TCertificateMap[string] & {
   mapKey: string;
   name: string;
   oldCertificateIdToRemove?: string;
+  replacedName?: string;
 };
 
 type TSyncFailure = { name: string; error: string };
@@ -350,6 +351,7 @@ const planUploads = ({
 
     let name = mapKey;
     let oldCertificateIdToRemove: string | undefined;
+    let replacedName: string | undefined;
 
     if (certificateId) {
       const renewedFromRecord = certificate?.renewedFromCertificateId
@@ -361,6 +363,7 @@ const planUploads = ({
         name = renewedFromRecord.externalIdentifier;
         oldCertificateIdToRemove = certificate?.renewedFromCertificateId ?? undefined;
       } else if (certificate?.renewedFromCertificateId && !preserveItemOnRenewal) {
+        replacedName = renewedFromRecord?.externalIdentifier ?? directRecord?.externalIdentifier ?? undefined;
         name = compileCertificateNameSchema(
           certificateNameSchema ?? PALO_ALTO_NETWORKS_PKI_SYNC_LIST_OPTION.defaultCertificateNameSchema,
           {
@@ -378,7 +381,7 @@ const planUploads = ({
     }
 
     activeNames.add(name);
-    plannedUploads.push({ ...certData, mapKey, name, oldCertificateIdToRemove });
+    plannedUploads.push({ ...certData, mapKey, name, oldCertificateIdToRemove, replacedName });
   }
 
   return { plannedUploads, activeNames, skippedCertificates };
@@ -443,6 +446,13 @@ export const paloAltoNetworksPkiSyncFactory = ({
 
   type TDeployPendingMarker = ReturnType<typeof createDeployPendingMarker>;
 
+  const findNamesOwnedByOtherSyncs = (pkiSync: TPkiSyncWithCredentials, names: string[]) =>
+    certificateSyncDAL.findExternalIdentifiersInUse(names, {
+      excludePkiSyncId: pkiSync.id,
+      destination: PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATIONS,
+      connectionId: pkiSync.connectionId
+    });
+
   const finishDeploy = async ({
     client,
     config,
@@ -491,13 +501,13 @@ export const paloAltoNetworksPkiSyncFactory = ({
     const succeeded: TPlannedUpload[] = [];
     const failedUploads: TSyncFailure[] = [];
     let hasDeviceChanges = false;
-    if (plannedUploads.length) await deployPending.mark();
 
     for (const upload of plannedUploads) {
       try {
         if (upload.certificateId) {
           await certificateSyncDAL.claimExternalIdentifier(pkiSyncId, upload.certificateId, upload.name);
         }
+        await deployPending.mark();
 
         const importedCa = await importCaChain(
           client,
@@ -571,10 +581,7 @@ export const paloAltoNetworksPkiSyncFactory = ({
       });
     }
 
-    const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse([...candidates], {
-      excludePkiSyncId: pkiSync.id,
-      destination: PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATIONS
-    });
+    const ownedByOtherSync = await findNamesOwnedByOtherSyncs(pkiSync, [...candidates]);
 
     for (const name of candidates) {
       // eslint-disable-next-line no-continue
@@ -654,6 +661,11 @@ export const paloAltoNetworksPkiSyncFactory = ({
         deployPending
       });
       let { hasDeviceChanges } = imports;
+
+      const importedKeys = new Set(imports.succeeded.map((upload) => upload.mapKey));
+      plannedUploads
+        .filter((upload) => upload.replacedName && !importedKeys.has(upload.mapKey))
+        .forEach((upload) => activeNames.add(upload.replacedName as string));
 
       const profileTarget = config.sslTlsServiceProfileName
         ? getNewestLinkedUpload(imports.succeeded, syncRecordsByCertId)
@@ -736,6 +748,11 @@ export const paloAltoNetworksPkiSyncFactory = ({
       .filter((record) => record.certificateId && !targetCertificateIds.has(record.certificateId))
       .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
 
+    const ownedByOtherSync = await findNamesOwnedByOtherSyncs(
+      pkiSync,
+      targets.map((target) => target.externalIdentifier)
+    );
+
     const deferredCertificateIds = await withClient(pkiSync, async (client, panorama, config) => {
       const [existingCertificates, profileCertificate] = await Promise.all([
         listCertificates(client, config),
@@ -768,8 +785,14 @@ export const paloAltoNetworksPkiSyncFactory = ({
       }
 
       for (const { externalIdentifier, certificateId } of targets) {
-        // eslint-disable-next-line no-continue
-        if (deferred.has(certificateId) || !existingCertificates.has(externalIdentifier)) continue;
+        if (
+          deferred.has(certificateId) ||
+          ownedByOtherSync.has(externalIdentifier) ||
+          !existingCertificates.has(externalIdentifier)
+        ) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
         await deployPending.mark();
         try {
           await client.deleteConfig(getCertificateEntryXpath(config, externalIdentifier));
