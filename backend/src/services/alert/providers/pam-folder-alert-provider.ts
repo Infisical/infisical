@@ -15,7 +15,7 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { formatDuration } from "@app/lib/ms";
+import { formatDuration, ms } from "@app/lib/ms";
 import { ApprovalRequestApprovalDecision } from "@app/services/approval-policy/approval-policy-enums";
 
 import { AlertChannelType, TAlertPayload, TAlertSeverity } from "../alert-channel-types";
@@ -62,9 +62,14 @@ const DECISION_BY_EVENT: Partial<Record<PamAccessRequestEvent, ApprovalRequestAp
 
 type TPamAccessRequestTarget = {
   requestId: string;
+  folderId: string;
   folderName: string;
+  accountId: string | null;
   accountName: string | null;
   requesterName: string;
+  requesterEmail: string | null;
+  requesterUserId: string | null;
+  requesterMachineIdentityId: string | null;
   requesterLabel: string;
   accessType: PamAccessType;
   duration?: string;
@@ -90,6 +95,11 @@ const toRequesterLabel = ({
 }) => {
   if (machineIdentityId) return `${requesterName} (machine identity)`;
   return requesterEmail ? `${requesterName} (${requesterEmail})` : requesterName;
+};
+
+const toDurationSeconds = (duration?: string) => {
+  const durationMs = duration ? ms(duration) : NaN;
+  return Number.isFinite(durationMs) ? Math.round(durationMs / 1000) : null;
 };
 
 const describeTarget = (eventType: PamAccessRequestEvent, target: TPamAccessRequestTarget) => {
@@ -158,9 +168,14 @@ export const pamFolderAlertProviderFactory = ({
 
     return requests.map((request) => ({
       requestId: request.id,
+      folderId,
       folderName: folder.name,
+      accountId: request.inputs.accountId ?? null,
       accountName: accountNameById.get(request.inputs.accountId ?? "") ?? null,
       requesterName: request.requesterName,
+      requesterEmail: request.requesterEmail || null,
+      requesterUserId: request.requesterId,
+      requesterMachineIdentityId: request.machineIdentityId,
       requesterLabel: toRequesterLabel(request),
       accessType: request.inputs.accessType ?? PamAccessType.Session,
       duration: request.inputs.duration,
@@ -204,7 +219,23 @@ export const pamFolderAlertProviderFactory = ({
           ...(target.bypassReason && target.bypassReason !== target.reason
             ? [{ label: "Break-Glass Reason", value: target.bypassReason }]
             : [])
-        ]
+        ],
+        resource: {
+          id: target.requestId,
+          folderId: target.folderId,
+          folderName: target.folderName,
+          accountId: target.accountId,
+          accountName: target.accountName,
+          requesterName: target.requesterName,
+          requesterEmail: target.requesterEmail,
+          requesterUserId: target.requesterUserId,
+          requesterMachineIdentityId: target.requesterMachineIdentityId,
+          accessType: target.accessType,
+          durationSeconds: toDurationSeconds(target.duration),
+          reason: target.reason ?? null,
+          reviewerComment: target.comment,
+          breakGlassReason: target.bypassReason
+        }
       }))
     };
   };
@@ -279,6 +310,7 @@ export const pamFolderAlertProviderFactory = ({
     targetId: (target) => target.requestId,
     assertPermission,
     assertResourceInScope,
-    assertChannelTypesAllowed
+    assertChannelTypesAllowed,
+    recipientPolicy: { allowEmailAddresses: true }
   };
 };

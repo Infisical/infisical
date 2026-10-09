@@ -21,6 +21,7 @@ import {
 import { useScopeVariant } from "@app/hooks";
 import {
   ALERT_CHANNEL_TYPE_LABELS,
+  ALERT_RESOURCE_TYPES_WITH_EMAIL_ADDRESSES,
   AlertChannelType,
   TAlertChannelRecipient,
   TChannelsForm,
@@ -215,6 +216,9 @@ export const ChannelCard = ({
                 ) : (
                   <ChannelRecipientsField
                     projectId={projectId}
+                    allowEmailAddresses={ALERT_RESOURCE_TYPES_WITH_EMAIL_ADDRESSES.includes(
+                      resourceType
+                    )}
                     value={field.value ?? []}
                     onChange={field.onChange}
                     isError={Boolean(channelErrors?.recipients)}

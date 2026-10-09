@@ -40,9 +40,10 @@ export const pamFolderAlertDALFactory = (db: TDbClient) => {
       const requests = (await (tx || db)(TableName.ApprovalRequests)
         .whereIn("id", requestIds)
         .where({ organizationId: orgId, projectId, type: ApprovalPolicyType.PamAccess })
-        .select("id", "requesterName", "requesterEmail", "machineIdentityId", "requestData")
+        .select("id", "requesterId", "requesterName", "requesterEmail", "machineIdentityId", "requestData")
         .orderBy("createdAt", "asc")) as {
         id: string;
+        requesterId: string | null;
         requesterName: string;
         requesterEmail: string;
         machineIdentityId: string | null;

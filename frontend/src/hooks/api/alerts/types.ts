@@ -33,6 +33,9 @@ export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventTyp
   [AlertResourceType.SecretReminder]: []
 };
 
+// Resource types whose provider accepts plain email addresses as email channel recipients
+export const ALERT_RESOURCE_TYPES_WITH_EMAIL_ADDRESSES: string[] = [AlertResourceType.PamFolder];
+
 export enum AlertChannelType {
   Email = "email",
   Slack = "slack",
