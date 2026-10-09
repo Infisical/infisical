@@ -145,20 +145,23 @@ const ImportSecretsContent = ({
     if (!activeSecrets) return false;
     const payload = JSON.stringify({
       projectId,
-      environment: "",
+      environment: selectedEnvs.reduce(
+        (longest, env) => (env.slug.length > longest.length ? env.slug : longest),
+        ""
+      ),
       secretPath,
       secrets: Object.entries(activeSecrets).map(([key, s]) => ({
         secretKey: keyOverrides[key] ?? key,
         secretValue: s.value,
         secretComment: s.comments.join("\n"),
         type: SecretType.Shared,
-        tagIds: s.tagSlugs,
+        tagIds: s.tagSlugs?.map(() => crypto.randomUUID()),
         secretMetadata: s.secretMetadata,
         skipMultilineEncoding: s.skipMultilineEncoding
       }))
     });
     return new TextEncoder().encode(payload).length > MAX_BATCH_REQUEST_BYTES;
-  }, [activeSecrets, keyOverrides, projectId, secretPath]);
+  }, [activeSecrets, keyOverrides, projectId, secretPath, selectedEnvs]);
 
   const handleParsedSecrets = useCallback((env: TParsedEnv) => {
     if (!Object.keys(env).length) {
@@ -490,7 +493,7 @@ const ImportSecretsContent = ({
                   <FileDropzone
                     isDisabled={!isAllowed}
                     accept=".txt,.env,.yml,.yaml,.json,.csv,.pfx,.pem,.crt"
-                    description=".env, .json, .yml, .csv, .pfx, .pem, or .crt (max 1 MB)"
+                    description=".env, .json, .yml, .csv, .pfx, .pem, or .crt (1 MB request limit)"
                     onFilesSelect={(files) => parseFile(files[0])}
                   />
                 )}
