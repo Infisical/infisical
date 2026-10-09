@@ -57,7 +57,16 @@ const PaloAltoNetworksSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must be at most 31 characters once placeholders are filled in ({{shortCertificateId}} counts as 22). Outside placeholders, use only letters, numbers, hyphens (-), and underscores (_). A name without {{shortCertificateId}} or {{commonName}} can hold only one certificate."
+          "Certificate name schema must be at most 31 characters once placeholders are filled in ({{shortCertificateId}} counts as 22). Outside placeholders, use only letters, numbers, hyphens (-), and underscores (_)."
+      }
+    )
+    .refine(
+      (val) =>
+        !/\{\{\w+\}\}/.test(val) ||
+        /\{\{(certificateId|shortCertificateId|commonName)\}\}/.test(val),
+      {
+        message:
+          "Certificate name schema must include {{shortCertificateId}} or {{commonName}} so each certificate gets its own name, or use no placeholder for a single certificate."
       }
     )
 });

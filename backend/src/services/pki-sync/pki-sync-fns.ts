@@ -774,7 +774,7 @@ const getPkiSyncCertificateCaps = (
     caps.push({
       cap: 1,
       reason: () =>
-        "This PKI sync's certificate name schema gives every certificate the same name, so it holds only one certificate. Add {{shortCertificateId}}, {{certificateId}}, or {{commonName}} to hold more."
+        "This PKI sync's certificate name schema has no placeholder, so it holds only one certificate. Add {{certificateId}} or {{commonName}} to hold more."
     });
   }
 

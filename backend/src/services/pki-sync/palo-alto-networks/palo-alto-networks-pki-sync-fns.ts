@@ -21,9 +21,16 @@ import { TPaloAltoNetworksConnection } from "@app/services/app-connection/palo-a
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { splitPemChain } from "@app/services/certificate/certificate-fns";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
+import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
 
-import { compileCertificateNameSchema } from "../pki-sync-certificate-name-fns";
+import {
+  buildManagedCertificateNameRegexSource,
+  certificateNameSchemaHasFreeTextPlaceholder,
+  compileCertificateNameSchema,
+  SHORT_UUID_NAME_REGEX_FRAGMENT,
+  UUID_NAME_REGEX_FRAGMENT
+} from "../pki-sync-certificate-name-fns";
 import { PkiSync } from "../pki-sync-enums";
 import { PkiSyncError } from "../pki-sync-errors";
 import { TPkiSyncWithCredentials } from "../pki-sync-types";
@@ -39,6 +46,7 @@ type TPaloAltoNetworksPkiSyncFactoryDeps = {
     TCertificateSyncDALFactory,
     | "removeCertificates"
     | "findByPkiSyncId"
+    | "bulkUpdateSyncStatus"
     | "findExternalIdentifiersInUse"
     | "claimExternalIdentifier"
     | "setSyncMetadataFlag"
@@ -276,6 +284,18 @@ const commitAndPush = async (
       `Push of template stack '${stack}'`
     );
   }
+};
+
+export const buildManagedCertNamePattern = (certificateNameSchema: string | undefined): RE2 => {
+  const pattern = buildManagedCertificateNameRegexSource(
+    certificateNameSchema ?? PALO_ALTO_NETWORKS_PKI_SYNC_LIST_OPTION.defaultCertificateNameSchema,
+    {
+      uuid: UUID_NAME_REGEX_FRAGMENT,
+      shortUuid: SHORT_UUID_NAME_REGEX_FRAGMENT,
+      freeText: "[a-zA-Z0-9_-]*"
+    }
+  );
+  return new RE2(`^${pattern}$`);
 };
 
 type TPlannedUpload = TCertificateMap[string] & {
@@ -536,6 +556,7 @@ export const paloAltoNetworksPkiSyncFactory = ({
     activeNames: Set<string>;
     deployPending: TDeployPendingMarker;
   }) => {
+    const { certificateNameSchema } = pkiSync.syncOptions as TPaloAltoNetworksPkiSyncOptions;
     const failedRemovals: TSyncFailure[] = [];
     let removedCount = 0;
 
@@ -547,6 +568,19 @@ export const paloAltoNetworksPkiSyncFactory = ({
             Boolean(name) && !activeNames.has(name as string) && existingCertificates.has(name as string)
         )
     );
+
+    if (!certificateNameSchemaHasFreeTextPlaceholder(certificateNameSchema)) {
+      const managedPattern = buildManagedCertNamePattern(certificateNameSchema);
+      existingCertificates.forEach((_, name) => {
+        if (
+          managedPattern.test(name) &&
+          !activeNames.has(name) &&
+          !name.startsWith(PALO_ALTO_NETWORKS_CA_CERTIFICATE_PREFIX)
+        ) {
+          candidates.add(name);
+        }
+      });
+    }
 
     const ownedByOtherSync = await findNamesOwnedByOtherSyncs(pkiSync, [...candidates]);
 
@@ -597,6 +631,18 @@ export const paloAltoNetworksPkiSyncFactory = ({
           ])
         : []
     );
+
+    const markRunFailed = async (error: unknown) => {
+      const message = error instanceof Error ? error.message : "The sync did not complete.";
+      await certificateSyncDAL.bulkUpdateSyncStatus(
+        certificateIds.map((certificateId) => ({
+          pkiSyncId: pkiSync.id,
+          certificateId,
+          status: CertificateSyncStatus.Failed,
+          message
+        }))
+      );
+    };
 
     return withClient(pkiSync, async (client, panorama, config) => {
       const [existingCertificates, profileVsysCertificates, profileCertificate] = await Promise.all([
@@ -691,6 +737,9 @@ export const paloAltoNetworksPkiSyncFactory = ({
           skippedCertificates: skippedCertificates.length ? skippedCertificates : undefined
         }
       };
+    }).catch(async (error: unknown) => {
+      await markRunFailed(error);
+      throw error;
     });
   };
 

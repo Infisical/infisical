@@ -104,12 +104,6 @@ type PkiSyncActionJob = Job<
   TQueuePkiSyncSyncCertificatesByIdDTO | TQueuePkiSyncImportCertificatesByIdDTO | TQueuePkiSyncRemoveCertificatesByIdDTO
 >;
 
-const NON_TERMINAL_CERTIFICATE_SYNC_STATUSES = new Set<string>([
-  CertificateSyncStatus.Pending,
-  CertificateSyncStatus.Running,
-  CertificateSyncStatus.Syncing
-]);
-
 const JITTER_MS = 10 * 1000;
 const HOST_SERIALISATION_LOCK_TTL_MS = 5 * 60 * 1000;
 
@@ -255,7 +249,6 @@ export const pkiSyncQueueFactory = ({
     );
 
     let isSynced = false;
-    let runCertificateIds: string[] = [];
     let certSyncFailureCount = 0;
     let syncMessage: string | null = null;
     let partialFailure = false;
@@ -285,7 +278,6 @@ export const pkiSyncQueueFactory = ({
 
       if (statusUpdates.length > 0) {
         await certificateSyncDAL.bulkUpdateSyncStatus(statusUpdates);
-        runCertificateIds = statusUpdates.map((update) => update.certificateId);
       }
 
       const syncResult = await PkiSyncFns.syncCertificates(pkiSyncWithCredentials, certificateMap, {
@@ -386,13 +378,18 @@ export const pkiSyncQueueFactory = ({
       certSyncFailureCount = failedCertificateCount + (syncResult.failedRemovals ?? 0);
 
       const processedCertificateIds = new Set(Array.from(certificateMetadata.values()).map((meta) => meta.id));
+      const nonTerminalStatuses = new Set<string>([
+        CertificateSyncStatus.Pending,
+        CertificateSyncStatus.Running,
+        CertificateSyncStatus.Syncing
+      ]);
       const trackedRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
       const strandedCertificateIds = trackedRecords
         .filter(
           (record) =>
             record.certificateId &&
             !processedCertificateIds.has(record.certificateId) &&
-            NON_TERMINAL_CERTIFICATE_SYNC_STATUSES.has(record.syncStatus ?? "")
+            nonTerminalStatuses.has(record.syncStatus ?? "")
         )
         .map((record) => record.certificateId)
         .filter((id): id is string => typeof id === "string");
@@ -494,16 +491,6 @@ export const pkiSyncQueueFactory = ({
           }
         }
       });
-
-      if (!isSynced && isFinalAttempt && runCertificateIds.length > 0) {
-        await certificateSyncDAL.updateSyncStatusIfIn({
-          pkiSyncId: pkiSync.id,
-          certificateIds: runCertificateIds,
-          currentStatuses: [...NON_TERMINAL_CERTIFICATE_SYNC_STATUSES],
-          status: CertificateSyncStatus.Failed,
-          message: syncMessage ?? "The sync did not complete."
-        });
-      }
 
       if (isSynced || isFinalAttempt) {
         if (!fullySynced) {

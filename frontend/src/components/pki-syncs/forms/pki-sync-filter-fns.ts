@@ -48,7 +48,8 @@ export const buildOrderNameMap = (
 
 const GCP_MAX_CERTIFICATES_PER_MAP_ENTRY = 4;
 
-const NAME_SCHEMA_PLACEHOLDER_PATTERN = /\{\{(certificateId|shortCertificateId|commonName)\}\}/;
+const NAME_SCHEMA_PLACEHOLDER_PATTERN =
+  /\{\{(certificateId|shortCertificateId|profileId|applicationId|applicationName|commonName)\}\}/;
 
 const COMMAND_VARIABLE_PATTERN = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
 

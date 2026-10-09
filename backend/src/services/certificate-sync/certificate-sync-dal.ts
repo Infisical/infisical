@@ -202,27 +202,6 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     }
   };
 
-  const updateSyncStatusIfIn = async (
-    {
-      pkiSyncId,
-      certificateIds,
-      currentStatuses,
-      status,
-      message
-    }: { pkiSyncId: string; certificateIds: string[]; currentStatuses: string[]; status: string; message: string },
-    tx?: Knex
-  ): Promise<void> => {
-    try {
-      await (tx || db)(TableName.CertificateSync)
-        .where({ pkiSyncId })
-        .whereIn("certificateId", certificateIds)
-        .whereIn("syncStatus", currentStatuses)
-        .update({ syncStatus: status, lastSyncMessage: message, lastSyncedAt: new Date() });
-    } catch (error) {
-      throw new DatabaseError({ error, name: "UpdateSyncStatusIfIn" });
-    }
-  };
-
   const updateSyncMetadata = async (
     pkiSyncId: string,
     certificateId: string,
@@ -404,7 +383,6 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     updateSyncMetadata,
     clearSyncMetadataFlag,
     setSyncMetadataFlag,
-    updateSyncStatusIfIn,
     findWithDetails
   };
 };

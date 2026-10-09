@@ -19,17 +19,31 @@ export const PaloAltoNetworksConnectionBasicAuthCredentialsSchema = z.object({
     .max(512, "Hostname cannot exceed 512 characters")
     .refine((val) => !val.includes("/") && !val.includes("@") && !val.includes("?"), {
       message: "Hostname must not contain /, @, or ? characters"
-    }),
-  port: z.number().int().min(1).max(65535).optional(),
-  username: z.string().trim().min(1, "Username is required").max(256, "Username cannot exceed 256 characters"),
-  password: z.string().min(1, "Password is required").max(512, "Password cannot exceed 512 characters"),
-  sslRejectUnauthorized: z.boolean().optional(),
+    })
+    .describe(AppConnections.CREDENTIALS.PALO_ALTO_NETWORKS.hostname),
+  port: z.number().int().min(1).max(65535).optional().describe(AppConnections.CREDENTIALS.PALO_ALTO_NETWORKS.port),
+  username: z
+    .string()
+    .trim()
+    .min(1, "Username is required")
+    .max(256, "Username cannot exceed 256 characters")
+    .describe(AppConnections.CREDENTIALS.PALO_ALTO_NETWORKS.username),
+  password: z
+    .string()
+    .min(1, "Password is required")
+    .max(512, "Password cannot exceed 512 characters")
+    .describe(AppConnections.CREDENTIALS.PALO_ALTO_NETWORKS.password),
+  sslRejectUnauthorized: z
+    .boolean()
+    .optional()
+    .describe(AppConnections.CREDENTIALS.PALO_ALTO_NETWORKS.sslRejectUnauthorized),
   sslCertificate: z
     .string()
     .trim()
     .max(16384, "SSL certificate cannot exceed 16384 characters")
     .transform((value) => value || undefined)
     .optional()
+    .describe(AppConnections.CREDENTIALS.PALO_ALTO_NETWORKS.sslCertificate)
 });
 
 const BasePaloAltoNetworksConnectionSchema = BaseAppConnectionSchema.extend({

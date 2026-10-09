@@ -2902,6 +2902,14 @@ export const AppConnections = {
     connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to rotate credentials for.`
   }),
   CREDENTIALS: {
+    PALO_ALTO_NETWORKS: {
+      hostname: "The IP address or hostname of the management interface of the firewall or Panorama.",
+      port: "The HTTPS port of the management interface. Defaults to 443.",
+      username: "The username of the PAN-OS administrator to connect with.",
+      password: "The password of the PAN-OS administrator.",
+      sslRejectUnauthorized: "Whether to reject the management interface's TLS certificate if it isn't trusted.",
+      sslCertificate: "The PEM-encoded CA certificate to trust for the management interface's TLS certificate."
+    },
     AUTH0_CONNECTION: {
       domain: "The domain of the Auth0 instance to connect to.",
       clientId: "Your Auth0 application's Client ID.",
@@ -4573,6 +4581,16 @@ export const AGENT_VAULT = {
     identityName:
       "The name of the machine identity. Once the machine identity is deleted, the name recorded when the session was created."
   }
+};
+
+export const PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATION_CONFIG = {
+  template:
+    "The Panorama template to store certificates in. Required when the connection points to a Panorama, and not allowed for a firewall.",
+  pushToDevices:
+    "Whether to push every template stack that contains the template to its firewalls after a commit. Applies to Panorama only.",
+  sslTlsServiceProfileName: "The name of the SSL/TLS service profile to point at the synced certificate.",
+  sslTlsServiceProfileVsys:
+    "The virtual system the SSL/TLS service profile belongs to. Leave it out for a shared profile."
 };
 
 export const PKI_SYNC_FILTERS = {
