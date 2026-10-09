@@ -8,17 +8,23 @@ const SECRET_SCANNING_PREFIX = "/api/v2/secret-scanning/";
 type TSchemaWithShape = { shape?: Record<string, unknown> } | undefined;
 
 // Most Secret Scanning routes are keyed by a data source or finding ID; only routes that declare a
-// projectId input need one resolved, so the rest skip the lookup entirely.
-const routeAcceptsProjectId = (schema: { querystring?: unknown; body?: unknown } | undefined) =>
-  Boolean(
-    (schema?.querystring as TSchemaWithShape)?.shape?.projectId || (schema?.body as TSchemaWithShape)?.shape?.projectId
-  );
+// projectId input need one resolved, so the rest skip the lookup entirely. The ID is read only from where
+// the route declares it, so an undeclared query parameter cannot redirect a body-addressed create.
+const getDeclaredProjectIdLocation = (
+  schema: { querystring?: unknown; body?: unknown } | undefined
+): "query" | "body" | null => {
+  if ((schema?.querystring as TSchemaWithShape)?.shape?.projectId) return "query";
+  if ((schema?.body as TSchemaWithShape)?.shape?.projectId) return "body";
+  return null;
+};
 
-const readProjectIdFromRequest = (req: { query?: unknown; body?: unknown }): string | null => {
-  const fromQuery = (req.query as { projectId?: unknown } | undefined)?.projectId;
-  if (typeof fromQuery === "string" && fromQuery.trim().length > 0) return fromQuery.trim();
-  const fromBody = (req.body as { projectId?: unknown } | undefined)?.projectId;
-  if (typeof fromBody === "string" && fromBody.trim().length > 0) return fromBody.trim();
+const readProjectIdFromRequest = (
+  req: { query?: unknown; body?: unknown },
+  location: "query" | "body"
+): string | null => {
+  const source = location === "query" ? req.query : req.body;
+  const projectId = (source as { projectId?: unknown } | undefined)?.projectId;
+  if (typeof projectId === "string" && projectId.trim().length > 0) return projectId.trim();
   return null;
 };
 
@@ -30,9 +36,10 @@ export const injectSecretScanningProjectId: FastifyPluginAsync = fp(async (serve
 
     const routePath = req.routeOptions.url ?? "";
     if (!routePath.startsWith(SECRET_SCANNING_PREFIX)) return;
-    if (!routeAcceptsProjectId(req.routeOptions.schema)) return;
+    const location = getDeclaredProjectIdLocation(req.routeOptions.schema);
+    if (!location) return;
 
-    const explicit = readProjectIdFromRequest(req);
+    const explicit = readProjectIdFromRequest(req, location);
     if (explicit) {
       const isValidForOrg = await server.services.secretScanningV2ProjectResolver.isSecretScanningProject(
         explicit,
