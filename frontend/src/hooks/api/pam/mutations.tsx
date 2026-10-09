@@ -32,6 +32,7 @@ import {
   TPamAccountTemplate,
   TPamDiscoverySource,
   TPamFolder,
+  TPamMember,
   TPamSession,
   TRemoveAccountGroupMemberDTO,
   TRemoveAccountIdentityMemberDTO,
@@ -108,6 +109,28 @@ export const useDeletePamFolder = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pamKeys.account() });
       queryClient.invalidateQueries({ queryKey: pamKeys.folder() });
+    }
+  });
+};
+
+export const useGrantPamFolderAdminAccess = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ folderId }: { folderId: string }) => {
+      const { data } = await apiRequest.post<
+        Pick<TPamMember, "membershipId" | "userId" | "role" | "createdAt"> & { folderId: string }
+      >(`/api/v1/pam/folders/${folderId}/grant-admin-access`);
+
+      return data;
+    },
+    onSuccess: (_, { folderId }) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
+      queryClient.invalidateQueries({ queryKey: pamKeys.folder() });
+      queryClient.invalidateQueries({ queryKey: pamKeys.folderPermissions(folderId) });
+      // Accounts in the folder inherit the new role.
+      queryClient.invalidateQueries({ queryKey: pamKeys.allAccountPermissions() });
+      queryClient.invalidateQueries({ queryKey: pamKeys.folderMembers(folderId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.accessCapabilities() });
     }
   });
 };

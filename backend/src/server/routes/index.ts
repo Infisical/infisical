@@ -3901,7 +3901,11 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL,
     permissionService,
-    pamAccessRequestService
+    pamAccessRequestService,
+    userDAL,
+    userGroupMembershipDAL,
+    notificationService,
+    smtpService
   });
 
   const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
