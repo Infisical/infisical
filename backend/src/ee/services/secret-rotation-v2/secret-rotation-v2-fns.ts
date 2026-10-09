@@ -36,6 +36,7 @@ import { REDIS_CREDENTIALS_ROTATION_LIST_OPTION } from "./redis-credentials";
 import { SALESFORCE_OAUTH_CREDENTIALS_ROTATION_LIST_OPTION } from "./salesforce-oauth-credentials";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 import { SecretRotation, SecretRotationStatus } from "./secret-rotation-v2-enums";
+import { getSecretRotationConnectionApps } from "./secret-rotation-v2-maps";
 import { TSecretRotationV2ServiceFactory, TSecretRotationV2ServiceFactoryDep } from "./secret-rotation-v2-service";
 import {
   TSecretRotationRotateSecretsJobPayload,
@@ -91,7 +92,14 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
 };
 
 export const listSecretRotationOptions = () => {
-  return Object.values(SECRET_ROTATION_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
+  return Object.values(SECRET_ROTATION_LIST_OPTIONS)
+    .map((option) => {
+      const additionalConnections = getSecretRotationConnectionApps(option.type).filter(
+        (app) => app !== option.connection
+      );
+      return additionalConnections.length ? { ...option, additionalConnections } : option;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 };
 
 const getNextUTCDayInterval = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"] = { hours: 0, minutes: 0 }) => {

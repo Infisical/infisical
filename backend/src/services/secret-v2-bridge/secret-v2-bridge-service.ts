@@ -54,7 +54,6 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
-import { TReminderDALFactory } from "../reminder/reminder-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
@@ -185,8 +184,10 @@ type TSecretV2BridgeServiceFactoryDep = {
     | "hashGet"
     | "hashSet"
   >;
-  reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder" | "batchCreateReminders">;
-  reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
+  reminderService: Pick<
+    TReminderServiceFactory,
+    "prepareReminder" | "applyReminder" | "createReminder" | "getReminder" | "moveReminders" | "copyReminders"
+  >;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
@@ -215,7 +216,6 @@ export const secretV2BridgeServiceFactory = ({
   resourceMetadataDAL,
   keyStore,
   reminderService,
-  reminderDAL,
   secretValidationRuleService,
   projectFolderGrantDAL,
   orgDAL
@@ -787,6 +787,23 @@ export const secretV2BridgeServiceFactory = ({
       await $validateSecretReferences(projectId, permission, allSecretReferences);
     }
 
+    // The secret and its reminder are one change: the reminder is checked before anything is written, then
+    // written in the secret's transaction, so either both land or neither does.
+    const preparedReminder = inputSecret.secretReminderRepeatDays
+      ? await reminderService.prepareReminder({
+          actor,
+          actorId,
+          actorOrgId,
+          actorAuthMethod,
+          reminder: {
+            secretId,
+            message: inputSecret.secretReminderNote,
+            repeatDays: inputSecret.secretReminderRepeatDays,
+            recipients: inputSecret.secretReminderRecipients
+          }
+        })
+      : undefined;
+
     const updatedSecret = await secretDAL.transaction(async (tx) => {
       const modifiedSecretsInDB = await fnSecretBulkUpdate({
         folderId,
@@ -848,23 +865,11 @@ export const secretV2BridgeServiceFactory = ({
         });
       }
 
+      if (preparedReminder) await reminderService.applyReminder(preparedReminder, tx);
+
       await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
       return modifiedSecretsInDB;
     });
-    if (inputSecret.secretReminderRepeatDays) {
-      await reminderService.createReminder({
-        actor,
-        actorId,
-        actorOrgId,
-        actorAuthMethod,
-        reminder: {
-          secretId: secret.id,
-          message: inputSecret.secretReminderNote,
-          repeatDays: inputSecret.secretReminderRepeatDays,
-          recipients: inputSecret.secretReminderRecipients
-        }
-      });
-    }
 
     if (inputSecret.type === SecretType.Shared) {
       await secretQueueService.syncSecrets({
@@ -3266,7 +3271,6 @@ export const secretV2BridgeServiceFactory = ({
         secretApprovalPolicyService,
         secretApprovalRequestCreationFns,
         secretQueueService,
-        reminderDAL,
         reminderService,
         secretValidationRuleService
       })

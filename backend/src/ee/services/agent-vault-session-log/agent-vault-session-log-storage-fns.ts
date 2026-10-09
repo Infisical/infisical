@@ -1,5 +1,6 @@
 import { STSServiceException } from "@aws-sdk/client-sts";
 
+import { ProjectType } from "@app/db/schemas";
 import { createS3Bucket } from "@app/lib/aws/s3";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -46,7 +47,11 @@ export const buildSessionLogStorage = async (
   let credentials: Awaited<ReturnType<typeof getAwsConnectionConfig>>["credentials"];
   try {
     const connection = await decryptAppConnection(raw, kmsService as Parameters<typeof decryptAppConnection>[1]);
-    ({ credentials } = await getAwsConnectionConfig(connection as unknown as TAwsConnectionConfig, config.region));
+    // Session logs only accept org connections or Agent Vault's own, and both assume the role with the org ID.
+    ({ credentials } = await getAwsConnectionConfig(
+      { ...connection, projectType: ProjectType.AgentVault } as unknown as TAwsConnectionConfig,
+      config.region
+    ));
   } catch (err) {
     logger.warn({ err }, `Agent Vault session logs could not use their AWS connection [appConnectionId=${raw.id}]`);
     const reason =

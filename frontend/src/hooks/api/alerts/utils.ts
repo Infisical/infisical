@@ -1,4 +1,19 @@
-import { AlertChannelType, TAlertChannelInput, TChannelForm } from "./types";
+import { AlertChannelType, TAlert, TAlertChannelInput, TChannelForm } from "./types";
+
+export const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm => ({
+  id: channel.id,
+  channelType: channel.channelType,
+  name: channel.name,
+  enabled: channel.enabled,
+  recipients: channel.recipients,
+  webhookUrl: "",
+  url: (channel.config.url as string) ?? "",
+  signingSecret: "",
+  integrationKey: "",
+  hasWebhookUrl: Boolean(channel.config.hasWebhookUrl),
+  hasSigningSecret: Boolean(channel.config.hasSigningSecret),
+  hasIntegrationKey: Boolean(channel.config.hasIntegrationKey)
+});
 
 export const toChannelInput = (channel: TChannelForm): TAlertChannelInput => {
   const base: TAlertChannelInput = {

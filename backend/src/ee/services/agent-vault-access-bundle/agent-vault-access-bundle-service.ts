@@ -28,6 +28,12 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
+import {
+  agentVaultActorKey,
+  resolveAgentVaultActorNames,
+  TAgentVaultActorName,
+  TAgentVaultActorNameDALs
+} from "../agent-vault/agent-vault-actor-name-fns";
 import { describeConflict, findHostPatternConflicts } from "../agent-vault/agent-vault-conflict-fns";
 import {
   AgentVaultBearerConfigSchema,
@@ -100,7 +106,7 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
   agentVaultMemberDAL: Pick<TAgentVaultMemberDALFactory, "findProductMembers">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
-};
+} & TAgentVaultActorNameDALs;
 
 export type TAgentVaultAccessBundleServiceFactory = ReturnType<typeof agentVaultAccessBundleServiceFactory>;
 
@@ -127,7 +133,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     membershipRoleDAL,
     agentVaultMemberDAL,
     userGroupMembershipDAL,
-    identityGroupMembershipDAL
+    identityGroupMembershipDAL,
+    userDAL,
+    groupDAL,
+    identityDAL
   } = deps;
 
   const bundleScope = (projectId: string, accessBundleId: string) => ({
@@ -144,11 +153,15 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   };
 
   const toMember = (row: TMemberships) => ({
-    id: row.id,
-    accessBundleId: row.scopeResourceId!,
-    createdAt: row.createdAt,
-    actor: toActorRef(row)
+    ...toActorRef(row),
+    grantedAt: row.createdAt
   });
+
+  // actorName is for the audit body; the response schemas do not select it.
+  const withActorNames = <T extends TAgentVaultAccessBundleActorRef>(
+    members: T[],
+    nameByKey: Map<string, TAgentVaultActorName>
+  ) => members.map((member) => ({ ...member, actorName: nameByKey.get(agentVaultActorKey(member)) }));
 
   type TGrantActorColumn = "actorUserId" | "actorIdentityId" | "actorGroupId";
 
@@ -166,6 +179,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     type: ACTOR_TYPE_OF[actorColumn],
     id: actorId
   });
+
+  // Called before the write: a lookup that failed after commit would fail the request with the change made,
+  // and the retry finds the actor skipped, so that change would never be audited.
+  const resolveActorNames = (actors: TGrantActor[]) =>
+    resolveAgentVaultActorNames({ userDAL, groupDAL, identityDAL }, actors.map(toActorRefFromGrant));
 
   const ACTOR_FIELD_OF: Record<TGrantActorColumn, "userId" | "identityId" | "groupId"> = {
     actorUserId: "userId",
@@ -1578,6 +1596,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     const actors = [...requested.values()];
     await assertActorsInProject({ projectId: rest.projectId, actors });
+    const nameByKey = await resolveActorNames(actors);
 
     // The bundle row lock serializes grants for this bundle, so reading the existing ones inside it is
     // enough to dedupe. The unique index per actor per bundle stays as the backstop, and its violation
@@ -1623,7 +1642,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
 
     return {
-      members: outcome.created.map(toMember),
+      members: withActorNames(outcome.created.map(toMember), nameByKey),
       skipped: outcome.skipped,
       accessBundleName: bundle.name
     };
@@ -1652,6 +1671,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ids.forEach((actorId) => requested.set(actorKey({ actorColumn, actorId }), { actorColumn, actorId }));
     });
     const actors = [...requested.values()];
+    const nameByKey = await resolveActorNames(actors);
 
     // The same row lock the grant path takes, so a revoke cannot race a grant or a bundle delete.
     const outcome = await membershipDAL.transaction(async (tx) => {
@@ -1686,7 +1706,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     });
 
     return {
-      members: outcome.removed.map(toMember),
+      members: withActorNames(outcome.removed.map(toActorRef), nameByKey),
       skipped: outcome.skipped,
       accessBundleName: bundle.name
     };

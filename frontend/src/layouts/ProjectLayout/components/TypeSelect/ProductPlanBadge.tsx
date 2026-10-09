@@ -4,7 +4,7 @@ import { useSubscription } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 const PRODUCT_KEYS: Partial<Record<ProjectType, string>> = {
-  [ProjectType.SecretManager]: "secrets_management",
+  [ProjectType.SecretManager]: "secrets_manager",
   [ProjectType.CertificateManager]: "cert_management",
   [ProjectType.PAM]: "pam"
 };
