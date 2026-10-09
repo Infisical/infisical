@@ -1,13 +1,32 @@
 import { Badge } from "@app/components/v3";
-import { PkiDiscoveryScanStatus, TPkiInstallation } from "@app/hooks/api";
+import {
+  ProjectPermissionPkiCertificateInstallationActions,
+  ProjectPermissionPkiDiscoveryActions,
+  ProjectPermissionSub,
+  useProjectPermission
+} from "@app/context";
+import {
+  PkiCertificateFileFormat,
+  PkiDiscoveryScanStatus,
+  PkiInstallationLocationType,
+  PkiKeystoreStatus,
+  TPkiInstallation
+} from "@app/hooks/api";
 
 export const getGatewayLabel = (installation: TPkiInstallation): string | null => {
   const { gatewayName } = installation.locationDetails;
   return gatewayName || null;
 };
 
+export const isHostFileInstallation = (installation: TPkiInstallation) =>
+  installation.locationType === PkiInstallationLocationType.Filesystem ||
+  installation.locationType === PkiInstallationLocationType.Keystore;
+
 export const getEndpoint = (installation: TPkiInstallation): string => {
-  const { ipAddress, fqdn, port } = installation.locationDetails;
+  const { ipAddress, fqdn, port, hostIdentifier, filePath } = installation.locationDetails;
+  if (isHostFileInstallation(installation) && filePath) {
+    return hostIdentifier ? `${hostIdentifier}:${filePath}` : filePath;
+  }
   const host = fqdn || ipAddress;
   if (host) {
     return `${host}:${port || 443}`;
@@ -64,3 +83,39 @@ export const getScanStatusBadge = (status: string) => {
       return <Badge variant="neutral">{status}</Badge>;
   }
 };
+
+export const getKeystoreStatusBadge = (installation: TPkiInstallation) => {
+  switch (installation.metadata?.keystoreStatus) {
+    case PkiKeystoreStatus.Locked:
+      return <Badge variant="warning">Locked</Badge>;
+    case PkiKeystoreStatus.PasswordFailed:
+      return <Badge variant="danger">Password Failed</Badge>;
+    default:
+      return null;
+  }
+};
+
+export const canSetKeystorePassword = (installation: TPkiInstallation) => {
+  if (installation.locationType !== PkiInstallationLocationType.Keystore) return false;
+  const { format } = installation.locationDetails;
+  if (format && format !== PkiCertificateFileFormat.Pkcs12) return false;
+  const status = installation.metadata?.keystoreStatus;
+  return (
+    Boolean(installation.hasKeystorePassword) ||
+    status === PkiKeystoreStatus.Locked ||
+    status === PkiKeystoreStatus.PasswordFailed
+  );
+};
+
+export const useCanRescanPkiInstallations = () => {
+  const { permission } = useProjectPermission();
+  return (
+    permission.can(
+      ProjectPermissionPkiCertificateInstallationActions.Edit,
+      ProjectPermissionSub.PkiCertificateInstallations
+    ) &&
+    permission.can(ProjectPermissionPkiDiscoveryActions.RunScan, ProjectPermissionSub.PkiDiscovery)
+  );
+};
+
+export const getItemLabel = (item: string) => item;

@@ -11,14 +11,13 @@ Certificate Discovery automatically scans your infrastructure to find certificat
 Discovery jobs scan your infrastructure and organize results as **installations** — unique locations where certificates were found. Each installation tracks certificates discovered at that location across multiple scans, allowing you to monitor changes over time.
 
 <CardGroup cols={2}>
-  <Card title="Network Discovery" icon="network" href="/documentation/platform/pki/discovery/network">
+  <Card title="Network" icon="network" href="/documentation/platform/pki/discovery/network">
     Scan network endpoints over TLS to discover certificates served by hosts across IP ranges and domains.
   </Card>
+  <Card title="Linux Server" icon="terminal" href="/documentation/platform/pki/discovery/linux-server">
+    Find the certificates stored in files and keystores on your Linux servers, through an SSH connection and a gateway.
+  </Card>
 </CardGroup>
-
-<Note>
-  Additional discovery types (cloud providers, file systems, etc.) will be added in future releases.
-</Note>
 
 ## Installations
 
@@ -50,8 +49,11 @@ Discovered certificates are matched to your existing inventory by fingerprint. I
 ## What's next?
 
 <CardGroup cols={2}>
-  <Card title="Network Discovery" icon="network" href="/documentation/platform/pki/discovery/network">
+  <Card title="Network" icon="network" href="/documentation/platform/pki/discovery/network">
     Scan TLS endpoints across IP ranges and domains.
+  </Card>
+  <Card title="Linux Server" icon="terminal" href="/documentation/platform/pki/discovery/linux-server">
+    Find certificate files and keystores on Linux servers.
   </Card>
   <Card title="Applications" icon="layout-grid" href="/documentation/platform/pki/applications/overview">
     Issue and manage certificates for your services.

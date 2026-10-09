@@ -20,6 +20,10 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+import {
+  releaseAppConnectionConcurrency,
+  tryAdmitAppConnectionConcurrency
+} from "../app-connection/app-connection-concurrency-fns";
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
@@ -29,7 +33,6 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority/certif
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
 import { buildCertificateMap } from "./pki-sync-certificate-map-fns";
-import { releasePkiSyncConcurrency, tryAdmitPkiSyncConcurrency } from "./pki-sync-concurrency-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PKI_SYNC_CONNECTION_LOCK_RETRY, PkiSyncFailureKind, PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
@@ -152,10 +155,10 @@ export const pkiSyncQueueFactory = ({
   });
 
   const $tryAdmitConnectionConcurrency = (connectionId: string, targetHost?: string) =>
-    tryAdmitPkiSyncConcurrency(keyStore, connectionId, targetHost);
+    tryAdmitAppConnectionConcurrency(keyStore, connectionId, targetHost);
 
   const $releaseConnectionConcurrency = (connectionId: string, targetHost?: string) =>
-    releasePkiSyncConcurrency(keyStore, connectionId, targetHost);
+    releaseAppConnectionConcurrency(keyStore, connectionId, targetHost);
 
   const $certificatesForSync = (pkiSync: TPkiSyncRaw) =>
     buildCertificateMap(pkiSync, {

@@ -72,3 +72,4 @@ backend/e2e-test/routes/v1/oauth-token-exchange.spec.ts:generic-api-key:216
 backend/src/ee/services/audit-log-stream/splunk/splunk-provider-schemas.test.ts:generic-api-key:7
 frontend/src/hooks/api/agentVault/sessionLogDecrypt.test.ts:generic-api-key:161
 docs/documentation/platform/secret-scanning/scan-locally.mdx:generic-api-key:65
+backend/src/ee/services/pki-discovery/pki-discovery-host-scan-fns.test.ts:generic-api-key:23

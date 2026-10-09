@@ -100,7 +100,7 @@ export const DiscoveryInstallationsSection = ({ discoveryId, projectId, isScanRu
                       })
                     }
                   >
-                    <TableCell>{getEndpoint(installation)}</TableCell>
+                    <TableCell>{installation.name || getEndpoint(installation)}</TableCell>
                     <TableCell>{installation.primaryCertName || "N/A"}</TableCell>
                     <TableCell>{getGatewayLabel(installation) || "N/A"}</TableCell>
                     <TableCell>

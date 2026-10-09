@@ -18,13 +18,15 @@ type TAppConnectionOptionContentProps = {
   createLabel?: ReactNode;
   isOnlyOption?: boolean;
   isSelected?: boolean;
+  label?: ReactNode;
 };
 
 export const AppConnectionOptionContent = ({
   data,
   createLabel,
   isOnlyOption = false,
-  isSelected = false
+  isSelected = false,
+  label
 }: TAppConnectionOptionContentProps) => {
   const isCreateOption = data.id === "_create" || data.id.startsWith("_create:");
   const { isSubOrganization } = useOrganization();
@@ -41,6 +43,7 @@ export const AppConnectionOptionContent = ({
       ) : (
         <>
           <p className="mr-auto truncate">{data.name}</p>
+          {label}
           {!data.projectId && (
             <Tooltip>
               <TooltipTrigger asChild>

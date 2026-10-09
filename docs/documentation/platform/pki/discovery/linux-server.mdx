@@ -1,0 +1,140 @@
+---
+title: "Linux Server"
+description: "Find the certificates stored in files and keystores on your Linux servers."
+---
+
+Linux Server discovery finds the certificates stored in files and keystores on your Linux servers, such as the certificates your web servers and Java applications load from disk. Scans reach each server through an [SSH connection](/integrations/app-connections/ssh) that uses an [Infisical Gateway](/documentation/platform/gateways/overview). Private keys in these files aren't imported.
+
+## Prerequisites
+
+- A [gateway](/documentation/platform/gateways/overview) running the latest version, deployed where it can reach your servers over SSH
+- An [SSH connection](/integrations/app-connections/ssh) for each server, configured to use a gateway or a [gateway pool](/documentation/platform/gateways/gateway-pools)
+- An SSH user that can read the folders you want to search (see [Give the SSH user read access](#give-the-ssh-user-read-access))
+
+<Warning>
+  The gateway doesn't verify the SSH host key of the servers it connects to. Only use SSH connections to servers on networks you trust.
+</Warning>
+
+## Supported files
+
+Each certificate file becomes an installation named after the server's hostname and the file path, for example `web-01:/etc/nginx/ssl/fullchain.pem`.
+
+A leaf certificate is imported with the CA certificates in the same file. Files that hold only CA certificates, such as trust bundles, are skipped unless you turn on **Import CA Certificates Found on Their Own**.
+
+Scans only open files with these extensions: `.pem`, `.crt`, `.cer`, `.cert`, `.der`, `.p7b`, `.p7c`, `.pfx`, `.p12`, `.jks`, `.keystore`, `.truststore`, `.jceks`, `.ks`, and files named `cacerts`.
+
+| Format | Notes |
+| --- | --- |
+| PEM | One or more certificates, including PEM-encoded PKCS#7 |
+| DER | A single certificate |
+| PKCS#7 | Certificate bundles |
+| PKCS#12 | Read without a password when possible, otherwise listed as locked |
+| JKS and JCEKS | Certificate entries are read without the keystore password |
+
+## Give the SSH user read access
+
+Certificate files are often readable only by root. Give the SSH user read access through a group or ACL where you can, and use `sudo` only with a dedicated scan account.
+
+<Tabs>
+  <Tab title="Group or ACL">
+    Add the SSH user to a group that can read the folders, or grant read access with an ACL:
+
+    ```bash
+    setfacl -R -m u:<ssh-user>:rX /etc/ssl/private
+    setfacl -R -d -m u:<ssh-user>:rX /etc/ssl/private
+    ```
+
+    The second command makes files created later in the folder readable too.
+  </Tab>
+  <Tab title="sudo">
+    Allow the SSH user to run `find`, `readlink`, `head`, and `timeout` as root without a password. Add a file under `/etc/sudoers.d/`:
+
+    ```bash
+    <ssh-user> ALL=(root) NOPASSWD: /usr/bin/find, /usr/bin/readlink, /usr/bin/head, /usr/bin/timeout
+    ```
+
+    The gateway tries every folder and file as the SSH user first, and uses `sudo` only for the ones it can't read. It runs each command as root through `timeout`, so a command that runs too long is stopped on the server.
+
+    If the rule doesn't allow `timeout`, the gateway doesn't use `sudo`, and the folders the SSH user can't read are listed as skipped.
+
+    <Warning>
+      This rule lets the SSH user read any file on the server and run any command as root through `find` or `timeout`. Use it only for a dedicated scan account that nothing else can sign in with, and prefer a group or ACL.
+    </Warning>
+  </Tab>
+</Tabs>
+
+If a folder still can't be read, the scan completes and the job shows which folders were skipped.
+
+## Create a Linux Server discovery job
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step>
+        In **Certificate Manager**, go to **Discovery** and select **Add Job**, then select **Linux Server**.
+      </Step>
+      <Step>
+        In **SSH Connections**, select the connection for each server to scan.
+      </Step>
+      <Step>
+        In **Search Folders**, add the folders to search. In **Skip Folders**, add any folders to leave out. `/proc`, `/sys`, and `/dev` are always skipped.
+      </Step>
+      <Step>
+        Set the options:
+        - **Folder Depth**: how many levels below each search folder to search (defaults to 8)
+        - **Largest File (KB)**: files bigger than this are skipped and listed in the scan results (defaults to 512)
+        - **Import CA Certificates Found on Their Own**: also import CA certificates from files that hold no leaf certificate
+      </Step>
+      <Step>
+        Enter a **Name** and an optional **Description**. To run the job on a schedule, turn on **Scan on a Schedule** and pick a **Scan Interval**.
+      </Step>
+      <Step>
+        Review the job and select **Create Job**.
+      </Step>
+      <Step>
+        Open the job and select **Trigger Scan**, or wait for the next scheduled scan.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    To create the job, call [the endpoint that creates a discovery job](/api-reference/endpoints/pki-discovery/create) with `discoveryType` set to `linux-server`.
+
+    To start a scan, call [the endpoint that triggers a scan](/api-reference/endpoints/pki-discovery/trigger-scan).
+  </Tab>
+</Tabs>
+
+## Keystores that need a password
+
+If a PKCS#12 file can't be opened without a password, its installation is marked **Locked** and no certificates are read from it. To read it:
+
+<Steps>
+  <Step>
+    Go to **Discovery** > **Installations** and open the locked installation.
+  </Step>
+  <Step>
+    Select **Set Password**, enter the keystore password, and select **Save**.
+  </Step>
+</Steps>
+
+The file is scanned again right away, and later scans use the same password. If the password is wrong, the installation is marked **Password Failed**, and you can select **Change Password** to try again.
+
+To set the password through the API, call [the endpoint that updates an installation](/api-reference/endpoints/pki-installations/update) with `keystorePassword`. Send `null` to remove a saved password.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Why does the job show a warning after a scan?">
+    The scan completed, but some files or folders couldn't be read, or the scan stopped early. The job lists what happened. For folders or files the SSH user can't open, [give the SSH user read access](#give-the-ssh-user-read-access). For files over the size limit, raise **Largest File (KB)**. If the scan stopped after 5,000 files, narrow the search folders or add skip folders.
+  </Accordion>
+</AccordionGroup>
+
+## What's next?
+
+<CardGroup cols={2}>
+  <Card title="Discovery overview" icon="radar" href="/documentation/platform/pki/discovery/overview">
+    Learn how installations and certificate matching work.
+  </Card>
+  <Card title="Network" icon="network" href="/documentation/platform/pki/discovery/network">
+    Scan TLS endpoints across IP ranges and domains.
+  </Card>
+</CardGroup>

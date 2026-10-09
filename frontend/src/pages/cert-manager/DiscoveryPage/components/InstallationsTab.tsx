@@ -41,12 +41,26 @@ import {
   useDeletePkiInstallation,
   useListPkiInstallations
 } from "@app/hooks/api";
+import { PkiDiscoveryType } from "@app/hooks/api/pkiDiscovery/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { getEndpoint, getGatewayLabel } from "@app/pages/cert-manager/pki-discovery-utils";
+import {
+  canSetKeystorePassword,
+  getEndpoint,
+  getGatewayLabel,
+  getKeystoreStatusBadge,
+  isHostFileInstallation,
+  useCanRescanPkiInstallations
+} from "@app/pages/cert-manager/pki-discovery-utils";
 
+import { DiscoveryTypeIcon } from "./DiscoveryJobSheet/DiscoveryTypeIcon";
 import { DeleteInstallationModal } from "./DeleteInstallationModal";
 import { EditInstallationModal } from "./EditInstallationModal";
+import {
+  RESCAN_POLL_INTERVAL_MS,
+  RESCAN_POLL_TIMEOUT_MS,
+  SetKeystorePasswordDialog
+} from "./SetKeystorePasswordDialog";
 
 type Props = {
   projectId: string;
@@ -61,17 +75,42 @@ export const InstallationsTab = ({ projectId }: Props) => {
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter, 300);
 
+  const canRescanInstallations = useCanRescanPkiInstallations();
+
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "editInstallation",
-    "deleteInstallation"
+    "deleteInstallation",
+    "setKeystorePassword"
   ] as const);
 
-  const { data, isPending } = useListPkiInstallations({
-    projectId,
-    offset: (page - 1) * PAGE_SIZE,
-    limit: PAGE_SIZE,
-    search: debouncedSearch || undefined
-  });
+  const [pendingRescan, setPendingRescan] = useState<{
+    installationId: string;
+    previousCheckedAt?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!pendingRescan) return undefined;
+    const timeout = setTimeout(() => setPendingRescan(null), RESCAN_POLL_TIMEOUT_MS);
+    return () => clearTimeout(timeout);
+  }, [pendingRescan]);
+
+  const { data, isPending } = useListPkiInstallations(
+    {
+      projectId,
+      offset: (page - 1) * PAGE_SIZE,
+      limit: PAGE_SIZE,
+      search: debouncedSearch || undefined
+    },
+    { refetchInterval: pendingRescan ? RESCAN_POLL_INTERVAL_MS : false }
+  );
+
+  useEffect(() => {
+    if (!pendingRescan) return;
+    const rescanned = data?.installations.find((item) => item.id === pendingRescan.installationId);
+    if (rescanned && rescanned.metadata?.lastCheckedAt !== pendingRescan.previousCheckedAt) {
+      setPendingRescan(null);
+    }
+  }, [data, pendingRescan]);
 
   useEffect(() => {
     setPage(1);
@@ -93,7 +132,8 @@ export const InstallationsTab = ({ projectId }: Props) => {
       <CardHeader>
         <CardTitle>Installations</CardTitle>
         <CardDescription>
-          Every place a certificate was found during a scan, identified by its host and port.
+          Every place a certificate was found during a scan, identified by its host and port or its
+          host and file path.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -105,7 +145,7 @@ export const InstallationsTab = ({ projectId }: Props) => {
             <InputGroupInput
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
-              placeholder="Search by name, IP, or domain…"
+              placeholder="Search by name, host, IP, domain, or path…"
             />
           </InputGroup>
         </div>
@@ -156,7 +196,22 @@ export const InstallationsTab = ({ projectId }: Props) => {
                       })
                     }
                   >
-                    <TableCell>{installation.name || getEndpoint(installation)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <DiscoveryTypeIcon
+                          type={
+                            isHostFileInstallation(installation)
+                              ? PkiDiscoveryType.LinuxServer
+                              : PkiDiscoveryType.Network
+                          }
+                          className="size-4 shrink-0"
+                        />
+                        <span className="truncate">
+                          {installation.name || getEndpoint(installation)}
+                        </span>
+                        {getKeystoreStatusBadge(installation)}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       {installation.primaryCertName || <span className="text-accent">—</span>}
                     </TableCell>
@@ -188,6 +243,16 @@ export const InstallationsTab = ({ projectId }: Props) => {
                               </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>
+                          {canSetKeystorePassword(installation) && (
+                            <DropdownMenuItem
+                              isDisabled={!canRescanInstallations}
+                              onClick={() => handlePopUpOpen("setKeystorePassword", installation)}
+                            >
+                              {installation.hasKeystorePassword
+                                ? "Change Password"
+                                : "Set Password"}
+                            </DropdownMenuItem>
+                          )}
                           <ProjectPermissionCan
                             I={ProjectPermissionPkiCertificateInstallationActions.Delete}
                             a={ProjectPermissionSub.PkiCertificateInstallations}
@@ -229,6 +294,22 @@ export const InstallationsTab = ({ projectId }: Props) => {
         onClose={() => handlePopUpClose("editInstallation")}
         projectId={projectId}
         installation={popUp.editInstallation.data as TPkiInstallation | undefined}
+      />
+
+      <SetKeystorePasswordDialog
+        isOpen={popUp.setKeystorePassword.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("setKeystorePassword", isOpen)}
+        projectId={projectId}
+        installation={popUp.setKeystorePassword.data as TPkiInstallation | undefined}
+        onSaved={() => {
+          const saved = popUp.setKeystorePassword.data as TPkiInstallation | undefined;
+          if (saved) {
+            setPendingRescan({
+              installationId: saved.id,
+              previousCheckedAt: saved.metadata?.lastCheckedAt
+            });
+          }
+        }}
       />
 
       <DeleteInstallationModal

@@ -8,16 +8,88 @@ import {
   Detail,
   DetailGroup,
   DetailLabel,
-  DetailValue
+  DetailValue,
+  OverflowBadgeList
 } from "@app/components/v3";
-import { TPkiDiscovery } from "@app/hooks/api";
-import { parsePorts } from "@app/pages/cert-manager/pki-discovery-utils";
+import { PkiDiscoveryType, TPkiDiscovery } from "@app/hooks/api";
+import { getItemLabel, parsePorts } from "@app/pages/cert-manager/pki-discovery-utils";
 
 type Props = {
   discovery: TPkiDiscovery;
 };
 
+const LinuxServerTargetSection = ({ discovery }: Props) => {
+  const { targetConfig } = discovery;
+  const connectionsById = new Map((discovery.connections ?? []).map((c) => [c.id, c.name]));
+  const connectionIds = targetConfig.connectionIds ?? [];
+
+  return (
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle>Target Configuration</CardTitle>
+        <CardDescription>Servers and folders scanned by this discovery job</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <DetailGroup>
+          <Detail>
+            <DetailLabel>SSH Connections</DetailLabel>
+            <DetailValue>
+              <OverflowBadgeList
+                items={connectionIds}
+                getKey={(id) => id}
+                getLabel={(id) => connectionsById.get(id) ?? "Deleted connection"}
+              />
+            </DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Search Folders</DetailLabel>
+            <DetailValue>
+              <OverflowBadgeList
+                items={targetConfig.searchFolderPaths ?? []}
+                getKey={getItemLabel}
+                getLabel={getItemLabel}
+              />
+            </DetailValue>
+          </Detail>
+          {Boolean(targetConfig.skipFolderPaths?.length) && (
+            <Detail>
+              <DetailLabel>Skip Folders</DetailLabel>
+              <DetailValue>
+                <OverflowBadgeList
+                  items={targetConfig.skipFolderPaths ?? []}
+                  getKey={getItemLabel}
+                  getLabel={getItemLabel}
+                />
+              </DetailValue>
+            </Detail>
+          )}
+          <Detail>
+            <DetailLabel>Folder Depth</DetailLabel>
+            <DetailValue>{targetConfig.maxFolderDepth}</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Largest File</DetailLabel>
+            <DetailValue>{targetConfig.maxFileSizeKb} KB</DetailValue>
+          </Detail>
+          <Detail>
+            <DetailLabel>Import CA Certificates Found on Their Own</DetailLabel>
+            <DetailValue>
+              <Badge variant={targetConfig.importStandaloneCaCertificates ? "success" : "neutral"}>
+                {targetConfig.importStandaloneCaCertificates ? "Enabled" : "Disabled"}
+              </Badge>
+            </DetailValue>
+          </Detail>
+        </DetailGroup>
+      </CardContent>
+    </Card>
+  );
+};
+
 export const DiscoveryTargetSection = ({ discovery }: Props) => {
+  if (discovery.discoveryType === PkiDiscoveryType.LinuxServer) {
+    return <LinuxServerTargetSection discovery={discovery} />;
+  }
+
   const { targetConfig } = discovery;
   const { ports: portsStr } = targetConfig;
   const domains = targetConfig.domains || [];

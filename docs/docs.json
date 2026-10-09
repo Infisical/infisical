@@ -593,7 +593,8 @@
                     "group": "Certificate discovery",
                     "pages": [
                       "documentation/platform/pki/discovery/overview",
-                      "documentation/platform/pki/discovery/network"
+                      "documentation/platform/pki/discovery/network",
+                      "documentation/platform/pki/discovery/linux-server"
                     ]
                   },
                   {

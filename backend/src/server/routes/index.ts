@@ -4232,12 +4232,14 @@ export const registerRoutes = async (
     certificateBodyDAL,
     projectDAL,
     kmsService,
+    appConnectionDAL,
     queueService,
     cronJob,
     gatewayV2Service,
     gatewayV2DAL,
     gatewayPoolService,
-    telemetryService
+    telemetryService,
+    keyStore
   });
 
   const pkiDiscoveryService = pkiDiscoveryServiceFactory({
@@ -4249,12 +4251,17 @@ export const registerRoutes = async (
     gatewayV2DAL,
     gatewayPoolDAL,
     gatewayPoolService,
+    appConnectionService,
+    appConnectionDAL,
     queuePkiDiscoveryScan: pkiDiscoveryQueue.queuePkiDiscoveryScan
   });
 
   const pkiInstallationService = pkiInstallationServiceFactory({
     pkiCertificateInstallationDAL,
-    permissionService
+    permissionService,
+    kmsService,
+    appConnectionDAL,
+    queueInstallationRescan: pkiDiscoveryQueue.queueInstallationRescan
   });
 
   const signerIssuanceService = signerIssuanceServiceFactory({

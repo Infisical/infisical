@@ -16,6 +16,7 @@ import {
 import "../../utils/ScrollEdgeFade.css";
 
 const NO_ITEMS: string[] = [];
+const DEFAULT_SEPARATORS = [",", " "];
 
 type TagsInputProps = Omit<
   React.ComponentPropsWithoutRef<"input">,
@@ -29,6 +30,7 @@ type TagsInputProps = Omit<
   /** Returning a reason refuses the commit. `existing` never contains the value being checked. */
   validateTag?: (tag: string, existing: string[]) => string | null;
   onValidationError?: (reason: string | null) => void;
+  separators?: readonly string[];
   inputValue?: string;
   onInputValueChange?: (draft: string) => void;
   className?: string;
@@ -43,6 +45,7 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
       isError,
       validateTag,
       onValidationError,
+      separators = DEFAULT_SEPARATORS,
       inputValue,
       onInputValueChange,
       className,
@@ -89,7 +92,7 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
         return;
       }
 
-      if (event.key === "," || event.key === " ") {
+      if (separators.includes(event.key)) {
         event.preventDefault();
         commit(draft);
       }
@@ -97,37 +100,39 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
 
     const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
       const pasted = event.clipboardData.getData("text");
-      const splitOn = /[\n\r, ]/;
-      if (!splitOn.test(pasted)) return;
+      const lines = pasted.split(/[\n\r]/);
+      if (lines.length === 1 && !separators.some((separator) => pasted.includes(separator))) return;
 
       event.preventDefault();
 
-      const parts = pasted
-        .split(splitOn)
+      const parts = separators
+        .reduce((pieces, separator) => pieces.flatMap((piece) => piece.split(separator)), lines)
         .map((part) => part.trim())
         .filter(Boolean);
 
       const accepted: string[] = [];
-      let refusedFrom = -1;
+      const refused: string[] = [];
+      let refusalReason: string | null = null;
 
-      for (let index = 0; index < parts.length; index += 1) {
-        const reason = validateTag?.(parts[index], [...tags, ...accepted]) ?? null;
+      parts.forEach((part) => {
+        const reason = validateTag?.(part, [...tags, ...accepted]) ?? null;
         if (reason) {
-          onValidationError?.(reason);
-          refusedFrom = index;
-          break;
+          refused.push(part);
+          refusalReason = refusalReason ?? reason;
+          return;
         }
-        accepted.push(parts[index]);
-      }
+        accepted.push(part);
+      });
 
       if (accepted.length) onValueChange([...tags, ...accepted]);
-      if (refusedFrom === -1) {
-        onValidationError?.(null);
+      onValidationError?.(refusalReason);
+
+      if (!refused.length) {
         setDraft("");
         return;
       }
 
-      setDraft(parts.slice(refusedFrom).join(","));
+      setDraft(separators.length ? refused.join(separators[0]) : refused[0]);
     };
 
     return (
@@ -135,7 +140,10 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
         multiple
         items={NO_ITEMS}
         value={tags}
-        onValueChange={onValueChange}
+        onValueChange={(next, details) => {
+          if (details.reason === "escape-key") return;
+          onValueChange(next);
+        }}
         // No popup is rendered, but the open state still drives aria-expanded and makes Base UI swallow Enter.
         open={false}
         onOpenChange={() => {}}
