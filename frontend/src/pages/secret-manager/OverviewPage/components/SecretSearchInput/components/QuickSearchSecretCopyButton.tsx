@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { isAxiosError } from "axios";
 import { CheckIcon, CopyIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -32,17 +33,41 @@ export const QuickSearchSecretCopyButton = ({
         secretPath,
         secretKey,
         projectId: currentProject.id
+      }).catch((error: unknown) => {
+        let message = "Could not load the secret value. Try again.";
+        if (isAxiosError<{ message?: string }>(error)) {
+          if (error.response?.status === 403) {
+            message = "You do not have permission to read this secret value.";
+          }
+          if (
+            typeof error.response?.data?.message === "string" &&
+            error.response.data.message.trim()
+          ) {
+            message = error.response.data.message;
+          }
+        }
+        createNotification({ type: "error", text: message });
       });
+      if (!data) return;
       const value = data.valueOverride ?? data.value;
-      if (value === undefined) throw new Error("Secret value is unavailable");
-      await navigator.clipboard.writeText(value);
+      if (value === undefined) {
+        createNotification({
+          type: "error",
+          text: "Secret value is unavailable. Refresh the results and try again."
+        });
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(value);
+      } catch {
+        createNotification({
+          type: "error",
+          text: "Could not write to the clipboard. Check your browser's clipboard permissions and try again."
+        });
+        return;
+      }
       createNotification({ type: "info", title: "Secret value copied.", text: "" });
       setIsCopied(true);
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Could not copy secret value. Check your access and try again."
-      });
     } finally {
       setIsCopying(false);
     }

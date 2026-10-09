@@ -238,17 +238,6 @@ const Content = ({
   );
   const isMetadataMode = activeConditions.length > 0;
 
-  useEffect(() => {
-    if (isMetadataMode) {
-      setShowFilter({
-        [RowType.Secret]: true,
-        [RowType.Folder]: false,
-        [RowType.DynamicSecret]: false,
-        [RowType.SecretRotation]: false
-      });
-    }
-  }, [isMetadataMode]);
-
   const [debouncedConditions] = useDebounce(activeConditions);
 
   const metadataFilters = useMemo(
@@ -321,7 +310,10 @@ const Content = ({
     [environments]
   );
 
-  const showType = useCallback((type: ResourceType) => Boolean(showFilter[type]), [showFilter]);
+  const showType = useCallback(
+    (type: ResourceType) => (isMetadataMode ? type === RowType.Secret : Boolean(showFilter[type])),
+    [isMetadataMode, showFilter]
+  );
 
   const resultsByEnv = useMemo(() => {
     const allFolders = Object.values(folders).flat();
@@ -376,7 +368,7 @@ const Content = ({
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, filterTags, showFilter, secretPath, selectedEnvironments]);
+  }, [debouncedSearch, filterTags, showFilter, secretPath, selectedEnvironments, isMetadataMode]);
 
   // a background refetch can shrink the counts and leave the current offset past the data
   useResetPageHelper({
@@ -435,9 +427,6 @@ const Content = ({
     const { key: metadataKey, value: metadataValue } = metadata;
     if (!metadataValue) return;
 
-    handleChangeResourceTypes(
-      QUICK_SEARCH_RESOURCE_TYPES.filter(({ type }) => type === RowType.Secret)
-    );
     setMetadataConditions((prev) => {
       const key = metadataKey.trim();
       const value = metadataValue.trim();
@@ -490,7 +479,7 @@ const Content = ({
     Number(selectedEnvironments.length > 0) +
     Number(Boolean(folderPath.trim().replace(/\//g, ""))) +
     Number(Object.keys(filterTags).length > 0) +
-    Number(!Object.values(showFilter).every(Boolean)) +
+    Number(QUICK_SEARCH_RESOURCE_TYPES.some(({ type }) => !showType(type as ResourceType))) +
     activeConditions.length;
 
   let folderHelpText = "Select one environment to choose a folder.";
@@ -690,11 +679,11 @@ const Content = ({
               <Field key={option.type} orientation="horizontal">
                 <Checkbox
                   id={`quick-search-type-${option.type}`}
-                  isChecked={showFilter[option.type as ResourceType]}
+                  isChecked={showType(option.type as ResourceType)}
                   onCheckedChange={(checked) =>
                     handleChangeResourceTypes(
                       QUICK_SEARCH_RESOURCE_TYPES.filter(({ type }) =>
-                        type === option.type ? checked === true : showFilter[type as ResourceType]
+                        type === option.type ? checked === true : showType(type as ResourceType)
                       )
                     )
                   }
