@@ -322,6 +322,18 @@ export const AgentVaultProductMemberAddSchema = z
   .refine((body) => namedCount(body) > 0, atLeastOne)
   .refine((body) => namedCount(body) <= AGENT_VAULT_MAX_GRANTEES, atMost("Act on"));
 
+export const AgentVaultProductMemberRoleUpdateSchema = z
+  .object({
+    ...memberIdsShape({
+      userIds: AGENT_VAULT.MEMBERSHIP.userIds,
+      machineIdentityIds: AGENT_VAULT.MEMBERSHIP.machineIdentityIds,
+      groupIds: AGENT_VAULT.MEMBERSHIP.groupIds
+    }),
+    role: AgentVaultProductRoleSchema
+  })
+  .refine((body) => namedCount(body) > 0, atLeastOne)
+  .refine((body) => namedCount(body) <= AGENT_VAULT_MAX_GRANTEES, atMost("Act on"));
+
 export const AgentVaultMemberRevokeIdsSchema = z
   .object(
     memberIdsShape({

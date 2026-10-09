@@ -452,17 +452,8 @@ export const AgentVaultSessionsPage = () => {
                           />
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="text-sm">
-                              {format(new Date(session.createdAt), "MMM d, yyyy")}
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {format(new Date(session.createdAt), "MMM d, yyyy h:mm a")}
-                          </TooltipContent>
-                        </Tooltip>
+                      <TableCell className="whitespace-nowrap">
+                        {format(new Date(session.createdAt), "MMM d, yyyy h:mm a")}
                       </TableCell>
                       <TableCell>
                         <SessionExpiry expiresAt={session.expiresAt} />

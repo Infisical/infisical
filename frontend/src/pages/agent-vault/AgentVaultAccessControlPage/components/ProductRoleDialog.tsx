@@ -13,11 +13,18 @@ import {
   FieldContent,
   FieldLabel
 } from "@app/components/v3";
-import { useUpdateAgentVaultMemberRole } from "@app/hooks/api/agentVault";
-import { TAgentVaultProductMember } from "@app/hooks/api/agentVault/types";
+import { useUpdateAgentVaultMemberRoles } from "@app/hooks/api/agentVault";
+import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
+import { TAgentVaultActorIdsDTO, TAgentVaultProductMember } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProductRoleField } from "./ProductRoleField";
+
+const ACTOR_IDS_KEY: Record<AgentVaultMemberType, keyof TAgentVaultActorIdsDTO> = {
+  [AgentVaultMemberType.User]: "userIds",
+  [AgentVaultMemberType.Group]: "groupIds",
+  [AgentVaultMemberType.MachineIdentity]: "machineIdentityIds"
+};
 
 type Props = {
   member: Pick<TAgentVaultProductMember, "type" | "id" | "role"> | null;
@@ -26,7 +33,7 @@ type Props = {
 };
 
 export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
-  const updateRole = useUpdateAgentVaultMemberRole();
+  const updateRole = useUpdateAgentVaultMemberRoles();
   const currentRole = member?.role ?? ProjectMembershipRole.Member;
   const [role, setRole] = useState(currentRole);
 
@@ -38,11 +45,22 @@ export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
     try {
       // Guarded here, not by returning null, so the exit animation still runs.
       if (!member) return;
-      await updateRole.mutateAsync({ actor: member, role });
-      createNotification({
-        text: `${subject} is now ${role === "admin" ? "an Admin" : "a Member"}`,
-        type: "success"
+      const { members } = await updateRole.mutateAsync({
+        [ACTOR_IDS_KEY[member.type]]: [member.id],
+        role
       });
+      // Save is disabled for the current role, so a skip means the member changed under the dialog.
+      createNotification(
+        members.length
+          ? {
+              text: `${subject} is now ${role === "admin" ? "an Admin" : "a Member"}`,
+              type: "success"
+            }
+          : {
+              text: `${subject}'s role wasn't changed. They may have been removed from Agent Vault or already have that role.`,
+              type: "info"
+            }
+      );
       onOpenChange(false);
     } catch {
       // A failed request returns a 4xx that the global request handler surfaces as a toast
