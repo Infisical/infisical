@@ -54,6 +54,8 @@ const STALE_SWEEP_BATCH_SIZE = 1_000;
 const STALE_SWEEP_MAX_BATCHES = 10;
 // Shown to customers in the delivery-failed alert, where a stale claim has no provider error to report.
 const STALE_CLAIM_DROP_MESSAGE = "Events were dropped because the delivery worker stopped during their final attempt.";
+const STREAM_CREDENTIALS_DECRYPT_MESSAGE =
+  "Could not decrypt this stream's credentials. Check that the organization's KMS key is available, then update the stream's credentials.";
 
 // Retention for 'delivered' outbox rows. The row is the dedup guard against a
 // re-fanout from the ingest consumer (e.g. after a Redis streamTrim failure),
@@ -219,14 +221,31 @@ export const auditLogStreamOutboxServiceFactory = ({
     // rejects payloads over 16KB, and a throw from emit here would roll back the drop and leave the
     // stream unflagged with no alert.
     const boundedError = errorMessage.slice(0, 500);
-    const failingSince = await auditLogStreamOutboxDAL.markStreamFailing({ streamId, errorMessage: boundedError }, tx);
-    if (!failingSince) return;
 
-    await emitAuditLogStreamDeliveryFailed(
-      eventEmitter,
-      { orgId, streamId, provider, errorMessage: boundedError, droppedCount, failingSince },
-      tx
-    );
+    // A savepoint, so a failed flag or emit rolls back on its own instead of taking the drop (or the
+    // sweeper's whole batch) with it. A plain try/catch is not enough: a failed insert aborts the
+    // outer transaction and its next statement fails with 25P02. The flag and the event roll back
+    // together, so the stream stays healthy and the next drop tries again.
+    try {
+      await tx.transaction(async (savepoint) => {
+        const failingSince = await auditLogStreamOutboxDAL.markStreamFailing(
+          { streamId, errorMessage: boundedError },
+          savepoint
+        );
+        if (!failingSince) return;
+
+        await emitAuditLogStreamDeliveryFailed(
+          eventEmitter,
+          { orgId, streamId, provider, errorMessage: boundedError, droppedCount, failingSince },
+          savepoint
+        );
+      });
+    } catch (error) {
+      logger.error(
+        error,
+        `audit-log-stream-outbox: failed to flag stream as failing, no alert was sent [streamId=${streamId}] [orgId=${orgId}] [provider=${provider}]`
+      );
+    }
   };
 
   // Worker entrypoint. Loops claim→send→ack while there are still rows pending
@@ -258,7 +277,12 @@ export const auditLogStreamOutboxServiceFactory = ({
         kmsService
       });
     } catch (error) {
-      credentialsError = new Error(`Failed to decrypt stream credentials: ${(error as Error)?.message}`);
+      // This message reaches the alert and the stream's lastDeliveryError, so the KMS detail stays in the log.
+      logger.error(
+        error,
+        `audit-log-stream-outbox: failed to decrypt stream credentials [streamId=${streamId}] [orgId=${orgId}] [provider=${provider}]`
+      );
+      credentialsError = new Error(STREAM_CREDENTIALS_DECRYPT_MESSAGE);
     }
 
     const providerImpl = factory();

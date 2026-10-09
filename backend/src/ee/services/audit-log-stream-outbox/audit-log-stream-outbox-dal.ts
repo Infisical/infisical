@@ -18,6 +18,7 @@ export type TInsertOutboxRow = {
 };
 
 const OUTBOX_INSERT_CHUNK_SIZE = 1_000;
+const STALE_SWEEP_STATEMENT_TIMEOUT_MS = 30_000;
 
 export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
   const batchInsert = async (rows: TInsertOutboxRow[], tx?: Knex) => {
@@ -175,6 +176,10 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
     tx: Knex
   ): Promise<{ retried: number; dropped: { streamId: string; orgId: string; provider: string | null }[] }> => {
     try {
+      // SET LOCAL lasts until the caller's transaction ends, so it also bounds the stream writes the
+      // sweeper makes in the same batch after this returns.
+      await tx.raw(`SET LOCAL statement_timeout = ${STALE_SWEEP_STATEMENT_TIMEOUT_MS}`);
+
       const staleRows = await tx(TableName.AuditLogStreamOutbox)
         .where("status", AuditLogStreamOutboxStatus.Processing)
         .andWhereRaw(`"lockedAt" < NOW() - (? || ' milliseconds')::INTERVAL`, [thresholdMs])
@@ -294,7 +299,8 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
 
   // Flips the stream to failing only if it was healthy, so the caller emits the alert event on
   // the null -> set edge exactly once even when two workers race. Returns the timestamp it set,
-  // or null when the stream was already failing (or no longer exists).
+  // or null when the stream was already failing (or no longer exists). An already failing stream
+  // still gets the latest drop reason, so lastDeliveryError never reports a cause that was fixed.
   const markStreamFailing = async (
     { streamId, errorMessage }: { streamId: string; errorMessage: string },
     tx: Knex
@@ -305,7 +311,10 @@ export const auditLogStreamOutboxDALFactory = (db: TDbClient) => {
         .whereNull("failingSince")
         .update({ failingSince: new Date(), lastDeliveryError: errorMessage })
         .returning<{ failingSince: Date }[]>("failingSince");
-      return row?.failingSince ?? null;
+      if (row) return row.failingSince;
+
+      await tx(TableName.AuditLogStream).where("id", streamId).update({ lastDeliveryError: errorMessage });
+      return null;
     } catch (error) {
       throw new DatabaseError({ error, name: "AuditLogStreamOutbox: markStreamFailing" });
     }

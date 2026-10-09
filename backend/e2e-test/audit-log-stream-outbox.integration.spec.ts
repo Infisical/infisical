@@ -345,7 +345,7 @@ describe("audit log stream outbox (postgres)", () => {
       expect(await outboxRow(rowId)).toBeUndefined();
       const health = await streamHealth(stream.id);
       expect(health?.failingSince).toBeInstanceOf(Date);
-      expect(health?.lastDeliveryError).toContain("Failed to decrypt stream credentials");
+      expect(health?.lastDeliveryError).toContain("Could not decrypt this stream's credentials");
       expect(await events()).toHaveLength(1);
     });
   });

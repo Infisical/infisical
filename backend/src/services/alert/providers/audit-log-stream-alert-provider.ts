@@ -14,6 +14,7 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TAlertPayload } from "../alert-channel-types";
+import { formatUtcDate } from "../alert-format-fns";
 import {
   AlertPermissionAction,
   AlertTriggerType,
@@ -42,17 +43,6 @@ export type TAuditLogStreamAlertProviderDep = {
   auditLogStreamAlertDAL: TAuditLogStreamAlertDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
-
-const formatUtcDate = (date: Date): string =>
-  new Date(date).toLocaleString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "UTC",
-    timeZoneName: "short"
-  });
 
 export const auditLogStreamAlertProviderFactory = ({
   auditLogStreamAlertDAL,
@@ -102,7 +92,7 @@ export const auditLogStreamAlertProviderFactory = ({
       severity: "critical",
       summary:
         targets.length === 1
-          ? `Audit log events are being dropped because the ${providerLabel(first)} stream cannot be reached`
+          ? `Audit log events are being dropped on the ${providerLabel(first)} stream`
           : `Audit log events are being dropped on ${targets.length} streams`,
       items: targets.map((target) => ({
         id: target.streamId,

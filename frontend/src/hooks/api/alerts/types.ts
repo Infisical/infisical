@@ -95,7 +95,7 @@ export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
   [AlertEventType.IdentityAuthMethodChanged]:
     "Notify whenever an auth method is added, updated, or removed, or one of its credentials is created, updated, or revoked.",
   [AlertEventType.AuditLogStreamDeliveryFailed]:
-    "Notify when an external log stream cannot be reached and audit log events are being dropped."
+    "Notify when audit log events are being dropped because an external log stream keeps failing to deliver them."
 };
 
 export const ALERT_CHANNEL_TYPE_LABELS: Record<AlertChannelType, string> = {

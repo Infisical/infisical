@@ -80,7 +80,9 @@ const buildRow = (overrides: Partial<TAuditLogStreamOutboxRow> = {}): TAuditLogS
   ...overrides
 });
 
-const TX = { tx: true };
+// flagStreamFailing opens a savepoint on the transaction it is given; handing back TX keeps the
+// DAL calls inside it asserting against the same object.
+const TX = { tx: true, transaction: async (cb: (savepoint: unknown) => Promise<unknown>) => cb(TX) };
 
 const createService = () => {
   const auditLogStreamOutboxDAL = {
