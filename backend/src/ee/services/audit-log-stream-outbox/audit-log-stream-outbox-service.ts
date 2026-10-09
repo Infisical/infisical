@@ -268,7 +268,8 @@ export const auditLogStreamOutboxServiceFactory = ({
     // else gets a JSON array per request. Single mode treats each row as its own chunk.
     const isSingleMode = stream.streamMode === StreamMode.Single;
 
-    let isFailing = Boolean(stream.failingSince);
+    // Whether the stream row is currently marked failing, as last read or written by this job.
+    let streamMarkedFailing = Boolean(stream.failingSince);
 
     for (let batchIdx = 0; batchIdx < MAX_BATCHES_PER_JOB; batchIdx += 1) {
       // eslint-disable-next-line no-await-in-loop
@@ -377,8 +378,8 @@ export const auditLogStreamOutboxServiceFactory = ({
 
       // The state flip and the alert event commit with the drop itself, so an alert is never lost
       // or sent for rows that are still retrying.
-      const becameFailing = exhausted.length > 0;
-      const recovered = isFailing && streamFail.length === 0 && streamSuccess.length > 0;
+      const droppedRows = exhausted.length > 0;
+      const shouldClearFailing = streamMarkedFailing && streamFail.length === 0 && streamSuccess.length > 0;
       // eslint-disable-next-line no-await-in-loop
       await auditLogStreamOutboxDAL.transaction(async (tx) => {
         await auditLogStreamOutboxDAL.commitDeliveryResult(
@@ -389,16 +390,16 @@ export const auditLogStreamOutboxServiceFactory = ({
           },
           tx
         );
-        if (becameFailing) {
+        if (droppedRows) {
           await flagStreamFailing(
             { streamId, orgId, provider, errorMessage: exhausted[0].errorMessage, droppedCount: exhausted.length },
             tx
           );
-        } else if (recovered) {
+        } else if (shouldClearFailing) {
           await auditLogStreamOutboxDAL.clearStreamFailing(streamId, tx);
         }
       });
-      if (recovered) isFailing = false;
+      if (shouldClearFailing) streamMarkedFailing = false;
 
       if (streamFail.length > 0) {
         // Each failed chunk is already logged with its error above; the rows are
