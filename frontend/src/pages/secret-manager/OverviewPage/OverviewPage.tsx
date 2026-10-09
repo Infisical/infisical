@@ -2689,6 +2689,7 @@ const OverviewPageContent = () => {
     widths: number[];
     next?: number[];
     handle: HTMLElement;
+    columnKey: string;
   } | null>(null);
   const columnKey = `${isSingleEnvView ? "single" : "multi"}:${visibleEnvs.map(({ id }) => id).join(":")}`;
   const columnMinWidths = isSingleEnvView ? [280, 368] : Array(visibleEnvs.length + 1).fill(240);
@@ -2794,7 +2795,8 @@ const OverviewPageContent = () => {
           index,
           startX: event.clientX,
           widths: getCurrentColumnWidths(),
-          handle: event.currentTarget
+          handle: event.currentTarget,
+          columnKey
         };
         event.currentTarget.setPointerCapture(event.pointerId);
       }}
@@ -2893,7 +2895,8 @@ const OverviewPageContent = () => {
     // eslint-disable-next-line consistent-return
     return () => {
       resizeObserver.disconnect();
-      if (!columnResize.current?.handle.isConnected) columnResize.current = null;
+      if (!columnResize.current?.handle.isConnected || columnResize.current.columnKey !== columnKey)
+        columnResize.current = null;
     };
   }, [tableRef, tableView, isTableEmpty, columnKey, savedWidths?.join(",")]);
 
