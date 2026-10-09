@@ -276,17 +276,18 @@ export const AlertAction = ({
           />
           <AlertDialog
             open={popUp.deleteAlert.isOpen}
-            confirmationValue={selectedAlert?.name}
+            confirmationValue="delete"
             onOpenChange={(open) => handlePopUpToggle("deleteAlert", open)}
           >
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Remove Alert?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This permanently removes the alert and stops its notifications.
+                  This permanently removes &quot;{selectedAlert?.name}&quot; and stops its
+                  notifications.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogConfirmationField inputProps={{ placeholder: selectedAlert?.name }} />
+              <AlertDialogConfirmationField inputProps={{ placeholder: "delete" }} />
               <Alert variant="danger" appearance="borderless">
                 <AlertDescription>Removing this alert cannot be undone.</AlertDescription>
               </Alert>
