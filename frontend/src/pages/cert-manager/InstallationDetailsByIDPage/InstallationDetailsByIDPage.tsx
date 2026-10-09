@@ -189,7 +189,7 @@ const Page = () => {
               emptyState={
                 keystoreStatus === PkiKeystoreStatus.Locked ||
                 keystoreStatus === PkiKeystoreStatus.PasswordFailed ? (
-                  <Empty>
+                  <Empty className="border">
                     <EmptyMedia variant="icon">
                       <LockIcon />
                     </EmptyMedia>
