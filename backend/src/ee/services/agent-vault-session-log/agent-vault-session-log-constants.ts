@@ -45,7 +45,7 @@ export const AGENT_VAULT_SESSION_LOG_CHUNK_ID_TIME_TOLERANCE_MS = 1_000;
 // The live view (new requests appearing while the logs panel is open) doesn't list S3. Each time a proxy asks for
 // an upload link, Infisical adds the chunk's file name to a small Redis list for that session, and the panel reads
 // the names added since its last check. The list keeps the newest 10 names and is deleted 2 minutes after the last
-// one was added. A chunk that drops off before the panel reads it shows when the logs are reloaded.
+// one was added. When the panel may have missed names that dropped off, it reads the newest page of history instead.
 export const AGENT_VAULT_SESSION_LOG_FEED_MAX_ENTRIES = 10;
 export const AGENT_VAULT_SESSION_LOG_FEED_TTL_SECONDS = 120; // 2 minutes
 

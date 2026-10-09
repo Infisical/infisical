@@ -4,6 +4,7 @@ import { afterEach, describe, it, vi } from "vitest";
 import {
   createSessionLogChunkCache,
   decryptSessionLogPage,
+  isLiveGapPossible,
   mergeSessionLogPages,
   parseSessionLogRecords,
   recordsMatchChunk,
@@ -157,6 +158,31 @@ describe("decryptSessionLogPage", () => {
     assert.equal(isCancelled, true);
   });
 
+  it("stops reading an oversized object even where the browser reports a generic failure", async () => {
+    // Chromium rejects the read with its own TypeError instead of the error the stream was aborted with.
+    class ChromiumResponse extends Response {
+      async arrayBuffer() {
+        try {
+          return await super.arrayBuffer();
+        } catch {
+          throw new TypeError("Failed to fetch");
+        }
+      }
+    }
+    vi.stubGlobal("Response", ChromiumResponse);
+    const endless = () =>
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new Uint8Array(40));
+          controller.enqueue(new Uint8Array(40));
+        }
+      });
+    assert.deepEqual(await openTwice(async () => new ChromiumResponse(endless())), {
+      reason: "size",
+      downloads: 1
+    });
+  });
+
   it("never downloads an object too big to be a chunk", async () => {
     const huge: TAgentVaultSessionLogPage = {
       ...page,
@@ -285,5 +311,38 @@ describe("mergeSessionLogPages", () => {
     );
     assert.equal(merged.decrypted[sessionLogChunkKey(chunk("proxy-1"))].records[0].path, "/new");
     assert.equal(merged.decrypted[sessionLogChunkKey(chunk("proxy-2"))].records[0].path, "/b");
+  });
+});
+
+describe("isLiveGapPossible", () => {
+  const now = 1_000_000;
+  it.each([
+    { why: "the first poll", lastPolledAt: undefined, newChunkCount: 10, expected: false },
+    {
+      why: "a poll 99 seconds after the last",
+      lastPolledAt: now - 99_000,
+      newChunkCount: 0,
+      expected: false
+    },
+    {
+      why: "a poll 101 seconds after the last",
+      lastPolledAt: now - 101_000,
+      newChunkCount: 0,
+      expected: true
+    },
+    {
+      why: "a poll with 9 new chunks",
+      lastPolledAt: now - 15_000,
+      newChunkCount: 9,
+      expected: false
+    },
+    {
+      why: "a poll that returns a full feed",
+      lastPolledAt: now - 15_000,
+      newChunkCount: 10,
+      expected: true
+    }
+  ])("reads $why as a possible gap: $expected", ({ lastPolledAt, newChunkCount, expected }) => {
+    assert.equal(isLiveGapPossible({ lastPolledAt, now, newChunkCount }), expected);
   });
 });

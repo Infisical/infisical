@@ -271,7 +271,8 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   its name to a Redis stream per session (last 10, 2-minute TTL), not awaited, since the Redis client queues
   rather than fails while Redis is down. A tail with no cursor reads the stream from its start, so a chunk still
   uploading when the page opened arrives; the browser dedupes on `(chunkId, proxyId)` and refetches tail 404s
-  while they may still be uploading. Bursts of more than 10 between polls show on reload.
+  while they may still be uploading. When a poll comes late or returns a full feed, the panel also merges in the
+  newest history page, at most once a minute, since the feed may have dropped names it never saw.
 - **There's no per-org chunk limit.** Infisical stores nothing per chunk, and the customer's bucket is theirs; the
   upload-link rate limit and the proxy cap per org bound the work a proxy can cause.
 - **Nothing deletes from the bucket**, so the IAM policy asks for no `s3:DeleteObject`.

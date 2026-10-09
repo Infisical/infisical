@@ -20,6 +20,23 @@ const TAG_BYTES = 16;
 // tail chunk that isn't in the bucket yet is most likely still uploading rather than gone.
 export const SESSION_LOG_UPLOAD_GRACE_MS = 2 * 60_000;
 
+// Infisical's live feed keeps a session's newest 10 chunk names for 2 minutes. A poll that comes more than 100
+// seconds after the last one, or returns a full feed, may have missed chunks that were trimmed or expired.
+const SESSION_LOG_LIVE_GAP_MS = 100_000;
+const SESSION_LOG_FEED_MAX_CHUNKS = 10;
+
+export const isLiveGapPossible = ({
+  lastPolledAt,
+  now,
+  newChunkCount
+}: {
+  lastPolledAt: number | undefined;
+  now: number;
+  newChunkCount: number;
+}) =>
+  lastPolledAt !== undefined &&
+  (now - lastPolledAt > SESSION_LOG_LIVE_GAP_MS || newChunkCount >= SESSION_LOG_FEED_MAX_CHUNKS);
+
 const AAD_VERSION = "v1";
 
 const base64ToBytes = (value: string) => {
@@ -80,16 +97,24 @@ class ChunkTooLargeError extends Error {}
 const readCapped = async (res: Response, limit: number) => {
   if (!res.body) return res.arrayBuffer();
   let total = 0;
+  // Chromium rejects the read with its own TypeError rather than the stream's error, so the cap keeps its own flag.
+  let isTooLarge = false;
   const capped = res.body.pipeThrough(
     new TransformStream<Uint8Array, Uint8Array>({
       transform(part, controller) {
         total += part.byteLength;
-        if (total > limit) controller.error(new ChunkTooLargeError());
-        else controller.enqueue(part);
+        if (total > limit) {
+          isTooLarge = true;
+          controller.error(new ChunkTooLargeError());
+        } else controller.enqueue(part);
       }
     })
   );
-  return new Response(capped).arrayBuffer();
+  try {
+    return await new Response(capped).arrayBuffer();
+  } catch (error) {
+    throw isTooLarge ? new ChunkTooLargeError() : error;
+  }
 };
 
 const isRetryableSessionLogGap = (reason?: TAgentVaultSessionLogGapReason) =>

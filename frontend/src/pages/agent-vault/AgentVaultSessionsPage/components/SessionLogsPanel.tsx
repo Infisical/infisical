@@ -122,11 +122,6 @@ export const SessionLogsPanel = ({ session }: Props) => {
     from: range?.startDate,
     to: range?.endDate
   });
-  let liveState: LiveState | null = null;
-  if (canTail && isPausedForBudget) liveState = "paused";
-  else if (isLive && live.isError) liveState = "reconnecting";
-  else if (isLive && !isActive) liveState = "ended";
-  else if (isLive) liveState = "live";
   const retryLive = () => live.refetch().catch(() => {});
   const {
     data,
@@ -166,6 +161,14 @@ export const SessionLogsPanel = ({ session }: Props) => {
 
   const isEnabled = pages?.[0]?.sessionLogs.enabled ?? false;
   const isRecordable = pages?.[0]?.sessionLogs.isRecordable ?? true;
+  // Nothing new can arrive while session logs are off or for a session that can't be recorded, so the panel
+  // doesn't go live, and an ended session doesn't promise logs that won't come.
+  const isWatching = isLive && isEnabled && isRecordable;
+  let liveState: LiveState | null = null;
+  if (canTail && isPausedForBudget) liveState = "paused";
+  else if (isWatching && live.isError) liveState = "reconnecting";
+  else if (isWatching && !isActive) liveState = "ended";
+  else if (isWatching) liveState = "live";
   const hasChunks = (pages ?? []).some((page) => page.chunks.length > 0);
   // Only without data: a failed reload or older page keeps the rows already on screen.
   const storageError = data ? null : getSessionLogStorageError(history.error);
