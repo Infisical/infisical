@@ -45,7 +45,7 @@ var (
 	MaxWildcardCertificates      = Feature{V2: "max_wildcard_certificates", V1: "maxWildcardCertificates"}
 	OIDCSSO                      = Feature{V2: "oidc_sso", V1: "oidcSSO"}
 	PAM                          = Feature{V2: "pam", V1: "pam"}
-	PAMSlackNotifications        = Feature{V2: "pam_slack_notifications", V1: "pamSlackNotifications"}
+	PAMEnterpriseAlerting        = Feature{V2: "pam_enterprise_alerting", V1: "pamEnterpriseAlerting"}
 	PITRecovery                  = Feature{V2: "pit_recovery", V1: "pitRecovery"}
 	PKIACME                      = Feature{V2: "pki_acme", V1: "pkiAcme"}
 	PKIApprovals                 = Feature{V2: "pki_approvals", V1: "pkiApprovals"}
@@ -128,7 +128,7 @@ var All = []Feature{
 	MaxWildcardCertificates,
 	OIDCSSO,
 	PAM,
-	PAMSlackNotifications,
+	PAMEnterpriseAlerting,
 	PITRecovery,
 	PKIACME,
 	PKIApprovals,
