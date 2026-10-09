@@ -26,6 +26,7 @@ import {
 } from "../audit-log-stream/audit-log-stream-fns";
 import { TAuditLogStreamFilters } from "../audit-log-stream/audit-log-stream-schemas";
 import { TAuditLogStreamCredentials } from "../audit-log-stream/audit-log-stream-types";
+import { FLUSH_DEBOUNCE_MS, MAX_ATTEMPTS } from "./audit-log-stream-outbox-constants";
 import { TAuditLogStreamOutboxDALFactory } from "./audit-log-stream-outbox-dal";
 import {
   TAuditLogStreamFlushJobData,
@@ -33,15 +34,9 @@ import {
   TFailedStreamRow
 } from "./audit-log-stream-outbox-types";
 
-// Debounce window: first writer for a stream enqueues a flush job delayed by this many ms.
-// Subsequent writers within the window are absorbed by the same job (SETNX is a no-op for them).
-const FLUSH_DEBOUNCE_MS = 5_000;
-const FLUSH_DEBOUNCE_SECONDS = Math.ceil(FLUSH_DEBOUNCE_MS / 1_000);
-
 // Worker drain settings.
 const BATCH_SIZE = 500;
 const MAX_BATCHES_PER_JOB = 10; // hard cap so one job can't monopolize the worker
-const MAX_ATTEMPTS = 5;
 // Single mode sends one request per row, so a full claim is up to BATCH_SIZE serial
 // POSTs. Dispatch them in parallel waves of this size instead — bounded so we don't
 // open BATCH_SIZE concurrent connections to a legacy webhook receiver at once.
@@ -104,7 +99,7 @@ export const auditLogStreamOutboxServiceFactory = ({
   // window — there's nothing for the caller to do.
   const debounceAndEnqueueFlush = async (streamId: string, orgId: string, provider: LogProvider): Promise<boolean> => {
     const debounceKey = KeyStorePrefixes.AuditLogStreamFlushDebounce(streamId);
-    const acquired = await keyStore.setItemWithExpiryNX(debounceKey, FLUSH_DEBOUNCE_SECONDS, "1");
+    const acquired = await keyStore.setItemWithExpiryNX(debounceKey, Math.ceil(FLUSH_DEBOUNCE_MS / 1_000), "1");
     if (!acquired) return false;
 
     try {
