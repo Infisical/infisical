@@ -865,7 +865,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
   const updateSecretChangeRequestStatus: TSecretChangeGlobalRequestBridgeMethods["updateSecretChangeRequestStatus"] =
     async ({ approvalId, actor, actorId, actorAuthMethod, actorOrgId, status }) => {
       const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.secretApproval) {
+      if (!plan.secretApproval && status === RequestState.Open) {
         throw new BadRequestError({
           message:
             "Failed to update secret approval request due to plan restriction. Upgrade plan to update secret approval request."
