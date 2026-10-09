@@ -8,6 +8,7 @@ import { SupabaseConnectionMethod } from "./supabase-connection-constants";
 import { listProjects, validateSupabaseConnectionCredentials } from "./supabase-connection-fns";
 import {
   SanitizedSupabaseConnectionSchema,
+  SUPABASE_PROJECT_REF_REGEX,
   SupabaseConnectionAccessTokenCredentialsSchema
 } from "./supabase-connection-schemas";
 import { TSupabaseConnection, TSupabaseConnectionConfig } from "./supabase-connection-types";
@@ -214,6 +215,50 @@ describe("supabase-connection-fns", () => {
         projectRef: "  test-ref  "
       });
       expect(parsed.projectRef).toBe("test-ref");
+    });
+
+    it("accepts valid alphanumeric, hyphenated, and underscore project references", () => {
+      const validCases = ["abcdefghijklmnopqrst", "my-project-ref", "my_project_123", "Supabase_Project-01"];
+      for (const ref of validCases) {
+        const parsed = SupabaseConnectionAccessTokenCredentialsSchema.parse({
+          accessKey: "sbp_valid_key",
+          projectRef: ref
+        });
+        expect(parsed.projectRef).toBe(ref);
+        expect(SUPABASE_PROJECT_REF_REGEX.test(ref)).toBe(true);
+      }
+    });
+
+    it("rejects project references containing URL path, query, or fragment characters", () => {
+      const invalidCases = [
+        "proj/secrets",
+        "/leading-slash",
+        "trailing-slash/",
+        "../traversal",
+        "proj?key=val",
+        "proj#fragment",
+        "proj\\backslash",
+        "proj:colon",
+        "proj.dot",
+        "proj space",
+        "proj%2fencoded",
+        "proj@at",
+        "proj&and"
+      ];
+
+      for (const ref of invalidCases) {
+        const result = SupabaseConnectionAccessTokenCredentialsSchema.safeParse({
+          accessKey: "sbp_valid_key",
+          projectRef: ref
+        });
+        expect(result.success).toBe(false);
+        expect(SUPABASE_PROJECT_REF_REGEX.test(ref)).toBe(false);
+        if (!result.success) {
+          expect(result.error.issues[0].message).toContain(
+            "Project Reference must only contain alphanumeric characters, hyphens, and underscores"
+          );
+        }
+      }
     });
 
     it("accepts credentials when projectRef is omitted", () => {

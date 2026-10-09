@@ -1,3 +1,4 @@
+import RE2 from "re2";
 import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
@@ -11,6 +12,8 @@ import {
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { SupabaseConnectionMethod } from "./supabase-connection-constants";
 
+export const SUPABASE_PROJECT_REF_REGEX = new RE2("^[a-zA-Z0-9_-]+$");
+
 export const SupabaseConnectionMethodSchema = z
   .nativeEnum(SupabaseConnectionMethod)
   .describe(AppConnections.CREATE(AppConnection.Supabase).method);
@@ -23,7 +26,17 @@ export const SupabaseConnectionAccessTokenCredentialsSchema = z.object({
     .max(255)
     .describe(AppConnections.CREDENTIALS.SUPABASE.accessKey),
   instanceUrl: z.string().trim().url().max(255).describe(AppConnections.CREDENTIALS.SUPABASE.instanceUrl).optional(),
-  projectRef: z.string().trim().min(1).max(255).describe(AppConnections.CREDENTIALS.SUPABASE.projectRef).optional()
+  projectRef: z
+    .string()
+    .trim()
+    .min(1)
+    .max(255)
+    .regex(
+      SUPABASE_PROJECT_REF_REGEX,
+      "Project Reference must only contain alphanumeric characters, hyphens, and underscores"
+    )
+    .describe(AppConnections.CREDENTIALS.SUPABASE.projectRef)
+    .optional()
 });
 
 const BaseSupabaseConnectionSchema = BaseAppConnectionSchema.extend({

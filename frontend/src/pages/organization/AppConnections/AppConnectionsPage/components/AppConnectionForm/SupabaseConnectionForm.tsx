@@ -40,13 +40,24 @@ const rootSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.Supabase)
 });
 
+export const SUPABASE_PROJECT_REF_REGEX = /^[a-zA-Z0-9_-]+$/;
+
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
     method: z.literal(SupabaseConnectionMethod.AccessToken),
     credentials: z.object({
       accessKey: z.string().trim().min(1, "Access Key required"),
       instanceUrl: z.string().url().optional(),
-      projectRef: z.string().trim().min(1).max(255).optional()
+      projectRef: z
+        .string()
+        .trim()
+        .min(1)
+        .max(255)
+        .regex(
+          SUPABASE_PROJECT_REF_REGEX,
+          "Project Reference must only contain alphanumeric characters, hyphens, and underscores"
+        )
+        .optional()
     })
   })
 ]);
