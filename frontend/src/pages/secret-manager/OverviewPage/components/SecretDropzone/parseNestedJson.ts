@@ -286,28 +286,74 @@ export const chunkSecretsByRequestSize = <T>(
   return { chunks, oversized };
 };
 
+export type TQueueProgress = { completed: number; queued: number; waitMs: number };
+
+// Avoids AbortSignal.reason and throwIfAborted, which are newer than the build's browser targets
+const abortedError = () => new DOMException("The import was cancelled", "AbortError");
+
+const throwIfAborted = (signal?: AbortSignal) => {
+  if (signal?.aborted) throw abortedError();
+};
+
+const waitUnlessAborted = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(abortedError());
+      return;
+    }
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        reject(abortedError());
+      },
+      { once: true }
+    );
+  });
+
 // The secret endpoints share one per-IP, per-minute limit (60 by default), so a nested import
 // sends its requests one at a time, in the order they are queued. A rate-limited request waits
-// for the delay the server asks for and is retried once before it counts as failed.
-export const createRateLimitedQueue = (
-  getRateLimitDelayMs: (error: unknown) => number | null,
-  wait = (ms: number) =>
-    new Promise<void>((resolve) => {
-      setTimeout(resolve, ms);
-    })
-) => {
+// for the delay the server asks for and is retried once before it counts as failed. Once the
+// signal aborts, no new request starts and a pending wait ends; requests already sent finish.
+export const createRateLimitedQueue = ({
+  getRateLimitDelayMs,
+  signal,
+  onProgress,
+  wait = waitUnlessAborted
+}: {
+  getRateLimitDelayMs: (error: unknown) => number | null;
+  signal?: AbortSignal;
+  onProgress?: (progress: TQueueProgress) => void;
+  wait?: (ms: number, signal?: AbortSignal) => Promise<void>;
+}) => {
   let tail: Promise<unknown> = Promise.resolve();
+  const progress: TQueueProgress = { completed: 0, queued: 0, waitMs: 0 };
+  const report = (update: Partial<TQueueProgress> = {}) => {
+    Object.assign(progress, update);
+    onProgress?.({ ...progress });
+  };
+
   return <T>(request: () => Promise<T>): Promise<T> => {
     const run = async () => {
       try {
-        return await request();
-      } catch (error) {
-        const delayMs = getRateLimitDelayMs(error);
-        if (delayMs === null) throw error;
-        await wait(delayMs);
-        return request();
+        throwIfAborted(signal);
+        try {
+          return await request();
+        } catch (error) {
+          const delayMs = getRateLimitDelayMs(error);
+          if (delayMs === null) throw error;
+          report({ waitMs: delayMs });
+          await wait(delayMs, signal);
+          report({ waitMs: 0 });
+          throwIfAborted(signal);
+          return await request();
+        }
+      } finally {
+        report({ completed: progress.completed + 1, waitMs: 0 });
       }
     };
+    report({ queued: progress.queued + 1 });
     const result = tail.then(run, run);
     tail = result.catch(() => undefined);
     return result;

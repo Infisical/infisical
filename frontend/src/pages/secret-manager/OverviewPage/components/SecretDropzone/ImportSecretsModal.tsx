@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { subject } from "@casl/ability";
 import axios from "axios";
 import {
@@ -77,7 +77,8 @@ import {
   getNestedJsonObject,
   joinSecretPath,
   runNestedImport,
-  TFolderNode
+  TFolderNode,
+  TQueueProgress
 } from "./parseNestedJson";
 import { CsvData, parseSecretFile } from "./parseSecretFile";
 import { PASTE_SECRETS_FORM_ID, PasteSecretsContent } from "./PasteSecretsDialog";
@@ -121,6 +122,7 @@ type ContentProps = {
   initialSelectedEnvironments?: { name: string; slug: string }[];
   onComplete?: (envSlugs: string[]) => void;
   onClose: () => void;
+  onLockChange?: (isLocked: boolean) => void;
 };
 
 const ImportSecretsContent = ({
@@ -132,11 +134,15 @@ const ImportSecretsContent = ({
   initialStep = "upload",
   initialSelectedEnvironments = [],
   onComplete,
-  onClose
+  onClose,
+  onLockChange
 }: ContentProps) => {
   const { permission } = useProjectPermission();
   const [parsedSecrets, setParsedSecrets] = useState<TParsedEnv | null>(null);
   const [isImporting, setIsImporting] = useToggle();
+  const isImportRunningRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const [nestedProgress, setNestedProgress] = useState<TQueueProgress | null>(null);
   const [importMethod, setImportMethod] = useState<"upload" | "paste">(initialStep);
   const [isPasteDirty, setIsPasteDirty] = useState(false);
   const [csvData, setCsvData] = useState<CsvData | null>(null);
@@ -292,6 +298,14 @@ const ImportSecretsContent = ({
     return new TextEncoder().encode(payload).length > MAX_BATCH_REQUEST_BYTES;
   }, [activeSecrets, keyOverrides, nestedImport, projectId, secretPath, selectedEnvs]);
 
+  // A nested upload can run for minutes while it waits out rate limits, so the sheet stays open
+  // until it finishes, and anything still queued is dropped if the sheet unmounts anyway
+  const isNestedUploadRunning = isImporting && Boolean(nestedImport);
+  useEffect(() => {
+    onLockChange?.(isNestedUploadRunning);
+  }, [isNestedUploadRunning, onLockChange]);
+  useEffect(() => () => abortControllerRef.current?.abort(), []);
+
   const handleParsedSecrets = useCallback((env: TParsedEnv, jsonSource?: string) => {
     if (!Object.keys(env).length) {
       createNotification({
@@ -335,6 +349,8 @@ const ImportSecretsContent = ({
   const handleImport = async () => {
     if (!activeSecrets || !selectedEnvs.length) return;
 
+    if (isImportRunningRef.current) return;
+    isImportRunningRef.current = true;
     setIsImporting.on();
 
     try {
@@ -550,14 +566,20 @@ const ImportSecretsContent = ({
       };
 
       // One queue for the whole run, since every environment shares the same per-IP limit
-      const enqueue = createRateLimitedQueue((error) => {
-        if (!axios.isAxiosError(error) || error.response?.status !== 429) return null;
-        const retryAfter = Number(error.response.headers["retry-after"]);
-        const ttlSeconds = Number(
-          /in (\d+) seconds/.exec(String(error.response.data?.message ?? ""))?.[1]
-        );
-        const seconds = [retryAfter, ttlSeconds].find((n) => Number.isFinite(n) && n > 0) ?? 5;
-        return Math.min(seconds, 60) * 1000;
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+      const enqueue = createRateLimitedQueue({
+        getRateLimitDelayMs: (error) => {
+          if (!axios.isAxiosError(error) || error.response?.status !== 429) return null;
+          const retryAfter = Number(error.response.headers["retry-after"]);
+          const ttlSeconds = Number(
+            /in (\d+) seconds/.exec(String(error.response.data?.message ?? ""))?.[1]
+          );
+          const seconds = [retryAfter, ttlSeconds].find((n) => Number.isFinite(n) && n > 0) ?? 5;
+          return Math.min(seconds, 60) * 1000;
+        },
+        signal: abortController.signal,
+        onProgress: setNestedProgress
       });
 
       const envPromises = selectedEnvs.map(async (env) => {
@@ -680,6 +702,8 @@ const ImportSecretsContent = ({
         text: "Failed to upload secrets"
       });
     } finally {
+      isImportRunningRef.current = false;
+      setNestedProgress(null);
       setIsImporting.off();
     }
   };
@@ -1123,11 +1147,23 @@ const ImportSecretsContent = ({
 
       <SheetFooter className="border-t">
         {!initialParsedSecrets && (
-          <Button variant="outline" onClick={handleBack} className="mr-auto">
+          <Button
+            variant="outline"
+            onClick={handleBack}
+            className="mr-auto"
+            isDisabled={isNestedUploadRunning}
+          >
             Back
           </Button>
         )}
-        <Button variant="ghost" onClick={onClose}>
+        {isNestedUploadRunning && nestedProgress && (
+          <p className="self-center text-xs text-muted" aria-live="polite">
+            {nestedProgress.waitMs
+              ? `Rate limit reached, resuming in ${Math.ceil(nestedProgress.waitMs / 1000)}s…`
+              : `Sent ${nestedProgress.completed} of ${nestedProgress.queued} requests…`}
+          </p>
+        )}
+        <Button variant="ghost" onClick={onClose} isDisabled={isNestedUploadRunning}>
           Cancel
         </Button>
         <Button
@@ -1162,8 +1198,15 @@ export const ImportSecretsSheet = ({
   initialSelectedEnvironments,
   onComplete
 }: Props) => {
+  const [isLocked, setIsLocked] = useState(false);
+  // Covers the close button, Escape and outside clicks while a nested upload is running
+  const handleOpenChange = (open: boolean) => {
+    if (!open && isLocked) return;
+    onOpenChange(open);
+  };
+
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+    <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetContent className="sm:max-w-3xl">
         <ImportSecretsContent
           environments={environments}
@@ -1175,6 +1218,7 @@ export const ImportSecretsSheet = ({
           initialSelectedEnvironments={initialSelectedEnvironments}
           onComplete={onComplete}
           onClose={() => onOpenChange(false)}
+          onLockChange={setIsLocked}
         />
       </SheetContent>
     </Sheet>
