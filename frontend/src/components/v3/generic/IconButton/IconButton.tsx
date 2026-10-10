@@ -105,7 +105,7 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         {isPending && (
           <Loader
             aria-hidden
-            variant={variant === "default" ? "inverse" : "default"}
+            variant={variant === "default" ? "inverse" : "brand"}
             size="xs"
             className={twMerge(
               "absolute rounded-xl",

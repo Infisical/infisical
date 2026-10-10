@@ -7,7 +7,7 @@ import { Loader } from "./Loader";
 
 /**
  * `Loader` is the branded Infisical loading animation — the stroke-draw of the
- * logo mark. It is the single source for that animation: the mark, the four
+ * logo mark. It is the single source for that animation: the mark, the two
  * tints, and the size scale all live here, and every product call site composes
  * it rather than naming a Lottie asset itself, including the router's full-page
  * pending state in `main.tsx`.
@@ -44,7 +44,7 @@ const meta = {
   argTypes: {
     variant: {
       control: "select",
-      options: ["neutral", "default", "inverse", "brand"]
+      options: ["brand", "inverse"]
     },
     size: {
       control: "select",
@@ -60,7 +60,7 @@ const meta = {
   args: {
     label: "Loading",
     size: "md",
-    variant: "neutral"
+    variant: "brand"
   }
 } satisfies Meta<typeof Loader>;
 
@@ -72,37 +72,7 @@ export const Default: Story = {
     docs: {
       description: {
         story:
-          "The in-product default: the theme-aware neutral mark at `md`. Use it on standard product surfaces — a `Card` body waiting on a fetch, or a section that owns its own loading state. The animation loops for as long as the wait lasts, or remains on its fully drawn first frame when the operating system requests reduced motion. It carries no progress information, so pair it with copy when the wait is long enough to need explaining."
-      }
-    }
-  }
-};
-
-export const VariantNeutral: Story = {
-  name: "Variant: Neutral",
-  args: {
-    variant: "neutral"
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Theme-aware monochrome mark. It renders white in dark mode and black in light mode, making it the default for standard product surfaces and controls."
-      }
-    }
-  }
-};
-
-export const VariantDefault: Story = {
-  name: "Variant: Default",
-  args: {
-    variant: "default"
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Fixed white mark. Use it only when the surrounding surface is always dark, regardless of the active application theme. Prefer `neutral` on theme-aware product surfaces."
+          "The default: the brand-colored mark at `md`. It is the one tint for every loading state, from the router's pending page to a `Card` body waiting on a fetch, so consecutive loaders never switch color. Use it on standard product surfaces — a `Card` body waiting on a fetch, or a section that owns its own loading state. The animation loops for as long as the wait lasts, or remains on its fully drawn first frame when the operating system requests reduced motion. It carries no progress information, so pair it with copy when the wait is long enough to need explaining."
       }
     }
   }
@@ -124,7 +94,7 @@ export const VariantInverse: Story = {
     docs: {
       description: {
         story:
-          "Black mark, for inverted surfaces where the foreground color is the background — the solid `default` `IconButton`, and anything else painted `bg-foreground`. Shown here on `bg-foreground`, since it is invisible against the page."
+          "Black mark, the only alternative to `brand`, for inverted surfaces where the foreground color is the background — the solid `default` `IconButton`, and anything else painted `bg-foreground`. Shown here on `bg-foreground`, since it is invisible against the page."
       }
     }
   }
@@ -139,7 +109,7 @@ export const VariantBrand: Story = {
     docs: {
       description: {
         story:
-          "The colored mark. Reserve it for brand-forward moments: the router's own pending state before the product chrome exists, full-screen `ContentLoader` waits, and connection tests that stand in for the product itself. Do not use it as a generic accent inside routine product UI."
+          "The colored mark and the default tint. Use it everywhere except inverted surfaces, where `inverse` keeps the stroke legible."
       }
     }
   }
