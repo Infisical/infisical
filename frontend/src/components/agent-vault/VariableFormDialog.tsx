@@ -7,7 +7,6 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -23,8 +22,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
-  InputGroupInput,
-  Label
+  InputGroupInput
 } from "@app/components/v3";
 import {
   normalizeVariableKey,
@@ -67,8 +65,7 @@ const buildSchema = (takenKeys: string[], isValueRequired: boolean) =>
         "A value can't contain line breaks or other control characters. Check for a stray newline if you pasted it."
       )
       .refine((value) => !isValueRequired || value.length > 0, "Required")
-      .refine((value) => !value || value.trim().length > 0, "A value can't be only spaces."),
-    isSecret: z.boolean()
+      .refine((value) => !value || value.trim().length > 0, "A value can't be only spaces.")
   });
 
 type FormData = z.infer<ReturnType<typeof buildSchema>>;
@@ -107,7 +104,7 @@ export const VariableFormDialog = ({
     () =>
       buildSchema(
         existingKeys.filter((key) => key !== variable?.key),
-        !variable || !variable.isSecret
+        !variable
       ),
     [existingKeys, variable]
   );
@@ -121,15 +118,13 @@ export const VariableFormDialog = ({
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
   const key = useWatch({ control, name: "key" });
-  const isSecret = useWatch({ control, name: "isSecret" });
   const isRenaming = Boolean(variable) && Boolean(key) && key !== variable?.key;
 
   useEffect(() => {
     if (!isOpen) return;
     reset({
       key: variable?.key ?? initialKey ?? "",
-      value: variable && !variable.isSecret ? (variable.value ?? "") : "",
-      isSecret: variable?.isSecret ?? true
+      value: ""
     });
     setIsValueVisible(false);
   }, [isOpen, variable, initialKey, reset]);
@@ -137,23 +132,18 @@ export const VariableFormDialog = ({
   const onSubmit = async (data: FormData) => {
     try {
       if (variable) {
-        const isValueChanged = variable.isSecret
-          ? data.value.length > 0
-          : data.value !== (variable.value ?? "");
         await updateVariable.mutateAsync({
           accessBundleId,
           variableId: variable.id,
           key: data.key === variable.key ? undefined : data.key,
-          value: isValueChanged ? data.value : undefined,
-          isSecret: data.isSecret === variable.isSecret ? undefined : data.isSecret
+          value: data.value.length > 0 ? data.value : undefined
         });
         createNotification({ text: `Variable "${data.key}" updated`, type: "success" });
       } else {
         const created = await createVariable.mutateAsync({
           accessBundleId,
           key: data.key,
-          value: data.value,
-          isSecret: data.isSecret
+          value: data.value
         });
         onCreated?.(created);
         createNotification({ text: `Variable "${data.key}" created`, type: "success" });
@@ -163,8 +153,6 @@ export const VariableFormDialog = ({
       // A failed request returns a 4xx that the global request handler surfaces as a toast
     }
   };
-
-  const isMasked = isSecret && !isValueVisible;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -231,47 +219,25 @@ export const VariableFormDialog = ({
                   <InputGroup>
                     <InputGroupInput
                       {...field}
-                      type={isMasked ? "password" : "text"}
+                      type={isValueVisible ? "text" : "password"}
                       placeholder={
-                        variable?.isSecret
-                          ? "Leave blank to keep the current value"
-                          : "Enter the value"
+                        variable ? "Leave blank to keep the current value" : "Enter the value"
                       }
                       autoComplete="off"
                       spellCheck={false}
                       isError={Boolean(fieldState.error)}
                     />
-                    {isSecret && (
-                      <InputGroupAddon align="inline-end">
-                        <InputGroupButton
-                          isDisabled={!field.value}
-                          aria-label={isValueVisible ? "Hide value" : "Show value"}
-                          onClick={() => setIsValueVisible((prev) => !prev)}
-                        >
-                          {isValueVisible ? <EyeOffIcon /> : <EyeIcon />}
-                        </InputGroupButton>
-                      </InputGroupAddon>
-                    )}
+                    <InputGroupAddon align="inline-end">
+                      <InputGroupButton
+                        isDisabled={!field.value}
+                        aria-label={isValueVisible ? "Hide value" : "Show value"}
+                        onClick={() => setIsValueVisible((prev) => !prev)}
+                      >
+                        {isValueVisible ? <EyeOffIcon /> : <EyeIcon />}
+                      </InputGroupButton>
+                    </InputGroupAddon>
                   </InputGroup>
                   <FieldError>{fieldState.error?.message}</FieldError>
-                </FieldContent>
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="isSecret"
-            render={({ field }) => (
-              <Field orientation="horizontal">
-                <Checkbox
-                  id="agent-vault-variable-secret"
-                  variant="av"
-                  isChecked={field.value}
-                  onCheckedChange={(checked) => field.onChange(checked === true)}
-                />
-                <FieldContent>
-                  <Label htmlFor="agent-vault-variable-secret">Secret</Label>
-                  <FieldDescription>Hide the value after saving.</FieldDescription>
                 </FieldContent>
               </Field>
             )}

@@ -2480,7 +2480,7 @@ export type TAgentVaultServiceDeletedEvent = {
 
 export type TAgentVaultVariableCreatedEvent = {
   event: PostHogEventTypes.AgentVaultVariableCreated;
-  properties: TAgentVaultEventBase & { accessBundleId: string; variableId: string; isSecret: boolean };
+  properties: TAgentVaultEventBase & { accessBundleId: string; variableId: string };
 };
 
 export type TAgentVaultVariableUpdatedEvent = {
@@ -2488,7 +2488,6 @@ export type TAgentVaultVariableUpdatedEvent = {
   properties: TAgentVaultEventBase & {
     accessBundleId: string;
     variableId: string;
-    isSecret: boolean;
     keyChanged: boolean;
     valueReplaced: boolean;
     usedByServiceCount: number;

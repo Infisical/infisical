@@ -131,7 +131,6 @@ tables:
     columns:
       - id
       - accessBundleId
-      - isSecret
       - createdAt
       - updatedAt
 

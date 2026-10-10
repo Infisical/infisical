@@ -554,8 +554,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       }),
       body: z.object({
         key: AgentVaultVariableKeySchema.describe(AGENT_VAULT.VARIABLE.key),
-        value: AgentVaultVariableValueSchema.describe(AGENT_VAULT.VARIABLE.value),
-        isSecret: z.boolean().default(true).describe(AGENT_VAULT.VARIABLE.isSecret)
+        value: AgentVaultVariableValueSchema.describe(AGENT_VAULT.VARIABLE.value)
       }),
       response: { 200: z.object({ variable: AgentVaultVariableSchema }) }
     },
@@ -578,15 +577,14 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             accessBundleId: req.params.accessBundleId,
             accessBundleName,
             variableId: variable.id,
-            key: variable.key,
-            isSecret: variable.isSecret
+            key: variable.key
           }
         }
       });
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultVariableCreated,
-        properties: { accessBundleId: req.params.accessBundleId, variableId: variable.id, isSecret: variable.isSecret }
+        properties: { accessBundleId: req.params.accessBundleId, variableId: variable.id }
       });
 
       return { variable };
@@ -609,25 +607,23 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       body: z
         .object({
           key: AgentVaultVariableKeySchema.optional().describe(AGENT_VAULT.VARIABLE.key),
-          value: AgentVaultVariableValueSchema.optional().describe(AGENT_VAULT.VARIABLE.updateValue),
-          isSecret: z.boolean().optional().describe(AGENT_VAULT.VARIABLE.isSecret)
+          value: AgentVaultVariableValueSchema.optional().describe(AGENT_VAULT.VARIABLE.updateValue)
         })
         .refine(
           (body) => Object.values(body).some((value) => value !== undefined),
-          "Provide at least one of 'key', 'value' or 'isSecret' to update"
+          "Provide 'key', 'value' or both to update"
         ),
       response: { 200: z.object({ variable: AgentVaultVariableSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { variable, previousKey, previousIsSecret, accessBundleName } =
-        await server.services.agentVaultAccessBundle.updateVariable({
-          projectId: req.internalAgentVaultProjectId,
-          ctx: actorContext(req),
-          accessBundleId: req.params.accessBundleId,
-          variableId: req.params.variableId,
-          ...req.body
-        });
+      const { variable, previousKey, accessBundleName } = await server.services.agentVaultAccessBundle.updateVariable({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId,
+        variableId: req.params.variableId,
+        ...req.body
+      });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -641,8 +637,6 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             variableId: variable.id,
             key: variable.key,
             previousKey: previousKey === variable.key ? undefined : previousKey,
-            isSecret: variable.isSecret,
-            previousIsSecret: previousIsSecret === variable.isSecret ? undefined : previousIsSecret,
             valueReplaced: req.body.value !== undefined
           }
         }
@@ -653,7 +647,6 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         properties: {
           accessBundleId: req.params.accessBundleId,
           variableId: variable.id,
-          isSecret: variable.isSecret,
           keyChanged: previousKey !== variable.key,
           valueReplaced: req.body.value !== undefined,
           usedByServiceCount: variable.serviceIds.length
@@ -719,7 +712,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     schema: {
       hide: false,
       operationId: "getAgentVaultVariableValue",
-      description: "Get the value of a variable in an Agent Vault access bundle, secret or not",
+      description: "Get the value of a variable in an Agent Vault access bundle",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
