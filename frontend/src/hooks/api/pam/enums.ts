@@ -2,6 +2,7 @@ export enum PamAccountType {
   SSH = "ssh",
   Postgres = "postgres",
   MySQL = "mysql",
+  MariaDB = "mariadb",
   MsSQL = "mssql",
   OracleDB = "oracledb",
   MongoDB = "mongodb",
@@ -31,6 +32,7 @@ export enum PamDiscoverySchedule {
 export const ROTATABLE_PAM_ACCOUNT_TYPES = [
   PamAccountType.Postgres,
   PamAccountType.MySQL,
+  PamAccountType.MariaDB,
   PamAccountType.MsSQL,
   PamAccountType.OracleDB,
   PamAccountType.Windows,

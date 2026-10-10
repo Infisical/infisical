@@ -325,6 +325,7 @@ Patroni
 # --- Databases ---
 PostgreSQL
 MySQL
+MariaDB
 MongoDB
 MongoDB Atlas
 Redis
