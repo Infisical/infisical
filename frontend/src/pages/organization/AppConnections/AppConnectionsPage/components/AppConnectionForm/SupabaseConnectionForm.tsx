@@ -40,12 +40,24 @@ const rootSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.Supabase)
 });
 
+export const SUPABASE_PROJECT_REF_REGEX = /^[a-zA-Z0-9_-]+$/;
+
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
     method: z.literal(SupabaseConnectionMethod.AccessToken),
     credentials: z.object({
       accessKey: z.string().trim().min(1, "Access Key required"),
-      instanceUrl: z.string().url().optional()
+      instanceUrl: z.string().url().optional(),
+      projectRef: z
+        .string()
+        .trim()
+        .min(1)
+        .max(255)
+        .regex(
+          SUPABASE_PROJECT_REF_REGEX,
+          "Project Reference must only contain alphanumeric characters, hyphens, and underscores"
+        )
+        .optional()
     })
   })
 ]);
@@ -148,6 +160,35 @@ export const SupabaseConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 onChange={(e) => onChange(e.target.value)}
               />
               <FieldError id="access-key-error" errors={[error]} />
+            </Field>
+          )}
+        />
+        <Controller
+          name="credentials.projectRef"
+          control={control}
+          shouldUnregister
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel htmlFor="project-ref">
+                Project Reference <span className="text-muted">(optional)</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The reference ID of your Supabase project (e.g. from your project URL).
+                    Required if using a project-scoped access token.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Input
+                id="project-ref"
+                value={value ?? ""}
+                onChange={(e) => onChange(e.target.value || undefined)}
+                placeholder="e.g. abcdefghijklmno"
+                isError={Boolean(error?.message)}
+              />
+              <FieldError errors={[error]} />
             </Field>
           )}
         />

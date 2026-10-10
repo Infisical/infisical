@@ -83,6 +83,9 @@ class SupabasePublicClient {
   async healthcheck(connection: TSupabaseConnectionConfig) {
     switch (connection.method) {
       case SupabaseConnectionMethod.AccessToken:
+        if (connection.credentials.projectRef) {
+          return void (await this.getVariables(connection, connection.credentials.projectRef));
+        }
         return void (await this.getProjects(connection));
       default:
         throw new Error(`Unsupported Supabase connection method`);

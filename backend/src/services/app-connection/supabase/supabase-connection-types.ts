@@ -31,6 +31,8 @@ export type TSupabaseProject = {
   database: TSupabaseDatabase;
 };
 
+export type TSupabaseProjectItem = Pick<TSupabaseProject, "id" | "name">;
+
 type TSupabaseDatabase = {
   host: string;
   version: string;
