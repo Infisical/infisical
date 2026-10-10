@@ -53,7 +53,10 @@ const CapabilityUpgradeDialog = ({
   const { currentOrg, isSubOrganization } = useOrganization();
   const route = useRouterState({ select: (state) => state.matches.at(-1)?.routeId ?? "unknown" });
   const { pathname } = useLocation();
-  const isAgentVault = getOrgScopedProductFromPath(pathname) === ProjectType.AgentVault;
+  const isAgentVault =
+    intent.productName === "Agent Vault" ||
+    (intent.featureKey.startsWith("audit_log") &&
+      getOrgScopedProductFromPath(pathname) === ProjectType.AgentVault);
   const eventPropertiesRef = useRef<{
     paywallKey: string;
     paywallText: string;
