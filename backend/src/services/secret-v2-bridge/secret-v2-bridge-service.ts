@@ -2944,10 +2944,18 @@ export const secretV2BridgeServiceFactory = ({
       }
     });
     const secretsToDeleteSet = new Set(secretsToDelete.map((el) => el.key));
-    if (secretsToDeleteSet.size !== inputSecrets.length)
+    const requestedKeys = inputSecrets.map((el) => el.secretKey);
+    const missingKeys = [...new Set(requestedKeys.filter((key) => !secretsToDeleteSet.has(key)))];
+    if (missingKeys.length)
       throw new NotFoundError({
-        message: `One or more secrets does not exist: ${secretsToDelete.map((el) => el.key).join(", ")}`
+        message: `One or more secrets does not exist: ${missingKeys.join(", ")}`
       });
+    if (secretsToDeleteSet.size !== requestedKeys.length) {
+      const repeatedKeys = [...new Set(requestedKeys.filter((key, index) => requestedKeys.indexOf(key) !== index))];
+      throw new BadRequestError({
+        message: `Each secret can only be deleted once per request: ${repeatedKeys.join(", ")}`
+      });
+    }
     secretsToDelete.forEach((el) => {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionSecretActions.Delete,
