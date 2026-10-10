@@ -257,25 +257,33 @@ const ImportSecretsContent = ({
     : false;
   const isOverRequestLimit = useMemo(() => {
     if (!activeSecrets) return false;
-    const payload = JSON.stringify({
-      projectId,
-      environment: selectedEnvs.reduce(
-        (longest, env) => (env.slug.length > longest.length ? env.slug : longest),
-        ""
-      ),
-      secretPath,
-      secrets: Object.entries(activeSecrets).map(([key, s]) => ({
-        secretKey: keyOverrides[key] ?? key,
-        secretValue: s.value,
-        secretComment: s.comments.join("\n"),
-        type: SecretType.Shared,
-        tagIds: s.tagSlugs?.map(() => "00000000-0000-0000-0000-000000000000"),
-        secretMetadata: s.secretMetadata,
-        skipMultilineEncoding: s.skipMultilineEncoding
-      }))
-    });
-    return new TextEncoder().encode(payload).length > MAX_BATCH_REQUEST_BYTES;
-  }, [activeSecrets, keyOverrides, projectId, secretPath, selectedEnvs]);
+    const exceedsLimit = (path: string, secrets: TParsedEnv) => {
+      const payload = JSON.stringify({
+        projectId,
+        environment: selectedEnvs.reduce(
+          (longest, env) => (env.slug.length > longest.length ? env.slug : longest),
+          ""
+        ),
+        secretPath: path,
+        secrets: Object.entries(secrets).map(([key, s]) => ({
+          secretKey: keyOverrides[key] ?? key,
+          secretValue: s.value,
+          secretComment: s.comments.join("\n"),
+          type: SecretType.Shared,
+          tagIds: s.tagSlugs?.map(() => "00000000-0000-0000-0000-000000000000"),
+          secretMetadata: s.secretMetadata,
+          skipMultilineEncoding: s.skipMultilineEncoding
+        }))
+      });
+      return new TextEncoder().encode(payload).length > MAX_BATCH_REQUEST_BYTES;
+    };
+    if (!nestedImport) return exceedsLimit(secretPath, activeSecrets);
+    // Nested imports send separate batches per folder; a folder's full secret set bounds both
+    // its create and update batch, since which keys already exist is only known at upload
+    return Object.entries(nestedImport.secretsByPath).some(([path, secrets]) =>
+      exceedsLimit(joinSecretPath(secretPath, path), secrets)
+    );
+  }, [activeSecrets, keyOverrides, nestedImport, projectId, secretPath, selectedEnvs]);
 
   const handleParsedSecrets = useCallback((env: TParsedEnv, jsonSource?: string) => {
     if (!Object.keys(env).length) {
