@@ -1159,7 +1159,7 @@ const ImportSecretsContent = ({
         {isNestedUploadRunning && nestedProgress && (
           <p className="self-center text-xs text-muted" aria-live="polite">
             {nestedProgress.waitMs
-              ? `Rate limit reached, resuming in ${Math.ceil(nestedProgress.waitMs / 1000)}s…`
+              ? "Rate limit reached, resuming shortly…"
               : `Sent ${nestedProgress.completed} of ${nestedProgress.queued} requests…`}
           </p>
         )}
