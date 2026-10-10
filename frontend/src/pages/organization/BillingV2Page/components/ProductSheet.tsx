@@ -50,6 +50,7 @@ import {
   dimCommitManageable,
   dimCommitted,
   fmtMoney,
+  fmtMoneyCents,
   isMeteredCadence,
   unitForCount,
   unitPrice
@@ -97,7 +98,7 @@ const dimPriceLine = (
     variant === "headline"
       ? `/ ${dim.noun} / ${perMonth ? "month" : cadenceWord(cadence)}`
       : `per ${dim.noun} / ${perMonth ? "mo" : cadenceWordShort(cadence)}`;
-  const line: PriceLine = { amount: fmtMoney(amount, 2), unit, metered };
+  const line: PriceLine = { amount: fmtMoneyCents(amount), unit, metered };
   if (metered && dim.included > 0) {
     line.prefix = `First ${dim.included.toLocaleString()} ${unitForCount(dim.noun, dim.included)} included, then`;
   }
@@ -137,7 +138,7 @@ const PlanPricing = ({ plan, cadence }: { plan: BillingV2Plan; cadence: BillingV
   const annual = cad === "annual";
   let headline: PriceLine | null = plan.base
     ? {
-        amount: fmtMoney(annual ? unitPrice(plan.base, cad) / 12 : unitPrice(plan.base, cad)),
+        amount: fmtMoneyCents(annual ? unitPrice(plan.base, cad) / 12 : unitPrice(plan.base, cad)),
         unit: annual ? "/ month" : `/ ${cadenceWord(cad)}`
       }
     : null;
