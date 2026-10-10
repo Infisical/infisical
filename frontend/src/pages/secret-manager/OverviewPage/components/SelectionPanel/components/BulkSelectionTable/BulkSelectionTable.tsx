@@ -1,6 +1,13 @@
 import { FolderIcon, KeyIcon, TagsIcon, TrashIcon } from "lucide-react";
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@app/components/v3";
+import {
+  Table,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableVirtualBody
+} from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 
@@ -42,34 +49,37 @@ export const BulkSelectionTable = ({ action, items, environments, containerClass
           ))}
         </TableRow>
       </TableHeader>
-      <TableBody>
-        {items.map((item) => (
-          <TableRow key={`${item.type}-${item.name}`} className="group">
-            <TableCell className="sticky left-0 z-10 bg-container transition-colors duration-75 group-hover:bg-container-hover">
-              {item.type === "folder" ? (
-                <FolderIcon className="size-4 text-folder" />
-              ) : (
-                <KeyIcon className="size-4 text-secret" />
-              )}
-            </TableCell>
-            <TableCell
-              className="sticky left-10 z-10 w-32 max-w-32 min-w-32 bg-container shadow-[inset_-1px_0_0_var(--color-border)] transition-colors duration-75 group-hover:bg-container-hover sm:w-72 sm:max-w-72 sm:min-w-72"
-              isTruncatable
-            >
-              {item.name}
-            </TableCell>
-            {environments.map((environment) => (
-              <TableCell key={environment.slug} className="border-r text-center last:border-r-0">
-                {item.envSlugs.has(environment.slug) ? (
-                  <ActionIcon className={cn("inline-block size-4", actionIconClassName)} />
+      <TableVirtualBody count={items.length}>
+        {(index, rowProps) => {
+          const item = items[index];
+          return (
+            <TableRow key={`${item.type}-${item.name}`} className="group" {...rowProps}>
+              <TableCell className="sticky left-0 z-10 bg-container transition-colors duration-75 group-hover:bg-container-hover">
+                {item.type === "folder" ? (
+                  <FolderIcon className="size-4 text-folder" />
                 ) : (
-                  <span className="text-muted">&mdash;</span>
+                  <KeyIcon className="size-4 text-secret" />
                 )}
               </TableCell>
-            ))}
-          </TableRow>
-        ))}
-      </TableBody>
+              <TableCell
+                className="sticky left-10 z-10 w-32 max-w-32 min-w-32 bg-container shadow-[inset_-1px_0_0_var(--color-border)] transition-colors duration-75 group-hover:bg-container-hover sm:w-72 sm:max-w-72 sm:min-w-72"
+                isTruncatable
+              >
+                {item.name}
+              </TableCell>
+              {environments.map((environment) => (
+                <TableCell key={environment.slug} className="border-r text-center last:border-r-0">
+                  {item.envSlugs.has(environment.slug) ? (
+                    <ActionIcon className={cn("inline-block size-4", actionIconClassName)} />
+                  ) : (
+                    <span className="text-muted">&mdash;</span>
+                  )}
+                </TableCell>
+              ))}
+            </TableRow>
+          );
+        }}
+      </TableVirtualBody>
     </Table>
   );
 };
