@@ -1,0 +1,8 @@
+<Note>
+    If your instance runs on Amazon EKS with [EKS Pod Identity](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html), add `sts:TagSession` next to `sts:AssumeRole` in both of these policies, or Infisical can't assume the role:
+
+    - The permission policy of the Pod Identity role
+    - The trust policy of each role Infisical assumes
+
+    Pod Identity adds [session tags](https://docs.aws.amazon.com/eks/latest/userguide/pod-id-abac.html) to its credentials, and AWS passes those tags on when Infisical assumes another role.
+</Note>
