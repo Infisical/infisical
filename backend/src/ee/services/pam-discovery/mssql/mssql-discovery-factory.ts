@@ -5,6 +5,7 @@ import knex from "knex";
 import pLimit from "p-limit";
 import RE2 from "re2";
 
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
@@ -30,13 +31,15 @@ const PROXY_HOST = "127.0.0.1";
 const SQL_LOGIN_AUTH_METHOD = "sql-login";
 
 // without these a login sees only itself and sa, and reconciliation would treat every other login as gone
-const VISIBILITY_QUERY = `SELECT CASE WHEN HAS_PERMS_BY_NAME(NULL, NULL, 'VIEW ANY DEFINITION') = 1 OR HAS_PERMS_BY_NAME(NULL, NULL, 'VIEW ANY SECURITY DEFINITION') = 1 OR HAS_PERMS_BY_NAME(NULL, NULL, 'ALTER ANY LOGIN') = 1 THEN 1 ELSE 0 END AS canSeeLogins`;
+const VISIBILITY_QUERY = `SELECT CASE WHEN HAS_PERMS_BY_NAME(NULL, NULL, 'VIEW ANY DEFINITION') = 1 OR HAS_PERMS_BY_NAME(NULL, NULL, 'VIEW ANY SECURITY DEFINITION') = 1 OR HAS_PERMS_BY_NAME(NULL, NULL, 'ALTER ANY LOGIN') = 1 THEN 1 ELSE 0 END AS canSeeLogins, IS_SRVROLEMEMBER('sysadmin') AS isSysadmin, (SELECT COUNT(*) FROM sys.server_permissions p JOIN sys.server_principals g ON g.principal_id = p.grantee_principal_id WHERE p.state = 'D' AND (g.sid = SUSER_SID() OR (g.type = 'R' AND IS_SRVROLEMEMBER(g.name) = 1)) AND ((p.class = 100 AND p.permission_name IN ('VIEW ANY DEFINITION', 'VIEW ANY SECURITY DEFINITION')) OR (p.class = 101 AND p.permission_name IN ('VIEW DEFINITION', 'CONTROL') AND NOT EXISTS (SELECT 1 FROM sys.server_principals r WHERE r.principal_id = p.major_id AND r.type = 'R')))) AS denials`;
 
 // one row past the cap so truncation is detectable; 63 is the longest username a PAM MSSQL account accepts
 const ENUMERATION_QUERY = `SELECT TOP (${MAX_ACCOUNTS_PER_HOST + 1}) name, default_database_name AS defaultDatabase, CASE WHEN principal_id = 1 OR sid = SUSER_SID() THEN 1 ELSE 0 END AS alwaysVisible FROM sys.server_principals WHERE type = 'S' AND is_disabled = 0 AND name NOT LIKE '##%##' AND LEN(name) <= 63 ORDER BY name`;
 
 const VISIBILITY_MESSAGE =
   "The credential account can only see its own login. Grant it VIEW ANY DEFINITION or ALTER ANY LOGIN to discover every login on the instance.";
+const DENIED_LOGINS_MESSAGE =
+  "A DENY permission hides some logins from the credential account, so logins missing from this scan weren't marked stale.";
 const OWN_LOGIN_ONLY_MESSAGE =
   "Only sa and the credential account's own login were visible. If the instance has other logins, check that the credential account isn't denied permission to see them.";
 const REDIRECT_MESSAGE = "The instance redirected the connection to another server, which discovery doesn't follow";
@@ -44,6 +47,13 @@ const GATEWAY_FAILURE_MESSAGE =
   "Could not reach the instance through the gateway. Check that the gateway is online and can reach this host and port.";
 
 type TLogin = { name: string; defaultDatabase: string | null; alwaysVisible: number };
+
+type TInstanceResult = {
+  accounts: TDiscoveredAccount[];
+  error?: TDiscoveryMachineError;
+  machine: string;
+  complete: boolean;
+};
 
 const describeDriverError = (err: unknown): string => {
   const { code, name, cause } = err as { code?: string; name?: string; cause?: { code?: string } };
@@ -71,7 +81,10 @@ const describeDriverError = (err: unknown): string => {
     case "DEPTH_ZERO_SELF_SIGNED_CERT":
     case "SELF_SIGNED_CERT_IN_CHAIN":
     case "UNABLE_TO_VERIFY_LEAF_SIGNATURE":
+    case "UNABLE_TO_GET_ISSUER_CERT_LOCALLY":
       return "TLS verification failed. Add the instance's CA certificate to the credential account, or disable certificate verification.";
+    case "CERT_HAS_EXPIRED":
+      return "The instance's TLS certificate has expired.";
     case "ERR_TLS_CERT_ALTNAME_INVALID":
       return "The instance's TLS certificate isn't valid for this target. List the instance by a name on its certificate, or disable certificate verification.";
     default:
@@ -191,12 +204,14 @@ export const msSqlDiscoveryFactory: TPamDiscoveryFactory = ({
         });
 
         try {
-          const [visibility] = await db.raw<{ canSeeLogins: number }[]>(VISIBILITY_QUERY);
+          const [visibility] =
+            await db.raw<{ canSeeLogins: number; isSysadmin: number | null; denials: number }[]>(VISIBILITY_QUERY);
           if (visibility?.canSeeLogins !== 1) {
             failure = VISIBILITY_MESSAGE;
             throw new Error(failure);
           }
-          return await db.raw<TLogin[]>(ENUMERATION_QUERY);
+          const logins = await db.raw<TLogin[]>(ENUMERATION_QUERY);
+          return { logins, isSysadmin: visibility.isSysadmin === 1, denials: visibility.denials };
         } catch (err) {
           if (!failure) {
             logger.warn({ err }, `PAM SQL Server discovery query failed [host=${host}] [port=${port}]`);
@@ -215,66 +230,76 @@ export const msSqlDiscoveryFactory: TPamDiscoveryFactory = ({
     }
   };
 
-  const scanInstance = async (
-    host: string,
-    port: number,
-    signal: AbortSignal
-  ): Promise<{
-    accounts: TDiscoveredAccount[];
-    error?: TDiscoveryMachineError;
-    machine: string;
-    complete: boolean;
-  }> => {
+  const scanInstance = async (host: string, port: number, signal: AbortSignal): Promise<TInstanceResult> => {
     const machine = `${host}:${port}`;
     const candidates = [
       ...accounts.filter((a) => a.host === host && a.port === port),
       ...accounts.filter((a) => a.host !== host || a.port !== port)
     ].filter(isUsableAccount);
 
+    const toResult = (account: TMsSqlAccount, logins: TLogin[], error?: string): TInstanceResult => ({
+      machine,
+      complete: !error,
+      ...(error ? { error: { machine, error } } : {}),
+      accounts: logins.slice(0, MAX_ACCOUNTS_PER_HOST).map((login) => ({
+        accountType: PamAccountType.MsSQL,
+        name: toAccountName(host, port, login.name),
+        fingerprint: `${machine}:${login.name}`,
+        details: {
+          connectionDetails: {
+            host,
+            port,
+            database: login.defaultDatabase || account.database,
+            sslEnabled: account.sslEnabled,
+            sslRejectUnauthorized: account.sslRejectUnauthorized,
+            ...(account.sslCertificate ? { sslCertificate: account.sslCertificate } : {})
+          },
+          credentials: { authMethod: SQL_LOGIN_AUTH_METHOD, username: login.name }
+        }
+      }))
+    });
+
     let lastError = "No credential account could authenticate";
+    let matchedError: string | undefined;
+    let partial: TInstanceResult | undefined;
+    const loggedIn = new Set<string>();
     for (const account of candidates) {
       if (signal.aborted) return { accounts: [], machine, complete: false };
+      // another account for a login that already got in sees the same logins, and would only send it another password
+      if (loggedIn.has(account.username.toLowerCase())) continue;
       try {
         // eslint-disable-next-line no-await-in-loop
-        const logins = await enumerateInstance(host, port, account);
-        let error: string | undefined;
+        const { logins, isSysadmin, denials } = await enumerateInstance(host, port, account);
         if (logins.length > MAX_ACCOUNTS_PER_HOST) {
           logger.warn(
             `PAM SQL Server discovery truncated an instance at the per-instance limit [machine=${machine}] [limit=${MAX_ACCOUNTS_PER_HOST}]`
           );
-          error = `Instance has more than ${MAX_ACCOUNTS_PER_HOST} logins; only the first ${MAX_ACCOUNTS_PER_HOST} were staged`;
-        } else if (logins.every((login) => login.alwaysVisible === 1)) {
-          // a DENY can hide every other login without failing the permission check, so this list can't be trusted
-          error = OWN_LOGIN_ONLY_MESSAGE;
+          return toResult(
+            account,
+            logins,
+            `Instance has more than ${MAX_ACCOUNTS_PER_HOST} logins; only the first ${MAX_ACCOUNTS_PER_HOST} were staged`
+          );
         }
-        return {
-          machine,
-          complete: !error,
-          ...(error ? { error: { machine, error } } : {}),
-          accounts: logins.slice(0, MAX_ACCOUNTS_PER_HOST).map((login) => ({
-            accountType: PamAccountType.MsSQL,
-            name: toAccountName(host, port, login.name),
-            fingerprint: `${machine}:${login.name}`,
-            details: {
-              connectionDetails: {
-                host,
-                port,
-                database: login.defaultDatabase || account.database,
-                sslEnabled: account.sslEnabled,
-                sslRejectUnauthorized: account.sslRejectUnauthorized,
-                ...(account.sslCertificate ? { sslCertificate: account.sslCertificate } : {})
-              },
-              credentials: { authMethod: SQL_LOGIN_AUTH_METHOD, username: login.name }
-            }
-          }))
-        };
+        // a DENY can hide logins without failing the permission check (sysadmin is exempt from DENY), so a list it may
+        // have cut is kept as a fallback while the other credentials are tried
+        let hidden: string | undefined;
+        if (!isSysadmin && denials > 0) hidden = DENIED_LOGINS_MESSAGE;
+        else if (!isSysadmin && logins.every((login) => login.alwaysVisible === 1)) hidden = OWN_LOGIN_ONLY_MESSAGE;
+        if (!hidden) return toResult(account, logins);
+        partial ??= toResult(account, logins, hidden);
+        loggedIn.add(account.username.toLowerCase());
       } catch (err) {
         logger.warn({ err }, `PAM SQL Server discovery failed to scan instance [machine=${machine}]`);
         lastError = describeScanError(err);
+        // the account stored for this instance explains a failure better than one tried as a fallback
+        if (account.host === host && account.port === port) matchedError ??= lastError;
       }
     }
 
-    if (candidates.length) return { accounts: [], error: { machine, error: lastError }, machine, complete: false };
+    if (partial) return partial;
+    if (candidates.length) {
+      return { accounts: [], error: { machine, error: matchedError ?? lastError }, machine, complete: false };
+    }
     return { accounts: [], machine, complete: false };
   };
 
@@ -318,9 +343,15 @@ export const msSqlDiscoveryFactory: TPamDiscoveryFactory = ({
       instancesToScan.map(({ host, port }) => limit(() => scanInstance(host, port, signal)))
     );
 
+    const scannedHosts = new Set(instancesToScan.map(({ host }) => host));
+    const machineErrors: TDiscoveryMachineError[] = targets
+      .filter((host) => !scannedHosts.has(host))
+      .map((host) => ({
+        machine: host,
+        error: `Not reachable through the gateway on the credential accounts' ports (${usablePorts.join(", ")})`
+      }));
     const discovered: TDiscoveredAccount[] = [];
     const scannedAccountMachines: string[] = [];
-    const machineErrors: TDiscoveryMachineError[] = [];
     let droppedInstances = 0;
     for (const result of results) {
       if (discovered.length + result.accounts.length > MAX_ACCOUNTS_PER_SCAN) {
@@ -341,8 +372,18 @@ export const msSqlDiscoveryFactory: TPamDiscoveryFactory = ({
       );
     }
 
+    // logins that slugify alike, or names cut to the length limit, would collide on import into one folder
+    const nameCounts = new Map<string, number>();
+    discovered.forEach(({ name }) => nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1));
+    const staged = discovered.map((account) => {
+      if ((nameCounts.get(account.name) ?? 0) < 2) return account;
+      const hash = crypto.nativeCrypto.createHash("sha256").update(account.fingerprint).digest("hex").slice(0, 6);
+      const base = account.name.slice(0, MAX_ACCOUNT_NAME_LENGTH - hash.length - 1).replace(TRAILING_HYPHENS_REGEX, "");
+      return { ...account, name: `${base}-${hash}` };
+    });
+
     return {
-      accounts: discovered,
+      accounts: staged,
       machineErrors,
       dependencies: [],
       scannedDependencyMachines: [],
