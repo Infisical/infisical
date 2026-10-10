@@ -2615,6 +2615,7 @@ export const registerRoutes = async (
     accessApprovalPolicyEnvironmentDAL,
     groupDAL,
     permissionService,
+    licenseService,
     projectEnvDAL,
     projectDAL,
     userDAL,
@@ -2629,6 +2630,7 @@ export const registerRoutes = async (
   const accessApprovalRequestService = accessApprovalRequestServiceFactory({
     projectDAL,
     permissionService,
+    licenseService,
     accessApprovalRequestReviewerDAL,
     accessApprovalPolicyDAL,
     secretAccessApprovalGlobalResource,
