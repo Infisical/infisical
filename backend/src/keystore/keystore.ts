@@ -168,6 +168,7 @@ export const KeyStorePrefixes = {
   AgentVaultDefaultProject: (orgId: string) => `agent-vault-default-project:${orgId}` as const,
 
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
+  OrgSecretScanningFindingsCount: (orgId: string) => `org-secret-scanning-findings-count:${orgId}` as const,
   CertActivityTrend: (projectId: string, range: string) => `cert-activity-trend:${projectId}:${range}` as const,
   CertPqcTrend: (projectId: string, range: string) => `cert-pqc-trend:${projectId}:${range}` as const,
   RefreshTokenGrace: (sessionId: string) => `refresh-token-grace:${sessionId}` as const,
@@ -279,6 +280,7 @@ export const KeyStoreTtls = {
   AuditLogSettingsInSeconds: 600, // 10 minutes
   PamDefaultProjectInSeconds: 300, // 5 minutes
   AgentVaultDefaultProjectInSeconds: 300, // 5 minutes
+  OrgSecretScanningFindingsCountInSeconds: 300, // 5 minutes
   // How long reads stay in stale-while-revalidate mode after a billing mutation (covers Stripe reconciliation).
   LicenseCachePassThroughInSeconds: 180, // 3 minutes
   // Longer window for redirect-to-Stripe-checkout paths, where the purchase applies via webhook only

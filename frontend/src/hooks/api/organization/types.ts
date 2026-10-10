@@ -114,6 +114,7 @@ export type TOrgProductStats = {
   secretScanning: {
     dataSourcesCount: number;
     resourcesCount: number;
+    findingsCount: number;
     projectsCount: number;
   };
   pam: {

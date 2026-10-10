@@ -105,6 +105,10 @@ PAM and Agent Vault live at `/organizations/$orgId/<slug>` over a single implici
 
 A new org-scoped product therefore needs: a `<product>ProjectId` on the `Organization` type, an entry in `ORG_SCOPED_PRODUCT_TYPES` and `getOrgScopedProductFromPath` (`helpers/project.ts`), and a layout `beforeLoad` that bootstraps the id, patches it into the cached org, and returns both `implicitProjectId` and `implicitProductType` (see `pages/agent-vault/layout.tsx`). Use `isOrgScopedProduct(type)` rather than adding another pathname check; the sidebar, navbar, project switcher and nav links all key off it.
 
+### Single-project products
+
+Secret Scanning has one active project per org (see the root `CLAUDE.md`). Members are sent straight into it, and UI for orgs with older projects is gated on `isMultiInstance` from `useGetSecretScanningInstanceState`.
+
 ## Conventions
 
 - ESLint flat config (ESLint 9+) with airbnb-typescript + prettier. Double quotes enforced.
