@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -79,6 +80,10 @@ describe("CertificateV3Service", () => {
 
   const mockTelemetryService = {
     sendPostHogEvents: vi.fn().mockResolvedValue(undefined)
+  };
+
+  const mockAuditLogService = {
+    createCollapsedAuditLog: vi.fn().mockResolvedValue(undefined)
   };
 
   const mockCertificateDAL: Pick<
@@ -355,7 +360,7 @@ describe("CertificateV3Service", () => {
       },
       projectDAL: {
         findOne: vi.fn().mockResolvedValue({ id: "project-123" }),
-        findById: vi.fn().mockResolvedValue({ id: "project-123" }),
+        findById: vi.fn().mockResolvedValue({ id: "project-123", orgId: "org-123" }),
         updateById: vi.fn().mockResolvedValue({ id: "project-123" }),
         transaction: vi.fn().mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
           const mockTx = {};
@@ -391,7 +396,8 @@ describe("CertificateV3Service", () => {
       usageCounterDAL: mockUsageCounterDAL,
       keyStore: mockKeyStore,
       licenseService: mockLicenseService,
-      telemetryService: mockTelemetryService
+      telemetryService: mockTelemetryService,
+      auditLogService: mockAuditLogService
     });
   });
 
@@ -3553,6 +3559,204 @@ describe("CertificateV3Service", () => {
           certificateId: "cert-123"
         })
       ).rejects.toThrow("Certificate is not eligible for auto-renewal: certificate was not issued from a profile");
+    });
+  });
+  describe("certificate issuance failure audit", () => {
+    const auditLogInfo = {
+      ipAddress: "127.0.0.1",
+      userAgent: "test-agent",
+      userAgentType: UserAgentType.OTHER,
+      actor: { type: ActorType.USER as const, metadata: { userId: "user-123", email: "a@b.com", username: "a@b.com" } }
+    };
+
+    const issueDto = {
+      profileId: "profile-123",
+      certificateRequest: { commonName: "fail.example.com", validity: { ttl: "30d" } },
+      actor: ActorType.USER,
+      actorId: "user-123",
+      actorAuthMethod: AuthMethod.EMAIL,
+      actorOrgId: "org-123"
+    };
+
+    beforeEach(() => {
+      vi.mocked(mockCertificateProfileDAL.findById).mockResolvedValue({
+        id: "profile-123",
+        projectId: "project-123",
+        slug: "web-servers",
+        caId: "ca-123"
+      } as never);
+    });
+
+    it("records the failure with the reason and the profile's details", async () => {
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue({
+        id: "profile-123",
+        projectId: "project-123",
+        slug: "web-servers",
+        caId: "ca-123",
+        enrollmentType: EnrollmentType.API
+      } as never);
+      await expect(service.issueCertificateFromProfile({ ...issueDto, auditLogInfo })).rejects.toThrow(
+        "This profile must be issued through an Application"
+      );
+
+      expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledTimes(1);
+      expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: "project-123",
+          actor: auditLogInfo.actor,
+          event: {
+            type: EventType.CERTIFICATE_ISSUANCE_FAILED,
+            metadata: {
+              operation: CertificateIssuanceOperation.ISSUE,
+              enrollmentType: EnrollmentType.API,
+              commonName: "fail.example.com",
+              certificateProfileId: "profile-123",
+              profileName: "web-servers",
+              caId: "ca-123",
+              errorName: "BadRequest",
+              error:
+                "This profile must be issued through an Application. Attach it to an Application and issue from there."
+            }
+          }
+        })
+      );
+    });
+
+    it("records nothing without audit log info", async () => {
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockRejectedValue(new BadRequestError({ message: "x" }));
+
+      await expect(service.issueCertificateFromProfile(issueDto)).rejects.toThrow("x");
+
+      expect(mockAuditLogService.createCollapsedAuditLog).not.toHaveBeenCalled();
+    });
+
+    it("leaves permission denials to the permission-denied event", async () => {
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockRejectedValue(
+        new ForbiddenRequestError({ message: "denied" })
+      );
+
+      await expect(service.issueCertificateFromProfile({ ...issueDto, auditLogInfo })).rejects.toThrow("denied");
+
+      expect(mockAuditLogService.createCollapsedAuditLog).not.toHaveBeenCalled();
+    });
+
+    it("never writes into another org's audit log", async () => {
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockRejectedValue(new NotFoundError({ message: "x" }));
+
+      await expect(
+        service.issueCertificateFromProfile({ ...issueDto, actorOrgId: "other-org", auditLogInfo })
+      ).rejects.toThrow("x");
+
+      expect(mockAuditLogService.createCollapsedAuditLog).not.toHaveBeenCalled();
+    });
+
+    it("still surfaces the original error when recording fails", async () => {
+      const failure = new BadRequestError({ message: "bad csr" });
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockRejectedValue(failure);
+      mockAuditLogService.createCollapsedAuditLog.mockRejectedValueOnce(new Error("redis down"));
+
+      await expect(service.issueCertificateFromProfile({ ...issueDto, auditLogInfo })).rejects.toBe(failure);
+    });
+
+    it("records a sign failure under the operation the caller passed", async () => {
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockRejectedValue(new BadRequestError({ message: "x" }));
+
+      await expect(
+        service.signCertificateFromProfile({
+          profileId: "profile-123",
+          csr: "not a csr",
+          validity: { ttl: "30d" },
+          enrollmentType: EnrollmentType.EST,
+          issuanceOperation: CertificateIssuanceOperation.RENEW,
+          originalCertificateId: "cert-old",
+          actor: ActorType.USER,
+          actorId: "user-123",
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: "org-123",
+          auditLogInfo
+        } as never)
+      ).rejects.toThrow("x");
+
+      expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: expect.objectContaining({
+            metadata: expect.objectContaining({
+              operation: CertificateIssuanceOperation.RENEW,
+              enrollmentType: EnrollmentType.EST,
+              originalCertificateId: "cert-old"
+            })
+          })
+        })
+      );
+    });
+
+    it("records an order failure with the order's common name", async () => {
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockRejectedValue(new BadRequestError({ message: "x" }));
+
+      await expect(
+        service.orderCertificate({
+          profileId: "profile-123",
+          certificateOrder: { commonName: "order.example.com", altNames: [], validity: { ttl: "30d" } },
+          actor: ActorType.USER,
+          actorId: "user-123",
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: "org-123",
+          auditLogInfo
+        } as never)
+      ).rejects.toThrow("x");
+
+      expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: expect.objectContaining({
+            metadata: expect.objectContaining({
+              operation: CertificateIssuanceOperation.ORDER,
+              commonName: "order.example.com"
+            })
+          })
+        })
+      );
+    });
+
+    const renewDto = {
+      certificateId: "cert-123",
+      actor: ActorType.USER,
+      actorId: "user-123",
+      actorAuthMethod: AuthMethod.EMAIL,
+      actorOrgId: "org-123",
+      auditLogInfo
+    };
+
+    const storedCertificate = {
+      id: "cert-123",
+      projectId: "project-123",
+      commonName: "renew.example.com",
+      profileId: "profile-123",
+      caId: "ca-123",
+      applicationId: "app-123"
+    };
+
+    it("records a failed renewal against the original certificate", async () => {
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(storedCertificate as never);
+      vi.mocked(mockCertificateDAL.transaction).mockRejectedValueOnce(
+        new BadRequestError({ message: "CA is disabled" })
+      );
+
+      await expect(service.renewCertificate(renewDto)).rejects.toThrow("CA is disabled");
+
+      expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: expect.objectContaining({
+            type: EventType.CERTIFICATE_ISSUANCE_FAILED,
+            metadata: expect.objectContaining({
+              operation: CertificateIssuanceOperation.RENEW,
+              originalCertificateId: "cert-123",
+              commonName: "renew.example.com",
+              certificateProfileId: "profile-123",
+              applicationId: "app-123"
+            })
+          })
+        })
+      );
     });
   });
 });

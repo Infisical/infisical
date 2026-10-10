@@ -1,7 +1,7 @@
 import { AGENT_VAULT_MAX_REFERENCES_PER_FIELD } from "@app/ee/services/agent-vault/agent-vault-variable-fns";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
-  SECRET_ROTATION_CONNECTION_MAP,
+  getSecretRotationConnectionApps,
   SECRET_ROTATION_NAME_MAP
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
@@ -2901,6 +2901,14 @@ export const AppConnections = {
   ROTATE_CREDENTIALS: (app: AppConnection) => ({
     connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to rotate credentials for.`
   }),
+  KEEPER: {
+    LIST_SHARED_FOLDERS: {
+      connectionId: "The ID of the Keeper Connection to list shared folders from.",
+      sharedFolders: "The Keeper shared folders the connection can access, sorted by name.",
+      uid: "The UID of the Keeper shared folder.",
+      name: "The name of the Keeper shared folder. Falls back to the UID when the folder has no name."
+    }
+  },
   CREDENTIALS: {
     AUTH0_CONNECTION: {
       domain: "The domain of the Auth0 instance to connect to.",
@@ -3099,6 +3107,15 @@ export const AppConnections = {
       blockedUsers:
         "A comma-separated list of usernames that are blocked from being used in operations like secret rotation (e.g., 'root,admin,ubuntu')."
     },
+    HPE_ILO: {
+      hostname: "The hostname or IP address of the HPE iLO management interface (e.g., 'ilo.example.com').",
+      port: "The HTTPS port of the HPE iLO Redfish API (default: 443).",
+      username: "The iLO local account username used to authenticate with the Redfish API.",
+      password: "The password for the iLO local account.",
+      sslRejectUnauthorized:
+        "Whether or not to reject untrusted SSL certificates (true/false). Set to false for iLO interfaces using self-signed certificates.",
+      sslCertificate: "The CA certificate (PEM format) used to verify the iLO interface's TLS certificate."
+    },
     DBT: {
       apiToken: "The API token used to authenticate with DBT.",
       accountId: "The account ID of your DBT account.",
@@ -3123,6 +3140,10 @@ export const AppConnections = {
     LITELLM: {
       apiKey: "The LiteLLM API key used to authenticate with the LiteLLM instance.",
       instanceUrl: "The base URL of your LiteLLM instance (e.g. https://litellm.example.com)."
+    },
+    KEEPER: {
+      apiKey: "The API key generated for Keeper Commander Service Mode.",
+      instanceUrl: "The base URL of your Keeper Commander Service Mode instance (e.g. https://keeper.company.com)."
     },
     FIREWORKS: {
       apiKey: "The Fireworks API key used to authenticate with the Fireworks API.",
@@ -3410,6 +3431,10 @@ export const SecretSyncs = {
       vaultId: "The ID of the 1Password vault to sync secrets to.",
       valueLabel: "The label of the entry that holds the secret value."
     },
+    KEEPER: {
+      folderUid: "The UID of the Keeper Password Manager shared folder to sync secrets to.",
+      folderName: "The name of the Keeper Password Manager shared folder to sync secrets to."
+    },
     HEROKU: {
       app: "The ID of the Heroku app to sync secrets to.",
       appName: "The name of the Heroku app to sync secrets to."
@@ -3447,6 +3472,12 @@ export const SecretSyncs = {
     },
     CLOUDFLARE_WORKERS: {
       scriptId: "The ID of the Cloudflare Workers script to sync secrets to."
+    },
+    CLOUDFLARE_SECRETS_STORE: {
+      storeId: "The ID of the Cloudflare Secrets Store to sync secrets to.",
+      storeName: "An optional display name for the Cloudflare Secrets Store.",
+      scopes:
+        "The Cloudflare services allowed to use the synced secrets. Applied every time a secret is written, so it replaces scopes set in Cloudflare."
     },
     ZABBIX: {
       scope: "The Zabbix scope that secrets should be synced to.",
@@ -3556,9 +3587,9 @@ export const SecretRotations = {
       projectId: "The ID of the project to create the rotation in.",
       environment: `The slug of the project environment to create the rotation in.`,
       secretPath: `The secret path of the project to create the rotation in.`,
-      connectionId: `The ID of the ${
-        APP_CONNECTION_NAME_MAP[SECRET_ROTATION_CONNECTION_MAP[type]]
-      } Connection to use for rotation.`,
+      connectionId: `The ID of the ${getSecretRotationConnectionApps(type)
+        .map((app) => APP_CONNECTION_NAME_MAP[app])
+        .join(" or ")} Connection to use for rotation.`,
       isAutoRotationEnabled: `Whether secrets should be automatically rotated when the specified rotation interval has elapsed.`,
       rotationInterval: `The interval, in days, to automatically rotate secrets.`,
       rotateAtUtc: `The hours and minutes rotation should occur at in UTC. Defaults to Midnight (00:00) UTC.`
@@ -3741,6 +3772,10 @@ export const SecretRotations = {
         "The name for each Stripe API key this rotation creates, up to 80 characters. Infisical appends a timestamp so the old and new key can be told apart. Defaults to 'infisical-managed'.",
       permissions:
         "The permissions granted to the generated Stripe API key. Stripe has no wildcard permission, so this is the full list of what the key may do."
+    },
+    GCP_SERVICE_ACCOUNT_KEY: {
+      serviceAccountEmail:
+        "The email of the GCP service account whose keys will be rotated, e.g. my-app@my-project.iam.gserviceaccount.com. The connection's service account needs the Service Account Key Admin role (roles/iam.serviceAccountKeyAdmin) on it."
     }
   },
   SECRETS_MAPPING: {
@@ -3843,6 +3878,10 @@ export const SecretRotations = {
     },
     STRIPE_API_KEY: {
       apiKey: "The name of the secret that the rotated Stripe API key will be mapped to."
+    },
+    GCP_SERVICE_ACCOUNT_KEY: {
+      serviceAccountKey:
+        "The name of the secret that the rotated service account key (the JSON key file) will be mapped to."
     }
   }
 };
@@ -4401,8 +4440,7 @@ export const AGENT_VAULT = {
     updatedAt: "When the variable was last changed."
   },
   MEMBER: {
-    memberId: "The ID of the access bundle membership.",
-    createdAt: "When the access bundle was granted.",
+    grantedAt: "When the access bundle was granted.",
     userId: "The ID of the user whose Agent Vault membership this is.",
     identityId: "The ID of the machine identity whose Agent Vault membership this is.",
     groupId: "The ID of the group whose Agent Vault membership this is.",
@@ -4433,6 +4471,7 @@ export const AGENT_VAULT = {
   MEMBERSHIP: {
     role: "The Agent Vault role: admin or member.",
     isActive: "Whether the member can currently reach Agent Vault.",
+    addedAt: "When the member was added to Agent Vault.",
     userIds: "The IDs of the users to act on.",
     machineIdentityIds: "The IDs of the machine identities to act on.",
     groupIds: "The IDs of the groups to act on.",

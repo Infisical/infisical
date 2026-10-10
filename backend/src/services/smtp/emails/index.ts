@@ -27,6 +27,7 @@ export * from "./OrgAdminBreakglassAccessTemplate";
 export * from "./OrgAdminProjectFolderGrantAccessTemplate";
 export * from "./OrganizationAssignmentTemplate";
 export * from "./OrganizationInvitationTemplate";
+export * from "./PamFolderAdminAccessTemplate";
 export * from "./PasswordResetTemplate";
 export * from "./PasswordSetupTemplate";
 export * from "./PkiApprovalRequestNeedsReviewTemplate";

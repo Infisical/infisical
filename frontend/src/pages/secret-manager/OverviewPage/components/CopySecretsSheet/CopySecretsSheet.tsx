@@ -9,6 +9,10 @@ import {
 
 import { createNotification } from "@app/components/notifications";
 import {
+  SecretSyncMoveWarning,
+  useSecretSyncMoveWarning
+} from "@app/components/secret-syncs/SecretSyncMoveWarning";
+import {
   Alert,
   AlertDescription,
   AlertDialog,
@@ -193,6 +197,21 @@ const CopySecretsSession = ({
     destinationRootPath: normalizedDestinationPath,
     includeValues
   });
+  const secretSyncWarning = useSecretSyncMoveWarning(
+    projectId,
+    sourceEnvironmentSlug &&
+      destinationEnvironmentSlug &&
+      isSourcePathSettled &&
+      isDestinationPathSettled
+      ? requestGroups.map((group) => ({
+          source: { environment: sourceEnvironmentSlug, secretPath: group.sourcePath },
+          destination: {
+            environment: destinationEnvironmentSlug,
+            secretPath: group.destinationPath
+          }
+        }))
+      : []
+  );
   const destinationFolderPaths = getCopyDestinationFolderPaths({
     folderPaths: selectedFolderPaths,
     sourceRootPath: normalizedSourcePath,
@@ -326,6 +345,8 @@ const CopySecretsSession = ({
     if (destinationErrorKind === "forbidden") return "Destination access is required";
     if (isDestinationLoading) return "Loading destination secrets";
     if (!selectedItemCount) return "Select at least one secret or folder";
+    if (secretSyncWarning.isChecking) return "Checking the destination for secret syncs";
+    if (secretSyncWarning.isBlockingSubmit) return "Confirm the secret sync warning to copy";
     if (
       destinationFolderSteps.some(
         ({ parentPath }) => !canCreateFoldersAt(destinationEnvironmentSlug, parentPath)
@@ -742,6 +763,13 @@ const CopySecretsSession = ({
                 <span className="font-mono text-foreground">{normalizedDestinationPath}</span>,
                 including empty folders. Managed secrets, dynamic secrets, and imports are excluded.
               </p>
+
+              <SecretSyncMoveWarning
+                warning={secretSyncWarning}
+                projectId={projectId}
+                noun={selectedFolderPaths.length ? "items" : "secrets"}
+                verb="copied"
+              />
             </div>
 
             <SheetFooter className="flex-wrap items-center border-t">

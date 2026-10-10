@@ -592,6 +592,14 @@ export const appConnections = [
     category: "Networking & DNS",
   },
   {
+    name: "HPE iLO",
+    slug: "hpe-ilo",
+    path: "/integrations/app-connections/hpe-ilo",
+    description:
+      "Learn how to connect HPE iLO to manage iLO local accounts with Infisical.",
+    category: "Networking & DNS",
+  },
+  {
     name: "NetScaler",
     slug: "netscaler",
     path: "/integrations/app-connections/netscaler",
@@ -666,5 +674,13 @@ export const appConnections = [
     description:
       "Learn how to connect Spacelift to pull secrets from Infisical.",
     category: "DevOps Tools",
+  },
+  {
+    name: "Keeper",
+    slug: "keeper",
+    path: "/integrations/app-connections/keeper",
+    description:
+      "Learn how to connect Keeper Commander Service Mode to sync secrets from Infisical.",
+    category: "Security",
   },
 ];

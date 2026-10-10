@@ -550,28 +550,8 @@ export const SecretTableRow = ({
               )}
             >
               {isExpanded && (
-                <div className="flex w-10 shrink-0 items-center justify-center [&>svg]:size-4">
-                  <Checkbox
-                    variant="project"
-                    id={`checkbox-${secretKey}`}
-                    isChecked={isSelected}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleSecretSelect(secretKey, e.shiftKey);
-                    }}
-                    className={twMerge(
-                      "hidden",
-                      !isSelectionDisabled && "group-hover:flex",
-                      isSelected && "flex"
-                    )}
-                  />
-                  <ChevronDownIcon
-                    className={twMerge(
-                      "block",
-                      !isSelectionDisabled && "group-hover:!hidden",
-                      isSelected && "!hidden"
-                    )}
-                  />
+                <div className="flex w-10 shrink-0 cursor-pointer items-center justify-center [&>svg]:size-4">
+                  <ChevronDownIcon />
                 </div>
               )}
               <div
