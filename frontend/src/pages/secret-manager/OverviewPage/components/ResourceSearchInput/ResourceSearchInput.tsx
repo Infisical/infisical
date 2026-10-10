@@ -20,6 +20,8 @@ type Props = Omit<QuickSearchModalProps, "isOpen" | "onClose" | "onOpenChange" |
   value: string;
   onChange: (search: string) => void;
   className?: string;
+  isSearchAllFoldersOpen?: boolean;
+  onSearchAllFoldersOpenChange?: (isOpen: boolean) => void;
 };
 
 export const ResourceSearchInput = ({
@@ -27,9 +29,11 @@ export const ResourceSearchInput = ({
   onChange,
   className,
   isSingleEnv,
+  isSearchAllFoldersOpen,
+  onSearchAllFoldersOpenChange,
   ...props
 }: Props) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isInternalOpen, setIsInternalOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [isOptionHighlighted, setIsOptionHighlighted] = useState(false);
   const deepSearchBtnRef = useRef<HTMLButtonElement>(null);
@@ -70,6 +74,11 @@ export const ResourceSearchInput = ({
   };
 
   const hasSearch = Boolean(inputValue.trim());
+  const isOpen = isSearchAllFoldersOpen ?? isInternalOpen;
+  const handleOpenChange = (open: boolean) => {
+    if (isSearchAllFoldersOpen === undefined) setIsInternalOpen(open);
+    onSearchAllFoldersOpenChange?.(open);
+  };
 
   return (
     <>
@@ -112,7 +121,7 @@ export const ResourceSearchInput = ({
                     setIsOptionHighlighted(true);
                   } else if (e.key === "Enter" && isOptionHighlighted) {
                     e.preventDefault();
-                    setIsOpen(true);
+                    handleOpenChange(true);
                     setIsFocused(false);
                     setIsOptionHighlighted(false);
                   } else if (e.key === "Escape") {
@@ -160,7 +169,7 @@ export const ResourceSearchInput = ({
               }
             }}
             onClick={() => {
-              setIsOpen(true);
+              handleOpenChange(true);
               setIsFocused(false);
               setIsOptionHighlighted(false);
             }}
@@ -175,10 +184,10 @@ export const ResourceSearchInput = ({
       <QuickSearchModal
         isSingleEnv={isSingleEnv}
         isOpen={isOpen}
-        onOpenChange={setIsOpen}
+        onOpenChange={handleOpenChange}
         initialValue={inputValue}
         onClose={(clearSearch = true) => {
-          setIsOpen(false);
+          handleOpenChange(false);
           if (clearSearch) handleClear();
         }}
         {...props}
