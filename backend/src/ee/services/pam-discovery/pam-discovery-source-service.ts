@@ -226,7 +226,11 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
 
     // discovery transmits a password to every scanned host, so a password account may only be used by an actor
     // allowed to view its secret
-    if (account.accountType === PamAccountType.SSH || account.accountType === PamAccountType.Postgres) {
+    if (
+      account.accountType === PamAccountType.SSH ||
+      account.accountType === PamAccountType.Postgres ||
+      account.accountType === PamAccountType.MsSQL
+    ) {
       const { decryptor } = await getProjectCipher(projectId);
       const { authMethod } = decryptToObject(account.encryptedCredentials, decryptor) as { authMethod?: string };
 
@@ -236,10 +240,16 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
         });
       }
 
+      if (account.accountType === PamAccountType.MsSQL && authMethod !== "sql-login") {
+        throw new BadRequestError({
+          message: `SQL Server account '${account.name}' uses Windows authentication, which cannot scan. Select an account that uses SQL Server authentication.`
+        });
+      }
+
       const sendsPassword =
         account.accountType === PamAccountType.Postgres
           ? authMethod !== PamPostgresAuthMethod.AwsIam
-          : authMethod === PamSshAuthMethod.Password;
+          : authMethod === PamSshAuthMethod.Password || authMethod === "sql-login";
       if (sendsPassword) {
         await checkAccountAccess(
           permissionService,
@@ -486,8 +496,12 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       const goneAccounts = storedAccounts.filter((a) => {
         if (seenFingerprints.has(a.fingerprint)) return false;
         if (a.accountType === PamAccountType.WindowsAd) return true;
-        if (a.accountType === PamAccountType.Windows || a.accountType === PamAccountType.Postgres) {
-          // fingerprints are `${domain}:${computerObjectGUID}:${username}` and `${host}:${port}:${rolname}`; in
+        if (
+          a.accountType === PamAccountType.Windows ||
+          a.accountType === PamAccountType.Postgres ||
+          a.accountType === PamAccountType.MsSQL
+        ) {
+          // fingerprints are `${domain}:${computerObjectGUID}:${username}` and `${host}:${port}:${login}`; in
           // both the machine key is the first two segments, matching what the provider reports as re-checked
           const machineKey = a.fingerprint.split(":").slice(0, 2).join(":");
           return scannedMachines.has(machineKey);

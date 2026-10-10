@@ -756,7 +756,8 @@
                       "documentation/platform/pam/discovery/overview",
                       "documentation/platform/pam/discovery/active-directory",
                       "documentation/platform/pam/discovery/unix",
-                      "documentation/platform/pam/discovery/postgres"
+                      "documentation/platform/pam/discovery/postgres",
+                      "documentation/platform/pam/discovery/mssql"
                     ]
                   },
                   {
