@@ -10,7 +10,7 @@ import {
   TSecretsUpdate
 } from "@app/db/schemas";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
-import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { OrderByDirection, TGenericPermission, TProjectPermission } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
@@ -103,6 +103,7 @@ export type TUpdateSecretDTO = {
   skipMultilineEncoding?: boolean | null;
   secretReminderRepeatDays?: number | null;
   secretReminderNote?: string | null;
+  secretReminderRecipients?: string[] | null;
   metadata?: {
     source?: string;
   };
@@ -449,20 +450,13 @@ export type THandleReminderDTO = {
   newSecret: TPartialInputSecret;
   oldSecret: TPartialSecret;
   projectId: string;
-};
-
-export type TCreateSecretReminderDTO = {
-  oldSecret: TPartialSecret;
-  newSecret: TPartialSecret;
-  projectId: string;
-  secretReminderRecipients: string[];
-
-  deleteRecipients?: boolean;
+  // Whoever is updating the secret, as whom the reminder is saved.
+  actor: TGenericPermission;
 };
 
 export type TRemoveSecretReminderDTO = {
   secretId: string;
-  repeatDays: number;
+  repeatDays?: number;
   projectId: string;
   deleteRecipients?: boolean;
 };

@@ -42,7 +42,6 @@ import {
 } from "../folder-commit/folder-commit-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
-import { TReminderDALFactory } from "../reminder/reminder-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
@@ -118,8 +117,7 @@ type TSecretFolderServiceFactoryDep = {
   secretImportDAL: Pick<TSecretImportDALFactory, "findImportByFolderIds">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "dispatchSecretMoveSideEffects">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
-  reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
-  reminderService: Pick<TReminderServiceFactory, "batchCreateReminders">;
+  reminderService: Pick<TReminderServiceFactory, "moveReminders" | "copyReminders">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
 };
 
@@ -150,7 +148,6 @@ export const secretFolderServiceFactory = ({
   secretImportDAL,
   secretV2BridgeService,
   secretValidationRuleService,
-  reminderDAL,
   reminderService,
   keyStore
 }: TSecretFolderServiceFactoryDep) => {
@@ -2005,7 +2002,6 @@ export const secretFolderServiceFactory = ({
             secretApprovalRequestDAL,
             secretApprovalRequestSecretDAL,
             secretQueueService,
-            reminderDAL,
             reminderService,
             secretValidationRuleService
           })

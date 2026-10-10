@@ -48,6 +48,10 @@ export const notificationServiceFactory = ({
     await userNotificationDAL.markAllNotificationsAsRead(userId, orgId);
   };
 
+  const deleteUserNotifications = async ({ userId, orgId }: { userId: string; orgId: string }) => {
+    await userNotificationDAL.deleteAllNotifications(userId, orgId);
+  };
+
   const updateUserNotification = async ({
     userId,
     notificationId,
@@ -75,6 +79,7 @@ export const notificationServiceFactory = ({
     listUserNotifications,
     createUserNotifications,
     deleteUserNotification,
+    deleteUserNotifications,
     markUserNotificationsAsRead,
     updateUserNotification
   };
