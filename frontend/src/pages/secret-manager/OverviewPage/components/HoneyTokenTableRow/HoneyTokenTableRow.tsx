@@ -45,7 +45,9 @@ import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell"
 import { useRowHoverActions } from "../rowHoverActions";
 import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
+  TABLE_ROW_ACTION_BAR_VISIBLE_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+  TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME,
   TABLE_ROW_EXPAND_ICON_CLASS_NAME,
   TABLE_ROW_EXPANDED_ICON_CLASS_NAME,
   TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
@@ -118,12 +120,18 @@ export const HoneyTokenTableRow = ({
 
   const renderActionButtons = (honeyToken: TDashboardHoneyToken, envSlug: string) => {
     const isRevoked = honeyToken.status === HoneyTokenStatus.Revoked;
+    // The menu is portaled, so moving the pointer into it leaves the row and drops both
+    // `group-hover` and `group-focus-within`. Mounting the bar is not enough on its own: without
+    // this the bar would fade to opacity 0 and the trigger collapse to width 0 underneath the open
+    // menu. Keyed by environment so only the row whose menu is open is held visible.
+    const isActionMenuOpen = openActionMenuEnv === envSlug;
 
     return (
       <div
         className={twMerge(
           "flex items-center rounded-md border border-border bg-container-hover p-0.5",
-          TABLE_ROW_ACTION_BAR_CLASS_NAME
+          TABLE_ROW_ACTION_BAR_CLASS_NAME,
+          isActionMenuOpen && TABLE_ROW_ACTION_BAR_VISIBLE_CLASS_NAME
         )}
       >
         <Tooltip>
@@ -131,7 +139,10 @@ export const HoneyTokenTableRow = ({
             <IconButton
               variant="ghost"
               size="xs"
-              className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
+              className={twMerge(
+                TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+                isActionMenuOpen && TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME
+              )}
               aria-label={`View details for ${honeyToken.name}`}
               onClick={() => onViewDetails(honeyToken)}
             >
@@ -172,7 +183,10 @@ export const HoneyTokenTableRow = ({
               <IconButton
                 variant="ghost"
                 size="xs"
-                className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
+                className={twMerge(
+                  TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+                  isActionMenuOpen && TABLE_ROW_ACTION_BUTTON_VISIBLE_CLASS_NAME
+                )}
                 aria-label={`More actions for ${honeyToken.name}`}
               >
                 <EllipsisIcon />
