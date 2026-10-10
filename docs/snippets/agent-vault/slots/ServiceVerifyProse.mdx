@@ -30,7 +30,7 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
   OpenAI returns the list of available models. Run the same request outside the agent and it fails with a 401.
 </AgentVaultBranch>
 
-<AgentVaultBranch serviceNot="anthropic,cloudflare,cohere,datadog,deepseek,discord,fireworks,gemini,github,github-npm,gitlab,google-workspace,groq,jira,linear,mistral,none,notion,npm,openai,openrouter,pagerduty,perplexity,postmark,resend,sendgrid,sentry,shopify,slack,stripe,supabase,together,twilio,vercel,xai">
+<AgentVaultBranch serviceNot="anthropic,cloudflare,cohere,datadog,deepseek,discord,fireworks,gemini,github,github-npm,gitlab,google-workspace,groq,jira,linear,mistral,none,notion,npm,openai,openrouter,pagerduty,perplexity,postmark,resend,sendgrid,sentry,shipmail,shopify,slack,stripe,supabase,together,twilio,vercel,xai">
   Ask the agent to hit an authenticated endpoint. The proxy attaches the credential as the request passes through, so the agent needs no real token. Run the same request outside the agent and it should fail with an authentication error.
 </AgentVaultBranch>
 
@@ -152,6 +152,12 @@ import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx
   > Run `curl -sS https://api.resend.com/api-keys` and show me the output.
 
   Resend returns your API keys. Run the same request outside the agent and it fails with a 401.
+</AgentVaultBranch>
+
+<AgentVaultBranch service="shipmail">
+  > Run `curl -sS https://shipmail.to/api/v1/capabilities` and show me the output.
+
+  Shipmail returns the scopes of your API key. Run the same request outside the agent and it fails with a 401.
 </AgentVaultBranch>
 
 <AgentVaultBranch service="sendgrid">
