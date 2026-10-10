@@ -252,7 +252,7 @@ export const createFolderResolver = ({
 };
 
 // Splits one batch into consecutive requests that each serialize to at most maxBytes, measuring
-// the exact JSON body that is sent. A secret too large to fit on its own is left out and flagged.
+// the exact JSON body that is sent. A secret too large to fit on its own is left out and returned.
 export const chunkSecretsByRequestSize = <T>(
   envelope: Record<string, unknown>,
   secrets: T[],
@@ -265,11 +265,11 @@ export const chunkSecretsByRequestSize = <T>(
   const chunks: T[][] = [];
   let current: T[] = [];
   let currentBytes = emptyRequestBytes;
-  let hasOversizedSecret = false;
+  const oversized: T[] = [];
   secrets.forEach((secret) => {
     const secretBytes = byteSize(secret);
     if (emptyRequestBytes + secretBytes > maxBytes) {
-      hasOversizedSecret = true;
+      oversized.push(secret);
       return;
     }
     // Every secret after the first in a request adds a separating comma
@@ -283,5 +283,33 @@ export const chunkSecretsByRequestSize = <T>(
   });
   if (current.length) chunks.push(current);
 
-  return { chunks, hasOversizedSecret };
+  return { chunks, oversized };
+};
+
+// The secret endpoints share one per-IP, per-minute limit (60 by default), so a nested import
+// sends its requests one at a time, in the order they are queued. A rate-limited request waits
+// for the delay the server asks for and is retried once before it counts as failed.
+export const createRateLimitedQueue = (
+  getRateLimitDelayMs: (error: unknown) => number | null,
+  wait = (ms: number) =>
+    new Promise<void>((resolve) => {
+      setTimeout(resolve, ms);
+    })
+) => {
+  let tail: Promise<unknown> = Promise.resolve();
+  return <T>(request: () => Promise<T>): Promise<T> => {
+    const run = async () => {
+      try {
+        return await request();
+      } catch (error) {
+        const delayMs = getRateLimitDelayMs(error);
+        if (delayMs === null) throw error;
+        await wait(delayMs);
+        return request();
+      }
+    };
+    const result = tail.then(run, run);
+    tail = result.catch(() => undefined);
+    return result;
+  };
 };

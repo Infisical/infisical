@@ -1,5 +1,6 @@
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { subject } from "@casl/ability";
+import axios from "axios";
 import {
   ChevronRightIcon,
   ChevronsDownUpIcon,
@@ -71,6 +72,7 @@ import {
   buildFolderTree,
   chunkSecretsByRequestSize,
   createFolderResolver,
+  createRateLimitedQueue,
   flattenNestedJson,
   getNestedJsonObject,
   joinSecretPath,
@@ -147,11 +149,22 @@ const ImportSecretsContent = ({
 
   const { mutateAsync: createSecretBatch } = useCreateSecretBatch();
   const { mutateAsync: updateSecretBatch } = useUpdateSecretBatch();
+  // Nested imports retry rate-limited requests and report what still fails per folder, so a
+  // 429 should not also raise a global toast
+  const quietRateLimitOptions = {
+    meta: { handledErrorCodes: [ApiErrorTypes.RateLimitError] }
+  };
+  const { mutateAsync: createNestedSecretBatch } = useCreateSecretBatch({
+    options: quietRateLimitOptions
+  });
+  const { mutateAsync: updateNestedSecretBatch } = useUpdateSecretBatch({
+    options: quietRateLimitOptions
+  });
   const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
   // A create that loses a race with another writer is recovered as a reused folder, and any
   // other folder failure is listed in the import's own warning, so no toast per folder
   const { mutateAsync: createFolder } = useCreateFolder({
-    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError] }
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError, ApiErrorTypes.RateLimitError] }
   });
   const { mutateAsync: createWsTag } = useCreateWsTag();
 
@@ -399,15 +412,18 @@ const ImportSecretsContent = ({
         environment: string,
         path: string,
         secrets: TParsedEnv,
-        isSplitBySize = false
+        // Only nested imports pass a queue; they also split batches by size
+        enqueue?: <T>(request: () => Promise<T>) => Promise<T>
       ) => {
         // Fetch existing secrets to detect conflicts
-        const { secrets: rawExisting } = await fetchProjectSecrets({
-          projectId,
-          environment,
-          secretPath: path,
-          viewSecretValue: false
-        });
+        const fetchExisting = () =>
+          fetchProjectSecrets({
+            projectId,
+            environment,
+            secretPath: path,
+            viewSecretValue: false
+          });
+        const { secrets: rawExisting } = await (enqueue ? enqueue(fetchExisting) : fetchExisting());
 
         const existingSecrets = mergePersonalSecrets(rawExisting);
         const existingKeys = new Set(existingSecrets.map((s) => s.key));
@@ -447,9 +463,9 @@ const ImportSecretsContent = ({
             skipMultilineEncoding: secretData.skipMultilineEncoding
           }));
 
-        if (!isSplitBySize) {
+        if (!enqueue) {
           return {
-            hasOversizedSecret: false,
+            oversizedKeys: [] as string[],
             results: await Promise.allSettled([
               ...(secretsToCreate.length
                 ? [
@@ -484,27 +500,41 @@ const ImportSecretsContent = ({
         );
         const updates = shouldOverwrite
           ? chunkSecretsByRequestSize(envelope, secretsToUpdate, MAX_BATCH_REQUEST_BYTES)
-          : { chunks: [], hasOversizedSecret: false };
-        const hasOversizedSecret = creates.hasOversizedSecret || updates.hasOversizedSecret;
+          : { chunks: [], oversized: [] };
+        const oversizedKeys = [...creates.oversized, ...updates.oversized].map(
+          ({ secretKey }) => secretKey
+        );
         const results = await Promise.allSettled([
-          ...creates.chunks.map((chunk) => createSecretBatch({ ...envelope, secrets: chunk })),
-          ...updates.chunks.map((chunk) => updateSecretBatch({ ...envelope, secrets: chunk })),
-          ...(hasOversizedSecret ? [Promise.reject(new Error("Secret exceeds 1 MB"))] : [])
+          ...creates.chunks.map((chunk) =>
+            enqueue(() => createNestedSecretBatch({ ...envelope, secrets: chunk }))
+          ),
+          ...updates.chunks.map((chunk) =>
+            enqueue(() => updateNestedSecretBatch({ ...envelope, secrets: chunk }))
+          ),
+          ...(oversizedKeys.length ? [Promise.reject(new Error("Secret exceeds 1 MB"))] : [])
         ]);
-        return { hasOversizedSecret, results };
+        return { oversizedKeys, results };
+      };
+
+      const describeOversizedKeys = (keys: string[]) => {
+        if (!keys.length) return undefined;
+        const names = keys.map((key) => `"${key}"`).join(", ");
+        return keys.length === 1
+          ? `secret ${names} is too large to import (over 1 MB) and was skipped`
+          : `secrets ${names} are too large to import (over 1 MB) and were skipped`;
       };
 
       const writeSecrets = async (
         environment: string,
         path: string,
         secrets: TParsedEnv,
-        isSplitBySize?: boolean
+        enqueue?: <T>(request: () => Promise<T>) => Promise<T>
       ) => {
-        const { results, hasOversizedSecret } = await importSecretsAtPath(
+        const { results, oversizedKeys } = await importSecretsAtPath(
           environment,
           path,
           secrets,
-          isSplitBySize
+          enqueue
         );
         const writtenCount = results.filter((r) => r.status === "fulfilled").length;
         let status: "written" | "partial" | "failed" = "partial";
@@ -515,11 +545,20 @@ const ImportSecretsContent = ({
           hasApproval: results.some(
             (r) => r.status === "fulfilled" && "approval" in (r.value as object)
           ),
-          reason: hasOversizedSecret
-            ? "a secret exceeds the 1 MB upload limit, split it into smaller uploads"
-            : undefined
+          reason: describeOversizedKeys(oversizedKeys)
         };
       };
+
+      // One queue for the whole run, since every environment shares the same per-IP limit
+      const enqueue = createRateLimitedQueue((error) => {
+        if (!axios.isAxiosError(error) || error.response?.status !== 429) return null;
+        const retryAfter = Number(error.response.headers["retry-after"]);
+        const ttlSeconds = Number(
+          /in (\d+) seconds/.exec(String(error.response.data?.message ?? ""))?.[1]
+        );
+        const seconds = [retryAfter, ttlSeconds].find((n) => Number.isFinite(n) && n > 0) ?? 5;
+        return Math.min(seconds, 60) * 1000;
+      });
 
       const envPromises = selectedEnvs.map(async (env) => {
         await ensureFolder(env.slug, secretPath);
@@ -541,15 +580,19 @@ const ImportSecretsContent = ({
         // can still write into them and reused folders are not reported as new work
         const resolveFolder = createFolderResolver({
           listFolderNames: async (parentPath) =>
-            (await fetchProjectFolders(projectId, env.slug, parentPath)).map(({ name }) => name),
+            (await enqueue(() => fetchProjectFolders(projectId, env.slug, parentPath))).map(
+              ({ name }) => name
+            ),
           canCreateFolder: (parentPath) => canCreateFolderIn(env.slug, parentPath),
           createFolder: (parentPath, name) =>
-            createFolder({ projectId, environment: env.slug, path: parentPath, name })
+            enqueue(() =>
+              createFolder({ projectId, environment: env.slug, path: parentPath, name })
+            )
         });
         const { state, hasApproval, problems } = await runNestedImport(nestedImport, {
           resolveFolder: (path) => resolveFolder(joinSecretPath(secretPath, path)),
           writeSecrets: (path, secrets) =>
-            writeSecrets(env.slug, joinSecretPath(secretPath, path), secrets, true)
+            writeSecrets(env.slug, joinSecretPath(secretPath, path), secrets, enqueue)
         });
         return {
           environment: env.name,
