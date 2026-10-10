@@ -44,8 +44,8 @@ Using a Machine Identity, you can authenticate your Terraform provider using eit
 ```hcl
 provider "infisical" {
   host          = "https://app.infisical.com" # Optional for cloud, required for self-hosted
-  auth {
-    universal { # or use oidc authentication method by providing an identity_id
+  auth = {
+    universal = { # or use oidc authentication method by providing an identity_id
       client_id     = var.infisical_client_id
       client_secret = var.infisical_client_secret
     }
