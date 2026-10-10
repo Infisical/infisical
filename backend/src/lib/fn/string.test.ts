@@ -1,4 +1,4 @@
-import { sanitizeSqlLikeString } from "./string";
+import { prefixWithSlash, removeTrailingSlash, sanitizeSqlLikeString } from "./string";
 
 describe("sanitizeSqlLikeString", () => {
   test.each([
@@ -13,3 +13,25 @@ describe("sanitizeSqlLikeString", () => {
     expect(sanitizeSqlLikeString(input)).toBe(expected);
   });
 });
+
+describe("removeTrailingSlash", () => {
+  test.each([
+    ["/", "/"],
+    ["///", "/"],
+    ["/foo/", "/foo"],
+    ["/foo//", "/foo"],
+    ["https://example.com///", "https://example.com"],
+    ["path", "path"],
+    ["", ""]
+  ])("removes trailing slashes from %p", (input, expected) => {
+    expect(removeTrailingSlash(input)).toBe(expected);
+  });
+});
+
+describe("prefixWithSlash", () => {
+  test("prefixes with slash if missing", () => {
+    expect(prefixWithSlash("foo")).toBe("/foo");
+    expect(prefixWithSlash("/foo")).toBe("/foo");
+  });
+});
+
