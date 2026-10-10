@@ -31,12 +31,14 @@ export type CapabilityUpgradeIntent = {
   isEnterpriseFeature: boolean;
 };
 
+export const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
+
 export const getCapabilityUpgradeUrl = (
   intent: CapabilityUpgradeIntent,
   organization: { id: string; rootOrgId?: string | null }
 ) =>
   intent.scope === "instance"
-    ? "https://infisical.com/talk-to-us"
+    ? CONTACT_SALES_URL
     : `/organizations/${organization.rootOrgId ?? organization.id}/billing`;
 
 export const GroupsUpgradeIntent = {

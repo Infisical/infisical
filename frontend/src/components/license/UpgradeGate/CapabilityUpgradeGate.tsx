@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useRouterState } from "@tanstack/react-router";
+import { useLocation, useRouterState } from "@tanstack/react-router";
 import { Check, CircleAlert, Server, Shield, Vault } from "lucide-react";
 
 import {
@@ -15,9 +15,15 @@ import {
   useOrgPermission,
   useSubscription
 } from "@app/context";
+import { getOrgScopedProductFromPath } from "@app/helpers/project";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
-import { CapabilityUpgradeIntent, getCapabilityUpgradeUrl } from "./capability-upgrade-intents";
+import {
+  CapabilityUpgradeIntent,
+  CONTACT_SALES_URL,
+  getCapabilityUpgradeUrl
+} from "./capability-upgrade-intents";
 import { UpgradeDialogLayout } from "./UpgradeDialogLayout";
 
 type Props = {
@@ -46,6 +52,11 @@ const CapabilityUpgradeDialog = ({
 }) => {
   const { currentOrg, isSubOrganization } = useOrganization();
   const route = useRouterState({ select: (state) => state.matches.at(-1)?.routeId ?? "unknown" });
+  const { pathname } = useLocation();
+  const isAgentVault =
+    intent.productName === "Agent Vault" ||
+    (intent.featureKey.startsWith("audit_log") &&
+      getOrgScopedProductFromPath(pathname) === ProjectType.AgentVault);
   const eventPropertiesRef = useRef<{
     paywallKey: string;
     paywallText: string;
@@ -84,20 +95,25 @@ const CapabilityUpgradeDialog = ({
       );
     }
 
-    if (isInstance) {
-      window.open(getCapabilityUpgradeUrl(intent, currentOrg), "_blank", "noopener,noreferrer");
+    if (isInstance || isAgentVault) {
+      window.open(CONTACT_SALES_URL, "_blank", "noopener,noreferrer");
       return;
     }
 
     window.location.assign(getCapabilityUpgradeUrl(intent, currentOrg));
   };
 
+  let scopeName = intent.productName ?? "Infisical Platform";
+  if (isInstance) scopeName = "Infisical Instance";
+  else if (isAgentVault) scopeName = "Agent Vault";
+
   let scopeIcon = <Shield className="size-10 text-muted" />;
   if (isInstance) scopeIcon = <Server className="size-10 text-muted" />;
-  else if (isProduct) scopeIcon = <Vault className="size-10 text-muted" />;
+  else if (isProduct || isAgentVault) scopeIcon = <Vault className="size-10 text-muted" />;
 
   let actionLabel = isSubOrganization ? "Continue to Root Billing" : "View Plans";
   if (isInstance) actionLabel = "Contact Sales";
+  else if (isAgentVault) actionLabel = "Contact Us";
   else if (!canReadBilling) actionLabel = "Close";
 
   let billingTitle = "Organization Subscription Required";
@@ -107,6 +123,10 @@ const CapabilityUpgradeDialog = ({
     billingTitle = "Instance License Required";
     billingDescription =
       "This feature is licensed for the entire instance, not an individual product. Contact our team to discuss your deployment.";
+  } else if (isAgentVault) {
+    billingTitle = "Contact Us for Access";
+    billingDescription =
+      "Agent Vault plans aren't available for purchase yet. Contact our team to enable this feature for your organization.";
   } else if (!canReadBilling) {
     billingTitle = "Billing Access Required";
     billingDescription =
@@ -132,6 +152,8 @@ const CapabilityUpgradeDialog = ({
   if (isInstance) {
     scopeDescription =
       "Licensed for your entire self-hosted deployment, independently of organization product plans.";
+  } else if (isAgentVault) {
+    scopeDescription = "Agent Vault access is arranged directly with our team.";
   } else if (isSubOrganization) {
     scopeDescription = "Managed by your root organization and shared with its sub-organizations.";
   } else if (isProduct) {
@@ -140,7 +162,7 @@ const CapabilityUpgradeDialog = ({
 
   return (
     <UpgradeDialogLayout
-      scopeName={isInstance ? "Infisical Instance" : (intent.productName ?? "Infisical Platform")}
+      scopeName={scopeName}
       icon={scopeIcon}
       title={intent.title}
       description={scopeDescription}
@@ -153,7 +175,9 @@ const CapabilityUpgradeDialog = ({
           variant="org"
           className="w-full"
           onClick={
-            !isInstance && !canReadBilling ? () => onOpenChange(false) : openUpgradeDestination
+            !isInstance && !isAgentVault && !canReadBilling
+              ? () => onOpenChange(false)
+              : openUpgradeDestination
           }
         >
           {actionLabel}
@@ -175,7 +199,7 @@ const CapabilityUpgradeDialog = ({
           </li>
         </ul>
       </section>
-      {!isInstance && visiblePlans.length > 0 && (
+      {!isInstance && !isAgentVault && visiblePlans.length > 0 && (
         <>
           <Separator />
           <section aria-label="Current product plans" className="flex flex-col gap-4">
