@@ -4622,3 +4622,10 @@ export const PKI_SYNC_FILTERS = {
   previewOffset: "The offset to start from. If you enter 10, it will start from the 10th matching certificate.",
   previewLimit: "The number of matching certificates to return."
 };
+
+export const FEATURE_DISCOVERIES = {
+  featureDiscoveries: "The feature releases the current user has already seen in the UI.",
+  releaseId: "Stable identifier of the feature release, defined in the frontend release catalog.",
+  createdAt: "When the user first saw the release.",
+  releaseIds: "Identifiers of the feature releases to record as seen. Releases already recorded are ignored."
+};

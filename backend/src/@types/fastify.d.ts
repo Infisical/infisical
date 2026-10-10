@@ -111,6 +111,7 @@ import { TConvertorServiceFactory } from "@app/services/convertor/convertor-serv
 import { TEncryptionKeyRotationServiceFactory } from "@app/services/encryption-key-rotation/encryption-key-rotation-service";
 import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { TExternalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
+import { TFeatureDiscoveryServiceFactory } from "@app/services/feature-discovery/feature-discovery-service";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TFolderPermissionServiceFactory } from "@app/services/folder-permission/folder-permission-service";
 import { TGitHubAppServiceFactory } from "@app/services/github-app/github-app-service";
@@ -459,6 +460,7 @@ declare module "fastify" {
       alert: TAlertServiceFactory;
       alertChannelTest: TAlertChannelTestServiceFactory;
       announcement: TAnnouncementServiceFactory;
+      featureDiscovery: TFeatureDiscoveryServiceFactory;
       offlineUsageReport: TOfflineUsageReportServiceFactory;
       orgProductStats: TOrgProductStatsServiceFactory;
       pamAccountTemplate: TPamAccountTemplateServiceFactory;

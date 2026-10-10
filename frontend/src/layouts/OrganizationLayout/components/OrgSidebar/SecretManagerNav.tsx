@@ -1,6 +1,7 @@
 import { ActivityIcon, Blocks, BookCheck, FileText, Settings, Shield } from "lucide-react";
 
 import { ProjectIcon, SidebarCollapsibleGroup } from "@app/components/v3";
+import { useSecretSyncDiscovery } from "@app/hooks/useSecretSyncDiscovery";
 
 import { ProjectNavList } from "./ProjectNavLink";
 import { SM_SETTINGS_SUBMENU } from "./submenus";
@@ -13,6 +14,7 @@ export const SecretManagerNav = ({
   onSubmenuOpen: (submenu: Submenu) => void;
 }) => {
   const { pendingRequestsCount } = useApprovalSubmenu();
+  const { unseenSecretSyncCount } = useSecretSyncDiscovery();
 
   const generalItems: NavItem[] = [
     {
@@ -31,6 +33,9 @@ export const SecretManagerNav = ({
       label: "Integrations",
       icon: Blocks,
       pathSuffix: "integrations",
+      badgeCount: unseenSecretSyncCount || undefined,
+      badgeVariant: "project",
+      isBadgeSolid: true,
       // Keep highlighted on integration detail pages and the standalone app-connections page
       activeMatch: /\/app-connections|\/integrations\//
     },

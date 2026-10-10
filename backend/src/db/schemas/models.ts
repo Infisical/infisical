@@ -355,6 +355,8 @@ export enum TableName {
   ProxiedService = "proxied_services",
   ProxiedServiceCredential = "proxied_service_credentials",
 
+  UserFeatureDiscovery = "user_feature_discoveries",
+
   // Deprecated - Not used anymore now that Redis is persistent
   DeprecatedDurableQueueJobs = "queue_jobs",
   DeprecatedSecretRotationV1 = "secret_rotations",

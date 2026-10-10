@@ -28,6 +28,9 @@ const badgeVariants = cva(
       isSquare: {
         true: "w-4.5 justify-center px-0.5"
       },
+      isSolid: {
+        true: ""
+      },
       variant: {
         ghost: "text-foreground border-none [a&,button&]:hover:bg-foreground/10",
         default: "bg-label text-background border-label [a&,button&]:hover:bg-project/35",
@@ -46,6 +49,17 @@ const badgeVariants = cva(
         av: "bg-product-av/15 border-product-av/10 text-product-av [a&,button&]:hover:bg-product-av/35"
       }
     },
+    compoundVariants: [
+      { isSolid: true, variant: "project", className: "bg-project border-project text-background" },
+      { isSolid: true, variant: "org", className: "bg-org border-org text-background" },
+      { isSolid: true, variant: "sub-org", className: "bg-sub-org border-sub-org text-background" },
+      {
+        isSolid: true,
+        variant: "pam",
+        className: "bg-product-pam border-product-pam text-background"
+      },
+      { isSolid: true, variant: "av", className: "bg-product-av border-product-av text-background" }
+    ],
     defaultVariants: {
       variant: "default"
     }
@@ -67,6 +81,7 @@ const Badge = forwardRef<HTMLSpanElement, TBadgeProps>(
       isTruncatable = false,
       isFullWidth = false,
       isSquare = false,
+      isSolid = false,
       ...props
     },
     ref
@@ -82,7 +97,8 @@ const Badge = forwardRef<HTMLSpanElement, TBadgeProps>(
             iconPosition,
             isTruncatable,
             isFullWidth,
-            isSquare
+            isSquare,
+            isSolid
           }),
           className
         )}

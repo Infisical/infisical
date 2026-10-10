@@ -33,7 +33,9 @@ export type NavItem = {
   pathSuffix: string;
   activeMatch?: RegExp | ((pathname: string, search: Record<string, unknown>) => boolean);
   badgeCount?: number;
-  badgeVariant?: "warning" | "danger" | "pam";
+  badgeVariant?: "warning" | "danger" | "pam" | "project";
+  /** Full-contrast fill, for counts of new things rather than items needing attention */
+  isBadgeSolid?: boolean;
   dotVariant?: "warning" | "danger";
   hidden?: boolean;
   submenu?: Submenu;
