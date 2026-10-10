@@ -1,1 +1,1 @@
-export { SecretManagerLayout } from "./SecretManagerLayout";
+export { SecretManagerLayout, useSecretManagerScrollContainer } from "./SecretManagerLayout";
