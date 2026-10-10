@@ -1973,7 +1973,10 @@ export const registerRoutes = async (
     membershipRoleDAL,
     agentVaultMemberDAL,
     userGroupMembershipDAL,
-    identityGroupMembershipDAL
+    identityGroupMembershipDAL,
+    userDAL,
+    groupDAL,
+    identityDAL
   });
 
   const agentVaultSessionService = agentVaultSessionServiceFactory({
@@ -3898,7 +3901,11 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL,
     permissionService,
-    pamAccessRequestService
+    pamAccessRequestService,
+    userDAL,
+    userGroupMembershipDAL,
+    notificationService,
+    smtpService
   });
 
   const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);

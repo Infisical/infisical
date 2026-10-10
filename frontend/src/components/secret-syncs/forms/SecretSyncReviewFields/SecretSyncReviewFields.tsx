@@ -57,6 +57,7 @@ import { HasuraCloudSyncReviewFields } from "./HasuraCloudSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
+import { KeeperSyncReviewFields } from "./KeeperSyncReviewFields";
 import { LaravelForgeSyncReviewFields } from "./LaravelForgeSyncReviewFields";
 import { NetlifySyncReviewFields } from "./NetlifySyncReviewFields";
 import { NorthflankSyncReviewFields } from "./NorthflankSyncReviewFields";
@@ -268,6 +269,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Daytona:
       // The connection is the whole destination; it is already shown above.
+      break;
+    case SecretSync.Keeper:
+      DestinationFieldsComponent = <KeeperSyncReviewFields />;
       break;
     case SecretSync.Spacelift:
       DestinationFieldsComponent = <SpaceliftSyncReviewFields />;

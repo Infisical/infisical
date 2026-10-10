@@ -2901,6 +2901,14 @@ export const AppConnections = {
   ROTATE_CREDENTIALS: (app: AppConnection) => ({
     connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to rotate credentials for.`
   }),
+  KEEPER: {
+    LIST_SHARED_FOLDERS: {
+      connectionId: "The ID of the Keeper Connection to list shared folders from.",
+      sharedFolders: "The Keeper shared folders the connection can access, sorted by name.",
+      uid: "The UID of the Keeper shared folder.",
+      name: "The name of the Keeper shared folder. Falls back to the UID when the folder has no name."
+    }
+  },
   CREDENTIALS: {
     AUTH0_CONNECTION: {
       domain: "The domain of the Auth0 instance to connect to.",
@@ -3132,6 +3140,10 @@ export const AppConnections = {
     LITELLM: {
       apiKey: "The LiteLLM API key used to authenticate with the LiteLLM instance.",
       instanceUrl: "The base URL of your LiteLLM instance (e.g. https://litellm.example.com)."
+    },
+    KEEPER: {
+      apiKey: "The API key generated for Keeper Commander Service Mode.",
+      instanceUrl: "The base URL of your Keeper Commander Service Mode instance (e.g. https://keeper.company.com)."
     },
     FIREWORKS: {
       apiKey: "The Fireworks API key used to authenticate with the Fireworks API.",
@@ -3418,6 +3430,10 @@ export const SecretSyncs = {
     ONEPASS: {
       vaultId: "The ID of the 1Password vault to sync secrets to.",
       valueLabel: "The label of the entry that holds the secret value."
+    },
+    KEEPER: {
+      folderUid: "The UID of the Keeper Password Manager shared folder to sync secrets to.",
+      folderName: "The name of the Keeper Password Manager shared folder to sync secrets to."
     },
     HEROKU: {
       app: "The ID of the Heroku app to sync secrets to.",
@@ -4424,8 +4440,7 @@ export const AGENT_VAULT = {
     updatedAt: "When the variable was last changed."
   },
   MEMBER: {
-    memberId: "The ID of the access bundle membership.",
-    createdAt: "When the access bundle was granted.",
+    grantedAt: "When the access bundle was granted.",
     userId: "The ID of the user whose Agent Vault membership this is.",
     identityId: "The ID of the machine identity whose Agent Vault membership this is.",
     groupId: "The ID of the group whose Agent Vault membership this is.",
@@ -4456,6 +4471,7 @@ export const AGENT_VAULT = {
   MEMBERSHIP: {
     role: "The Agent Vault role: admin or member.",
     isActive: "Whether the member can currently reach Agent Vault.",
+    addedAt: "When the member was added to Agent Vault.",
     userIds: "The IDs of the users to act on.",
     machineIdentityIds: "The IDs of the machine identities to act on.",
     groupIds: "The IDs of the groups to act on.",

@@ -38,11 +38,11 @@ import {
   SheetHeader,
   SheetTitle,
   Table,
-  TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
+  TableVirtualBody,
   Tabs,
   TabsContent,
   TabsList,
@@ -800,13 +800,14 @@ const ImportSecretsContent = ({
                   </TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
-                {reviewRows.map((row) => {
+              <TableVirtualBody count={reviewRows.length}>
+                {(index, rowProps) => {
+                  const row = reviewRows[index];
                   if (row.type === "folder") {
                     const { node } = row;
                     const isExpanded = !collapsedFolders.has(node.path);
                     return (
-                      <TableRow key={row.id} className="group/folder">
+                      <TableRow key={row.id} className="group/folder" {...rowProps}>
                         <TableCell isTruncatable className="w-1/2">
                           <ImportKeyContent depth={row.depth}>
                             <button
@@ -865,7 +866,7 @@ const ImportSecretsContent = ({
                   const editableKey = secretData.isFileSecret === true;
                   const editedKey = keyOverrides[key] ?? key;
                   return (
-                    <TableRow key={id}>
+                    <TableRow key={id} {...rowProps}>
                       <TableCell isTruncatable className="w-1/2 overflow-hidden font-mono text-xs">
                         <ImportKeyContent depth={folderTree ? row.depth : undefined}>
                           <KeyRoundIcon className="size-4 shrink-0 text-secret" aria-hidden />
@@ -961,8 +962,8 @@ const ImportSecretsContent = ({
                       </TableCell>
                     </TableRow>
                   );
-                })}
-              </TableBody>
+                }}
+              </TableVirtualBody>
             </Table>
           </div>
           <Field>

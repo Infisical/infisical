@@ -62,9 +62,9 @@ export const GrantAccessDialog = ({ isOpen, onOpenChange, accessBundleId }: Prop
   const options = useMemo<Option[]>(
     () =>
       (data?.members ?? []).map((member) => ({
-        actor: member.actor,
-        label: memberDisplayName(member.actor),
-        subtitle: memberSubtitle(member.actor)
+        actor: member,
+        label: memberDisplayName(member),
+        subtitle: memberSubtitle(member)
       })),
     [data]
   );
