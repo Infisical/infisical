@@ -1666,7 +1666,7 @@ Your shell saves the values you pass on the command line in its history file. To
   command="service-token"
 >
 
-Manage service tokens. Service tokens are deprecated and will be removed in a future release. Use a [machine identity](/documentation/platform/identities/machine-identities) instead, and log in as it with [infisical login](/cli/reference#login).
+Manage service tokens. Create one with [infisical service-token create](/cli/reference#service-token-create).
 
 </CLICommand>
 
@@ -1689,7 +1689,7 @@ Manage service tokens. Service tokens are deprecated and will be removed in a fu
   ]}
 >
 
-Create a service token for a project with your user login. Service tokens are deprecated; create a [machine identity](/documentation/platform/identities/machine-identities) instead.
+Create a service token for a project with your user login.
 
 Without `--token-only`, the command prints the token's name, project, access, scopes, and the token itself to standard error, so capturing standard output gets nothing.
 
