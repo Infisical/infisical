@@ -453,6 +453,9 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     },
     preValidation: [
       async (req, res) => {
+        if (!appCfg.CLIENT_ID_GOOGLE_LOGIN || !appCfg.CLIENT_SECRET_GOOGLE_LOGIN) {
+          throw new BadRequestError({ message: "Login with Google is not configured on this instance" });
+        }
         const {
           callback_port: callbackPort,
           is_admin_login: isAdminLogin,
@@ -590,6 +593,9 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     },
     preValidation: [
       async (req, res) => {
+        if (!appCfg.CLIENT_ID_GITHUB_LOGIN || !appCfg.CLIENT_SECRET_GITHUB_LOGIN) {
+          throw new BadRequestError({ message: "Login with GitHub is not configured on this instance" });
+        }
         const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query as {
           callback_port?: string;
           is_admin_login?: boolean;
@@ -700,6 +706,9 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     },
     preValidation: [
       async (req, res) => {
+        if (!appCfg.CLIENT_ID_GITLAB_LOGIN || !appCfg.CLIENT_SECRET_GITLAB_LOGIN || !appCfg.CLIENT_GITLAB_LOGIN_URL) {
+          throw new BadRequestError({ message: "Login with GitLab is not configured on this instance" });
+        }
         const { callback_port: callbackPort, is_admin_login: isAdminLogin } = req.query as {
           callback_port?: string;
           is_admin_login?: boolean;
