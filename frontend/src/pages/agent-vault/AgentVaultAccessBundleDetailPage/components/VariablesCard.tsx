@@ -4,7 +4,6 @@ import {
   CopyIcon,
   EyeIcon,
   EyeOffIcon,
-  LockIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
@@ -168,22 +167,18 @@ export const VariablesCard = ({ accessBundleId, services }: Props) => {
     }
   };
 
-  // A secret is fetched, and so audited, each time it is copied, and it is never shown. Safari lets a page write
+  // A value is fetched, and so audited, each time it is copied, and it is never shown. Safari lets a page write
   // the clipboard only inside the click that asked, so the value being fetched goes in as a pending ClipboardItem.
   // Older Firefox has no ClipboardItem, but still lets a page write text shortly after a click.
   const copyValue = async (variable: TAgentVaultVariable) => {
     let request: Promise<string> | undefined;
     try {
-      if (variable.isSecret) {
-        request = revealValue.mutateAsync({ accessBundleId, variableId: variable.id });
-        if (typeof ClipboardItem === "undefined") {
-          await navigator.clipboard.writeText(await request);
-        } else {
-          const fetched = request.then((value) => new Blob([value], { type: "text/plain" }));
-          await navigator.clipboard.write([new ClipboardItem({ "text/plain": fetched })]);
-        }
+      request = revealValue.mutateAsync({ accessBundleId, variableId: variable.id });
+      if (typeof ClipboardItem === "undefined") {
+        await navigator.clipboard.writeText(await request);
       } else {
-        await navigator.clipboard.writeText(variable.value ?? "");
+        const fetched = request.then((value) => new Blob([value], { type: "text/plain" }));
+        await navigator.clipboard.write([new ClipboardItem({ "text/plain": fetched })]);
       }
       createNotification({ text: `Copied the value of ${variable.key}`, type: "success" });
     } catch {
@@ -303,32 +298,27 @@ export const VariablesCard = ({ accessBundleId, services }: Props) => {
                       <TruncatedKey value={variable.key} />
                     </TableCell>
                     <TableCell>
-                      {variable.isSecret ? (
-                        <div className="flex items-center gap-1.5">
-                          <LockIcon className="size-3.5 shrink-0 text-muted" aria-label="Secret" />
-                          {isRevealed ? (
-                            <span className="min-w-0 truncate font-mono text-sm">
-                              {revealedValue}
-                            </span>
-                          ) : (
-                            <span className="font-mono text-sm tracking-widest text-muted">
-                              {MASK}
-                            </span>
-                          )}
-                          <IconButton
-                            variant="ghost"
-                            size="xs"
-                            className="shrink-0"
-                            aria-label={`${isRevealed ? "Hide" : "Reveal"} ${variable.key}`}
-                            isPending={revealingId === variable.id}
-                            onClick={() => toggleReveal(variable)}
-                          >
-                            {isRevealed ? <EyeOffIcon /> : <EyeIcon />}
-                          </IconButton>
-                        </div>
-                      ) : (
-                        <span className="block truncate font-mono text-sm">{variable.value}</span>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {isRevealed ? (
+                          <span className="min-w-0 truncate font-mono text-sm">
+                            {revealedValue}
+                          </span>
+                        ) : (
+                          <span className="font-mono text-sm tracking-widest text-muted">
+                            {MASK}
+                          </span>
+                        )}
+                        <IconButton
+                          variant="ghost"
+                          size="xs"
+                          className="shrink-0"
+                          aria-label={`${isRevealed ? "Hide" : "Reveal"} ${variable.key}`}
+                          isPending={revealingId === variable.id}
+                          onClick={() => toggleReveal(variable)}
+                        >
+                          {isRevealed ? <EyeOffIcon /> : <EyeIcon />}
+                        </IconButton>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <ServiceIconStack

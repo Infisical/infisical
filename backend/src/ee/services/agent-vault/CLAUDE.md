@@ -225,9 +225,9 @@ path decides what a service can reach, so it stays literal.
   Values saved before variables existed hold no id tokens, so they pass through untouched.
 - Admin only, reads included: every variable route checks `Edit` on access bundles, which a member lacks,
   and the bundle read gives a member its services without `variableReferences` (left out, not empty, since
-  an empty list would claim they use none). Every value is sealed;
-  `isSecret` only decides whether the list returns it. The value route is a GET with no-store headers and
-  one audit event per read.
+  an empty list would claim they use none). Every value is sealed and no response but the value route returns
+  one. That route is a GET with no-store headers and one audit event per read. Variables were once
+  optionally plain (shown in the list); that was dropped, so every value is secret.
 
 ## Credentials at rest
 

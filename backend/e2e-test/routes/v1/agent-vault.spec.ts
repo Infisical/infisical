@@ -769,7 +769,7 @@ describe("Agent Vault V1 Router", async () => {
       substitutionId?: string;
     };
 
-    const createVariable = async (accessBundleId: string, body: { key: string; value: string; isSecret?: boolean }) => {
+    const createVariable = async (accessBundleId: string, body: { key: string; value: string }) => {
       const res = await inject("POST", variablesUrl(accessBundleId), body);
       expect(res.statusCode).toBe(200);
       return (JSON.parse(res.payload) as { variable: { id: string; key: string } }).variable;
@@ -953,7 +953,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a service uses a variable by key, and resolve puts the value in its place", async () => {
       const bundle = await createAccessBundle("variables-resolve");
       const token = await createVariable(bundle.id, { key: "GITHUB_TOKEN", value: "ghp_from_variable" });
-      const org = await createVariable(bundle.id, { key: "ORG_ID", value: "org-42", isSecret: false });
+      const org = await createVariable(bundle.id, { key: "ORG_ID", value: "org-42" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "github",
@@ -1079,11 +1079,7 @@ describe("Agent Vault V1 Router", async () => {
 
       const renamed = await inject("PATCH", `${variablesUrl(bundle.id)}/${variable.id}`, { key: "NEW_NAME" });
       expect(renamed.statusCode).toBe(200);
-      expect(JSON.parse(renamed.payload).variable).toMatchObject({
-        key: "NEW_NAME",
-        value: null,
-        serviceIds: [serviceId]
-      });
+      expect(JSON.parse(renamed.payload).variable).toMatchObject({ key: "NEW_NAME", serviceIds: [serviceId] });
 
       const detail = JSON.parse((await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`)).payload) as {
         accessBundle: { services: { variableReferences: TReference[] }[] };
@@ -1132,7 +1128,7 @@ describe("Agent Vault V1 Router", async () => {
 
       const removed = await inject("DELETE", `${variablesUrl(bundle.id)}/${variable.id}`);
       expect(removed.statusCode).toBe(200);
-      expect(JSON.parse(removed.payload).variable).toMatchObject({ id: variable.id, key: "API_KEY", value: null });
+      expect(JSON.parse(removed.payload).variable).toMatchObject({ id: variable.id, key: "API_KEY" });
     });
 
     test("an unknown key fails the save by name, and a malformed reference fails validation unquoted", async () => {
@@ -1206,30 +1202,41 @@ describe("Agent Vault V1 Router", async () => {
       expect(services.map((service) => service.name)).toEqual(["at-limit"]);
     });
 
-    test("the list carries only values that are not secret, and the value route returns either uncached", async () => {
+    test("no response but the value route carries a value, and that route returns it uncached", async () => {
       const bundle = await createAccessBundle("variables-visibility");
-      const hidden = await createVariable(bundle.id, { key: "HIDDEN", value: "hidden_value" });
-      await createVariable(bundle.id, { key: "SHOWN", value: "shown_value", isSecret: false });
+      // A client from before every value was secret may still send isSecret: false. It is stripped, not honoured.
+      const createdRes = await inject("POST", variablesUrl(bundle.id), {
+        key: "HIDDEN",
+        value: "hidden_value",
+        isSecret: false
+      });
+      expect(createdRes.statusCode).toBe(200);
+      expect(createdRes.payload).not.toContain("hidden_value");
+      const hidden = (JSON.parse(createdRes.payload) as { variable: { id: string } }).variable;
 
       const listed = await inject("GET", variablesUrl(bundle.id));
       expect(listed.statusCode).toBe(200);
       expect(listed.payload).not.toContain("hidden_value");
-      expect(JSON.parse(listed.payload).variables).toEqual([
-        expect.objectContaining({ key: "HIDDEN", isSecret: true, value: null, serviceIds: [] }),
-        expect.objectContaining({ key: "SHOWN", isSecret: false, value: "shown_value", serviceIds: [] })
-      ]);
+      const [listedVariable] = JSON.parse(listed.payload).variables;
+      expect(listedVariable).toMatchObject({ key: "HIDDEN", serviceIds: [] });
+      expect(listedVariable).not.toHaveProperty("value");
+      expect(listedVariable).not.toHaveProperty("isSecret");
+
+      const updated = await inject("PATCH", `${variablesUrl(bundle.id)}/${hidden.id}`, { value: "new_hidden_value" });
+      expect(updated.statusCode).toBe(200);
+      expect(updated.payload).not.toContain("new_hidden_value");
 
       const revealed = await inject("GET", `${variablesUrl(bundle.id)}/${hidden.id}/value`);
       expect(revealed.statusCode).toBe(200);
-      expect(JSON.parse(revealed.payload)).toEqual({ value: "hidden_value" });
+      expect(JSON.parse(revealed.payload)).toEqual({ value: "new_hidden_value" });
       expect(revealed.headers["cache-control"]).toContain("no-store");
 
-      const flipped = await inject("PATCH", `${variablesUrl(bundle.id)}/${hidden.id}`, { isSecret: false });
-      expect(flipped.statusCode).toBe(200);
-      expect(JSON.parse(flipped.payload).variable).toMatchObject({ isSecret: false, value: "hidden_value" });
-
       const row = await testDb("agent_vault_variables").where({ id: hidden.id }).first();
-      expect(row.encryptedValue.toString("utf-8")).not.toContain("hidden_value");
+      expect(row.encryptedValue.toString("utf-8")).not.toContain("new_hidden_value");
+
+      const removed = await inject("DELETE", `${variablesUrl(bundle.id)}/${hidden.id}`);
+      expect(removed.statusCode).toBe(200);
+      expect(removed.payload).not.toContain("new_hidden_value");
     });
 
     test("a value can't be only spaces, and one with spaces around it is kept as typed", async () => {
@@ -1238,10 +1245,9 @@ describe("Agent Vault V1 Router", async () => {
       expect(blank.statusCode).toBe(422);
       expect(blank.payload).toContain("A value can't be only spaces.");
 
-      const padded = await createVariable(bundle.id, { key: "PADDED", value: " kept ", isSecret: false });
-      expect(JSON.parse((await inject("GET", variablesUrl(bundle.id))).payload).variables).toEqual([
-        expect.objectContaining({ key: "PADDED", value: " kept " })
-      ]);
+      const padded = await createVariable(bundle.id, { key: "PADDED", value: " kept " });
+      const revealed = await inject("GET", `${variablesUrl(bundle.id)}/${padded.id}/value`);
+      expect(JSON.parse(revealed.payload)).toEqual({ value: " kept " });
       expect((await inject("PATCH", `${variablesUrl(bundle.id)}/${padded.id}`, { value: " " })).statusCode).toBe(422);
     });
 
@@ -1471,7 +1477,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("variables are admin only, reads included", async () => {
       const bundle = await createAccessBundle("variables-admin-only");
-      const variable = await createVariable(bundle.id, { key: "TOKEN", value: "admin_only_value", isSecret: false });
+      const variable = await createVariable(bundle.id, { key: "TOKEN", value: "admin_only_value" });
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "uses-token",
         hostPattern: "api.example.com",

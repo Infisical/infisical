@@ -107,7 +107,6 @@ export type TCreateVariableDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
   key: string;
   value: string;
-  isSecret: boolean;
 };
 
 export type TUpdateVariableDTO = TAgentVaultProjectScoped & {
@@ -115,7 +114,6 @@ export type TUpdateVariableDTO = TAgentVaultProjectScoped & {
   variableId: string;
   key?: string;
   value?: string;
-  isSecret?: boolean;
 };
 
 export type TVariableByIdDTO = TAgentVaultProjectScoped & { accessBundleId: string; variableId: string };

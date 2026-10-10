@@ -14,7 +14,6 @@ export const AgentVaultVariablesSchema = z.object({
   accessBundleId: z.string().uuid(),
   key: z.string(),
   encryptedValue: zodBuffer,
-  isSecret: z.boolean().default(true),
   createdAt: z.date(),
   updatedAt: z.date()
 });

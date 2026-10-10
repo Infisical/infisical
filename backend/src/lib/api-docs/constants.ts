@@ -4430,9 +4430,6 @@ export const AGENT_VAULT = {
     key: "The name services use to refer to the variable, as `{{KEY}}`. Starts with a letter and uses only upper case letters, numbers and underscores.",
     value: "The value the proxy puts in place of each `{{KEY}}`.",
     updateValue: "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value.",
-    isSecret: "Whether the value is hidden once saved. A secret value is only returned by the value endpoint.",
-    listedValue:
-      "The value, for a variable that is not secret. Null for a secret one: read it from the value endpoint.",
     revealedValue: "The variable's value.",
     serviceIds:
       "The IDs of the services in the access bundle that use this variable. A variable in use can't be deleted.",
