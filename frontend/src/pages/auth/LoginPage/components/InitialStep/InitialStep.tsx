@@ -192,6 +192,13 @@ export const InitialStep = ({ isAdmin }: Props) => {
   const shouldDisplayLoginMethod = (method: LoginMethod) =>
     isAdmin || !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
 
+  const isSocialProviderConfigured = (method: SocialLoginMethod) =>
+    ({
+      [LoginMethod.GOOGLE]: serverDetails?.googleOauthConfigured,
+      [LoginMethod.GITHUB]: serverDetails?.githubOauthConfigured,
+      [LoginMethod.GITLAB]: serverDetails?.gitlabOauthConfigured
+    })[method] !== false;
+
   const socialLoginMethods = (
     [
       {
@@ -210,7 +217,7 @@ export const InitialStep = ({ isAdmin }: Props) => {
         label: "Continue with GitLab"
       }
     ] satisfies { method: SocialLoginMethod; icon: typeof faGoogle; label: string }[]
-  ).filter(({ method }) => shouldDisplayLoginMethod(method));
+  ).filter(({ method }) => shouldDisplayLoginMethod(method) && isSocialProviderConfigured(method));
 
   const loginOptions: LoginOptionDescriptor[] = [
     ...socialLoginMethods.map(({ method, icon, label }) => ({

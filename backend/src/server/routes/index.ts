@@ -4800,7 +4800,10 @@ export const registerRoutes = async (
           secretScanningConfigured: z.boolean().optional(),
           samlDefaultOrgSlug: z.string().optional(),
           auditLogStorageDisabled: z.boolean().optional(),
-          maxIdentityAccessTokenTTL: z.number().optional()
+          maxIdentityAccessTokenTTL: z.number().optional(),
+          googleOauthConfigured: z.boolean().optional(),
+          githubOauthConfigured: z.boolean().optional(),
+          gitlabOauthConfigured: z.boolean().optional()
         })
       }
     },
@@ -4829,7 +4832,12 @@ export const registerRoutes = async (
         secretScanningConfigured: cfg.isSecretScanningConfigured,
         samlDefaultOrgSlug: cfg.samlDefaultOrgSlug,
         auditLogStorageDisabled: Boolean(cfg.DISABLE_POSTGRES_AUDIT_LOG_STORAGE),
-        maxIdentityAccessTokenTTL: cfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
+        maxIdentityAccessTokenTTL: cfg.MAX_MACHINE_IDENTITY_TOKEN_AGE,
+        googleOauthConfigured: Boolean(cfg.CLIENT_ID_GOOGLE_LOGIN && cfg.CLIENT_SECRET_GOOGLE_LOGIN),
+        githubOauthConfigured: Boolean(cfg.CLIENT_ID_GITHUB_LOGIN && cfg.CLIENT_SECRET_GITHUB_LOGIN),
+        gitlabOauthConfigured: Boolean(
+          cfg.CLIENT_ID_GITLAB_LOGIN && cfg.CLIENT_SECRET_GITLAB_LOGIN && cfg.CLIENT_GITLAB_LOGIN_URL
+        )
       };
     }
   });

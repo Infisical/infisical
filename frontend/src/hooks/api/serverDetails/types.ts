@@ -7,4 +7,7 @@ export type ServerStatus = {
   samlDefaultOrgSlug: string;
   auditLogStorageDisabled: boolean;
   maxIdentityAccessTokenTTL?: number;
+  googleOauthConfigured?: boolean;
+  githubOauthConfigured?: boolean;
+  gitlabOauthConfigured?: boolean;
 };
