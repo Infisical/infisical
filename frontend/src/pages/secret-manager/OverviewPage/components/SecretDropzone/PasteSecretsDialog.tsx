@@ -18,7 +18,7 @@ const formSchema = z.object({
 type TForm = z.infer<typeof formSchema>;
 
 type ContentProps = {
-  onParsedSecrets: (env: TParsedEnv) => void;
+  onParsedSecrets: (env: TParsedEnv, source?: string) => void;
   onDirtyChange?: (isDirty: boolean) => void;
 };
 
@@ -50,7 +50,7 @@ export const PasteSecretsContent = ({ onParsedSecrets, onDirtyChange }: ContentP
     }
 
     reset();
-    onParsedSecrets(env);
+    onParsedSecrets(env, value);
   };
 
   return (
