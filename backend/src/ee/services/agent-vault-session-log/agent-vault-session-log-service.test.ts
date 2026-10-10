@@ -1,37 +1,64 @@
+import { S3ServiceException } from "@aws-sdk/client-s3";
 import { createMongoAbility } from "@casl/ability";
+import { v7 as uuidv7 } from "uuid";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { BadRequestError, DatabaseError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, InternalServerError } from "@app/lib/errors";
 
 import {
-  AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS,
+  AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
+  AGENT_VAULT_SESSION_LOG_RANGE_MARGIN_MS,
+  AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE,
   AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
 } from "./agent-vault-session-log-constants";
-import { AgentVaultSessionLogErrorName } from "./agent-vault-session-log-enums";
-import { buildSessionLogObjectKey, encodeTailCursor } from "./agent-vault-session-log-fns";
+import {
+  AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE,
+  AgentVaultSessionLogErrorName
+} from "./agent-vault-session-log-enums";
+import {
+  buildSessionLogFolder,
+  buildSessionLogObjectKey,
+  encodeHistoryCursor,
+  encodeTailCursor,
+  toRev
+} from "./agent-vault-session-log-fns";
+import { unwrapSessionLogKey } from "./agent-vault-session-log-secrets";
 import { agentVaultSessionLogServiceFactory } from "./agent-vault-session-log-service";
 import { buildSessionLogStorage } from "./agent-vault-session-log-storage-fns";
+import { TCreateChunkUploadUrlDTO } from "./agent-vault-session-log-types";
 
-const CEILING = AGENT_VAULT_SESSION_LOG_MAX_STORED_CHUNKS;
+const PROJECT_ID = "c4a1e0d2-5b7f-4c1e-9a3d-2f6b8e0c7a11";
+const SESSION_ID = "5d2e9b41-0c3a-4f8e-b7d2-91a4c6e8f035";
+const PROXY_ID = "e91f3c20-7d4b-4a8e-9f1c-3b5d7e2a6c48";
+const FOLDER = buildSessionLogFolder({ keyPrefix: "logs", projectId: PROJECT_ID, sessionId: SESSION_ID });
 
 const presignPut = vi.fn(async () => "https://bucket.s3.amazonaws.com/signed-put");
+const presignGet = vi.fn(async (key: string) => `https://bucket.s3.amazonaws.com/${key}`);
+const listChunks = vi.fn(async () => ({
+  objects: [] as { key: string; size: number }[],
+  isTruncated: false
+}));
+const assertReachable = vi.fn(async () => {});
 vi.mock("@app/lib/logger", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() } }));
+vi.mock("./agent-vault-session-log-secrets", () => ({ unwrapSessionLogKey: vi.fn(async () => Buffer.alloc(32, 7)) }));
 vi.mock("./agent-vault-session-log-storage-fns", () => {
   return {
     buildSessionLogStorage: vi.fn(async () => ({
       presignPut,
-      presignGet: vi.fn(async () => "https://bucket.s3.amazonaws.com/signed-get"),
+      presignGet,
+      listChunks,
+      assertReachable,
       mintCorsProbeUrl: vi.fn(async () => "https://bucket.s3.amazonaws.com/probe"),
       validate: vi.fn(async () => {})
     }))
   };
 });
 
-const PROXY = { id: "proxy-1", name: "proxy-one", projectId: "proj-1", orgId: "org-1" };
+const PROXY = { id: PROXY_ID, name: "proxy-one", projectId: PROJECT_ID, orgId: "org-1" };
 
 const liveSession = () => ({
-  id: "sess-1",
-  projectId: "proj-1",
+  id: SESSION_ID,
+  projectId: PROJECT_ID,
   userId: "user-1",
   identityId: null,
   expiresAt: null,
@@ -42,39 +69,37 @@ const liveSession = () => ({
 
 const enabledConfig = () => ({
   id: "cfg-1",
-  projectId: "proj-1",
+  projectId: PROJECT_ID,
   enabled: true,
   appConnectionId: "conn-1",
   bucket: "my-bucket",
   region: "us-east-1",
-  keyPrefix: "logs",
-  storedChunkCount: 0
+  keyPrefix: "logs"
 });
 
-const validChunk = () => ({
-  chunkId: "01a0a9c5-231d-7abc-8def-0123456789ab",
-  startedAt: new Date(Date.now() - 60_000),
-  endedAt: new Date(Date.now() - 1_000),
-  firstSeq: 0,
-  lastSeq: 41,
-  recordCount: 42,
-  droppedCount: 0,
+// The id carries the time of the chunk's last request, which Infisical checks against endedAt.
+const validChunk = (endedAt = new Date(Date.now() - 1_000)) => ({
+  chunkId: uuidv7({ msecs: endedAt.getTime() }),
+  endedAt,
   ciphertextBytes: 4096,
-  iv: "qrvM3e7/ABEiM0RV",
   ciphertextSha256: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU"
 });
+
+const objectFor = (lastRecordAtMs: number, proxyId = PROXY_ID) => {
+  const chunkId = uuidv7({ msecs: lastRecordAtMs });
+  return { chunkId, key: buildSessionLogObjectKey({ folder: FOLDER, proxyId, chunkId }) };
+};
+
+type TFeedEntry = [string, string[]];
 
 type TOverrides = {
   proxy?: unknown;
   session?: unknown;
   config?: unknown;
-  storedAfterIncrement?: number;
-  createThrows?: unknown;
-  isReplay?: boolean;
-  existingChunk?: unknown;
-  destinationChanged?: boolean;
-  pageRows?: unknown[];
-  proxies?: unknown[];
+  feed?: TFeedEntry[];
+  feedAddFails?: boolean;
+  feedAddHangs?: boolean;
+  isAdmin?: boolean;
   connection?: unknown;
   configCreateThrows?: unknown;
   licensed?: boolean;
@@ -83,22 +108,6 @@ type TOverrides = {
 };
 
 const build = (overrides: TOverrides = {}) => {
-  const created = { ...validChunk(), objectKey: "logs/proj-1/sess-1/proxy-1/2026-09-16/chunk.json.enc" };
-
-  const createIfAbsent = vi.fn(async (values: Record<string, unknown>) => {
-    if (overrides.createThrows) return Promise.reject(overrides.createThrows);
-    if (overrides.isReplay) return undefined;
-    return { ...created, ...values };
-  });
-  const recordStoredChunk = vi.fn(async () => overrides.storedAfterIncrement ?? 42);
-  const findChunk = vi.fn(async () =>
-    overrides.existingChunk ? { proxyId: PROXY.id, ...(overrides.existingChunk as object) } : null
-  );
-  const moveChunk = vi.fn(async (values: Record<string, unknown>) =>
-    overrides.destinationChanged
-      ? undefined
-      : { ...(overrides.existingChunk as object), bucket: values.bucket, objectKey: values.objectKey }
-  );
   const validateConnection = vi.fn(async () => ({}));
   const findConnection = vi.fn(async () => overrides.connection);
   const config = "config" in overrides ? overrides.config : enabledConfig();
@@ -106,20 +115,17 @@ const build = (overrides: TOverrides = {}) => {
     ...(config as object),
     ...values
   }));
+  const streamAdd = vi.fn(async () => {
+    if (overrides.feedAddHangs) return new Promise<string>(() => {});
+    return overrides.feedAddFails ? Promise.reject(new Error("redis is down")) : "1791278402731-0";
+  });
+  const findSession = vi.fn(async () => ("session" in overrides ? overrides.session : liveSession()));
+  const streamRange = vi.fn(async () => overrides.feed ?? []);
 
   const service = agentVaultSessionLogServiceFactory({
-    agentVaultSessionLogChunkDAL: {
-      createIfAbsent,
-      findOne: findChunk,
-      moveToDestinationIfCurrent: moveChunk,
-      transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
-      findForSessionPage: vi.fn(async () => ({ chunks: overrides.pageRows ?? [], hasMore: false })),
-      findReceivedForSession: vi.fn(async () => ({ chunks: overrides.pageRows ?? [], hasMore: false }))
-    } as never,
     agentVaultSessionLogConfigDAL: {
       findOne: vi.fn(async () => config),
       findByProjectIdFromPrimary: vi.fn(async () => config),
-      recordStoredChunk,
       updateById: updateConfig,
       create: vi.fn(async (values: Record<string, unknown>) => {
         if (overrides.configCreateThrows) return Promise.reject(overrides.configCreateThrows);
@@ -127,18 +133,17 @@ const build = (overrides: TOverrides = {}) => {
       })
     } as never,
     agentVaultSessionDAL: {
-      findOne: vi.fn(async () => ("session" in overrides ? overrides.session : liveSession()))
+      findOne: findSession
     } as never,
     agentVaultProxyDAL: {
-      findByIdWithOrg: vi.fn(async () => ("proxy" in overrides ? overrides.proxy : PROXY)),
-      find: vi.fn(async () => overrides.proxies ?? [PROXY])
+      findByIdWithOrg: vi.fn(async () => ("proxy" in overrides ? overrides.proxy : PROXY))
     } as never,
     appConnectionDAL: { findById: findConnection } as never,
     appConnectionService: { validateAppConnectionUsageById: validateConnection } as never,
     permissionService: {
       getProjectPermission: vi.fn(async () => ({
         permission: createMongoAbility([{ action: "read", subject: "agent-vault-sessions" }]),
-        hasRole: () => true
+        hasRole: () => overrides.isAdmin ?? true
       }))
     } as never,
     kmsService: { createCipherPairWithDataKey: vi.fn() } as never,
@@ -146,57 +151,52 @@ const build = (overrides: TOverrides = {}) => {
       getPlan: vi.fn(async () => ({ agentVaultByoS3: overrides.licensed ?? true })),
       isServingFallbackPlan: vi.fn(async () => overrides.planFallback ?? false),
       getLastKnownPlan: vi.fn(async () => overrides.lastKnownPlan ?? null)
-    } as never
+    } as never,
+    keyStore: { streamAdd, streamRange } as never
   });
 
-  return {
-    service,
-    createIfAbsent,
-    recordStoredChunk,
-    findChunk,
-    moveChunk,
-    validateConnection,
-    findConnection,
-    updateConfig
-  };
+  return { service, validateConnection, findConnection, updateConfig, streamAdd, streamRange, findSession };
 };
 
-const record = (service: ReturnType<typeof build>["service"], chunk = validChunk()) =>
-  service.recordChunk({ proxyId: PROXY.id, sessionId: "sess-1", chunk });
+const record = (
+  service: ReturnType<typeof build>["service"],
+  chunk: TCreateChunkUploadUrlDTO["chunk"] = validChunk()
+) => service.createChunkUploadUrl({ proxyId: PROXY_ID, sessionId: SESSION_ID, chunk });
 
-const atCurrentDestination = (chunk: ReturnType<typeof validChunk>) => ({
-  ...chunk,
-  bucket: "my-bucket",
-  objectKey: buildSessionLogObjectKey({
-    keyPrefix: "logs",
-    projectId: "proj-1",
-    sessionId: "sess-1",
-    proxyId: PROXY.id,
-    startedAt: chunk.startedAt,
-    chunkId: chunk.chunkId
-  })
-});
+const scope = {
+  projectId: PROJECT_ID,
+  ctx: { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never,
+  sessionId: SESSION_ID
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
+  listChunks.mockResolvedValue({ objects: [], isTruncated: false });
 });
 
-describe("recordChunk: who is allowed to write", () => {
-  test("a happy path writes the row, counts the chunk and returns an upload url", async () => {
-    const { service, createIfAbsent, recordStoredChunk } = build();
-    const result = await record(service);
+describe("createChunkUploadUrl: who is allowed to write", () => {
+  test("a happy path signs the chunk's name and adds it to the live feed", async () => {
+    const { service, streamAdd } = build();
+    const chunk = validChunk();
+    const result = await record(service, chunk);
 
     expect(result.uploadUrl).toBe("https://bucket.s3.amazonaws.com/signed-put");
-    expect(result.chunkId).toBe("01a0a9c5-231d-7abc-8def-0123456789ab");
-    expect(recordStoredChunk).toHaveBeenCalledWith("cfg-1", expect.anything());
+    expect(result.chunkId).toBe(chunk.chunkId);
 
-    const values = createIfAbsent.mock.calls[0][0];
-    expect(String(values.objectKey)).toMatch(
-      /^logs\/proj-1\/sess-1\/proxy-1\/\d{4}-\d{2}-\d{2}\/01a0a9c5-231d-7abc-8def-0123456789ab\.json\.enc$/
+    const objectKey = buildSessionLogObjectKey({ folder: FOLDER, proxyId: PROXY_ID, chunkId: chunk.chunkId });
+    expect(presignPut).toHaveBeenCalledWith({
+      objectKey,
+      ciphertextBytes: 4096,
+      ciphertextSha256: chunk.ciphertextSha256
+    });
+    expect(streamAdd).toHaveBeenCalledWith(
+      `agent-vault-session-log-feed:${SESSION_ID}`,
+      "*",
+      { key: objectKey, bucket: "my-bucket", bytes: "4096" },
+      10,
+      120,
+      true
     );
-    expect(values.bucket).toBe("my-bucket");
-    expect(values.proxyName).toBe("proxy-one");
-    expect(values.projectId).toBe("proj-1");
   });
 
   test("an unknown proxy is a 404 that says nothing about the session", async () => {
@@ -204,13 +204,14 @@ describe("recordChunk: who is allowed to write", () => {
     await expect(record(service)).rejects.toMatchObject({ message: "Session not found" });
   });
 
-  test("a session in another project reads exactly like a missing one", async () => {
-    const { service } = build({ session: undefined });
+  test("looks the session up in the proxy's own project, so another project's session reads as missing", async () => {
+    const { service, findSession } = build({ session: undefined });
     await expect(record(service)).rejects.toMatchObject({ message: "Session not found" });
+    expect(findSession).toHaveBeenCalledWith({ id: SESSION_ID, projectId: PROJECT_ID });
   });
 });
 
-describe("recordChunk: the retirement grace window", () => {
+describe("createChunkUploadUrl: the retirement grace window", () => {
   const hoursAgo = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000);
 
   test.each([
@@ -219,7 +220,7 @@ describe("recordChunk: the retirement grace window", () => {
     { why: "revoked 23 hours ago", session: { revokedAt: hoursAgo(23), expiresAt: null } }
   ])("still accepts a chunk from a session $why", async ({ session }) => {
     const { service } = build({ session: { ...liveSession(), ...session } });
-    await expect(record(service)).resolves.toMatchObject({ chunkId: "01a0a9c5-231d-7abc-8def-0123456789ab" });
+    await expect(record(service)).resolves.toHaveProperty("uploadUrl");
   });
 
   test.each([
@@ -245,7 +246,7 @@ describe("recordChunk: the retirement grace window", () => {
     const { service } = build({
       session: { ...liveSession(), userId: null, identityId: null, updatedAt: hoursAgo(23) }
     });
-    await expect(record(service)).resolves.toMatchObject({ chunkId: "01a0a9c5-231d-7abc-8def-0123456789ab" });
+    await expect(record(service)).resolves.toHaveProperty("uploadUrl");
   });
 
   test("a session whose owner was deleted more than a day ago is refused", async () => {
@@ -256,291 +257,382 @@ describe("recordChunk: the retirement grace window", () => {
       message: "Session ended too long ago to accept session logs"
     });
   });
-
-  test("an expiry in the future is not retirement", async () => {
-    const { service } = build({
-      session: { ...liveSession(), expiresAt: new Date(Date.now() + 60 * 60 * 1000) }
-    });
-    await expect(record(service)).resolves.toBeTruthy();
-  });
 });
 
-describe("recordChunk: when session logs are off", () => {
+describe("createChunkUploadUrl: when session logs are off", () => {
   test.each([
     { why: "there is no config row", config: undefined },
     { why: "the switch is off", config: { ...enabledConfig(), enabled: false } },
     { why: "no bucket is set", config: { ...enabledConfig(), bucket: null } },
     { why: "the connection was detached", config: { ...enabledConfig(), appConnectionId: null } }
   ])("refuses with the named error when $why", async ({ config }) => {
-    const { service, createIfAbsent } = build({ config });
+    const { service } = build({ config });
     await expect(record(service)).rejects.toMatchObject({ name: AgentVaultSessionLogErrorName.Disabled });
-    expect(createIfAbsent).not.toHaveBeenCalled();
+    expect(presignPut).not.toHaveBeenCalled();
   });
 });
 
-describe("recordChunk: semantic validation", () => {
-  test.each([
-    {
-      why: "startedAt is after endedAt",
-      patch: { startedAt: new Date(Date.now()), endedAt: new Date(Date.now() - 60_000) },
-      message: "Chunk startedAt is after its endedAt"
-    },
-    {
-      why: "the chunk is older than the maximum age",
-      patch: {
-        startedAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000),
-        endedAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000)
-      },
-      message: "Chunk is older than the maximum accepted age"
-    },
-    {
-      why: "firstSeq exceeds lastSeq",
-      patch: { firstSeq: 50, lastSeq: 10 },
-      message: "Chunk firstSeq is greater than its lastSeq"
-    },
-    {
-      why: "more records than the sequence range can hold",
-      patch: { firstSeq: 0, lastSeq: 5, recordCount: 42 },
-      message: "Chunk holds more records than its sequence range allows"
-    }
-  ])("rejects when $why", async ({ patch, message }) => {
-    const { service, createIfAbsent } = build();
-    await expect(record(service, { ...validChunk(), ...patch })).rejects.toMatchObject({ message });
-    expect(createIfAbsent).not.toHaveBeenCalled();
-  });
-
-  test("a chunk whose range is larger than its count is fine, since the ring drops records", async () => {
-    const { service } = build();
-    await expect(
-      record(service, { ...validChunk(), firstSeq: 0, lastSeq: 999, recordCount: 42 })
-    ).resolves.toBeTruthy();
-  });
-
+describe("createChunkUploadUrl: the proxy's clock", () => {
   test("a proxy clock too far ahead is refused with the named error, saying how far", async () => {
-    const { service, createIfAbsent } = build();
-    const refusal = record(service, { ...validChunk(), endedAt: new Date(Date.now() + 10 * 60_000) });
+    const { service } = build();
+    const refusal = record(service, validChunk(new Date(Date.now() + 10 * 60_000)));
     await expect(refusal).rejects.toMatchObject({ name: AgentVaultSessionLogErrorName.ClockSkew });
     await expect(refusal).rejects.toThrow(/about 10 minutes ahead/);
-    expect(createIfAbsent).not.toHaveBeenCalled();
+    expect(presignPut).not.toHaveBeenCalled();
   });
 
   test("a small clock skew forward is tolerated", async () => {
     const { service } = build();
     const soon = new Date(Date.now() + 60_000);
-    await expect(record(service, { ...validChunk(), startedAt: soon, endedAt: soon })).resolves.toBeTruthy();
+    await expect(record(service, validChunk(soon))).resolves.toBeTruthy();
   });
 
-  test("refuses a chunk claiming more records than its bytes could hold", async () => {
-    const { service, createIfAbsent } = build();
-    await expect(
-      record(service, { ...validChunk(), firstSeq: 0, lastSeq: 999, recordCount: 1000, ciphertextBytes: 64 })
-    ).rejects.toMatchObject({ message: "Chunk is too small to hold the number of records it claims" });
-    expect(createIfAbsent).not.toHaveBeenCalled();
-  });
-
-  test("accepts a chunk whose size is plausible for its record count", async () => {
+  test("a proxy clock more than 30 days behind is refused with the named error", async () => {
     const { service } = build();
-    await expect(record(service, { ...validChunk(), recordCount: 10, ciphertextBytes: 4096 })).resolves.toBeTruthy();
+    const refusal = record(service, validChunk(new Date(Date.now() - 31 * 24 * 60 * 60_000)));
+    await expect(refusal).rejects.toMatchObject({ name: AgentVaultSessionLogErrorName.ClockSkew });
+    await expect(refusal).rejects.toThrow(/more than 30 days behind/);
+    expect(presignPut).not.toHaveBeenCalled();
+  });
+
+  test("a proxy clock a few days behind is tolerated", async () => {
+    const { service } = build();
+    await expect(record(service, validChunk(new Date(Date.now() - 3 * 24 * 60 * 60_000)))).resolves.toBeTruthy();
   });
 });
 
-describe("recordChunk: the organization ceiling", () => {
-  test("refuses with the named error once the increment carries the org past the limit", async () => {
-    const { service } = build({ storedAfterIncrement: CEILING + 1 });
-    await expect(record(service)).rejects.toMatchObject({ name: AgentVaultSessionLogErrorName.CeilingReached });
-  });
-
-  test("the refusal is thrown from inside the transaction, so the row is rolled back with it", async () => {
-    const { service, createIfAbsent, recordStoredChunk } = build({ storedAfterIncrement: CEILING + 1 });
-    await expect(record(service)).rejects.toThrow();
-    expect(createIfAbsent).toHaveBeenCalledTimes(1);
-    expect(recordStoredChunk).toHaveBeenCalledTimes(1);
-  });
-
-  test("landing exactly on the ceiling is allowed", async () => {
-    const { service } = build({ storedAfterIncrement: CEILING });
-    await expect(record(service)).resolves.toBeTruthy();
-  });
-
-  test("no upload url is minted for a refused chunk", async () => {
-    const { service } = build({ storedAfterIncrement: CEILING + 1 });
-    await expect(record(service)).rejects.toThrow();
+describe("createChunkUploadUrl: what the chunk says about itself", () => {
+  test("a chunk whose id time is minutes off its endedAt is refused before it is signed", async () => {
+    const { service, streamAdd } = build();
+    const endedAt = new Date(Date.now() - 1_000);
+    const chunk = { ...validChunk(endedAt), chunkId: uuidv7({ msecs: endedAt.getTime() - 5 * 60_000 }) };
+    await expect(record(service, chunk)).rejects.toThrow("The chunk ID's time must match the chunk's endedAt");
     expect(presignPut).not.toHaveBeenCalled();
+    expect(streamAdd).not.toHaveBeenCalled();
+  });
+
+  test("an endedAt that rounds differently from the id is still accepted", async () => {
+    const { service } = build();
+    const endedAt = new Date(Date.now() - 1_000);
+    const chunk = { ...validChunk(endedAt), chunkId: uuidv7({ msecs: endedAt.getTime() - 500 }) };
+    await expect(record(service, chunk)).resolves.toBeTruthy();
+  });
+
+  test("a chunk from a CLI that still sends the IV is refused with a message that says to update it", async () => {
+    const { service, streamAdd } = build();
+    await expect(record(service, { ...validChunk(), iv: "AAAAAAAAAAAAAAAA" })).rejects.toThrow(
+      "This proxy's Infisical CLI is too old to record session logs. Update the Infisical CLI on this machine."
+    );
+    expect(presignPut).not.toHaveBeenCalled();
+    expect(streamAdd).not.toHaveBeenCalled();
   });
 });
 
-describe("recordChunk: re-sending a chunk", () => {
-  test("replays the stored row and does not count the records twice", async () => {
+describe("createChunkUploadUrl: sending a chunk again", () => {
+  test("a chunk id another proxy also used lands under that proxy's own name", async () => {
     const chunk = validChunk();
-    const { service, recordStoredChunk, findChunk } = build({
-      isReplay: true,
-      existingChunk: atCurrentDestination(chunk)
-    });
-
-    const result = await record(service, chunk);
-
-    expect(result.chunkId).toBe("01a0a9c5-231d-7abc-8def-0123456789ab");
-    expect(result.uploadUrl).toBe("https://bucket.s3.amazonaws.com/signed-put");
-    expect(findChunk).toHaveBeenCalledWith(
-      { sessionId: "sess-1", chunkId: "01a0a9c5-231d-7abc-8def-0123456789ab" },
-      expect.anything()
-    );
-    expect(recordStoredChunk).not.toHaveBeenCalled();
-  });
-
-  test("presigns against the stored row's size and digest, not the resent body's claims", async () => {
-    const chunk = validChunk();
-    const storedSha256 = "n4bQgYhMfWWaL+qgxVrQFaO/TxsrC4Is0V1sFbDwCgg";
-    const existing = { ...atCurrentDestination(chunk), ciphertextBytes: 999, ciphertextSha256: storedSha256 };
-    const { service } = build({ isReplay: true, existingChunk: existing });
+    const { service } = build();
     await record(service, chunk);
-    expect(presignPut).toHaveBeenCalledWith({
-      objectKey: existing.objectKey,
-      ciphertextBytes: 999,
-      ciphertextSha256: storedSha256
-    });
+    const { service: other } = build({ proxy: { ...PROXY, id: "0b5c8f2a-3d1e-4c7b-9a6f-2e8d4b1c7f30" } });
+    await other.createChunkUploadUrl({ proxyId: "0b5c8f2a-3d1e-4c7b-9a6f-2e8d4b1c7f30", sessionId: SESSION_ID, chunk });
+    const [first, second] = presignPut.mock.calls as unknown as [{ objectKey: string }][];
+    expect(first[0].objectKey).not.toBe(second[0].objectKey);
+  });
+});
+
+describe("createChunkUploadUrl: the live feed", () => {
+  test("a feed that can't be written still hands out the upload url", async () => {
+    const { service } = build({ feedAddFails: true });
+    await expect(record(service)).resolves.toMatchObject({ uploadUrl: "https://bucket.s3.amazonaws.com/signed-put" });
   });
 
-  test("a chunk re-sent after the destination moved is moved to the current bucket and key before it is presigned", async () => {
-    const { service, moveChunk } = build({
-      isReplay: true,
-      existingChunk: { ...validChunk(), id: "row-1", bucket: "old-bucket", objectKey: "old/key.json.enc" }
-    });
-    await record(service);
-
-    const [values, tx] = moveChunk.mock.calls[0] as unknown as [Record<string, unknown>, unknown];
-    expect(values).toMatchObject({ id: "row-1", projectId: "proj-1", bucket: "my-bucket", keyPrefix: "logs" });
-    expect(String(values.objectKey)).toMatch(
-      /^logs\/proj-1\/sess-1\/proxy-1\/\d{4}-\d{2}-\d{2}\/01a0a9c5-231d-7abc-8def-0123456789ab\.json\.enc$/
-    );
-    expect(tx).toBeDefined();
-    expect(presignPut).toHaveBeenCalledWith({
-      objectKey: values.objectKey,
-      ciphertextBytes: 4096,
-      ciphertextSha256: validChunk().ciphertextSha256
-    });
-  });
-
-  test("a move that finds the destination changed again is a retryable 500 and presigns nothing", async () => {
-    const { service, moveChunk } = build({
-      isReplay: true,
-      destinationChanged: true,
-      existingChunk: { ...validChunk(), id: "row-1", bucket: "old-bucket", objectKey: "old/key.json.enc" }
-    });
-
-    await expect(record(service)).rejects.toMatchObject({
-      name: "InternalServerError",
-      message:
-        "The session log bucket or key prefix changed while this chunk was being recorded. The proxy sends it again automatically."
-    });
-    expect(moveChunk).toHaveBeenCalledTimes(1);
-    expect(presignPut).not.toHaveBeenCalled();
-  });
-
-  test("a chunk re-sent to the destination it is already at is left alone", async () => {
-    const chunk = validChunk();
-    const existing = atCurrentDestination(chunk);
-    const { service, moveChunk } = build({ isReplay: true, existingChunk: existing });
-    await record(service, chunk);
-
-    expect(moveChunk).not.toHaveBeenCalled();
-    expect(presignPut).toHaveBeenCalledWith({
-      objectKey: existing.objectKey,
-      ciphertextBytes: 4096,
-      ciphertextSha256: validChunk().ciphertextSha256
-    });
-  });
-
-  test("a chunk id another proxy recorded is refused before the row is touched", async () => {
-    const { service, moveChunk, recordStoredChunk } = build({
-      isReplay: true,
-      existingChunk: { ...validChunk(), proxyId: "proxy-2", bucket: "old-bucket", objectKey: "theirs/key.json.enc" }
-    });
-
-    await expect(record(service)).rejects.toMatchObject({
-      name: "Conflict",
-      message: "This chunk ID was already recorded by another proxy"
-    });
-    expect(moveChunk).not.toHaveBeenCalled();
-    expect(recordStoredChunk).not.toHaveBeenCalled();
-    expect(presignPut).not.toHaveBeenCalled();
-  });
-
-  test("a row that vanished between the insert and the read is a 500, not a silent success", async () => {
-    const { service } = build({ isReplay: true, existingChunk: null });
-    await expect(record(service)).rejects.toMatchObject({
-      message: "Session log chunk vanished between insert and read"
-    });
-  });
-
-  test("a database error propagates rather than being read as a replay", async () => {
-    const other = new DatabaseError({ error: { code: "23503" }, name: "create" });
-    const { service, findChunk } = build({ createThrows: other });
-    await expect(record(service)).rejects.toThrow();
-    expect(findChunk).not.toHaveBeenCalled();
+  test("an upload never waits on Redis, even when it doesn't answer", async () => {
+    const { service } = build({ feedAddHangs: true });
+    await expect(record(service)).resolves.toMatchObject({ uploadUrl: "https://bucket.s3.amazonaws.com/signed-put" });
   });
 });
 
 describe("when the AWS connection can't be used", () => {
   const unusable = new BadRequestError({ message: "Couldn't use the AWS connection 'prod-logs': AccessDenied" });
-  const storedRow = () => ({
-    ...validChunk(),
-    proxyId: "proxy-1",
-    proxyName: "proxy-one",
-    bucket: "my-bucket",
-    objectKey: "logs/key.json.enc",
-    createdAt: new Date()
-  });
-  const scope = {
-    projectId: "proj-1",
-    ctx: { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never,
-    sessionId: "sess-1",
-    limit: 100
-  };
-  const readSessionLogs = (service: ReturnType<typeof build>["service"]) => service.listSessionLogs(scope);
-  const tailSessionLogs = (service: ReturnType<typeof build>["service"], receivedAfter: Date) =>
-    service.tailSessionLogs({ ...scope, receivedAfter });
 
-  test("a chunk is refused as a retryable 500 before any row is written, without the connection's details", async () => {
+  test("a chunk is refused as a retryable 500 before it is signed, without the connection's details", async () => {
     vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
-    const { service, createIfAbsent } = build();
+    const { service } = build();
     const error = (await record(service).catch((err: unknown) => err)) as Error;
     expect(error.name).toBe("InternalServerError");
     expect(error.message).not.toContain("prod-logs");
-    expect(createIfAbsent).not.toHaveBeenCalled();
+    expect(presignPut).not.toHaveBeenCalled();
   });
 
-  test("a read lists the chunks without links and tells an admin why", async () => {
+  const storageUnavailable = (message: string): unknown =>
+    expect.objectContaining({ name: AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE, message });
+
+  test("a read fails with the named error and tells an admin why", async () => {
     vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
-    const { service } = build({ pageRows: [storedRow()] });
-    const page = await readSessionLogs(service);
-    expect(page.sessionLogs.storageUnavailable).toEqual({ reason: "connection-unusable", message: unusable.message });
-    expect(page.sessionLogs.sessionKey).toBeNull();
-    expect(page.chunks.map((chunk) => chunk.presignedGetUrl)).toEqual([null]);
+    const { service } = build();
+    const error = await service.listSessionLogs(scope).catch((err: unknown) => err);
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect(error).toEqual(storageUnavailable(unusable.message));
   });
 
-  test("a live read holds its cursor so nothing is skipped once the connection is back", async () => {
+  test("a read without a connection tells an admin to choose one", async () => {
+    const { service } = build({ config: { ...enabledConfig(), enabled: false, appConnectionId: null } });
+    await expect(service.listSessionLogs(scope)).rejects.toEqual(
+      storageUnavailable("No AWS connection is set for session logs. Choose one in Settings.")
+    );
+  });
+
+  test("a live read fails too, so the caller keeps its cursor and nothing is skipped", async () => {
     vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
-    const { service } = build({ pageRows: [storedRow()] });
-    const since = new Date(Date.now() - 60_000);
-    const page = await tailSessionLogs(service, since);
+    const { key } = objectFor(Date.now());
+    const { service } = build({ feed: [["1791278402731-0", ["key", key, "bucket", "my-bucket", "bytes", "4096"]]] });
+    await expect(service.tailSessionLogs({ ...scope, cursor: "1791278402000-0" })).rejects.toEqual(
+      storageUnavailable(unusable.message)
+    );
+  });
+
+  test("a member who isn't an admin gets the plain message, without the AWS error", async () => {
+    vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
+    const { service } = build({ isAdmin: false });
+    await expect(service.listSessionLogs(scope)).rejects.toEqual(
+      storageUnavailable(AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE)
+    );
+  });
+
+  test("a member who isn't an admin gets no bucket detail when listing fails", async () => {
+    listChunks.mockRejectedValueOnce(
+      new S3ServiceException({ name: "AccessDenied", $fault: "client", $metadata: {}, message: "Access Denied" })
+    );
+    const { service } = build({ isAdmin: false });
+    await expect(service.listSessionLogs(scope)).rejects.toEqual(
+      storageUnavailable(AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE)
+    );
+  });
+
+  test("a bucket that refuses to list is a 400 that points at s3:ListBucket", async () => {
+    listChunks.mockRejectedValueOnce(
+      new S3ServiceException({ name: "AccessDenied", $fault: "client", $metadata: {}, message: "Access Denied" })
+    );
+    const { service } = build();
+    const error = await service.listSessionLogs(scope).catch((err: unknown) => err);
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect((error as Error).message).toContain("s3:ListBucket");
+  });
+
+  test("an S3 that isn't responding is a 500, so callers know to try again", async () => {
+    listChunks.mockRejectedValueOnce(
+      new S3ServiceException({ name: "SlowDown", $fault: "server", $metadata: {}, message: "Slow down" })
+    );
+    const { service } = build();
+    const error = await service.listSessionLogs(scope).catch((err: unknown) => err);
+    expect(error).toBeInstanceOf(InternalServerError);
+    expect(error).toEqual(
+      storageUnavailable(
+        "Infisical couldn't list session logs in bucket 'my-bucket' (SlowDown). S3 isn't responding. Try again in a bit."
+      )
+    );
+  });
+
+  test("anything else that goes wrong while listing stays an error", async () => {
+    listChunks.mockRejectedValueOnce(new TypeError("a bug"));
+    const { service } = build();
+    await expect(service.listSessionLogs(scope)).rejects.toThrow("a bug");
+  });
+});
+
+describe("listSessionLogs: paging through the bucket", () => {
+  test("a session that was never recordable lists nothing and never calls S3", async () => {
+    const { service } = build({ session: { ...liveSession(), encryptedSessionLogKey: null } });
+    const page = await service.listSessionLogs(scope);
     expect(page.chunks).toEqual([]);
-    expect(page.nextCursor).toBe(encodeTailCursor(since));
-    expect(page.hasMore).toBe(false);
+    expect(listChunks).not.toHaveBeenCalled();
   });
 
-  test("a read names each chunk's proxy by its current name", async () => {
-    vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
-    const { service } = build({ pageRows: [storedRow()], proxies: [{ ...PROXY, name: "proxy-renamed" }] });
-    const page = await readSessionLogs(service);
-    expect(page.chunks.map((chunk) => chunk.proxyName)).toEqual(["proxy-renamed"]);
+  test("returns each chunk with its proxy, size and a download link", async () => {
+    const lastRecordAt = Date.now() - 60_000;
+    const { chunkId, key } = objectFor(lastRecordAt);
+    listChunks.mockResolvedValueOnce({ objects: [{ key, size: 4096 }], isTruncated: false });
+    const { service } = build();
+
+    const page = await service.listSessionLogs(scope);
+    expect(page.chunks).toEqual([
+      {
+        chunkId,
+        proxyId: PROXY_ID,
+        ciphertextBytes: 4096,
+        presignedGetUrl: `https://bucket.s3.amazonaws.com/${key}`
+      }
+    ]);
+    expect(page.sessionLogs.sessionKey).toBe(Buffer.alloc(32, 7).toString("base64"));
+    expect(page.nextCursor).toBeNull();
   });
 
-  test("a read falls back to the stored name once the proxy is deleted", async () => {
-    vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
-    const { service } = build({ pageRows: [storedRow()], proxies: [] });
-    const page = await readSessionLogs(service);
-    expect(page.chunks.map((chunk) => chunk.proxyName)).toEqual(["proxy-one"]);
+  test("a page ends at its byte budget and the cursor continues after the last chunk it took", async () => {
+    const big = Math.floor(AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES * 0.6);
+    const newer = objectFor(Date.now() - 1_000);
+    const older = objectFor(Date.now() - 2_000);
+    listChunks.mockResolvedValueOnce({
+      objects: [
+        { key: newer.key, size: big },
+        { key: older.key, size: big }
+      ],
+      isTruncated: false
+    });
+    const { service } = build();
+
+    const page = await service.listSessionLogs(scope);
+    expect(page.chunks.map((chunk) => chunk.chunkId)).toEqual([newer.chunkId]);
+    expect(page.nextCursor).toBe(encodeHistoryCursor(newer.key.slice(FOLDER.length)));
+  });
+
+  test("always takes at least one chunk, however large", async () => {
+    const huge = objectFor(Date.now());
+    listChunks.mockResolvedValueOnce({
+      objects: [{ key: huge.key, size: AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES * 4 }],
+      isTruncated: false
+    });
+    const { service } = build();
+    const page = await service.listSessionLogs(scope);
+    expect(page.chunks).toHaveLength(1);
+  });
+
+  test("skips files it didn't write, and still moves past them", async () => {
+    listChunks.mockResolvedValueOnce({ objects: [{ key: `${FOLDER}notes.txt`, size: 10 }], isTruncated: true });
+    const { service } = build();
+    const page = await service.listSessionLogs(scope);
+    expect(page.chunks).toEqual([]);
+    expect(page.nextCursor).toBe(encodeHistoryCursor("notes.txt"));
+  });
+
+  test("an empty page that says more remain ends the listing instead of failing", async () => {
+    listChunks.mockResolvedValueOnce({ objects: [], isTruncated: true });
+    const { service } = build();
+    const page = await service.listSessionLogs(scope);
+    expect(page.chunks).toEqual([]);
+    expect(page.nextCursor).toBeNull();
+  });
+
+  test("a cursor continues after the name it carries", async () => {
+    const { service } = build();
+    await service.listSessionLogs({ ...scope, cursor: "8208694117999_x" });
+    expect(listChunks).toHaveBeenCalledWith({ folder: FOLDER, startAfter: `${FOLDER}8208694117999_x` });
+  });
+
+  test("a cursor wins over the end of a date range, so later pages keep moving back", async () => {
+    const { service } = build();
+    await service.listSessionLogs({ ...scope, cursor: "8208694117999_x", to: new Date() });
+    expect(listChunks).toHaveBeenCalledWith({ folder: FOLDER, startAfter: `${FOLDER}8208694117999_x` });
+  });
+
+  test("a date range starts listing at its end plus the margin", async () => {
+    const to = new Date("2026-10-07T10:00:00.000Z");
+    const { service } = build();
+    await service.listSessionLogs({ ...scope, from: new Date("2026-10-07T09:00:00.000Z"), to });
+    expect(listChunks).toHaveBeenCalledWith({
+      folder: FOLDER,
+      startAfter: `${FOLDER}${toRev(to.getTime() + AGENT_VAULT_SESSION_LOG_RANGE_MARGIN_MS)}`
+    });
+  });
+
+  test("stops at the first chunk whose last request is before the range starts, with nothing older to load", async () => {
+    const from = new Date(Date.now() - 60_000);
+    const inside = objectFor(from.getTime() + 1_000);
+    const before = objectFor(from.getTime() - 1_000);
+    listChunks.mockResolvedValueOnce({
+      objects: [
+        { key: inside.key, size: 100 },
+        { key: before.key, size: 100 }
+      ],
+      isTruncated: true
+    });
+    const { service } = build();
+    const page = await service.listSessionLogs({ ...scope, from });
+    expect(page.chunks.map((chunk) => chunk.chunkId)).toEqual([inside.chunkId]);
+    expect(page.nextCursor).toBeNull();
+  });
+
+  test("refuses a range that ends before it starts", async () => {
+    const { service } = build();
+    await expect(
+      service.listSessionLogs({
+        ...scope,
+        from: new Date("2026-10-07T10:00:00Z"),
+        to: new Date("2026-10-07T09:00:00Z")
+      })
+    ).rejects.toThrow("The 'from' time must be before the 'to' time");
+  });
+});
+
+describe("tailSessionLogs: reading the live feed", () => {
+  const entry = (id: string, key: string, bucket = "my-bucket"): TFeedEntry => [
+    id,
+    ["key", key, "bucket", bucket, "bytes", "4096"]
+  ];
+
+  test("with no cursor, reads the feed from its start", async () => {
+    const { service, streamRange } = build();
+    await service.tailSessionLogs(scope);
+    expect(streamRange).toHaveBeenCalledWith(`agent-vault-session-log-feed:${SESSION_ID}`, "(0-0", "+");
+  });
+
+  test("returns each new entry as a chunk and moves the cursor to the last one", async () => {
+    const first = objectFor(Date.now() - 2_000);
+    const second = objectFor(Date.now() - 1_000);
+    const { service } = build({ feed: [entry("100-0", first.key), entry("101-0", second.key)] });
+
+    const page = await service.tailSessionLogs({ ...scope, cursor: "99-0" });
+    expect(page.chunks.map((chunk) => chunk.chunkId)).toEqual([first.chunkId, second.chunkId]);
+    expect(page.chunks[0]).toMatchObject({ proxyId: PROXY_ID, ciphertextBytes: 4096 });
+    expect(page.nextCursor).toBe(encodeTailCursor("101-0"));
+  });
+
+  test("an entry sent twice for the same chunk is returned once", async () => {
+    const { key } = objectFor(Date.now());
+    const { service } = build({ feed: [entry("100-0", key), entry("101-0", key)] });
+    const page = await service.tailSessionLogs(scope);
+    expect(page.chunks).toHaveLength(1);
+  });
+
+  test("skips entries from an earlier bucket or prefix, and still moves past them", async () => {
+    const { key } = objectFor(Date.now());
+    const { service } = build({
+      feed: [entry("100-0", key, "old-bucket"), entry("101-0", `old-prefix/${PROJECT_ID}/${SESSION_ID}/x.json.enc`)]
+    });
+    const page = await service.tailSessionLogs(scope);
+    expect(page.chunks).toEqual([]);
+    expect(page.nextCursor).toBe(encodeTailCursor("101-0"));
+  });
+
+  test("skips an entry whose size isn't a whole number, and still moves past it", async () => {
+    const { key } = objectFor(Date.now());
+    const { service } = build({ feed: [["100-0", ["key", key, "bucket", "my-bucket", "bytes", "lots"]]] });
+    const page = await service.tailSessionLogs(scope);
+    expect(page.chunks).toEqual([]);
+    expect(page.nextCursor).toBe(encodeTailCursor("100-0"));
+  });
+
+  test("an uppercase session id reads the same folder and feed as the stored one", async () => {
+    const upper = { ...scope, sessionId: SESSION_ID.toUpperCase() };
+    const { key } = objectFor(Date.now() - 60_000);
+    listChunks.mockResolvedValueOnce({ objects: [{ key, size: 100 }], isTruncated: false });
+    const { service, streamRange } = build();
+    await service.tailSessionLogs(upper);
+    const page = await service.listSessionLogs(upper);
+    expect(streamRange).toHaveBeenCalledWith(`agent-vault-session-log-feed:${SESSION_ID}`, "(0-0", "+");
+    expect(listChunks).toHaveBeenCalledWith(expect.objectContaining({ folder: FOLDER }));
+    expect(page.chunks).toHaveLength(1);
+    expect(unwrapSessionLogKey).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: SESSION_ID }),
+      expect.anything()
+    );
+  });
+
+  test("an empty feed keeps the cursor and never touches the AWS connection", async () => {
+    const { service } = build();
+    const page = await service.tailSessionLogs({ ...scope, cursor: "99-0" });
+    expect(page.chunks).toEqual([]);
+    expect(page.nextCursor).toBe(encodeTailCursor("99-0"));
+    expect(buildSessionLogStorage).not.toHaveBeenCalled();
   });
 });
 
@@ -549,7 +641,7 @@ describe("updateSessionLogSettings: when the connection is checked again", () =>
   const actor = { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never;
 
   const save = (service: ReturnType<typeof build>["service"], patch: Record<string, unknown>) =>
-    service.updateSessionLogSettings({ projectId: "proj-1", ctx, actor, ...patch });
+    service.updateSessionLogSettings({ projectId: PROJECT_ID, ctx, actor, ...patch });
 
   test.each([
     { use: "a different connection", patch: { appConnectionId: "5c6fd1a9-3c89-4a64-9e5f-6b7cfe0f1a2b" } },
@@ -587,6 +679,25 @@ describe("updateSessionLogSettings: when the connection is checked again", () =>
   });
 });
 
+describe("updateSessionLogSettings: directory buckets", () => {
+  const ctx = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never;
+  const actor = { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never;
+
+  test("refuses a directory bucket, which can't list in order", async () => {
+    const { service, updateConfig } = build();
+    await expect(
+      service.updateSessionLogSettings({ projectId: PROJECT_ID, ctx, actor, bucket: "logs--usw2-az1--x-s3" })
+    ).rejects.toThrow("Directory buckets");
+    expect(updateConfig).not.toHaveBeenCalled();
+  });
+
+  test("a directory bucket already saved can still be turned off", async () => {
+    const { service, updateConfig } = build({ config: { ...enabledConfig(), bucket: "logs--usw2-az1--x-s3" } });
+    await service.updateSessionLogSettings({ projectId: PROJECT_ID, ctx, actor, enabled: false });
+    expect(updateConfig).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("updateSessionLogSettings: two first saves at once", () => {
   test("the one that loses reads as a clash to retry, not a server error", async () => {
     const { service } = build({
@@ -595,7 +706,7 @@ describe("updateSessionLogSettings: two first saves at once", () => {
     });
     await expect(
       service.updateSessionLogSettings({
-        projectId: "proj-1",
+        projectId: PROJECT_ID,
         ctx: { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never,
         actor: { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never,
         enabled: false
@@ -609,7 +720,7 @@ describe("without session logs on the plan", () => {
   const actor = { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never;
 
   const save = (service: ReturnType<typeof build>["service"], patch: Record<string, unknown>) =>
-    service.updateSessionLogSettings({ projectId: "proj-1", ctx, actor, ...patch });
+    service.updateSessionLogSettings({ projectId: PROJECT_ID, ctx, actor, ...patch });
 
   test("a save that turns recording on is refused before the connection is checked", async () => {
     const { service, validateConnection, updateConfig } = build({
@@ -642,18 +753,20 @@ describe("without session logs on the plan", () => {
   });
 
   test("a chunk is refused with the error that tells the proxy logging is off", async () => {
-    const { service, createIfAbsent } = build({ licensed: false });
+    const { service } = build({ licensed: false });
     await expect(record(service)).rejects.toMatchObject({
       name: AgentVaultSessionLogErrorName.Disabled,
       message: AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
     });
-    expect(createIfAbsent).not.toHaveBeenCalled();
+    expect(presignPut).not.toHaveBeenCalled();
   });
 
   test("logs recorded while it was on can still be read, and read as not recording", async () => {
-    const { service } = build({ licensed: false, pageRows: [] });
-    const page = await service.listSessionLogs({ projectId: "proj-1", ctx, sessionId: "sess-1", limit: 100 });
-    expect(page.chunks).toEqual([]);
+    const { key } = objectFor(Date.now());
+    listChunks.mockResolvedValueOnce({ objects: [{ key, size: 4096 }], isTruncated: false });
+    const { service } = build({ licensed: false });
+    const page = await service.listSessionLogs({ projectId: PROJECT_ID, ctx, sessionId: SESSION_ID });
+    expect(page.chunks).toHaveLength(1);
     expect(page.sessionLogs.enabled).toBe(false);
   });
 });
@@ -664,34 +777,52 @@ describe("while the License Server can't be reached", () => {
   const unreachable = { licensed: false, planFallback: true } as const;
 
   test("a chunk from a paid org is still accepted on its last known plan", async () => {
-    const { service, createIfAbsent } = build({
+    const { service } = build({
       ...unreachable,
       lastKnownPlan: { plan: { agentVaultByoS3: true }, fetchedAt: Date.now() - 10 * 60_000 }
     });
     await record(service);
-    expect(createIfAbsent).toHaveBeenCalledTimes(1);
+    expect(presignPut).toHaveBeenCalledTimes(1);
   });
 
   test("a chunk is held, not refused, when there is no recent real answer", async () => {
-    const { service, createIfAbsent } = build({
+    const { service } = build({
       ...unreachable,
       lastKnownPlan: { plan: { agentVaultByoS3: true }, fetchedAt: Date.now() - 2 * 60 * 60_000 }
     });
     await expect(record(service)).rejects.toMatchObject({ name: "InternalServerError" });
-    expect(createIfAbsent).not.toHaveBeenCalled();
+    expect(presignPut).not.toHaveBeenCalled();
   });
 
   test("a save that needs the plan says it couldn't be confirmed", async () => {
     const { service, updateConfig } = build({ ...unreachable, config: { ...enabledConfig(), enabled: false } });
-    await expect(service.updateSessionLogSettings({ projectId: "proj-1", ctx, actor, enabled: true })).rejects.toThrow(
-      "Infisical couldn't confirm your plan right now. Try again in a few minutes."
-    );
+    await expect(
+      service.updateSessionLogSettings({ projectId: PROJECT_ID, ctx, actor, enabled: true })
+    ).rejects.toThrow("Infisical couldn't confirm your plan right now. Try again in a few minutes.");
     expect(updateConfig).not.toHaveBeenCalled();
   });
 
   test("a page still reads as recording", async () => {
-    const { service } = build({ ...unreachable, pageRows: [] });
-    const page = await service.listSessionLogs({ projectId: "proj-1", ctx, sessionId: "sess-1", limit: 100 });
+    const { service } = build({ ...unreachable });
+    const page = await service.listSessionLogs({ projectId: PROJECT_ID, ctx, sessionId: SESSION_ID });
     expect(page.sessionLogs.enabled).toBe(true);
+  });
+});
+
+describe("getSessionLogHealth", () => {
+  test("reports a bucket the connection can't reach", async () => {
+    const unreachable =
+      "Unable to reach bucket 'my-bucket'. Check the bucket name, the region, and that the connection's credentials allow s3:ListBucket on it";
+    assertReachable.mockRejectedValueOnce(new BadRequestError({ message: unreachable }));
+    const { service } = build();
+    const { health } = await service.getSessionLogHealth({ projectId: PROJECT_ID, ctx: scope.ctx });
+    expect(health.connectionError).toBe(unreachable);
+  });
+
+  test("is clear once the connection works and the bucket answers", async () => {
+    const { service } = build();
+    const { health } = await service.getSessionLogHealth({ projectId: PROJECT_ID, ctx: scope.ctx });
+    expect(health.connectionError).toBeNull();
+    expect(assertReachable).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,4 +1,10 @@
-import { GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  GetObjectCommand,
+  HeadBucketCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -24,7 +30,9 @@ export const createS3Bucket = ({
     region,
     useFipsEndpoint: crypto.isFipsModeEnabled(),
     sha256: CustomAWSHasher,
-    credentials
+    credentials,
+    // Without these the SDK waits on a stalled S3 indefinitely, past the point Infisical drops the request.
+    requestHandler: { connectionTimeout: 5_000, requestTimeout: 15_000, throwOnRequestTimeout: true }
   });
 
   // These headers are signed so S3 enforces them: the body must be the declared size and hash to the declared
@@ -59,12 +67,38 @@ export const createS3Bucket = ({
   const presignGet = (key: string, expiresInSeconds: number) =>
     getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: expiresInSeconds });
 
-  const checkAccess = async (testKey: string): Promise<TS3AccessCheck> => {
+  // One page only: callers that page do so across requests, so one request can't walk an unbounded listing.
+  const listPage = async ({
+    prefix,
+    startAfter,
+    maxKeys
+  }: {
+    prefix: string;
+    startAfter?: string;
+    maxKeys: number;
+  }) => {
+    const res = await client.send(
+      new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, StartAfter: startAfter, MaxKeys: maxKeys })
+    );
+    const objects: { key: string; size: number }[] = [];
+    (res.Contents ?? []).forEach(({ Key, Size }) => {
+      if (Key !== undefined && Size !== undefined) objects.push({ key: Key, size: Size });
+    });
+    return { objects, isTruncated: Boolean(res.IsTruncated) };
+  };
+
+  const checkReachable = async (): Promise<{ ok: true } | { ok: false; error: unknown }> => {
     try {
       await client.send(new HeadBucketCommand({ Bucket: bucket }));
+      return { ok: true };
     } catch (error) {
-      return { ok: false, failure: "unreachable", error };
+      return { ok: false, error };
     }
+  };
+
+  const checkAccess = async (testKey: string): Promise<TS3AccessCheck> => {
+    const reachable = await checkReachable();
+    if (!reachable.ok) return { ok: false, failure: "unreachable", error: reachable.error };
     try {
       await client.send(
         new PutObjectCommand({
@@ -80,5 +114,5 @@ export const createS3Bucket = ({
     return { ok: true };
   };
 
-  return { presignCreateOnlyPut, presignGet, checkAccess };
+  return { presignCreateOnlyPut, presignGet, listPage, checkReachable, checkAccess };
 };

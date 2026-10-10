@@ -11,7 +11,10 @@ import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-con
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import { AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS } from "./agent-vault-session-log-constants";
+import {
+  AGENT_VAULT_SESSION_LOG_MAX_PAGE_CHUNKS,
+  AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS
+} from "./agent-vault-session-log-constants";
 import { withKeyPrefix } from "./agent-vault-session-log-fns";
 import { TResolvedSessionLogStorageConfig } from "./agent-vault-session-log-types";
 
@@ -78,7 +81,7 @@ export const buildSessionLogStorage = async (
     s3.presignCreateOnlyPut({
       key: objectKey,
       contentLength: ciphertextBytes,
-      // Stored unpadded; S3 wants the padded form
+      // The proxy sends it unpadded; S3 wants the padded form
       sha256Base64: `${ciphertextSha256}=`,
       expiresInSeconds: AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS
     });
@@ -86,7 +89,12 @@ export const buildSessionLogStorage = async (
   const presignGet = async (objectKey: string) =>
     s3.presignGet(objectKey, AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS);
 
+  const listChunks = async ({ folder, startAfter }: { folder: string; startAfter?: string }) =>
+    s3.listPage({ prefix: folder, startAfter, maxKeys: AGENT_VAULT_SESSION_LOG_MAX_PAGE_CHUNKS });
+
   const mintCorsProbeUrl = async () => presignGet(withKeyPrefix(keyPrefix, ".cors-probe"));
+
+  const unreachableMessage = `Unable to reach bucket '${bucket}'. Check the bucket name, the region, and that the connection's credentials allow s3:ListBucket on it`;
 
   const validate = async () => {
     const testKey = withKeyPrefix(keyPrefix, ".test/write-check");
@@ -100,10 +108,19 @@ export const buildSessionLogStorage = async (
     throw new BadRequestError({
       message:
         access.failure === "unreachable"
-          ? `Unable to reach bucket '${bucket}'. Check the bucket name, the region, and that the connection's credentials can access it`
+          ? unreachableMessage
           : `Bucket '${bucket}' is reachable but writing to it failed. Grant s3:PutObject on the configured key prefix`
     });
   };
 
-  return { presignPut, presignGet, mintCorsProbeUrl, validate };
+  // Read-only, so it is safe to call often: it can't tell whether writes still work.
+  const assertReachable = async () => {
+    const reachable = await s3.checkReachable();
+    if (reachable.ok) return;
+
+    logger.warn({ err: reachable.error, bucket }, `Agent Vault session logs bucket is unreachable [bucket=${bucket}]`);
+    throw new BadRequestError({ message: unreachableMessage });
+  };
+
+  return { presignPut, presignGet, listChunks, mintCorsProbeUrl, validate, assertReachable };
 };

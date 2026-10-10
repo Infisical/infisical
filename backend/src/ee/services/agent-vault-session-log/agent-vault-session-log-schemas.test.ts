@@ -2,7 +2,6 @@ import { describe, expect, test } from "vitest";
 
 import {
   AGENT_VAULT_SESSION_LOG_MAX_CHUNK_BYTES,
-  AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS,
   AGENT_VAULT_SESSION_LOG_MIN_CHUNK_BYTES
 } from "./agent-vault-session-log-constants";
 import { encodeHistoryCursor, encodeTailCursor } from "./agent-vault-session-log-fns";
@@ -15,21 +14,15 @@ import {
 
 const validChunk = {
   chunkId: "01a0a9c5-231d-7abc-8def-0123456789ab",
-  startedAt: "2026-09-16T10:30:00.000Z",
   endedAt: "2026-09-16T10:31:00.000Z",
-  firstSeq: 0,
-  lastSeq: 41,
-  recordCount: 42,
-  droppedCount: 0,
   ciphertextBytes: 4096,
-  iv: "qrvM3e7/ABEiM0RV",
   ciphertextSha256: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU"
 };
 
 describe("the chunk create body", () => {
-  test("accepts a well-formed chunk and coerces the timestamps to dates", () => {
+  test("accepts a well-formed chunk and coerces the timestamp to a date", () => {
     const parsed = AgentVaultSessionLogChunkCreateSchema.parse(validChunk);
-    expect(parsed.startedAt).toBeInstanceOf(Date);
+    expect(parsed.endedAt).toBeInstanceOf(Date);
     expect(parsed.endedAt.toISOString()).toBe("2026-09-16T10:31:00.000Z");
   });
 
@@ -39,24 +32,14 @@ describe("the chunk create body", () => {
     {
       field: "chunkId",
       value: "01A0A9C5-231D-7ABC-8DEF-0123456789AB",
-      why: "Postgres returns lowercase, so an uppercase id would never decrypt"
+      why: "the browser rebuilds the AAD from the lowercase id in the object name"
     },
-    { field: "recordCount", value: 0, why: "an empty chunk is never worth a row" },
-    { field: "recordCount", value: AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS + 1, why: "over the slice size" },
-    { field: "recordCount", value: 1.5, why: "not an integer" },
-    { field: "droppedCount", value: -1, why: "negative" },
-    { field: "firstSeq", value: -1, why: "sequence numbers start at zero" },
-    { field: "lastSeq", value: Number.MAX_SAFE_INTEGER + 2, why: "past what reads back from bigint exactly" },
-    { field: "droppedCount", value: 1e19, why: "past what the bigint column holds" },
     {
       field: "ciphertextBytes",
       value: AGENT_VAULT_SESSION_LOG_MIN_CHUNK_BYTES - 1,
-      why: "smaller than '[]' plus a tag"
+      why: "smaller than an IV, '[]' and a tag"
     },
     { field: "ciphertextBytes", value: AGENT_VAULT_SESSION_LOG_MAX_CHUNK_BYTES + 1, why: "over the size ceiling" },
-    { field: "iv", value: "qrvM3e7/ABEiM0RV=", why: "padded base64 is the wrong width" },
-    { field: "iv", value: "qrvM3e7/ABEiM0R", why: "15 characters is not 12 bytes" },
-    { field: "iv", value: "qrvM3e7-ABEiM0RV", why: "url-safe base64 is a different alphabet" },
     {
       field: "ciphertextSha256",
       value: "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
@@ -77,67 +60,61 @@ describe("the chunk create body", () => {
     expect(AgentVaultSessionLogChunkCreateSchema.safeParse({ ...validChunk, [field]: value }).success).toBe(false);
   });
 
-  test("rejects a body carrying anything the contract does not name", () => {
+  test("drops a field the contract does not name, so a caller can't choose the object key", () => {
     const parsed = AgentVaultSessionLogChunkCreateSchema.parse({ ...validChunk, objectKey: "attacker/controlled" });
     expect(parsed).not.toHaveProperty("objectKey");
   });
 });
 
 describe("the session logs history query", () => {
-  test("defaults to 1000 records and no cursor", () => {
-    expect(AgentVaultSessionLogHistoryQuerySchema.parse({})).toEqual({ limit: 1000, cursor: undefined });
+  test("accepts a history query with no cursor", () => {
+    expect(AgentVaultSessionLogHistoryQuerySchema.parse({})).toEqual({ cursor: undefined });
   });
 
-  test("coerces a querystring limit, which always arrives as a string", () => {
-    expect(AgentVaultSessionLogHistoryQuerySchema.parse({ limit: "25" }).limit).toBe(25);
-  });
-
-  test.each([0, 5001, -1])("rejects a limit of %s", (limit) => {
-    expect(AgentVaultSessionLogHistoryQuerySchema.safeParse({ limit }).success).toBe(false);
-  });
-
-  test("reads a cursor back as the chunk to page before", () => {
-    const cursor = encodeHistoryCursor("01a0a9c5-231d-7abc-8def-0123456789ab");
-    expect(AgentVaultSessionLogHistoryQuerySchema.parse({ cursor }).cursor).toBe(
-      "01a0a9c5-231d-7abc-8def-0123456789ab"
-    );
+  test("reads a cursor back as the name to continue after", () => {
+    const after = "8208694117999_01a11226-9990-7a3f-8c21-4e6f9b2d1a07.e91f3c20-7d4b-4a8e-9f1c-3b5d7e2a6c48.json.enc";
+    expect(AgentVaultSessionLogHistoryQuerySchema.parse({ cursor: encodeHistoryCursor(after) }).cursor).toBe(after);
   });
 
   test.each([
     "yesterday",
-    Buffer.from('{"v":1,"m":"h","id":"not-a-uuid"}').toString("base64url"),
-    Buffer.from('{"v":1,"m":"h","id":"3f2b8c1e-9d4a-4e6b-a1c7-5f0e2d9b8a64"}').toString("base64url")
+    Buffer.from('{"v":1,"m":"h","id":"01a0a9c5-231d-7abc-8def-0123456789ab"}').toString("base64url"),
+    Buffer.from('{"v":2,"m":"h","after":""}').toString("base64url"),
+    Buffer.from(JSON.stringify({ v: 2, m: "h", after: "x".repeat(1025) })).toString("base64url")
   ])("rejects a cursor it did not issue: %s", (cursor) => {
     expect(AgentVaultSessionLogHistoryQuerySchema.safeParse({ cursor }).success).toBe(false);
   });
 
   test("says where a tail cursor belongs", () => {
-    const result = AgentVaultSessionLogHistoryQuerySchema.safeParse({ cursor: encodeTailCursor(new Date()) });
+    const result = AgentVaultSessionLogHistoryQuerySchema.safeParse({ cursor: encodeTailCursor("1791278402731-0") });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0].message).toMatch(/session logs tail endpoint/);
   });
 });
 
 describe("the session logs tail query", () => {
-  test("starts from now when no cursor is given", () => {
-    expect(AgentVaultSessionLogTailQuerySchema.parse({})).toEqual({ limit: 1000, cursor: undefined });
+  test("accepts a tail query with no cursor", () => {
+    expect(AgentVaultSessionLogTailQuerySchema.parse({})).toEqual({ cursor: undefined });
   });
 
-  test("reads a cursor back as the time to continue from", () => {
-    const at = new Date("2026-09-25T10:00:00.123Z");
-    expect(AgentVaultSessionLogTailQuerySchema.parse({ cursor: encodeTailCursor(at) }).cursor).toEqual(at);
+  test("reads a cursor back as the feed entry to continue after", () => {
+    expect(AgentVaultSessionLogTailQuerySchema.parse({ cursor: encodeTailCursor("1791278402731-3") }).cursor).toBe(
+      "1791278402731-3"
+    );
   });
 
-  test.each(["yesterday", Buffer.from('{"v":1,"m":"t","at":"soon"}').toString("base64url")])(
-    "rejects a cursor it did not issue: %s",
-    (cursor) => {
-      expect(AgentVaultSessionLogTailQuerySchema.safeParse({ cursor }).success).toBe(false);
-    }
-  );
+  test.each([
+    "yesterday",
+    Buffer.from('{"v":1,"m":"t","at":"2026-09-25T10:00:00.123Z"}').toString("base64url"),
+    Buffer.from('{"v":2,"m":"t","id":"1791278402731"}').toString("base64url"),
+    Buffer.from('{"v":2,"m":"t","id":"99999999999999999-0"}').toString("base64url")
+  ])("rejects a cursor it did not issue: %s", (cursor) => {
+    expect(AgentVaultSessionLogTailQuerySchema.safeParse({ cursor }).success).toBe(false);
+  });
 
   test("says where a history cursor belongs", () => {
     const result = AgentVaultSessionLogTailQuerySchema.safeParse({
-      cursor: encodeHistoryCursor("01a0a9c5-231d-7abc-8def-0123456789ab")
+      cursor: encodeHistoryCursor("8208694117999_01a11226-9990-7a3f-8c21-4e6f9b2d1a07")
     });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0].message).toMatch(/session logs endpoint instead/);

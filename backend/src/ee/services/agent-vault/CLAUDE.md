@@ -245,11 +245,11 @@ path decides what a service can reach, so it stays literal.
 ## Session logs
 
 Metadata only (method, host, path, status, decision), never bodies, headers or the query string. The agent is
-hostile input: nothing it sends may erase or hide its own records, so a refused chunk counts as dropped, never
-lost silently.
+hostile input: nothing it sends may erase or hide its own records, so the proxy logs every request it drops.
 
-- **Bytes go proxy to the customer's bucket to the browser.** Infisical keeps one index row per chunk and never
-  seals or opens one. There is no Postgres payload path; AWS only.
+- **Bytes go proxy to the customer's bucket to the browser, and S3 is the index.** Infisical stores nothing per
+  chunk and never seals or opens one. A chunk is `{prefix}/{projectId}/{sessionId}/{rev}_{chunkId}.{proxyId}.json.enc`
+  holding `IV ‖ ciphertext ‖ tag`; `rev` counts the chunk id's time down, because S3 lists names ascending only.
 - **PAM session recording is a separate product.** The overlap with `pam-session-recording` is deliberate; don't
   share code with it.
 - **Keys.** Mint wraps a per-session log key with the project data key, even while session logs are off, and
@@ -258,23 +258,29 @@ lost silently.
   that session on resolve: session logs must never break brokering.
 - **The AAD is `sha256("{sessionId}|{chunkId}|v1")`**, pinned by one vector in the CLI's
   `session_log_crypto_test.go` and `sessionLogDecrypt.test.ts`. Chunk ids are lowercase UUIDv7s because the
-  browser rebuilds the AAD from Postgres's string. A change here is a change in all three places.
-- **Write order is insert, commit, presign.** Row first so a failed upload is a visible gap, presign after commit
-  so no network call holds the config row lock. The PUT is create-only (`If-None-Match: *`, the proxy reads 412
-  as uploaded) with the length and `x-amz-checksum-sha256` signed, so S3 refuses any other body.
-- **A chunk row records its bucket and full key**, and reads presign only chunks in the current bucket, so
-  switching back makes old history readable. A re-send moves the row only through `moveToDestinationIfCurrent`,
-  whose one UPDATE checks the settings. No row locks.
-- **`chunks.proxyId` has no FK**: the browser checks each record's `proxyId` against it, and `SET NULL` would make
-  a deleted proxy's chunks unreadable.
+  browser rebuilds the AAD from the id in the object name. A change here is a change in all three places.
+- **Infisical builds the name and signs it into a create-only PUT** (`If-None-Match: *`, the proxy reads 412 as
+  uploaded) with the length and `x-amz-checksum-sha256` signed, so S3 refuses any other body. The `proxyId` in the
+  name comes from the proxy's login, and the browser checks every record's `proxyId` against it.
+- **A chunk id carries the time of the chunk's last request**, and the proxy never puts requests more than 2
+  minutes apart in one chunk, so a date range lists from 3 minutes past its end and stops at the first chunk whose
+  last request is before its start. The upload link is refused when the id's time is more than a second off
+  `endedAt`, and when the body still carries `iv` (CLIs from before the IV moved into the object).
+- **Reads list only the current bucket and prefix**, so changing either hides older logs until it is switched
+  back. One LIST per request, never a loop, so a folder full of other files can't make a request walk the bucket.
+- **A read that can't reach the bucket fails with `AgentVaultSessionLogStorageUnavailable`**: 400 when the
+  settings or AWS side need fixing, 500 when S3 isn't responding. Never a 200 with no chunks, which callers read
+  as "no logs". Only admins see the cause.
 - **Chunks are accepted for 24 hours after a session ends**, including when its owner is deleted (read from
   `updatedAt`, which the FK's `SET NULL` bumps). Deleting an identity must not erase its last minute.
-- **History (`/logs`) pages on `chunkId`, the tail (`/logs/tail`) on our `createdAt`**, re-reading
-  `AGENT_VAULT_SESSION_LOG_RECEIVE_OVERLAP_MS` and deduping by chunk id. A late chunk has an old id and a new
-  `createdAt`, so the tail can't page on the id.
-- **The org chunk limit is a lifetime counter** and internal: no env var, not documented, surfaced only as
-  `isStorageFull`. Kept as abuse prevention until usage and plans are decided. At the limit writes are refused,
-  never drop-oldest, which would let flooding evict evidence.
+- **History (`/logs`) is one LIST paged by size; the tail (`/logs/tail`) never LISTs.** Registering a chunk adds
+  its name to a Redis stream per session (last 10, 2-minute TTL), not awaited, since the Redis client queues
+  rather than fails while Redis is down. A tail with no cursor reads the stream from its start, so a chunk still
+  uploading when the page opened arrives; the browser dedupes on `(chunkId, proxyId)` and refetches tail 404s
+  while they may still be uploading. When a poll comes late or returns a full feed, the panel also merges in the
+  newest history page, at most once a minute, since the feed may have dropped names it never saw.
+- **There's no per-org chunk limit.** Infisical stores nothing per chunk, and the customer's bucket is theirs; the
+  upload-link rate limit and the proxy cap per org bound the work a proxy can cause.
 - **Nothing deletes from the bucket**, so the IAM policy asks for no `s3:DeleteObject`.
 - **Session logs are a paid feature (`agentVaultByoS3`).** Without it, nothing new is recorded, but saved logs
   stay readable. That breaks the License Checks rule in `CODE_QUALITY.md` on purpose. Turning session logs off
