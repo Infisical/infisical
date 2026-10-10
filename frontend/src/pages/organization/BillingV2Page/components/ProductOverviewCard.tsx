@@ -819,20 +819,17 @@ export const InactiveProductCard = ({
   return (
     <Card
       className={cn(
-        "product-color @container h-full transition-opacity",
+        "product-color h-full gap-3 transition-opacity",
         isDimmed && "opacity-50 focus-within:opacity-100 hover:opacity-100"
       )}
       style={{ "--product-color": prod.color } as CSSProperties}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <ProductIcon product={prod} size={36} />
-          <div className="flex min-w-0 flex-col gap-1.5">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <CardTitle>{prod.name}</CardTitle>
-              {prod.addon && <Badge variant="neutral">Add-on</Badge>}
-            </div>
-            <span className="text-xs text-muted">{isManaged ? "Not included" : "Inactive"}</span>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <ProductIcon product={prod} size={28} />
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            <CardTitle>{prod.name}</CardTitle>
+            {prod.addon && <Badge variant="neutral">Add-on</Badge>}
           </div>
         </div>
         {!canActivate && (
@@ -845,28 +842,27 @@ export const InactiveProductCard = ({
           />
         )}
       </div>
-      <div className="flex min-h-20 flex-wrap items-center justify-between gap-3 rounded-md bg-container px-3 py-3">
-        <span className="min-w-0 text-xs text-muted">
-          {canActivate || canContactSales ? (prod.tagline ?? note) : note}
-        </span>
-        {canActivate && (
-          <Button
-            variant="product"
-            size="xs"
-            style={{ "--product-color": prod.color } as CSSProperties}
-            onClick={() => onManage(prod.id)}
-          >
-            {trialPlan && trialPlan.trialDays > 0
-              ? `Try Free for ${trialPlan.trialDays} Days`
-              : "View Plans"}
-          </Button>
-        )}
-        {canContactSales && (
-          <Button variant="outline" size="xs" onClick={() => onContact(prod)}>
-            Contact Sales
-          </Button>
-        )}
-      </div>
+      <span className="flex-1 text-xs text-muted">
+        {canActivate || canContactSales ? (prod.tagline ?? note) : note}
+      </span>
+      {canActivate && (
+        <Button
+          variant="product"
+          size="xs"
+          className="self-start"
+          style={{ "--product-color": prod.color } as CSSProperties}
+          onClick={() => onManage(prod.id)}
+        >
+          {trialPlan && trialPlan.trialDays > 0
+            ? `Try Free for ${trialPlan.trialDays} Days`
+            : "View Plans"}
+        </Button>
+      )}
+      {canContactSales && (
+        <Button variant="outline" size="xs" className="self-start" onClick={() => onContact(prod)}>
+          Contact Sales
+        </Button>
+      )}
     </Card>
   );
 };

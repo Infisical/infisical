@@ -1,12 +1,20 @@
 import { ReactNode, useState } from "react";
 import { ChevronRightIcon, InfoIcon, RefreshCw } from "lucide-react";
 
+import {
+  CertificateManagementUpgradeIntent,
+  PamUpgradeIntent,
+  SecretsManagementUpgradeIntent,
+  UpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Card,
   CardContent,
   IconButton,
+  Separator,
   Skeleton,
   Tooltip,
   TooltipContent,
@@ -30,6 +38,19 @@ import {
 import { DetailsSheet, InvoicesSheet, PaymentSheet } from "./BillingSheets";
 import { InactiveProductCard, ProductOverviewCard } from "./ProductOverviewCard";
 import { CardEmpty } from "./shared";
+
+const PRODUCT_UPGRADE_INTENTS: Record<string, UpgradeIntent> = {
+  [CertificateManagementUpgradeIntent.productKey]: CertificateManagementUpgradeIntent,
+  [PamUpgradeIntent.productKey]: PamUpgradeIntent,
+  [SecretsManagementUpgradeIntent.productKey]: SecretsManagementUpgradeIntent
+};
+
+const SectionHeading = ({ title }: { title: string }) => (
+  <div className="mt-4 flex items-center gap-3">
+    <h2 className="shrink-0 text-sm font-medium">{title}</h2>
+    <Separator className="flex-1" />
+  </div>
+);
 
 type TabbedOverviewProps = {
   overview: BillingV2Overview;
@@ -127,6 +148,7 @@ export const TabbedOverview = ({
   const [expanded, setExpanded] = useState<{ productId: string; dimensionKey?: string } | null>(
     null
   );
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const [openSheet, setOpenSheet] = useState<"payment" | "invoices" | "details" | null>(null);
   const { billing, entitlements } = overview;
   const isManaged = overview.mode === "managed";
@@ -141,6 +163,8 @@ export const TabbedOverview = ({
     .sort(byDisplayOrder);
   const isActiveProduct = (productId: string) =>
     Boolean(entitlements[productId]?.entitled) && entitlements[productId]?.status !== "churned";
+  const activeProducts = visible.filter((prod) => isActiveProduct(prod.id));
+  const inactiveProducts = visible.filter((prod) => !isActiveProduct(prod.id));
   const expandedProduct =
     expanded &&
     visible.some((prod) => prod.id === expanded.productId) &&
@@ -277,6 +301,7 @@ export const TabbedOverview = ({
 
   return (
     <div className="flex flex-col gap-4">
+      {upgradeGate}
       {orgFilter && <div className="flex justify-end">{orgFilter}</div>}
       <Card aria-label="Billing summary">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -365,52 +390,78 @@ export const TabbedOverview = ({
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
-          {visible.map((prod) => {
-            const ent = entitlements[prod.id];
-            if (ent && isActiveProduct(prod.id)) {
-              const isExpanded = expandedProduct?.productId === prod.id;
-              return (
-                <ProductOverviewCard
-                  key={prod.id}
-                  prod={prod}
-                  ent={ent}
-                  readOnly={readOnly}
-                  selfServe={overview.selfServe}
-                  isManaged={isManaged}
-                  breakdownOrgId={breakdownOrgId}
-                  breakdownScope={breakdownScope}
-                  isExpanded={isExpanded}
-                  isDimmed={Boolean(expandedProduct) && !isExpanded}
-                  selectedDimensionKey={isExpanded ? expandedProduct?.dimensionKey : undefined}
-                  onExpand={(dimensionKey) =>
-                    setExpanded({
-                      productId: prod.id,
-                      dimensionKey:
-                        dimensionKey ?? (isExpanded ? expandedProduct?.dimensionKey : undefined)
-                    })
-                  }
-                  onCollapse={() => setExpanded(null)}
-                  onManage={onManage}
-                  onSetCommitment={onSetCommitment}
-                  onViewBreakdown={onViewBreakdown}
-                />
-              );
-            }
-            return (
-              <InactiveProductCard
-                key={prod.id}
-                isDimmed={Boolean(expandedProduct)}
-                prod={prod}
-                readOnly={readOnly}
-                isManaged={isManaged}
-                selfServe={overview.selfServe}
-                onManage={onManage}
-                onContact={onContact}
-              />
-            );
-          })}
-        </div>
+        <>
+          {activeProducts.length > 0 && (
+            <section className="flex flex-col gap-4">
+              {inactiveProducts.length > 0 && <SectionHeading title="Your Products" />}
+              <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+                {activeProducts.map((prod) => {
+                  const isExpanded = expandedProduct?.productId === prod.id;
+                  return (
+                    <ProductOverviewCard
+                      key={prod.id}
+                      prod={prod}
+                      ent={entitlements[prod.id]!}
+                      readOnly={readOnly}
+                      selfServe={overview.selfServe}
+                      isManaged={isManaged}
+                      breakdownOrgId={breakdownOrgId}
+                      breakdownScope={breakdownScope}
+                      isExpanded={isExpanded}
+                      isDimmed={Boolean(expandedProduct) && !isExpanded}
+                      selectedDimensionKey={isExpanded ? expandedProduct?.dimensionKey : undefined}
+                      onExpand={(dimensionKey) =>
+                        setExpanded({
+                          productId: prod.id,
+                          dimensionKey:
+                            dimensionKey ?? (isExpanded ? expandedProduct?.dimensionKey : undefined)
+                        })
+                      }
+                      onCollapse={() => setExpanded(null)}
+                      onManage={onManage}
+                      onSetCommitment={onSetCommitment}
+                      onViewBreakdown={onViewBreakdown}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+          )}
+          {inactiveProducts.length > 0 && (
+            <section className="flex flex-col gap-4">
+              {activeProducts.length > 0 && (
+                <SectionHeading title={isManaged ? "Not in Your License" : "Available Products"} />
+              )}
+              <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {inactiveProducts.map((prod) => (
+                  <InactiveProductCard
+                    key={prod.id}
+                    isDimmed={Boolean(expandedProduct)}
+                    prod={prod}
+                    readOnly={readOnly}
+                    isManaged={isManaged}
+                    selfServe={overview.selfServe}
+                    onManage={(productId) => {
+                      const intent = PRODUCT_UPGRADE_INTENTS[productId];
+                      const hasTrial = prod.plans.some(
+                        (plan) => plan.selfServe && plan.trialable && plan.trialDays > 0
+                      );
+                      if (!intent || !hasTrial) {
+                        onManage(productId);
+                        return;
+                      }
+                      openUpgradeGate({
+                        intent: { ...intent, upgradeLabel: `Try ${prod.name}` },
+                        paywallKey: "billing-product-card"
+                      });
+                    }}
+                    onContact={onContact}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       )}
 
       {showPayment && showBillingInfo && (
