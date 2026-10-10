@@ -140,12 +140,14 @@ type TAlertAuditAlert = {
   name: string;
   resourceType: string;
   resourceId: string | null;
+  resourceName?: string | null;
   eventType: string;
 };
 
 type TAlertChannelTestAudit = {
   resourceType: string;
   resourceId?: string | null;
+  resourceName: string | null;
   channelId?: string;
   channelType: string;
   success: boolean;
