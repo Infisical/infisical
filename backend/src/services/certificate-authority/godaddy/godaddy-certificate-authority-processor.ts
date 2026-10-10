@@ -145,6 +145,8 @@ export const processGoDaddyPendingValidationRequest = async (
     await deps.certificateRequestService.updateCertificateRequestStatus({
       certificateRequestId: request.id,
       status: CertificateRequestStatus.FAILED,
+      operation: parsed.godaddy.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
+      originalCertificateId: parsed.godaddy.originalCertificateId,
       errorMessage: "Validation timed out after 24h"
     });
     logger.info(`GoDaddy validation timed out [certificateRequestId=${request.id}]`);
@@ -238,6 +240,8 @@ export const processGoDaddyPendingValidationRequest = async (
     await deps.certificateRequestService.updateCertificateRequestStatus({
       certificateRequestId: request.id,
       status: CertificateRequestStatus.FAILED,
+      operation: parsed.godaddy.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
+      originalCertificateId: parsed.godaddy.originalCertificateId,
       errorMessage: `GoDaddy certificate ${orderStatus}`
     });
     logger.info(`GoDaddy certificate terminal state [certificateRequestId=${request.id}] [status=${orderStatus}]`);

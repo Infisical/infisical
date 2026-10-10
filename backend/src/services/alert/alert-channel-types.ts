@@ -87,6 +87,7 @@ export const EmailChannelConfigSchema = z.object({}).strip();
 export const WebhookChannelConfigSchema = z.object({
   url: z
     .string()
+    .max(2048)
     .url()
     .refine((url) => url.startsWith("https://"), "Webhook URL must use HTTPS"),
   signingSecret: z.string().max(256).optional().nullable()
@@ -95,6 +96,7 @@ export const WebhookChannelConfigSchema = z.object({
 export const SlackChannelConfigSchema = z.object({
   webhookUrl: z
     .string()
+    .max(2048)
     .url()
     .refine((url) => url.startsWith("https://"), "Slack webhook URL must use HTTPS")
     .refine((url) => {
@@ -107,5 +109,8 @@ export const SlackChannelConfigSchema = z.object({
 });
 
 export const PagerDutyChannelConfigSchema = z.object({
-  integrationKey: z.string().refine((val) => pagerDutyIntegrationKeyRegex.test(val), PAGERDUTY_INTEGRATION_KEY_ERROR)
+  integrationKey: z
+    .string()
+    .max(256)
+    .refine((val) => pagerDutyIntegrationKeyRegex.test(val), PAGERDUTY_INTEGRATION_KEY_ERROR)
 });

@@ -1,7 +1,9 @@
+import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TProjectPermission } from "@app/lib/types";
 
 import {
   CertExtendedKeyUsageType,
+  CertificateIssuanceOperation,
   CertificateRequestStatus,
   CertKeyAlgorithm,
   CertKeyUsageType,
@@ -43,6 +45,7 @@ export type TIssueCertificateFromProfileDTO = {
   metadata?: Array<{ key: string; value: string }>;
   removeRootsFromChain?: boolean;
   applicationId?: string;
+  auditLogInfo?: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TSignCertificateFromProfileDTO = {
@@ -62,6 +65,9 @@ export type TSignCertificateFromProfileDTO = {
   };
   applicationId?: string;
   acmeOrderId?: string;
+  auditLogInfo?: AuditLogInfo;
+  issuanceOperation?: CertificateIssuanceOperation;
+  originalCertificateId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TOrderCertificateFromProfileDTO = {
@@ -97,6 +103,7 @@ export type TOrderCertificateFromProfileDTO = {
   metadata?: Array<{ key: string; value: string }>;
   removeRootsFromChain?: boolean;
   applicationId?: string;
+  auditLogInfo?: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCertificateIssuanceResponse = {
@@ -177,6 +184,7 @@ export type TRenewCertificateDTO = {
   renewalKeySource?: CertificateRenewalKeySource;
   csr?: string;
   attributes?: TRenewalAttributes;
+  auditLogInfo?: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateRenewalConfigDTO = {

@@ -1,0 +1,108 @@
+---
+title: "Keeper connection"
+sidebarTitle: "Keeper"
+description: "Learn how to configure a Keeper connection for Infisical."
+---
+
+import SetUpCommanderServiceMode from "/snippets/app-connections/keeper/set-up-commander-service-mode.mdx";
+import ConnectionFormFields from "/snippets/app-connections/keeper/form-fields.mdx";
+
+A Keeper connection authenticates Infisical to [Keeper Commander Service Mode](https://docs.keeper.io/keeperpam/commander-cli/service-mode-rest-api) with the API key Commander generates. Service Mode is a REST API for Keeper Commander that you run in your own infrastructure. Commander signs in to Keeper as a user you create for Infisical, so Infisical can only reach the shared folders you share with that user.
+
+<Note>
+  This guide only authenticates Infisical with Keeper. Once the app connection
+  is ready, you can [use it to set up
+  integrations](#step-3-configure-integrations).
+</Note>
+
+## Prerequisites
+
+- Permission to add users in the Keeper Admin Console
+- A host that Infisical can reach over HTTPS
+
+## Step 1: Set up Keeper Commander
+
+Infisical sends commands to Keeper Commander, not to Keeper directly. You run Commander in Service Mode on your own host, signed in as a Keeper user you create for Infisical.
+
+<SetUpCommanderServiceMode />
+
+## Step 2: Create the app connection
+
+Next, create the app connection in Infisical.
+
+<Tip>
+  To create the connection using the API, use the [Create Keeper
+  Connection](/api-reference/endpoints/app-connections/keeper/create) endpoint.
+</Tip>
+
+<View title="Organization-level">
+    <Steps>
+        <Step>
+            In the sidebar, select **Integrations**, then open the **App Connections** tab.
+
+            ![App Connections Tab](/images/app-connections/general/add-connection.png)
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **Keeper**.
+
+            ![Select Keeper Connection](/images/app-connections/keeper/select-keeper-connection.png)
+        </Step>
+        <Step>
+            Fill out the form's fields:
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to Keeper**.
+
+            ![Keeper Connection Form](/images/app-connections/keeper/connection-form.png)
+
+            The new connection appears in the **App Connections** tab.
+
+            ![Keeper Connection Created](/images/app-connections/keeper/connection-created.png)
+        </Step>
+    </Steps>
+
+</View>
+
+<View title="Project-level">
+    <Steps>
+        <Step>
+            In your Secrets Manager project, select **Integrations** from the sidebar, then open the **App Connections** tab.
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **Keeper**.
+
+            ![Select Keeper Connection](/images/app-connections/keeper/select-keeper-connection.png)
+        </Step>
+        <Step>
+            Fill out the form's fields:
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to Keeper**.
+
+            ![Keeper Connection Form](/images/app-connections/keeper/connection-form.png)
+
+            The new connection appears in the **App Connections** tab.
+
+            ![Keeper Connection Created](/images/app-connections/keeper/connection-created.png)
+        </Step>
+    </Steps>
+
+</View>
+
+When you select **Connect to Keeper**, Infisical runs Commander's `whoami` command to check that it can reach Commander and that Commander accepts the API key.
+
+<Check>Your Keeper app connection is ready to use.</Check>
+
+## Step 3: Configure integrations
+
+Now that your Keeper app connection is configured, you can use it to set up the following integrations:
+
+<Card
+  title="Keeper Password Manager Secret Sync"
+  icon="refresh-cw"
+  href="/integrations/secret-syncs/keeper-password-manager"
+>
+  Sync secrets from Infisical to a Keeper shared folder.
+</Card>

@@ -8,7 +8,6 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AlertChannelType } from "@app/services/alert/alert-channel-types";
 import {
   AlertAuditAction,
-  AlertPrincipalType,
   AlertRunStatus,
   AlertTelemetryAction,
   MAX_CHANNELS_PER_ALERT,
@@ -16,27 +15,7 @@ import {
 } from "@app/services/alert/alert-types";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-const ChannelRecipientSchema = z.object({
-  principalType: z.nativeEnum(AlertPrincipalType),
-  principalId: z.string().trim().min(1).max(255)
-});
-
-const CreateChannelInputSchema = z.object({
-  name: z.string().min(1).max(255),
-  channelType: z.nativeEnum(AlertChannelType),
-  config: z.record(z.unknown()).default({}),
-  enabled: z.boolean().optional(),
-  recipients: z.array(ChannelRecipientSchema).max(MAX_RECIPIENTS_PER_CHANNEL).optional()
-});
-
-const UpdateChannelInputSchema = z.object({
-  id: z.string().uuid().optional(),
-  name: z.string().min(1).max(255),
-  channelType: z.nativeEnum(AlertChannelType),
-  config: z.record(z.unknown()).optional(),
-  enabled: z.boolean().optional(),
-  recipients: z.array(ChannelRecipientSchema).max(MAX_RECIPIENTS_PER_CHANNEL).optional()
-});
+import { ChannelRecipientSchema, CreateChannelInputSchema, UpdateChannelInputSchema } from "./alert-channel-schemas";
 
 const AlertResponseSchema = z.object({
   id: z.string().uuid(),
@@ -161,7 +140,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId, ...result } = await server.services.alertChannelTest.testChannel({
+      const { projectId, resourceName, ...result } = await server.services.alertChannelTest.testChannel({
         ...req.body,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -177,6 +156,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
           test: {
             resourceType: req.body.resourceType,
             resourceId: req.body.resourceId,
+            resourceName,
             channelId: req.body.channelId,
             channelType: req.body.channelType,
             success: result.success,

@@ -14,6 +14,7 @@ import { ChefSyncDestinationSchema } from "./chef-sync-destination-schema";
 import { CircleCISyncDestinationSchema } from "./circleci-sync-destination-schema";
 import { Cloud66SyncDestinationSchema } from "./cloud-66-sync-destination-schema";
 import { CloudflarePagesSyncDestinationSchema } from "./cloudflare-pages-sync-destination-schema";
+import { CloudflareSecretsStoreSyncDestinationSchema } from "./cloudflare-secrets-store-sync-destination-schema";
 import { CloudflareWorkersSyncDestinationSchema } from "./cloudflare-workers-sync-destination-schema";
 import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-schema";
 import { DaytonaSyncDestinationSchema } from "./daytona-sync-destination-schema";
@@ -28,6 +29,7 @@ import { HasuraCloudSyncDestinationSchema } from "./hasura-cloud-sync-destinatio
 import { HCVaultSyncDestinationSchema } from "./hc-vault-sync-destination-schema";
 import { HerokuSyncDestinationSchema } from "./heroku-sync-destination-schema";
 import { HumanitecSyncDestinationSchema } from "./humanitec-sync-destination-schema";
+import { KeeperSyncDestinationSchema } from "./keeper-sync-destination-schema";
 import { LaravelForgeSyncDestinationSchema } from "./laravel-forge-sync-destination-schema";
 import { NetlifySyncDestinationSchema } from "./netlify-sync-destination-schema";
 import { NorthflankSyncDestinationSchema } from "./northflank-sync-destination-schema";
@@ -74,6 +76,7 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   GitlabSyncDestinationSchema,
   CloudflarePagesSyncDestinationSchema,
   CloudflareWorkersSyncDestinationSchema,
+  CloudflareSecretsStoreSyncDestinationSchema,
   SupabaseSyncDestinationSchema,
   RundeckSyncDestinationSchema,
   ZabbixSyncDestinationSchema,
@@ -99,6 +102,7 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   QoverySyncDestinationSchema,
   Cloud66SyncDestinationSchema,
   DaytonaSyncDestinationSchema,
+  KeeperSyncDestinationSchema,
   SpaceliftSyncDestinationSchema
 ]);
 

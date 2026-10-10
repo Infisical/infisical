@@ -8,7 +8,9 @@ import { TAlertPayload } from "./alert-channel-types";
 export enum AlertPrincipalType {
   USER = "user",
   GROUP = "group",
-  EMAIL = "email"
+  EMAIL = "email",
+  // Everyone in the channel's project at send time. principalId is the project id.
+  PROJECT_MEMBERS = "project-members"
 }
 
 export enum AlertTriggerType {
@@ -138,12 +140,14 @@ type TAlertAuditAlert = {
   name: string;
   resourceType: string;
   resourceId: string | null;
+  resourceName?: string | null;
   eventType: string;
 };
 
 type TAlertChannelTestAudit = {
   resourceType: string;
   resourceId?: string | null;
+  resourceName: string | null;
   channelId?: string;
   channelType: string;
   success: boolean;

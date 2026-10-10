@@ -12,6 +12,7 @@ import { DatadogApiKeyRotationListItemSchema } from "@app/ee/services/secret-rot
 import { DatadogApplicationKeySecretRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/datadog-application-key-secret";
 import { DbtServiceTokenRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/dbt-service-token";
 import { FireworksApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/fireworks-api-key";
+import { GcpServiceAccountKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/gcp-service-account-key";
 import { HpIloRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/hp-ilo-rotation";
 import { LdapPasswordRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
 import { LiteLLMApiKeyRotationListItemSchema } from "@app/ee/services/secret-rotation-v2/litellm-api-key";
@@ -65,7 +66,8 @@ const SecretRotationV2OptionsSchema = z.discriminatedUnion("type", [
   SnowflakeUserKeyPairRotationListItemSchema,
   CloudflareApiTokenRotationListItemSchema,
   CloudflareR2AccessKeyRotationListItemSchema,
-  StripeApiKeyRotationListItemSchema
+  StripeApiKeyRotationListItemSchema,
+  GcpServiceAccountKeyRotationListItemSchema
 ]);
 
 export const registerSecretRotationV2Router = async (server: FastifyZodProvider) => {

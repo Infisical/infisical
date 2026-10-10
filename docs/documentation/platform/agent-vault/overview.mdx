@@ -22,6 +22,19 @@ Infisical Agent Vault is an access layer for AI agents. It securely equips agent
   </Card>
 </CardGroup>
 
+## Agent guides
+
+Set up Agent Vault for the agent you use, or for an agent you wrote yourself.
+
+<CardGroup cols={3}>
+  <Card title="Claude Code" icon="terminal" href="/documentation/platform/agent-vault/guides/claude-code" />
+  <Card title="Codex" icon="terminal" href="/documentation/platform/agent-vault/guides/codex" />
+  <Card title="OpenCode" icon="terminal" href="/documentation/platform/agent-vault/guides/opencode" />
+  <Card title="Hermes Agent" icon="bot" href="/documentation/platform/agent-vault/guides/hermes" />
+  <Card title="OpenClaw" icon="bot" href="/documentation/platform/agent-vault/guides/openclaw" />
+  <Card title="Your own agent" icon="code" href="/documentation/platform/agent-vault/guides/custom-agent" />
+</CardGroup>
+
 ## Concepts
 
 <CardGroup cols={2}>
@@ -36,6 +49,12 @@ Infisical Agent Vault is an access layer for AI agents. It securely equips agent
   </Card>
   <Card title="Sessions" icon="monitor" href="/documentation/platform/agent-vault/sessions">
     Time-bound grants that let AI agents access services without holding real credentials.
+  </Card>
+  <Card title="Create sessions with the CLI" icon="calendar-clock" href="/documentation/platform/agent-vault/sessions-cli">
+    Start an agent from cron, a container, or CI, with a new session for each run.
+  </Card>
+  <Card title="Create sessions with the API" icon="key-round" href="/documentation/platform/agent-vault/sessions-api">
+    Create a session for each agent run from your own code.
   </Card>
   <Card title="Session logs" icon="list" href="/documentation/platform/agent-vault/session-logs">
     A record of every request an AI agent makes, stored encrypted in your own Amazon S3 bucket.
