@@ -192,7 +192,7 @@ export const PamDetailSheet = ({
                 {footer && <div className="mt-4">{footer}</div>}
               </div>
 
-              <div className="flex flex-1 flex-col overflow-y-auto">
+              <div className="relative flex flex-1 flex-col overflow-y-auto">
                 {tabs ? (
                   <TabbedContent tabs={tabs} activeTab={activeTab} onTabChange={onTabChange} />
                 ) : (
