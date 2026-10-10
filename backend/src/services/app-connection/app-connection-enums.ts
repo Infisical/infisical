@@ -74,6 +74,7 @@ export enum AppConnection {
   GoDaddy = "godaddy",
   Convex = "convex",
   Rundeck = "rundeck",
+  Portainer = "portainer",
   HasuraCloud = "hasura-cloud",
   Qovery = "qovery",
   Cloud66 = "cloud-66",

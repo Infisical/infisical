@@ -170,6 +170,8 @@ import { ValidateOpenRouterConnectionCredentialsSchema } from "./open-router";
 import { ValidateOpenAIConnectionCredentialsSchema } from "./openai";
 import { openaiConnectionService } from "./openai/openai-connection-service";
 import { ValidateOvhConnectionCredentialsSchema } from "./ovh";
+import { ValidatePortainerConnectionCredentialsSchema } from "./portainer";
+import { portainerConnectionService } from "./portainer/portainer-connection-service";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { powerDnsConnectionService, ValidatePowerDnsConnectionCredentialsSchema } from "./powerdns";
 import { ValidateQoveryConnectionCredentialsSchema } from "./qovery";
@@ -317,6 +319,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.F5BigIp]: ValidateF5BigIpConnectionCredentialsSchema,
   [AppConnection.Convex]: ValidateConvexConnectionCredentialsSchema,
   [AppConnection.Rundeck]: ValidateRundeckConnectionCredentialsSchema,
+  [AppConnection.Portainer]: ValidatePortainerConnectionCredentialsSchema,
   [AppConnection.Qovery]: ValidateQoveryConnectionCredentialsSchema,
   [AppConnection.LiteLLM]: ValidateLiteLLMConnectionCredentialsSchema,
   [AppConnection.Fireworks]: ValidateFireworksConnectionCredentialsSchema,
@@ -1480,6 +1483,7 @@ export const appConnectionServiceFactory = ({
     checkly: checklyConnectionService(connectAppConnectionById),
     supabase: supabaseConnectionService(connectAppConnectionById),
     rundeck: rundeckConnectionService(connectAppConnectionById),
+    portainer: portainerConnectionService(connectAppConnectionById),
     digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
     netlify: netlifyConnectionService(connectAppConnectionById),
     northflank: northflankConnectionService(connectAppConnectionById),

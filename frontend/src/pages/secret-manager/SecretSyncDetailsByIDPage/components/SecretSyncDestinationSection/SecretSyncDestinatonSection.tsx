@@ -40,6 +40,7 @@ import { OCIVaultSyncDestinationSection } from "./OCIVaultSyncDestinationSection
 import { OctopusDeploySyncDestinationSection } from "./OctopusDeploySyncDestinationSection";
 import { OnaSyncDestinationSection } from "./OnaSyncDestinationSection";
 import { OvhSyncDestinationSection } from "./OvhSyncDestinationSection";
+import { PortainerSyncDestinationSection } from "./PortainerSyncDestinationSection";
 import { QoverySyncDestinationSection } from "./QoverySyncDestinationSection";
 import { RailwaySyncDestinationSection } from "./RailwaySyncDestinationSection";
 import { RenderSyncDestinationSection } from "./RenderSyncDestinationSection";
@@ -159,6 +160,9 @@ export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
       break;
     case SecretSync.Rundeck:
       DestinationComponents = <RundeckSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Portainer:
+      DestinationComponents = <PortainerSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.DigitalOceanAppPlatform:
       DestinationComponents = (

@@ -351,6 +351,10 @@ export type TRundeckConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Rundeck;
 };
 
+export type TPortainerConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Portainer;
+};
+
 export type TTriggerDevConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.TriggerDev;
 };
@@ -454,6 +458,7 @@ export type TAppConnectionOption =
   | TConvexConnectionOption
   | TTriggerDevConnectionOption
   | TRundeckConnectionOption
+  | TPortainerConnectionOption
   | THasuraCloudConnectionOption
   | TQoveryConnectionOption
   | TLiteLLMConnectionOption
@@ -545,6 +550,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Convex]: TConvexConnectionOption;
   [AppConnection.TriggerDev]: TTriggerDevConnectionOption;
   [AppConnection.Rundeck]: TRundeckConnectionOption;
+  [AppConnection.Portainer]: TPortainerConnectionOption;
   [AppConnection.HasuraCloud]: THasuraCloudConnectionOption;
   [AppConnection.Qovery]: TQoveryConnectionOption;
   [AppConnection.LiteLLM]: TLiteLLMConnectionOption;

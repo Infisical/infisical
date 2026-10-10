@@ -64,6 +64,7 @@ import { TOpenAIConnection } from "./open-ai-connection";
 import { TOpenRouterConnection } from "./open-router-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TOvhConnection } from "./ovh-connection";
+import { TPortainerConnection } from "./portainer-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TPowerDnsConnection } from "./powerdns-connection";
 import { TQoveryConnection } from "./qovery-connection";
@@ -151,6 +152,7 @@ export * from "./open-ai-connection";
 export * from "./open-router-connection";
 export * from "./oracledb-connection";
 export * from "./ovh-connection";
+export * from "./portainer-connection";
 export * from "./postgres-connection";
 export * from "./powerdns-connection";
 export * from "./qovery-connection";
@@ -256,6 +258,7 @@ export type TAppConnection =
   | TConvexConnection
   | TTriggerDevConnection
   | TRundeckConnection
+  | TPortainerConnection
   | THasuraCloudConnection
   | TQoveryConnection
   | TLiteLLMConnection

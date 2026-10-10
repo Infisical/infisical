@@ -624,6 +624,14 @@ export const appConnections = [
     category: "DevOps Tools",
   },
   {
+    name: "Portainer",
+    slug: "portainer",
+    path: "/integrations/app-connections/portainer",
+    description:
+      "Learn how to connect Portainer to pull secrets from Infisical.",
+    category: "DevOps Tools",
+  },
+  {
     name: "Qovery",
     slug: "qovery",
     path: "/integrations/app-connections/qovery",
