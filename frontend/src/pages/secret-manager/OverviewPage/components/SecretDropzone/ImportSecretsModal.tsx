@@ -69,6 +69,7 @@ import { ApiErrorTypes, SecretType } from "@app/hooks/api/types";
 import { CsvColumnMapContent } from "./CsvColumnMapDialog";
 import {
   buildFolderTree,
+  chunkSecretsByRequestSize,
   createFolderResolver,
   flattenNestedJson,
   getNestedJsonObject,
@@ -256,33 +257,26 @@ const ImportSecretsContent = ({
       )
     : false;
   const isOverRequestLimit = useMemo(() => {
-    if (!activeSecrets) return false;
-    const exceedsLimit = (path: string, secrets: TParsedEnv) => {
-      const payload = JSON.stringify({
-        projectId,
-        environment: selectedEnvs.reduce(
-          (longest, env) => (env.slug.length > longest.length ? env.slug : longest),
-          ""
-        ),
-        secretPath: path,
-        secrets: Object.entries(secrets).map(([key, s]) => ({
-          secretKey: keyOverrides[key] ?? key,
-          secretValue: s.value,
-          secretComment: s.comments.join("\n"),
-          type: SecretType.Shared,
-          tagIds: s.tagSlugs?.map(() => "00000000-0000-0000-0000-000000000000"),
-          secretMetadata: s.secretMetadata,
-          skipMultilineEncoding: s.skipMultilineEncoding
-        }))
-      });
-      return new TextEncoder().encode(payload).length > MAX_BATCH_REQUEST_BYTES;
-    };
-    if (!nestedImport) return exceedsLimit(secretPath, activeSecrets);
-    // Nested imports send separate batches per folder; a folder's full secret set bounds both
-    // its create and update batch, since which keys already exist is only known at upload
-    return Object.entries(nestedImport.secretsByPath).some(([path, secrets]) =>
-      exceedsLimit(joinSecretPath(secretPath, path), secrets)
-    );
+    // Nested imports are size-checked at upload, once each folder's real batches are known
+    if (!activeSecrets || nestedImport) return false;
+    const payload = JSON.stringify({
+      projectId,
+      environment: selectedEnvs.reduce(
+        (longest, env) => (env.slug.length > longest.length ? env.slug : longest),
+        ""
+      ),
+      secretPath,
+      secrets: Object.entries(activeSecrets).map(([key, s]) => ({
+        secretKey: keyOverrides[key] ?? key,
+        secretValue: s.value,
+        secretComment: s.comments.join("\n"),
+        type: SecretType.Shared,
+        tagIds: s.tagSlugs?.map(() => "00000000-0000-0000-0000-000000000000"),
+        secretMetadata: s.secretMetadata,
+        skipMultilineEncoding: s.skipMultilineEncoding
+      }))
+    });
+    return new TextEncoder().encode(payload).length > MAX_BATCH_REQUEST_BYTES;
   }, [activeSecrets, keyOverrides, nestedImport, projectId, secretPath, selectedEnvs]);
 
   const handleParsedSecrets = useCallback((env: TParsedEnv, jsonSource?: string) => {
@@ -404,7 +398,8 @@ const ImportSecretsContent = ({
       const importSecretsAtPath = async (
         environment: string,
         path: string,
-        secrets: TParsedEnv
+        secrets: TParsedEnv,
+        isSplitBySize = false
       ) => {
         // Fetch existing secrets to detect conflicts
         const { secrets: rawExisting } = await fetchProjectSecrets({
@@ -452,32 +447,65 @@ const ImportSecretsContent = ({
             skipMultilineEncoding: secretData.skipMultilineEncoding
           }));
 
-        return Promise.allSettled([
-          ...(secretsToCreate.length
-            ? [
-                createSecretBatch({
-                  projectId,
-                  environment,
-                  secretPath: path,
-                  secrets: secretsToCreate
-                })
-              ]
-            : []),
-          ...(shouldOverwrite && secretsToUpdate.length
-            ? [
-                updateSecretBatch({
-                  projectId,
-                  environment,
-                  secretPath: path,
-                  secrets: secretsToUpdate
-                })
-              ]
-            : [])
+        if (!isSplitBySize) {
+          return {
+            hasOversizedSecret: false,
+            results: await Promise.allSettled([
+              ...(secretsToCreate.length
+                ? [
+                    createSecretBatch({
+                      projectId,
+                      environment,
+                      secretPath: path,
+                      secrets: secretsToCreate
+                    })
+                  ]
+                : []),
+              ...(shouldOverwrite && secretsToUpdate.length
+                ? [
+                    updateSecretBatch({
+                      projectId,
+                      environment,
+                      secretPath: path,
+                      secrets: secretsToUpdate
+                    })
+                  ]
+                : [])
+            ])
+          };
+        }
+
+        // Nested imports measure each real request and split any that would exceed the limit
+        const envelope = { projectId, environment, secretPath: path };
+        const creates = chunkSecretsByRequestSize(
+          envelope,
+          secretsToCreate,
+          MAX_BATCH_REQUEST_BYTES
+        );
+        const updates = shouldOverwrite
+          ? chunkSecretsByRequestSize(envelope, secretsToUpdate, MAX_BATCH_REQUEST_BYTES)
+          : { chunks: [], hasOversizedSecret: false };
+        const hasOversizedSecret = creates.hasOversizedSecret || updates.hasOversizedSecret;
+        const results = await Promise.allSettled([
+          ...creates.chunks.map((chunk) => createSecretBatch({ ...envelope, secrets: chunk })),
+          ...updates.chunks.map((chunk) => updateSecretBatch({ ...envelope, secrets: chunk })),
+          ...(hasOversizedSecret ? [Promise.reject(new Error("Secret exceeds 1 MB"))] : [])
         ]);
+        return { hasOversizedSecret, results };
       };
 
-      const writeSecrets = async (environment: string, path: string, secrets: TParsedEnv) => {
-        const results = await importSecretsAtPath(environment, path, secrets);
+      const writeSecrets = async (
+        environment: string,
+        path: string,
+        secrets: TParsedEnv,
+        isSplitBySize?: boolean
+      ) => {
+        const { results, hasOversizedSecret } = await importSecretsAtPath(
+          environment,
+          path,
+          secrets,
+          isSplitBySize
+        );
         const writtenCount = results.filter((r) => r.status === "fulfilled").length;
         let status: "written" | "partial" | "failed" = "partial";
         if (writtenCount === results.length) status = "written";
@@ -486,7 +514,10 @@ const ImportSecretsContent = ({
           status,
           hasApproval: results.some(
             (r) => r.status === "fulfilled" && "approval" in (r.value as object)
-          )
+          ),
+          reason: hasOversizedSecret
+            ? "a secret exceeds the 1 MB upload limit, split it into smaller uploads"
+            : undefined
         };
       };
 
@@ -518,7 +549,7 @@ const ImportSecretsContent = ({
         const { state, hasApproval, problems } = await runNestedImport(nestedImport, {
           resolveFolder: (path) => resolveFolder(joinSecretPath(secretPath, path)),
           writeSecrets: (path, secrets) =>
-            writeSecrets(env.slug, joinSecretPath(secretPath, path), secrets)
+            writeSecrets(env.slug, joinSecretPath(secretPath, path), secrets, true)
         });
         return {
           environment: env.name,

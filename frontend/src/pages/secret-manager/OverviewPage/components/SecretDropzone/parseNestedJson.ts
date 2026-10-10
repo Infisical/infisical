@@ -135,7 +135,7 @@ type TNestedImportHandlers = {
   writeSecrets: (
     path: string,
     secrets: TParsedEnv
-  ) => Promise<{ status: TWriteStatus; hasApproval: boolean }>;
+  ) => Promise<{ status: TWriteStatus; hasApproval: boolean; reason?: string }>;
 };
 
 const getParentPath = (path: string) => path.slice(0, path.lastIndexOf("/")) || "/";
@@ -173,13 +173,13 @@ export const runNestedImport = async (
   await Promise.all(
     writablePaths.map(async ([path, secrets]) => {
       try {
-        const { status, hasApproval } = await writeSecrets(path, secrets);
+        const { status, hasApproval, reason } = await writeSecrets(path, secrets);
         const reasons = {
           written: undefined,
           partial: "some secrets could not be saved",
           failed: "secrets could not be saved"
         };
-        outcomes.set(path, { status, reason: reasons[status], hasApproval });
+        outcomes.set(path, { status, reason: reason ?? reasons[status], hasApproval });
       } catch {
         outcomes.set(path, { status: "failed", reason: "secrets could not be saved" });
       }
@@ -249,4 +249,39 @@ export const createFolderResolver = ({
     namesByParent.set(path, new Set());
     return "created";
   };
+};
+
+// Splits one batch into consecutive requests that each serialize to at most maxBytes, measuring
+// the exact JSON body that is sent. A secret too large to fit on its own is left out and flagged.
+export const chunkSecretsByRequestSize = <T>(
+  envelope: Record<string, unknown>,
+  secrets: T[],
+  maxBytes: number
+) => {
+  const encoder = new TextEncoder();
+  const byteSize = (value: unknown) => encoder.encode(JSON.stringify(value)).length;
+  const emptyRequestBytes = byteSize({ ...envelope, secrets: [] });
+
+  const chunks: T[][] = [];
+  let current: T[] = [];
+  let currentBytes = emptyRequestBytes;
+  let hasOversizedSecret = false;
+  secrets.forEach((secret) => {
+    const secretBytes = byteSize(secret);
+    if (emptyRequestBytes + secretBytes > maxBytes) {
+      hasOversizedSecret = true;
+      return;
+    }
+    // Every secret after the first in a request adds a separating comma
+    if (current.length && currentBytes + secretBytes + 1 > maxBytes) {
+      chunks.push(current);
+      current = [];
+      currentBytes = emptyRequestBytes;
+    }
+    currentBytes += secretBytes + (current.length ? 1 : 0);
+    current.push(secret);
+  });
+  if (current.length) chunks.push(current);
+
+  return { chunks, hasOversizedSecret };
 };
