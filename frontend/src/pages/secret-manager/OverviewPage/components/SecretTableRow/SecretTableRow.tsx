@@ -71,6 +71,10 @@ type Props = {
   environments: { name: string; slug: string }[];
   isSelected: boolean;
   onToggleSecretSelect: (key: string, isShiftKey: boolean) => void;
+  isExpanded: boolean;
+  onToggleExpand: (key: string) => void;
+  isSecretVisible: boolean;
+  onToggleSecretVisible: (key: string) => void;
   getSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
   onSecretCreate: (env: string, key: string, value: string, type?: SecretType) => Promise<void>;
   onSecretUpdate: (params: {
@@ -140,6 +144,10 @@ export const SecretTableRow = ({
   isImportedSecretPresentInEnv,
   getImportedSecretByKey,
   onToggleSecretSelect,
+  isExpanded,
+  onToggleExpand,
+  isSecretVisible,
+  onToggleSecretVisible,
   isSelected,
   importedBy,
   isSingleEnvSecretsVisible,
@@ -151,9 +159,7 @@ export const SecretTableRow = ({
   activityId,
   onActivityChange
 }: Props) => {
-  const [isFormExpanded, setIsFormExpanded] = useToggle();
   const totalCols = environments.length + 2; // secret key row + icon
-  const [isSecretVisible, setIsSecretVisible] = useToggle();
   const [isEditSecretNameOpen, setIsEditSecretNameOpen] = useState(false);
   const [isSingleEnvBaseActive, setIsSingleEnvBaseActive] = useState(false);
   const [isSingleEnvOverrideActive, setIsSingleEnvOverrideActive] = useState(false);
@@ -164,7 +170,7 @@ export const SecretTableRow = ({
   const isSingleEnvView = environments.length === 1;
   const isRowActive = isSingleEnvView
     ? isSingleEnvBaseActive || isSingleEnvOverrideActive
-    : isFormExpanded;
+    : isExpanded;
   const { projectId } = useProject();
   const { mutateAsync: updateSecretV3ForRename } = useUpdateSecretV3();
 
@@ -297,7 +303,7 @@ export const SecretTableRow = ({
   return (
     <>
       <TableRow
-        onClick={isSingleEnvView ? undefined : () => setIsFormExpanded.toggle()}
+        onClick={isSingleEnvView ? undefined : () => onToggleExpand(secretKey)}
         className={twMerge(
           "group hover:z-10",
           (isSingleEnvView ? isSingleEnvBaseActive || isSelected : isRowActive || isSelected) &&
@@ -305,7 +311,7 @@ export const SecretTableRow = ({
           pendingActionRowClass(singleEnvPendingAction)
         )}
       >
-        {(isSingleEnvView || !isFormExpanded) && (
+        {(isSingleEnvView || !isExpanded) && (
           <TableCell
             className={twMerge(
               "w-10 max-w-10 min-w-10 p-0",
@@ -425,27 +431,27 @@ export const SecretTableRow = ({
           />
         ) : (
           <TableCell
-            isTruncatable={!isFormExpanded}
-            colSpan={isFormExpanded ? totalCols : undefined}
+            isTruncatable={!isExpanded}
+            colSpan={isExpanded ? totalCols : undefined}
             className={twMerge(
               "sticky left-10 z-10 border-r bg-container transition-colors duration-75 group-hover:bg-container-hover",
-              isFormExpanded && "relative left-auto border-r-0 border-b-0 bg-container-hover !p-0"
+              isExpanded && "relative left-auto border-r-0 border-b-0 bg-container-hover !p-0"
             )}
           >
             <div
-              style={isFormExpanded ? { minWidth: tableWidth, maxWidth: tableWidth } : undefined}
+              style={isExpanded ? { minWidth: tableWidth, maxWidth: tableWidth } : undefined}
               className={twMerge(
-                isFormExpanded && "sticky left-0 flex min-h-10 items-center bg-container-hover"
+                isExpanded && "sticky left-0 flex min-h-10 items-center bg-container-hover"
               )}
             >
-              {isFormExpanded && (
+              {isExpanded && (
                 <div className="flex w-10 shrink-0 cursor-pointer items-center justify-center [&>svg]:size-4">
                   <ChevronDownIcon />
                 </div>
               )}
               <div
                 className={twMerge(
-                  isFormExpanded && "relative flex min-h-10 min-w-0 flex-1 items-center px-1 py-1.5"
+                  isExpanded && "relative flex min-h-10 min-w-0 flex-1 items-center px-1 py-1.5"
                 )}
               >
                 <div className="flex min-w-0 items-center gap-2">
@@ -453,7 +459,7 @@ export const SecretTableRow = ({
                     <TooltipTrigger asChild>
                       <span
                         className={twMerge(
-                          isFormExpanded ? "break-all whitespace-normal" : "min-w-0 truncate",
+                          isExpanded ? "break-all whitespace-normal" : "min-w-0 truncate",
                           singleEnvPendingAction === PendingAction.Delete &&
                             "text-danger/75 line-through"
                         )}
@@ -465,7 +471,7 @@ export const SecretTableRow = ({
                       {secretKey}
                     </TooltipContent>
                   </Tooltip>
-                  {!isFormExpanded &&
+                  {!isExpanded &&
                     environments.some(
                       ({ slug }) => getSecretByKey(slug, secretKey)?.revokedProjectFolderGrant
                     ) && (
@@ -524,7 +530,7 @@ export const SecretTableRow = ({
           </TableCell>
         )}
         {environments.length > 1 &&
-          !isFormExpanded &&
+          !isExpanded &&
           environments.map(({ slug }, i) => {
             const secret = getSecretByKey(slug, secretKey);
 
@@ -617,7 +623,7 @@ export const SecretTableRow = ({
           </DialogContent>
         </Dialog>
       )}
-      {!isSingleEnvView && isFormExpanded && (
+      {!isSingleEnvView && isExpanded && (
         <TableRow
           className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
         >
@@ -657,7 +663,11 @@ export const SecretTableRow = ({
                     </TableHead>
                     <TableHead>Value</TableHead>
                     <TableHead variant="action" className="w-px">
-                      <Button variant="ghost" size="xs" onClick={() => setIsSecretVisible.toggle()}>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => onToggleSecretVisible(secretKey)}
+                      >
                         {isSecretVisible ? (
                           <>
                             <EyeOffIcon />
