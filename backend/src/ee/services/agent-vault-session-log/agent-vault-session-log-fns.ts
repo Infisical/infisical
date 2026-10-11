@@ -70,12 +70,17 @@ export const resolveStorageConfig = (
   };
 };
 
-const TEMPORARY_S3_ERRORS = new Set([
+const TEMPORARY_AWS_ERRORS = new Set([
   "SlowDown",
   "InternalError",
   "ServiceUnavailable",
   "RequestTimeout",
-  "TimeoutError"
+  "Throttling",
+  "ThrottlingException",
+  "TooManyRequestsException",
+  "RequestLimitExceeded",
+  "TimeoutError",
+  "AbortError"
 ]);
 const NETWORK_ERROR_CODES = new Set(["ECONNREFUSED", "ECONNRESET", "ETIMEDOUT", "ENOTFOUND", "EAI_AGAIN", "EPIPE"]);
 const CREDENTIAL_ERRORS = new Set(["InvalidAccessKeyId", "SignatureDoesNotMatch", "ExpiredToken", "InvalidToken"]);
@@ -87,19 +92,29 @@ const LOCATION_ERRORS = new Set([
   "IllegalLocationConstraintException"
 ]);
 
+type TAwsError = Error & { $fault?: string; $metadata?: { httpStatusCode?: number }; code?: string };
+
+// Whether an AWS call failed because AWS or the network didn't answer, so that trying again later can help.
+export const isTemporaryAwsError = (error: unknown) => {
+  if (!(error instanceof Error)) return false;
+  const { $fault, $metadata, code } = error as TAwsError;
+  const status = $metadata?.httpStatusCode ?? 0;
+  return (
+    $fault === "server" ||
+    status >= 500 ||
+    status === 429 ||
+    TEMPORARY_AWS_ERRORS.has(error.name) ||
+    NETWORK_ERROR_CODES.has(code ?? "")
+  );
+};
+
 // Names the cause of a failed bucket listing for an admin, and whether trying again later can help.
 export const describeListFailure = (error: Error, bucket: string) => {
-  const { $fault, $metadata, code } = error as Error & {
-    $fault?: string;
-    $metadata?: { httpStatusCode?: number };
-    code?: string;
-  };
-  const label = error.name === "Error" && code ? code : error.name;
-  const isTemporary =
-    $fault === "server" ||
-    ($metadata?.httpStatusCode ?? 0) >= 500 ||
-    TEMPORARY_S3_ERRORS.has(error.name) ||
-    NETWORK_ERROR_CODES.has(code ?? "");
+  const { $metadata, code } = error as TAwsError;
+  let label = error.name;
+  // A reply S3's client can't parse, such as plain text from a proxy in between, is a bare Error.
+  if (error.name === "Error") label = code ?? ($metadata?.httpStatusCode ? `HTTP ${$metadata.httpStatusCode}` : label);
+  const isTemporary = isTemporaryAwsError(error);
 
   let hint = "Check the AWS connection and the bucket settings.";
   if (isTemporary) hint = "S3 isn't responding. Try again in a bit.";

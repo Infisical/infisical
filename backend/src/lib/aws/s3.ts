@@ -13,6 +13,9 @@ import { CustomAWSHasher } from "./hashing";
 
 type TS3Credentials = { accessKeyId: string; secretAccessKey: string; sessionToken?: string };
 
+// Three attempts at the 15s request timeout fit inside this, and it stays under Infisical's 100s request cut-off.
+const S3_CALL_TIMEOUT_MS = 45_000;
+
 export type TS3AccessCheck = { ok: true } | { ok: false; failure: "unreachable" | "unwritable"; error: unknown };
 
 export type TS3Bucket = ReturnType<typeof createS3Bucket>;
@@ -34,6 +37,8 @@ export const createS3Bucket = ({
     // Without these the SDK waits on a stalled S3 indefinitely, past the point Infisical drops the request.
     requestHandler: { connectionTimeout: 5_000, requestTimeout: 15_000, throwOnRequestTimeout: true }
   });
+  // The request timeout stops once the headers arrive, so a reply that stalls after them needs an overall limit.
+  const sendOptions = () => ({ abortSignal: AbortSignal.timeout(S3_CALL_TIMEOUT_MS) });
 
   // These headers are signed so S3 enforces them: the body must be the declared size and hash to the declared
   // digest, and If-None-Match stops a re-minted link from overwriting an object already stored.
@@ -78,7 +83,8 @@ export const createS3Bucket = ({
     maxKeys: number;
   }) => {
     const res = await client.send(
-      new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, StartAfter: startAfter, MaxKeys: maxKeys })
+      new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, StartAfter: startAfter, MaxKeys: maxKeys }),
+      sendOptions()
     );
     const objects: { key: string; size: number }[] = [];
     (res.Contents ?? []).forEach(({ Key, Size }) => {
@@ -89,7 +95,7 @@ export const createS3Bucket = ({
 
   const checkReachable = async (): Promise<{ ok: true } | { ok: false; error: unknown }> => {
     try {
-      await client.send(new HeadBucketCommand({ Bucket: bucket }));
+      await client.send(new HeadBucketCommand({ Bucket: bucket }), sendOptions());
       return { ok: true };
     } catch (error) {
       return { ok: false, error };
@@ -106,7 +112,8 @@ export const createS3Bucket = ({
           Key: testKey,
           Body: Buffer.from("infisical-access-check"),
           ContentType: "application/octet-stream"
-        })
+        }),
+        sendOptions()
       );
     } catch (error) {
       return { ok: false, failure: "unwritable", error };

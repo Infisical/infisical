@@ -8,6 +8,7 @@ import { BadRequestError, DatabaseError, InternalServerError } from "@app/lib/er
 import {
   AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
   AGENT_VAULT_SESSION_LOG_RANGE_MARGIN_MS,
+  AGENT_VAULT_SESSION_LOG_STORAGE_NEEDS_ADMIN_MESSAGE,
   AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE,
   AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
 } from "./agent-vault-session-log-constants";
@@ -391,11 +392,11 @@ describe("when the AWS connection can't be used", () => {
     );
   });
 
-  test("a member who isn't an admin gets the plain message, without the AWS error", async () => {
+  test("a member who isn't an admin is told to ask an admin, without the AWS error", async () => {
     vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unusable);
     const { service } = build({ isAdmin: false });
     await expect(service.listSessionLogs(scope)).rejects.toEqual(
-      storageUnavailable(AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE)
+      storageUnavailable(AGENT_VAULT_SESSION_LOG_STORAGE_NEEDS_ADMIN_MESSAGE)
     );
   });
 
@@ -405,8 +406,37 @@ describe("when the AWS connection can't be used", () => {
     );
     const { service } = build({ isAdmin: false });
     await expect(service.listSessionLogs(scope)).rejects.toEqual(
-      storageUnavailable(AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE)
+      storageUnavailable(AGENT_VAULT_SESSION_LOG_STORAGE_NEEDS_ADMIN_MESSAGE)
     );
+  });
+
+  test("a member who isn't an admin is told to try again when S3 isn't responding", async () => {
+    listChunks.mockRejectedValueOnce(
+      new S3ServiceException({ name: "SlowDown", $fault: "server", $metadata: {}, message: "Slow down" })
+    );
+    const { service } = build({ isAdmin: false });
+    const error = await service.listSessionLogs(scope).catch((err: unknown) => err);
+    expect(error).toBeInstanceOf(InternalServerError);
+    expect(error).toEqual(storageUnavailable(AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE));
+  });
+
+  test("a connection AWS didn't answer for is a 500, so callers know to try again", async () => {
+    const unreachable = new InternalServerError({ message: "Couldn't reach AWS to use the connection 'prod-logs'" });
+    vi.mocked(buildSessionLogStorage).mockRejectedValueOnce(unreachable);
+    const { service } = build();
+    const error = await service.listSessionLogs(scope).catch((err: unknown) => err);
+    expect(error).toBeInstanceOf(InternalServerError);
+    expect(error).toEqual(storageUnavailable(unreachable.message));
+  });
+
+  test("a reply S3's client couldn't parse is still the storage error, not a bare 500", async () => {
+    listChunks.mockRejectedValueOnce(
+      Object.assign(new Error("XML parse error"), { $metadata: { httpStatusCode: 429 } })
+    );
+    const { service } = build();
+    const error = await service.listSessionLogs(scope).catch((err: unknown) => err);
+    expect(error).toBeInstanceOf(InternalServerError);
+    expect((error as Error).message).toContain("(HTTP 429)");
   });
 
   test("a bucket that refuses to list is a 400 that points at s3:ListBucket", async () => {

@@ -160,12 +160,27 @@ describe("describeListFailure", () => {
       hint: "S3 isn't responding. Try again in a bit."
     },
     { error: networkError("ECONNREFUSED"), isTemporary: true, hint: "S3 isn't responding. Try again in a bit." },
+    {
+      error: Object.assign(new Error("XML parse error"), { $metadata: { httpStatusCode: 429 } }),
+      isTemporary: true,
+      hint: "S3 isn't responding. Try again in a bit."
+    },
+    {
+      error: Object.assign(new Error("Request aborted"), { name: "AbortError" }),
+      isTemporary: true,
+      hint: "S3 isn't responding. Try again in a bit."
+    },
     { error: s3Error("SomethingNew"), isTemporary: false, hint: "Check the AWS connection and the bucket settings." }
   ])("$error.name ($error.message) reads as temporary: $isTemporary", ({ error, isTemporary, hint }) => {
     const failure = describeListFailure(error, "my-bucket");
     expect(failure.isTemporary).toBe(isTemporary);
     expect(failure.message.startsWith("Infisical couldn't list session logs in bucket 'my-bucket' (")).toBe(true);
     expect(failure.message.endsWith(hint)).toBe(true);
+  });
+
+  test("a reply S3's client couldn't parse is labelled by its status", () => {
+    const error = Object.assign(new Error("XML parse error"), { $metadata: { httpStatusCode: 429 } });
+    expect(describeListFailure(error, "my-bucket").message).toContain("(HTTP 429)");
   });
 
   test("a network error is labelled by its code, not its generic name", () => {

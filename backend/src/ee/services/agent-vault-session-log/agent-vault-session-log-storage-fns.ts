@@ -1,7 +1,7 @@
 import { STSServiceException } from "@aws-sdk/client-sts";
 
 import { createS3Bucket } from "@app/lib/aws/s3";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -14,7 +14,7 @@ import {
   AGENT_VAULT_SESSION_LOG_MAX_PAGE_CHUNKS,
   AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS
 } from "./agent-vault-session-log-constants";
-import { withKeyPrefix } from "./agent-vault-session-log-fns";
+import { isTemporaryAwsError, withKeyPrefix } from "./agent-vault-session-log-fns";
 import { TResolvedSessionLogStorageConfig } from "./agent-vault-session-log-types";
 
 type TStorageDeps = {
@@ -52,6 +52,11 @@ export const buildSessionLogStorage = async (
     ({ credentials } = await getAwsConnectionConfig(connection as unknown as TAwsConnectionConfig, config.region));
   } catch (err) {
     logger.warn({ err }, `Agent Vault session logs could not use their AWS connection [appConnectionId=${raw.id}]`);
+    if (isTemporaryAwsError(err)) {
+      throw new InternalServerError({
+        message: `Couldn't reach AWS to use the connection '${raw.name}' for session logs. Try again in a bit.`
+      });
+    }
     const reason =
       err instanceof STSServiceException || err instanceof BadRequestError
         ? err.message

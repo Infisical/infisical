@@ -37,6 +37,7 @@ import {
   AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
   AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS,
   AGENT_VAULT_SESSION_LOG_RANGE_MARGIN_MS,
+  AGENT_VAULT_SESSION_LOG_STORAGE_NEEDS_ADMIN_MESSAGE,
   AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE,
   AGENT_VAULT_SESSION_LOGS_NOT_ON_PLAN
 } from "./agent-vault-session-log-constants";
@@ -197,7 +198,7 @@ export const agentVaultSessionLogServiceFactory = ({
     } catch (error) {
       // A 400 would read to the proxy as a malformed chunk to drop; a connection that can't be used is worth a retry.
       // The detail can name the connection and AWS account, and whoever runs the proxy may not be an admin.
-      if (error instanceof BadRequestError) {
+      if (error instanceof BadRequestError || error instanceof InternalServerError) {
         logger.warn(error, `agentVaultSessionLog: could not use the session log connection [proxyId=${proxyId}]`);
         throw new InternalServerError({
           message:
@@ -279,10 +280,13 @@ export const agentVaultSessionLogServiceFactory = ({
     adminMessage: string;
     isTemporary?: boolean;
   }) => {
-    const error = {
-      name: AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE,
-      message: isAdmin ? adminMessage : AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE
-    };
+    let message = adminMessage;
+    if (!isAdmin) {
+      message = isTemporary
+        ? AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE
+        : AGENT_VAULT_SESSION_LOG_STORAGE_NEEDS_ADMIN_MESSAGE;
+    }
+    const error = { name: AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE, message };
     return isTemporary ? new InternalServerError(error) : new BadRequestError(error);
   };
 
@@ -307,6 +311,9 @@ export const agentVaultSessionLogServiceFactory = ({
         keyPrefix: storage.keyPrefix
       };
     } catch (error) {
+      if (error instanceof InternalServerError) {
+        throw $storageUnavailable({ isAdmin, adminMessage: error.message, isTemporary: true });
+      }
       if (!(error instanceof BadRequestError)) throw error;
       throw $storageUnavailable({ isAdmin, adminMessage: error.message });
     }
@@ -329,10 +336,10 @@ export const agentVaultSessionLogServiceFactory = ({
     return { chunks, sessionKey: sessionKey.toString("base64") };
   };
 
-  // S3 errors and network failures; anything else is a bug and stays a 500.
+  // S3 errors, network failures and replies S3's client couldn't parse; anything else is a bug and stays a 500.
   const isStorageError = (error: unknown) =>
     error instanceof S3ServiceException ||
-    (error instanceof Error && ("code" in error || error.name === "TimeoutError"));
+    (error instanceof Error && ("code" in error || "$metadata" in error || error.name === "TimeoutError"));
 
   const listSessionLogs = async ({ cursor, from, to, ...scope }: TListSessionLogsDTO) => {
     if (from && to && from > to) {
@@ -468,7 +475,9 @@ export const agentVaultSessionLogServiceFactory = ({
       } catch (error) {
         logger.warn(error, `agentVaultSessionLog: could not use the session log connection [projectId=${projectId}]`);
         connectionError =
-          error instanceof BadRequestError ? error.message : "Couldn't check the AWS connection. Try again.";
+          error instanceof BadRequestError || error instanceof InternalServerError
+            ? error.message
+            : "Couldn't check the AWS connection. Try again.";
       }
     }
 

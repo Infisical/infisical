@@ -41,6 +41,25 @@ describe("buildSessionLogStorage", () => {
     });
   });
 
+  test.each([
+    {
+      why: "AWS throttles the call",
+      error: new STSServiceException({
+        name: "Throttling",
+        $fault: "client",
+        $metadata: { httpStatusCode: 400 },
+        message: "Rate exceeded"
+      })
+    },
+    { why: "the network drops it", error: Object.assign(new Error("connect ETIMEDOUT"), { code: "ETIMEDOUT" }) }
+  ])("is a 500 to try again when $why", async ({ error }) => {
+    vi.mocked(getAwsConnectionConfig).mockRejectedValueOnce(error);
+    await expect(buildSessionLogStorage(config, "org-1", deps)).rejects.toMatchObject({
+      name: "InternalServerError",
+      message: "Couldn't reach AWS to use the connection 'prod-logs' for session logs. Try again in a bit."
+    });
+  });
+
   test("keeps anything that is not from AWS out of the message", async () => {
     vi.mocked(getAwsConnectionConfig).mockRejectedValueOnce(new Error("kms_keys row missing"));
     await expect(buildSessionLogStorage(config, "org-1", deps)).rejects.toMatchObject({
