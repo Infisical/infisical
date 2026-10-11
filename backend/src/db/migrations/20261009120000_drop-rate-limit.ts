@@ -6,6 +6,9 @@ import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 export async function up(knex: Knex): Promise<void> {
   const hasTable = await knex.schema.hasTable(TableName.DeprecatedRateLimit);
   if (hasTable) {
+    // The analytics view is normally dropped before migrations run, but not if GENERATE_SANITIZED_SCHEMA
+    // was turned off after the view was created, and the view would block dropping the table.
+    await knex.raw(`DROP VIEW IF EXISTS analytics.${TableName.DeprecatedRateLimit}`);
     await dropOnUpdateTrigger(knex, TableName.DeprecatedRateLimit);
     await knex.schema.dropTable(TableName.DeprecatedRateLimit);
   }
