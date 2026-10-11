@@ -258,7 +258,7 @@ Infisical doesn't copy existing records when you change the bucket or the key pr
 
 Infisical never deletes sessions or their session logs. To delete older logs automatically, add an [S3 Lifecycle rule](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html) to the bucket.
 
-Don't modify or add files under the key prefix or bucket that session logs use.
+Don't modify or add files under the key prefix or bucket that session logs use. Restrict who in your AWS account can delete or overwrite these files.
 
 ## Troubleshooting
 
