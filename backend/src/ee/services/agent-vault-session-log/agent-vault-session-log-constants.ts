@@ -36,10 +36,10 @@ export const AGENT_VAULT_SESSION_LOG_MAX_PAGE_CHUNKS = 200;
 export const AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES = 48 * 1024; // 48 KiB of ciphertext
 
 // When someone reads logs for a date range, Infisical has to find the chunks holding requests from it. A chunk's
-// file name carries the time of its last request, and the proxy never puts requests more than 2 minutes apart in one
-// chunk. So the listing starts 3 minutes past the end of the range, and stops at the first chunk whose last request
+// file name carries the time of its last request, and the proxy never puts requests more than 10 minutes apart in one
+// chunk. So the listing starts 11 minutes past the end of the range, and stops at the first chunk whose last request
 // is before its start. Infisical refuses a chunk whose id time doesn't match its endedAt to within a second.
-export const AGENT_VAULT_SESSION_LOG_RANGE_MARGIN_MS = 3 * 60_000; // 3 minutes
+export const AGENT_VAULT_SESSION_LOG_RANGE_MARGIN_MS = 11 * 60_000; // 11 minutes
 export const AGENT_VAULT_SESSION_LOG_CHUNK_ID_TIME_TOLERANCE_MS = 1_000;
 
 // The live view (new requests appearing while the logs panel is open) doesn't list S3. Each time a proxy asks for
