@@ -380,8 +380,11 @@ export const useGetAgentVaultSessionLogs = (
     lastGapFillAt.current = 0;
     isGapPending.current = false;
   }
-  // The session whose gap fill couldn't reach the rows already shown, so some of its requests may be missing.
-  const [unfilledGapSessionId, setUnfilledGapSessionId] = useState<string | null>(null);
+  // Set when a gap fill couldn't reach the rows already shown, so some requests may be missing. Only a history load
+  // from the top that started after it can bring them back, since older pages lie below them.
+  const [unfilledGap, setUnfilledGap] = useState<{ sessionId: string; foundAt: number } | null>(
+    null
+  );
 
   const historyKey = agentVaultKeys.sessionLogs(currentOrg.id, sessionId ?? "", range);
   const history = useInfiniteQuery({
@@ -390,6 +393,7 @@ export const useGetAgentVaultSessionLogs = (
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam, signal }) => {
       const cache = chunkCache.current as TAgentVaultSessionLogChunkCache;
+      const startedAt = Date.now();
       const { data } = await apiRequest.get<TAgentVaultSessionLogHistoryPage>(url, {
         params: {
           ...(pageParam ? { cursor: pageParam } : {}),
@@ -398,6 +402,7 @@ export const useGetAgentVaultSessionLogs = (
         },
         signal
       });
+      if (!pageParam) setUnfilledGap((gap) => (gap && gap.foundAt < startedAt ? null : gap));
       return decryptSessionLogPage(data, cache, signal);
     },
     // Trying again at once won't fix a bucket Infisical can't read; the panel offers Reload instead.
@@ -490,7 +495,8 @@ export const useGetAgentVaultSessionLogs = (
           );
           lastGapFillAt.current = polledAt;
           isGapPending.current = false;
-          setUnfilledGapSessionId(isGapUnfilled ? (sessionId ?? null) : null);
+          // Only ever set here: rows from an earlier partial fill can make a later page look complete.
+          if (isGapUnfilled && sessionId) setUnfilledGap({ sessionId, foundAt: Date.now() });
         } catch (error) {
           if (signal.aborted) throw error;
         }
@@ -511,8 +517,7 @@ export const useGetAgentVaultSessionLogs = (
     history,
     live,
     arrived: live.data,
-    isLiveGapUnfilled: Boolean(sessionId) && unfilledGapSessionId === sessionId,
-    dismissLiveGap: () => setUnfilledGapSessionId(null)
+    isLiveGapUnfilled: Boolean(sessionId) && unfilledGap?.sessionId === sessionId
   };
 };
 
