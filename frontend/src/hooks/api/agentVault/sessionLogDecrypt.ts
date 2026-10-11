@@ -79,6 +79,15 @@ export const sessionLogChunkKey = (
   chunk: Pick<TAgentVaultSessionLogChunk, "chunkId" | "proxyId">
 ) => `${chunk.proxyId}/${chunk.chunkId}`;
 
+// One page of history can end before the rows already shown, which leaves older missed chunks out. If the page
+// is the whole session there is nothing older to miss.
+export const doesGapFillLeaveAHole = (
+  newest: Pick<TAgentVaultSessionLogPage, "chunks"> & { nextCursor: string | null },
+  shownChunkKeys: Set<string>
+) =>
+  newest.nextCursor !== null &&
+  !newest.chunks.some((chunk) => shownChunkKeys.has(sessionLogChunkKey(chunk)));
+
 // The object name carries the proxy Infisical signed the upload for, so every record inside must name it too.
 export const recordsMatchChunk = (
   records: TAgentVaultSessionLogRecord[],

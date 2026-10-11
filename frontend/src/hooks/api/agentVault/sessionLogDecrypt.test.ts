@@ -4,6 +4,7 @@ import { afterEach, describe, it, vi } from "vitest";
 import {
   createSessionLogChunkCache,
   decryptSessionLogPage,
+  doesGapFillLeaveAHole,
   isLiveGapPossible,
   mergeSessionLogPages,
   parseSessionLogRecords,
@@ -344,5 +345,38 @@ describe("isLiveGapPossible", () => {
     }
   ])("reads $why as a possible gap: $expected", ({ lastPolledAt, newChunkCount, expected }) => {
     assert.equal(isLiveGapPossible({ lastPolledAt, now, newChunkCount }), expected);
+  });
+});
+
+describe("doesGapFillLeaveAHole", () => {
+  const chunk = (chunkId: string) => ({
+    chunkId,
+    proxyId: "proxy-1",
+    ciphertextBytes: 100,
+    presignedGetUrl: "https://bucket/x"
+  });
+  const shown = new Set(["proxy-1/c3"]);
+
+  it.each([
+    {
+      why: "the page reaches a row already shown",
+      chunks: ["c1", "c2", "c3"],
+      nextCursor: "more",
+      expected: false
+    },
+    {
+      why: "the page ends before the rows shown",
+      chunks: ["c1", "c2"],
+      nextCursor: "more",
+      expected: true
+    },
+    {
+      why: "the page is the whole session",
+      chunks: ["c1", "c2"],
+      nextCursor: null,
+      expected: false
+    }
+  ])("reads $why as a hole: $expected", ({ chunks, nextCursor, expected }) => {
+    assert.equal(doesGapFillLeaveAHole({ chunks: chunks.map(chunk), nextCursor }, shown), expected);
   });
 });

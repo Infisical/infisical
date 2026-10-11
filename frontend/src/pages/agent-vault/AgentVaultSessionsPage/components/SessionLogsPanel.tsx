@@ -117,11 +117,14 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>("all");
   const { range, applyRange, isActive, canTail, isLive, isPausedForBudget, pauseForBudget } =
     useSessionLogsLiveTail(session);
-  const { history, live, arrived } = useGetAgentVaultSessionLogs(session.id, {
-    isLive,
-    from: range?.startDate,
-    to: range?.endDate
-  });
+  const { history, live, arrived, isLiveGapUnfilled, dismissLiveGap } = useGetAgentVaultSessionLogs(
+    session.id,
+    {
+      isLive,
+      from: range?.startDate,
+      to: range?.endDate
+    }
+  );
   const retryLive = () => live.refetch().catch(() => {});
   const {
     data,
@@ -563,6 +566,31 @@ export const SessionLogsPanel = ({ session }: Props) => {
                   </Link>
                 </Button>
               )}
+            </AlertAction>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isLiveGapUnfilled && (
+        <Alert variant="warning">
+          <TriangleAlertIcon />
+          <AlertDescription>
+            <p>Some recent requests may be missing.</p>
+            <AlertAction>
+              <Button
+                variant="outline"
+                size="sm"
+                isPending={isRefetching}
+                onClick={() =>
+                  refetch()
+                    .then((result) => {
+                      if (result.isSuccess) dismissLiveGap();
+                    })
+                    .catch(() => {})
+                }
+              >
+                Reload
+              </Button>
             </AlertAction>
           </AlertDescription>
         </Alert>

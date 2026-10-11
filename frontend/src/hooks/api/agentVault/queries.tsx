@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { InfiniteData, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
 import { apiRequest } from "@app/config/request";
@@ -9,6 +9,7 @@ import { AgentVaultMemberType } from "./enums";
 import {
   createSessionLogChunkCache,
   decryptSessionLogPage,
+  doesGapFillLeaveAHole,
   isLiveGapPossible,
   isRetryableResult,
   mergeSessionLogPages,
@@ -373,13 +374,18 @@ export const useGetAgentVaultSessionLogs = (
   // Reset during render so neither query fetches a new session into the old one's cache.
   const chunkCache = useRef<TAgentVaultSessionLogChunkCache | null>(null);
   const lastGapFillAt = useRef(0);
+  const isGapPending = useRef(false);
   if (!chunkCache.current || chunkCache.current.sessionId !== sessionId) {
     chunkCache.current = createSessionLogChunkCache(sessionId ?? "");
     lastGapFillAt.current = 0;
+    isGapPending.current = false;
   }
+  // The session whose gap fill couldn't reach the rows already shown, so some of its requests may be missing.
+  const [unfilledGapSessionId, setUnfilledGapSessionId] = useState<string | null>(null);
 
+  const historyKey = agentVaultKeys.sessionLogs(currentOrg.id, sessionId ?? "", range);
   const history = useInfiniteQuery({
-    queryKey: agentVaultKeys.sessionLogs(currentOrg.id, sessionId ?? "", range),
+    queryKey: historyKey,
     enabled: enabled && Boolean(sessionId),
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam, signal }) => {
@@ -450,13 +456,15 @@ export const useGetAgentVaultSessionLogs = (
       });
 
       // The feed may have dropped chunks this tab never saw, so merge in the newest page of history, which lists
-      // them from the bucket. At most once a minute, and a failure just waits for the next check.
+      // them from the bucket. At most once a minute; a failed fill stays pending and is tried again on the next poll.
       const polledAt = Date.now();
+      if (isLiveGapPossible({ lastPolledAt, now: polledAt, newChunkCount: data.chunks.length })) {
+        isGapPending.current = true;
+      }
       if (
-        isLiveGapPossible({ lastPolledAt, now: polledAt, newChunkCount: data.chunks.length }) &&
+        isGapPending.current &&
         polledAt - lastGapFillAt.current > SESSION_LOG_GAP_FILL_INTERVAL_MS
       ) {
-        lastGapFillAt.current = polledAt;
         try {
           const { data: newest } = await apiRequest.get<TAgentVaultSessionLogHistoryPage>(url, {
             params: {
@@ -465,10 +473,24 @@ export const useGetAgentVaultSessionLogs = (
             },
             signal
           });
+          const shown = new Set(
+            [
+              ...(arrived?.chunks ?? []),
+              ...(
+                queryClient.getQueryData<
+                  InfiniteData<TAgentVaultDecryptedSessionLogPage<TAgentVaultSessionLogHistoryPage>>
+                >(historyKey)?.pages ?? []
+              ).flatMap((page) => page.chunks)
+            ].map(sessionLogChunkKey)
+          );
+          const isGapUnfilled = doesGapFillLeaveAHole(newest, shown);
           arrived = mergeSessionLogPages(
             arrived,
             await decryptSessionLogPage({ ...newest, nextCursor: data.nextCursor }, cache, signal)
           );
+          lastGapFillAt.current = polledAt;
+          isGapPending.current = false;
+          setUnfilledGapSessionId(isGapUnfilled ? (sessionId ?? null) : null);
         } catch (error) {
           if (signal.aborted) throw error;
         }
@@ -485,7 +507,13 @@ export const useGetAgentVaultSessionLogs = (
     gcTime: 0
   });
 
-  return { history, live, arrived: live.data };
+  return {
+    history,
+    live,
+    arrived: live.data,
+    isLiveGapUnfilled: Boolean(sessionId) && unfilledGapSessionId === sessionId,
+    dismissLiveGap: () => setUnfilledGapSessionId(null)
+  };
 };
 
 export const useListAgentVaultVariables = (accessBundleId: string, enabled = true) => {
