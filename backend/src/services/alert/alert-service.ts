@@ -108,6 +108,7 @@ const getAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
         channelType: test.channelType,
         resourceType: test.resourceType,
         resourceId: test.resourceId,
+        resourceName: test.resourceName,
         success: test.success,
         deliveredTo: test.deliveredTo,
         error: test.error
@@ -119,11 +120,11 @@ const getAuditEvent = (input: TAlertAuditInput): TAuditEvent => {
     alertId: alert.id,
     name: alert.name,
     resourceType: alert.resourceType,
+    resourceId: alert.resourceId,
+    resourceName: alert.resourceName ?? null,
     eventType: alert.eventType
   };
-  if (input.action === AlertAuditAction.Create) {
-    return { type: EventType.CREATE_ALERT, metadata: { ...metadata, resourceId: alert.resourceId } };
-  }
+  if (input.action === AlertAuditAction.Create) return { type: EventType.CREATE_ALERT, metadata };
   if (input.action === AlertAuditAction.Update) return { type: EventType.UPDATE_ALERT, metadata };
   return { type: EventType.DELETE_ALERT, metadata };
 };

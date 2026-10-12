@@ -28,11 +28,11 @@ import {
   SheetHeader,
   SheetTitle,
   Table,
-  TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
+  TableVirtualBody,
   Tabs,
   TabsContent,
   TabsList,
@@ -131,6 +131,7 @@ const ImportSecretsContent = ({
   });
 
   const activeSecrets = initialParsedSecrets || parsedSecrets;
+  const secretEntries = useMemo(() => Object.entries(activeSecrets ?? {}), [activeSecrets]);
   const secretCount = activeSecrets ? Object.keys(activeSecrets).length : 0;
   const hasTagsToResolve = activeSecrets
     ? Object.values(activeSecrets).some((s) => s.tagSlugs?.length)
@@ -573,8 +574,9 @@ const ImportSecretsContent = ({
                   </TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
-                {Object.entries(activeSecrets!).map(([key, secretData]) => {
+              <TableVirtualBody count={secretEntries.length}>
+                {(index, rowProps) => {
+                  const [key, secretData] = secretEntries[index];
                   const isVisible = visibleSecretKeys.has(key);
                   const hasComments = secretData.comments.some((c) => c);
                   const hasTags = Boolean(secretData.tagSlugs?.length);
@@ -583,7 +585,7 @@ const ImportSecretsContent = ({
                   const editableKey = secretData.isFileSecret === true;
                   const editedKey = keyOverrides[key] ?? key;
                   return (
-                    <TableRow key={key}>
+                    <TableRow key={key} {...rowProps}>
                       <TableCell isTruncatable className="w-1/2 overflow-hidden font-mono text-xs">
                         <div className="flex w-full items-center gap-1.5">
                           {editableKey ? (
@@ -677,8 +679,8 @@ const ImportSecretsContent = ({
                       </TableCell>
                     </TableRow>
                   );
-                })}
-              </TableBody>
+                }}
+              </TableVirtualBody>
             </Table>
           </div>
           <Field>
