@@ -23,13 +23,23 @@ export const apiRequest = axios.create({
 apiRequest.interceptors.request.use((config) => {
   const tabProjectId = getTabCertManagerProjectIdForRequest(config.url);
   const body = config.data as { projectId?: unknown } | undefined;
+  const { params } = config;
   const namesProject =
-    Boolean((config.params as { projectId?: unknown } | undefined)?.projectId) ||
+    (params instanceof URLSearchParams
+      ? params.has("projectId")
+      : Boolean((params as { projectId?: unknown } | undefined)?.projectId)) ||
     Boolean(config.url?.includes("projectId=")) ||
     (typeof body === "object" && body !== null && "projectId" in body);
   if (tabProjectId && !namesProject) {
-    // eslint-disable-next-line no-param-reassign
-    config.params = { ...config.params, projectId: tabProjectId };
+    if (params instanceof URLSearchParams) {
+      const nextParams = new URLSearchParams(params);
+      nextParams.set("projectId", tabProjectId);
+      // eslint-disable-next-line no-param-reassign
+      config.params = nextParams;
+    } else {
+      // eslint-disable-next-line no-param-reassign
+      config.params = { ...params, projectId: tabProjectId };
+    }
   }
 
   // Skip auto-injection if the caller already set an Authorization header
