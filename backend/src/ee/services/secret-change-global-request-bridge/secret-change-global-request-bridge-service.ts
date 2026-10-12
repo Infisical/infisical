@@ -609,14 +609,6 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
     actorOrgId,
     bypassReason
   }) => {
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.secretApproval) {
-      throw new BadRequestError({
-        message:
-          "Failed to merge secret approval request due to plan restriction. Upgrade plan to merge secret approval request."
-      });
-    }
-
     const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(approvalId);
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
@@ -784,14 +776,6 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
     status,
     comment
   }) => {
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.secretApproval) {
-      throw new BadRequestError({
-        message:
-          "Failed to review secret approval request due to plan restriction. Upgrade plan to review secret approval request."
-      });
-    }
-
     const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(approvalId);
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 

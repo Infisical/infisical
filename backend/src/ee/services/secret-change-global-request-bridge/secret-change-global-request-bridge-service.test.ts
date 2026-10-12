@@ -482,7 +482,6 @@ describe("secretChangeGlobalRequestBridge reviewSecretChangeRequest", () => {
 
     const result = await review(service);
 
-    expect(deps.licenseService.getPlan).toHaveBeenCalledWith("org-1");
     expect(deps.permissionService.getProjectPermission).toHaveBeenCalledWith(
       expect.objectContaining({ actor: ActorType.USER, actorId: "approver-1", projectId: "project-1" })
     );
@@ -562,14 +561,13 @@ describe("secretChangeGlobalRequestBridge reviewSecretChangeRequest", () => {
     expect(queueChangeRequestWebhook).not.toHaveBeenCalled();
   });
 
-  test("refuses when the plan lacks secret approvals", async () => {
+  test("reviews an existing request when the plan lacks secret approvals", async () => {
     const { service, deps } = buildService();
     deps.licenseService.getPlan.mockResolvedValue({ secretApproval: false });
 
-    const result = review(service);
-    await expect(result).rejects.toBeInstanceOf(BadRequestError);
-    await expect(result).rejects.toThrow("plan restriction");
-    expect(deps.approvalRequestDAL.findById).not.toHaveBeenCalled();
+    await expect(review(service)).resolves.toMatchObject({ status: ApprovalStatus.APPROVED });
+    expect(deps.licenseService.getPlan).not.toHaveBeenCalled();
+    expect(deps.approvalRequestApprovalsDAL.create).toHaveBeenCalledTimes(1);
   });
 
   test("reads an unknown id or a request of another type as not found", async () => {
@@ -886,12 +884,13 @@ describe("secretChangeGlobalRequestBridge mergeSecretChangeRequest", () => {
     expect(notifySecretApprovalBypass).not.toHaveBeenCalled();
   });
 
-  test("refuses when the plan lacks secret approvals", async () => {
-    const { service, deps } = buildService();
+  test("merges an existing request when the plan lacks secret approvals", async () => {
+    const { service, deps } = buildService({ requestSteps: [stepWith({ approvals: approvedBy("approver-1") })] });
     deps.licenseService.getPlan.mockResolvedValue({ secretApproval: false });
 
-    await expect(merge(service)).rejects.toBeInstanceOf(BadRequestError);
-    expect(deps.approvalRequestDAL.findById).not.toHaveBeenCalled();
+    await expect(merge(service)).resolves.toMatchObject({ isMergedViaBypass: false });
+    expect(deps.licenseService.getPlan).not.toHaveBeenCalled();
+    expect(applySecretApprovalCommitsV2Bridge).toHaveBeenCalledTimes(1);
   });
 
   test("refuses a non-user actor, a merged request and a request that is not open", async () => {

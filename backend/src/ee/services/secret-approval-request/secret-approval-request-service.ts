@@ -543,14 +543,6 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     const { approvalId, actor, status, comment, actorId, actorAuthMethod, actorOrgId } = dto;
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.secretApproval) {
-      throw new BadRequestError({
-        message:
-          "Failed to review secret approval request due to plan restriction. Upgrade plan to review secret approval request."
-      });
-    }
-
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest) {
       throw new NotFoundError({ message: `Secret approval request with ID '${approvalId}' not found` });
@@ -654,7 +646,7 @@ export const secretApprovalRequestServiceFactory = ({
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.secretApproval) {
+    if (!plan.secretApproval && status === RequestState.Open) {
       throw new BadRequestError({
         message:
           "Failed to update secret approval request due to plan restriction. Upgrade plan to update secret approval request."
@@ -738,14 +730,6 @@ export const secretApprovalRequestServiceFactory = ({
     if (!secretApprovalRequest)
       throw new NotFoundError({ message: `Secret approval request with ID '${approvalId}' not found` });
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
-
-    const plan = await licenseService.getPlan(actorOrgId);
-    if (!plan.secretApproval) {
-      throw new BadRequestError({
-        message:
-          "Failed to merge secret approval request due to plan restriction. Upgrade plan to merge secret approval request."
-      });
-    }
 
     const { policy, folderId, projectId, bypassers, environment } = secretApprovalRequest;
     if (policy.deletedAt) {
