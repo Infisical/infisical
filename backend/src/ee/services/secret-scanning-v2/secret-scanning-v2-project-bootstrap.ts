@@ -8,7 +8,7 @@ import { TMembershipRoleDALFactory } from "@app/services/membership/membership-r
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 type TBootstrapDeps = {
-  projectDAL: Pick<TProjectDALFactory, "create" | "find">;
+  projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;
   membershipDAL: Pick<TMembershipDALFactory, "create">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
 };
@@ -25,13 +25,9 @@ export const bootstrapSecretScanningProject = async (
   { projectDAL, membershipDAL, membershipRoleDAL }: TBootstrapDeps,
   tx: Knex
 ): Promise<{ project: TProjects; created: boolean }> => {
-  // Orgs from before the one-project limit can have several; the newest one is the active project.
-  const existing = await projectDAL.find(
-    { orgId, type: ProjectType.SecretScanning },
-    { sort: [["createdAt", "desc"]], limit: 1, tx }
-  );
-  if (existing.length) {
-    return { project: existing[0], created: false };
+  const existing = await projectDAL.findOne({ orgId, type: ProjectType.SecretScanning }, tx);
+  if (existing) {
+    return { project: existing, created: false };
   }
 
   const project = await projectDAL.create(

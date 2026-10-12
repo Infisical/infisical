@@ -260,18 +260,25 @@ export const ProjectTypePage = () => {
 
   // Resolving also creates the project for older orgs that never opened Secret Scanning. Non-members land
   // on the product's access page, which offers joining or requesting access.
-  const { data: secretScanningProjectId } = useGetSecretScanningProjectId(orgId, {
-    enabled: projectType === ProjectType.SecretScanning
-  });
+  const { data: secretScanningProjectId, isError: isSecretScanningProjectError } =
+    useGetSecretScanningProjectId(orgId, {
+      enabled: projectType === ProjectType.SecretScanning
+    });
 
   useEffect(() => {
-    if (projectType === ProjectType.SecretScanning && secretScanningProjectId) {
+    if (projectType !== ProjectType.SecretScanning) return;
+
+    if (secretScanningProjectId) {
       navigate({
         to: "/organizations/$orgId/projects/secret-scanning/$projectId/data-sources",
         params: { orgId, projectId: secretScanningProjectId }
       });
+    } else if (isSecretScanningProjectError) {
+      // Failed queries are not reported globally, so without this the page would stay blank.
+      createNotification({ type: "error", text: "Couldn't open Secret Scanning. Try again." });
+      navigate({ to: "/organizations/$orgId/projects", params: { orgId } });
     }
-  }, [projectType, secretScanningProjectId, orgId, navigate]);
+  }, [projectType, secretScanningProjectId, isSecretScanningProjectError, orgId, navigate]);
 
   useEffect(() => {
     if (projectType === ProjectType.PAM) {
