@@ -84,7 +84,6 @@ type Props = {
     importPath: string,
     env: string
   ) => TSecretImport | undefined;
-  tableWidth: number;
   secretPath: string;
   searchFilter: string;
   onDelete: (secretImport: TSecretImport) => void;
@@ -103,7 +102,6 @@ export const SecretImportTableRow = ({
   environments = [],
   isSecretImportInEnv,
   getSecretImportByEnv,
-  tableWidth,
   secretPath,
   searchFilter,
   onDelete,
@@ -923,10 +921,7 @@ export const SecretImportTableRow = ({
             className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
           >
             <TableCell colSpan={totalCols} className="border-0 p-0">
-              <div
-                style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-                className="sticky left-0 border-b border-border bg-container"
-              >
+              <div className="sticky left-0 max-w-(--overview-table-width) min-w-(--overview-table-width) border-b border-border bg-container">
                 {renderExpandedSecrets(singleEnvSlug)}
               </div>
             </TableCell>
@@ -936,10 +931,7 @@ export const SecretImportTableRow = ({
             className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
           >
             <TableCell colSpan={totalCols} className="border-0 p-0">
-              <div
-                style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-                className="sticky left-0 border-y border-border bg-container"
-              >
+              <div className="sticky left-0 max-w-(--overview-table-width) min-w-(--overview-table-width) border-y border-border bg-container">
                 <div className="flex min-h-10 flex-wrap items-center gap-2 border-b border-border px-3 py-1.5 pl-11">
                   <span className="text-xs text-muted">Imported in:</span>
                   {environments

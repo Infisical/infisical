@@ -21,13 +21,24 @@ const entitlementProductSchema = z
   })
   .passthrough();
 
+export const trialPaymentFailedNoticeSchema = z.object({
+  type: z.literal("trial_payment_failed"),
+  product_key: z.string(),
+  trial_plan_key: z.string().nullish(),
+  access_ends_at: z.string().datetime({ offset: true }),
+  next_attempt_at: z.string().datetime({ offset: true }).nullish(),
+  cause: z.string().nullish()
+});
+
 // `features` and `products` are load-bearing; passthrough tolerates the rest of the payload so
-// cloud/self-hosted version skew doesn't break reads.
+// cloud/self-hosted version skew doesn't break reads. Notices stay unknown here and are validated one
+// at a time in the projection, so a new or malformed notice can't fail the parse and drop the org to free.
 export const entitlementsResponseSchema = z
   .object({
     slug: z.string().nullish(),
     features: z.record(z.string(), entitlementFeatureSchema),
-    products: z.array(entitlementProductSchema).default([])
+    products: z.array(entitlementProductSchema).default([]),
+    notices: z.array(z.unknown()).optional().catch([])
   })
   .passthrough();
 

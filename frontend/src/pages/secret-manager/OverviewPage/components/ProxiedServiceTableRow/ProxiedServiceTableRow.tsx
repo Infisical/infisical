@@ -57,7 +57,6 @@ type Props = {
   environments: { name: string; slug: string }[];
   isProxiedServiceInEnv: (name: string, env: string) => boolean;
   getProxiedServiceByName: (slug: string, name: string) => TDashboardProxiedService | undefined;
-  tableWidth: number;
   onEdit: (proxiedService: TDashboardProxiedService) => void;
   onDelete: (proxiedService: TDashboardProxiedService) => void;
 };
@@ -67,7 +66,6 @@ export const ProxiedServiceTableRow = ({
   environments = [],
   isProxiedServiceInEnv,
   getProxiedServiceByName,
-  tableWidth,
   onEdit,
   onDelete
 }: Props) => {
@@ -266,10 +264,7 @@ export const ProxiedServiceTableRow = ({
       {!isSingleEnvView && isExpanded && (
         <TableRow className="border-0 hover:bg-transparent">
           <TableCell colSpan={totalCols} className="border-0 p-0">
-            <div
-              style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 border-y border-border"
-            >
+            <div className="sticky left-0 max-w-(--overview-table-width) min-w-(--overview-table-width) border-y border-border">
               <Table
                 className="w-full min-w-[calc(var(--name-column-width,180px)+24rem)] table-fixed"
                 containerClassName="rounded-none border-0"

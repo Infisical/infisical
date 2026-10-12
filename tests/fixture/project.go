@@ -174,3 +174,25 @@ func (p *Project) Grant(tt *testing.T, pr *harness.Principal, roles ...string) {
 			pr.Name, p.Slug, apierr.Body(res.Body))
 	}
 }
+
+// GrantGroup gives every member of a group access to this project.
+func (p *Project) GrantGroup(tt *testing.T, g *Group, roles ...string) {
+	tt.Helper()
+
+	if len(roles) == 0 {
+		roles = []string{"member"}
+	}
+
+	items := make([]api.CreateProjectGroupMembershipJSONBody_Roles_Item, 0, len(roles))
+	for _, slug := range roles {
+		var item api.CreateProjectGroupMembershipJSONBody_Roles_Item
+		require.NoError(tt, item.FromCreateProjectGroupMembershipJSONBodyRoles0(
+			api.CreateProjectGroupMembershipJSONBodyRoles0{Role: slug}))
+		items = append(items, item)
+	}
+	res, err := p.tn.Admin.API.CreateProjectGroupMembershipWithResponse(tt.Context(), p.ID, g.ID,
+		api.CreateProjectGroupMembershipJSONRequestBody{Roles: &items})
+	require.NoErrorf(tt, err, "adding group %s to %s", g.Name, p.Slug)
+	require.Equalf(tt, http.StatusOK, res.StatusCode(), "adding group %s to %s: %s",
+		g.Name, p.Slug, apierr.Body(res.Body))
+}

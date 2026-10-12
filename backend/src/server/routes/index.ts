@@ -199,10 +199,15 @@ import {
 import { secretApprovalPolicyDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { secretApprovalPolicyEnvironmentDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-environment-dal";
 import { secretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
+import { secretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
 import { secretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { secretApprovalRequestReviewerDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-reviewer-dal";
 import { secretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
 import { secretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
+import { secretChangeGlobalPolicyBridgeDALFactory } from "@app/ee/services/secret-change-global-policy-bridge/secret-change-global-policy-bridge-dal";
+import { secretChangeGlobalPolicyBridgeServiceFactory } from "@app/ee/services/secret-change-global-policy-bridge/secret-change-global-policy-bridge-service";
+import { secretChangeGlobalRequestBridgeDALFactory } from "@app/ee/services/secret-change-global-request-bridge/secret-change-global-request-bridge-dal";
+import { secretChangeGlobalRequestBridgeServiceFactory } from "@app/ee/services/secret-change-global-request-bridge/secret-change-global-request-bridge-service";
 import { secretReplicationServiceFactory } from "@app/ee/services/secret-replication/secret-replication-service";
 import { secretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { secretRotationV2QueueServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-queue";
@@ -213,6 +218,8 @@ import { secretScanningDALFactory } from "@app/ee/services/secret-scanning/secre
 import { secretScanningQueueFactory } from "@app/ee/services/secret-scanning/secret-scanning-queue";
 import { secretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
 import { secretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
+import { secretScanningV2InstanceServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-instance-service";
+import { secretScanningV2ProjectResolverFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-resolver";
 import { secretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
 import { secretScanningV2ServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-service";
 import { subOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
@@ -845,6 +852,12 @@ export const registerRoutes = async (
   const folderPermissionDAL = folderPermissionDALFactory(db);
   const membershipRoleDAL = membershipRoleDALFactory(db);
   const approvalPolicyDAL = approvalPolicyDALFactory(db);
+  const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
+  const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
+  const approvalPolicyBypassersDAL = approvalPolicyBypassersDALFactory(db);
+  const approvalPolicySecretEnvironmentDAL = approvalPolicySecretEnvironmentDALFactory(db);
+  const approvalRequestDAL = approvalRequestDALFactory(db);
+  const secretChangeGlobalPolicyBridgeDAL = secretChangeGlobalPolicyBridgeDALFactory(db);
   const roleDAL = roleDALFactory(db);
   const pkiAlertHistoryDAL = pkiAlertHistoryDALFactory(db);
   const pkiAlertChannelDAL = pkiAlertChannelDALFactory(db);
@@ -999,9 +1012,10 @@ export const registerRoutes = async (
     membershipRoleDAL,
     accessApprovalPolicyDAL,
     accessApprovalPolicyApproverDAL,
-    approvalPolicyDAL,
     secretApprovalPolicyDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
+    approvalPolicyDAL,
+    approvalRequestDAL,
     roleDAL,
     permissionService,
     orgDAL,
@@ -1067,9 +1081,11 @@ export const registerRoutes = async (
   });
 
   const resourceMetadataService = resourceMetadataServiceFactory({
+    db,
     resourceMetadataDAL,
     permissionService,
     folderDAL,
+    projectEnvDAL,
     kmsService
   });
 
@@ -1313,6 +1329,22 @@ export const registerRoutes = async (
     auditLogService
   });
 
+  const secretChangeGlobalPolicyBridgeService = secretChangeGlobalPolicyBridgeServiceFactory({
+    approvalPolicyDAL,
+    approvalPolicyStepsDAL,
+    approvalPolicyStepApproversDAL,
+    approvalPolicyBypassersDAL,
+    approvalPolicySecretEnvironmentDAL,
+    approvalRequestDAL,
+    secretChangeGlobalPolicyBridgeDAL,
+    secretApprovalPolicyDAL,
+    projectEnvDAL,
+    projectDAL,
+    userDAL,
+    permissionService,
+    licenseService
+  });
+
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
     projectEnvDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
@@ -1323,7 +1355,8 @@ export const registerRoutes = async (
     licenseService,
     projectDAL,
     userDAL,
-    secretApprovalRequestDAL
+    secretApprovalRequestDAL,
+    secretChangeGlobalPolicyBridgeService
   });
 
   // samlService is created after loginService (below) due to dependency on processProviderCallback
@@ -1722,7 +1755,8 @@ export const registerRoutes = async (
   });
 
   const orgProductStatsService = orgProductStatsServiceFactory({
-    orgProductStatsDAL
+    orgProductStatsDAL,
+    keyStore
   });
 
   const orgAdminService = orgAdminServiceFactory({
@@ -1774,9 +1808,10 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     accessApprovalPolicyApproverDAL,
     accessApprovalPolicyDAL,
-    approvalPolicyDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     secretApprovalPolicyDAL,
+    approvalPolicyDAL,
+    approvalRequestDAL,
     membershipRoleDAL,
     applicationMembershipCleanupService,
     usageMeteringService,
@@ -1870,16 +1905,12 @@ export const registerRoutes = async (
   const gatewayPoolDAL = gatewayPoolDalFactory(db);
   const gatewayPoolMembershipDAL = gatewayPoolMembershipDalFactory(db);
 
-  const approvalRequestDAL = approvalRequestDALFactory(db);
   const approvalRequestGrantsDAL = approvalRequestGrantsDALFactory(db);
   const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);
   const approvalRequestStepEligibleApproversDAL = approvalRequestStepEligibleApproversDALFactory(db);
-  const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
-  const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
-  const approvalPolicyBypassersDAL = approvalPolicyBypassersDALFactory(db);
-  const approvalPolicySecretEnvironmentDAL = approvalPolicySecretEnvironmentDALFactory(db);
   const secretAccessApprovalGlobalPolicyBridgeDAL = secretAccessApprovalGlobalPolicyBridgeDALFactory(db);
   const secretAccessApprovalGlobalRequestBridgeDAL = secretAccessApprovalGlobalRequestBridgeDALFactory(db);
+  const secretChangeGlobalRequestBridgeDAL = secretChangeGlobalRequestBridgeDALFactory(db);
   const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(db);
 
   const orgGatewayConfigV2DAL = orgGatewayConfigV2DalFactory(db);
@@ -2430,6 +2461,49 @@ export const registerRoutes = async (
     secretBlindIndexDAL
   });
 
+  const secretChangeGlobalRequestBridgeService = secretChangeGlobalRequestBridgeServiceFactory({
+    approvalRequestDAL,
+    membershipUserDAL,
+    approvalRequestStepsDAL,
+    approvalRequestStepEligibleApproversDAL,
+    approvalRequestApprovalsDAL,
+    approvalPolicyDAL,
+    secretChangeGlobalRequestBridgeDAL,
+    secretApprovalRequestSecretDAL,
+    secretChangeGlobalPolicyBridgeService,
+    permissionService,
+    licenseService,
+    userGroupMembershipDAL,
+    folderDAL,
+    projectDAL,
+    projectEnvDAL,
+    kmsService,
+    secretV2BridgeDAL,
+    secretVersionV2BridgeDAL,
+    secretVersionTagV2BridgeDAL,
+    secretTagDAL,
+    resourceMetadataDAL,
+    folderCommitService,
+    secretQueueService,
+    secretValidationRuleService,
+    userDAL,
+    identityDAL,
+    projectSlackConfigDAL,
+    projectMicrosoftTeamsConfigDAL,
+    microsoftTeamsService,
+    smtpService,
+    notificationService,
+    queueService,
+    telemetryService
+  });
+
+  const secretApprovalRequestCreationFns = secretApprovalRequestCreationFnsFactory({
+    secretApprovalRequestDAL,
+    secretApprovalRequestSecretDAL,
+    secretChangeGlobalPolicyBridgeService,
+    secretChangeGlobalRequestBridgeService
+  });
+
   const secretV2BridgeService = secretV2BridgeServiceFactory({
     folderDAL,
     projectDAL,
@@ -2442,9 +2516,8 @@ export const registerRoutes = async (
     secretTagDAL,
     projectEnvDAL,
     secretImportDAL,
-    secretApprovalRequestDAL,
     secretApprovalPolicyService,
-    secretApprovalRequestSecretDAL,
+    secretApprovalRequestCreationFns,
     kmsService,
     resourceMetadataDAL,
     reminderService,
@@ -2485,7 +2558,9 @@ export const registerRoutes = async (
     notificationService,
     telemetryService,
     queueService,
-    secretValidationRuleService
+    secretValidationRuleService,
+    secretChangeGlobalPolicyBridgeService,
+    secretChangeGlobalRequestBridgeService
   });
 
   const secretService = secretServiceFactory({
@@ -2502,8 +2577,7 @@ export const registerRoutes = async (
     projectEnvDAL,
     projectBotService,
     secretApprovalPolicyService,
-    secretApprovalRequestDAL,
-    secretApprovalRequestSecretDAL,
+    secretApprovalRequestCreationFns,
     secretV2BridgeService,
     secretApprovalRequestService,
     licenseService,
@@ -2532,8 +2606,8 @@ export const registerRoutes = async (
     secretTagDAL,
     secretVersionTagDAL: secretVersionTagV2BridgeDAL,
     resourceMetadataDAL,
-    secretApprovalRequestDAL,
-    secretApprovalRequestSecretDAL,
+    secretApprovalRequestCreationFns,
+    secretApprovalRequestService,
     secretQueueService,
     secretSyncQueue,
     dynamicSecretDAL,
@@ -2658,8 +2732,7 @@ export const registerRoutes = async (
     queueService,
     folderDAL,
     secretApprovalPolicyService,
-    secretApprovalRequestDAL,
-    secretApprovalRequestSecretDAL,
+    secretApprovalRequestCreationFns,
     secretQueueService,
     projectBotService,
     kmsService,
@@ -4394,6 +4467,19 @@ export const registerRoutes = async (
     notificationService
   });
 
+  const secretScanningV2ProjectResolver = secretScanningV2ProjectResolverFactory({
+    db,
+    projectDAL,
+    membershipDAL,
+    membershipRoleDAL
+  });
+
+  const secretScanningV2InstanceService = secretScanningV2InstanceServiceFactory({
+    projectDAL,
+    permissionService,
+    secretScanningV2ProjectResolver
+  });
+
   const secretScanningV2Service = secretScanningV2ServiceFactory({
     permissionService,
     appConnectionService,
@@ -4554,6 +4640,7 @@ export const registerRoutes = async (
     secretAccessApprovalGlobalRequestBridge: secretAccessApprovalGlobalRequestBridgeService,
     accessApprovalRequest: accessApprovalRequestService,
     secretApprovalPolicy: secretApprovalPolicyService,
+    secretChangeGlobalPolicyBridge: secretChangeGlobalPolicyBridgeService,
     secretApprovalRequest: secretApprovalRequestService,
     dynamicSecret: dynamicSecretService,
     dynamicSecretLease: dynamicSecretLeaseService,
@@ -4662,6 +4749,8 @@ export const registerRoutes = async (
     agentProxyCa: agentProxyCaService,
     folderCommit: folderCommitService,
     secretScanningV2: secretScanningV2Service,
+    secretScanningV2Instance: secretScanningV2InstanceService,
+    secretScanningV2ProjectResolver,
     reminder: reminderService,
     eventBus: eventBusService,
     projectEvents: projectEventsService,
