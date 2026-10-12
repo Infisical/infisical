@@ -1,9 +1,11 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { updateChefDataBagItem } from "@app/ee/services/app-connections/chef";
+import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
+import { preSaveTransformDestinationConfig } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 
-import { chefPreSaveTransformDestinationConfig, ChefSyncFns } from "./chef-sync-fns";
+import { ChefSyncFns } from "./chef-sync-fns";
 import { TChefSyncWithCredentials } from "./chef-sync-types";
 
 const store = vi.hoisted(() => ({ item: {} as Record<string, unknown> }));
@@ -174,12 +176,13 @@ describe("ChefSyncFns encrypted data bags", () => {
   });
 });
 
-describe("chefPreSaveTransformDestinationConfig", () => {
+describe("preSaveTransformDestinationConfig for Chef", () => {
   const destinationConfig = { dataBagName: "app", dataBagItemName: "fixture" };
 
   test("keeps the saved encryption setting when an update leaves it out", async () => {
     await expect(
-      chefPreSaveTransformDestinationConfig(
+      preSaveTransformDestinationConfig(
+        SecretSync.Chef,
         {
           destinationConfig,
           existingDestinationConfig: { ...destinationConfig, shouldEncryptSecrets: true },
@@ -192,7 +195,8 @@ describe("chefPreSaveTransformDestinationConfig", () => {
 
   test("applies an explicit change and leaves new syncs alone", async () => {
     await expect(
-      chefPreSaveTransformDestinationConfig(
+      preSaveTransformDestinationConfig(
+        SecretSync.Chef,
         {
           destinationConfig: { ...destinationConfig, shouldEncryptSecrets: false },
           existingDestinationConfig: { ...destinationConfig, shouldEncryptSecrets: true },
@@ -202,7 +206,7 @@ describe("chefPreSaveTransformDestinationConfig", () => {
       )
     ).resolves.toEqual({ ...destinationConfig, shouldEncryptSecrets: false });
     await expect(
-      chefPreSaveTransformDestinationConfig({ destinationConfig, connectionId: "c" }, {} as never)
+      preSaveTransformDestinationConfig(SecretSync.Chef, { destinationConfig, connectionId: "c" }, {} as never)
     ).resolves.toEqual(destinationConfig);
   });
 });
