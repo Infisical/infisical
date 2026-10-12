@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { AgentVaultAccessBundlesSchema } from "@app/db/schemas";
+import { auditActorFields } from "@app/ee/services/agent-vault/agent-vault-actor-name-fns";
 import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
@@ -17,7 +18,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext, auditActorFields } from "./agent-vault-router-fns";
+import { actorContext } from "./agent-vault-router-fns";
 import {
   AgentVaultActorRefSchema,
   AgentVaultAllowedMethodsSchema,
@@ -34,7 +35,6 @@ import {
   AgentVaultMemberSchema,
   AgentVaultNameSchema,
   AgentVaultProductMemberSchema,
-  AgentVaultRemovedMemberSchema,
   AgentVaultServiceSchema,
   AgentVaultSubstitutionsInputSchema,
   AgentVaultSubstitutionsUpdateSchema,
@@ -844,8 +844,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               metadata: {
                 accessBundleId: req.params.accessBundleId,
                 accessBundleName,
-                memberId: member.id,
-                ...auditActorFields(member.actor)
+                ...auditActorFields(member)
               }
             }
           })
@@ -855,7 +854,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       members.forEach((member) =>
         emitAgentVaultTelemetry(server.services.telemetry, req, {
           event: PostHogEventTypes.AgentVaultAccessBundleMemberAdded,
-          properties: { accessBundleId: req.params.accessBundleId, memberType: member.actor.type }
+          properties: { accessBundleId: req.params.accessBundleId, memberType: member.type }
         })
       );
 
@@ -878,7 +877,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       body: AgentVaultMemberRevokeIdsSchema,
       response: {
         200: z.object({
-          members: AgentVaultRemovedMemberSchema.array(),
+          members: AgentVaultActorRefSchema.array(),
           skipped: AgentVaultActorRefSchema.array().describe(AGENT_VAULT.MEMBER.revokeSkipped)
         })
       }
@@ -903,8 +902,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               metadata: {
                 accessBundleId: req.params.accessBundleId,
                 accessBundleName,
-                memberId: member.id,
-                ...auditActorFields(member.actor)
+                ...auditActorFields(member)
               }
             }
           })
@@ -914,7 +912,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       members.forEach((member) =>
         emitAgentVaultTelemetry(server.services.telemetry, req, {
           event: PostHogEventTypes.AgentVaultAccessBundleMemberRemoved,
-          properties: { accessBundleId: req.params.accessBundleId, memberType: member.actor.type }
+          properties: { accessBundleId: req.params.accessBundleId, memberType: member.type }
         })
       );
 

@@ -274,6 +274,12 @@ import {
   TValidateHumanitecConnectionCredentialsSchema
 } from "./humanitec";
 import {
+  TKeeperConnection,
+  TKeeperConnectionConfig,
+  TKeeperConnectionInput,
+  TValidateKeeperConnectionCredentialsSchema
+} from "./keeper";
+import {
   TKempLoadMasterConnection,
   TKempLoadMasterConnectionConfig,
   TKempLoadMasterConnectionInput,
@@ -611,6 +617,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TSpaceliftConnection
   | TDaytonaConnection
   | TStripeConnection
+  | TKeeperConnection
   | THpeIloConnection
 );
 
@@ -710,6 +717,7 @@ export type TAppConnectionInput = { id: string } & (
   | TSpaceliftConnectionInput
   | TDaytonaConnectionInput
   | TStripeConnectionInput
+  | TKeeperConnectionInput
   | THpeIloConnectionInput
 );
 
@@ -843,6 +851,7 @@ export type TAppConnectionConfig =
   | TSpaceliftConnectionConfig
   | TDaytonaConnectionConfig
   | TStripeConnectionConfig
+  | TKeeperConnectionConfig
   | THpeIloConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -933,6 +942,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSpaceliftConnectionCredentialsSchema
   | TValidateDaytonaConnectionCredentialsSchema
   | TValidateStripeConnectionCredentialsSchema
+  | TValidateKeeperConnectionCredentialsSchema
   | TValidateHpeIloConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

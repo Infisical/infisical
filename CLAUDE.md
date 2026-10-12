@@ -111,6 +111,10 @@ Auth modes (JWT, IDENTITY_ACCESS_TOKEN, SCIM_TOKEN) are extracted in `backend/sr
 
 PAM and Agent Vault are products over one implicit project per organization, not projects a user creates. Their URLs are `/organizations/$orgId/<product>/…` with no `$projectId`, the frontend resolves the project from the org (`useImplicitProjectId`), the backend bootstraps it lazily and blocks generic create and delete, their roles are admin or member only, and each has its own metered identities dimension (`pam_identities`, `agent_vault_identities`). When you add a `ProjectType.PAM` arm anywhere, add the Agent Vault arm beside it. See `backend/src/ee/services/pam/CLAUDE.md` and `backend/src/ee/services/agent-vault/CLAUDE.md`.
 
+### Single-Project Products
+
+Secret Scanning has one active project per organization (the newest) but keeps `$projectId` in its URLs, like Certificate Manager. It is created lazily by `GET /api/v2/secret-scanning/project`, and `projectId` is optional on its API (`inject-secret-scanning-project-id`). Do not add a project picker or a way to create more Secret Scanning projects.
+
 ### Service Factory + Manual DI (Backend)
 
 No IoC container in either backend. Every service is a factory function with explicit dependencies.

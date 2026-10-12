@@ -675,4 +675,12 @@ export const appConnections = [
       "Learn how to connect Spacelift to pull secrets from Infisical.",
     category: "DevOps Tools",
   },
+  {
+    name: "Keeper",
+    slug: "keeper",
+    path: "/integrations/app-connections/keeper",
+    description:
+      "Learn how to connect Keeper Commander Service Mode to sync secrets from Infisical.",
+    category: "Security",
+  },
 ];

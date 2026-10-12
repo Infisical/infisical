@@ -21,7 +21,8 @@ import {
   useCreateBillingV2PortalSession,
   useGetBillingV2Catalog,
   useGetBillingV2Organizations,
-  useGetBillingV2Overview
+  useGetBillingV2Overview,
+  useRefreshBillingV2Entitlements
 } from "@app/hooks/api";
 
 import { Overview } from "./components/Overview";
@@ -86,6 +87,7 @@ export const BillingV2Page = () => {
   const createPortalSession = useCreateBillingV2PortalSession();
   const addPaymentMethod = useAddBillingV2PaymentMethod();
   const confirmTrialPayment = useConfirmBillingV2TrialPayment();
+  const refreshEntitlements = useRefreshBillingV2Entitlements();
 
   // More than one organization means the server decided this caller may switch: an instance admin on
   // self-hosted, where one licence spans every org on the box. Cloud is bounded to the logged-in root
@@ -130,7 +132,7 @@ export const BillingV2Page = () => {
         type: "success",
         text: "Subscription started. It may take a moment to appear here."
       });
-      refetch();
+      refreshEntitlements.mutate({ orgId: selectedOrgId });
     } else if (checkout === "canceled") {
       createNotification({ type: "info", text: "Checkout was canceled." });
     }
@@ -254,7 +256,10 @@ export const BillingV2Page = () => {
     }
     window.open(trialApprovalUrl, "_blank", "noopener,noreferrer");
     setTrialApproval(null);
-    refetch();
+    const orgIdAtApproval = selectedOrgId;
+    window.addEventListener("focus", () => refreshEntitlements.mutate({ orgId: orgIdAtApproval }), {
+      once: true
+    });
   };
 
   // Billing name/email and address are edited in the Stripe billing portal.

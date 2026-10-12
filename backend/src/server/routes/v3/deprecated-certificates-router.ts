@@ -137,6 +137,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo,
         profileId: req.body.profileId,
         certificateRequest: mappedCertificateRequest,
         removeRootsFromChain: req.body.removeRootsFromChain
@@ -253,6 +254,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo,
         profileId: req.body.profileId,
         csr: req.body.csr,
         validity: {
@@ -401,6 +403,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo,
         profileId: req.body.profileId,
         certificateOrder: certificateOrderObject,
         removeRootsFromChain: req.body.removeRootsFromChain
@@ -496,6 +499,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo,
         certificateId: req.params.certificateId,
         removeRootsFromChain: req.body?.removeRootsFromChain
       });

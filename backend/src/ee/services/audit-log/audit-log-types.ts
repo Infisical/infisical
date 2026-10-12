@@ -47,6 +47,8 @@ import {
   CrlReason
 } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
 import type { ExternalMigrationImportStatus } from "@app/services/external-migration/external-migration-types";
@@ -469,6 +471,7 @@ export enum EventType {
   AUTOMATED_RENEW_SUBSCRIBER_CERT = "automated-renew-subscriber-cert",
   AUTOMATED_RENEW_CERTIFICATE = "automated-renew-certificate",
   AUTOMATED_RENEW_CERTIFICATE_FAILED = "automated-renew-certificate-failed",
+  CERTIFICATE_ISSUANCE_FAILED = "certificate-issuance-failed",
   LIST_PKI_SUBSCRIBER_CERTS = "list-pki-subscriber-certs",
   GET_SUBSCRIBER_ACTIVE_CERT_BUNDLE = "get-subscriber-active-cert-bundle",
   CREATE_KMS = "create-kms",
@@ -777,6 +780,7 @@ export enum EventType {
   PAM_FOLDER_CREATE = "pam-folder-create",
   PAM_FOLDER_UPDATE = "pam-folder-update",
   PAM_FOLDER_DELETE = "pam-folder-delete",
+  ORG_ADMIN_ACCESS_PAM_FOLDER = "org-admin-accessed-pam-folder",
   PAM_PRODUCT_MEMBER_ADD = "pam-product-member-add",
   PAM_PRODUCT_MEMBER_UPDATE = "pam-product-member-update",
   PAM_PRODUCT_MEMBER_REMOVE = "pam-product-member-remove",
@@ -3558,6 +3562,25 @@ interface AutomatedRenewCertificateFailed {
   };
 }
 
+interface CertificateIssuanceFailedEvent {
+  type: EventType.CERTIFICATE_ISSUANCE_FAILED;
+  metadata: TAuditLogCollapseSummary & {
+    operation: CertificateIssuanceOperation;
+    enrollmentType?: EnrollmentType;
+    certificateProfileId?: string;
+    profileName?: string;
+    caId?: string;
+    caName?: string;
+    certificateRequestId?: string;
+    originalCertificateId?: string;
+    commonName?: string;
+    applicationId?: string;
+    applicationName?: string;
+    errorName: string;
+    error: string;
+  };
+}
+
 interface SignPkiSubscriberCert {
   type: EventType.SIGN_PKI_SUBSCRIBER_CERT;
   metadata: {
@@ -6228,6 +6251,16 @@ interface PamFolderDeleteEvent {
   };
 }
 
+interface OrgAdminAccessPamFolderEvent {
+  type: EventType.ORG_ADMIN_ACCESS_PAM_FOLDER;
+  metadata: {
+    folderId: string;
+    folderName: string;
+    // The role the admin held on the folder before granting themselves admin, or null if they held none.
+    previousRole: string | null;
+  };
+}
+
 interface PamProductMemberAddEvent {
   type: EventType.PAM_PRODUCT_MEMBER_ADD;
   metadata: {
@@ -6537,6 +6570,7 @@ interface AgentVaultProductMemberAddEvent {
   metadata: {
     userId?: string;
     userName?: string;
+    userEmail?: string;
     groupId?: string;
     groupName?: string;
     machineIdentityId?: string;
@@ -6550,6 +6584,7 @@ interface AgentVaultProductMemberUpdateEvent {
   metadata: {
     userId?: string;
     userName?: string;
+    userEmail?: string;
     groupId?: string;
     groupName?: string;
     machineIdentityId?: string;
@@ -6563,6 +6598,7 @@ interface AgentVaultProductMemberRemoveEvent {
   metadata: {
     userId?: string;
     userName?: string;
+    userEmail?: string;
     groupId?: string;
     groupName?: string;
     machineIdentityId?: string;
@@ -6575,10 +6611,13 @@ interface AgentVaultAccessBundleMemberAddEvent {
   metadata: {
     accessBundleId: string;
     accessBundleName: string;
-    memberId: string;
     userId?: string;
-    machineIdentityId?: string;
+    userName?: string;
+    userEmail?: string;
     groupId?: string;
+    groupName?: string;
+    machineIdentityId?: string;
+    machineIdentityName?: string;
   };
 }
 
@@ -6587,10 +6626,13 @@ interface AgentVaultAccessBundleMemberRemoveEvent {
   metadata: {
     accessBundleId: string;
     accessBundleName: string;
-    memberId: string;
     userId?: string;
-    machineIdentityId?: string;
+    userName?: string;
+    userEmail?: string;
     groupId?: string;
+    groupName?: string;
+    machineIdentityId?: string;
+    machineIdentityName?: string;
   };
 }
 
@@ -7941,6 +7983,7 @@ interface CreateAlertEvent {
     name: string;
     resourceType: string;
     resourceId?: string | null;
+    resourceName?: string | null;
     eventType: string;
   };
 }
@@ -7951,6 +7994,8 @@ interface UpdateAlertEvent {
     alertId: string;
     name: string;
     resourceType: string;
+    resourceId?: string | null;
+    resourceName?: string | null;
     eventType: string;
   };
 }
@@ -7961,6 +8006,8 @@ interface DeleteAlertEvent {
     alertId: string;
     name: string;
     resourceType: string;
+    resourceId?: string | null;
+    resourceName?: string | null;
     eventType: string;
   };
 }
@@ -7972,6 +8019,7 @@ interface TestAlertChannelEvent {
     channelType: string;
     resourceType: string;
     resourceId?: string | null;
+    resourceName?: string | null;
     success: boolean;
     deliveredTo?: number;
     error?: string;
@@ -8486,6 +8534,7 @@ export type Event =
   | PamFolderCreateEvent
   | PamFolderUpdateEvent
   | PamFolderDeleteEvent
+  | OrgAdminAccessPamFolderEvent
   | PamProductMemberAddEvent
   | PamProductMemberUpdateEvent
   | PamProductMemberRemoveEvent
@@ -8549,6 +8598,7 @@ export type Event =
   | CancelCertificateRequestEvent
   | AutomatedRenewCertificate
   | AutomatedRenewCertificateFailed
+  | CertificateIssuanceFailedEvent
   | UserLoginEvent
   | SelectOrganizationEvent
   | SelectSubOrganizationEvent

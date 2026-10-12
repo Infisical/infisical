@@ -3,7 +3,7 @@ import { type DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 import { cn } from "../../utils";
 
-type LoaderVariant = "neutral" | "default" | "inverse" | "brand";
+type LoaderVariant = "brand" | "inverse";
 
 type LoaderSize = "xs" | "sm" | "md" | "lg";
 
@@ -14,10 +14,8 @@ type LoaderProps = Omit<ComponentProps<"div">, "children"> & {
 };
 
 const animationSources: Record<LoaderVariant, string> = {
-  neutral: "/lotties/infisical_loading_white.json",
-  default: "/lotties/infisical_loading_white.json",
-  inverse: "/lotties/infisical_loading_bw.json",
-  brand: "/lotties/infisical_loading.json"
+  brand: "/lotties/infisical_loading.json",
+  inverse: "/lotties/infisical_loading_bw.json"
 };
 
 // The mark is 1.91:1 rather than square, so the scale is expressed as widths and
@@ -39,7 +37,7 @@ function Loader({
   className,
   label = "Loading",
   size = "md",
-  variant = "neutral",
+  variant = "brand",
   ...props
 }: LoaderProps) {
   const prefersReducedMotion = useSyncExternalStore(
@@ -77,7 +75,7 @@ function Loader({
         src={animationSources[variant]}
         loop
         autoplay={!prefersReducedMotion}
-        className={cn("h-full w-full", variant === "neutral" && "in-data-[theme=light]:invert")}
+        className="h-full w-full"
       />
     </div>
   );

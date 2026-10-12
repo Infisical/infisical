@@ -1,4 +1,4 @@
-import { webcrypto } from "node:crypto";
+import { createPrivateKey, generateKeyPairSync, webcrypto } from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 
@@ -10,8 +10,10 @@ import {
   CertificateThumbprintAlgorithm,
   extractCertificateFields,
   extractExternallyIssuedCertificateFields,
+  normalizePemText,
   normalizeThumbprint,
   parseCertificateBody,
+  parsePemCertificateChain,
   resolveCertificateDeletionEligibility
 } from "./certificate-fns";
 import { CertExtendedKeyUsage, CertificateDeletionEligibility, CertKeyUsage, CertStatus } from "./certificate-types";
@@ -348,5 +350,87 @@ describe("resolveCertificateDeletionEligibility", () => {
     expect(resolveCertificateDeletionEligibility({ status: CertStatus.REVOKED, notAfter: past })).toBe(
       CertificateDeletionEligibility.Expired
     );
+  });
+});
+
+describe("normalizePemText", () => {
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const pkcs8Pem = privateKey.export({ type: "pkcs8", format: "pem" }).toString().trim();
+  const pkcs1Pem = privateKey.export({ type: "pkcs1", format: "pem" }).toString().trim();
+  const lines = pkcs8Pem.split("\n");
+
+  const damagedVariants: Record<string, string> = {
+    "newlines removed": lines.join(""),
+    "newlines replaced with spaces": lines.join(" "),
+    "double-escaped newlines": lines.join("\\n"),
+    "indented lines": lines.map((line) => `    ${line}`).join("\n"),
+    "non-breaking spaces": lines.join("\n\u00a0"),
+    "zero-width spaces": lines.join("\n\u200b"),
+    "en dashes in the armor": pkcs8Pem.replace(/-----/g, "\u2013\u2013\u2013\u2013\u2013"),
+    "blank line in the body": [...lines.slice(0, 3), "", ...lines.slice(3)].join("\n")
+  };
+
+  test.each(Object.entries(damagedVariants))("repairs a private key with %s", (_, damaged) => {
+    expect(() => createPrivateKey(damaged)).toThrow();
+    expect(normalizePemText(damaged)).toBe(pkcs8Pem);
+    expect(() => createPrivateKey(normalizePemText(damaged))).not.toThrow();
+  });
+
+  test("canonicalizes parseable variants", () => {
+    expect(normalizePemText(lines.join("\r\n"))).toBe(pkcs8Pem);
+    expect(normalizePemText(`Bag Attributes\n    localKeyID: 01 02\n${pkcs8Pem}`)).toBe(pkcs8Pem);
+  });
+
+  test("leaves well-formed PEM unchanged", () => {
+    expect(normalizePemText(pkcs8Pem)).toBe(pkcs8Pem);
+    expect(normalizePemText(pkcs1Pem)).toBe(pkcs1Pem);
+  });
+
+  test("keeps every block of a multi-block bundle in order", () => {
+    const bundle = `${pkcs8Pem}\n${pkcs1Pem}`;
+    expect(normalizePemText(bundle.replace(/\n/g, ""))).toBe(bundle);
+  });
+
+  test("returns trimmed input when no PEM block is found", () => {
+    expect(normalizePemText("  not a pem  ")).toBe("not a pem");
+  });
+
+  test("returns the input untouched when any block cannot be rebuilt", () => {
+    const damagedSecond = `${pkcs8Pem}\n${pkcs1Pem.replace("END RSA PRIVATE KEY", "END PRIVATE KEY")}`;
+    expect(normalizePemText(`  ${damagedSecond}  `)).toBe(damagedSecond);
+  });
+});
+
+describe("parsePemCertificateChain", () => {
+  beforeAll(() => {
+    x509.cryptoProvider.set(webcrypto as unknown as Crypto);
+  });
+
+  const makeCertPem = async (commonName: string) => {
+    const keys = await webcrypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+    const cert = await x509.X509CertificateGenerator.createSelfSigned({
+      name: `CN=${commonName}`,
+      keys: keys as CryptoKeyPair,
+      signingAlgorithm: { name: "ECDSA", hash: "SHA-256" },
+      notBefore: new Date(),
+      notAfter: new Date(Date.now() + 86_400_000)
+    });
+    return cert.toString("pem");
+  };
+
+  test("parses every certificate in the chain", async () => {
+    const chain = `${await makeCertPem("Intermediate")}\n${await makeCertPem("Root")}`;
+    expect(parsePemCertificateChain(chain)?.map((cert) => cert.subject)).toEqual(["CN=Intermediate", "CN=Root"]);
+  });
+
+  test("rejects a chain with a block that does not split out", async () => {
+    const root = (await makeCertPem("Root")).replace("END CERTIFICATE", "END X509 CERTIFICATE");
+    expect(parsePemCertificateChain(`${await makeCertPem("Intermediate")}\n${root}`)).toBeNull();
+  });
+
+  test("rejects a chain with a block that does not parse", async () => {
+    const rootLines = (await makeCertPem("Root")).split("\n");
+    rootLines[2] = `${rootLines[2].slice(0, 5)}!${rootLines[2].slice(6)}`;
+    expect(parsePemCertificateChain(`${await makeCertPem("Intermediate")}\n${rootLines.join("\n")}`)).toBeNull();
   });
 });

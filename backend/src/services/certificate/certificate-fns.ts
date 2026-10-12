@@ -104,10 +104,46 @@ export const buildCertificateBundle = (cert: string, privateKey: string, certifi
   return `${parts.join("\n")}\n`;
 };
 
+export const normalizePemText = (pemText: string) => {
+  const cleaned = pemText
+    .replace(new RE2("\\\\r\\\\n|\\\\n|\\\\r", "g"), "\n")
+    .replace(new RE2("[\\x{2010}-\\x{2015}\\x{2212}]", "g"), "-")
+    .replace(new RE2("[\\x{00A0}\\x{2007}\\x{202F}]", "g"), " ")
+    .replace(new RE2("[\\x{200B}-\\x{200D}\\x{2060}\\x{FEFF}]", "g"), "");
+
+  const blockPattern = new RE2("-----BEGIN ([A-Z0-9 ]+)-----([A-Za-z0-9+/=\\s]*)-----END ([A-Z0-9 ]+)-----", "g");
+  const whitespace = new RE2("\\s", "g");
+  const blocks: string[] = [];
+  let match = blockPattern.exec(cleaned);
+  while (match) {
+    const [, beginLabel, body, endLabel] = match;
+    if (beginLabel === endLabel) {
+      const base64Body = body.replace(whitespace, "");
+      const lines = base64Body.match(/.{1,64}/g) ?? [];
+      blocks.push([`-----BEGIN ${beginLabel}-----`, ...lines, `-----END ${endLabel}-----`].join("\n"));
+    }
+    match = blockPattern.exec(cleaned);
+  }
+
+  const beginMarkerCount = (cleaned.match(/-----BEGIN /g) ?? []).length;
+  return blocks.length && blocks.length === beginMarkerCount ? blocks.join("\n") : pemText.trim();
+};
+
 export const splitPemChain = (pemText: string) => {
   const re2Pattern = new RE2("-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----", "g");
 
   return re2Pattern.match(pemText) || [];
+};
+
+export const parsePemCertificateChain = (chainPem: string): x509.X509Certificate[] | null => {
+  const chainBlocks = splitPemChain(chainPem);
+  if (chainBlocks.length !== (chainPem.match(/-----BEGIN /g) ?? []).length) return null;
+
+  try {
+    return chainBlocks.map((pem) => new x509.X509Certificate(pem));
+  } catch {
+    return null;
+  }
 };
 
 /**
