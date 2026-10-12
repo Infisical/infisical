@@ -798,7 +798,23 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .where((bd) => {
           const slugs = filters?.tagSlugs?.filter(Boolean);
           if (slugs && slugs.length > 0) {
-            void bd.whereIn(`${TableName.SecretTag}.slug`, slugs);
+            void bd.whereExists((subQuery) => {
+              void subQuery
+                .select(db.raw("1"))
+                .from(TableName.SecretV2JnTag)
+                .join(
+                  TableName.SecretTag,
+                  `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+                  `${TableName.SecretTag}.id`
+                )
+                .whereRaw(`??.?? = ??.??`, [
+                  TableName.SecretV2JnTag,
+                  `${TableName.SecretV2}Id`,
+                  TableName.SecretV2,
+                  "id"
+                ])
+                .whereIn(`${TableName.SecretTag}.slug`, slugs);
+            });
           }
         })
         .where((bd) => {
