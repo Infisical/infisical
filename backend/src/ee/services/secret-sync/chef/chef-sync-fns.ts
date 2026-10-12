@@ -1,6 +1,7 @@
 import { getChefDataBagItem, updateChefDataBagItem } from "@app/ee/services/app-connections/chef";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
@@ -133,6 +134,16 @@ export const ChefSyncFns = {
     gatewayPoolService: TChefSyncGatewayPoolService
   ) {
     const secretMap = payload.flatten();
+
+    if (Object.hasOwn(secretMap, "id")) {
+      throw new SecretSyncError({
+        message:
+          'Secret key "id" is reserved by Chef data bag items and cannot be synced. Rename the secret to sync it.',
+        secretKey: "id",
+        shouldRetry: false
+      });
+    }
+
     const {
       environment,
       syncOptions: { disableSecretDeletion, keySchema }
