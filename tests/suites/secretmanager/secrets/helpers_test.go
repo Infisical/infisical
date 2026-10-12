@@ -1,10 +1,14 @@
 package secrets_test
 
 import (
+	"bytes"
+	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture"
+	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/stretchr/testify/require"
 )
@@ -24,4 +28,53 @@ func newTag(t *testing.T, proj *fixture.Project, slug string) string {
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "creating tag %s returned %d: %s", slug, res.StatusCode(), apierr.Body(res.Body))
 	return res.JSON200.Tag.Id.String()
+}
+
+type rolePermission struct {
+	Subject    string         `json:"subject"`
+	Action     []string       `json:"action"`
+	Conditions map[string]any `json:"conditions,omitempty"`
+	Inverted   bool           `json:"inverted,omitempty"`
+}
+
+func readSecretsTagged(slugs ...string) rolePermission {
+	return rolePermission{
+		Subject:    "secrets",
+		Action:     []string{"read"},
+		Conditions: map[string]any{"secretTags": map[string]any{"$in": slugs}},
+	}
+}
+
+func newRole(t *testing.T, proj *fixture.Project, slug string, permissions ...rolePermission) {
+	t.Helper()
+	body, err := json.Marshal(map[string]any{"slug": slug, "name": slug, "permissions": permissions})
+	require.NoError(t, err)
+	res, err := proj.Tenant().Admin.API.CreateProjectRoleWithBodyWithResponse(t.Context(), proj.ID,
+		"application/json", bytes.NewReader(body))
+	require.NoError(t, err)
+	require.Equalf(t, http.StatusOK, res.StatusCode(), "creating role %s: %s", slug, apierr.Body(res.Body))
+}
+
+func newTaggedSecret(t *testing.T, proj *fixture.Project, name string, tagIDs ...string) {
+	t.Helper()
+	res, err := proj.Tenant().Admin.API.CreateSecretV4WithResponse(t.Context(), name,
+		api.CreateSecretV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", SecretValue: "v", TagIds: &tagIDs})
+	require.NoError(t, err)
+	require.Equalf(t, http.StatusOK, res.StatusCode(), "creating %s: %s", name, apierr.Body(res.Body))
+}
+
+func listKeys(t *testing.T, pr *harness.Principal, proj *fixture.Project, tagSlugs *string) []string {
+	t.Helper()
+	res, err := pr.API.ListSecretsV4WithResponse(t.Context(), &api.ListSecretsV4Params{
+		ProjectId:   &proj.ID,
+		Environment: new("dev"),
+		TagSlugs:    tagSlugs,
+	})
+	require.NoError(t, err)
+	require.NotNilf(t, res.JSON200, "listing returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	keys := make([]string, 0, len(res.JSON200.Secrets))
+	for _, s := range res.JSON200.Secrets {
+		keys = append(keys, s.SecretKey)
+	}
+	return keys
 }

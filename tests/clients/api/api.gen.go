@@ -6234,6 +6234,96 @@ func (e CreateSecretImport500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for CreateProjectRole400JSONResponseBodyStatusCode.
+const (
+	CreateProjectRole400JSONResponseBodyStatusCodeN400 CreateProjectRole400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectRole400JSONResponseBodyStatusCode enum.
+func (e CreateProjectRole400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectRole400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectRole401JSONResponseBodyStatusCode.
+const (
+	CreateProjectRole401JSONResponseBodyStatusCodeN401 CreateProjectRole401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectRole401JSONResponseBodyStatusCode enum.
+func (e CreateProjectRole401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectRole401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectRole403JSONResponseBodyStatusCode.
+const (
+	CreateProjectRole403JSONResponseBodyStatusCodeN403 CreateProjectRole403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectRole403JSONResponseBodyStatusCode enum.
+func (e CreateProjectRole403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectRole403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectRole404JSONResponseBodyStatusCode.
+const (
+	CreateProjectRole404JSONResponseBodyStatusCodeN404 CreateProjectRole404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectRole404JSONResponseBodyStatusCode enum.
+func (e CreateProjectRole404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectRole404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectRole422JSONResponseBodyStatusCode.
+const (
+	CreateProjectRole422JSONResponseBodyStatusCodeN422 CreateProjectRole422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectRole422JSONResponseBodyStatusCode enum.
+func (e CreateProjectRole422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectRole422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectRole500JSONResponseBodyStatusCode.
+const (
+	CreateProjectRole500JSONResponseBodyStatusCodeN500 CreateProjectRole500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectRole500JSONResponseBodyStatusCode enum.
+func (e CreateProjectRole500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectRole500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for LoginV3400JSONResponseBodyStatusCode.
 const (
 	LoginV3400JSONResponseBodyStatusCodeN400 LoginV3400JSONResponseBodyStatusCode = 400
@@ -10835,6 +10925,61 @@ type CreateSecretImport422JSONResponseBodyStatusCode float32
 // CreateSecretImport500JSONResponseBodyStatusCode defines parameters for CreateSecretImport.
 type CreateSecretImport500JSONResponseBodyStatusCode float32
 
+// CreateProjectRoleJSONBody defines parameters for CreateProjectRole.
+type CreateProjectRoleJSONBody struct {
+	// Description The description for the role.
+	Description *string `json:"description,omitempty"`
+
+	// Name The name of the role.
+	Name string `json:"name"`
+
+	// Permissions The permissions assigned to the role.
+	Permissions []map[string]interface{} `json:"permissions"`
+
+	// Slug The slug of the role.
+	Slug string `json:"slug"`
+}
+
+// CreateProjectRole200JSONResponseBodyRolePermissionsAction0 defines parameters for CreateProjectRole.
+type CreateProjectRole200JSONResponseBodyRolePermissionsAction0 = string
+
+// CreateProjectRole200JSONResponseBodyRolePermissionsAction1 defines parameters for CreateProjectRole.
+type CreateProjectRole200JSONResponseBodyRolePermissionsAction1 = []string
+
+// CreateProjectRole200JSONResponseBody_Role_Permissions_Action defines parameters for CreateProjectRole.
+type CreateProjectRole200JSONResponseBody_Role_Permissions_Action struct {
+	union json.RawMessage
+}
+
+// CreateProjectRole200JSONResponseBodyRolePermissionsSubject0 defines parameters for CreateProjectRole.
+type CreateProjectRole200JSONResponseBodyRolePermissionsSubject0 = string
+
+// CreateProjectRole200JSONResponseBodyRolePermissionsSubject1 defines parameters for CreateProjectRole.
+type CreateProjectRole200JSONResponseBodyRolePermissionsSubject1 = []string
+
+// CreateProjectRole200JSONResponseBody_Role_Permissions_Subject defines parameters for CreateProjectRole.
+type CreateProjectRole200JSONResponseBody_Role_Permissions_Subject struct {
+	union json.RawMessage
+}
+
+// CreateProjectRole400JSONResponseBodyStatusCode defines parameters for CreateProjectRole.
+type CreateProjectRole400JSONResponseBodyStatusCode float32
+
+// CreateProjectRole401JSONResponseBodyStatusCode defines parameters for CreateProjectRole.
+type CreateProjectRole401JSONResponseBodyStatusCode float32
+
+// CreateProjectRole403JSONResponseBodyStatusCode defines parameters for CreateProjectRole.
+type CreateProjectRole403JSONResponseBodyStatusCode float32
+
+// CreateProjectRole404JSONResponseBodyStatusCode defines parameters for CreateProjectRole.
+type CreateProjectRole404JSONResponseBodyStatusCode float32
+
+// CreateProjectRole422JSONResponseBodyStatusCode defines parameters for CreateProjectRole.
+type CreateProjectRole422JSONResponseBodyStatusCode float32
+
+// CreateProjectRole500JSONResponseBodyStatusCode defines parameters for CreateProjectRole.
+type CreateProjectRole500JSONResponseBodyStatusCode float32
+
 // LoginV3JSONBody defines parameters for LoginV3.
 type LoginV3JSONBody struct {
 	CaptchaToken *string `json:"captchaToken,omitempty"`
@@ -11685,7 +11830,7 @@ type UpdateSecretV4JSONBody struct {
 	SecretReminderNote *string `json:"secretReminderNote,omitempty"`
 
 	// SecretReminderRecipients An array of user IDs that will receive the reminder email. If not specified, all project members will receive the reminder email.
-	SecretReminderRecipients *[]string `json:"secretReminderRecipients,omitempty"`
+	SecretReminderRecipients *[]openapi_types.UUID `json:"secretReminderRecipients,omitempty"`
 
 	// SecretReminderRepeatDays Interval for secret rotation notifications, measured in days.
 	SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
@@ -12037,6 +12182,9 @@ type UpdateSecretApprovalPolicyJSONRequestBody UpdateSecretApprovalPolicyJSONBod
 
 // CreateSecretImportJSONRequestBody defines body for CreateSecretImport for application/json ContentType.
 type CreateSecretImportJSONRequestBody CreateSecretImportJSONBody
+
+// CreateProjectRoleJSONRequestBody defines body for CreateProjectRole for application/json ContentType.
+type CreateProjectRoleJSONRequestBody CreateProjectRoleJSONBody
 
 // LoginV3JSONRequestBody defines body for LoginV3 for application/json ContentType.
 type LoginV3JSONRequestBody LoginV3JSONBody
@@ -14425,6 +14573,130 @@ func (t *UpdateSecretApprovalPolicyJSONBody_Bypassers_Item) UnmarshalJSON(b []by
 	return err
 }
 
+// AsCreateProjectRole200JSONResponseBodyRolePermissionsAction0 returns the union data inside the CreateProjectRole200JSONResponseBody_Role_Permissions_Action as a CreateProjectRole200JSONResponseBodyRolePermissionsAction0
+func (t CreateProjectRole200JSONResponseBody_Role_Permissions_Action) AsCreateProjectRole200JSONResponseBodyRolePermissionsAction0() (CreateProjectRole200JSONResponseBodyRolePermissionsAction0, error) {
+	var body CreateProjectRole200JSONResponseBodyRolePermissionsAction0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateProjectRole200JSONResponseBodyRolePermissionsAction0 overwrites any union data inside the CreateProjectRole200JSONResponseBody_Role_Permissions_Action as the provided CreateProjectRole200JSONResponseBodyRolePermissionsAction0
+func (t *CreateProjectRole200JSONResponseBody_Role_Permissions_Action) FromCreateProjectRole200JSONResponseBodyRolePermissionsAction0(v CreateProjectRole200JSONResponseBodyRolePermissionsAction0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateProjectRole200JSONResponseBodyRolePermissionsAction0 performs a merge with any union data inside the CreateProjectRole200JSONResponseBody_Role_Permissions_Action, using the provided CreateProjectRole200JSONResponseBodyRolePermissionsAction0
+func (t *CreateProjectRole200JSONResponseBody_Role_Permissions_Action) MergeCreateProjectRole200JSONResponseBodyRolePermissionsAction0(v CreateProjectRole200JSONResponseBodyRolePermissionsAction0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateProjectRole200JSONResponseBodyRolePermissionsAction1 returns the union data inside the CreateProjectRole200JSONResponseBody_Role_Permissions_Action as a CreateProjectRole200JSONResponseBodyRolePermissionsAction1
+func (t CreateProjectRole200JSONResponseBody_Role_Permissions_Action) AsCreateProjectRole200JSONResponseBodyRolePermissionsAction1() (CreateProjectRole200JSONResponseBodyRolePermissionsAction1, error) {
+	var body CreateProjectRole200JSONResponseBodyRolePermissionsAction1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateProjectRole200JSONResponseBodyRolePermissionsAction1 overwrites any union data inside the CreateProjectRole200JSONResponseBody_Role_Permissions_Action as the provided CreateProjectRole200JSONResponseBodyRolePermissionsAction1
+func (t *CreateProjectRole200JSONResponseBody_Role_Permissions_Action) FromCreateProjectRole200JSONResponseBodyRolePermissionsAction1(v CreateProjectRole200JSONResponseBodyRolePermissionsAction1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateProjectRole200JSONResponseBodyRolePermissionsAction1 performs a merge with any union data inside the CreateProjectRole200JSONResponseBody_Role_Permissions_Action, using the provided CreateProjectRole200JSONResponseBodyRolePermissionsAction1
+func (t *CreateProjectRole200JSONResponseBody_Role_Permissions_Action) MergeCreateProjectRole200JSONResponseBodyRolePermissionsAction1(v CreateProjectRole200JSONResponseBodyRolePermissionsAction1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateProjectRole200JSONResponseBody_Role_Permissions_Action) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateProjectRole200JSONResponseBody_Role_Permissions_Action) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateProjectRole200JSONResponseBodyRolePermissionsSubject0 returns the union data inside the CreateProjectRole200JSONResponseBody_Role_Permissions_Subject as a CreateProjectRole200JSONResponseBodyRolePermissionsSubject0
+func (t CreateProjectRole200JSONResponseBody_Role_Permissions_Subject) AsCreateProjectRole200JSONResponseBodyRolePermissionsSubject0() (CreateProjectRole200JSONResponseBodyRolePermissionsSubject0, error) {
+	var body CreateProjectRole200JSONResponseBodyRolePermissionsSubject0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateProjectRole200JSONResponseBodyRolePermissionsSubject0 overwrites any union data inside the CreateProjectRole200JSONResponseBody_Role_Permissions_Subject as the provided CreateProjectRole200JSONResponseBodyRolePermissionsSubject0
+func (t *CreateProjectRole200JSONResponseBody_Role_Permissions_Subject) FromCreateProjectRole200JSONResponseBodyRolePermissionsSubject0(v CreateProjectRole200JSONResponseBodyRolePermissionsSubject0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateProjectRole200JSONResponseBodyRolePermissionsSubject0 performs a merge with any union data inside the CreateProjectRole200JSONResponseBody_Role_Permissions_Subject, using the provided CreateProjectRole200JSONResponseBodyRolePermissionsSubject0
+func (t *CreateProjectRole200JSONResponseBody_Role_Permissions_Subject) MergeCreateProjectRole200JSONResponseBodyRolePermissionsSubject0(v CreateProjectRole200JSONResponseBodyRolePermissionsSubject0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateProjectRole200JSONResponseBodyRolePermissionsSubject1 returns the union data inside the CreateProjectRole200JSONResponseBody_Role_Permissions_Subject as a CreateProjectRole200JSONResponseBodyRolePermissionsSubject1
+func (t CreateProjectRole200JSONResponseBody_Role_Permissions_Subject) AsCreateProjectRole200JSONResponseBodyRolePermissionsSubject1() (CreateProjectRole200JSONResponseBodyRolePermissionsSubject1, error) {
+	var body CreateProjectRole200JSONResponseBodyRolePermissionsSubject1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateProjectRole200JSONResponseBodyRolePermissionsSubject1 overwrites any union data inside the CreateProjectRole200JSONResponseBody_Role_Permissions_Subject as the provided CreateProjectRole200JSONResponseBodyRolePermissionsSubject1
+func (t *CreateProjectRole200JSONResponseBody_Role_Permissions_Subject) FromCreateProjectRole200JSONResponseBodyRolePermissionsSubject1(v CreateProjectRole200JSONResponseBodyRolePermissionsSubject1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateProjectRole200JSONResponseBodyRolePermissionsSubject1 performs a merge with any union data inside the CreateProjectRole200JSONResponseBody_Role_Permissions_Subject, using the provided CreateProjectRole200JSONResponseBodyRolePermissionsSubject1
+func (t *CreateProjectRole200JSONResponseBody_Role_Permissions_Subject) MergeCreateProjectRole200JSONResponseBodyRolePermissionsSubject1(v CreateProjectRole200JSONResponseBodyRolePermissionsSubject1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateProjectRole200JSONResponseBody_Role_Permissions_Subject) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateProjectRole200JSONResponseBody_Role_Permissions_Subject) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // AsCompleteAccountSignupV3JSONBody0 returns the union data inside the CompleteAccountSignupV3JSONBody as a CompleteAccountSignupV3JSONBody0
 func (t CompleteAccountSignupV3JSONBody) AsCompleteAccountSignupV3JSONBody0() (CompleteAccountSignupV3JSONBody0, error) {
 	var body CompleteAccountSignupV3JSONBody0
@@ -15345,6 +15617,18 @@ type ClientInterface interface {
 	//
 	// Create secret imports.
 	CreateSecretImport(ctx context.Context, body CreateSecretImportJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateProjectRoleWithBody performs a POST /api/v2/workspace/{projectId}/roles (the `CreateProjectRole` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a project role.
+	CreateProjectRoleWithBody(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateProjectRole performs a POST /api/v2/workspace/{projectId}/roles (the `CreateProjectRole` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create a project role.
+	CreateProjectRole(ctx context.Context, projectId string, body CreateProjectRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// LoginV3WithBody performs a POST /api/v3/auth/login (the `LoginV3` operationId) request,
 	// with any type of body and a specified content type.
@@ -16593,6 +16877,38 @@ func (c *Client) CreateSecretImportWithBody(ctx context.Context, contentType str
 // Create secret imports.
 func (c *Client) CreateSecretImport(ctx context.Context, body CreateSecretImportJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateSecretImportRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateProjectRoleWithBody performs a POST /api/v2/workspace/{projectId}/roles (the `CreateProjectRole` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a project role.
+func (c *Client) CreateProjectRoleWithBody(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateProjectRoleRequestWithBody(c.Server, projectId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateProjectRole performs a POST /api/v2/workspace/{projectId}/roles (the `CreateProjectRole` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create a project role.
+func (c *Client) CreateProjectRole(ctx context.Context, projectId string, body CreateProjectRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateProjectRoleRequest(c.Server, projectId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -19246,6 +19562,53 @@ func NewCreateSecretImportRequestWithBody(server string, contentType string, bod
 	return req, nil
 }
 
+// NewCreateProjectRoleRequest calls the generic CreateProjectRole builder with application/json body
+func NewCreateProjectRoleRequest(server string, projectId string, body CreateProjectRoleJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateProjectRoleRequestWithBody(server, projectId, "application/json", bodyReader)
+}
+
+// NewCreateProjectRoleRequestWithBody constructs an http.Request for the CreateProjectRole method, with any body, and a specified content type
+func NewCreateProjectRoleRequestWithBody(server string, projectId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "projectId", projectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v2/workspace/%s/roles", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewLoginV3Request calls the generic LoginV3 builder with application/json body
 func NewLoginV3Request(server string, body LoginV3JSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -20766,6 +21129,20 @@ type ClientWithResponsesInterface interface {
 	//
 	// Create secret imports.
 	CreateSecretImportWithResponse(ctx context.Context, body CreateSecretImportJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSecretImportResponse, error)
+
+	// CreateProjectRoleWithBodyWithResponse performs a POST /api/v2/workspace/{projectId}/roles (the `CreateProjectRole` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a project role.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateProjectRoleWithBodyWithResponse(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectRoleResponse, error)
+
+	// CreateProjectRoleWithResponse performs a POST /api/v2/workspace/{projectId}/roles (the `CreateProjectRole` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create a project role.
+	CreateProjectRoleWithResponse(ctx context.Context, projectId string, body CreateProjectRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectRoleResponse, error)
 
 	// LoginV3WithBodyWithResponse performs a POST /api/v3/auth/login (the `LoginV3` operationId) request,
 	// with any type of body and a specified content type.
@@ -25726,7 +26103,7 @@ type ListSecretApprovalRequestsResponse struct {
 				Name             string     `json:"name"`
 				SecretPath       *string    `json:"secretPath,omitempty"`
 			} `json:"policy"`
-			PolicyId  openapi_types.UUID `json:"policyId"`
+			PolicyId  *openapi_types.UUID `json:"policyId"`
 			Reviewers []struct {
 				Status string `json:"status"`
 				UserId string `json:"userId"`
@@ -25831,7 +26208,7 @@ func (r ListSecretApprovalRequestsResponse) GetJSON200() *struct {
 			Name             string     `json:"name"`
 			SecretPath       *string    `json:"secretPath,omitempty"`
 		} `json:"policy"`
-		PolicyId  openapi_types.UUID `json:"policyId"`
+		PolicyId  *openapi_types.UUID `json:"policyId"`
 		Reviewers []struct {
 			Status string `json:"status"`
 			UserId string `json:"userId"`
@@ -26207,7 +26584,7 @@ type GetSecretApprovalRequestResponse struct {
 				Name             string     `json:"name"`
 				SecretPath       *string    `json:"secretPath,omitempty"`
 			} `json:"policy"`
-			PolicyId  openapi_types.UUID `json:"policyId"`
+			PolicyId  *openapi_types.UUID `json:"policyId"`
 			Reviewers []struct {
 				Comment               *string   `json:"comment,omitempty"`
 				CreatedAt             time.Time `json:"createdAt"`
@@ -26389,7 +26766,7 @@ func (r GetSecretApprovalRequestResponse) GetJSON200() *struct {
 			Name             string     `json:"name"`
 			SecretPath       *string    `json:"secretPath,omitempty"`
 		} `json:"policy"`
-		PolicyId  openapi_types.UUID `json:"policyId"`
+		PolicyId  *openapi_types.UUID `json:"policyId"`
 		Reviewers []struct {
 			Comment               *string   `json:"comment,omitempty"`
 			CreatedAt             time.Time `json:"createdAt"`
@@ -30142,6 +30519,185 @@ func (r CreateSecretImportResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateSecretImportResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateProjectRoleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Role struct {
+			CreatedAt   time.Time          `json:"createdAt"`
+			Description *string            `json:"description,omitempty"`
+			Id          openapi_types.UUID `json:"id"`
+			Name        string             `json:"name"`
+			Permissions []struct {
+				Action     CreateProjectRole200JSONResponseBody_Role_Permissions_Action   `json:"action"`
+				Conditions interface{}                                                    `json:"conditions,omitempty"`
+				Inverted   *bool                                                          `json:"inverted,omitempty"`
+				Subject    *CreateProjectRole200JSONResponseBody_Role_Permissions_Subject `json:"subject,omitempty"`
+			} `json:"permissions"`
+			ProjectId string    `json:"projectId"`
+			Slug      string    `json:"slug"`
+			UpdatedAt time.Time `json:"updatedAt"`
+		} `json:"role"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateProjectRole400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateProjectRole401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateProjectRole403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateProjectRole404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                         `json:"error"`
+		Message    interface{}                                    `json:"message,omitempty"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateProjectRole422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateProjectRole500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateProjectRoleResponse) GetJSON200() *struct {
+	Role struct {
+		CreatedAt   time.Time          `json:"createdAt"`
+		Description *string            `json:"description,omitempty"`
+		Id          openapi_types.UUID `json:"id"`
+		Name        string             `json:"name"`
+		Permissions []struct {
+			Action     CreateProjectRole200JSONResponseBody_Role_Permissions_Action   `json:"action"`
+			Conditions interface{}                                                    `json:"conditions,omitempty"`
+			Inverted   *bool                                                          `json:"inverted,omitempty"`
+			Subject    *CreateProjectRole200JSONResponseBody_Role_Permissions_Subject `json:"subject,omitempty"`
+		} `json:"permissions"`
+		ProjectId string    `json:"projectId"`
+		Slug      string    `json:"slug"`
+		UpdatedAt time.Time `json:"updatedAt"`
+	} `json:"role"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateProjectRoleResponse) GetJSON400() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateProjectRole400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateProjectRoleResponse) GetJSON401() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateProjectRole401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateProjectRoleResponse) GetJSON403() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateProjectRole403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateProjectRoleResponse) GetJSON404() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateProjectRole404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateProjectRoleResponse) GetJSON422() *struct {
+	Error      string                                         `json:"error"`
+	Message    interface{}                                    `json:"message,omitempty"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateProjectRole422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateProjectRoleResponse) GetJSON500() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateProjectRole500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateProjectRoleResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateProjectRoleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateProjectRoleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateProjectRoleResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -34132,6 +34688,32 @@ func (c *ClientWithResponses) CreateSecretImportWithResponse(ctx context.Context
 	return ParseCreateSecretImportResponse(rsp)
 }
 
+// CreateProjectRoleWithBodyWithResponse performs a POST /api/v2/workspace/{projectId}/roles (the `CreateProjectRole` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a project role.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateProjectRoleWithBodyWithResponse(ctx context.Context, projectId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectRoleResponse, error) {
+	rsp, err := c.CreateProjectRoleWithBody(ctx, projectId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateProjectRoleResponse(rsp)
+}
+
+// CreateProjectRoleWithResponse performs a POST /api/v2/workspace/{projectId}/roles (the `CreateProjectRole` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create a project role.
+func (c *ClientWithResponses) CreateProjectRoleWithResponse(ctx context.Context, projectId string, body CreateProjectRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectRoleResponse, error) {
+	rsp, err := c.CreateProjectRole(ctx, projectId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateProjectRoleResponse(rsp)
+}
+
 // LoginV3WithBodyWithResponse performs a POST /api/v3/auth/login (the `LoginV3` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -37644,7 +38226,7 @@ func ParseListSecretApprovalRequestsResponse(rsp *http.Response) (*ListSecretApp
 					Name             string     `json:"name"`
 					SecretPath       *string    `json:"secretPath,omitempty"`
 				} `json:"policy"`
-				PolicyId  openapi_types.UUID `json:"policyId"`
+				PolicyId  *openapi_types.UUID `json:"policyId"`
 				Reviewers []struct {
 					Status string `json:"status"`
 					UserId string `json:"userId"`
@@ -37969,7 +38551,7 @@ func ParseGetSecretApprovalRequestResponse(rsp *http.Response) (*GetSecretApprov
 					Name             string     `json:"name"`
 					SecretPath       *string    `json:"secretPath,omitempty"`
 				} `json:"policy"`
-				PolicyId  openapi_types.UUID `json:"policyId"`
+				PolicyId  *openapi_types.UUID `json:"policyId"`
 				Reviewers []struct {
 					Comment               *string   `json:"comment,omitempty"`
 					CreatedAt             time.Time `json:"createdAt"`
@@ -40338,6 +40920,122 @@ func ParseCreateSecretImportResponse(rsp *http.Response) (*CreateSecretImportRes
 			Message    string                                          `json:"message"`
 			ReqId      string                                          `json:"reqId"`
 			StatusCode CreateSecretImport500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateProjectRoleResponse parses an HTTP response from a CreateProjectRoleWithResponse call
+func ParseCreateProjectRoleResponse(rsp *http.Response) (*CreateProjectRoleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateProjectRoleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Role struct {
+				CreatedAt   time.Time          `json:"createdAt"`
+				Description *string            `json:"description,omitempty"`
+				Id          openapi_types.UUID `json:"id"`
+				Name        string             `json:"name"`
+				Permissions []struct {
+					Action     CreateProjectRole200JSONResponseBody_Role_Permissions_Action   `json:"action"`
+					Conditions interface{}                                                    `json:"conditions,omitempty"`
+					Inverted   *bool                                                          `json:"inverted,omitempty"`
+					Subject    *CreateProjectRole200JSONResponseBody_Role_Permissions_Subject `json:"subject,omitempty"`
+				} `json:"permissions"`
+				ProjectId string    `json:"projectId"`
+				Slug      string    `json:"slug"`
+				UpdatedAt time.Time `json:"updatedAt"`
+			} `json:"role"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateProjectRole400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateProjectRole401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateProjectRole403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateProjectRole404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    interface{}                                    `json:"message,omitempty"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateProjectRole422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateProjectRole500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

@@ -30,3 +30,20 @@ the harness image with `NODE_ENV=development`.
   every one of them succeeds whichever branch the server sent, and the wrong one hands
   back zero values instead of an error. After unwrapping, require a field that only the
   expected branch carries before trusting the result.
+
+## When the generated code does not compile
+
+Some valid specs trip oapi-codegen bugs. The project permission schema is one: each rule's
+`action` is "one action or a list of actions", and v2.8.0 names the list type and its item
+type the same, so `createProjectRole` generates duplicate declarations.
+
+Patch the spec before generation in `clients/api/overlay.yaml`
+([OpenAPI Overlay](https://spec.openapis.org/overlay/v1.0.0.html)), not the backend:
+the spec is correct, and every Node API consumer reads it.
+
+- Narrow the action to the schema that fails. The existing one replaces only the
+  `createProjectRole` body's permission items with a plain object, and the suite sends
+  rules as JSON (`rolePermission` in `suites/secretmanager/secrets/helpers_test.go`).
+- Overlays are strict: an action whose target matches nothing fails generation, so a
+  renamed route shows up instead of silently undoing the patch.
+- Remove the action once an oapi-codegen release fixes the bug.
