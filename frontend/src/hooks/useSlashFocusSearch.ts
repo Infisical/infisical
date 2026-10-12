@@ -24,16 +24,14 @@ const isEditable = (element: EventTarget | Element | null) =>
 export const useSlashFocusSearch = (ref: RefObject<HTMLInputElement | null>) => {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.key !== "/" ||
-        event.repeat ||
-        event.defaultPrevented ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey
-      ) {
-        return;
-      }
+      const isSlash = event.key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey;
+      const isFind =
+        event.key.toLowerCase() === "f" &&
+        (event.metaKey || event.ctrlKey) &&
+        !event.shiftKey &&
+        !event.altKey;
+
+      if ((!isSlash && !isFind) || event.repeat || event.defaultPrevented) return;
 
       if (isEditable(event.target) || isEditable(document.activeElement)) return;
       if (document.querySelector(OPEN_OVERLAY_SELECTOR)) return;
