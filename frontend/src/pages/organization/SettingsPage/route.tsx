@@ -29,7 +29,7 @@ const MOVED_SETTINGS_TABS: Record<string, { to: string; selectedTab: string }> =
   },
   "sso-settings": { to: "/organizations/$orgId/sso", selectedTab: "sso" },
   "provisioning-settings": { to: "/organizations/$orgId/sso", selectedTab: "provisioning" },
-  "project-templates": { to: "/organizations/$orgId/projects", selectedTab: "" }
+  "project-templates": { to: "/organizations/$orgId/settings", selectedTab: "product-settings" }
 };
 
 export const Route = createFileRoute(
