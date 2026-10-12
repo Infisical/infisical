@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,7 +13,10 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { Combobox, Field, FieldError, FieldLabel } from "@app/components/v3";
+import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
+import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
+import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   CaSigningConfigType,
   useCreateCaSigningConfig,
@@ -20,13 +24,11 @@ import {
   useInstallCaCertificateAdcs,
   useUpdateCaSigningConfig
 } from "@app/hooks/api";
-import {
-  TAvailableAppConnection,
-  useListAvailableAppConnections
-} from "@app/hooks/api/appConnections";
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { useAzureAdcsConnectionListTemplates } from "@app/hooks/api/appConnections/azure-adcs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
 const schema = z.object({
   appConnectionId: z.string().min(1, "App connection is required"),
@@ -52,12 +54,19 @@ export const AdcsCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
 
   const { data: availableAdcsConnections, isPending: isAdcsPending } =
     useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id);
+  const { permission } = useProjectPermission();
+  const [isCreateConnectionOpen, setIsCreateConnectionOpen] = useState(false);
+  const canCreateConnection = permission.can(
+    ProjectPermissionAppConnectionActions.Create,
+    ProjectPermissionSub.AppConnections
+  );
 
   const {
     control,
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -134,27 +143,51 @@ export const AdcsCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
         control={control}
         name="appConnectionId"
         render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl
-            label="Azure AD CS Connection"
-            errorText={error?.message}
-            isError={Boolean(error)}
-            isRequired
-          >
-            <FilterableSelect
+          <Field className="mb-4">
+            <FieldLabel>
+              Azure AD CS Connection <span className="text-danger">*</span>
+            </FieldLabel>
+            <Combobox
+              isError={Boolean(error)}
+              modal
+              isClearable={false}
               isLoading={isAdcsPending}
-              value={(availableAdcsConnections || []).find((conn) => conn.id === value)}
-              onChange={(option) => {
-                const selected = option as SingleValue<TAvailableAppConnection>;
-                onChange(selected?.id ?? "");
+              value={(availableAdcsConnections || []).find((conn) => conn.id === value) ?? null}
+              onValueChange={(option) => {
+                onChange(option.id);
               }}
               options={availableAdcsConnections || []}
               placeholder="Select an Azure AD CS connection..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
+              creation={
+                canCreateConnection
+                  ? {
+                      emptyLabel: `Create ${APP_CONNECTION_MAP[AppConnection.AzureADCS].name} Connection`,
+                      formatLabel: () =>
+                        `Create ${APP_CONNECTION_MAP[AppConnection.AzureADCS].name} Connection`,
+                      onCreate: () => setIsCreateConnectionOpen(true)
+                    }
+                  : undefined
+              }
             />
-          </FormControl>
+            <FieldError errors={[error]} />
+          </Field>
         )}
       />
+      {/* the modal portals out of the DOM but React still bubbles its submit to this form */}
+      <div className="contents" onSubmit={(e) => e.stopPropagation()}>
+        <AddAppConnectionModal
+          isOpen={isCreateConnectionOpen}
+          onOpenChange={setIsCreateConnectionOpen}
+          projectType={currentProject.type}
+          projectId={currentProject.id}
+          app={AppConnection.AzureADCS}
+          onComplete={(connection) => {
+            setValue("appConnectionId", connection.id, { shouldValidate: true });
+          }}
+        />
+      </div>
       <Controller
         control={control}
         name="template"
