@@ -407,11 +407,15 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
               </AlertDescription>
             </Alert>
           )}
-          {requesterEmail && !projectInviteList.requesterStatus.isProjectUser && (
+          {requesterEmail &&
+            !projectInviteList.requesterStatus.isProjectUser &&
+            projectInviteList.requesterStatus.userId && (
             <Alert>
               <AlertDescription>
-                Assign a role to provide access to requesting user{" "}
-                <b>{projectInviteList.requesterStatus.userLabel}</b>.
+                <p>
+                  Assign a role to provide access to requesting user{" "}
+                  <b>{projectInviteList.requesterStatus.userLabel}</b>.
+                </p>
               </AlertDescription>
             </Alert>
           )}
