@@ -93,6 +93,7 @@ import {
   extractCertificateFields,
   generatePkcs12FromCertificate,
   getCertificateCredentials,
+  normalizePemText,
   normalizeThumbprint,
   parseCertificateBody,
   resolveCertificateDeletionEligibility,
@@ -1148,13 +1149,16 @@ export const certificateServiceFactory = ({
     actor,
     actorOrgId,
     friendlyName,
-    certificatePem,
-    chainPem,
-    privateKeyPem,
+    certificatePem: rawCertificatePem,
+    chainPem: rawChainPem,
+    privateKeyPem: rawPrivateKeyPem,
     profileId,
     externalMetadata
   }: TImportCertDTO) => {
     const collectionId = pkiCollectionId;
+    const certificatePem = normalizePemText(rawCertificatePem);
+    const chainPem = rawChainPem ? normalizePemText(rawChainPem) : rawChainPem;
+    const privateKeyPem = rawPrivateKeyPem ? normalizePemText(rawPrivateKeyPem) : rawPrivateKeyPem;
 
     const resolveProjectId = async (): Promise<string> => {
       if (projectIdInput) return projectIdInput;
@@ -1273,7 +1277,9 @@ export const certificateServiceFactory = ({
       try {
         privateKey = crypto.nativeCrypto.createPrivateKey(privateKeyPem);
       } catch (err) {
-        throw new BadRequestError({ message: "Invalid private key format" });
+        throw new BadRequestError({
+          message: "Invalid private key. Provide an unencrypted private key in PEM format."
+        });
       }
 
       try {

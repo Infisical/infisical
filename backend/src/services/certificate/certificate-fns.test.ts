@@ -1,4 +1,4 @@
-import { webcrypto } from "node:crypto";
+import { createPrivateKey, generateKeyPairSync, webcrypto } from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 
@@ -10,6 +10,7 @@ import {
   CertificateThumbprintAlgorithm,
   extractCertificateFields,
   extractExternallyIssuedCertificateFields,
+  normalizePemText,
   normalizeThumbprint,
   parseCertificateBody,
   resolveCertificateDeletionEligibility
@@ -348,5 +349,48 @@ describe("resolveCertificateDeletionEligibility", () => {
     expect(resolveCertificateDeletionEligibility({ status: CertStatus.REVOKED, notAfter: past })).toBe(
       CertificateDeletionEligibility.Expired
     );
+  });
+});
+
+describe("normalizePemText", () => {
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const pkcs8Pem = privateKey.export({ type: "pkcs8", format: "pem" }).toString().trim();
+  const pkcs1Pem = privateKey.export({ type: "pkcs1", format: "pem" }).toString().trim();
+  const lines = pkcs8Pem.split("\n");
+
+  const damagedVariants: Record<string, string> = {
+    "newlines removed": lines.join(""),
+    "newlines replaced with spaces": lines.join(" "),
+    "double-escaped newlines": lines.join("\\n"),
+    "indented lines": lines.map((line) => `    ${line}`).join("\n"),
+    "non-breaking spaces": lines.join("\n\u00a0"),
+    "zero-width spaces": lines.join("\n\u200b"),
+    "en dashes in the armor": pkcs8Pem.replace(/-----/g, "\u2013\u2013\u2013\u2013\u2013"),
+    "blank line in the body": [...lines.slice(0, 3), "", ...lines.slice(3)].join("\n")
+  };
+
+  test.each(Object.entries(damagedVariants))("repairs a private key with %s", (_, damaged) => {
+    expect(() => createPrivateKey(damaged)).toThrow();
+    expect(normalizePemText(damaged)).toBe(pkcs8Pem);
+    expect(() => createPrivateKey(normalizePemText(damaged))).not.toThrow();
+  });
+
+  test("canonicalizes parseable variants", () => {
+    expect(normalizePemText(lines.join("\r\n"))).toBe(pkcs8Pem);
+    expect(normalizePemText(`Bag Attributes\n    localKeyID: 01 02\n${pkcs8Pem}`)).toBe(pkcs8Pem);
+  });
+
+  test("leaves well-formed PEM unchanged", () => {
+    expect(normalizePemText(pkcs8Pem)).toBe(pkcs8Pem);
+    expect(normalizePemText(pkcs1Pem)).toBe(pkcs1Pem);
+  });
+
+  test("keeps every block of a multi-block bundle in order", () => {
+    const bundle = `${pkcs8Pem}\n${pkcs1Pem}`;
+    expect(normalizePemText(bundle.replace(/\n/g, ""))).toBe(bundle);
+  });
+
+  test("returns trimmed input when no PEM block is found", () => {
+    expect(normalizePemText("  not a pem  ")).toBe("not a pem");
   });
 });
