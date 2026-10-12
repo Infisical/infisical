@@ -53,7 +53,8 @@ const normalizePemText = (pemText: string) => {
       return [`-----BEGIN ${label}-----`, ...lines, `-----END ${label}-----`].join("\n");
     });
 
-  return blocks.length ? blocks.join("\n") : pemText.trim();
+  const beginMarkerCount = (cleaned.match(/-----BEGIN /g) ?? []).length;
+  return blocks.length && blocks.length === beginMarkerCount ? blocks.join("\n") : pemText.trim();
 };
 
 export const summarizeCertificatePem = (pem: string): TCertificatePemSummary | null => {

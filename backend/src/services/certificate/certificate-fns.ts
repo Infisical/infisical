@@ -125,13 +125,25 @@ export const normalizePemText = (pemText: string) => {
     match = blockPattern.exec(cleaned);
   }
 
-  return blocks.length ? blocks.join("\n") : pemText.trim();
+  const beginMarkerCount = (cleaned.match(/-----BEGIN /g) ?? []).length;
+  return blocks.length && blocks.length === beginMarkerCount ? blocks.join("\n") : pemText.trim();
 };
 
 export const splitPemChain = (pemText: string) => {
   const re2Pattern = new RE2("-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----", "g");
 
   return re2Pattern.match(pemText) || [];
+};
+
+export const parsePemCertificateChain = (chainPem: string): x509.X509Certificate[] | null => {
+  const chainBlocks = splitPemChain(chainPem);
+  if (chainBlocks.length !== (chainPem.match(/-----BEGIN /g) ?? []).length) return null;
+
+  try {
+    return chainBlocks.map((pem) => new x509.X509Certificate(pem));
+  } catch {
+    return null;
+  }
 };
 
 /**

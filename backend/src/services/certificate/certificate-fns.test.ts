@@ -13,6 +13,7 @@ import {
   normalizePemText,
   normalizeThumbprint,
   parseCertificateBody,
+  parsePemCertificateChain,
   resolveCertificateDeletionEligibility
 } from "./certificate-fns";
 import { CertExtendedKeyUsage, CertificateDeletionEligibility, CertKeyUsage, CertStatus } from "./certificate-types";
@@ -392,5 +393,44 @@ describe("normalizePemText", () => {
 
   test("returns trimmed input when no PEM block is found", () => {
     expect(normalizePemText("  not a pem  ")).toBe("not a pem");
+  });
+
+  test("returns the input untouched when any block cannot be rebuilt", () => {
+    const damagedSecond = `${pkcs8Pem}\n${pkcs1Pem.replace("END RSA PRIVATE KEY", "END PRIVATE KEY")}`;
+    expect(normalizePemText(`  ${damagedSecond}  `)).toBe(damagedSecond);
+  });
+});
+
+describe("parsePemCertificateChain", () => {
+  beforeAll(() => {
+    x509.cryptoProvider.set(webcrypto as unknown as Crypto);
+  });
+
+  const makeCertPem = async (commonName: string) => {
+    const keys = await webcrypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+    const cert = await x509.X509CertificateGenerator.createSelfSigned({
+      name: `CN=${commonName}`,
+      keys: keys as CryptoKeyPair,
+      signingAlgorithm: { name: "ECDSA", hash: "SHA-256" },
+      notBefore: new Date(),
+      notAfter: new Date(Date.now() + 86_400_000)
+    });
+    return cert.toString("pem");
+  };
+
+  test("parses every certificate in the chain", async () => {
+    const chain = `${await makeCertPem("Intermediate")}\n${await makeCertPem("Root")}`;
+    expect(parsePemCertificateChain(chain)?.map((cert) => cert.subject)).toEqual(["CN=Intermediate", "CN=Root"]);
+  });
+
+  test("rejects a chain with a block that does not split out", async () => {
+    const root = (await makeCertPem("Root")).replace("END CERTIFICATE", "END X509 CERTIFICATE");
+    expect(parsePemCertificateChain(`${await makeCertPem("Intermediate")}\n${root}`)).toBeNull();
+  });
+
+  test("rejects a chain with a block that does not parse", async () => {
+    const rootLines = (await makeCertPem("Root")).split("\n");
+    rootLines[2] = `${rootLines[2].slice(0, 5)}!${rootLines[2].slice(6)}`;
+    expect(parsePemCertificateChain(`${await makeCertPem("Intermediate")}\n${rootLines.join("\n")}`)).toBeNull();
   });
 });
