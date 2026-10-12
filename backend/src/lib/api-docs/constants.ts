@@ -3717,6 +3717,8 @@ export const SecretRotations = {
     },
     OPEN_ROUTER_API_KEY: {
       name: "The name for the generated OpenRouter API key.",
+      workspaceId:
+        "The optional ID of the OpenRouter workspace to create API keys in. If omitted, OpenRouter creates keys in the account's Default workspace.",
       limit: "The optional spending limit in USD for the generated API key.",
       limitReset: "The type of limit reset for the API key (daily, weekly, monthly, or null for no reset).",
       includeByokInLimit:
