@@ -213,6 +213,8 @@ import { secretScanningDALFactory } from "@app/ee/services/secret-scanning/secre
 import { secretScanningQueueFactory } from "@app/ee/services/secret-scanning/secret-scanning-queue";
 import { secretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
 import { secretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
+import { secretScanningV2InstanceServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-instance-service";
+import { secretScanningV2ProjectResolverFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-resolver";
 import { secretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
 import { secretScanningV2ServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-service";
 import { subOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
@@ -1722,7 +1724,8 @@ export const registerRoutes = async (
   });
 
   const orgProductStatsService = orgProductStatsServiceFactory({
-    orgProductStatsDAL
+    orgProductStatsDAL,
+    keyStore
   });
 
   const orgAdminService = orgAdminServiceFactory({
@@ -4394,6 +4397,19 @@ export const registerRoutes = async (
     notificationService
   });
 
+  const secretScanningV2ProjectResolver = secretScanningV2ProjectResolverFactory({
+    db,
+    projectDAL,
+    membershipDAL,
+    membershipRoleDAL
+  });
+
+  const secretScanningV2InstanceService = secretScanningV2InstanceServiceFactory({
+    projectDAL,
+    permissionService,
+    secretScanningV2ProjectResolver
+  });
+
   const secretScanningV2Service = secretScanningV2ServiceFactory({
     permissionService,
     appConnectionService,
@@ -4662,6 +4678,8 @@ export const registerRoutes = async (
     agentProxyCa: agentProxyCaService,
     folderCommit: folderCommitService,
     secretScanningV2: secretScanningV2Service,
+    secretScanningV2Instance: secretScanningV2InstanceService,
+    secretScanningV2ProjectResolver,
     reminder: reminderService,
     eventBus: eventBusService,
     projectEvents: projectEventsService,

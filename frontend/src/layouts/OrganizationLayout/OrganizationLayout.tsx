@@ -11,6 +11,7 @@ import { useFetchServerStatus } from "@app/hooks/api";
 import { useImplicitProduct } from "@app/hooks/useImplicitProduct";
 import { CertManagerInstanceBanner } from "@app/layouts/PkiManagerLayout/components/CertManagerInstanceBanner";
 import { AssumePrivilegeModeBanner } from "@app/layouts/ProjectLayout/components/AssumePrivilegeModeBanner";
+import { SecretScanningInstanceBanner } from "@app/layouts/SecretScanningLayout/components/SecretScanningInstanceBanner";
 
 import { AuditLogBanner } from "./components/AuditLogBanner";
 import { InsecureConnectionBanner } from "./components/InsecureConnectionBanner";
@@ -37,6 +38,15 @@ export const OrganizationLayout = () => {
       )
   });
 
+  const isSecretScanningProject = useRouterState({
+    select: (state) =>
+      state.matches.some(
+        (match) =>
+          match.routeId ===
+          "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout"
+      )
+  });
+
   const { popUp, handlePopUpToggle } = usePopUp(["createOrg"] as const);
 
   const containerHeight = config.pageFrameContent ? "h-[94vh]" : "h-screen";
@@ -53,6 +63,7 @@ export const OrganizationLayout = () => {
         <PageBannerStack>
           {(isInsideProject || implicitProduct) && <AssumePrivilegeModeBanner />}
           {isCertManagerOverview && <CertManagerInstanceBanner />}
+          {isSecretScanningProject && <SecretScanningInstanceBanner />}
           {!isLoading && !isInsideProject && !serverDetails?.redisConfigured && <RedisBanner />}
           {!isLoading && !isInsideProject && !serverDetails?.emailConfigured && <SmtpBanner />}
           {!isLoading && !isInsideProject && subscription.auditLogs && <AuditLogBanner />}

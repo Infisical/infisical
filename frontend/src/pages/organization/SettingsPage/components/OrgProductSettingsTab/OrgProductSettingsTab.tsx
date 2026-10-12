@@ -5,6 +5,7 @@ import { AlertDescription, AlertTitle, DismissableAlert } from "@app/components/
 import { useOrganization } from "@app/context";
 
 import { OrgCertManagerTab } from "../OrgCertManagerTab";
+import { OrgSecretScanningTab } from "../OrgSecretScanningTab";
 
 export const OrgProductSettingsTab = () => {
   const { currentOrg } = useOrganization();
@@ -30,6 +31,7 @@ export const OrgProductSettingsTab = () => {
         </AlertDescription>
       </DismissableAlert>
       <OrgCertManagerTab />
+      <OrgSecretScanningTab />
     </div>
   );
 };
