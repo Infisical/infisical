@@ -17,6 +17,7 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TGenericPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -521,12 +522,18 @@ export const agentVaultMembershipServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You cannot change your own role" });
     }
 
-    // The add paths check this; promoting did not, so a deactivated member could still be made an admin.
-    await assertActorsAreAddable(actors, ctx.actorOrgId, projectId);
+    // Promotion only: a deactivated member must not be made an admin, but taking admin away from one has
+    // to work without reactivating them first.
+    if (role === ProjectMembershipRole.Admin) {
+      await assertActorsAreAddable(actors, ctx.actorOrgId, projectId);
+    }
 
     const nameByKey = await resolveActorNames(actors);
 
     const written = await membershipDAL.transaction(async (tx) => {
+      // Before the roles are read, not only around the admin count: two changes for one member that both
+      // read the old role would each insert their own, leaving the member with two roles.
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", projectId)]);
       const existing = await findMembershipsForActors(projectId, actors, tx);
       const held = actors.filter((actor) => existing.has(actorKey(actor)));
       const heldMembershipIds = held.map((actor) => existing.get(actorKey(actor))!.id);

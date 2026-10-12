@@ -48,7 +48,7 @@ export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
               type: "success"
             }
           : {
-              text: `${subject}'s role wasn't changed. They may have been removed from Agent Vault or already have that role.`,
+              text: `Role not changed. ${subject} may have been removed from Agent Vault or already has that role.`,
               type: "info"
             }
       );

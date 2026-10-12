@@ -137,7 +137,8 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
     schema: {
       hide: false,
       operationId: "updateAgentVaultMemberRoles",
-      description: "Change the Agent Vault role of users, groups and machine identities",
+      description:
+        "Change the Agent Vault role of users, groups and machine identities. Name each one by ID; to add users by email, use Add members.",
       tags: [ApiDocsTags.AgentVaultMembers],
       body: AgentVaultProductMemberRoleUpdateSchema,
       response: {

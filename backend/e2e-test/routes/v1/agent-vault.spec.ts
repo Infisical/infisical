@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
+import { pollUntil } from "e2e-test/testUtils/poll";
 
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
@@ -21,7 +22,7 @@ import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 import { initLogger, logger } from "@app/lib/logger";
@@ -3512,9 +3513,27 @@ describe("Agent Vault V1 Router", async () => {
         callerGroup = await makeCallerAdminOnlyThroughGroup(projectId);
         const { groupId } = callerGroup;
 
+        // Holding the lock until both requests queue behind it means both have passed their permission
+        // checks first. Otherwise the second can rebuild them after the first demotes the caller's group,
+        // and is refused with a 403 before it ever reaches the guard.
+        let lockHeld!: () => void;
+        let releaseLock!: () => void;
+        const held = new Promise<void>((resolve) => {
+          lockHeld = resolve;
+        });
+        const released = new Promise<void>((resolve) => {
+          releaseLock = resolve;
+        });
+        const holder = testDb.transaction(async (trx) => {
+          await trx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", projectId)]);
+          lockHeld();
+          await released;
+        });
+        await held;
+
         // Either batch alone leaves an admin standing. Together they would leave none, so one has to be
         // refused whichever commits first.
-        const results = await Promise.all(
+        const pending = Promise.all(
           [one, two].map((identity) =>
             inject("PATCH", "/api/v1/agent-vault/members", {
               groupIds: [groupId],
@@ -3523,6 +3542,21 @@ describe("Agent Vault V1 Router", async () => {
             })
           )
         );
+        await pollUntil({
+          describe: "both demotions to wait on the last-admin lock",
+          read: async () =>
+            Number(
+              (
+                (await testDb.raw(
+                  "SELECT count(*) AS waiting FROM pg_locks WHERE locktype = 'advisory' AND NOT granted"
+                )) as { rows: { waiting: string }[] }
+              ).rows[0].waiting
+            ),
+          done: (waiting) => waiting >= 2
+        });
+        releaseLock();
+        await holder;
+        const results = await pending;
         expect(results.map((res) => res.statusCode).sort()).toEqual([200, 400]);
         const refused = results.find((res) => res.statusCode === 400)!;
         expect(JSON.parse(refused.payload).message).toContain("must keep at least one admin");
@@ -3575,6 +3609,73 @@ describe("Agent Vault V1 Router", async () => {
         expect(JSON.parse(res.payload).message).toContain("is deactivated in this organization");
       } finally {
         await testDb("memberships").where({ id: orgMembership.id }).update({ isActive: true });
+      }
+    });
+
+    test("a deactivated admin can be demoted, but a deactivated member cannot be promoted", async () => {
+      const identity = await createOrgIdentity(`av-deactivated-role-${Date.now()}`);
+
+      try {
+        expect(
+          (
+            await inject("POST", "/api/v1/agent-vault/members", {
+              machineIdentityIds: [identity.id],
+              role: ProjectMembershipRole.Admin
+            })
+          ).statusCode
+        ).toBe(200);
+        await testDb("memberships")
+          .where({ scope: AccessScope.Organization, actorIdentityId: identity.id })
+          .update({ isActive: false });
+
+        const demoted = await inject("PATCH", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [identity.id],
+          role: ProjectMembershipRole.Member
+        });
+        expect(demoted.statusCode).toBe(200);
+        expect(JSON.parse(demoted.payload).members).toMatchObject([{ id: identity.id, role: "member" }]);
+
+        const promoted = await inject("PATCH", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [identity.id],
+          role: ProjectMembershipRole.Admin
+        });
+        expect(promoted.statusCode).toBe(400);
+        expect(JSON.parse(promoted.payload).message).toContain("is deactivated in this organization");
+      } finally {
+        await deleteOrgIdentity(identity.id);
+      }
+    });
+
+    test("simultaneous role changes leave a member with exactly one role", async () => {
+      const projectId = await getProjectId();
+      const identity = await createOrgIdentity(`av-role-race-${Date.now()}`);
+
+      try {
+        expect(
+          (
+            await inject("POST", "/api/v1/agent-vault/members", {
+              machineIdentityIds: [identity.id],
+              role: ProjectMembershipRole.Member
+            })
+          ).statusCode
+        ).toBe(200);
+
+        const results = await Promise.all(
+          Array.from({ length: 10 }, (_, i) =>
+            inject("PATCH", "/api/v1/agent-vault/members", {
+              machineIdentityIds: [identity.id],
+              role: i % 2 ? ProjectMembershipRole.Member : ProjectMembershipRole.Admin
+            })
+          )
+        );
+        expect(results.every((res) => res.statusCode === 200)).toBe(true);
+
+        const membership = await testDb("memberships")
+          .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: identity.id })
+          .first();
+        expect(await testDb("membership_roles").where({ membershipId: membership.id })).toHaveLength(1);
+      } finally {
+        await deleteOrgIdentity(identity.id);
       }
     });
 
