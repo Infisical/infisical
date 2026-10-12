@@ -3520,7 +3520,9 @@ export const SecretSyncs = {
     },
     CHEF: {
       dataBagName: "The name of the Chef data bag to sync secrets to.",
-      dataBagItemName: "The name of the Chef data bag item to sync secrets to."
+      dataBagItemName: "The name of the Chef data bag item to sync secrets to.",
+      shouldEncryptSecrets:
+        "Whether to write the data bag item as a Chef encrypted data bag item (version 3), using the data bag secret on the Chef connection."
     },
     CLOUD66: {
       stackId: "The unique identifier (uid) of the Cloud 66 stack to sync secrets to.",
