@@ -1,12 +1,25 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft } from "lucide-react";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { ChevronLeft, SlidersHorizontal } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 
-import { SidebarGroup, SidebarGroupLabel } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import {
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem
+} from "@app/components/v3";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useOrgPermission,
+  useProject
+} from "@app/context";
 import {
   hasIntermediateProjectsView,
+  hasProjectTemplates,
   isOrgScopedProduct,
   projectTypeToUrlSlug
 } from "@app/helpers/project";
@@ -50,6 +63,7 @@ export const ProjectNav = () => {
   const { currentOrg, isSubOrganization } = useOrganization();
   const { pathname, search: locationSearch } = useLocation();
   const navigate = useNavigate();
+  const { permission } = useOrgPermission();
   const isLegacyView = (locationSearch as { legacy?: string })?.legacy === "true";
   const hasApplicationContext = Boolean(
     (locationSearch as { applicationName?: string })?.applicationName
@@ -66,6 +80,11 @@ export const ProjectNav = () => {
   else if (isSubOrganization) projectLabel = "Sub-Organization";
   else projectLabel = "Organization";
   const NavComponent = PROJECT_NAV_COMPONENT[currentProject.type];
+  // Products with a projects listing link Product Settings from there; the rest link it here.
+  const showProductSettings =
+    !intermediateAvailable &&
+    hasProjectTemplates(currentProject.type) &&
+    permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
 
   // scott: we currently have to use this flaky inclusion for routes/nested routes because we haven't
   // been consistent in using a route structure that reflects nested pages; once we refactor we can switch
@@ -177,6 +196,24 @@ export const ProjectNav = () => {
               </button>
             </SidebarGroupLabel>
             <NavComponent onSubmenuOpen={handleSubmenuOpen} />
+            {showProductSettings && (
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton size="lg" asChild closeOnMobile tooltip="Product Settings">
+                    <Link
+                      to="/organizations/$orgId/projects/product-settings/$type"
+                      params={{
+                        orgId: currentOrg.id,
+                        type: projectTypeToUrlSlug(currentProject.type)
+                      }}
+                    >
+                      <SlidersHorizontal className="size-4" />
+                      <span>Product Settings</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            )}
           </SidebarGroup>
         </motion.div>
       )}
