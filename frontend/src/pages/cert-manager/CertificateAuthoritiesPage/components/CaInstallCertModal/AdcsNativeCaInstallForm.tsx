@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,7 +27,7 @@ import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { useAdcsConnectionListCertificateTemplates } from "@app/hooks/api/appConnections/adcs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
+import { AppConnectionForm } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm";
 
 const schema = z.object({
   appConnectionId: z.string().min(1, "App connection is required"),
@@ -49,7 +48,7 @@ export const AdcsNativeCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
   const { data: availableAdcsConnections, isPending: isAdcsPending } =
     useListAvailableAppConnections(AppConnection.ADCS, currentProject.id);
   const { permission } = useProjectPermission();
-  const [isCreateConnectionOpen, setIsCreateConnectionOpen] = useState(false);
+  const createConnectionLabel = `Create ${APP_CONNECTION_MAP[AppConnection.ADCS].name} Connection`;
   const canCreateConnection = permission.can(
     ProjectPermissionAppConnectionActions.Create,
     ProjectPermissionSub.AppConnections
@@ -60,7 +59,6 @@ export const AdcsNativeCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
     handleSubmit,
     reset,
     watch,
-    setValue,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -149,10 +147,23 @@ export const AdcsNativeCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
               creation={
                 canCreateConnection
                   ? {
-                      emptyLabel: `Create ${APP_CONNECTION_MAP[AppConnection.ADCS].name} Connection`,
-                      formatLabel: () =>
-                        `Create ${APP_CONNECTION_MAP[AppConnection.ADCS].name} Connection`,
-                      onCreate: () => setIsCreateConnectionOpen(true)
+                      mode: "dialog",
+                      title: createConnectionLabel,
+                      description: "The new connection is selected once it is created.",
+                      emptyLabel: createConnectionLabel,
+                      formatLabel: () => createConnectionLabel,
+                      renderForm: ({ complete, cancel }) => (
+                        <AppConnectionForm
+                          app={AppConnection.ADCS}
+                          projectId={currentProject.id}
+                          projectType={currentProject.type}
+                          onComplete={(connection) => {
+                            onChange(connection.id);
+                            complete();
+                          }}
+                          onCancel={cancel}
+                        />
+                      )
                     }
                   : undefined
               }
@@ -161,19 +172,6 @@ export const AdcsNativeCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
           </Field>
         )}
       />
-      {/* the modal portals out of the DOM but React still bubbles its submit to this form */}
-      <div className="contents" onSubmit={(e) => e.stopPropagation()}>
-        <AddAppConnectionModal
-          isOpen={isCreateConnectionOpen}
-          onOpenChange={setIsCreateConnectionOpen}
-          projectType={currentProject.type}
-          projectId={currentProject.id}
-          app={AppConnection.ADCS}
-          onComplete={(connection) => {
-            setValue("appConnectionId", connection.id, { shouldValidate: true });
-          }}
-        />
-      </div>
       <Controller
         control={control}
         name="template"

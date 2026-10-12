@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,7 +32,7 @@ import {
   useVenafiConnectionListIssuingTemplates
 } from "@app/hooks/api/appConnections/venafi";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
+import { AppConnectionForm } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm";
 
 const schema = z.object({
   appConnectionId: z.string().min(1, "App connection is required"),
@@ -61,7 +60,7 @@ export const VenafiCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
   const { data: availableVenafiConnections, isPending: isVenafiPending } =
     useListAvailableAppConnections(AppConnection.Venafi, currentProject.id);
   const { permission } = useProjectPermission();
-  const [isCreateConnectionOpen, setIsCreateConnectionOpen] = useState(false);
+  const createConnectionLabel = `Create ${APP_CONNECTION_MAP[AppConnection.Venafi].name} Connection`;
   const canCreateConnection = permission.can(
     ProjectPermissionAppConnectionActions.Create,
     ProjectPermissionSub.AppConnections
@@ -183,10 +182,25 @@ export const VenafiCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
               creation={
                 canCreateConnection
                   ? {
-                      emptyLabel: `Create ${APP_CONNECTION_MAP[AppConnection.Venafi].name} Connection`,
-                      formatLabel: () =>
-                        `Create ${APP_CONNECTION_MAP[AppConnection.Venafi].name} Connection`,
-                      onCreate: () => setIsCreateConnectionOpen(true)
+                      mode: "dialog",
+                      title: createConnectionLabel,
+                      description: "The new connection is selected once it is created.",
+                      emptyLabel: createConnectionLabel,
+                      formatLabel: () => createConnectionLabel,
+                      renderForm: ({ complete, cancel }) => (
+                        <AppConnectionForm
+                          app={AppConnection.Venafi}
+                          projectId={currentProject.id}
+                          projectType={currentProject.type}
+                          onComplete={(connection) => {
+                            onChange(connection.id);
+                            setValue("applicationId", "");
+                            setValue("issuingTemplateId", "");
+                            complete();
+                          }}
+                          onCancel={cancel}
+                        />
+                      )
                     }
                   : undefined
               }
@@ -195,21 +209,6 @@ export const VenafiCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
           </Field>
         )}
       />
-      {/* the modal portals out of the DOM but React still bubbles its submit to this form */}
-      <div className="contents" onSubmit={(e) => e.stopPropagation()}>
-        <AddAppConnectionModal
-          isOpen={isCreateConnectionOpen}
-          onOpenChange={setIsCreateConnectionOpen}
-          projectType={currentProject.type}
-          projectId={currentProject.id}
-          app={AppConnection.Venafi}
-          onComplete={(connection) => {
-            setValue("appConnectionId", connection.id, { shouldValidate: true });
-            setValue("applicationId", "");
-            setValue("issuingTemplateId", "");
-          }}
-        />
-      </div>
       <Controller
         control={control}
         name="applicationId"

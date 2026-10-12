@@ -920,8 +920,9 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     onSearchChange?.(nextSearch);
     onInputValueChange?.(nextSearch);
   };
+  // Dialog creation collects its own fields, so its create row also opens from an empty query.
   const creationInput =
-    creation && isEditing
+    (creation && isEditing
       ? getComboboxCreationInput({
           inputValue: search,
           options,
@@ -930,7 +931,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
           isDuplicate: creation.isDuplicate,
           isValid: creation.isValid
         })
-      : null;
+      : null) ?? (isDialogCreationConfig(creation) && !(isEditing && search.trim()) ? "" : null);
   const handleCreationSuccess = React.useCallback(
     (inputValue: string) => {
       if (searchRef.current.trim() !== inputValue) return;
@@ -1006,7 +1007,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
             }
             if (nextValue.type === "create") {
               eventDetails.cancel();
-              if (!creationInput || nextValue.inputValue !== creationInput) return;
+              if (creationInput === null || nextValue.inputValue !== creationInput) return;
               if (dialogCreation.creation) {
                 isDialogCreationActiveRef.current = true;
                 setOpen(false);
@@ -1178,7 +1179,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
               showEmptyMessage={!creation}
               creation={creation}
               creationItem={creationItem}
-              canCreate={Boolean(creationInput)}
+              canCreate={creationInput !== null}
               creationError={creationError}
               isCreationPending={isCreationPending}
               selectedValues={selectedValues}
@@ -1314,16 +1315,18 @@ const MultipleCombobox = <TOption,>({
   const areAllOptionsSelected =
     selectAllOptions.length > 0 &&
     selectAllOptions.every((option) => selectedValues.has(getOptionValue(option)));
-  const creationInput = creation
-    ? getComboboxCreationInput({
-        inputValue: search,
-        options,
-        selectedOptions,
-        getOptionLabel,
-        isDuplicate: creation.isDuplicate,
-        isValid: creation.isValid
-      })
-    : null;
+  // Dialog creation collects its own fields, so its create row also opens from an empty query.
+  const creationInput =
+    (creation
+      ? getComboboxCreationInput({
+          inputValue: search,
+          options,
+          selectedOptions,
+          getOptionLabel,
+          isDuplicate: creation.isDuplicate,
+          isValid: creation.isValid
+        })
+      : null) ?? (isDialogCreationConfig(creation) && !search.trim() ? "" : null);
   const handleCreationSuccess = React.useCallback(
     (inputValue: string) => {
       if (searchRef.current.trim() !== inputValue) return;
@@ -1412,7 +1415,7 @@ const MultipleCombobox = <TOption,>({
             const createItem = nextValue.find((item) => item.type === "create");
             if (createItem) {
               eventDetails.cancel();
-              if (!creationInput || createItem.inputValue !== creationInput) return;
+              if (creationInput === null || createItem.inputValue !== creationInput) return;
               if (dialogCreation.creation) {
                 isDialogCreationActiveRef.current = true;
                 openRef.current = false;
@@ -1597,7 +1600,7 @@ const MultipleCombobox = <TOption,>({
               showEmptyMessage={!creation}
               creation={creation}
               creationItem={creationItem}
-              canCreate={Boolean(creationInput)}
+              canCreate={creationInput !== null}
               creationError={creationError}
               isCreationPending={isCreationPending}
               selectedValues={selectedValues}
