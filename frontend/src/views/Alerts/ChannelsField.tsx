@@ -26,6 +26,7 @@ const buildNewChannel = (channelType: AlertChannelType, name: string): TChannelF
   webhookUrl: "",
   url: "",
   signingSecret: "",
+  headers: [],
   integrationKey: ""
 });
 

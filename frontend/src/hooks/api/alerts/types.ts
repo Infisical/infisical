@@ -192,6 +192,14 @@ export const channelFormSchema = z
     webhookUrl: z.string().optional(),
     url: z.string().optional(),
     signingSecret: z.string().optional(),
+    headers: z
+      .array(
+        z.object({
+          key: z.string().trim().min(1, "Header name is required"),
+          value: z.string().min(1, "Header value is required")
+        })
+      )
+      .default([]),
     integrationKey: z.string().optional(),
     recipients: z
       .array(

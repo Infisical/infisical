@@ -86,6 +86,65 @@ describe("Alerts API", () => {
     expect(await testDb("alert_channels").where({ id: webhook.id })).toHaveLength(0);
   });
 
+  test("webhook header values are returned redacted, and sending one back redacted keeps it", async () => {
+    const alert = await createAlert({
+      body: identityAlert({
+        name: "headers",
+        channels: [
+          {
+            ...webhookChannel,
+            config: { url: "https://example.com/hook", headers: [{ key: "Authorization", value: "Bearer abc" }] }
+          }
+        ]
+      }),
+      authToken
+    });
+    const [webhook] = alert.channels;
+    expect(webhook.config.headers).toEqual([{ key: "Authorization", value: "******" }]);
+
+    const updated = await updateAlert({
+      alertId: alert.id,
+      authToken,
+      body: {
+        channels: [
+          {
+            id: webhook.id,
+            name: webhook.name,
+            channelType: "webhook",
+            config: {
+              url: "https://example.com/hook",
+              headers: [
+                { key: "Authorization", value: "******" },
+                { key: "X-Env", value: "prod" }
+              ]
+            }
+          }
+        ]
+      }
+    });
+    expect(updated.channels[0].config.headers).toEqual([
+      { key: "Authorization", value: "******" },
+      { key: "X-Env", value: "******" }
+    ]);
+
+    const res = await updateAlert({
+      alertId: alert.id,
+      authToken,
+      body: {
+        channels: [
+          {
+            id: webhook.id,
+            name: webhook.name,
+            channelType: "webhook",
+            config: { url: "https://example.com/hook", headers: [{ key: "X-New", value: "******" }] }
+          }
+        ]
+      }
+    }).raw();
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toContain("Header 'X-New' has no saved value to keep");
+  });
+
   test("updating with another alert's channel id is refused", async () => {
     const first = await createAlert({ body: identityAlert({ name: "first" }), authToken });
     const second = await createAlert({ body: identityAlert({ name: "second", projectId }), authToken });

@@ -19,12 +19,23 @@ A webhook channel on a certificate [alert](/documentation/platform/pki/applicati
     Optionally, enter a **Signing Secret** so your endpoint can [verify the signature](#verify-the-signature) of each request.
   </Step>
   <Step>
+    Optionally, select **Add header** to send [custom headers](#custom-headers) with each request, such as the authorization header your endpoint expects.
+  </Step>
+  <Step>
     Optionally, select **Send test** to send a test notification to the channel.
   </Step>
   <Step>
     Select **Continue**, check the **Review** step, and select **Create Alert**.
   </Step>
 </Steps>
+
+## Custom headers
+
+Infisical sends every custom header you add on the channel with each request. Use them when your endpoint authenticates callers with a header, such as the HTTP source of an incident management tool that expects an `Authorization: Bearer <token>` header.
+
+A channel can have up to 20 headers. Header values are encrypted, and the API returns them as `******` after you save the channel. When you edit the channel, leave a value unchanged to keep it, or enter a new one to replace it.
+
+You can't set the `Content-Type` and `x-infisical-signature` headers, because Infisical sets them on every request.
 
 ## Webhook event types
 

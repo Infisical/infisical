@@ -1,20 +1,34 @@
+import { safeRequest } from "@app/lib/validator";
+
 import {
+  ALERT_CHANNEL_REDACTED_VALUE,
   AlertChannelType,
   DIRECTED_ALERT_CHANNEL_TYPES,
   SlackChannelConfigSchema,
-  TAlertPayload
+  TAlertPayload,
+  WebhookChannelConfigSchema
 } from "../alert-channel-types";
 import { sendEmailNotification } from "./alert-channel-email-fns";
 import { buildPagerDutyEvent } from "./alert-channel-pagerduty-fns";
 import { ALERT_CHANNEL_REGISTRY } from "./alert-channel-registry";
 import { buildSlackPayload } from "./alert-channel-slack-fns";
-import { buildWebhookPayload } from "./alert-channel-webhook-fns";
+import {
+  buildWebhookPayload,
+  redactWebhookHeaders,
+  restoreRedactedWebhookHeaders,
+  sendWebhookNotification
+} from "./alert-channel-webhook-fns";
 
 // logger is `export let logger` assigned by initLogger(), which unit tests don't run, so the
 // delivery-failure path (which logs) would otherwise dereference undefined. Mock it per-file.
 vi.mock("@app/lib/logger", () => ({
   logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
   initLogger: () => {}
+}));
+
+vi.mock("@app/lib/validator", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/validator")>()),
+  safeRequest: { post: vi.fn(async () => ({ status: 200, data: {} })) }
 }));
 
 const samplePayload = (): TAlertPayload => ({
@@ -205,6 +219,121 @@ describe("buildPagerDutyEvent", () => {
 
     expect(pd.payload.summary).toBe("2 certificates expiring within 30d — api.prod.example.com");
     expect(pd.payload.severity).toBe("warning");
+  });
+});
+
+describe("WebhookChannelConfigSchema headers", () => {
+  const withHeaders = (headers: unknown) =>
+    WebhookChannelConfigSchema.safeParse({ url: "https://example.com/hook", headers });
+
+  test("accepts well-formed headers", () => {
+    expect(withHeaders([{ key: "Authorization", value: "Bearer abc" }]).success).toBe(true);
+  });
+
+  test("rejects the headers Infisical sets itself", () => {
+    const result = withHeaders([{ key: "Content-Type", value: "text/plain" }]);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe("Header 'Content-Type' is set by Infisical and cannot be overridden");
+    expect(withHeaders([{ key: "X-Infisical-Signature", value: "x" }]).success).toBe(false);
+  });
+
+  test("rejects duplicate names regardless of case", () => {
+    const result = withHeaders([
+      { key: "Authorization", value: "a" },
+      { key: "authorization", value: "b" }
+    ]);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe("Header names must be unique");
+  });
+
+  test("rejects names that are not HTTP tokens and values with line breaks", () => {
+    expect(withHeaders([{ key: "X Bad", value: "a" }]).success).toBe(false);
+    expect(withHeaders([{ key: "X-Ok", value: "a\r\nX-Injected: b" }]).success).toBe(false);
+  });
+
+  test("rejects a redacted value that nothing restored", () => {
+    const result = withHeaders([{ key: "Authorization", value: ALERT_CHANNEL_REDACTED_VALUE }]);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe(
+      "Header 'Authorization' has no saved value to keep. Enter a value for it"
+    );
+  });
+});
+
+describe("webhook header redaction", () => {
+  test("masks every value and keeps the names", () => {
+    expect(
+      redactWebhookHeaders({
+        url: "https://example.com/hook",
+        headers: [{ key: "Authorization", value: "Bearer abc" }]
+      })
+    ).toEqual({
+      url: "https://example.com/hook",
+      headers: [{ key: "Authorization", value: ALERT_CHANNEL_REDACTED_VALUE }]
+    });
+  });
+
+  test("leaves a config without headers alone", () => {
+    expect(redactWebhookHeaders({ url: "https://example.com/hook" })).toEqual({ url: "https://example.com/hook" });
+  });
+
+  test("restores a masked value from the stored header with the same name", () => {
+    const stored = {
+      url: "https://example.com/hook",
+      headers: [
+        { key: "Authorization", value: "Bearer abc" },
+        { key: "X-Env", value: "prod" }
+      ]
+    };
+    expect(
+      restoreRedactedWebhookHeaders(
+        {
+          url: "https://example.com/hook",
+          headers: [
+            { key: "authorization", value: ALERT_CHANNEL_REDACTED_VALUE },
+            { key: "X-Env", value: "staging" }
+          ]
+        },
+        stored
+      )
+    ).toEqual({
+      url: "https://example.com/hook",
+      headers: [
+        { key: "authorization", value: "Bearer abc" },
+        { key: "X-Env", value: "staging" }
+      ]
+    });
+  });
+
+  test("leaves a masked value in place when no stored header matches, so validation names it", () => {
+    const restored = restoreRedactedWebhookHeaders(
+      { url: "https://example.com/hook", headers: [{ key: "X-New", value: ALERT_CHANNEL_REDACTED_VALUE }] },
+      { url: "https://example.com/hook" }
+    );
+    expect(restored.headers).toEqual([{ key: "X-New", value: ALERT_CHANNEL_REDACTED_VALUE }]);
+    expect(WebhookChannelConfigSchema.safeParse(restored).success).toBe(false);
+  });
+});
+
+describe("sendWebhookNotification", () => {
+  test("sends the custom headers next to the ones Infisical sets", async () => {
+    const post = vi.mocked(safeRequest.post);
+    post.mockClear();
+
+    await sendWebhookNotification({
+      ...baseCtx(),
+      config: {
+        url: "https://example.com/hook",
+        signingSecret: "s3cr3t",
+        headers: [{ key: "Authorization", value: "Bearer abc" }]
+      }
+    });
+
+    expect(post).toHaveBeenCalledTimes(1);
+    const [url, , options] = post.mock.calls[0];
+    expect(url).toBe("https://example.com/hook");
+    expect(options?.headers).toMatchObject({ Authorization: "Bearer abc", "Content-Type": "application/json" });
+    expect(options?.headers?.["x-infisical-signature"]).toMatch(/^t=\d+,v1=[0-9a-f]{64}$/);
   });
 });
 

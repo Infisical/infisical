@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { alertChannelServiceFactory, TAlertChannelServiceFactoryDep } from "./alert-channel-service";
-import { AlertChannelType } from "./alert-channel-types";
+import { ALERT_CHANNEL_REDACTED_VALUE, AlertChannelType } from "./alert-channel-types";
 import { AlertPrincipalType } from "./alert-types";
 
 // Identity cipher: encryptedConfig is just JSON bytes of the config.
@@ -151,6 +151,91 @@ describe("alert channel service", () => {
     // Secret is redacted on the way out.
     expect(detail.config).toEqual({ url: "https://example.com/hook", hasSigningSecret: true });
     expect(detail.recipients).toEqual([]);
+  });
+
+  test("returns webhook header names with their values redacted", async () => {
+    const { service } = buildService();
+    const channel = await createChannel(
+      service,
+      {
+        name: "Ops webhook",
+        channelType: AlertChannelType.WEBHOOK,
+        config: { url: "https://example.com/hook", headers: [{ key: "Authorization", value: "Bearer abc" }] },
+        orgId: "org-1",
+        ...CHANNEL_INPUT
+      },
+      encryptor as never,
+      tx
+    );
+
+    const [detail] = await service.getDetailsForChannels([channel], { decryptor: decryptor as never });
+    expect(detail.config).toEqual({
+      url: "https://example.com/hook",
+      hasSigningSecret: false,
+      headers: [{ key: "Authorization", value: ALERT_CHANNEL_REDACTED_VALUE }]
+    });
+  });
+
+  test("keeps a webhook header whose value is sent back redacted and replaces the others", async () => {
+    const { service, store } = buildService();
+    const channel = seedRow({
+      id: "ch-1",
+      channelType: AlertChannelType.WEBHOOK,
+      encryptedConfig: encConfig({
+        url: "https://example.com/hook",
+        headers: [
+          { key: "Authorization", value: "Bearer abc" },
+          { key: "X-Env", value: "prod" }
+        ]
+      })
+    });
+
+    await updateChannel(
+      service,
+      {
+        recipientScope: RECIPIENT_SCOPE,
+        channelId: "ch-1",
+        config: {
+          url: "https://example.com/hook",
+          headers: [
+            { key: "Authorization", value: ALERT_CHANNEL_REDACTED_VALUE },
+            { key: "X-Env", value: "staging" }
+          ]
+        }
+      },
+      channel as never,
+      cipher,
+      tx
+    );
+
+    const stored = JSON.parse(store.get("ch-1")!.encryptedConfig.toString()) as Record<string, unknown>;
+    expect(stored.headers).toEqual([
+      { key: "Authorization", value: "Bearer abc" },
+      { key: "X-Env", value: "staging" }
+    ]);
+  });
+
+  test("rejects a redacted webhook header that has no stored value", async () => {
+    const { service } = buildService();
+    const channel = seedRow({
+      id: "ch-1",
+      channelType: AlertChannelType.WEBHOOK,
+      encryptedConfig: encConfig({ url: "https://example.com/hook" })
+    });
+
+    await expect(
+      updateChannel(
+        service,
+        {
+          recipientScope: RECIPIENT_SCOPE,
+          channelId: "ch-1",
+          config: { url: "https://example.com/hook", headers: [{ key: "X-New", value: ALERT_CHANNEL_REDACTED_VALUE }] }
+        },
+        channel as never,
+        cipher,
+        tx
+      )
+    ).rejects.toThrow("Header 'X-New' has no saved value to keep. Enter a value for it");
   });
 
   test("requires recipients for a directed (email) channel and rejects them for others", async () => {

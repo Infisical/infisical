@@ -43,5 +43,5 @@ export const mergeChannelConfigWithStored = (
     const value = incomingConfig[field];
     if (value === "" || value === null || value === undefined) delete merged[field];
   });
-  return merged;
+  return definition.restoreRedactedConfig ? definition.restoreRedactedConfig(merged, existingConfig) : merged;
 };

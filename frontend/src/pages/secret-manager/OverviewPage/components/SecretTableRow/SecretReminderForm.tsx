@@ -173,6 +173,7 @@ export const SecretReminderForm = ({
       webhookUrl: "",
       url: "",
       signingSecret: "",
+      headers: [],
       integrationKey: ""
     }),
     [currentProject.id]

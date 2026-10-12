@@ -1,6 +1,6 @@
-import { ReactElement, useState } from "react";
-import { Controller, useFormContext, UseFormRegisterReturn, useWatch } from "react-hook-form";
-import { EyeIcon, EyeOffIcon, SendIcon, TrashIcon } from "lucide-react";
+import { ReactElement } from "react";
+import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { SendIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -11,10 +11,6 @@ import {
   FieldLabel,
   IconButton,
   Input,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
   Label,
   Toggle
 } from "@app/components/v3";
@@ -30,6 +26,8 @@ import {
 
 import { getChannelIcon } from "./channelIcons";
 import { ChannelRecipientsField } from "./ChannelRecipientsField";
+import { ChannelSecretInput } from "./ChannelSecretInput";
+import { WebhookHeadersField } from "./WebhookHeadersField";
 
 export type TChannelRecipientsRenderProps = {
   value: TAlertChannelRecipient[];
@@ -49,41 +47,6 @@ type Props = {
 };
 
 const KEEP_PLACEHOLDER = "•••••••• (leave blank to keep)";
-
-const ChannelSecretInput = ({
-  id,
-  placeholder,
-  isError,
-  registration
-}: {
-  id: string;
-  placeholder?: string;
-  isError?: boolean;
-  registration: UseFormRegisterReturn;
-}) => {
-  const [isRevealed, setIsRevealed] = useState(false);
-
-  return (
-    <InputGroup>
-      <InputGroupInput
-        {...registration}
-        id={id}
-        type={isRevealed ? "text" : "password"}
-        placeholder={placeholder}
-        autoComplete="off"
-        aria-invalid={Boolean(isError)}
-      />
-      <InputGroupAddon align="inline-end">
-        <InputGroupButton
-          aria-label={isRevealed ? "Hide value" : "Reveal value"}
-          onClick={() => setIsRevealed((current) => !current)}
-        >
-          {isRevealed ? <EyeOffIcon /> : <EyeIcon />}
-        </InputGroupButton>
-      </InputGroupAddon>
-    </InputGroup>
-  );
-};
 
 export const ChannelCard = ({
   index,
@@ -274,6 +237,7 @@ export const ChannelCard = ({
               <FieldError errors={[channelErrors?.signingSecret]} />
             </FieldContent>
           </Field>
+          <WebhookHeadersField index={index} isExisting={isExisting} />
         </>
       )}
 

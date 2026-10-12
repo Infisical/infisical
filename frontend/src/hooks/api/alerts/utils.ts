@@ -1,5 +1,7 @@
 import { AlertChannelType, TAlert, TAlertChannelInput, TChannelForm } from "./types";
 
+export const ALERT_CHANNEL_REDACTED_VALUE = "******";
+
 export const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm => ({
   id: channel.id,
   channelType: channel.channelType,
@@ -9,6 +11,7 @@ export const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm
   webhookUrl: "",
   url: (channel.config.url as string) ?? "",
   signingSecret: "",
+  headers: (channel.config.headers as TChannelForm["headers"]) ?? [],
   integrationKey: "",
   hasWebhookUrl: Boolean(channel.config.hasWebhookUrl),
   hasSigningSecret: Boolean(channel.config.hasSigningSecret),
@@ -33,7 +36,8 @@ export const toChannelInput = (channel: TChannelForm): TAlertChannelInput => {
         ...base,
         config: {
           url: channel.url,
-          ...(channel.signingSecret ? { signingSecret: channel.signingSecret } : {})
+          ...(channel.signingSecret ? { signingSecret: channel.signingSecret } : {}),
+          ...(channel.headers.length ? { headers: channel.headers } : {})
         }
       };
     case AlertChannelType.PagerDuty:
