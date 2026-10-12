@@ -41,8 +41,7 @@ import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 // eslint-disable-next-line no-control-regex
 const NO_CONTROL_CHARS_RE = /^[^\x00-\x1f\x7f]*$/;
 
-// A stored secret never comes back, so on edit its field starts empty and empty keeps it. A value that is
-// not secret starts filled in, and emptying it is a mistake rather than a way to keep it.
+// A stored value never comes back, so on edit its field starts empty and empty keeps it.
 const buildSchema = (takenKeys: string[], isValueRequired: boolean) =>
   z.object({
     key: z
