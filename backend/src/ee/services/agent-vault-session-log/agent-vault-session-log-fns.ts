@@ -99,10 +99,13 @@ export const isTemporaryAwsError = (error: unknown) => {
   if (!(error instanceof Error)) return false;
   const { $fault, $metadata, code } = error as TAwsError;
   const status = $metadata?.httpStatusCode ?? 0;
+  // A reply the client couldn't parse that isn't a 4xx came from something in the network path, not the settings.
+  const isUnparsedReply = error.name === "Error" && $metadata?.httpStatusCode !== undefined && status < 400;
   return (
     $fault === "server" ||
     status >= 500 ||
     status === 429 ||
+    isUnparsedReply ||
     TEMPORARY_AWS_ERRORS.has(error.name) ||
     NETWORK_ERROR_CODES.has(code ?? "")
   );

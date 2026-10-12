@@ -166,6 +166,16 @@ describe("describeListFailure", () => {
       hint: "S3 isn't responding. Try again in a bit."
     },
     {
+      error: Object.assign(new Error("XML parse error"), { $metadata: { httpStatusCode: 200 } }),
+      isTemporary: true,
+      hint: "S3 isn't responding. Try again in a bit."
+    },
+    {
+      error: Object.assign(new Error("XML parse error"), { $metadata: { httpStatusCode: 403 } }),
+      isTemporary: false,
+      hint: "Check the AWS connection and the bucket settings."
+    },
+    {
       error: Object.assign(new Error("Request aborted"), { name: "AbortError" }),
       isTemporary: true,
       hint: "S3 isn't responding. Try again in a bit."
