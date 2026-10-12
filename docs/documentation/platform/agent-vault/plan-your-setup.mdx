@@ -137,7 +137,7 @@ Configure the following options to get custom guidance and best practices tailor
 </AgentVaultSetupStep>
 
 <AgentVaultSetupStep step="request">
-  The agent calls an API the same way it always does, and the request goes to the proxy with the session token attached instead of a real API key.
+  The agent calls an API the same way it always does, but the request is intercepted by the proxy.
 
   <ul>
     <AgentVaultSetupBranch runs="computer">
@@ -157,7 +157,7 @@ Configure the following options to get custom guidance and best practices tailor
 </AgentVaultSetupStep>
 
 <AgentVaultSetupStep step="fetch">
-  The credentials go from Infisical to the proxy, never to the agent. The proxy checks each session again every [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default).
+  The credentials go from Infisical to the proxy, never to the agent. The proxy checks Infisical for updated values every [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default).
 </AgentVaultSetupStep>
 
 <AgentVaultSetupStep step="forward">

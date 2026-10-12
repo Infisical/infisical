@@ -412,7 +412,14 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
       to: "agent",
       label: selection.model === "orchestrator" ? "Start an agent with the token" : "Start the agent with the token",
     },
-    { id: "request", from: "agent", to: "proxy", label: "API request" },
+    {
+      id: "request",
+      from: "agent",
+      to: "proxy",
+      label: "API request",
+      note: "(e.g. api.github.com)",
+      aimedAt: "api",
+    },
     { id: "fetch", from: "proxy", to: "infisical", label: "Get the session's credentials" },
     { id: "forward", from: "proxy", to: "api", label: "Request with the real credential" },
   ];
@@ -555,10 +562,14 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
               const classes = ["ifx-avsp__arrow"];
               classes.push(to > from ? "ifx-avsp__arrow--right" : "ifx-avsp__arrow--left");
               if (message.reply) classes.push("ifx-avsp__arrow--reply");
+              if (message.aimedAt) classes.push("ifx-avsp__arrow--caught");
               if (start === 0) classes.push("ifx-avsp__arrow--first-lane");
               else if (start + span === laneCount - 1) classes.push("ifx-avsp__arrow--last-lane");
               return (
-                <div key={message.id} className={messageClass(message.id)}>
+                <div
+                  key={message.id}
+                  className={`${messageClass(message.id)}${message.note ? " ifx-avsp__message--noted" : ""}`}
+                >
                   <div
                     className={classes.join(" ")}
                     style={{ left: center(start), width: `${(span / laneCount) * 100}%` }}
@@ -574,6 +585,21 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
                       </button>
                       <span aria-hidden="true">{message.label}</span>
                     </span>
+                    {message.note && (
+                      <span className="ifx-avsp__arrow-note" aria-hidden="true">
+                        {message.note}
+                      </span>
+                    )}
+                    {message.aimedAt && (
+                      <>
+                        <span className="ifx-avsp__arrow-catch" aria-hidden="true" />
+                        <span
+                          className="ifx-avsp__arrow-aim"
+                          style={{ width: `calc(${((laneIndex(message.aimedAt) - to) / span) * 100}% - 4px)` }}
+                          aria-hidden="true"
+                        />
+                      </>
+                    )}
                   </div>
                 </div>
               );
@@ -638,7 +664,7 @@ export const AgentVaultSetupStep = ({ step, children }) => {
       }[model],
       route: `${creator} → Agent`,
     },
-    request: { number: 4, title: "The agent sends an API request", route: "Agent → Proxy" },
+    request: { number: 4, title: "The agent sends an API request", route: "Agent → API (intercepted by proxy)" },
     fetch: { number: 5, title: "The proxy gets the session's credentials", route: "Proxy → Infisical" },
     forward: { number: 6, title: "The proxy sends the request with the real credential", route: "Proxy → API" },
     revoke: {

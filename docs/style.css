@@ -1959,6 +1959,59 @@ a.ifx-card__title:hover .ifx-card__chevron {
   border-right-color: var(--ifx-muted);
 }
 
+.ifx-avsp__message--noted {
+  height: 3.3rem;
+}
+
+.ifx-avsp__message--noted .ifx-avsp__arrow {
+  bottom: 1.4rem;
+}
+
+.ifx-avsp__arrow-note {
+  position: absolute;
+  top: 0.3rem;
+  left: 0;
+  right: 0;
+  color: var(--ifx-muted);
+  font-size: 0.625rem;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.ifx-avsp__arrow-catch {
+  position: absolute;
+  top: -8.5px;
+  right: -1.5px;
+  width: 3px;
+  height: 14px;
+  background-color: var(--ifx-control-text);
+}
+
+.ifx-avsp__arrow--caught::after {
+  display: none;
+}
+
+.ifx-avsp__arrow-aim {
+  position: absolute;
+  top: -1.5px;
+  left: calc(100% + 4px);
+  height: 0;
+  border-top: 1.5px dashed var(--ifx-control-line);
+}
+
+.ifx-avsp__arrow-aim::after {
+  content: "";
+  position: absolute;
+  top: -5px;
+  right: -1px;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 7px solid var(--ifx-control-line);
+}
+
 .ifx-avsp__arrow-label {
   position: absolute;
   bottom: 0.3rem;
