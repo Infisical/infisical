@@ -273,7 +273,6 @@
                   {
                     "group": "Infrastructure",
                     "pages": [
-                      "integrations/platforms/kubernetes-injector",
                       "integrations/platforms/ecs-with-agent",
                       "integrations/platforms/ansible",
                       "integrations/platforms/apache-airflow",
@@ -281,7 +280,6 @@
                       "integrations/platforms/aws/lambda",
                       "integrations/external/backstage",
                       "integrations/cicd/bitbucket",
-                      "integrations/platforms/kubernetes-csi",
                       "integrations/platforms/docker",
                       "integrations/cicd/githubactions",
                       "integrations/cicd/gitlab",
@@ -289,27 +287,35 @@
                       "integrations/platforms/infisical-proxy",
                       "integrations/cicd/jenkins",
                       {
-                        "group": "Kubernetes Operator",
-                        "root": "integrations/platforms/kubernetes/overview",
+                        "group": "Kubernetes",
+                        "root": "integrations/platforms/kubernetes",
                         "pages": [
-                          "documentation/guides/kubernetes-operator",
                           {
-                            "group": "V2",
-                            "tag": "RECOMMENDED",
+                            "group": "Operator",
+                            "root": "integrations/platforms/kubernetes/overview",
                             "pages": [
-                              "integrations/platforms/kubernetes/infisical-connection-crd",
-                              "integrations/platforms/kubernetes/infisical-auth-crd",
-                              "integrations/platforms/kubernetes/infisical-static-secret-crd"
+                              "documentation/guides/kubernetes-operator",
+                              {
+                                "group": "V2",
+                                "tag": "RECOMMENDED",
+                                "pages": [
+                                  "integrations/platforms/kubernetes/infisical-connection-crd",
+                                  "integrations/platforms/kubernetes/infisical-auth-crd",
+                                  "integrations/platforms/kubernetes/infisical-static-secret-crd"
+                                ]
+                              },
+                              {
+                                "group": "V1",
+                                "pages": [
+                                  "integrations/platforms/kubernetes/infisical-secret-crd",
+                                  "integrations/platforms/kubernetes/infisical-push-secret-crd",
+                                  "integrations/platforms/kubernetes/infisical-dynamic-secret-crd"
+                                ]
+                              }
                             ]
                           },
-                          {
-                            "group": "V1",
-                            "pages": [
-                              "integrations/platforms/kubernetes/infisical-secret-crd",
-                              "integrations/platforms/kubernetes/infisical-push-secret-crd",
-                              "integrations/platforms/kubernetes/infisical-dynamic-secret-crd"
-                            ]
-                          }
+                          "integrations/platforms/kubernetes-injector",
+                          "integrations/platforms/kubernetes-csi"
                         ]
                       },
                       "integrations/external/microsoft-power-apps",
