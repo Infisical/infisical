@@ -28,13 +28,17 @@ const getAgentVaultOrgIdFromPath = () =>
 
 // Products users experience as a single app rather than something they pick a project for
 // (ProjectSelect hides itself for both), so the copy names the product instead of "this project".
-// Cert Manager still carries a $projectId in its route for legacy multi-instance orgs.
+// Cert Manager and Secret Scanning still carry a $projectId in their routes for legacy multi-instance orgs.
 const PRODUCTS = [
   { pattern: /\/organizations\/[^/]+\/pam(\/|$)/, name: "Privileged Access Manager" },
   { pattern: /\/organizations\/[^/]+\/agent-vault(\/|$)/, name: "Agent Vault" },
   {
     pattern: /\/organizations\/[^/]+\/projects\/cert-manager(\/|$)/,
     name: "Certificate Manager"
+  },
+  {
+    pattern: /\/organizations\/[^/]+\/projects\/secret-scanning(\/|$)/,
+    name: "Secret Scanning"
   }
 ];
 

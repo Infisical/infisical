@@ -38,7 +38,10 @@ import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance"
 import { useOrgAdminAccessProject } from "@app/hooks/api/orgAdmin/mutation";
 import { resolvePamProjectId } from "@app/hooks/api/pam/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
-import { fetchSecretScanningProjectId } from "@app/hooks/api/secretScanningV2/queries";
+import {
+  fetchSecretScanningProjectId,
+  useGetSecretScanningInstanceState
+} from "@app/hooks/api/secretScanningV2/queries";
 
 type ActiveProducts = ProjectType;
 
@@ -185,6 +188,22 @@ export const ProjectCategoryOverview = () => {
     !isOrgAdmin &&
     !canRequestAccess &&
     !isAgentVaultMember;
+
+  const { data: secretScanningInstance } = useGetSecretScanningInstanceState(currentOrg?.id ?? "");
+  const activeSecretScanningProjectId = secretScanningInstance?.activeProjectId ?? null;
+  const isSecretScanningMember = useMemo(
+    () =>
+      Boolean(
+        activeSecretScanningProjectId &&
+          projects.some((project) => project.id === activeSecretScanningProjectId)
+      ),
+    [activeSecretScanningProjectId, projects]
+  );
+  const isSecretScanningAccessBlocked =
+    Boolean(activeSecretScanningProjectId) &&
+    !isOrgAdmin &&
+    !canRequestAccess &&
+    !isSecretScanningMember;
 
   const certManagerActiveProjectId = useMemo(() => {
     const cookieValue = currentOrg?.id ? getCertManagerActiveProjectCookie(currentOrg.id) : null;
@@ -585,7 +604,8 @@ export const ProjectCategoryOverview = () => {
           const isAccessBlocked =
             (type === ProjectType.CertificateManager && isCertManagerAccessBlocked) ||
             (type === ProjectType.PAM && isPamAccessBlocked) ||
-            (type === ProjectType.AgentVault && isAgentVaultAccessBlocked);
+            (type === ProjectType.AgentVault && isAgentVaultAccessBlocked) ||
+            (type === ProjectType.SecretScanning && isSecretScanningAccessBlocked);
 
           if (isAccessBlocked) {
             return (
