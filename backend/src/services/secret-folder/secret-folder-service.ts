@@ -627,22 +627,28 @@ export const secretFolderServiceFactory = ({
     tx?: Knex;
   }) => {
     let targetFolder = await folderDAL
-      .findOne({
-        envId: env.id,
-        name: idOrName,
-        parentId,
-        isReserved: false
-      })
+      .findOne(
+        {
+          envId: env.id,
+          name: idOrName,
+          parentId,
+          isReserved: false
+        },
+        tx
+      )
       .catch(() => null);
 
     if (!targetFolder && uuidValidate(idOrName)) {
       targetFolder = await folderDAL
-        .findOne({
-          envId: env.id,
-          id: idOrName,
-          parentId,
-          isReserved: false
-        })
+        .findOne(
+          {
+            envId: env.id,
+            id: idOrName,
+            parentId,
+            isReserved: false
+          },
+          tx
+        )
         .catch(() => null);
     }
 
@@ -651,10 +657,10 @@ export const secretFolderServiceFactory = ({
     }
 
     // get environment root folder (as it's needed to get all folders under it)
-    const rootFolder = await folderDAL.findBySecretPath(projectId, env.slug, "/");
+    const rootFolder = await folderDAL.findBySecretPath(projectId, env.slug, "/", tx);
     if (!rootFolder) throw new NotFoundError({ message: `Root folder not found` });
     // get all folders under environment root folder
-    const folderPaths = await folderDAL.findByEnvsDeep({ parentIds: [rootFolder.id] });
+    const folderPaths = await folderDAL.findByEnvsDeep({ parentIds: [rootFolder.id] }, tx);
 
     // create a map of folders by parent id
     const normalizeKey = (key: string | null | undefined): string => key ?? "root";
@@ -707,7 +713,8 @@ export const secretFolderServiceFactory = ({
 
     // get secrets under the given folders
     const secrets = await secretV2BridgeDAL.findByFolderIds({
-      folderIds: folderPolicyPaths.map((p) => p.id)
+      folderIds: folderPolicyPaths.map((p) => p.id),
+      tx
     });
 
     for await (const folderPolicyPath of folderPolicyPaths) {
@@ -769,22 +776,28 @@ export const secretFolderServiceFactory = ({
       await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, tx });
 
       let folderToDelete = await folderDAL
-        .findOne({
-          envId: env.id,
-          name: idOrName,
-          parentId: parentFolder.id,
-          isReserved: false
-        })
+        .findOne(
+          {
+            envId: env.id,
+            name: idOrName,
+            parentId: parentFolder.id,
+            isReserved: false
+          },
+          tx
+        )
         .catch(() => null);
 
       if (!folderToDelete && uuidValidate(idOrName)) {
         folderToDelete = await folderDAL
-          .findOne({
-            envId: env.id,
-            id: idOrName,
-            parentId: parentFolder.id,
-            isReserved: false
-          })
+          .findOne(
+            {
+              envId: env.id,
+              id: idOrName,
+              parentId: parentFolder.id,
+              isReserved: false
+            },
+            tx
+          )
           .catch(() => null);
       }
 
@@ -798,13 +811,13 @@ export const secretFolderServiceFactory = ({
           message: `Cannot delete folder "${folderToDelete.name}" because it contains resources. Use forceDelete=true to delete it forcefully.`,
           name: "deleteFolder"
         });
-        const secretV2 = await secretV2BridgeDAL.findOne({ folderId: folderToDelete.id }).catch(() => null);
+        const secretV2 = await secretV2BridgeDAL.findOne({ folderId: folderToDelete.id }, tx).catch(() => null);
         if (secretV2) throw error;
 
-        const dynamicSecret = await dynamicSecretDAL.findOne({ folderId: folderToDelete.id }).catch(() => null);
+        const dynamicSecret = await dynamicSecretDAL.findOne({ folderId: folderToDelete.id }, tx).catch(() => null);
         if (dynamicSecret) throw error;
 
-        const subfolder = await folderDAL.findOne({ parentId: folderToDelete.id }).catch(() => null);
+        const subfolder = await folderDAL.findOne({ parentId: folderToDelete.id }, tx).catch(() => null);
         if (subfolder) throw error;
       }
 
@@ -1434,7 +1447,7 @@ export const secretFolderServiceFactory = ({
       const deletedFolders = [];
 
       for (const [environment, envFolders] of Object.entries(foldersByEnv)) {
-        const env = await projectEnvDAL.findOne({ projectId, slug: environment });
+        const env = await projectEnvDAL.findOne({ projectId, slug: environment }, tx);
         if (!env) {
           throw new NotFoundError({
             message: `Environment with slug '${environment}' not found`
@@ -1454,22 +1467,28 @@ export const secretFolderServiceFactory = ({
           await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, tx });
 
           let folderToDelete = await folderDAL
-            .findOne({
-              envId: env.id,
-              name: idOrName,
-              parentId: parentFolder.id,
-              isReserved: false
-            })
+            .findOne(
+              {
+                envId: env.id,
+                name: idOrName,
+                parentId: parentFolder.id,
+                isReserved: false
+              },
+              tx
+            )
             .catch(() => null);
 
           if (!folderToDelete && uuidValidate(idOrName)) {
             folderToDelete = await folderDAL
-              .findOne({
-                envId: env.id,
-                id: idOrName,
-                parentId: parentFolder.id,
-                isReserved: false
-              })
+              .findOne(
+                {
+                  envId: env.id,
+                  id: idOrName,
+                  parentId: parentFolder.id,
+                  isReserved: false
+                },
+                tx
+              )
               .catch(() => null);
           }
 
