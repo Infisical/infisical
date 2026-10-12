@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
+import { updateChefDataBagItem } from "@app/ee/services/app-connections/chef";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 
 import { chefPreSaveTransformDestinationConfig, ChefSyncFns } from "./chef-sync-fns";
@@ -146,6 +147,30 @@ describe("ChefSyncFns encrypted data bags", () => {
       )
     ).rejects.toThrow("Encryption is turned on for this sync");
     expect(store.item).toEqual({ id: "fixture", A: "1" });
+  });
+
+  test.each<[string, string | undefined, string]>([
+    ["no data bag secret", undefined, 'Chef data bag item "app/fixture" is encrypted'],
+    ["a wrong data bag secret", "wrong-secret", 'Couldn\'t decrypt value "DB_PASSWORD"']
+  ])("doesn't write an encrypted item when the connection has %s", async (_, dataBagSecret, error) => {
+    store.item = KNIFE_ENCRYPTED_ITEM;
+    vi.mocked(updateChefDataBagItem).mockClear();
+    const secretSync = makeSync({ shouldEncryptSecrets: true, dataBagSecret });
+
+    await expect(
+      ChefSyncFns.syncSecrets(secretSync, makePayload({ FEATURE_FLAG: "on" }), gatewayV2Service, gatewayPoolService)
+    ).rejects.toThrow(error);
+    await expect(
+      ChefSyncFns.removeSecrets(
+        secretSync,
+        makePayload({ MULTILINE: "line1\nline2" }),
+        gatewayV2Service,
+        gatewayPoolService
+      )
+    ).rejects.toThrow(error);
+
+    expect(updateChefDataBagItem).not.toHaveBeenCalled();
+    expect(store.item).toEqual(KNIFE_ENCRYPTED_ITEM);
   });
 });
 
