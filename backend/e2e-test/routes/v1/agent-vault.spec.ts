@@ -3542,20 +3542,26 @@ describe("Agent Vault V1 Router", async () => {
             })
           )
         );
-        await pollUntil({
-          describe: "both demotions to wait on the last-admin lock",
-          read: async () =>
-            Number(
-              (
-                (await testDb.raw(
-                  "SELECT count(*) AS waiting FROM pg_locks WHERE locktype = 'advisory' AND NOT granted"
-                )) as { rows: { waiting: string }[] }
-              ).rows[0].waiting
-            ),
-          done: (waiting) => waiting >= 2
-        });
-        releaseLock();
-        await holder;
+        // Released in finally: a poll that times out would otherwise leave the lock held and the queued
+        // requests blocked, hanging the run instead of failing the test.
+        try {
+          await pollUntil({
+            describe: "both demotions to wait on the last-admin lock",
+            read: async () =>
+              Number(
+                (
+                  (await testDb.raw(
+                    "SELECT count(*) AS waiting FROM pg_locks WHERE locktype = 'advisory' AND NOT granted"
+                  )) as { rows: { waiting: string }[] }
+                ).rows[0].waiting
+              ),
+            done: (waiting) => waiting >= 2
+          });
+        } finally {
+          releaseLock();
+          await holder;
+          await Promise.allSettled([pending]);
+        }
         const results = await pending;
         expect(results.map((res) => res.statusCode).sort()).toEqual([200, 400]);
         const refused = results.find((res) => res.statusCode === 400)!;
