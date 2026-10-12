@@ -61,13 +61,6 @@ const setUpProduct = async (product: SignupProductType): Promise<Project | undef
       });
       return data.project;
     }
-    case ProjectType.SecretScanning: {
-      const { data } = await createWorkspace({
-        projectName: "Secret Scanning",
-        type: ProjectType.SecretScanning
-      });
-      return data.project;
-    }
     default: {
       const { data } = await createWorkspace({
         projectName: EXAMPLE_PROJECT_NAME,
