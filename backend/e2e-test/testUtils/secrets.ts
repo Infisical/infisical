@@ -59,6 +59,7 @@ type TUpdateSecretV2Dto = {
   value?: string;
   newKey?: string;
   comment?: string;
+  reminder?: { repeatDays: number; note?: string; recipients?: string[] };
   authToken: string;
   type?: SecretType;
 };
@@ -78,7 +79,10 @@ export const updateSecretV2 = (dto: TUpdateSecretV2Dto) =>
         secretPath: dto.secretPath,
         secretValue: dto.value,
         newSecretName: dto.newKey,
-        secretComment: dto.comment
+        secretComment: dto.comment,
+        secretReminderRepeatDays: dto.reminder?.repeatDays,
+        secretReminderNote: dto.reminder?.note,
+        secretReminderRecipients: dto.reminder?.recipients
       }
     },
     parseSecret

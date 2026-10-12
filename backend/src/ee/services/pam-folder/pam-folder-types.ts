@@ -28,4 +28,10 @@ export type TListPamFoldersDTO = {
   search?: string;
   onlyAccessible?: boolean;
   filterByAction?: ResourcePermissionPamResourceActions;
+  includeNonMemberFolders?: boolean;
+};
+
+export type TGrantPamFolderAdminAccessDTO = {
+  folderId: string;
+  projectId: string;
 };

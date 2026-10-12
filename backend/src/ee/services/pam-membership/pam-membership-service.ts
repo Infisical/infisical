@@ -60,6 +60,7 @@ type TPamMembershipServiceFactoryDep = {
     | "deleteById"
     | "findResourceMembershipsForActor"
     | "findResourceMembershipsForActors"
+    | "lockById"
     | "transaction"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
@@ -895,6 +896,7 @@ export const pamMembershipServiceFactory = ({
     let sendSessionCancellations: () => void = () => {};
 
     await membershipDAL.transaction(async (tx) => {
+      await membershipDAL.lockById(membership.id, tx);
       await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
       await membershipDAL.deleteById(membership.id, tx);
 
@@ -978,6 +980,7 @@ export const pamMembershipServiceFactory = ({
     let sendSessionCancellations: () => void = () => {};
 
     await membershipDAL.transaction(async (tx) => {
+      await membershipDAL.lockById(membership.id, tx);
       await membershipRoleDAL.delete({ membershipId: membership.id }, tx);
       await membershipDAL.deleteById(membership.id, tx);
 

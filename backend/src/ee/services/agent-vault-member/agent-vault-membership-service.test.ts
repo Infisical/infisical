@@ -14,6 +14,7 @@ const IDENTITY_ID = "identity-1";
 const GROUP_ID = "group-1";
 const OTHER_USER_ID = "user-2";
 const THIRD_USER_ID = "user-3";
+const INSERTED_AT = new Date("2026-01-01T00:00:00Z");
 
 const addIds = { userIds: [], groupIds: [], machineIdentityIds: [IDENTITY_ID], emails: [] };
 
@@ -84,7 +85,7 @@ const buildService = ({
       // adminMembershipIds still decides whether the guard lets the write through.
       transaction: vi.fn((cb: (tx: unknown) => unknown) => Promise.resolve(cb(buildTx(adminMembershipIds.length)))),
       insertMany: vi.fn((rows: Record<string, unknown>[]) =>
-        Promise.resolve(rows.map((row) => ({ ...row, id: "mem-new", createdAt: new Date() })))
+        Promise.resolve(rows.map((row) => ({ ...row, id: "mem-new", createdAt: INSERTED_AT })))
       ),
       delete: vi.fn().mockResolvedValue(undefined)
     },
@@ -134,7 +135,11 @@ describe("agentVaultMembership guards", () => {
       ctx
     });
 
-    expect(members[0].id).toBe("mem-new");
+    expect(members[0]).toMatchObject({
+      type: AgentVaultMemberType.MachineIdentity,
+      id: IDENTITY_ID,
+      addedAt: INSERTED_AT
+    });
   });
 
   test("accepts an identity created inside Agent Vault itself", async () => {
@@ -147,7 +152,11 @@ describe("agentVaultMembership guards", () => {
       ctx
     });
 
-    expect(members[0].id).toBe("mem-new");
+    expect(members[0]).toMatchObject({
+      type: AgentVaultMemberType.MachineIdentity,
+      id: IDENTITY_ID,
+      addedAt: INSERTED_AT
+    });
   });
 
   // Removing only the membership would leave the identity live but off every screen: this product's tab
@@ -189,7 +198,7 @@ describe("agentVaultMembership guards", () => {
       ctx
     });
 
-    expect(members[0].id).toBe("mem-new");
+    expect(members[0]).toMatchObject({ type: AgentVaultMemberType.Group, id: GROUP_ID, addedAt: INSERTED_AT });
     expect(deps.membershipDAL.find).toHaveBeenCalledWith(
       expect.objectContaining({ scope: AccessScope.Organization, $in: { actorGroupId: [GROUP_ID] } })
     );

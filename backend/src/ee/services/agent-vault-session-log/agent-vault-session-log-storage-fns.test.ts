@@ -1,6 +1,7 @@
 import { STSServiceException } from "@aws-sdk/client-sts";
 import { describe, expect, test, vi } from "vitest";
 
+import { ProjectType } from "@app/db/schemas";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 
@@ -15,6 +16,7 @@ vi.mock("@app/services/app-connection/app-connection-fns", () => ({
 vi.mock("@app/services/app-connection/aws/aws-connection-fns", () => ({
   getAwsConnectionConfig: vi.fn()
 }));
+vi.mock("@app/lib/aws/s3", () => ({ createS3Bucket: vi.fn(() => ({})) }));
 
 describe("buildSessionLogStorage", () => {
   const config = { appConnectionId: "conn-1", bucket: "logs", region: AWSRegion.US_EAST_1, keyPrefix: null };
@@ -39,6 +41,26 @@ describe("buildSessionLogStorage", () => {
       message:
         "Couldn't use the AWS connection 'prod-logs' for session logs: User is not authorized to perform: sts:AssumeRole"
     });
+  });
+
+  test("assumes the role with Agent Vault's External ID, for its own connections too", async () => {
+    vi.mocked(getAwsConnectionConfig).mockClear();
+    vi.mocked(getAwsConnectionConfig).mockResolvedValueOnce({
+      region: AWSRegion.US_EAST_1,
+      credentials: { accessKeyId: "access-key", secretAccessKey: "secret-key", sessionToken: undefined }
+    });
+    vi.mocked(deps.appConnectionDAL.findById).mockResolvedValueOnce({
+      id: "conn-1",
+      name: "av-logs",
+      orgId: "org-1",
+      projectId: "av-proj",
+      app: AppConnection.AWS
+    } as never);
+    await buildSessionLogStorage(config, "org-1", deps);
+    expect(getAwsConnectionConfig).toHaveBeenCalledWith(
+      expect.objectContaining({ projectType: ProjectType.AgentVault }),
+      config.region
+    );
   });
 
   test("keeps anything that is not from AWS out of the message", async () => {

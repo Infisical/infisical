@@ -3,11 +3,16 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TAlerts } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
-import { AlertTriggerType } from "./alert-types";
+import { AlertChannelType } from "./alert-channel-types";
+import { AlertPrincipalType, AlertTriggerType } from "./alert-types";
 
 export type TAlertDALFactory = ReturnType<typeof alertDALFactory>;
+
+export type TAlertWithChannels = TAlerts & {
+  channels: { id: string; name: string; channelType: string; enabled: boolean }[];
+};
 
 export const alertDALFactory = (db: TDbClient) => {
   const alertOrm = ormify(db, TableName.Alert);
@@ -99,9 +104,13 @@ export const alertDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findActiveById = async (id: string, tx?: Knex): Promise<TAlerts | undefined> => {
+  const findActiveById = async (
+    id: string,
+    { readFromPrimary = false }: { readFromPrimary?: boolean } = {},
+    tx?: Knex
+  ): Promise<TAlerts | undefined> => {
     try {
-      const alert = await (tx || db.replicaNode())(TableName.Alert)
+      const alert = await (tx || (readFromPrimary ? db : db.replicaNode()))(TableName.Alert)
         .leftJoin(TableName.Project, `${TableName.Alert}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Alert}.id`, id)
         .whereNull(`${TableName.Project}.deleteAfter`)
@@ -111,6 +120,29 @@ export const alertDALFactory = (db: TDbClient) => {
       return alert as TAlerts | undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "FindActiveById" });
+    }
+  };
+
+  const findByIdForUpdate = async (id: string, tx: Knex): Promise<TAlerts | undefined> => {
+    try {
+      const alert = await tx(TableName.Alert).where({ id }).forUpdate().first();
+      return alert as TAlerts | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindByIdForUpdate" });
+    }
+  };
+
+  // Bumps updatedAt (the alert's version) for a save that changed only its channels.
+  const touchById = async (id: string, tx: Knex): Promise<TAlerts> => {
+    try {
+      // Typed as the row because the table's update type excludes updatedAt. The trigger sets it either way.
+      const [alert] = await tx<TAlerts>(TableName.Alert)
+        .where({ id })
+        .update({ updatedAt: tx.fn.now() })
+        .returning("*");
+      return alert as TAlerts;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "TouchById" });
     }
   };
 
@@ -189,11 +221,137 @@ export const alertDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Principals on a resource's alert channels of one type, without loading or decrypting the channels.
+  const findRecipientsForResources = async (
+    {
+      resourceType,
+      resourceIds,
+      channelType,
+      principalType
+    }: {
+      resourceType: string;
+      resourceIds: string[];
+      channelType: AlertChannelType;
+      principalType: AlertPrincipalType;
+    },
+    tx?: Knex
+  ): Promise<{ resourceId: string; principalId: string }[]> => {
+    if (resourceIds.length === 0) return [];
+    try {
+      const rows = await (tx || db.replicaNode())(TableName.Alert)
+        .where(`${TableName.Alert}.resourceType`, resourceType)
+        .whereIn(`${TableName.Alert}.resourceId`, resourceIds)
+        .join(TableName.AlertChannelMembership, `${TableName.Alert}.id`, `${TableName.AlertChannelMembership}.alertId`)
+        .join(TableName.AlertChannel, `${TableName.AlertChannelMembership}.channelId`, `${TableName.AlertChannel}.id`)
+        .where(`${TableName.AlertChannel}.channelType`, channelType)
+        .join(
+          TableName.AlertChannelRecipient,
+          `${TableName.AlertChannel}.id`,
+          `${TableName.AlertChannelRecipient}.channelId`
+        )
+        .where(`${TableName.AlertChannelRecipient}.principalType`, principalType)
+        .distinct(
+          db.ref("resourceId").withSchema(TableName.Alert).as("resourceId"),
+          db.ref("principalId").withSchema(TableName.AlertChannelRecipient).as("principalId")
+        );
+      return rows as { resourceId: string; principalId: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindRecipientsForResources" });
+    }
+  };
+
+  // Each alert on these resources with its channels' ids, names, types and enabled flags, without
+  // decrypting any channel config. Reads the primary: prepareAlertForResource decides between creating
+  // and updating on this, and a replica that has not yet seen a new alert would send it into the unique
+  // index.
+  const findWithChannelsForResources = async (
+    { resourceType, resourceIds }: { resourceType: string; resourceIds: string[] },
+    tx?: Knex
+  ): Promise<TAlertWithChannels[]> => {
+    if (resourceIds.length === 0) return [];
+    try {
+      const rows = await (tx || db)(TableName.Alert)
+        .where(`${TableName.Alert}.resourceType`, resourceType)
+        .whereIn(`${TableName.Alert}.resourceId`, resourceIds)
+        .leftJoin(
+          TableName.AlertChannelMembership,
+          `${TableName.Alert}.id`,
+          `${TableName.AlertChannelMembership}.alertId`
+        )
+        .leftJoin(
+          TableName.AlertChannel,
+          `${TableName.AlertChannelMembership}.channelId`,
+          `${TableName.AlertChannel}.id`
+        )
+        .select(selectAllTableCols(TableName.Alert))
+        .select(
+          db.ref("id").withSchema(TableName.AlertChannel).as("channelId"),
+          db.ref("name").withSchema(TableName.AlertChannel).as("channelName"),
+          db.ref("channelType").withSchema(TableName.AlertChannel),
+          db.ref("enabled").withSchema(TableName.AlertChannel).as("channelEnabled")
+        )
+        .orderBy(`${TableName.AlertChannel}.createdAt`, "asc");
+
+      return sqlNestRelationships({
+        data: rows,
+        key: "id",
+        parentMapper: ({ channelId, channelName, channelType, channelEnabled, ...alert }) => alert as TAlerts,
+        childrenMapper: [
+          {
+            key: "channelId",
+            label: "channels" as const,
+            mapper: ({ channelId, channelName, channelType, channelEnabled }) => ({
+              id: channelId,
+              name: channelName,
+              channelType,
+              enabled: channelEnabled
+            })
+          }
+        ]
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindWithChannelsForResources" });
+    }
+  };
+
+  // The resource ids of alerts whose resource row no longer exists in `resourceTable`. alerts.resourceId has
+  // no foreign key, so a resource deleted by a cascade (eg a folder deletion removing its secrets) leaves its
+  // alerts behind; this is how its owner finds them.
+  const findOrphanedResourceIds = async (
+    { resourceType, resourceTable, limit }: { resourceType: string; resourceTable: TableName; limit: number },
+    tx?: Knex
+  ): Promise<string[]> => {
+    try {
+      const rows = (await (tx || db.replicaNode())(TableName.Alert)
+        .where(`${TableName.Alert}.resourceType`, resourceType)
+        .whereNotNull(`${TableName.Alert}.resourceId`)
+        .whereNotExists((qb) => {
+          void qb
+            .select(db.raw("1"))
+            .from(resourceTable)
+            // The CASE keeps a non-uuid resourceId from failing the cast for the whole query.
+            .whereRaw(
+              `"${resourceTable}"."id" = CASE WHEN "${TableName.Alert}"."resourceId" ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN "${TableName.Alert}"."resourceId"::uuid END`
+            );
+        })
+        .limit(limit)
+        .select(`${TableName.Alert}.resourceId`)) as { resourceId: string }[];
+      return rows.map((row) => row.resourceId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindOrphanedResourceIds" });
+    }
+  };
+
   return {
     ...alertOrm,
+    findOrphanedResourceIds,
+    findWithChannelsForResources,
+    findRecipientsForResources,
     findEnabledByResourceType,
     findEnabledForEvent,
     findActiveById,
+    findByIdForUpdate,
+    touchById,
     findActiveByScope,
     findByChannelId,
     findScopedDuplicate

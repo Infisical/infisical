@@ -18,6 +18,7 @@ import { ChefSyncDestinationSection } from "./ChefSyncDestinationSection";
 import { CircleCISyncDestinationSection } from "./CircleCISyncDestinationSection";
 import { Cloud66SyncDestinationSection } from "./Cloud66SyncDestinationSection";
 import { CloudflarePagesSyncDestinationSection } from "./CloudflarePagesSyncDestinationSection";
+import { CloudflareSecretsStoreSyncDestinationSection } from "./CloudflareSecretsStoreSyncDestinationSection";
 import { CloudflareWorkersSyncDestinationSection } from "./CloudflareWorkersSyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
 import { DevinSyncDestinationSection } from "./DevinSyncDestinationSection";
@@ -31,6 +32,7 @@ import { HasuraCloudSyncDestinationSection } from "./HasuraCloudSyncDestinationS
 import { HCVaultSyncDestinationSection } from "./HCVaultSyncDestinationSection";
 import { HerokuSyncDestinationSection } from "./HerokuSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
+import { KeeperSyncDestinationSection } from "./KeeperSyncDestinationSection";
 import { LaravelForgeSyncDestinationSection } from "./LaravelForgeSyncDestinationSection";
 import { NetlifySyncDestinationSection } from "./NetlifySyncDestinationSection";
 import { NorthflankSyncDestinationSection } from "./NorthflankSyncDestinationSection";
@@ -135,6 +137,11 @@ export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
     case SecretSync.CloudflareWorkers:
       DestinationComponents = <CloudflareWorkersSyncDestinationSection secretSync={secretSync} />;
       break;
+    case SecretSync.CloudflareSecretsStore:
+      DestinationComponents = (
+        <CloudflareSecretsStoreSyncDestinationSection secretSync={secretSync} />
+      );
+      break;
     case SecretSync.Zabbix:
       DestinationComponents = <ZabbixSyncDestinationSection secretSync={secretSync} />;
       break;
@@ -208,6 +215,9 @@ export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
       break;
     case SecretSync.Daytona:
       // The connection is the whole destination; it is already shown above.
+      break;
+    case SecretSync.Keeper:
+      DestinationComponents = <KeeperSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.Cloud66:
       DestinationComponents = <Cloud66SyncDestinationSection secretSync={secretSync} />;

@@ -132,7 +132,6 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
       comment: el.secretComment || "",
       reminderRepeatDays: el.secretReminderRepeatDays,
       reminderNote: el.secretReminderNote,
-      secretReminderRecipients: el.secretReminderRecipients,
       createdAt: el.createdAt,
       updatedAt: el.updatedAt,
       version: el.version,
