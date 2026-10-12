@@ -65,7 +65,6 @@ type Props = {
   environments: { name: string; slug: string }[];
   isHoneyTokenInEnv: (name: string, env: string) => boolean;
   getHoneyTokenByName: (slug: string, name: string) => TDashboardHoneyToken | undefined;
-  tableWidth: number;
   onEdit: (honeyToken: TDashboardHoneyToken) => void;
   onRevoke: (honeyToken: TDashboardHoneyToken) => void;
   onViewDetails: (honeyToken: TDashboardHoneyToken) => void;
@@ -76,7 +75,6 @@ export const HoneyTokenTableRow = ({
   environments = [],
   isHoneyTokenInEnv,
   getHoneyTokenByName,
-  tableWidth,
   onEdit,
   onRevoke,
   onViewDetails
@@ -366,10 +364,7 @@ export const HoneyTokenTableRow = ({
       {!isSingleEnvView && isExpanded && (
         <TableRow className="border-0 hover:bg-transparent">
           <TableCell colSpan={totalCols} className="border-0 p-0">
-            <div
-              style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 border-y border-border"
-            >
+            <div className="sticky left-0 max-w-(--overview-table-width) min-w-(--overview-table-width) border-y border-border">
               <Table
                 className="w-full min-w-[calc(var(--name-column-width,180px)+24rem)] table-fixed"
                 containerClassName="rounded-none border-0"

@@ -1,8 +1,9 @@
 import { Folder } from "lucide-react";
 
-import { TableCell, TableRow } from "@app/components/v3";
+import { Badge, TableCell, TableRow } from "@app/components/v3";
 import {
   PamAccountType,
+  PamFolderCallerAccess,
   TAccessiblePamAccount,
   TPamAccountListItem,
   TPamFolderWithCount
@@ -27,6 +28,7 @@ type Props = {
   onOpenFolder: (tab?: PamSheetTab) => void;
   onFolderAddAccount: () => void;
   onFolderDelete: () => void;
+  onFolderJoinAsAdmin: () => void;
 };
 
 export const FolderAccountRows = ({
@@ -42,20 +44,32 @@ export const FolderAccountRows = ({
   onDeleteAccount,
   onOpenFolder,
   onFolderAddAccount,
-  onFolderDelete
+  onFolderDelete,
+  onFolderJoinAsAdmin
 }: Props) => {
   const count = accounts ? accounts.length : folder.accountCount;
+  // Only org admins are sent folders they hold no membership on; opening one means joining it.
+  const isNotMember = folder.callerAccess === PamFolderCallerAccess.None;
 
   return (
     <>
-      <TableRow className="cursor-pointer select-none" onClick={onOpenFolderView}>
+      <TableRow
+        className="cursor-pointer select-none"
+        onClick={isNotMember ? onFolderJoinAsAdmin : onOpenFolderView}
+      >
         <TableCell>
           <div className="flex items-center gap-2.5">
             <Folder className="size-5 shrink-0 text-product-pam" />
             <span className="shrink-0 font-medium text-foreground">{folder.name}</span>
-            <span className="shrink-0 text-xs text-muted">({count})</span>
-            {folder.description && (
-              <span className="max-w-md truncate text-muted">{folder.description}</span>
+            {isNotMember ? (
+              <Badge variant="neutral">Not a Member</Badge>
+            ) : (
+              <>
+                <span className="shrink-0 text-xs text-muted">({count})</span>
+                {folder.description && (
+                  <span className="max-w-md truncate text-muted">{folder.description}</span>
+                )}
+              </>
             )}
           </div>
         </TableCell>
@@ -66,6 +80,7 @@ export const FolderAccountRows = ({
               onOpenTab={(tab) => onOpenFolder(tab)}
               onAddAccount={onFolderAddAccount}
               onDelete={onFolderDelete}
+              onJoinAsAdmin={onFolderJoinAsAdmin}
             />
           </div>
         </TableCell>

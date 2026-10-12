@@ -4,7 +4,6 @@ import {
   ArrowRightIcon,
   CircleHelpIcon,
   CircleXIcon,
-  InfoIcon,
   KeyRoundIcon,
   type LucideIcon,
   PlusIcon,
@@ -99,20 +98,11 @@ export const hostPatternFor = (record: TAgentVaultSessionLogRecord) => {
 type Props = {
   record: TAgentVaultSessionLogRecord;
   arrivedAt?: number;
-  proxyName?: string;
-  showProxy: boolean;
   accessBundleName?: string;
   onAddService?: () => void;
 };
 
-export const SessionLogRow = ({
-  record,
-  arrivedAt,
-  proxyName,
-  showProxy,
-  accessBundleName,
-  onAddService
-}: Props) => {
+export const SessionLogRow = ({ record, arrivedAt, accessBundleName, onAddService }: Props) => {
   const [isArriving, setIsArriving] = useState(false);
 
   useEffect(() => {
@@ -160,13 +150,6 @@ export const SessionLogRow = ({
           </TooltipContent>
         </Tooltip>
       </TableCell>
-      {showProxy && (
-        <TableCell className="text-xs text-muted">
-          <span className="block truncate" title={proxyName}>
-            {proxyName}
-          </span>
-        </TableCell>
-      )}
       <TableCell className="font-mono text-xs">{record.method}</TableCell>
       <TableCell>
         {record.service ? (
@@ -225,29 +208,3 @@ export const SessionLogRow = ({
     </TableRow>
   );
 };
-
-export const SessionLogDropRow = ({
-  droppedCount,
-  columnCount
-}: {
-  droppedCount: number;
-  columnCount: number;
-}) => (
-  <TableRow className="bg-neutral/5 hover:bg-neutral/5">
-    <TableCell colSpan={columnCount} className="text-xs text-muted">
-      <span className="flex items-center justify-center gap-2">
-        Something went wrong while recording {droppedCount.toLocaleString()}{" "}
-        {droppedCount === 1 ? "request" : "requests"}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <InfoIcon aria-label="Why these requests are missing" className="size-3.5 shrink-0" />
-          </TooltipTrigger>
-          <TooltipContent className="max-w-sm">
-            These requests went through as normal, but the proxy couldn&apos;t save them to the
-            session log.
-          </TooltipContent>
-        </Tooltip>
-      </span>
-    </TableCell>
-  </TableRow>
-);

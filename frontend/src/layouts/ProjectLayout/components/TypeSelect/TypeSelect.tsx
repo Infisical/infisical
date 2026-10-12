@@ -19,6 +19,7 @@ import {
 import { useGetUserProjects } from "@app/hooks/api";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { useGetSecretScanningInstanceState } from "@app/hooks/api/secretScanningV2";
 import {
   NavbarSwitcher,
   NavbarSwitcherContent,
@@ -188,6 +189,8 @@ export const TypeSelect = () => {
   const { data: projects = [] } = useGetUserProjects();
   const { data: certManagerInstance, isPending: isCertManagerInstancePending } =
     useCertManagerInstanceState();
+  const { currentOrg } = useOrganization();
+  const { data: secretScanningInstance } = useGetSecretScanningInstanceState(currentOrg.id);
 
   if (params.type && !params.projectId) {
     const resolvedType = urlSlugToProjectType(params.type);
@@ -208,15 +211,23 @@ export const TypeSelect = () => {
         (params as { applicationName?: string }).applicationName ?? search.fromApplication;
       const hasApplicationSelect =
         project.type === ProjectType.CertificateManager && Boolean(applicationName);
-      const hasSiblingProjectSelect = project.type !== ProjectType.CertificateManager;
+      const hasSiblingProjectSelect =
+        project.type !== ProjectType.CertificateManager &&
+        project.type !== ProjectType.SecretScanning;
       const isLegacyCertManagerProject =
         project.type === ProjectType.CertificateManager &&
         !isCertManagerInstancePending &&
         certManagerInstance?.activeProjectId !== project.id;
+      const isLegacySecretScanningProject =
+        project.type === ProjectType.SecretScanning &&
+        Boolean(secretScanningInstance?.isMultiInstance) &&
+        secretScanningInstance?.activeProjectId !== project.id;
       return (
         <TypeSelectInner
           currentType={project.type}
-          currentProjectName={isLegacyCertManagerProject ? project.name : undefined}
+          currentProjectName={
+            isLegacyCertManagerProject || isLegacySecretScanningProject ? project.name : undefined
+          }
           showDivider={hasSiblingProjectSelect || hasApplicationSelect}
         />
       );

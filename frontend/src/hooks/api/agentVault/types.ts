@@ -103,11 +103,7 @@ export type TAgentVaultActor =
 
 export type TAgentVaultActorRef = { type: AgentVaultMemberType; id: string };
 
-export type TAgentVaultMember = {
-  id: string;
-  createdAt: string;
-  actor: TAgentVaultActor;
-};
+export type TAgentVaultMember = TAgentVaultActor & { grantedAt: string };
 
 export type TAgentVaultProductActor =
   | (Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }> & {
@@ -119,20 +115,16 @@ export type TAgentVaultProductActor =
     })
   | Extract<TAgentVaultActor, { type: AgentVaultMemberType.Group }>;
 
-export type TAgentVaultProductMember = {
-  id: string;
+export type TAgentVaultProductMember = TAgentVaultProductActor & {
   role: string;
   isActive: boolean;
-  createdAt: string;
-  actor: TAgentVaultProductActor;
+  addedAt: string;
 };
 
-export type TAgentVaultProductMemberOf<T extends AgentVaultMemberType> = Omit<
+export type TAgentVaultProductMemberOf<T extends AgentVaultMemberType> = Extract<
   TAgentVaultProductMember,
-  "actor"
-> & {
-  actor: Extract<TAgentVaultProductActor, { type: T }>;
-};
+  { type: T }
+>;
 
 export type TListAgentVaultProxiesDTO = {
   search?: string;
@@ -164,16 +156,13 @@ export type TAddAgentVaultProductMembersDTO = TAgentVaultActorIdsDTO & {
   role: string;
 };
 
-export type TAgentVaultWrittenMember = {
-  id: string;
-  role: string;
-  createdAt: string;
-  actor: TAgentVaultActorRef;
-};
+export type TAgentVaultWrittenMember = TAgentVaultActorRef & { role: string; addedAt: string };
 
-export type TAgentVaultMemberWriteResult<T> = {
-  members: T[];
-  skipped: (TAgentVaultActorRef & { identifier: string })[];
+export type TAgentVaultGrantedMember = TAgentVaultActorRef & { grantedAt: string };
+
+export type TAgentVaultMemberWriteResult<TMember, TSkipped = TAgentVaultActorRef> = {
+  members: TMember[];
+  skipped: TSkipped[];
 };
 
 export type TAgentVaultAccessBundle = {
@@ -216,7 +205,6 @@ export type TAgentVaultSession = {
   revokedAt: string | null;
   createdAt: string;
   accessBundles: TAgentVaultSessionAccessBundle[];
-  recentSessionLogCounts: { recordedCount: number; droppedCount: number };
 };
 
 export type TAgentVaultMintedSession = {
@@ -312,7 +300,6 @@ export type TAgentVaultSessionLogSettings = {
 };
 
 export type TAgentVaultSessionLogHealth = {
-  isStorageFull: boolean;
   connectionError: string | null;
 };
 
@@ -343,28 +330,14 @@ export type TUpdateAgentVaultSessionLogSettingsDTO = {
 export type TAgentVaultSessionLogChunk = {
   chunkId: string;
   proxyId: string;
-  proxyName: string;
-  startedAt: string;
-  endedAt: string;
-  firstSeq: number;
-  lastSeq: number;
-  recordCount: number;
-  droppedCount: number;
   ciphertextBytes: number;
-  iv: string;
-  ciphertextSha256: string;
-  presignedGetUrl: string | null;
-  createdAt: string;
+  presignedGetUrl: string;
 };
 
 export type TAgentVaultSessionLog = {
   enabled: boolean;
   isRecordable: boolean;
   sessionKey: string | null;
-  storageUnavailable: {
-    reason: "no-connection" | "connection-unusable";
-    message: string | null;
-  } | null;
 };
 
 export type TAgentVaultSessionLogPage = {
@@ -374,12 +347,10 @@ export type TAgentVaultSessionLogPage = {
 
 export type TAgentVaultSessionLogHistoryPage = TAgentVaultSessionLogPage & {
   nextCursor: string | null;
-  liveCursor: string;
 };
 
 export type TAgentVaultSessionLogTailPage = TAgentVaultSessionLogPage & {
   nextCursor: string;
-  hasMore: boolean;
 };
 
 export type TAgentVaultSessionLogRecord = {
@@ -401,26 +372,14 @@ export type TAgentVaultSessionLogGapReason =
   | "missing"
   | "refused"
   | "size"
-  | "altered"
   | "gcm"
   | "json"
-  | "mismatch"
-  | "repointed";
+  | "mismatch";
 
 export type TAgentVaultSessionLogGap = {
-  chunkId: string;
-  proxyId: string;
-  proxyName: string;
-  startedAt: string;
   reason: TAgentVaultSessionLogGapReason;
-  recordCount: number;
-};
-
-export type TAgentVaultSessionLogDrop = {
-  chunkId: string;
-  proxyId: string;
-  startedAt: string;
-  droppedCount: number;
+  // When this browser first saw the chunk on the live tail; null for chunks listed from the bucket.
+  firstSeenAt: number | null;
 };
 
 export type TAgentVaultDecryptedChunk = {

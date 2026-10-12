@@ -17,7 +17,7 @@ import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -27,6 +27,7 @@ import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-
 import { TAzureDnsConnection } from "@app/services/app-connection/azure-dns/azure-dns-connection-types";
 import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
+import { TGcpConnection } from "@app/services/app-connection/gcp/gcp-connection-types";
 import { TPowerDnsConnection } from "@app/services/app-connection/powerdns/powerdns-connection-types";
 import { TUltraDNSConnection } from "@app/services/app-connection/ultradns/ultradns-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
@@ -68,6 +69,11 @@ import {
 import { azureDnsDeleteTxtRecord, azureDnsInsertTxtRecord } from "./dns-providers/azure-dns";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
+import {
+  gcpCloudDnsDeleteTxtRecord,
+  gcpCloudDnsInsertTxtRecord,
+  validateGcpCloudDnsZone
+} from "./dns-providers/gcp-cloud-dns";
 import { powerDnsDeleteTxtRecord, powerDnsInsertTxtRecord, TPowerDnsProviderDeps } from "./dns-providers/powerdns";
 import { ultraDNSDeleteTxtRecord, ultraDNSInsertTxtRecord } from "./dns-providers/ultradns";
 
@@ -288,6 +294,7 @@ const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppConnectio
   [AcmeDnsProvider.DNSMadeEasy]: AppConnection.DNSMadeEasy,
   [AcmeDnsProvider.AzureDNS]: AppConnection.AzureDNS,
   [AcmeDnsProvider.PowerDns]: AppConnection.PowerDns,
+  [AcmeDnsProvider.GcpCloudDns]: AppConnection.GCP,
   [AcmeDnsProvider.UltraDNS]: AppConnection.UltraDNS
 };
 
@@ -462,7 +469,19 @@ export const executeAcmeOrder = async (
 
   await reportProgress("Submitting order to the certificate authority");
 
-  const pem = await acmeClient.auto({
+  const ssrfInterceptorId = acme.axios.interceptors.request.use(async (config) => {
+    if (!config.url) return config;
+    const agent = await buildSsrfSafeAgent(config.url);
+    return {
+      ...config,
+      httpAgent: agent,
+      httpsAgent: agent,
+      maxRedirects: 0,
+      ...(getConfig().SAFE_REQUEST_FORCE_DIRECT_EGRESS && { proxy: false as const })
+    };
+  });
+
+  const order = acmeClient.auto({
     csr,
     email: acmeCa.configuration.accountEmail,
     challengePriority: ["dns-01"],
@@ -529,6 +548,17 @@ export const executeAcmeOrder = async (
             recordName,
             recordValue,
             powerDnsDeps
+          );
+          break;
+        }
+        case AcmeDnsProvider.GcpCloudDns: {
+          await gcpCloudDnsInsertTxtRecord(
+            connection as TGcpConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue,
+            keyStore,
+            abortSignal
           );
           break;
         }
@@ -612,6 +642,16 @@ export const executeAcmeOrder = async (
           );
           break;
         }
+        case AcmeDnsProvider.GcpCloudDns: {
+          await gcpCloudDnsDeleteTxtRecord(
+            connection as TGcpConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue,
+            keyStore
+          );
+          break;
+        }
         case AcmeDnsProvider.UltraDNS: {
           await ultraDNSDeleteTxtRecord(
             connection as TUltraDNSConnection,
@@ -628,6 +668,8 @@ export const executeAcmeOrder = async (
       }
     }
   });
+
+  const pem = await order.finally(() => acme.axios.interceptors.request.eject(ssrfInterceptorId));
 
   if (isCancelled && (await isCancelled())) {
     throw new CertificateRequestCancelledError();
@@ -770,6 +812,10 @@ export const AcmeCertificateAuthorityFns = ({
 
     validateDnsProviderAppConnection(dnsProviderConfig.provider, dnsAppConnectionId, appConnection.app);
 
+    if (dnsProviderConfig.provider === AcmeDnsProvider.GcpCloudDns) {
+      validateGcpCloudDnsZone(dnsProviderConfig.hostedZoneId);
+    }
+
     if (dnsResolver) {
       validateDnsResolver(dnsResolver);
     }
@@ -855,6 +901,10 @@ export const AcmeCertificateAuthorityFns = ({
         }
 
         validateDnsProviderAppConnection(dnsProviderConfig.provider, dnsAppConnectionId, appConnection.app);
+
+        if (dnsProviderConfig.provider === AcmeDnsProvider.GcpCloudDns) {
+          validateGcpCloudDnsZone(dnsProviderConfig.hostedZoneId);
+        }
 
         if (dnsResolver) {
           validateDnsResolver(dnsResolver);

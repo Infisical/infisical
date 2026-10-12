@@ -99,17 +99,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.SecretV2}.id`,
           `${TableName.HoneyTokenSecretMapping}.secretId`
         )
-        .leftJoin(
-          TableName.SecretReminderRecipients,
-          `${TableName.SecretV2}.id`,
-          `${TableName.SecretReminderRecipients}.secretId`
-        )
-        .leftJoin(TableName.Users, `${TableName.SecretReminderRecipients}.userId`, `${TableName.Users}.id`)
         .select(selectAllTableCols(TableName.SecretV2))
-        .select(db.ref("id").withSchema(TableName.SecretReminderRecipients).as("reminderRecipientId"))
-        .select(db.ref("username").withSchema(TableName.Users).as("reminderRecipientUsername"))
-        .select(db.ref("email").withSchema(TableName.Users).as("reminderRecipientEmail"))
-        .select(db.ref("id").withSchema(TableName.Users).as("reminderRecipientUserId"))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
@@ -134,23 +124,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
               color,
               slug,
               name: slug
-            })
-          },
-          {
-            key: "reminderRecipientId",
-            label: "secretReminderRecipients" as const,
-            mapper: ({
-              reminderRecipientId,
-              reminderRecipientUsername,
-              reminderRecipientEmail,
-              reminderRecipientUserId
-            }) => ({
-              user: {
-                id: reminderRecipientUserId,
-                username: reminderRecipientUsername,
-                email: reminderRecipientEmail
-              },
-              id: reminderRecipientId
             })
           }
         ]
@@ -789,8 +762,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           `${TableName.HoneyTokenSecretMapping}.secretId`
         )
         .leftJoin(TableName.Reminder, `${TableName.SecretV2}.id`, `${TableName.Reminder}.secretId`)
-        .leftJoin(TableName.ReminderRecipient, `${TableName.Reminder}.id`, `${TableName.ReminderRecipient}.reminderId`)
-        .leftJoin(TableName.Users, `${TableName.ReminderRecipient}.userId`, `${TableName.Users}.id`)
         .where((qb) => {
           if (filters?.metadataFilter && filters.metadataFilter.length > 0) {
             filters.metadataFilter.forEach((meta) => {
@@ -811,10 +782,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .select(db.ref("message").withSchema(TableName.Reminder).as("reminderNote"))
         .select(db.ref("repeatDays").withSchema(TableName.Reminder).as("reminderRepeatDays"))
         .select(db.ref("nextReminderDate").withSchema(TableName.Reminder).as("nextReminderDate"))
-        .select(db.ref("id").withSchema(TableName.ReminderRecipient).as("reminderRecipientId"))
-        .select(db.ref("username").withSchema(TableName.Users).as("reminderRecipientUsername"))
-        .select(db.ref("email").withSchema(TableName.Users).as("reminderRecipientEmail"))
-        .select(db.ref("id").withSchema(TableName.Users).as("reminderRecipientUserId"))
         .select(db.ref("id").withSchema(TableName.SecretTag).as("tagId"))
         .select(db.ref("color").withSchema(TableName.SecretTag).as("tagColor"))
         .select(db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug"))
@@ -932,23 +899,6 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
           isRotatedSecret: Boolean(el.rotationId)
         }),
         childrenMapper: [
-          {
-            key: "reminderRecipientId",
-            label: "secretReminderRecipients" as const,
-            mapper: ({
-              reminderRecipientId,
-              reminderRecipientUsername,
-              reminderRecipientEmail,
-              reminderRecipientUserId
-            }) => ({
-              user: {
-                id: reminderRecipientUserId,
-                username: reminderRecipientUsername,
-                email: reminderRecipientEmail
-              },
-              id: reminderRecipientId
-            })
-          },
           {
             key: "tagId",
             label: "tags" as const,

@@ -36,7 +36,7 @@ export type NavItem = {
   badgeVariant?: "warning" | "danger" | "pam" | "project";
   /** Full-contrast fill, for counts of new things rather than items needing attention */
   isBadgeSolid?: boolean;
-  dotVariant?: "warning" | "danger";
+  alertVariant?: "warning" | "danger";
   hidden?: boolean;
   submenu?: Submenu;
   /** Query params to append to the link and use for active state matching */

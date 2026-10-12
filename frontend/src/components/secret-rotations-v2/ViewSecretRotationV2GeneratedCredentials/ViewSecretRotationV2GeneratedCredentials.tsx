@@ -11,11 +11,7 @@ import { ViewLdapPasswordRotationGeneratedCredentials } from "@app/components/se
 import { Modal, ModalContent, Spinner } from "@app/components/v2";
 import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
-import {
-  IS_ROTATION_DUAL_CREDENTIALS,
-  SECRET_ROTATION_CONNECTION_MAP,
-  SECRET_ROTATION_MAP
-} from "@app/helpers/secretRotationsV2";
+import { IS_ROTATION_DUAL_CREDENTIALS, SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import {
   SecretRotation,
   TSecretRotationV2,
@@ -30,6 +26,7 @@ import { ViewDatadogApiKeyRotationGeneratedCredentials } from "./ViewDatadogApiK
 import { ViewDatadogApplicationKeySecretRotationGeneratedCredentials } from "./ViewDatadogApplicationKeySecretRotationGeneratedCredentials";
 import { ViewDbtServiceTokenRotationGeneratedCredentials } from "./ViewDbtSeviceTokenRotationGeneratedCredentials";
 import { ViewFireworksApiKeyRotationGeneratedCredentials } from "./ViewFireworksApiKeyRotationGeneratedCredentials";
+import { ViewGcpServiceAccountKeyRotationGeneratedCredentials } from "./ViewGcpServiceAccountKeyRotationGeneratedCredentials";
 import { ViewHpIloRotationGeneratedCredentials } from "./ViewHpIloRotationGeneratedCredentials";
 import { ViewLiteLLMApiKeyRotationGeneratedCredentials } from "./ViewLiteLLMApiKeyRotationGeneratedCredentials";
 import { ViewOktaClientSecretRotationGeneratedCredentials } from "./ViewOktaClientSecretRotationGeneratedCredentials";
@@ -260,11 +257,18 @@ const Content = ({ secretRotation }: ContentProps) => {
         />
       );
       break;
+    case SecretRotation.GcpServiceAccountKey:
+      Component = (
+        <ViewGcpServiceAccountKeyRotationGeneratedCredentials
+          generatedCredentialsResponse={generatedCredentialsResponse}
+        />
+      );
+      break;
     default:
       throw new Error("Unhandled View Generated Credential Rotation Type");
   }
 
-  const appName = APP_CONNECTION_MAP[SECRET_ROTATION_CONNECTION_MAP[type]].name;
+  const appName = APP_CONNECTION_MAP[secretRotation.connection.app].name;
 
   return (
     <div className="flex flex-col gap-y-4">

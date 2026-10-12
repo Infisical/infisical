@@ -1244,16 +1244,16 @@ export const SecretEditTableRow = ({
               />
             </PopoverContent>
           </Popover>
-          <Popover open={isReminderOpen} onOpenChange={setIsReminderOpen}>
-            <PopoverAnchor asChild>
-              <span className="pointer-events-none absolute inset-0" />
-            </PopoverAnchor>
-            <PopoverContent
-              onCloseAutoFocus={(e) => e.preventDefault()}
-              className="w-[420px]"
-              side="left"
-            >
-              {secretId && (
+          <Sheet open={isReminderOpen} onOpenChange={setIsReminderOpen}>
+            <SheetContent className="flex h-full max-h-full flex-col gap-y-0">
+              <SheetHeader className="border-b">
+                <SheetTitle>{reminder ? "Edit Reminder" : "Add Reminder"}</SheetTitle>
+                <SheetDescription>
+                  Notify the channels below when {secretName} in {environmentName} is due for
+                  rotation.
+                </SheetDescription>
+              </SheetHeader>
+              {secretId && isReminderOpen && (
                 <SecretReminderForm
                   secretId={secretId}
                   secretKey={secretName}
@@ -1263,8 +1263,8 @@ export const SecretEditTableRow = ({
                   onClose={() => setIsReminderOpen(false)}
                 />
               )}
-            </PopoverContent>
-          </Popover>
+            </SheetContent>
+          </Sheet>
           <Popover open={isMetadataOpen} onOpenChange={setIsMetadataOpen}>
             <PopoverAnchor asChild>
               <span className="pointer-events-none absolute inset-0" />

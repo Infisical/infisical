@@ -27,6 +27,7 @@ import {
 
 import { AppConnectionSelectField } from "./AppConnectionSelectField";
 import { REQUIRED_EAB_DIRECTORIES } from "./constants";
+import { GcpCloudDnsZoneFields } from "./GcpCloudDnsZoneFields";
 import { FormData } from "./schema";
 
 export type TAcmeDnsZone = { id: string; name: string };
@@ -96,6 +97,7 @@ export const AcmeFields = ({
       label="DNS App Connection"
       onAfterChange={onDnsSelectionChange}
       options={availableConnections}
+      createApp={dnsProvider ? ACME_DNS_PROVIDER_APP_CONNECTION_MAP[dnsProvider] : undefined}
       isLoading={isPending}
       tooltip={
         dnsProvider
@@ -119,43 +121,52 @@ export const AcmeFields = ({
         )}
       />
     )}
-    {dnsProvider && dnsProvider !== AcmeDnsProvider.ROUTE53 && (
-      <Controller
-        name="configuration.dnsProviderConfig.hostedZoneId"
+    {dnsProvider &&
+      dnsProvider !== AcmeDnsProvider.ROUTE53 &&
+      dnsProvider !== AcmeDnsProvider.GcpCloudDns && (
+        <Controller
+          name="configuration.dnsProviderConfig.hostedZoneId"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel>
+                Zone <span className="text-danger">*</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-md">
+                    The DNS zone where Infisical creates the challenge TXT records. It must contain
+                    the domains you request certificates for.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <FilterableSelect
+                isLoading={isZonesPending && !!dnsAppConnection.id}
+                isDisabled={!dnsAppConnection.id}
+                value={
+                  zones.find((zone) => zone.id === value) ||
+                  (value ? { id: value, name: value } : null)
+                }
+                onChange={(option) => {
+                  onChange((option as SingleValue<TAcmeDnsZone>)?.id ?? null);
+                }}
+                options={zones}
+                placeholder="Select a zone..."
+                getOptionLabel={(option) => option.name.replace(/\.$/, "")}
+                getOptionValue={(option) => option.id}
+                isError={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+      )}
+    {dnsProvider === AcmeDnsProvider.GcpCloudDns && (
+      <GcpCloudDnsZoneFields
+        key={dnsAppConnection.id}
         control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <Field className="mb-4">
-            <FieldLabel>
-              Zone <span className="text-danger">*</span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-md">
-                  The DNS zone where Infisical creates the challenge TXT records. It must contain
-                  the domains you request certificates for.
-                </TooltipContent>
-              </Tooltip>
-            </FieldLabel>
-            <FilterableSelect
-              isLoading={isZonesPending && !!dnsAppConnection.id}
-              isDisabled={!dnsAppConnection.id}
-              value={
-                zones.find((zone) => zone.id === value) ||
-                (value ? { id: value, name: value } : null)
-              }
-              onChange={(option) => {
-                onChange((option as SingleValue<TAcmeDnsZone>)?.id ?? null);
-              }}
-              options={zones}
-              placeholder="Select a zone..."
-              getOptionLabel={(option) => option.name.replace(/\.$/, "")}
-              getOptionValue={(option) => option.id}
-              isError={Boolean(error)}
-            />
-            <FieldError errors={[error]} />
-          </Field>
-        )}
+        connectionId={dnsAppConnection.id}
       />
     )}
     <Controller

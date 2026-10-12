@@ -8,12 +8,12 @@
  * actor's role is exactly what the assertion is about.
  */
 
-import crypto from "node:crypto";
-
 import { packRules } from "@casl/ability/extra";
 
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+
+import { addUserMembership, createUser } from "../../testUtils/users";
 
 const adminHeaders = () => ({ authorization: `Bearer ${jwtAuthToken}` });
 const asIdentity = (token: string) => ({ authorization: `Bearer ${token}` });
@@ -273,42 +273,6 @@ const findIdentityMembershipId = async (identityId: string, projectId?: string) 
   return (row as { id: string }).id;
 };
 
-/**
- * The seed carries exactly one user and every removal path here targets a user membership. The routes
- * only need a non-ghost Users row joined to a Membership, never a login, so skip signup and SRP.
- */
-const createTargetUser = async (label: string) => {
-  const username = `${label}-${crypto.randomUUID()}@localhost.local`;
-  const [user] = await testDb(TableName.Users)
-    .insert({ username, email: username, firstName: label, isAccepted: true, isGhost: false })
-    .returning("id");
-
-  return { userId: (user as { id: string }).id, username };
-};
-
-const giveUserMembership = async ({
-  userId,
-  role,
-  projectId
-}: {
-  userId: string;
-  role: OrgMembershipRole | ProjectMembershipRole;
-  projectId?: string;
-}) => {
-  const [membership] = await testDb(TableName.Membership)
-    .insert({
-      scope: projectId ? AccessScope.Project : AccessScope.Organization,
-      scopeOrgId: seedData1.organization.id,
-      scopeProjectId: projectId ?? null,
-      actorUserId: userId
-    })
-    .returning("id");
-
-  const membershipId = (membership as { id: string }).id;
-  await testDb(TableName.MembershipRole).insert({ membershipId, role });
-  return membershipId;
-};
-
 const dropUser = async (userId: string) => {
   await testDb(TableName.Membership).where({ actorUserId: userId }).delete();
   await testDb(TableName.Users).where({ id: userId }).delete();
@@ -342,10 +306,14 @@ describe("Privilege boundary on org membership removal", () => {
     actor = await createActorIdentity("e2e-pb-org-actor");
     await useCustomRole(await findIdentityMembershipId(actor.identityId), roleId);
 
-    const target = await createTargetUser("e2e-pb-org-target");
+    const target = await createUser("e2e-pb-org-target");
     adminTarget = {
       userId: target.userId,
-      membershipId: await giveUserMembership({ userId: target.userId, role: OrgMembershipRole.Admin })
+      membershipId: await addUserMembership({
+        orgId: seedData1.organization.id,
+        userId: target.userId,
+        role: OrgMembershipRole.Admin
+      })
     };
   });
 
@@ -375,7 +343,8 @@ describe("Privilege boundary on org membership removal", () => {
       const res = await deleteOrgMembership(adminTarget.membershipId, adminHeaders());
       expect(res.statusCode).toBe(200);
 
-      adminTarget.membershipId = await giveUserMembership({
+      adminTarget.membershipId = await addUserMembership({
+        orgId: seedData1.organization.id,
         userId: adminTarget.userId,
         role: OrgMembershipRole.Admin
       });
@@ -413,10 +382,15 @@ describe("Privilege boundary on the bulk project member removal route", () => {
     await addIdentityToProject(project.id, actor.identityId, ProjectMembershipRole.Member);
     await useCustomRole(await findIdentityMembershipId(actor.identityId, project.id), roleId);
 
-    const target = await createTargetUser("e2e-pb-bulk-target");
+    const target = await createUser("e2e-pb-bulk-target");
     adminTarget = target;
-    await giveUserMembership({ userId: target.userId, role: OrgMembershipRole.Member });
-    await giveUserMembership({
+    await addUserMembership({
+      orgId: seedData1.organization.id,
+      userId: target.userId,
+      role: OrgMembershipRole.Member
+    });
+    await addUserMembership({
+      orgId: seedData1.organization.id,
       userId: target.userId,
       role: ProjectMembershipRole.Admin,
       projectId: project.id

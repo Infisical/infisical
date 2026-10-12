@@ -1,7 +1,7 @@
 import { SubscriptionPlan } from "@app/hooks/api/subscriptions/types";
 
 const PRODUCT_NAMES = new Map([
-  ["secrets_management", "Secrets Management"],
+  ["secrets_manager", "Secrets Management"],
   ["cert_management", "Certificate Management"],
   ["pam", "Privileged Access Management"],
   ["agent_vault", "Agent Vault"]
@@ -35,7 +35,7 @@ export const getProductPlanSummaries = (plans: SubscriptionPlan["productPlans"])
     if (!planKey || planKey === "free") return;
 
     const productKey =
-      plan.productKey === "legacy_secret_management" ? "secrets_management" : plan.productKey;
+      plan.productKey === "legacy_secret_management" ? "secrets_manager" : plan.productKey;
     if (summaries.has(productKey) && plan.productKey !== productKey) return;
 
     summaries.set(productKey, {

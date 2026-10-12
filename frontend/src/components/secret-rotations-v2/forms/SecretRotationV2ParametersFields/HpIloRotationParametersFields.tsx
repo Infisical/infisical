@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
@@ -13,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { HpIloRotationMethod } from "@app/hooks/api/secretRotationsV2/types/hp-ilo-rotation";
 
@@ -50,65 +52,76 @@ export const HpIloRotationParametersFields = () => {
   const id = watch("id");
   const rotationMethod = watch("parameters.rotationMethod", HpIloRotationMethod.LoginAsRoot);
   const isUpdate = Boolean(id);
+  const isSshConnection = watch("connection.app") !== AppConnection.HpeIloRedFish;
+
+  // HPE iLO Connections always rotate with the connection's credentials, so a method picked while an SSH
+  // Connection was selected must not carry over
+  useEffect(() => {
+    if (isSshConnection || isUpdate) return;
+    setValue("parameters.rotationMethod", undefined);
+    setValue("temporaryParameters", undefined);
+  }, [isSshConnection, isUpdate, setValue]);
 
   return (
     <>
-      <Controller
-        name="parameters.rotationMethod"
-        control={control}
-        defaultValue={HpIloRotationMethod.LoginAsRoot}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <Field data-invalid={Boolean(error)}>
-            <FieldLabelWithTooltip
-              tooltip={
-                <>
-                  <span>Determines how the rotation will be performed:</span>
-                  <ul className="mt-2 ml-4 flex list-disc flex-col gap-2">
-                    <li>
-                      <span className="font-medium">Login as Root</span> - The SSH connection
-                      credentials of the app connection linked will be used to change the target
-                      user&apos;s password.
-                    </li>
-                    <li>
-                      <span className="font-medium">Login as Target</span> - The target user will
-                      authenticate with their own credentials and change their own password.
-                    </li>
-                  </ul>
-                </>
-              }
-              tooltipClassName="max-w-sm"
-            >
-              Rotation Method
-            </FieldLabelWithTooltip>
-            <Select
-              disabled={isUpdate}
-              value={value}
-              onValueChange={(val) => {
-                setValue("temporaryParameters", {
-                  password: ""
-                });
-                onChange(val);
-              }}
-            >
-              <SelectTrigger className="w-full capitalize" isError={Boolean(error)}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent position="popper" className="max-w-none">
-                {Object.values(HpIloRotationMethod).map((method) => (
-                  <SelectItem value={method} className="capitalize" key={method}>
-                    {method.replace(/-/g, " ")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FieldFeedback
-              id="hp-ilo-rotation-method-feedback"
-              description={getRotationMethodHelperText(isUpdate, value)}
-              error={error?.message}
-            />
-          </Field>
-        )}
-      />
+      {isSshConnection && (
+        <Controller
+          name="parameters.rotationMethod"
+          control={control}
+          defaultValue={HpIloRotationMethod.LoginAsRoot}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field data-invalid={Boolean(error)}>
+              <FieldLabelWithTooltip
+                tooltip={
+                  <>
+                    <span>Determines how the rotation will be performed:</span>
+                    <ul className="mt-2 ml-4 flex list-disc flex-col gap-2">
+                      <li>
+                        <span className="font-medium">Login as Root</span> - The SSH connection
+                        credentials of the app connection linked will be used to change the target
+                        user&apos;s password.
+                      </li>
+                      <li>
+                        <span className="font-medium">Login as Target</span> - The target user will
+                        authenticate with their own credentials and change their own password.
+                      </li>
+                    </ul>
+                  </>
+                }
+                tooltipClassName="max-w-sm"
+              >
+                Rotation Method
+              </FieldLabelWithTooltip>
+              <Select
+                disabled={isUpdate}
+                value={value}
+                onValueChange={(val) => {
+                  setValue("temporaryParameters", {
+                    password: ""
+                  });
+                  onChange(val);
+                }}
+              >
+                <SelectTrigger className="w-full capitalize" isError={Boolean(error)}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper" className="max-w-none">
+                  {Object.values(HpIloRotationMethod).map((method) => (
+                    <SelectItem value={method} className="capitalize" key={method}>
+                      {method.replace(/-/g, " ")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldFeedback
+                id="hp-ilo-rotation-method-feedback"
+                description={getRotationMethodHelperText(isUpdate, value)}
+                error={error?.message}
+              />
+            </Field>
+          )}
+        />
+      )}
       <div className="flex gap-3">
         <Controller
           name="parameters.username"
@@ -145,7 +158,7 @@ export const HpIloRotationParametersFields = () => {
             </Field>
           )}
         />
-        {!isUpdate && rotationMethod === HpIloRotationMethod.LoginAsTarget && (
+        {!isUpdate && isSshConnection && rotationMethod === HpIloRotationMethod.LoginAsTarget && (
           <Controller
             name="temporaryParameters.password"
             control={control}
