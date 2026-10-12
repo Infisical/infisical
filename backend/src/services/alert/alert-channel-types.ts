@@ -104,7 +104,7 @@ const WEBHOOK_RESERVED_HEADERS = [
 ];
 
 const httpHeaderNameRegex = new RE2("^[A-Za-z0-9!#$%&'*+.^_`|~-]+$");
-const noLineBreaksRegex = new RE2("^[^\\r\\n]*$");
+const httpHeaderValueRegex = new RE2("^[\\t\\x20-\\x7e\\x80-\\xff]*$");
 
 export const WebhookChannelHeaderSchema = z
   .object({
@@ -125,8 +125,14 @@ export const WebhookChannelHeaderSchema = z
       .string()
       .min(1, "Header values cannot be empty")
       .max(4096, "Header values cannot be longer than 4096 characters")
-      .refine((value) => noLineBreaksRegex.test(value), "Header values cannot contain line breaks")
   })
+  .refine(
+    (header) => httpHeaderValueRegex.test(header.value),
+    (header) => ({
+      message: `Header '${header.key}' has a character that can't be sent in an HTTP header, such as an emoji, a control character, or an invisible space. Re-enter the value`,
+      path: ["value"]
+    })
+  )
   .refine(
     (header) => header.value !== ALERT_CHANNEL_REDACTED_VALUE,
     (header) => ({

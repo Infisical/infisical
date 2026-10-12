@@ -1,3 +1,5 @@
+import { validateHeaderValue } from "node:http";
+
 import { safeRequest } from "@app/lib/validator";
 
 import {
@@ -248,9 +250,41 @@ describe("WebhookChannelConfigSchema headers", () => {
     expect(result.error?.issues[0].message).toBe("Header names must be unique");
   });
 
-  test("rejects names that are not HTTP tokens and values with line breaks", () => {
+  test("rejects names that are not HTTP tokens", () => {
     expect(withHeaders([{ key: "X Bad", value: "a" }]).success).toBe(false);
-    expect(withHeaders([{ key: "X-Ok", value: "a\r\nX-Injected: b" }]).success).toBe(false);
+  });
+
+  test("accepts exactly the header values Node can send", () => {
+    const values = [
+      "Bearer abc123",
+      "a\tb",
+      "café",
+      "a\u00a0b",
+      "a\r\nX-Injected: b",
+      "a\u0000b",
+      "a\u001bb",
+      "a\u007fb",
+      "10€",
+      "привет",
+      "ok👍",
+      "abc\u200bdef"
+    ];
+    values.forEach((value) => {
+      let sendable = true;
+      try {
+        validateHeaderValue("X-Test", value);
+      } catch {
+        sendable = false;
+      }
+      expect(withHeaders([{ key: "X-Test", value }]).success).toBe(sendable);
+    });
+  });
+
+  test("names the header whose value can't be sent", () => {
+    const result = withHeaders([{ key: "Authorization", value: "Bearer abc\u200b123" }]);
+    expect(result.error?.issues[0].message).toBe(
+      "Header 'Authorization' has a character that can't be sent in an HTTP header, such as an emoji, a control character, or an invisible space. Re-enter the value"
+    );
   });
 
   test("rejects a redacted value that nothing restored", () => {
