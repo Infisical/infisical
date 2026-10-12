@@ -20,6 +20,7 @@ import { NetworkHealthBanner } from "./components/NetworkHealthBanner";
 import { OrgSidebar } from "./components/OrgSidebar";
 import { RedisBanner } from "./components/RedisBanner";
 import { SmtpBanner } from "./components/SmtpBanner";
+import { TrialPaymentFailedBanner } from "./components/TrialPaymentFailedBanner";
 
 export const OrganizationLayout = () => {
   const { config } = useServerConfig();
@@ -61,6 +62,7 @@ export const OrganizationLayout = () => {
         className={`dark ${containerHeight} flex !min-h-0 w-full flex-col overflow-hidden bg-page transition-all`}
       >
         <PageBannerStack>
+          <TrialPaymentFailedBanner />
           {(isInsideProject || implicitProduct) && <AssumePrivilegeModeBanner />}
           {isCertManagerOverview && <CertManagerInstanceBanner />}
           {isSecretScanningProject && <SecretScanningInstanceBanner />}
