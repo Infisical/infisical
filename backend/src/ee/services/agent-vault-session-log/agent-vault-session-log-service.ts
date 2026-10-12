@@ -426,7 +426,8 @@ export const agentVaultSessionLogServiceFactory = ({
       projectId: scope.projectId,
       sessionId: session.id
     });
-    const found = new Map<string, Parameters<typeof $presignChunks>[2][number]>();
+    // Every entry, repeats included: the browser reads a full feed from the count, and dedupes by chunk itself.
+    const found: Parameters<typeof $presignChunks>[2] = [];
     entries.forEach(([, fieldValues]) => {
       const fields = new Map<string, string>();
       for (let i = 0; i + 1 < fieldValues.length; i += 2) fields.set(fieldValues[i], fieldValues[i + 1]);
@@ -434,11 +435,11 @@ export const agentVaultSessionLogServiceFactory = ({
       if (!key || fields.get("bucket") !== opened.bucket) return;
       const parsed = parseSessionLogObjectKey(folder, key);
       const ciphertextBytes = Number(fields.get("bytes"));
-      if (parsed && Number.isSafeInteger(ciphertextBytes)) found.set(key, { ...parsed, key, ciphertextBytes });
+      if (parsed && Number.isSafeInteger(ciphertextBytes)) found.push({ ...parsed, key, ciphertextBytes });
     });
 
     const nextCursor = encodeTailCursor(entries[entries.length - 1][0]);
-    if (!found.size) return { sessionLogs, chunks: [], nextCursor };
+    if (!found.length) return { sessionLogs, chunks: [], nextCursor };
 
     const { chunks, sessionKey } = await $presignChunks(
       {
@@ -447,7 +448,7 @@ export const agentVaultSessionLogServiceFactory = ({
         encryptedSessionLogKey: session.encryptedSessionLogKey
       },
       opened.storage,
-      [...found.values()]
+      found
     );
     return { sessionLogs: { ...sessionLogs, sessionKey }, chunks, nextCursor };
   };

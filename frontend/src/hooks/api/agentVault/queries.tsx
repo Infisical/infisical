@@ -502,10 +502,17 @@ export const useGetAgentVaultSessionLogs = (
         }
       }
 
-      // The tail page goes last: the merge keeps its cursor.
+      // The tail page goes last: the merge keeps its cursor. It can list a chunk more than once, which counts
+      // toward a full feed above but is only opened once.
+      const tail = {
+        ...data,
+        chunks: [
+          ...new Map(data.chunks.map((chunk) => [sessionLogChunkKey(chunk), chunk])).values()
+        ]
+      };
       return mergeSessionLogPages(
         arrived,
-        await decryptSessionLogPage(data, cache, signal, { isTail: true })
+        await decryptSessionLogPage(tail, cache, signal, { isTail: true })
       );
     },
     refetchInterval: AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,

@@ -616,11 +616,11 @@ describe("tailSessionLogs: reading the live feed", () => {
     expect(page.nextCursor).toBe(encodeTailCursor("101-0"));
   });
 
-  test("an entry sent twice for the same chunk is returned once", async () => {
+  test("an entry sent twice for the same chunk is returned each time, so a full feed still reads as full", async () => {
     const { key } = objectFor(Date.now());
     const { service } = build({ feed: [entry("100-0", key), entry("101-0", key)] });
     const page = await service.tailSessionLogs(scope);
-    expect(page.chunks).toHaveLength(1);
+    expect(page.chunks).toHaveLength(2);
   });
 
   test("skips entries from an earlier bucket or prefix, and still moves past them", async () => {
