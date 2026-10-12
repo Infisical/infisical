@@ -215,6 +215,8 @@ export type TSecretMetadataSearchFilter = {
 
 export type TSearchSecretsByMetadataDTO = {
   projectId: string;
+  environments?: string[];
+  secretPath?: string;
   operator: SecretMetadataSearchLogicalOperator;
   filters: TSecretMetadataSearchFilter[];
   tags: Record<string, boolean>;
@@ -226,10 +228,13 @@ export type TMetadataMatchedSecret = {
   environment: string;
   secretPath: string;
   metadata: { key: string; value: string | null }[];
+  tags: { id: string; slug: string }[];
+  secretValueHidden: boolean;
 };
 
 export type TSearchSecretsByMetadataResponse = {
   secrets: TMetadataMatchedSecret[];
+  searchLimit: number;
 };
 
 export type TGetDashboardProjectSecretsByKeys = {

@@ -912,6 +912,10 @@ export const ORGANIZATIONS = {
   },
   LIST_GROUPS: {
     organizationId: "The ID of the organization to list groups for."
+  },
+  GET_PRODUCT_STATS: {
+    secretScanningFindingsCount:
+      "The number of findings across the organization's Secret Scanning projects, in any status. Cached for up to 5 minutes."
   }
 } as const;
 
@@ -1507,6 +1511,10 @@ export const SECRET_IMPORTS = {
 } as const;
 
 export const DASHBOARD = {
+  SECRET_METADATA_SEARCH: {
+    searchLimit: "The candidate limit applied independently to plaintext matches and encrypted metadata candidates.",
+    tags: "The tags attached to the secret, including each tag's ID and slug."
+  },
   SECRET_METADATA_LIST: {
     projectId: "The ID of the project containing the secrets.",
     environment: "The slug of the environment containing the secrets.",
@@ -3890,14 +3898,14 @@ export const SecretScanningDataSources = {
   LIST: (type?: SecretScanningDataSource) => ({
     projectId: `The ID of the project to list ${
       type ? SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type] : "Scanning"
-    } Data Sources from.`
+    } Data Sources from. Defaults to the organization's active Secret Scanning project.`
   }),
   GET_BY_ID: (type: SecretScanningDataSource) => ({
     dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to retrieve.`
   }),
   GET_BY_NAME: (type: SecretScanningDataSource) => ({
     sourceName: `The name of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to retrieve.`,
-    projectId: `The ID of the project the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source is located in.`
+    projectId: `The ID of the project the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source is located in. Defaults to the organization's active Secret Scanning project.`
   }),
   CREATE: (type: SecretScanningDataSource) => {
     const sourceType = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
@@ -3905,7 +3913,7 @@ export const SecretScanningDataSources = {
     return {
       name: `The name of the ${sourceType} Data Source to create. Must be slug-friendly.`,
       description: `An optional description for the ${sourceType} Data Source.`,
-      projectId: `The ID of the project to create the ${sourceType} Data Source in.`,
+      projectId: `The ID of the project to create the ${sourceType} Data Source in. Defaults to the organization's active Secret Scanning project.`,
       connectionId: `The ID of the ${
         APP_CONNECTION_NAME_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]]
       } Connection to use for this Data Source.`,
@@ -3959,7 +3967,7 @@ export const SecretScanningDataSources = {
 
 export const SecretScanningFindings = {
   LIST: {
-    projectId: `The ID of the project to list Secret Scanning Findings from.`
+    projectId: `The ID of the project to list Secret Scanning Findings from. Defaults to the organization's active Secret Scanning project.`
   },
   UPDATE: {
     findingId: "The ID of the Secret Scanning Finding to update.",
@@ -3970,11 +3978,29 @@ export const SecretScanningFindings = {
 
 export const SecretScanningConfigs = {
   GET_BY_PROJECT_ID: {
-    projectId: `The ID of the project to retrieve the Secret Scanning Configuration for.`
+    projectId: `The ID of the project to retrieve the Secret Scanning Configuration for. Defaults to the organization's active Secret Scanning project.`
   },
   UPDATE: {
-    projectId: "The ID of the project to update the Secret Scanning Configuration for.",
+    projectId:
+      "The ID of the project to update the Secret Scanning Configuration for. Defaults to the organization's active Secret Scanning project.",
     content: "The contents of the Secret Scanning Configuration file."
+  }
+};
+
+export const SecretScanningProjects = {
+  GET_ACTIVE: {
+    projectId:
+      "The ID of the organization's active Secret Scanning project, which is the most recently created one. One is created if the organization has none."
+  },
+  GET_INSTANCE: {
+    activeProjectId:
+      "The ID of the organization's active Secret Scanning project, which is the most recently created one. Null if the organization has none.",
+    projects: "Every Secret Scanning project in the organization, most recently created first.",
+    id: "The ID of the Secret Scanning project.",
+    name: "The name of the Secret Scanning project.",
+    slug: "The slug of the Secret Scanning project.",
+    createdAt: "When the Secret Scanning project was created.",
+    isMultiInstance: "Whether the organization has more than one Secret Scanning project."
   }
 };
 
@@ -4522,44 +4548,28 @@ export const AGENT_VAULT = {
   SESSION_LOGS: {
     chunkId: "The ID of the chunk.",
     proxyId: "The ID of the proxy that uploaded the chunk.",
-    proxyName: "The name of the proxy that uploaded the chunk. If the proxy was deleted, the name it had at the time.",
-    startedAt: "The time of the first record in the chunk.",
     endedAt: "The time of the last record in the chunk.",
-    firstSeq: "The sequence number of the first record in the chunk. Each proxy numbers its own records.",
-    lastSeq: "The sequence number of the last record in the chunk. Each proxy numbers its own records.",
-    recordCount: "The number of records in the chunk.",
-    droppedCount:
-      "The number of requests the proxy couldn't record, for example because too many requests came in at once or session logs were off. They're reported on the next chunk the proxy sends, so they happened before this chunk, but not necessarily right before its first record.",
-    ciphertextBytes: "The size of the encrypted chunk, in bytes.",
-    iv: "The AES-GCM initialization vector for the chunk, as base64.",
+    ciphertextBytes: "The size of the encrypted chunk in bytes.",
     ciphertextSha256:
-      "The SHA-256 digest of the encrypted chunk, as base64 without padding. If the downloaded chunk has a different digest, the chunk was changed after it was uploaded.",
+      "The SHA-256 digest of the encrypted chunk, including its IV, as base64 without padding. The bucket refuses an upload with a different digest.",
+    legacyIv:
+      "Sent only by Infisical CLI versions that can't record session logs. A request that includes it is refused.",
     uploadUrl:
       "The URL to upload the encrypted chunk to with a PUT request. The body must be exactly `ciphertextBytes` bytes.",
-    presignedGetUrl:
-      "The URL to download the chunk from. Null if the chunk is in a bucket session logs no longer use, or if `sessionLogs.storageUnavailable` is set.",
+    presignedGetUrl: "The URL to download the chunk from.",
     expiresInSeconds: "The number of seconds before the URL expires.",
-    chunkCreatedAt:
-      "When the proxy registered the chunk with Infisical. Its upload to the bucket finishes shortly after, so a download in between returns 404.",
     isRecordable: "False if this session's requests can't be recorded.",
-    sessionKey: "The key that decrypts every chunk in this response, as base64. Null if no chunk can be read.",
-    storageUnavailable: "The reason the chunks can't be downloaded right now. Null if they can.",
-    storageUnavailableReason:
-      "`no-connection` if no AWS connection is set for session logs, or `connection-unusable` if Infisical can't use the AWS connection.",
-    storageUnavailableMessage: "The error Infisical got from the AWS connection. Returned only to Agent Vault admins.",
+    sessionKey: "The key that decrypts every chunk in this response, as base64. Null if the response has no chunks.",
     sessionLogs:
-      "Whether session logs are on, the key that decrypts the chunks, and why they can't be downloaded, if they can't.",
+      "Whether session logs are on, whether this session can be recorded, and the key that decrypts the chunks.",
     historyCursor: "The `nextCursor` from the previous response. Leave it out to start from the newest logs.",
-    historyNextCursor: "Pass this as `cursor` to get older logs. Null when there's nothing older.",
-    liveCursor:
-      "Pass this to [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail) to get new logs as they arrive.",
+    historyNextCursor:
+      "Pass this as `cursor` to get older logs. Null when there's nothing older. A page can have no chunks and still have a `nextCursor`.",
     tailCursor:
-      "The `liveCursor` from [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list), or the `nextCursor` from your last call. Leave it out to start from now.",
-    tailNextCursor: "Pass this as `cursor` on your next call.",
-    tailHasMore: "Whether more logs are ready now. If false, wait a few seconds before calling again.",
-    limit: "How many records to return. Only whole chunks are returned, so a response can have slightly more.",
-    from: "Return only chunks with records at or after this time.",
-    to: "Return only chunks with records at or before this time.",
+      "The `nextCursor` from your last call. Leave it out on the first call to start from the most recent chunks.",
+    tailNextCursor: "Pass this as `cursor` on your next call, a few seconds later.",
+    from: "Return only chunks with records at or after this time. A chunk can also hold earlier records, so filter records by `ts`.",
+    to: "Return only chunks with records at or before this time. A chunk can also hold later records, so filter records by `ts`.",
     enabled: "Whether session logs are on.",
     configEnabled: "Whether session logs are on. Turning them off stops recording but keeps what's already recorded.",
     appConnectionId: "The ID of the AWS connection Infisical uses to write to and read from the bucket.",
@@ -4571,7 +4581,6 @@ export const AGENT_VAULT = {
     corsProbeUrl: "A URL that fails to load in a browser if the bucket's CORS rule doesn't allow Infisical.",
     connectionError:
       "The error Infisical got when it tried to use the AWS connection, for example because AWS refused to let it assume the role. Null if there's no error or no connection.",
-    isStorageFull: "Whether your organization has reached its session log storage limit.",
     hasSessionLogKey: "Whether the proxy already has this session's log key. If true, the key isn't returned again.",
     proxySessionKey:
       "The session's log key, as base64, sent once. Null when session logs are off or the proxy already has it."
@@ -4583,10 +4592,6 @@ export const AGENT_VAULT = {
     ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d.",
     token: "The session token. Returned once, at mint, and never again.",
     expiresAt: "When the session expires, or null when it never does.",
-    recentSessionLogCounts:
-      "How many of the session's requests were recorded in its session log, and how many the proxy couldn't record, over the 24 hours before its most recent recorded request.",
-    recentRecordedCount: "The number of requests recorded in the session log.",
-    recentDroppedCount: "The number of requests the proxy couldn't record in the session log.",
     scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
     status:
       "Filter by session status: `active`, `revoked` or `expired`. Separate several with commas to match any of them.",

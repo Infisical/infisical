@@ -36,7 +36,7 @@ export const registerSecretScanningEndpoints = <
   server: FastifyZodProvider;
   createSchema: z.ZodType<{
     name: string;
-    projectId: string;
+    projectId?: string;
     connectionId?: string;
     config: Partial<I["config"]>;
     description?: string | null;
@@ -69,6 +69,7 @@ export const registerSecretScanningEndpoints = <
           .string()
           .trim()
           .min(1, "Project ID required")
+          .optional()
           .describe(SecretScanningDataSources.LIST(type).projectId)
       }),
       response: {
@@ -77,9 +78,7 @@ export const registerSecretScanningEndpoints = <
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const {
-        query: { projectId }
-      } = req;
+      const projectId = req.internalSecretScanningProjectId;
 
       const dataSources = (await server.services.secretScanningV2.listSecretScanningDataSourcesByProjectId(
         { projectId, type },
@@ -169,6 +168,7 @@ export const registerSecretScanningEndpoints = <
           .string()
           .trim()
           .min(1, "Project ID required")
+          .optional()
           .describe(SecretScanningDataSources.GET_BY_NAME(type).projectId)
       }),
       response: {
@@ -178,7 +178,7 @@ export const registerSecretScanningEndpoints = <
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { sourceName } = req.params;
-      const { projectId } = req.query;
+      const projectId = req.internalSecretScanningProjectId;
 
       const dataSource = (await server.services.secretScanningV2.findSecretScanningDataSourceByName(
         { sourceName, projectId, type },
@@ -221,8 +221,9 @@ export const registerSecretScanningEndpoints = <
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const projectId = req.internalSecretScanningProjectId;
       const dataSource = (await server.services.secretScanningV2.createSecretScanningDataSource(
-        { ...req.body, type },
+        { ...req.body, projectId, type },
         req.permission
       )) as T;
 
