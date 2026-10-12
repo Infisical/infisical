@@ -18,6 +18,8 @@ const EDITABLE_SELECTOR = [
 
 const OPEN_OVERLAY_SELECTOR = '[role="dialog"], [role="alertdialog"], [cmdk-root]';
 
+const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+
 const isEditable = (element: EventTarget | Element | null) =>
   element instanceof Element && Boolean(element.closest(EDITABLE_SELECTOR));
 
@@ -27,7 +29,7 @@ export const useSlashFocusSearch = (ref: RefObject<HTMLInputElement | null>) => 
       const isSlash = event.key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey;
       const isFind =
         event.key.toLowerCase() === "f" &&
-        (event.metaKey || event.ctrlKey) &&
+        (IS_MAC ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey) &&
         !event.shiftKey &&
         !event.altKey;
 
