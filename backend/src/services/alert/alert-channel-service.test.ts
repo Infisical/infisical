@@ -249,6 +249,38 @@ describe("alert channel service", () => {
     expect(stored.headers).toEqual([{ key: "Authorization", value: "Bearer abc" }]);
   });
 
+  test("counts kept webhook header values toward the combined header length", async () => {
+    const { service } = buildService();
+    const channel = seedRow({
+      id: "ch-1",
+      channelType: AlertChannelType.WEBHOOK,
+      encryptedConfig: encConfig({
+        url: "https://example.com/hook",
+        headers: [{ key: "Authorization", value: "a".repeat(4000) }]
+      })
+    });
+
+    await expect(
+      updateChannel(
+        service,
+        {
+          recipientScope: RECIPIENT_SCOPE,
+          channelId: "ch-1",
+          config: {
+            url: "https://example.com/hook",
+            headers: [
+              { key: "Authorization", value: ALERT_CHANNEL_REDACTED_VALUE },
+              { key: "X-Trace", value: "b".repeat(200) }
+            ]
+          }
+        },
+        channel as never,
+        cipher,
+        tx
+      )
+    ).rejects.toThrow("Webhook header names and values can add up to at most 4096 characters");
+  });
+
   test("rejects a redacted webhook header that has no stored value", async () => {
     const { service } = buildService();
     const channel = seedRow({

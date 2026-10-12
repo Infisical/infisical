@@ -94,6 +94,10 @@ export const EmailChannelConfigSchema = z.object({}).strip();
 
 export const WEBHOOK_MAX_HEADERS = 20;
 
+// Keeps the largest valid webhook config (URL, signing secret, headers) under the route's 8192-character
+// config cap. It is checked on the merged config, so headers kept as "******" across edits count too.
+export const WEBHOOK_MAX_HEADERS_LENGTH = 4096;
+
 const WEBHOOK_RESERVED_HEADERS = [
   "content-type",
   "x-infisical-signature",
@@ -160,6 +164,12 @@ export const WebhookChannelConfigSchema = z.object({
         return new Set(names).size === names.length;
       },
       { message: "Header names must be unique" }
+    )
+    .refine(
+      (headers) =>
+        (headers ?? []).reduce((total, header) => total + header.key.length + header.value.length, 0) <=
+        WEBHOOK_MAX_HEADERS_LENGTH,
+      { message: `Webhook header names and values can add up to at most ${WEBHOOK_MAX_HEADERS_LENGTH} characters` }
     )
 });
 

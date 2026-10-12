@@ -8,6 +8,7 @@ import {
   DIRECTED_ALERT_CHANNEL_TYPES,
   SlackChannelConfigSchema,
   TAlertPayload,
+  WEBHOOK_MAX_HEADERS_LENGTH,
   WebhookChannelConfigSchema
 } from "../alert-channel-types";
 import { sendEmailNotification } from "./alert-channel-email-fns";
@@ -248,6 +249,20 @@ describe("WebhookChannelConfigSchema headers", () => {
     ]);
     expect(result.success).toBe(false);
     expect(result.error?.issues[0].message).toBe("Header names must be unique");
+  });
+
+  test("limits the combined length of header names and values", () => {
+    const value = "a".repeat(WEBHOOK_MAX_HEADERS_LENGTH - "Authorization".length);
+    expect(withHeaders([{ key: "Authorization", value }]).success).toBe(true);
+
+    const result = withHeaders([
+      { key: "Authorization", value },
+      { key: "X-Env", value: "prod" }
+    ]);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe(
+      `Webhook header names and values can add up to at most ${WEBHOOK_MAX_HEADERS_LENGTH} characters`
+    );
   });
 
   test("rejects names that are not HTTP tokens", () => {
