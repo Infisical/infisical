@@ -142,8 +142,20 @@ export const SessionLogsPanel = ({ session }: Props) => {
     return arrived ? [arrived, ...data.pages] : data.pages;
   }, [data, arrived]);
   const [now, setNow] = useState(() => Date.now());
-  const { records, gaps, arrivals, isTruncated, isOverByteBudget, hasUploadingChunks } =
-    useAgentVaultSessionLogTimeline(pages, now);
+  const {
+    records,
+    hasOpenedRecords,
+    gaps,
+    arrivals,
+    isTruncated,
+    isOverByteBudget,
+    hasUploadingChunks
+  } = useAgentVaultSessionLogTimeline(
+    pages,
+    now,
+    range?.startDate.getTime(),
+    range?.endDate.getTime()
+  );
   // While a chunk from the live tail may still be uploading, the clock keeps moving so it turns into a missing
   // gap once its grace runs out. A live poll retries the chunk itself, but polling stops in a hidden tab and after
   // the session ends; then history reloads instead, since the bucket listing has the chunk once it lands.
@@ -176,14 +188,10 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const visible = useMemo(
     () =>
       records.filter((record) => {
-        if (range) {
-          const at = Date.parse(record.ts);
-          if (at < range.startDate.getTime() || at > range.endDate.getTime()) return false;
-        }
         if (decisionFilter !== "all" && record.decision !== decisionFilter) return false;
         return matchesSessionLogSearch(record, search);
       }),
-    [records, search, decisionFilter, range]
+    [records, search, decisionFilter]
   );
 
   const hasBrowserFilter = Boolean(sessionLogSearchTerm(search)) || decisionFilter !== "all";
@@ -321,7 +329,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
   } else if (isStillLoading) {
     noRecordsTitle = "Loading requests";
     noRecordsDescription = "";
-  } else if (gaps.length > 0 && records.length === 0 && !hasNextPage) {
+  } else if (gaps.length > 0 && !hasOpenedRecords && !hasNextPage) {
     noRecordsTitle = "Session logs unavailable";
     noRecordsDescription = "None of this session's logs could be loaded.";
   } else if (isSearchPaused && searchedBackTo) {
@@ -362,7 +370,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
   }
 
   const isUnreachable =
-    gaps.length > 0 && records.length === 0 && gaps.every((gap) => gap.reason === "fetch");
+    gaps.length > 0 && !hasOpenedRecords && gaps.every((gap) => gap.reason === "fetch");
 
   const retryButton = (
     <Button

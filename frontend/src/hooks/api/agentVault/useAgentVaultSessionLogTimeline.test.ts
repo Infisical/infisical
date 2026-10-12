@@ -124,4 +124,32 @@ describe("buildSessionLogTimeline", () => {
     assert.deepEqual(timeline.gaps, []);
     assert.equal(timeline.hasUploadingChunks, false);
   });
+
+  it("leaves records after a date range out of the record limit", () => {
+    const at = Date.parse(record.ts);
+    const after = new Date(at + 5 * 60_000).toISOString();
+    const records = [
+      ...Array.from({ length: 100_001 }, (_, seq) => ({ ...record, seq, ts: after })),
+      record
+    ];
+    const timeline = buildSessionLogTimeline(
+      [pageWith({ records, gap: null, arrivedAt: null })],
+      firstSeenAt,
+      { from: at - 60_000, to: at + 60_000 }
+    );
+    assert.deepEqual(timeline.records, [record]);
+    assert.equal(timeline.isTruncated, false);
+    assert.equal(timeline.hasOpenedRecords, true);
+  });
+
+  it("still counts records outside the range as opened", () => {
+    const at = Date.parse(record.ts);
+    const timeline = buildSessionLogTimeline(
+      [pageWith({ records: [record], gap: null, arrivedAt: null })],
+      firstSeenAt,
+      { from: at + 60_000, to: at + 120_000 }
+    );
+    assert.deepEqual(timeline.records, []);
+    assert.equal(timeline.hasOpenedRecords, true);
+  });
 });
