@@ -62,13 +62,13 @@ import {
   useProjectPermission,
   useUser
 } from "@app/context";
+import { getSingleProjectProductName } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteProjectUserAdditionalPrivilege,
   useListProjectUserPrivileges,
   useRevokeAccessRequest
 } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { projectUserPrivilegeKeys } from "@app/hooks/api/projectUserAdditionalPrivilege/queries";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import {
@@ -149,16 +149,14 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
   };
 
   const hasAdditionalPrivileges = Boolean(userProjectPrivileges?.length);
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const singleProjectProductName = getSingleProjectProductName(currentProject?.type);
 
   return (
     <>
       <Card>
         <CardHeader>
           <CardTitle>
-            {isCertManager
-              ? "Certificate Manager Additional Privileges"
-              : "Project Additional Privileges"}
+            {`${singleProjectProductName ?? "Project"} Additional Privileges`}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/additional-privileges#api" />
           </CardTitle>
           <CardDescription>Assign one-off policies to this user</CardDescription>

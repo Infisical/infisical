@@ -33,7 +33,11 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import {
+  getProjectBaseURL,
+  getSingleProjectProductName,
+  isSingleProjectProduct
+} from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -42,7 +46,6 @@ import {
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useListWorkspaceGroups } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { GroupRoles } from "./GroupRoles";
@@ -65,8 +68,8 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const navigate = useNavigate();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getSingleProjectProductName(currentProject?.type) ?? "Project";
+  const isSingleProject = isSingleProjectProduct(currentProject?.type);
 
   const {
     search,
@@ -127,8 +130,8 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={isCertManager ? "Search groups..." : "Search project groups..."}
-            aria-label={isCertManager ? "Search groups" : "Search project groups"}
+            placeholder={isSingleProject ? "Search groups..." : "Search project groups..."}
+            aria-label={isSingleProject ? "Search groups" : "Search project groups"}
           />
         </InputGroup>
       </div>
@@ -138,10 +141,10 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
             <EmptyTitle>
               {/* eslint-disable-next-line no-nested-ternary */}
               {search
-                ? isCertManager
+                ? isSingleProject
                   ? "No groups match search"
                   : "No project groups match search"
-                : isCertManager
+                : isSingleProject
                   ? "No groups found"
                   : "No project groups found"}
             </EmptyTitle>

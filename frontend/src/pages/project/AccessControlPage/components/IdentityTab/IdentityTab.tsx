@@ -68,7 +68,11 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import {
+  getProjectBaseURL,
+  getSingleProjectProductName,
+  isSingleProjectProduct
+} from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -86,7 +90,7 @@ import {
 } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectIdentityOrderBy, ProjectType } from "@app/hooks/api/projects/types";
+import { ProjectIdentityOrderBy } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { IdentityAuthMethodModal } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
 import { IdentityActionConfirmationDialog } from "@app/pages/project/IdentityDetailsByIDPage/components/IdentityActionConfirmationDialog";
@@ -99,8 +103,8 @@ export const IdentityTab = withProjectPermission(
     const { currentProject, projectId } = useProject();
     const navigate = useNavigate();
     const { isSubOrganization, currentOrg } = useOrganization();
-    const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-    const productLabel = isCertManager ? "Certificate Manager" : "Project";
+    const productLabel = getSingleProjectProductName(currentProject?.type) ?? "Project";
+    const isSingleProject = isSingleProjectProduct(currentProject?.type);
 
     const {
       offset,
@@ -217,7 +221,7 @@ export const IdentityTab = withProjectPermission(
         <Card>
           <CardHeader>
             <CardTitle>
-              {isCertManager ? "Machine Identities" : `${productLabel} Machine Identities`}
+              {isSingleProject ? "Machine Identities" : `${productLabel} Machine Identities`}
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
             </CardTitle>
             <CardDescription>
@@ -235,7 +239,7 @@ export const IdentityTab = withProjectPermission(
                     isDisabled={!isAllowed}
                   >
                     <PlusIcon />
-                    {isCertManager
+                    {isSingleProject
                       ? "Add Machine Identity"
                       : `Add Machine Identity to ${productLabel}`}
                   </Button>
@@ -254,7 +258,7 @@ export const IdentityTab = withProjectPermission(
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder={
-                      isCertManager
+                      isSingleProject
                         ? "Search machine identities by name..."
                         : "Search project machine identities by name..."
                     }
@@ -271,7 +275,7 @@ export const IdentityTab = withProjectPermission(
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>
-                      {isCertManager ? "Filter by Role" : `Filter by ${productLabel} Role`}
+                      {isSingleProject ? "Filter by Role" : `Filter by ${productLabel} Role`}
                     </DropdownMenuLabel>
                     {projectRoles?.map(({ id, slug, name }) => (
                       <DropdownMenuCheckboxItem
@@ -295,7 +299,7 @@ export const IdentityTab = withProjectPermission(
                       {/* eslint-disable-next-line no-nested-ternary */}
                       {debouncedSearch.trim().length > 0 || isTableFiltered
                         ? "No machine identities match search"
-                        : isCertManager
+                        : isSingleProject
                           ? "No machine identities have been added"
                           : "No machine identities have been added to this project"}
                     </EmptyTitle>
@@ -333,7 +337,7 @@ export const IdentityTab = withProjectPermission(
                           />
                         </TableHead>
                         <TableHead className="w-1/4">
-                          {isCertManager ? "Role" : `${productLabel} Role`}
+                          {isSingleProject ? "Role" : `${productLabel} Role`}
                         </TableHead>
                         <TableHead>Managed by</TableHead>
                         <TableHead className="w-5">
@@ -585,12 +589,9 @@ export const IdentityTab = withProjectPermission(
                                             }}
                                           >
                                             {identityProjectId && <TrashIcon />}
-                                            {/* eslint-disable-next-line no-nested-ternary */}
                                             {identityProjectId
                                               ? "Delete Machine Identity"
-                                              : isCertManager
-                                                ? "Remove From Certificate Manager"
-                                                : "Remove From Project"}
+                                              : `Remove From ${productLabel}`}
                                           </DropdownMenuItem>
                                         )}
                                       </ProjectPermissionCan>

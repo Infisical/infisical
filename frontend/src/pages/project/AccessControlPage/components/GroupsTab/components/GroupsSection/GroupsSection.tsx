@@ -20,9 +20,9 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
+import { getSingleProjectProductName, isSingleProjectProduct } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { GroupModal } from "./GroupModal";
 import { GroupTable } from "./GroupsTable";
@@ -30,8 +30,8 @@ import { GroupTable } from "./GroupsTable";
 export const GroupsSection = () => {
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getSingleProjectProductName(currentProject?.type) ?? "Project";
+  const isSingleProject = isSingleProjectProduct(currentProject?.type);
 
   const { mutateAsync: deleteMutateAsync, isPending: isRemovingGroup } =
     useDeleteGroupFromWorkspace();
@@ -79,7 +79,7 @@ export const GroupsSection = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {isCertManager ? "Groups" : `${productLabel} Groups`}
+            {isSingleProject ? "Groups" : `${productLabel} Groups`}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/groups#user-groups" />
           </CardTitle>
           <CardDescription>{`Add and manage ${productLabel.toLowerCase()} groups`}</CardDescription>
@@ -95,7 +95,7 @@ export const GroupsSection = () => {
                   isDisabled={!isAllowed}
                 >
                   <PlusIcon />
-                  {isCertManager ? "Add Group" : `Add Group to ${productLabel}`}
+                  {isSingleProject ? "Add Group" : `Add Group to ${productLabel}`}
                 </Button>
               )}
             </ProjectPermissionCan>

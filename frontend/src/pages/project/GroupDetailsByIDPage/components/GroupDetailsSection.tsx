@@ -18,9 +18,9 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { getSingleProjectProductName } from "@app/helpers/project";
 import { useTimedReset } from "@app/hooks";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { GroupRoles } from "@app/pages/project/AccessControlPage/components/GroupsTab/components/GroupsSection/GroupRoles";
 
 type Props = {
@@ -30,7 +30,7 @@ type Props = {
 export const GroupDetailsSection = ({ groupMembership }: Props) => {
   const { group } = groupMembership;
   const { currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const singleProjectProductName = getSingleProjectProductName(currentProject?.type);
 
   // eslint-disable-next-line @typescript-eslint/naming-convention,@typescript-eslint/no-unused-vars
   const [_, isCopyingId, setCopyTextId] = useTimedReset<string>({
@@ -72,7 +72,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
             </DetailValue>
           </Detail>
           <Detail>
-            <DetailLabel>{isCertManager ? "Certificate Manager Role" : "Project Role"}</DetailLabel>
+            <DetailLabel>{`${singleProjectProductName ?? "Project"} Role`}</DetailLabel>
             <DetailValue>
               <ProjectPermissionCan
                 I={ProjectPermissionActions.Edit}
@@ -91,7 +91,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
           </Detail>
           <Detail>
             <DetailLabel>
-              {isCertManager ? "Joined certificate manager" : "Joined project"}
+              {`Joined ${singleProjectProductName?.toLowerCase() ?? "project"}`}
             </DetailLabel>
             <DetailValue>{format(groupMembership.createdAt, "PPpp")}</DetailValue>
           </Detail>

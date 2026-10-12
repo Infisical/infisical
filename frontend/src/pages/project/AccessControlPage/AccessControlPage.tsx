@@ -11,7 +11,7 @@ import {
   TabsTrigger
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getProjectBaseURL, isSingleProjectProduct } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
@@ -45,6 +45,7 @@ const Page = () => {
 
   const isSecretManager = currentProject.type === ProjectType.SecretManager;
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
+  const isSingleProject = isSingleProjectProduct(currentProject.type);
   const hasTabs = isCertManager || isSecretManager;
 
   const renderTabContent = () => {
@@ -68,9 +69,9 @@ const Page = () => {
       <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={currentProject.type}
-          title={isCertManager ? "Access Control" : "Project Access Control"}
+          title={isSingleProject ? "Access Control" : "Project Access Control"}
           description={
-            isCertManager
+            isSingleProject
               ? "Manage access for users, groups, and machine identities."
               : "Manage fine-grained access for users, groups, roles, and machine identities within your project resources."
           }

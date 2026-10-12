@@ -25,10 +25,10 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
+import { getSingleProjectProductName, isSingleProjectProduct } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
-import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AddMemberModal } from "./AddMemberModal";
 import { MembersTable } from "./MembersTable";
@@ -36,8 +36,8 @@ import { MembersTable } from "./MembersTable";
 export const MembersSection = () => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getSingleProjectProductName(currentProject?.type) ?? "Project";
+  const isSingleProject = isSingleProjectProduct(currentProject?.type);
 
   const removeUserMutation = useDeleteUserFromWorkspace();
 
@@ -72,7 +72,7 @@ export const MembersSection = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {isCertManager ? "Users" : `${productLabel} Users`}
+            {isSingleProject ? "Users" : `${productLabel} Users`}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/user-identities" />
           </CardTitle>
           <CardDescription>
@@ -91,7 +91,7 @@ export const MembersSection = () => {
                     isDisabled={!isAllowed}
                   >
                     <UserPlusIcon />
-                    {isCertManager ? "Add Users" : `Add Users to ${productLabel}`}
+                    {isSingleProject ? "Add Users" : `Add Users to ${productLabel}`}
                   </Button>
                 );
 

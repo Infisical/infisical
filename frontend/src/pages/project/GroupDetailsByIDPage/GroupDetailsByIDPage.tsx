@@ -25,11 +25,10 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getProjectBaseURL, getSingleProjectProductName } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
 import { useGetWorkspaceGroupMembershipDetails } from "@app/hooks/api/projects/queries";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { GroupDetailsSection } from "./components/GroupDetailsSection";
@@ -73,7 +72,7 @@ const Page = () => {
 
     createNotification({
       text: `Successfully removed group from ${
-        currentProject.type === ProjectType.CertificateManager ? "certificate manager" : "project"
+        getSingleProjectProductName(currentProject.type)?.toLowerCase() ?? "project"
       }`,
       type: "success"
     });
@@ -92,8 +91,8 @@ const Page = () => {
     });
   };
 
-  const isCertManager = currentProject.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const singleProjectProductName = getSingleProjectProductName(currentProject.type);
+  const productLabel = singleProjectProductName ?? "Project";
 
   if (isPending) {
     return (
@@ -126,7 +125,7 @@ const Page = () => {
       selectedTab: ProjectAccessControlTabs.Groups
     }
   } as const;
-  const backLinkLabel = isCertManager ? "Groups" : "Project Groups";
+  const backLinkLabel = singleProjectProductName ? "Groups" : "Project Groups";
 
   return (
     <div className="@container mx-auto flex max-w-8xl flex-col">
@@ -135,11 +134,7 @@ const Page = () => {
           <PageHeader
             scope={currentProject.type}
             title={groupMembership.group.name}
-            description={
-              isCertManager
-                ? "Configure and manage certificate manager access control"
-                : "Configure and manage project access control"
-            }
+            description={`Configure and manage ${productLabel.toLowerCase()} access control`}
             backLink={
               <Link {...backLinkProps}>
                 <ChevronLeftIcon aria-hidden className="size-4" />

@@ -54,7 +54,11 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
-import { getProjectBaseURL, supportsAssumePrivileges } from "@app/helpers/project";
+import {
+  getProjectBaseURL,
+  getSingleProjectProductName,
+  supportsAssumePrivileges
+} from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteProjectIdentityMembership,
@@ -113,9 +117,12 @@ const Page = () => {
     removeMenuItemLabel = "Remove From Agent Vault";
   }
 
+  const singleProjectProductName = getSingleProjectProductName(currentProject?.type);
+  const namesProduct = isStandaloneProduct || Boolean(singleProjectProductName);
+
   let accessControlLabel = "project";
-  if (isCertManager) {
-    accessControlLabel = "certificate manager";
+  if (singleProjectProductName) {
+    accessControlLabel = singleProjectProductName.toLowerCase();
   } else if (isPam) {
     accessControlLabel = "PAM";
   } else if (isAgentVault) {
@@ -165,7 +172,7 @@ const Page = () => {
       });
     }
     createNotification({
-      text: `Successfully removed machine identity from ${isStandaloneProduct ? accessControlLabel : "project"}`,
+      text: `Successfully removed machine identity from ${namesProduct ? accessControlLabel : "project"}`,
       type: "success"
     });
     handlePopUpClose("removeIdentity");
@@ -234,7 +241,7 @@ const Page = () => {
                 }}
               >
                 <ChevronLeftIcon aria-hidden className="size-4" />
-                {isStandaloneProduct ? "Machine Identities" : "Project Machine Identities"}
+                {namesProduct ? "Machine Identities" : "Project Machine Identities"}
               </Link>
             }
           >
@@ -422,10 +429,10 @@ const Page = () => {
           <IdentityActionConfirmationDialog
             open={popUp.removeIdentity.isOpen}
             title={`Remove ${identityMembershipDetails.identity.name} from ${
-              isStandaloneProduct ? accessControlLabel : "the project"
+              namesProduct ? accessControlLabel : "the project"
             }?`}
             description={`The machine identity will lose access to ${
-              isStandaloneProduct ? accessControlLabel : "this project"
+              namesProduct ? accessControlLabel : "this project"
             } but remain available in its organization.`}
             descriptionAsAlert
             confirmationText="remove"

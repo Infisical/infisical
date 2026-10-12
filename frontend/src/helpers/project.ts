@@ -129,6 +129,19 @@ const ORG_SCOPED_PRODUCT_TYPES = new Set<ProjectType>([ProjectType.PAM, ProjectT
 
 export const isOrgScopedProduct = (type: ProjectType) => ORG_SCOPED_PRODUCT_TYPES.has(type);
 
+// One active project per org but still a $projectId in the URL, so shared project pages name the product
+// instead of saying "project".
+const SINGLE_PROJECT_PRODUCT_NAMES: Partial<Record<ProjectType, string>> = {
+  [ProjectType.CertificateManager]: "Certificate Manager",
+  [ProjectType.SecretScanning]: "Secret Scanning"
+};
+
+export const getSingleProjectProductName = (type?: ProjectType) =>
+  type ? SINGLE_PROJECT_PRODUCT_NAMES[type] : undefined;
+
+export const isSingleProjectProduct = (type?: ProjectType) =>
+  Boolean(getSingleProjectProductName(type));
+
 const PRODUCTS_WITHOUT_ASSUME_PRIVILEGES = new Set<ProjectType>([ProjectType.AgentVault]);
 
 export const supportsAssumePrivileges = (type: ProjectType) =>

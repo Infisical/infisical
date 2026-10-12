@@ -42,7 +42,8 @@ import {
   useGetProjectRoles,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
-import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
+import { getSingleProjectProductName, isSingleProjectProduct } from "@app/helpers/project";
+import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
 import { getRequesterStatus } from "@app/lib/fn/requesterStatus";
@@ -81,8 +82,8 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const orgId = currentOrg?.id || "";
   const projectId = currentProject?.id || "";
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getSingleProjectProductName(currentProject?.type) ?? "Project";
+  const isSingleProject = isSingleProjectProduct(currentProject?.type);
 
   const {
     data: members,
@@ -207,7 +208,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
       }
     }
     createNotification({
-      text: `Successfully added user to ${isCertManager ? productLabel : "the project"}`,
+      text: `Successfully added user to ${isSingleProject ? productLabel : "the project"}`,
       type: "success"
     });
     handlePopUpToggle("addMember", false);
@@ -262,8 +263,8 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>
-            {isCertManager
-              ? "Add Members to Certificate Manager"
+            {isSingleProject
+              ? `Add Members to ${productLabel}`
               : (t("section.members.add-dialog.add-member-to-project") as string)}
           </DialogTitle>
           <DialogDescription>{t("section.members.add-dialog.user-will-email")}</DialogDescription>

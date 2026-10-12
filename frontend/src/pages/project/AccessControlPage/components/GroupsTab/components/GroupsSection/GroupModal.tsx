@@ -26,6 +26,7 @@ import {
   Skeleton
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { getSingleProjectProductName } from "@app/helpers/project";
 import { useDebounce } from "@app/hooks";
 import {
   useAddGroupToWorkspace,
@@ -33,7 +34,6 @@ import {
   useListWorkspaceGroups,
   useSearchOrganizationGroups
 } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
@@ -55,8 +55,7 @@ type Props = {
 const Content = ({ onClose }: { onClose: () => void }) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getSingleProjectProductName(currentProject?.type) ?? "Project";
 
   const orgId = currentOrg?.id || "";
 
@@ -286,8 +285,7 @@ const Content = ({ onClose }: { onClose: () => void }) => {
 
 export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getSingleProjectProductName(currentProject?.type) ?? "Project";
 
   return (
     <Dialog

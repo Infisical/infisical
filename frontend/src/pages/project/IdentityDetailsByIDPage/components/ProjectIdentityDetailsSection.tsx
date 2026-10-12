@@ -30,6 +30,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub, useProject } from "@app/context";
+import { getSingleProjectProductName } from "@app/helpers/project";
 import { usePopUp, useTimedReset } from "@app/hooks";
 import { identityAuthToNameMap, TProjectIdentity } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
@@ -50,13 +51,13 @@ export const ProjectIdentityDetailsSection = ({
   membership
 }: Props) => {
   const { currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const singleProjectProductName = getSingleProjectProductName(currentProject?.type);
   const isPam = currentProject?.type === ProjectType.PAM;
   const isAgentVault = currentProject?.type === ProjectType.AgentVault;
 
   let productLabel = "Project";
-  if (isCertManager) {
-    productLabel = "Certificate Manager";
+  if (singleProjectProductName) {
+    productLabel = singleProjectProductName;
   } else if (isPam) {
     productLabel = "PAM";
   } else if (isAgentVault) {
@@ -64,8 +65,8 @@ export const ProjectIdentityDetailsSection = ({
   }
 
   let joinedLabel = "Joined project";
-  if (isCertManager) {
-    joinedLabel = "Joined certificate manager";
+  if (singleProjectProductName) {
+    joinedLabel = `Joined ${singleProjectProductName.toLowerCase()}`;
   } else if (isPam) {
     joinedLabel = "Joined PAM";
   } else if (isAgentVault) {
