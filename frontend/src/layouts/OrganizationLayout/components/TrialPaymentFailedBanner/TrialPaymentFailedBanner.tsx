@@ -32,19 +32,44 @@ const productLabel = (notice: SubscriptionPlanNotice) => {
   return notice.trialPlanKey ? `${product} ${humanizeKey(notice.trialPlanKey)}` : product;
 };
 
+enum NoticeCause {
+  PaymentActionRequired = "payment_action_required",
+  NoPaymentMethod = "no_payment_method",
+  PaymentProcessing = "payment_processing"
+}
+
 const listFormatter = new Intl.ListFormat("en", { style: "long", type: "conjunction" });
 
-const buildMessage = (notices: SubscriptionPlanNotice[]) => {
-  const products = listFormatter.format(notices.map(productLabel));
+const listProducts = (notices: SubscriptionPlanNotice[]) =>
+  listFormatter.format(notices.map(productLabel));
+
+const buildFailureMessage = (notices: SubscriptionPlanNotice[]) => {
+  const products = listProducts(notices);
   const accessEndsAt = format(
     Math.min(...notices.map((notice) => new Date(notice.accessEndsAt).getTime())),
     "MMM d"
   );
   const isUpgradeOnly = notices.every((notice) => notice.trialPlanKey);
+  const sharedCause = notices.every((notice) => notice.cause === notices[0].cause)
+    ? notices[0].cause
+    : undefined;
 
-  return isUpgradeOnly
-    ? `Your ${products} upgrade will end on ${accessEndsAt} due to a failed payment.`
-    : `${products} access will be suspended on ${accessEndsAt} due to a failed payment.`;
+  const deadline = isUpgradeOnly
+    ? `Complete payment before ${accessEndsAt}, or you'll return to your current plan.`
+    : `Complete payment before ${accessEndsAt} to keep access.`;
+
+  if (sharedCause === NoticeCause.PaymentActionRequired) {
+    return `We couldn't charge your card for ${products}. ${deadline}`;
+  }
+  if (sharedCause === NoticeCause.NoPaymentMethod) {
+    return isUpgradeOnly
+      ? `There's no card on file for ${products}. Add one or complete payment before ${accessEndsAt}, or you'll return to your current plan.`
+      : `There's no card on file for ${products}. Add one or complete payment before ${accessEndsAt} to keep access.`;
+  }
+  if (sharedCause === null && isUpgradeOnly) {
+    return `We couldn't charge for your ${products} upgrade. ${deadline}`;
+  }
+  return `We're having trouble completing your ${products} subscription. ${deadline}`;
 };
 
 export const TrialPaymentFailedBanner = () => {
@@ -60,23 +85,39 @@ export const TrialPaymentFailedBanner = () => {
   );
   if (!notices.length) return null;
 
+  const processingNotices = notices.filter(
+    (notice) => notice.cause === NoticeCause.PaymentProcessing
+  );
+  const failedNotices = notices.filter((notice) => notice.cause !== NoticeCause.PaymentProcessing);
+  const processingMessage = processingNotices.length
+    ? `Your payment for ${listProducts(processingNotices)} is processing. Access continues meanwhile.`
+    : null;
+
   // Billing lives on the root organization, and a sub-org role grants nothing there.
   const canResolve =
     isRootOrganization &&
     permission.can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing) &&
     permission.can(OrgPermissionBillingActions.ManageBilling, OrgPermissionSubjects.Billing);
+  // Paying again while a payment settles could charge twice.
+  const showPayButton = canResolve && failedNotices.length > 0 && !processingNotices.length;
+
+  if (!failedNotices.length) {
+    return <OrgAlertBanner role="status" isDismissible={false} text={processingMessage} />;
+  }
+
   return (
     <OrgAlertBanner
       role="alert"
       isDismissible={false}
       text={
         <>
-          <span className="font-medium">Action needed:</span> {buildMessage(notices)}
+          <span className="font-medium">Action needed:</span> {buildFailureMessage(failedNotices)}
+          {processingMessage && ` ${processingMessage}`}
           {!canResolve && " Ask an organization admin to update payment."}
         </>
       }
       action={
-        canResolve && (
+        showPayButton && (
           <Link to="/organizations/$orgId/billing" params={{ orgId: currentOrg.id }}>
             <Button variant="outline" size="xs">
               Complete Payment
