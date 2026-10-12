@@ -22,6 +22,8 @@ import { TSecretApprovalPolicyApproverDALFactory } from "../../ee/services/secre
 import { TSecretApprovalPolicyDALFactory } from "../../ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
+import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
+import { ApprovalPolicyType } from "../approval-policy/approval-policy-enums";
 import { ActorType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
@@ -64,6 +66,7 @@ type TProjectMembershipServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "find">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findPoliciesWhereSubjectIsApprover">;
   secretApprovalPolicyApproverDAL: Pick<TSecretApprovalPolicyApproverDALFactory, "find">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "find">;
   secretReminderRecipientsDAL: Pick<TSecretReminderRecipientsDALFactory, "delete">;
@@ -92,6 +95,7 @@ export const projectMembershipServiceFactory = ({
   additionalPrivilegeDAL,
   accessApprovalPolicyApproverDAL,
   accessApprovalPolicyDAL,
+  approvalPolicyDAL,
   secretApprovalPolicyApproverDAL,
   secretApprovalPolicyDAL,
   membershipUserDAL,
@@ -124,6 +128,18 @@ export const projectMembershipServiceFactory = ({
           message: `${actionLabel}: user is an approver in access approval ${policies.length > 1 ? "policies" : "policy"}: ${policyNames}`
         });
       }
+    }
+
+    const secretAccessPolicies = await approvalPolicyDAL.findPoliciesWhereSubjectIsApprover({
+      projectId,
+      type: ApprovalPolicyType.SecretAccess,
+      userIds
+    });
+    if (secretAccessPolicies.length > 0) {
+      const policyNames = secretAccessPolicies.map((p) => p.name).join(", ");
+      throw new BadRequestError({
+        message: `${actionLabel}: user is an approver in access approval ${secretAccessPolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
+      });
     }
 
     const secretApprovers = await secretApprovalPolicyApproverDAL.find({

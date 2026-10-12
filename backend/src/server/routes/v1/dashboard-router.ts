@@ -22,7 +22,6 @@ import {
   SanitizedHoneyTokenSchema,
   SanitizedProxiedServiceSchema,
   SanitizedTagSchema,
-  SanitizedUserSchema,
   secretRawSchema
 } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -954,12 +953,6 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             .extend({
               isHoneyTokenSecret: z.boolean().optional(),
               isEmpty: z.boolean(),
-              secretReminderRecipients: z
-                .object({
-                  user: SanitizedUserSchema.pick({ id: true, email: true, username: true }),
-                  id: z.string()
-                })
-                .array(),
               secretValueHidden: z.boolean(),
               secretPath: z.string().optional(),
               secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),

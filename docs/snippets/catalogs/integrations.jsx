@@ -99,6 +99,7 @@ export const integrations = [
   { name: "Spacelift", path: "/integrations/secret-syncs/spacelift", description: "Learn how to sync secrets from Infisical to Spacelift.", type: "Secret Sync", tag: "DevOps Tools" },
   { name: "Cloudflare Pages", path: "/integrations/secret-syncs/cloudflare-pages", description: "Learn how to sync secrets from Infisical to Cloudflare Pages.", type: "Secret Sync", tag: "Hosting" },
   { name: "Cloudflare Workers", path: "/integrations/secret-syncs/cloudflare-workers", description: "Learn how to sync secrets from Infisical to Cloudflare Workers.", type: "Secret Sync", tag: "Cloud Providers" },
+  { name: "Cloudflare Secrets Store", path: "/integrations/secret-syncs/cloudflare-secrets-store", description: "Learn how to sync secrets from Infisical to Cloudflare Secrets Store.", type: "Secret Sync", tag: "Cloud Providers" },
   { name: "Databricks", path: "/integrations/secret-syncs/databricks", description: "Learn how to sync secrets from Infisical to Databricks.", type: "Secret Sync", tag: "Data Analytics" },
   { name: "Windmill", path: "/integrations/secret-syncs/windmill", description: "Learn how to sync secrets from Infisical to Windmill.", type: "Secret Sync", tag: "DevOps Tools" },
   { name: "Camunda", path: "/integrations/secret-syncs/camunda", description: "Learn how to sync secrets from Infisical to Camunda.", type: "Secret Sync", tag: "DevOps Tools" },
@@ -122,4 +123,5 @@ export const integrations = [
   { name: "Hasura Cloud", path: "/integrations/secret-syncs/hasura-cloud", description: "Learn how to sync secrets from Infisical to Hasura Cloud.", type: "Secret Sync", tag: "Hosting" },
   { name: "Daytona", path: "/integrations/secret-syncs/daytona", description: "Learn how to sync secrets from Infisical to a Daytona organization.", type: "Secret Sync", tag: "DevOps Tools" },
   { name: "Devin", path: "/integrations/secret-syncs/devin", description: "Learn how to sync secrets from Infisical to Devin.", type: "Secret Sync", tag: "DevOps Tools" },
+  { name: "Keeper Password Manager", path: "/integrations/secret-syncs/keeper-password-manager", description: "Learn how to sync secrets from Infisical to a Keeper shared folder.", type: "Secret Sync", tag: "Security" },
 ];

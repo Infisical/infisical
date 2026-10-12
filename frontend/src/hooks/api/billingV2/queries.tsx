@@ -21,7 +21,10 @@ export const billingV2Keys = {
     [{ orgId, search: search || undefined, ...rest }, "billing-v2-organizations"] as const
 };
 
-export const useGetBillingV2Overview = (orgId: string) => {
+export const useGetBillingV2Overview = (
+  orgId: string,
+  options?: { enabled?: boolean; staleTime?: number }
+) => {
   return useQuery({
     queryKey: billingV2Keys.overview(orgId),
     queryFn: async () => {
@@ -33,13 +36,14 @@ export const useGetBillingV2Overview = (orgId: string) => {
 
       return overview;
     },
-    enabled: Boolean(orgId),
+    enabled: Boolean(orgId) && (options?.enabled ?? true),
+    ...(options?.staleTime !== undefined ? { staleTime: options.staleTime } : {}),
     placeholderData: keepPreviousData,
     refetchOnWindowFocus: "always"
   });
 };
 
-export const useGetBillingV2Catalog = (orgId: string) => {
+export const useGetBillingV2Catalog = (orgId: string, options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: billingV2Keys.catalog(orgId),
     queryFn: async () => {
@@ -51,7 +55,7 @@ export const useGetBillingV2Catalog = (orgId: string) => {
 
       return products;
     },
-    enabled: Boolean(orgId),
+    enabled: Boolean(orgId) && (options?.enabled ?? true),
     placeholderData: keepPreviousData
   });
 };

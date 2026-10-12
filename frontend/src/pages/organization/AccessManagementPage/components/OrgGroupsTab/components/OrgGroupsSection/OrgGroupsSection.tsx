@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { GroupsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
@@ -45,10 +45,7 @@ export const OrgGroupsSection = () => {
 
   const handleAddGroupModal = () => {
     if (!subscription?.groups) {
-      handlePopUpOpen("upgradePlan", {
-        text: "Your current plan does not allow adding groups. To unlock this feature, please upgrade to Infisical Enterprise plan.",
-        isEnterpriseFeature: true
-      });
+      handlePopUpOpen("upgradePlan");
     } else {
       if (!isSubOrganization) {
         setWizardStep(GroupWizardSteps.CreateGroup);
@@ -137,12 +134,11 @@ export const OrgGroupsSection = () => {
           )
         }
       />
-      <UpgradePlanModal
+      <UpgradeGate
+        intent={GroupsUpgradeIntent}
         paywallKey="organization.org-groups"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-        text={popUp.upgradePlan?.data?.text}
       />
     </>
   );

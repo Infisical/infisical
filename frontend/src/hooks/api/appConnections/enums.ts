@@ -34,6 +34,7 @@ export enum AppConnection {
   GitLab = "gitlab",
   Cloudflare = "cloudflare",
   DNSMadeEasy = "dns-made-easy",
+  UltraDNS = "ultradns",
   Bitbucket = "bitbucket",
   Zabbix = "zabbix",
   Railway = "railway",
@@ -84,5 +85,7 @@ export enum AppConnection {
   NutanixPrismCentral = "nutanix-prism-central",
   Spacelift = "spacelift",
   Daytona = "daytona",
-  Stripe = "stripe"
+  Stripe = "stripe",
+  Keeper = "keeper",
+  HpeIloRedFish = "hpe-ilo"
 }

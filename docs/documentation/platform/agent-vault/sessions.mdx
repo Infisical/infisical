@@ -11,6 +11,10 @@ Every session is scoped to one access bundle and expires on a schedule you set. 
 
 Anyone granted at least one access bundle can create a session. Admins can create one with any access bundle.
 
+<Tip>
+  If you want to create sessions programmatically, you can have a [machine identity](/documentation/platform/identities/machine-identities) create a new session for each run using [the CLI](/documentation/platform/agent-vault/sessions-cli) or [the API](/documentation/platform/agent-vault/sessions-api).
+</Tip>
+
 <Tabs>
   <Tab title="Dashboard">
     <Steps>
@@ -45,8 +49,18 @@ Anyone granted at least one access bundle can create a session. Admins can creat
     Set the duration with [`--ttl`](/cli/reference#agent-vault-run--flag-ttl), which takes a value like `30m`, `8h`, `7d`, or `never`.
 
     The CLI creates the session as your user by default, or as a machine identity when you pass `--client-id` and `--client-secret` (or their environment variables). It revokes the session when the agent exits unless you pass `--keep-session`.
+  </Tab>
+  <Tab title="API">
+    Call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) with the access bundle's name and a `ttl`:
 
-    For an agent that runs unattended, set up the [machine identity](/documentation/platform/identities/machine-identities) first: create it with Universal Auth, add it under **Access Control**, and grant it the access bundle.
+    ```bash
+    curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
+      -H "Authorization: Bearer <access-token>" \
+      -H "Content-Type: application/json" \
+      -d '{"accessBundles": ["<access-bundle-name>"], "ttl": "1h"}'
+    ```
+
+    The response includes the session token.
   </Tab>
 </Tabs>
 

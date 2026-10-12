@@ -23,6 +23,8 @@ import { packRules } from "@casl/ability/extra";
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 
+import { addUserMembership, createUser } from "../../testUtils/users";
+
 const adminHeaders = () => ({ authorization: `Bearer ${jwtAuthToken}` });
 const asIdentity = (token: string) => ({ authorization: `Bearer ${token}` });
 
@@ -65,28 +67,6 @@ const createActorIdentity = async (name: string) => {
   });
   expect(loginRes.statusCode).toBe(200);
   return { identityId, token: loginRes.json().accessToken as string };
-};
-
-const createTargetUser = async (label: string) => {
-  const username = `${label}-${crypto.randomUUID()}@localhost.local`;
-  const [user] = await testDb(TableName.Users)
-    .insert({ username, email: username, firstName: label, isAccepted: true, isGhost: false })
-    .returning("id");
-  return { userId: (user as { id: string }).id, username };
-};
-
-const giveProjectMembership = async (userId: string, projectId: string, role: ProjectMembershipRole) => {
-  const [membership] = await testDb(TableName.Membership)
-    .insert({
-      scope: AccessScope.Project,
-      scopeOrgId: seedData1.organization.id,
-      scopeProjectId: projectId,
-      actorUserId: userId
-    })
-    .returning("id");
-  const membershipId = (membership as { id: string }).id;
-  await testDb(TableName.MembershipRole).insert({ membershipId, role });
-  return membershipId;
 };
 
 describe("Privilege boundary on project membership downgrade", () => {
@@ -155,8 +135,13 @@ describe("Privilege boundary on project membership downgrade", () => {
     });
 
     test("baseline: DELETE on an Admin target follows the removal boundary", async () => {
-      const target = await createTargetUser("del");
-      const membershipId = await giveProjectMembership(target.userId, project.id, ProjectMembershipRole.Admin);
+      const target = await createUser("del");
+      const membershipId = await addUserMembership({
+        userId: target.userId,
+        orgId: seedData1.organization.id,
+        projectId: project.id,
+        role: ProjectMembershipRole.Admin
+      });
 
       const res = await testServer.inject({
         method: "DELETE",
@@ -168,8 +153,13 @@ describe("Privilege boundary on project membership downgrade", () => {
     });
 
     test("setting a more privileged member to no-access is bounded, like removing them", async () => {
-      const target = await createTargetUser("patch");
-      const membershipId = await giveProjectMembership(target.userId, project.id, ProjectMembershipRole.Admin);
+      const target = await createUser("patch");
+      const membershipId = await addUserMembership({
+        userId: target.userId,
+        orgId: seedData1.organization.id,
+        projectId: project.id,
+        role: ProjectMembershipRole.Admin
+      });
 
       const res = await testServer.inject({
         method: "PATCH",
@@ -182,8 +172,13 @@ describe("Privilege boundary on project membership downgrade", () => {
     });
 
     test("regression: downgrading to a real role stays bounded", async () => {
-      const target = await createTargetUser("patchv");
-      const membershipId = await giveProjectMembership(target.userId, project.id, ProjectMembershipRole.Admin);
+      const target = await createUser("patchv");
+      const membershipId = await addUserMembership({
+        userId: target.userId,
+        orgId: seedData1.organization.id,
+        projectId: project.id,
+        role: ProjectMembershipRole.Admin
+      });
 
       const res = await testServer.inject({
         method: "PATCH",
@@ -197,8 +192,13 @@ describe("Privilege boundary on project membership downgrade", () => {
 
   test("regression: an admin can still downgrade an Admin member to no-access", async () => {
     await setNewPrivilegeSystem(false);
-    const target = await createTargetUser("admin-downgrade");
-    const membershipId = await giveProjectMembership(target.userId, project.id, ProjectMembershipRole.Admin);
+    const target = await createUser("admin-downgrade");
+    const membershipId = await addUserMembership({
+      userId: target.userId,
+      orgId: seedData1.organization.id,
+      projectId: project.id,
+      role: ProjectMembershipRole.Admin
+    });
 
     const res = await testServer.inject({
       method: "PATCH",
@@ -230,12 +230,12 @@ describe("Privilege boundary on org membership downgrade", () => {
     });
 
   const createAdminTarget = async () => {
-    const { userId } = await createTargetUser("org-downgrade");
-    const [membership] = await testDb(TableName.Membership)
-      .insert({ scope: AccessScope.Organization, scopeOrgId: seedData1.organization.id, actorUserId: userId })
-      .returning("id");
-    const membershipId = (membership as { id: string }).id;
-    await testDb(TableName.MembershipRole).insert({ membershipId, role: OrgMembershipRole.Admin });
+    const { userId } = await createUser("org-downgrade");
+    const membershipId = await addUserMembership({
+      userId,
+      orgId: seedData1.organization.id,
+      role: OrgMembershipRole.Admin
+    });
     targetUserIds.push(userId);
     return { userId, membershipId };
   };

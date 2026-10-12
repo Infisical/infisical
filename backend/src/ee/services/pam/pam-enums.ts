@@ -28,6 +28,12 @@ export enum PamProductRole {
   Member = "member"
 }
 
+export enum PamFolderCallerAccess {
+  Admin = "admin",
+  Member = "member",
+  None = "none"
+}
+
 export enum PamHeartbeatStatus {
   Healthy = "healthy",
   InvalidCredentials = "invalid-credentials",

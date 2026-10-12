@@ -80,7 +80,7 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
   const isCandidateListTruncated = (availableData?.totalCount ?? 0) > candidates.length;
 
   const memberUsernames = useMemo(
-    () => new Set((requesterMatch?.members ?? []).map((member) => member.actor.username)),
+    () => new Set((requesterMatch?.members ?? []).map((member) => member.username)),
     [requesterMatch]
   );
 

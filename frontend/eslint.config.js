@@ -155,7 +155,18 @@ export default tseslint.config(
       ],
       "import/first": "error",
       "import/newline-after-import": "error",
-      "import/no-duplicates": "error"
+      "import/no-duplicates": "error",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/UpgradePlanModal", "**/UpgradePlanModal/*"],
+              message: "Use the shared UpgradeGate with a product or capability intent."
+            }
+          ]
+        }
+      ]
     }
   },
   {

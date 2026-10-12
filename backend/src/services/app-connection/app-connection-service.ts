@@ -134,8 +134,11 @@ import { ValidateHCVaultConnectionCredentialsSchema } from "./hc-vault";
 import { hcVaultConnectionService } from "./hc-vault/hc-vault-connection-service";
 import { ValidateHerokuConnectionCredentialsSchema } from "./heroku";
 import { herokuConnectionService } from "./heroku/heroku-connection-service";
+import { ValidateHpeIloConnectionCredentialsSchema } from "./hpe-ilo";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
+import { ValidateKeeperConnectionCredentialsSchema } from "./keeper";
+import { keeperConnectionService } from "./keeper/keeper-connection-service";
 import { ValidateKempLoadMasterConnectionCredentialsSchema } from "./kemp-loadmaster";
 import { kempLoadMasterConnectionService } from "./kemp-loadmaster/kemp-loadmaster-connection-service";
 import { ValidateLaravelForgeConnectionCredentialsSchema } from "./laravel-forge";
@@ -197,6 +200,8 @@ import { ValidateTravisCIConnectionCredentialsSchema } from "./travis-ci";
 import { travisCIConnectionService } from "./travis-ci/travis-ci-connection-service";
 import { ValidateTriggerDevConnectionCredentialsSchema } from "./trigger-dev";
 import { triggerDevConnectionService } from "./trigger-dev/trigger-dev-connection-service";
+import { ValidateUltraDNSConnectionCredentialsSchema } from "./ultradns/ultradns-connection-schema";
+import { ultraDNSConnectionService } from "./ultradns/ultradns-connection-service";
 import { ValidateVenafiConnectionCredentialsSchema } from "./venafi/venafi-connection-schema";
 import { venafiConnectionService } from "./venafi/venafi-connection-service";
 import { ValidateVenafiTppConnectionCredentialsSchema } from "./venafi-tpp/venafi-tpp-connection-schemas";
@@ -269,6 +274,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.GitLab]: ValidateGitLabConnectionCredentialsSchema,
   [AppConnection.Cloudflare]: ValidateCloudflareConnectionCredentialsSchema,
   [AppConnection.DNSMadeEasy]: ValidateDNSMadeEasyConnectionCredentialsSchema,
+  [AppConnection.UltraDNS]: ValidateUltraDNSConnectionCredentialsSchema,
   [AppConnection.AzureDNS]: ValidateAzureDnsConnectionCredentialsSchema,
   [AppConnection.Zabbix]: ValidateZabbixConnectionCredentialsSchema,
   [AppConnection.Railway]: ValidateRailwayConnectionCredentialsSchema,
@@ -318,7 +324,9 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.PowerDns]: ValidatePowerDnsConnectionCredentialsSchema,
   [AppConnection.Spacelift]: ValidateSpaceliftConnectionCredentialsSchema,
   [AppConnection.Daytona]: ValidateDaytonaConnectionCredentialsSchema,
-  [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema
+  [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema,
+  [AppConnection.Keeper]: ValidateKeeperConnectionCredentialsSchema,
+  [AppConnection.HpeIloRedFish]: ValidateHpeIloConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -1450,6 +1458,7 @@ export const appConnectionServiceFactory = ({
     teamcity: teamcityConnectionService(connectAppConnectionById),
     oci: ociConnectionService(connectAppConnectionById, licenseService),
     onepass: onePassConnectionService(connectAppConnectionById),
+    keeper: keeperConnectionService(connectAppConnectionById),
     cloud66: cloud66ConnectionService(connectAppConnectionById),
     heroku: herokuConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     render: renderConnectionService(connectAppConnectionById),
@@ -1462,6 +1471,7 @@ export const appConnectionServiceFactory = ({
     adcs: adcsConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     ldap: ldapConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService, keyStore),
     dnsMadeEasy: dnsMadeEasyConnectionService(connectAppConnectionById),
+    ultraDNS: ultraDNSConnectionService(connectAppConnectionById),
     azureDns: azureDnsConnectionService(connectAppConnectionById),
     zabbix: zabbixConnectionService(connectAppConnectionById),
     railway: railwayConnectionService(connectAppConnectionById),

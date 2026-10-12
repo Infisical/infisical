@@ -360,6 +360,14 @@ export const approvalPolicyServiceFactory = ({
     }
   };
 
+  const $assertPolicyType = (storedType: string, policyType: ApprovalPolicyType) => {
+    if (storedType !== policyType) {
+      throw new BadRequestError({
+        message: `Policy type mismatch: expected ${policyType}, got ${storedType}`
+      });
+    }
+  };
+
   const $verifyProjectUserMembership = async (userIds: string[], orgId: string, projectId: string) => {
     const uniqueUserIds = [...new Set(userIds)];
     if (uniqueUserIds.length === 0) return;
@@ -758,7 +766,7 @@ export const approvalPolicyServiceFactory = ({
     return { policies, projectId };
   };
 
-  const getById = async (policyId: string, actor: TApprovalActor) => {
+  const getById = async (policyId: string, actor: TApprovalActor, policyType: ApprovalPolicyType) => {
     const policy = await approvalPolicyDAL.findById(policyId);
     if (!policy) {
       throw new ForbiddenRequestError({ message: "Policy not found" });
@@ -772,6 +780,8 @@ export const approvalPolicyServiceFactory = ({
       ResourcePermissionApprovalPolicyActions.Read,
       policy.type as ApprovalPolicyType
     );
+
+    $assertPolicyType(policy.type, policyType);
 
     const [steps, bypassers] = await Promise.all([
       approvalPolicyDAL.findStepsByPolicyId(policyId),
@@ -793,7 +803,8 @@ export const approvalPolicyServiceFactory = ({
       enforcementLevel,
       bypassers
     }: TUpdatePolicyDTO,
-    actor: TApprovalActor
+    actor: TApprovalActor,
+    policyType: ApprovalPolicyType
   ) => {
     const policy = await approvalPolicyDAL.findById(policyId);
     if (!policy) {
@@ -811,6 +822,8 @@ export const approvalPolicyServiceFactory = ({
       ResourcePermissionApprovalPolicyActions.Edit,
       policy.type as ApprovalPolicyType
     );
+
+    $assertPolicyType(policy.type, policyType);
 
     if (
       !resources[policy.type as ApprovalPolicyType]?.isBreakGlassEligible &&
@@ -928,7 +941,7 @@ export const approvalPolicyServiceFactory = ({
     };
   };
 
-  const deleteById = async (policyId: string, actor: TApprovalActor) => {
+  const deleteById = async (policyId: string, actor: TApprovalActor, policyType: ApprovalPolicyType) => {
     const policy = await approvalPolicyDAL.findById(policyId);
     if (!policy) {
       throw new ForbiddenRequestError({ message: "Policy not found" });
@@ -942,6 +955,8 @@ export const approvalPolicyServiceFactory = ({
       ResourcePermissionApprovalPolicyActions.Delete,
       policy.type as ApprovalPolicyType
     );
+
+    $assertPolicyType(policy.type, policyType);
 
     const cancelled = await approvalPolicyDAL.transaction(async (tx) => {
       const rows = await approvalRequestDAL.update(
@@ -1687,6 +1702,12 @@ export const approvalPolicyServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not the requester of this request" });
     }
 
+    if (request.type === ApprovalPolicyType.SecretAccess) {
+      throw new BadRequestError({
+        message: "This is a secret access request. Manage it from the access requests instead."
+      });
+    }
+
     const [updatedRequest] = await approvalRequestDAL.update(
       { id: requestId, status: ApprovalRequestStatus.Pending },
       { status: ApprovalRequestStatus.Cancelled }
@@ -1831,6 +1852,13 @@ export const approvalPolicyServiceFactory = ({
 
     const request = grant.requestId ? await approvalRequestDAL.findById(grant.requestId) : null;
     const assertDomainCanRevoke = resources[grantPolicyType]?.assertCanRevokeGrant;
+
+    // Secret access grants are managed by the secret-access-approval-global-request-bridge service
+    if (grantPolicyType === ApprovalPolicyType.SecretAccess) {
+      throw new BadRequestError({
+        message: "This grant is for a secret access request. Revoke it from the access request instead."
+      });
+    }
 
     if (assertDomainCanRevoke) {
       await assertDomainCanRevoke({ grant, request, actor });
@@ -2356,7 +2384,7 @@ export const approvalPolicyServiceFactory = ({
 
     const hasApprovers = steps.some((step) => step.approvers.length > 0);
     if (!hasApprovers) {
-      if (existing) await deleteById(existing.id, actor);
+      if (existing) await deleteById(existing.id, actor, policyType);
       return { policyId: existing?.id ?? null };
     }
 
@@ -2364,7 +2392,7 @@ export const approvalPolicyServiceFactory = ({
     const bypassFields = bypassers ? { bypassers } : {};
 
     if (existing) {
-      const { policy } = await updateById(existing.id, { steps: policySteps, ...bypassFields }, actor);
+      const { policy } = await updateById(existing.id, { steps: policySteps, ...bypassFields }, actor, policyType);
       return { policyId: policy.id };
     }
 

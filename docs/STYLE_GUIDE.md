@@ -5,18 +5,18 @@ This guide defines how to write user-facing documentation for Infisical.
 ## Quick summary
 
 1. **Provide context:** Explain what a feature is and why readers would use it before explaining how to use it.
-2. **Write for users:** Describe what users can do and what happens, not how Infisical is built.
+2. **Write for users:** Describe what users can do and what happens, not how Infisical is built. Leave out facts the reader won't act on.
 3. **Cross-reference:** Link every concept a reader needs to know to understand the page.
 4. **Use Mintlify components:** Steps, Tabs, Cards, Accordions, callouts, and diagrams.
 5. **Write clearly:** Write plain technical English. Say exactly what you mean, with active voice, specific verbs, and few em dashes.
-6. **Keep pages focused:** Give each page one purpose.
+6. **Keep pages focused:** Give each page one purpose, give each topic in a section its own heading, and lay out separate facts so the reader can see where each one starts.
 7. **Maintain flow:** Connect new content to the content around it.
 8. **State prerequisites:** Tell readers what they need before they start.
 9. **Be consistent:** Use the same term for the same thing on every page.
 10. **Structure by purpose:** Guides, concept pages, overviews, and reference pages each need a different structure.
 11. **Use sentence case:** Write page titles, sidebar titles, and headings in sentence case.
 12. **Rewrite the sentences:** Say each thing once, in your own words. Read every sentence out loud.
-13. **Bold is for UI:** Use bold only for buttons, menus, and fields. Use "select", not "click" or "tap".
+13. **Bold is for UI:** Use bold only for buttons, menus, and fields. Use "select", not "click" or "tap". Format only what the reader needs to pick out.
 14. **Run the linter:** `make lint-docs-branch` checks the rules in this guide that a pattern can match.
 
 ---
@@ -64,6 +64,24 @@ Write every page so that readers understand it even if they've never seen the In
 Describe what users can do and what happens when they do it, not how Infisical is built. Leave out implementation details such as internal API endpoints, database schemas, internal service names, and explanations of how a feature works internally.
 
 **Exception:** Architecture docs (`*/architecture.mdx`) can explain system design.
+
+### Leave out what the reader won't act on
+
+A fact can be true, and even interesting, and still not belong on the page. Every extra fact makes the reader work harder to find the ones they need. Before you add a fact, ask what the reader would do differently after reading it. If the answer is nothing, leave the fact out.
+
+Facts that usually fail this test:
+
+- How a feature works step by step, when the reader only needs the result
+- Details of the UI that the reader can see for themselves, such as how many icons a column shows
+- Warnings about mistakes the steps don't lead the reader to make
+- Answers to questions the reader doesn't have, such as which response code an endpoint returns on a page about something else
+- Facts that another section or page already covers (link to it instead)
+
+If a fact only matters to some readers, such as readers on an older plan or with an unusual setup, put it in a callout next to where those readers will run into it, or in a troubleshooting section.
+
+**Instead of:** Three steps that describe how Infisical counts repeated permission denials within a minute and when it writes a summary event.
+
+**Write:** If the same denial repeats within a minute, Infisical records it once, then records one summary event with the number of repeats in `suppressedRepeats`.
 
 ---
 
@@ -247,6 +265,7 @@ Include a code example only when the example helps the reader understand or comp
 - Use realistic values where possible (actual domain names, plausible configs)
 - Show the expected output when the output helps readers confirm the command worked
 - Keep examples short, showing only what the task needs
+- If a code block is longer than 25 lines, make it expandable by adding `expandable` after the language, as in `` ```json expandable ``, so the block doesn't push the rest of the page down
 - Check that every endpoint in an example exists, accepts the credential the example sends (if an endpoint only accepts user sessions, it rejects a machine identity token), and has a reference page with content
 - Pick endpoints that work for every reader of the page; a getting-started example shouldn't call an endpoint that only works for one product unless the page is about that product
 
@@ -410,15 +429,22 @@ Use the name that the product, the protocol, or everyday English already has for
 
 ### Make sentences unambiguous
 
-If a reader can parse a sentence two ways, it makes the sentence harder to understand and could force the reader to reread the sentence. There are two main causes for this problem:
+Readers decide what each word is doing (subject, verb, or object) as soon as they read it, and only go back when the rest of the sentence stops making sense. Many words in technical writing can be either a noun or a verb, such as log, change, access, flag, request, record, list, return, update, use, scan, sync, set, report, run, and cache. If one of these words sits where both readings fit, the reader can pick the wrong one and has to reread the sentence.
 
-1. A noun placed directly before the verb, so the noun and the verb read as one phrase. In "Any endpoint that returns a list of resources paginates", the words "resources paginates" read as one phrase. Don't shorten a sentence so much that its nouns and verbs end up next to each other like this. A clear sentence is better than a short one.
+Most of these problems come from leaving out small words. Words like "the", "a", "that", "which", "to", and "is" tell the reader the role of the word that follows. They're the first words to go when someone shortens a sentence. A clear sentence is better than a short one.
 
-2. A first word that can be either a noun or a verb. If a sentence starts with "List endpoints", readers take the words as an instruction to list endpoints until the sentence's real verb appears. If readers don't know the term "list endpoint", they have no way to tell sooner.
+The problem can show up anywhere in a sentence:
 
-**Instead of:** List endpoints in the Infisical API return one page of results per request.
+| Problem | Instead of | Write |
+| --- | --- | --- |
+| A verb reads as part of the subject | Secret scanning flags leaks in your commits. ("Secret scanning flags" reads as the subject, and "leaks" as the verb) | When secret scanning finds a secret in a commit, it flags the commit. |
+| A noun reads as the verb | Infisical logs access to every secret. ("Infisical logs" reads as the subject, and "access" as the verb) | Each time someone reads a secret, Infisical adds an event to the audit log. |
+| A verb reads as the object of the verb before it | Changing how a machine identity authenticates changes who can act as it. (The identity seems to authenticate some changes) | When someone adds or removes an auth method, they change who can authenticate as the machine identity. |
+| A noun and the verb after it read as one phrase | Any endpoint that returns a list of resources paginates its response. ("Resources paginates" reads as one phrase) | If an endpoint returns multiple items, it splits them into pages. |
+| The first word reads as an instruction | List endpoints return one page of results per request. (The sentence starts like an instruction to list endpoints) | If an endpoint returns a list, each request gets one page of results. |
+| A missing "that" makes the sentence seem to end early | Select the role permissions apply to. (The sentence starts like an instruction to select "the role permissions") | Select the role that the permissions apply to. |
 
-**Write:** Endpoints that return multiple items paginate their responses.
+These examples aren't a complete list. Any word that can play more than one role can cause this problem, in any position in a sentence, and the problem can come from other kinds of words too. Read every sentence one word at a time, and at each word, check whether more than one reading fits so far. If more than one does, add a small word that settles the role, or reorder the sentence. Don't keep a sentence until it has only one possible reading.
 
 ### Address the reader only to add information
 
@@ -507,6 +533,60 @@ Use `<Tabs>` for alternative methods when readers pick only one of the methods. 
 - A separate troubleshooting page if the troubleshooting content is long
 
 Short, focused pages are easier to navigate, easier to link to, and easier to maintain.
+
+### Break up long sections
+
+Readers scan a page for the part they need. If a section has several paragraphs in a row, the reader has to read all of them to find the one that answers their question.
+
+This is worst when each paragraph is about a different topic. The section's heading names only one of those topics, so a reader who scans the headings for one of the others won't find it.
+
+Don't put two paragraphs about different topics under one heading, and don't put more than two paragraphs in a row under one heading even if they're about the same topic. A single paragraph that covers several topics has the same problem, so give each topic its own paragraph first. Then split the section up:
+
+- Give each topic in the section its own heading
+- Turn a set of parallel items, such as options, cases, or roles, into a list or a table
+- Turn a paragraph that has more than one action into `<Steps>`
+- Move a fix that only some readers need into a troubleshooting section
+
+Don't split further than the content needs. Each heading and list is one more thing for the eye to sort out, so a heading over two lines of text costs the reader more than it helps them. If cutting content leaves a section that short, merge it into the section around it.
+
+If a step in a guide covers two tasks, give each task its own `###` heading under the step.
+
+Don't use callouts to break up a section. A callout marks content the reader shouldn't miss, and two callouts in a row are as hard to scan as two paragraphs.
+
+**Instead of:** A section about permission denials with a list of the fields a denial event records, then a paragraph about which organizations can record denials, then a paragraph about how Infisical summarizes repeated denials.
+
+**Write:** The list of fields, then a heading for which organizations can record denials and a heading for repeated denials.
+
+**Instead of:** A code block, then a paragraph that explains one line of the code, a paragraph about why the settings go in that file, and three callouts about cases that apply to only some readers.
+
+**Write:** The code block with a comment on the line that needs one, a sentence that says which values to replace, and the three cases in the troubleshooting section.
+
+### Don't pack separate facts into a paragraph
+
+A paragraph works when each sentence builds on the one before it, so the reader has to read them in order anyway. Most paragraphs in reference and setup content aren't like that. They're a run of separate facts: a requirement, what the reader sees if they don't meet it, how to check, and how to fix it. In a paragraph, every fact looks the same, so the reader has to read every sentence to find the one they came for.
+
+To test a paragraph, check whether you could move most of its sentences around without changing what the paragraph says. If you could, the sentences are separate facts, and the reader needs to see where each one starts:
+
+- Say the main point in the first sentence, so a reader can stop there if that's all they need
+- Put facts that are alternatives or cases of the same thing, such as the symptoms of one problem, in a bulleted list
+- Put events that happen in order in a numbered list, in the order they happen
+- Give the action the reader takes its own line, or put it in `<Steps>`, after the facts that lead to it
+- Cut the facts the reader won't act on (see "Leave out what the reader won't act on" in section 2)
+
+Splitting a section under more headings doesn't fix this problem. A dense paragraph under its own heading is still a dense paragraph.
+
+**Instead of:**
+
+> Denials are only recorded for organizations on the new privilege system. If your organization still uses legacy privilege management, the **Authorization** toggle is disabled, and an API request that turns the `authorization` class on is rejected with a `400` response that says so. The `shouldUseNewPrivilegeSystem` field in the settings response tells you which system your organization is on. To upgrade, go to **Access Control** in your organization and select **Learn More & Upgrade**.
+
+**Write:**
+
+> Infisical only records denials for organizations on the new privilege system. If your organization still uses legacy privilege management, you can't turn the `authorization` class on:
+>
+> - In Infisical, the **Authorization** toggle is disabled
+> - Through the API, a request to turn the class on fails with a `400` response
+>
+> To upgrade, go to **Access Control** in your organization and select **Learn More & Upgrade**.
 
 ---
 
@@ -666,6 +746,20 @@ You can bold a label at the start of a list item or a paragraph, such as `**Prer
 **Instead of:** This is **important**: rotation only applies to **active** secrets.
 
 **Write:** Rotation only applies to active secrets. Select **Save** to apply the change.
+
+### Format only what the reader needs to pick out
+
+Bold text, code spans, and links each make the reader's eye stop. If most lines in a section have formatted text, nothing stands out, and the section is tiring to read.
+
+- Use code formatting for text the reader types or reads in code, such as commands, field names, and values they send to the API
+- If a concept also has an API value, use the plain word in prose, and save the code-formatted value for code examples, tables, and API instructions
+- Use bold only for UI labels the reader has to find, as described in "Bold is for UI, never emphasis"
+
+If nearly every line in a section has formatted text, check whether the reader needs each one.
+
+**Instead of:** You can turn the `authentication` and `authorization` classes on or off. The `management` and `data-access` classes are always recorded.
+
+**Write:** You can turn authentication and authorization events on or off. Management and data access events are always recorded.
 
 ### Format UI labels as bold, not quotes or code
 

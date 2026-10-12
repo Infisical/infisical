@@ -352,6 +352,9 @@ I
 (?i)GCP Secret Manager
 (?i)Google Secret Manager
 (?i)Go SDK
+# Keeper and Commander are product names that are also ordinary nouns.
+(?i)Keeper
+(?i)Commander
 
 # PAM is both the product and a lowercase CLI subcommand.
 (?i)PAM

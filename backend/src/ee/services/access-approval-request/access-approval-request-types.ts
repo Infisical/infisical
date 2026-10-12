@@ -108,7 +108,7 @@ export interface TAccessApprovalRequestServiceFactory {
             }
         )[];
         bypassers: string[];
-        id: string;
+        id: string | null;
         name: string;
         approvals: number;
         secretPath: string | null | undefined;
@@ -159,7 +159,7 @@ export interface TAccessApprovalRequestServiceFactory {
       id: string;
       createdAt: Date;
       updatedAt: Date;
-      policyId: string;
+      policyId: string | null;
       isTemporary: boolean;
       requestedByUserId: string;
       privilegeId?: string | null | undefined;

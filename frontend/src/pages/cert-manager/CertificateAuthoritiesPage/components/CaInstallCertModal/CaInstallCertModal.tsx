@@ -7,6 +7,10 @@ import {
   ShieldCheckIcon
 } from "lucide-react";
 
+import {
+  ExternalCertificateAuthoritiesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { Modal, ModalContent } from "@app/components/v2";
 import { Badge, Button } from "@app/components/v3";
 import { useSubscription } from "@app/context";
@@ -118,11 +122,10 @@ const RadioCard = ({
   <button
     type="button"
     onClick={onClick}
-    disabled={isLocked}
-    className={`flex items-center gap-4 rounded-md border px-4 py-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+    className={`flex items-center gap-4 rounded-md border px-4 py-4 text-left transition-colors ${
       isSelected
         ? "border-project/50 bg-project/5"
-        : "border-border-control bg-surface-hover enabled:hover:bg-surface-active"
+        : "border-border-control bg-surface-hover hover:bg-surface-active"
     } ${className ?? ""}`}
   >
     {icon}
@@ -149,6 +152,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
   const caId = popupData?.caId ?? "";
 
   const { subscription } = useSubscription();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   // Signing an intermediate outside Infisical: Manual is the CSR/import flow, Automated connects a
   // third-party provider. Infisical CA stays available on every plan.
@@ -181,6 +185,18 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
 
     setStep(Step.Form);
+  };
+
+  const handleSelectMethod = (method: SigningMethod) => {
+    if (!lockedMethods[method]) {
+      setSelectedMethod(method);
+      return;
+    }
+
+    openUpgradeGate({
+      intent: ExternalCertificateAuthoritiesUpgradeIntent,
+      paywallKey: "cert-manager.intermediate-ca-signing"
+    });
   };
 
   const handleIntegrationContinue = () => {
@@ -218,7 +234,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
             key={option.value}
             isSelected={selectedMethod === option.value}
             isLocked={lockedMethods[option.value]}
-            onClick={() => setSelectedMethod(option.value)}
+            onClick={() => handleSelectMethod(option.value)}
             icon={
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-active">
                 <option.icon className="h-5 w-5 text-label" />
@@ -364,23 +380,26 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
   const needsOverflowVisible = step === Step.Form && selectedMethod === SigningMethod.Automated;
 
   return (
-    <Modal
-      isOpen={popUp?.installCaCert?.isOpen}
-      onOpenChange={(isOpen) => {
-        if (!isOpen) resetState();
-        handlePopUpToggle("installCaCert", isOpen);
-      }}
-    >
-      <ModalContent
-        title={getTitle()}
-        className="max-w-lg"
-        bodyClassName={needsOverflowVisible ? "overflow-visible" : undefined}
-        subTitle={getSubTitle()}
+    <>
+      <Modal
+        isOpen={popUp?.installCaCert?.isOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) resetState();
+          handlePopUpToggle("installCaCert", isOpen);
+        }}
       >
-        {step === Step.ChooseMethod && renderMethodSelection()}
-        {step === Step.ChooseIntegration && renderIntegrationSelection()}
-        {step === Step.Form && renderFormStep()}
-      </ModalContent>
-    </Modal>
+        <ModalContent
+          title={getTitle()}
+          className="max-w-lg"
+          bodyClassName={needsOverflowVisible ? "overflow-visible" : undefined}
+          subTitle={getSubTitle()}
+        >
+          {step === Step.ChooseMethod && renderMethodSelection()}
+          {step === Step.ChooseIntegration && renderIntegrationSelection()}
+          {step === Step.Form && renderFormStep()}
+        </ModalContent>
+      </Modal>
+      {upgradeGate}
+    </>
   );
 };

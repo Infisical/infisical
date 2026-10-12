@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  MachineIdentityTemplatesUpgradeIntent,
+  UpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -308,12 +311,14 @@ const IdentitySectionContent = ({ view = "identities" }: Props) => {
           />
         </>
       )}
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.identity"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={popUp.upgradePlan.data?.text}
-        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+        intent={{
+          ...MachineIdentityTemplatesUpgradeIntent,
+          isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
+        }}
       />
     </>
   );

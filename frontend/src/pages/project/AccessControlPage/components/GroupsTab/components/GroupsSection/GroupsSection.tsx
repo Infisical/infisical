@@ -1,6 +1,6 @@
 import { PlusIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { GroupsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -120,12 +120,14 @@ export const GroupsSection = () => {
           if (groupToRemove?.id) await onRemoveGroupSubmit(groupToRemove.id);
         }}
       />
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="project.groups"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={popUp.upgradePlan?.data?.text}
-        isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
+        intent={{
+          ...GroupsUpgradeIntent,
+          isEnterpriseFeature: Boolean(popUp.upgradePlan?.data?.isEnterpriseFeature)
+        }}
       />
     </>
   );

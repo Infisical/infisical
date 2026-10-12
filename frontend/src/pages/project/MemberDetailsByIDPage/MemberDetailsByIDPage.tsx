@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -339,12 +339,14 @@ export const Page = () => {
             actorType={ActorType.USER}
             actorId={(popUp.assumePrivileges.data as { userId: string })?.userId}
           />
-          <UpgradePlanModal
+          <UpgradeGate
             paywallKey="project.member-details-by-id"
             isOpen={popUp.upgradePlan.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-            text={popUp.upgradePlan?.data?.text}
-            isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
+            intent={{
+              ...CustomRolesUpgradeIntent,
+              isEnterpriseFeature: Boolean(popUp.upgradePlan?.data?.isEnterpriseFeature)
+            }}
           />
           {isPermissionAuditOpen && (
             <MemberPermissionAuditSheet

@@ -103,9 +103,9 @@ export const MembersTab = () => {
   const handleRemove = async () => {
     try {
       if (!memberToRemove) return;
-      await revokeMembers.mutateAsync({ userIds: [memberToRemove.actor.id] });
+      await revokeMembers.mutateAsync({ userIds: [memberToRemove.id] });
       createNotification({
-        text: `${memberDisplayName(memberToRemove.actor)} removed`,
+        text: `${memberDisplayName(memberToRemove)} removed`,
         type: "success"
       });
       setMemberToRemove(null);
@@ -177,10 +177,8 @@ export const MembersTab = () => {
               ))}
             {!isPending &&
               filtered.map((member) => {
-                const isSelf = member.actor.id === user?.id;
-                const name = [member.actor.firstName, member.actor.lastName]
-                  .filter(Boolean)
-                  .join(" ");
+                const isSelf = member.id === user?.id;
+                const name = [member.firstName, member.lastName].filter(Boolean).join(" ");
 
                 return (
                   <TableRow key={member.id}>
@@ -194,10 +192,10 @@ export const MembersTab = () => {
                     <TableCell
                       isTruncatable
                       className="min-w-32 text-sm"
-                      title={member.actor.email || member.actor.username}
+                      title={member.email || member.username}
                     >
                       <HighlightText
-                        text={member.actor.email || member.actor.username}
+                        text={member.email || member.username}
                         highlight={debouncedSearch}
                       />
                     </TableCell>
@@ -206,7 +204,7 @@ export const MembersTab = () => {
                     </TableCell>
                     <TableCell variant="action">
                       <div className="flex items-center justify-end gap-2">
-                        <PendingInvitationBadge isPending={member.actor.isOrgMembershipPending} />
+                        <PendingInvitationBadge isPending={member.isOrgMembershipPending} />
                         {!isSelf && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -263,7 +261,7 @@ export const MembersTab = () => {
       <ProductRoleDialog
         member={memberToEdit}
         onOpenChange={() => setMemberToEdit(null)}
-        subject={memberToEdit ? memberDisplayName(memberToEdit.actor) : ""}
+        subject={memberToEdit ? memberDisplayName(memberToEdit) : ""}
       />
 
       <DeleteConfirmDialog
@@ -271,9 +269,9 @@ export const MembersTab = () => {
         onOpenChange={(isOpen) => {
           if (!isOpen) setMemberToRemove(null);
         }}
-        title={`Remove "${memberToRemove ? memberDisplayName(memberToRemove.actor) : ""}"`}
+        title={`Remove "${memberToRemove ? memberDisplayName(memberToRemove) : ""}"`}
         description="They lose every access bundle granted to them. Any active session they hold stops reaching its hosts at the next proxy poll."
-        confirmKey={memberToRemove ? memberDisplayName(memberToRemove.actor) : ""}
+        confirmKey={memberToRemove ? memberDisplayName(memberToRemove) : ""}
         confirmLabel="Remove"
         isPending={revokeMembers.isPending}
         onConfirm={handleRemove}

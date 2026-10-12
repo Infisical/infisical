@@ -20,6 +20,7 @@ import {
 } from "./datadog-application-key-secret";
 import { DBT_SERVICE_TOKEN_ROTATION_LIST_OPTION } from "./dbt-service-token";
 import { FIREWORKS_API_KEY_ROTATION_LIST_OPTION } from "./fireworks-api-key";
+import { GCP_SERVICE_ACCOUNT_KEY_ROTATION_LIST_OPTION, TGcpServiceAccountKeyRotation } from "./gcp-service-account-key";
 import { HP_ILO_ROTATION_LIST_OPTION, THpIloRotation } from "./hp-ilo-rotation";
 import { LDAP_PASSWORD_ROTATION_LIST_OPTION, TLdapPasswordRotation } from "./ldap-password";
 import { LITELLM_API_KEY_ROTATION_LIST_OPTION } from "./litellm-api-key";
@@ -35,6 +36,7 @@ import { REDIS_CREDENTIALS_ROTATION_LIST_OPTION } from "./redis-credentials";
 import { SALESFORCE_OAUTH_CREDENTIALS_ROTATION_LIST_OPTION } from "./salesforce-oauth-credentials";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
 import { SecretRotation, SecretRotationStatus } from "./secret-rotation-v2-enums";
+import { getSecretRotationConnectionApps } from "./secret-rotation-v2-maps";
 import { TSecretRotationV2ServiceFactory, TSecretRotationV2ServiceFactoryDep } from "./secret-rotation-v2-service";
 import {
   TSecretRotationRotateSecretsJobPayload,
@@ -85,11 +87,19 @@ const SECRET_ROTATION_LIST_OPTIONS: Record<SecretRotation, TSecretRotationV2List
   [SecretRotation.SnowflakeUserKeyPair]: SNOWFLAKE_USER_KEY_PAIR_ROTATION_LIST_OPTION,
   [SecretRotation.CloudflareApiToken]: CLOUDFLARE_API_TOKEN_ROTATION_LIST_OPTION,
   [SecretRotation.CloudflareR2AccessKey]: CLOUDFLARE_R2_ACCESS_KEY_ROTATION_LIST_OPTION,
-  [SecretRotation.StripeApiKey]: STRIPE_API_KEY_ROTATION_LIST_OPTION
+  [SecretRotation.StripeApiKey]: STRIPE_API_KEY_ROTATION_LIST_OPTION,
+  [SecretRotation.GcpServiceAccountKey]: GCP_SERVICE_ACCOUNT_KEY_ROTATION_LIST_OPTION
 };
 
 export const listSecretRotationOptions = () => {
-  return Object.values(SECRET_ROTATION_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
+  return Object.values(SECRET_ROTATION_LIST_OPTIONS)
+    .map((option) => {
+      const additionalConnections = getSecretRotationConnectionApps(option.type).filter(
+        (app) => app !== option.connection
+      );
+      return additionalConnections.length ? { ...option, additionalConnections } : option;
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 };
 
 const getNextUTCDayInterval = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"] = { hours: 0, minutes: 0 }) => {
@@ -428,6 +438,17 @@ export const throwOnImmutableParameterUpdate = (
         )
       ) {
         throw new BadRequestError({ message: "Cannot update username" });
+      }
+      break;
+    case SecretRotation.GcpServiceAccountKey:
+      if (
+        haveUnequalProperties(
+          updatePayload.parameters as TGcpServiceAccountKeyRotation["parameters"],
+          secretRotation.parameters as TGcpServiceAccountKeyRotation["parameters"],
+          ["serviceAccountEmail"]
+        )
+      ) {
+        throw new BadRequestError({ message: "Cannot update service account email" });
       }
       break;
     default:

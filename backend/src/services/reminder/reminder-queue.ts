@@ -21,7 +21,12 @@ export const dailyReminderQueueServiceFactory = ({
       runHashTtlS: 3 * 24 * 60 * 60,
       handler: async () => {
         logger.info("cron[daily-reminders]: task started");
-        await reminderService.sendDailyReminders();
+        await reminderService.dispatchDueReminders();
+        try {
+          await reminderService.reapOrphanedReminderAlerts();
+        } catch (error) {
+          logger.error(error, "cron[daily-reminders]: failed to reap orphaned reminder alerts");
+        }
       }
     });
   };

@@ -1,7 +1,7 @@
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
-import { AsymmetricKeyAlgorithm } from "@app/lib/crypto/sign";
+import { AsymmetricKeyAlgorithm } from "@app/lib/crypto/sign/types";
 import { BadRequestError } from "@app/lib/errors";
 
 import { KmsKeyUsage } from "./kms-types";
@@ -69,6 +69,39 @@ export const getByteLengthForSymmetricEncryptionAlgorithm = (encryptionAlgorithm
     case SymmetricKeyAlgorithm.AES_GCM_256:
     default:
       return 32;
+  }
+};
+
+type TClassicalKeyShape = {
+  keyType: string;
+  modulusLength?: number;
+  namedCurve?: string;
+  label: string;
+};
+
+const CLASSICAL_KEY_SHAPES: Partial<Record<AsymmetricKeyAlgorithm, TClassicalKeyShape>> = {
+  [AsymmetricKeyAlgorithm.RSA_4096]: { keyType: "rsa", modulusLength: 4096, label: "an RSA 4096-bit key" },
+  [AsymmetricKeyAlgorithm.ECC_NIST_P256]: { keyType: "ec", namedCurve: "prime256v1", label: "an EC P-256 key" },
+  [AsymmetricKeyAlgorithm.ECC_NIST_P384]: { keyType: "ec", namedCurve: "secp384r1", label: "an EC P-384 key" },
+  [AsymmetricKeyAlgorithm.ECC_NIST_P521]: { keyType: "ec", namedCurve: "secp521r1", label: "an EC P-521 key" },
+  [AsymmetricKeyAlgorithm.ED25519]: { keyType: "ed25519", label: "an Ed25519 key" }
+};
+
+export const validateClassicalKeyMaterial = (key: Buffer, algorithm: AsymmetricKeyAlgorithm) => {
+  const expected = CLASSICAL_KEY_SHAPES[algorithm];
+  if (!expected) return;
+
+  const keyObj = crypto.nativeCrypto.createPrivateKey({ key, format: "pem", type: "pkcs8" });
+  const details = keyObj.asymmetricKeyDetails;
+  const matches =
+    keyObj.asymmetricKeyType === expected.keyType &&
+    (expected.modulusLength === undefined || details?.modulusLength === expected.modulusLength) &&
+    (expected.namedCurve === undefined || details?.namedCurve === expected.namedCurve);
+
+  if (!matches) {
+    throw new BadRequestError({
+      message: `Key material does not match the declared algorithm. Expected ${expected.label}.`
+    });
   }
 };
 
