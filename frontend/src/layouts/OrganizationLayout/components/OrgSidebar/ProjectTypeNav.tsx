@@ -156,13 +156,23 @@ export const ProjectTypeNav = () => {
               isActive={isOnProductSettings}
               tooltip="Product Settings"
             >
-              <Link
-                to="/organizations/$orgId/projects/product-settings/$type"
-                params={{ orgId: resolvedOrgId, type: typeSlug ?? "" }}
-              >
-                <SlidersHorizontal className="size-4" />
-                <span>Product Settings</span>
-              </Link>
+              {isSecretManager ? (
+                <Link
+                  to="/organizations/$orgId/projects/secret-management/product-settings"
+                  params={{ orgId: resolvedOrgId }}
+                >
+                  <SlidersHorizontal className="size-4" />
+                  <span>Product Settings</span>
+                </Link>
+              ) : (
+                <Link
+                  to="/organizations/$orgId/projects/product-settings/$type"
+                  params={{ orgId: resolvedOrgId, type: typeSlug ?? "" }}
+                >
+                  <SlidersHorizontal className="size-4" />
+                  <span>Product Settings</span>
+                </Link>
+              )}
             </SidebarMenuButton>
           </SidebarMenuItem>
         )}
