@@ -4,11 +4,8 @@ import handlebars from "handlebars";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import {
-  CHEF_SYNC_LIST_OPTION,
-  chefPreSaveTransformDestinationConfig,
-  ChefSyncFns
-} from "@app/ee/services/secret-sync/chef";
+import { CHEF_SYNC_LIST_OPTION } from "@app/ee/services/secret-sync/chef";
+import { chefPreSaveTransformDestinationConfig, ChefSyncFns } from "@app/ee/services/secret-sync/chef/chef-sync-fns";
 import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "@app/ee/services/secret-sync/oci-vault";
 import { BadRequestError } from "@app/lib/errors";
 import {
