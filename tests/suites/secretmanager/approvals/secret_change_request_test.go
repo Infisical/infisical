@@ -343,7 +343,7 @@ func TestSecretApprovalRequest_Review(t *testing.T) {
 
 		// Assert
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
-		require.Equal(t, "Doesn't have minimum approvals needed", res.JSON400.Message)
+		require.Contains(t, res.JSON400.Message, "needs 1 approval(s) on step 1 and has 0")
 		require.Equal(t, "open", getRequest(t, p.proj, held.ID).Status)
 		require.Empty(t, secretmanager.ListSecrets(t, p.proj, "dev"))
 	})
@@ -361,7 +361,7 @@ func TestSecretApprovalRequest_Review(t *testing.T) {
 
 		// Assert
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
-		require.Equal(t, "Doesn't have minimum approvals needed", res.JSON400.Message)
+		require.Contains(t, res.JSON400.Message, "needs 1 approval(s) on step 1 and has 0")
 		require.Empty(t, secretmanager.ListSecrets(t, p.proj, "dev"))
 	})
 
@@ -565,7 +565,7 @@ func TestSecretApprovalRequest_Status(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, review.StatusCode())
 		require.Equal(t, "You can only review open approval requests", review.JSON400.Message)
 		require.Equal(t, http.StatusBadRequest, mergeClosed.StatusCode())
-		require.Equal(t, "You can only approve or reject open approval requests", mergeClosed.JSON400.Message)
+		require.Equal(t, "You can only merge open approval requests", mergeClosed.JSON400.Message)
 		require.Empty(t, secretmanager.ListSecrets(t, p.proj, "dev"))
 
 		require.Equal(t, http.StatusOK, setStatus(t, p.committer, held.ID, api.UpdateSecretApprovalRequestStatusJSONBodyStatusOpen).StatusCode())
@@ -609,7 +609,8 @@ func TestSecretApprovalRequest_Status(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
-		require.Equal(t, "The policy associated with this secret approval request has been deleted.", res.JSON400.Message)
+		require.Equal(t, "You can only merge open approval requests", res.JSON400.Message,
+			"deleting the policy closes its requests, so the merge is refused as closed")
 		require.Empty(t, secretmanager.ListSecrets(t, p.proj, "dev"))
 	})
 

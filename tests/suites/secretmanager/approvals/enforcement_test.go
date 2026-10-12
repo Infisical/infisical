@@ -96,7 +96,7 @@ func TestSecretApprovalRequest_Bypass(t *testing.T) {
 
 		// Assert
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
-		require.Equal(t, "Doesn't have minimum approvals needed", res.JSON400.Message)
+		require.Contains(t, res.JSON400.Message, "needs 1 approval(s) on step 1 and has 0")
 		require.Equal(t, "open", getRequest(t, proj, held.ID).Status)
 		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev"))
 	})
@@ -118,7 +118,7 @@ func TestSecretApprovalRequest_Bypass(t *testing.T) {
 
 		// Assert
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
-		require.Equal(t, "Doesn't have minimum approvals needed", res.JSON400.Message)
+		require.Contains(t, res.JSON400.Message, "needs 1 approval(s) on step 1 and has 0")
 		require.Equal(t, "open", getRequest(t, proj, held.ID).Status)
 		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev"))
 	})
@@ -140,7 +140,7 @@ func TestSecretApprovalRequest_Bypass(t *testing.T) {
 
 		// Assert
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
-		require.Equal(t, "Doesn't have minimum approvals needed", res.JSON400.Message)
+		require.Contains(t, res.JSON400.Message, "needs 1 approval(s) on step 1 and has 0")
 		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev"))
 	})
 }
