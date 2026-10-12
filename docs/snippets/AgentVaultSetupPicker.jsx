@@ -475,6 +475,7 @@ export const AgentVaultSetupDiagram = ({ inline, reveal }) => {
     shown.forEach((message) => {
       shownLanes.add(message.from);
       shownLanes.add(message.to);
+      if (message.aimedAt) shownLanes.add(message.aimedAt);
     });
     revealed = { shown: new Set(shown.map((message) => message.id)), shownLanes, current };
   }
