@@ -36,13 +36,13 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
+import { getSingleProjectProductName, isSingleProjectProduct } from "@app/helpers/project";
 import {
   useAddUserToWsNonE2EE,
   useGetOrgUsers,
   useGetProjectRoles,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
-import { getSingleProjectProductName, isSingleProjectProduct } from "@app/helpers/project";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
