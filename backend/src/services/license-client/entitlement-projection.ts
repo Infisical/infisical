@@ -23,7 +23,7 @@ export const projectV2ToFeatureSet = (base: TFeatureSet, entitlements: TEntitlem
       return;
     }
     const raw = entitlements.features[mapping.v2Key];
-    if (!raw || raw.value === null || raw.value === undefined) {
+    if (!raw || raw.value === undefined) {
       return;
     }
 

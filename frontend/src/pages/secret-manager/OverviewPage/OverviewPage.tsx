@@ -2890,7 +2890,7 @@ const OverviewPageContent = () => {
         }
       );
 
-      if (data.used >= data.limit) {
+      if (data.limit !== null && data.used >= data.limit) {
         openUpgradeGate({
           intent: {
             ...HoneyTokensUpgradeIntent,
