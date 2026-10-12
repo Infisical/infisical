@@ -156,6 +156,8 @@ export type TAddAgentVaultProductMembersDTO = TAgentVaultActorIdsDTO & {
   role: string;
 };
 
+export type TUpdateAgentVaultMemberRolesDTO = TAgentVaultActorIdsDTO & { role: string };
+
 export type TAgentVaultWrittenMember = TAgentVaultActorRef & { role: string; addedAt: string };
 
 export type TAgentVaultGrantedMember = TAgentVaultActorRef & { grantedAt: string };
