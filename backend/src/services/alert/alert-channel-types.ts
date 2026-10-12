@@ -94,7 +94,14 @@ export const EmailChannelConfigSchema = z.object({}).strip();
 
 export const WEBHOOK_MAX_HEADERS = 20;
 
-const WEBHOOK_RESERVED_HEADERS = ["content-type", "x-infisical-signature"];
+const WEBHOOK_RESERVED_HEADERS = [
+  "content-type",
+  "x-infisical-signature",
+  "content-length",
+  "transfer-encoding",
+  "connection",
+  "host"
+];
 
 const httpHeaderNameRegex = new RE2("^[A-Za-z0-9!#$%&'*+.^_`|~-]+$");
 const noLineBreaksRegex = new RE2("^[^\\r\\n]*$");

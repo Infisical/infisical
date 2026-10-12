@@ -35,7 +35,7 @@ Infisical sends every custom header you add on the channel with each request. Us
 
 A channel can have up to 20 headers. Header values are encrypted, and the API returns them as `******` after you save the channel. When you edit the channel, leave a value unchanged to keep it, or enter a new one to replace it.
 
-You can't set the `Content-Type` and `x-infisical-signature` headers, because Infisical sets them on every request.
+You can't set the `Content-Type`, `Content-Length`, `Transfer-Encoding`, `Connection`, `Host`, and `x-infisical-signature` headers, because Infisical sets them on every request.
 
 ## Webhook event types
 

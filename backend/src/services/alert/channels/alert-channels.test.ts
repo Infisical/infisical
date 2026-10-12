@@ -234,7 +234,9 @@ describe("WebhookChannelConfigSchema headers", () => {
     const result = withHeaders([{ key: "Content-Type", value: "text/plain" }]);
     expect(result.success).toBe(false);
     expect(result.error?.issues[0].message).toBe("Header 'Content-Type' is set by Infisical and cannot be overridden");
-    expect(withHeaders([{ key: "X-Infisical-Signature", value: "x" }]).success).toBe(false);
+    ["X-Infisical-Signature", "Content-Length", "Transfer-Encoding", "Connection", "Host"].forEach((key) => {
+      expect(withHeaders([{ key, value: "x" }]).success).toBe(false);
+    });
   });
 
   test("rejects duplicate names regardless of case", () => {
