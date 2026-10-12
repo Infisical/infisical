@@ -151,6 +151,19 @@ func getRequest(t *testing.T, proj *fixture.Project, id uuid.UUID) request {
 	return held
 }
 
+// onlyOpenRequest finds a request through the project's open requests, for writes such
+// as a move whose reply does not name the request it opened.
+func onlyOpenRequest(t *testing.T, proj *fixture.Project) uuid.UUID {
+	t.Helper()
+	res, err := proj.Tenant().Admin.API.ListSecretApprovalRequestsWithResponse(t.Context(), &api.ListSecretApprovalRequestsParams{
+		ProjectId: proj.ID, Status: new(api.ListSecretApprovalRequestsParamsStatusOpen),
+	})
+	require.NoError(t, err)
+	require.NotNilf(t, res.JSON200, "listing requests returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	require.Len(t, res.JSON200.Approvals, 1)
+	return res.JSON200.Approvals[0].Id
+}
+
 func openRequestCount(t *testing.T, proj *fixture.Project) int {
 	t.Helper()
 	res, err := proj.Tenant().Admin.API.GetSecretApprovalRequestCountWithResponse(t.Context(),

@@ -1599,6 +1599,96 @@ func (e CreateGroup500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for RemoveUserFromGroup400JSONResponseBodyStatusCode.
+const (
+	RemoveUserFromGroup400JSONResponseBodyStatusCodeN400 RemoveUserFromGroup400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the RemoveUserFromGroup400JSONResponseBodyStatusCode enum.
+func (e RemoveUserFromGroup400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveUserFromGroup400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveUserFromGroup401JSONResponseBodyStatusCode.
+const (
+	RemoveUserFromGroup401JSONResponseBodyStatusCodeN401 RemoveUserFromGroup401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the RemoveUserFromGroup401JSONResponseBodyStatusCode enum.
+func (e RemoveUserFromGroup401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveUserFromGroup401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveUserFromGroup403JSONResponseBodyStatusCode.
+const (
+	RemoveUserFromGroup403JSONResponseBodyStatusCodeN403 RemoveUserFromGroup403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the RemoveUserFromGroup403JSONResponseBodyStatusCode enum.
+func (e RemoveUserFromGroup403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveUserFromGroup403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveUserFromGroup404JSONResponseBodyStatusCode.
+const (
+	RemoveUserFromGroup404JSONResponseBodyStatusCodeN404 RemoveUserFromGroup404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the RemoveUserFromGroup404JSONResponseBodyStatusCode enum.
+func (e RemoveUserFromGroup404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveUserFromGroup404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveUserFromGroup422JSONResponseBodyStatusCode.
+const (
+	RemoveUserFromGroup422JSONResponseBodyStatusCodeN422 RemoveUserFromGroup422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the RemoveUserFromGroup422JSONResponseBodyStatusCode enum.
+func (e RemoveUserFromGroup422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveUserFromGroup422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RemoveUserFromGroup500JSONResponseBodyStatusCode.
+const (
+	RemoveUserFromGroup500JSONResponseBodyStatusCodeN500 RemoveUserFromGroup500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the RemoveUserFromGroup500JSONResponseBodyStatusCode enum.
+func (e RemoveUserFromGroup500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case RemoveUserFromGroup500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for AddUserToGroup400JSONResponseBodyStatusCode.
 const (
 	AddUserToGroup400JSONResponseBodyStatusCodeN400 AddUserToGroup400JSONResponseBodyStatusCode = 400
@@ -9006,6 +9096,24 @@ type CreateGroup422JSONResponseBodyStatusCode float32
 // CreateGroup500JSONResponseBodyStatusCode defines parameters for CreateGroup.
 type CreateGroup500JSONResponseBodyStatusCode float32
 
+// RemoveUserFromGroup400JSONResponseBodyStatusCode defines parameters for RemoveUserFromGroup.
+type RemoveUserFromGroup400JSONResponseBodyStatusCode float32
+
+// RemoveUserFromGroup401JSONResponseBodyStatusCode defines parameters for RemoveUserFromGroup.
+type RemoveUserFromGroup401JSONResponseBodyStatusCode float32
+
+// RemoveUserFromGroup403JSONResponseBodyStatusCode defines parameters for RemoveUserFromGroup.
+type RemoveUserFromGroup403JSONResponseBodyStatusCode float32
+
+// RemoveUserFromGroup404JSONResponseBodyStatusCode defines parameters for RemoveUserFromGroup.
+type RemoveUserFromGroup404JSONResponseBodyStatusCode float32
+
+// RemoveUserFromGroup422JSONResponseBodyStatusCode defines parameters for RemoveUserFromGroup.
+type RemoveUserFromGroup422JSONResponseBodyStatusCode float32
+
+// RemoveUserFromGroup500JSONResponseBodyStatusCode defines parameters for RemoveUserFromGroup.
+type RemoveUserFromGroup500JSONResponseBodyStatusCode float32
+
 // AddUserToGroup400JSONResponseBodyStatusCode defines parameters for AddUserToGroup.
 type AddUserToGroup400JSONResponseBodyStatusCode float32
 
@@ -14972,6 +15080,9 @@ type ClientInterface interface {
 	// Takes a body of the `application/json` content type.
 	CreateGroup(ctx context.Context, body CreateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// RemoveUserFromGroup performs a DELETE /api/v1/groups/{id}/users/{username} (the `RemoveUserFromGroup` operationId) request.
+	RemoveUserFromGroup(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// AddUserToGroup performs a POST /api/v1/groups/{id}/users/{username} (the `AddUserToGroup` operationId) request.
 	AddUserToGroup(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -15636,6 +15747,19 @@ func (c *Client) CreateGroupWithBody(ctx context.Context, contentType string, bo
 // Takes a body of the `application/json` content type.
 func (c *Client) CreateGroup(ctx context.Context, body CreateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateGroupRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RemoveUserFromGroup performs a DELETE /api/v1/groups/{id}/users/{username} (the `RemoveUserFromGroup` operationId) request.
+func (c *Client) RemoveUserFromGroup(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveUserFromGroupRequest(c.Server, id, username)
 	if err != nil {
 		return nil, err
 	}
@@ -17322,6 +17446,47 @@ func NewCreateGroupRequestWithBody(server string, contentType string, body io.Re
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRemoveUserFromGroupRequest constructs an http.Request for the RemoveUserFromGroup method
+func NewRemoveUserFromGroupRequest(server string, id string, username string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "username", username, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/groups/%s/users/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -20262,6 +20427,11 @@ type ClientWithResponsesInterface interface {
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	CreateGroupWithResponse(ctx context.Context, body CreateGroupJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateGroupResponse, error)
 
+	// RemoveUserFromGroupWithResponse performs a DELETE /api/v1/groups/{id}/users/{username} (the `RemoveUserFromGroup` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	RemoveUserFromGroupWithResponse(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*RemoveUserFromGroupResponse, error)
+
 	// AddUserToGroupWithResponse performs a POST /api/v1/groups/{id}/users/{username} (the `AddUserToGroup` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -22503,6 +22673,165 @@ func (r CreateGroupResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateGroupResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RemoveUserFromGroupResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Email     *string            `json:"email,omitempty"`
+		FirstName *string            `json:"firstName,omitempty"`
+		Id        openapi_types.UUID `json:"id"`
+		LastName  *string            `json:"lastName,omitempty"`
+		Username  string             `json:"username"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode RemoveUserFromGroup400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode RemoveUserFromGroup401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode RemoveUserFromGroup403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode RemoveUserFromGroup404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                           `json:"error"`
+		Message    interface{}                                      `json:"message,omitempty"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode RemoveUserFromGroup422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode RemoveUserFromGroup500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RemoveUserFromGroupResponse) GetJSON200() *struct {
+	Email     *string            `json:"email,omitempty"`
+	FirstName *string            `json:"firstName,omitempty"`
+	Id        openapi_types.UUID `json:"id"`
+	LastName  *string            `json:"lastName,omitempty"`
+	Username  string             `json:"username"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r RemoveUserFromGroupResponse) GetJSON400() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode RemoveUserFromGroup400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r RemoveUserFromGroupResponse) GetJSON401() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode RemoveUserFromGroup401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r RemoveUserFromGroupResponse) GetJSON403() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode RemoveUserFromGroup403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r RemoveUserFromGroupResponse) GetJSON404() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode RemoveUserFromGroup404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r RemoveUserFromGroupResponse) GetJSON422() *struct {
+	Error      string                                           `json:"error"`
+	Message    interface{}                                      `json:"message,omitempty"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode RemoveUserFromGroup422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r RemoveUserFromGroupResponse) GetJSON500() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode RemoveUserFromGroup500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r RemoveUserFromGroupResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RemoveUserFromGroupResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemoveUserFromGroupResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemoveUserFromGroupResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -33115,6 +33444,17 @@ func (c *ClientWithResponses) CreateGroupWithResponse(ctx context.Context, body 
 	return ParseCreateGroupResponse(rsp)
 }
 
+// RemoveUserFromGroupWithResponse performs a DELETE /api/v1/groups/{id}/users/{username} (the `RemoveUserFromGroup` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RemoveUserFromGroupWithResponse(ctx context.Context, id string, username string, reqEditors ...RequestEditorFn) (*RemoveUserFromGroupResponse, error) {
+	rsp, err := c.RemoveUserFromGroup(ctx, id, username, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemoveUserFromGroupResponse(rsp)
+}
+
 // AddUserToGroupWithResponse performs a POST /api/v1/groups/{id}/users/{username} (the `AddUserToGroup` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -35283,6 +35623,112 @@ func ParseCreateGroupResponse(rsp *http.Response) (*CreateGroupResponse, error) 
 			Message    string                                   `json:"message"`
 			ReqId      string                                   `json:"reqId"`
 			StatusCode CreateGroup500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRemoveUserFromGroupResponse parses an HTTP response from a RemoveUserFromGroupWithResponse call
+func ParseRemoveUserFromGroupResponse(rsp *http.Response) (*RemoveUserFromGroupResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemoveUserFromGroupResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Email     *string            `json:"email,omitempty"`
+			FirstName *string            `json:"firstName,omitempty"`
+			Id        openapi_types.UUID `json:"id"`
+			LastName  *string            `json:"lastName,omitempty"`
+			Username  string             `json:"username"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode RemoveUserFromGroup400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode RemoveUserFromGroup401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode RemoveUserFromGroup403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode RemoveUserFromGroup404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    interface{}                                      `json:"message,omitempty"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode RemoveUserFromGroup422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode RemoveUserFromGroup500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

@@ -45,3 +45,16 @@ func (g *Group) AddUser(tt *testing.T, users ...*harness.Principal) {
 			user.Email, g.Name, apierr.Body(res.Body))
 	}
 }
+
+// RemoveUser takes users out of the group.
+func (g *Group) RemoveUser(tt *testing.T, users ...*harness.Principal) {
+	tt.Helper()
+
+	for _, user := range users {
+		require.Equalf(tt, harness.User, user.Kind, "%s is not a user", user.Name)
+		res, err := g.tn.Admin.API.RemoveUserFromGroupWithResponse(tt.Context(), g.ID.String(), user.Email)
+		require.NoErrorf(tt, err, "removing %s from group %s", user.Email, g.Name)
+		require.Equalf(tt, http.StatusOK, res.StatusCode(), "removing %s from group %s: %s",
+			user.Email, g.Name, apierr.Body(res.Body))
+	}
+}

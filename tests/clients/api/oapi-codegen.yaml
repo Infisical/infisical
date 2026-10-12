@@ -79,4 +79,5 @@ output-options:
     - mergeSecretApprovalRequest
     - createGroup
     - addUserToGroup
+    - removeUserFromGroup
     - createProjectGroupMembership

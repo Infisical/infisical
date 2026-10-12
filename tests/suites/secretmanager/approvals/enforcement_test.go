@@ -74,6 +74,33 @@ func TestSecretApprovalRequest_Bypass(t *testing.T) {
 		require.Equal(t, "value", secretmanager.GetSecret(t, proj, "dev", "API_KEY").Value)
 	})
 
+	t.Run("should refuse a bypass once the user has left the bypasser group", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		committer := proj.NewUser(t, fixture.WithPrincipalName("committer"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		oncall := fixture.NewGroup(t, tn)
+		oncall.AddUser(t, committer, tn.NewUser(t, harness.WithName("still-oncall")))
+		proj.GrantGroup(t, oncall)
+		newPolicy(t, proj, []policyMember{userMember(reviewer)}, soft, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.Bypassers = bypasserItems(t, []policyMember{groupMember(oncall)})
+		})
+		held := heldRequest(t, proj, createSecret(t, committer, proj, "API_KEY", "value").Body)
+		oncall.RemoveUser(t, committer)
+
+		// Action
+		res := mergeWithReason(t, committer, held, "production outage")
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t, "Doesn't have minimum approvals needed", res.JSON400.Message)
+		require.Equal(t, "open", getRequest(t, proj, held.ID).Status)
+		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev"))
+	})
+
 	t.Run("should refuse a merge without approvals from someone who is not a bypasser", func(t *testing.T) {
 		t.Parallel()
 

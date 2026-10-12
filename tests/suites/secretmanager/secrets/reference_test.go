@@ -306,7 +306,7 @@ func TestSecretReference_Expand(t *testing.T) {
 		secretmanager.CreateSecret(t, proj, "dev", "B", "${A}")
 
 		// Assert
-		require.Contains(t, secretmanager.GetSecret(t, proj, "dev", "A").Value, "${")
+		require.Equal(t, "${B}", secretmanager.GetSecret(t, proj, "dev", "A").Value)
 	})
 
 	t.Run("should stop expanding a chain longer than the reference depth limit", func(t *testing.T) {

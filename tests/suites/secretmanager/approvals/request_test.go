@@ -11,7 +11,6 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
-	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -226,21 +225,43 @@ func TestSecretApprovalRequest_Merge(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNilf(t, res.JSON200, "moving returned %d: %s", res.StatusCode(), res.Body)
 		require.False(t, res.JSON200.IsDestinationUpdated)
-		spec.Why(t, `A move's reply carries no request id, so this is the one test that finds its
-			request through the project's open requests.`)
-		open, err := p.tn.Admin.API.ListSecretApprovalRequestsWithResponse(t.Context(), &api.ListSecretApprovalRequestsParams{
-			ProjectId: p.proj.ID, Status: new(api.ListSecretApprovalRequestsParamsStatusOpen),
-		})
-		require.NoError(t, err)
-		require.NotNilf(t, open.JSON200, "listing requests returned %d: %s", open.StatusCode(), open.Body)
-		require.Len(t, open.JSON200.Approvals, 1)
-		requestID := open.JSON200.Approvals[0].Id
+		requestID := onlyOpenRequest(t, p.proj)
 		approve(t, p.reviewer, requestID)
 
 		// Action
 		merge(t, p.committer, requestID)
 
 		// Assert
+		require.Equal(t, "value", secretmanager.GetSecret(t, p.proj, "prod", "API_KEY").Value)
+	})
+
+	t.Run("should hold the removal from a protected source and complete the move on merge", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		p := seededProject(t, map[string]string{"API_KEY": "value"})
+		moved := secretmanager.GetSecret(t, p.proj, "dev", "API_KEY")
+		res, err := p.committer.API.MoveSecretsV4WithResponse(t.Context(), api.MoveSecretsV4JSONRequestBody{
+			ProjectId:              p.proj.ID,
+			SourceEnvironment:      "dev",
+			DestinationEnvironment: "prod",
+			SecretIds:              []string{moved.ID},
+		})
+		require.NoError(t, err)
+		require.NotNilf(t, res.JSON200, "moving returned %d: %s", res.StatusCode(), res.Body)
+		require.False(t, res.JSON200.IsSourceUpdated)
+		require.True(t, res.JSON200.IsDestinationUpdated)
+		held := getRequest(t, p.proj, onlyOpenRequest(t, p.proj))
+		require.Equal(t, []change{{Op: "delete", Key: "API_KEY"}}, held.Changes)
+		require.Equal(t, "value", secretmanager.GetSecret(t, p.proj, "dev", "API_KEY").Value,
+			"the source copy must stay until the removal is approved")
+		approve(t, p.reviewer, held.ID)
+
+		// Action
+		merge(t, p.committer, held.ID)
+
+		// Assert
+		require.Empty(t, secretmanager.ListSecrets(t, p.proj, "dev"))
 		require.Equal(t, "value", secretmanager.GetSecret(t, p.proj, "prod", "API_KEY").Value)
 	})
 
@@ -409,6 +430,51 @@ func TestSecretApprovalRequest_Review(t *testing.T) {
 		require.Equal(t, "value", secretmanager.GetSecret(t, proj, "dev", "API_KEY").Value)
 	})
 
+	t.Run("should merge on either named approver when one approval is required", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := fixture.NewProject(t, harness.From(t).NewTenant(t), fixture.WithProjectType("secret-manager"))
+		committer := proj.NewUser(t, fixture.WithPrincipalName("committer"))
+		first := proj.NewUser(t, fixture.WithPrincipalName("first"))
+		second := proj.NewUser(t, fixture.WithPrincipalName("second"))
+		newPolicy(t, proj, []policyMember{userMember(first), userMember(second)})
+		held := heldRequest(t, proj, createSecret(t, committer, proj, "API_KEY", "value").Body)
+
+		// Action
+		approve(t, second, held.ID)
+		merged := mergeAs(t, committer, held.ID)
+
+		// Assert
+		require.Equalf(t, http.StatusOK, merged.StatusCode(), "merging after one of two approvers returned %s", merged.Body)
+		require.Equal(t, "value", secretmanager.GetSecret(t, proj, "dev", "API_KEY").Value)
+	})
+
+	t.Run("should need every named approver when the required approvals match them", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := fixture.NewProject(t, harness.From(t).NewTenant(t), fixture.WithProjectType("secret-manager"))
+		committer := proj.NewUser(t, fixture.WithPrincipalName("committer"))
+		first := proj.NewUser(t, fixture.WithPrincipalName("first"))
+		second := proj.NewUser(t, fixture.WithPrincipalName("second"))
+		newPolicy(t, proj, []policyMember{userMember(first), userMember(second)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.Approvals = new(float32(2))
+		})
+		held := heldRequest(t, proj, createSecret(t, committer, proj, "API_KEY", "value").Body)
+		approve(t, first, held.ID)
+
+		// Action
+		refused := mergeAs(t, committer, held.ID)
+		approve(t, second, held.ID)
+		merged := mergeAs(t, committer, held.ID)
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, refused.StatusCode(), "one of two required approvers was enough")
+		require.Equalf(t, http.StatusOK, merged.StatusCode(), "merging after both approvers returned %s", merged.Body)
+		require.Equal(t, "value", secretmanager.GetSecret(t, proj, "dev", "API_KEY").Value)
+	})
+
 	t.Run("should need two different group members when two approvals are required", func(t *testing.T) {
 		t.Parallel()
 
@@ -545,6 +611,26 @@ func TestSecretApprovalRequest_Status(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
 		require.Equal(t, "The policy associated with this secret approval request has been deleted.", res.JSON400.Message)
 		require.Empty(t, secretmanager.ListSecrets(t, p.proj, "dev"))
+	})
+
+	t.Run("should refuse reopening a request once its policy has been deleted", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		p := newProtectedProject(t)
+		held := heldRequest(t, p.proj, createSecret(t, p.committer, p.proj, "API_KEY", "value").Body)
+		deleted, err := p.tn.Admin.API.DeleteSecretApprovalPolicyWithResponse(t.Context(), p.policyID.String())
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, deleted.StatusCode())
+		require.Equal(t, "close", getRequest(t, p.proj, held.ID).Status)
+
+		// Action
+		res := setStatus(t, p.committer, held.ID, api.UpdateSecretApprovalRequestStatusJSONBodyStatusOpen)
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t, "The policy associated with this secret approval request has been deleted.", res.JSON400.Message)
+		require.Equal(t, "close", getRequest(t, p.proj, held.ID).Status)
 	})
 }
 
