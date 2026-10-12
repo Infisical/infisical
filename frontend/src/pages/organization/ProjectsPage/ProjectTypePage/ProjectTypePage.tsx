@@ -106,6 +106,7 @@ import {
   ProjectVersion,
   SearchProjectSortBy
 } from "@app/hooks/api/projects/types";
+import { useGetSecretScanningProjectId } from "@app/hooks/api/secretScanningV2";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import {
@@ -257,6 +258,21 @@ export const ProjectTypePage = () => {
     }
   }, [projectType, certManagerInstance, orgId, navigate]);
 
+  // Resolving also creates the project for older orgs that never opened Secret Scanning. Non-members land
+  // on the product's access page, which offers joining or requesting access.
+  const { data: secretScanningProjectId } = useGetSecretScanningProjectId(orgId, {
+    enabled: projectType === ProjectType.SecretScanning
+  });
+
+  useEffect(() => {
+    if (projectType === ProjectType.SecretScanning && secretScanningProjectId) {
+      navigate({
+        to: "/organizations/$orgId/projects/secret-scanning/$projectId/data-sources",
+        params: { orgId, projectId: secretScanningProjectId }
+      });
+    }
+  }, [projectType, secretScanningProjectId, orgId, navigate]);
+
   useEffect(() => {
     if (projectType === ProjectType.PAM) {
       navigate({
@@ -294,7 +310,11 @@ export const ProjectTypePage = () => {
     );
   }
 
-  if (projectType === ProjectType.PAM || projectType === ProjectType.AgentVault) {
+  if (
+    projectType === ProjectType.PAM ||
+    projectType === ProjectType.AgentVault ||
+    projectType === ProjectType.SecretScanning
+  ) {
     return null;
   }
 
@@ -1307,31 +1327,6 @@ const EmptyState = ({
   isAddingProjectsAllowed: boolean;
 }) => {
   const typeTitle = getProjectTitle(projectType);
-  const { permission } = useOrgPermission();
-
-  if (projectType === ProjectType.SecretScanning) {
-    const canRequestAccess = permission.can(
-      OrgPermissionProjectActions.RequestAccess,
-      OrgPermissionSubjects.Project
-    );
-
-    return (
-      <Empty className="border">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <ProductIcon />
-          </EmptyMedia>
-          <EmptyTitle>You don&apos;t have access to Secret Scanning</EmptyTitle>
-          <EmptyDescription>
-            {canRequestAccess
-              ? "Switch to All Projects to request access to the Secret Scanning project."
-              : "Ask an organization admin to add you to the Secret Scanning project."}
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
-
   return (
     <Empty className="border">
       <EmptyHeader>
