@@ -409,11 +409,7 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
         )}
         {!filteredFindings?.length && (
           <EmptyState
-            title={
-              findings.length
-                ? "No findings match search..."
-                : "This project has not uncovered any secret leaks"
-            }
+            title={findings.length ? "No findings match search..." : "No secret leaks uncovered"}
             icon={faSearch}
           />
         )}

@@ -27,7 +27,7 @@ export const SecretScanningFindingsPage = () => {
               <PageHeader
                 scope={ProjectType.SecretScanning}
                 title="Findings"
-                description="View Secret Leaks across your project."
+                description="View secret leaks across your data sources."
               />
               <SecretScanningFindingsSection />
             </div>
