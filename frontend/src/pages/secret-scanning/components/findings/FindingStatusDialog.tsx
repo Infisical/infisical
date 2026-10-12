@@ -35,7 +35,7 @@ type Props = {
   findings: TSecretScanningFinding[];
   status: SecretScanningFindingStatus | null;
   onOpenChange: (isOpen: boolean) => void;
-  onComplete?: () => void;
+  onComplete?: (result: { status: SecretScanningFindingStatus; comment: string }) => void;
 };
 
 export const FindingStatusDialog = ({ findings, status, onOpenChange, onComplete }: Props) => {
@@ -74,7 +74,7 @@ export const FindingStatusDialog = ({ findings, status, onOpenChange, onComplete
               : `Finding marked as ${name}`
           });
           onOpenChange(false);
-          onComplete?.();
+          onComplete?.({ status, comment });
         }
       }
     );

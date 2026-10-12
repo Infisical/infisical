@@ -1,4 +1,4 @@
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
@@ -8,6 +8,7 @@ import {
   TGetSecretScanningUnresolvedFindingsResponse,
   TListSecretScanningDataSourceOptions,
   TListSecretScanningDataSources,
+  TListSecretScanningFindingsDTO,
   TListSecretScanningFindingsResponse,
   TListSecretScanningResourcesResponse,
   TListSecretScanningScansResponse,
@@ -16,7 +17,6 @@ import {
   TSecretScanningDataSourceOption,
   TSecretScanningDataSourceResponse,
   TSecretScanningDataSourceWithDetails,
-  TSecretScanningFinding,
   TSecretScanningResourceWithDetails,
   TSecretScanningScanWithDetails
 } from "./types";
@@ -51,6 +51,10 @@ export const secretScanningV2Keys = {
   findingCount: (projectId: string) =>
     [...secretScanningV2Keys.finding(), "count", projectId] as const,
   listFindings: (projectId: string) => [...secretScanningV2Keys.finding(), "list", projectId],
+  listFindingsWithParams: (params: TListSecretScanningFindingsDTO) => [
+    ...secretScanningV2Keys.listFindings(params.projectId),
+    params
+  ],
   configByProjectId: (projectId: string) =>
     [...secretScanningV2Keys.all, "config", projectId] as const,
   activeProjectId: (orgId: string) => [...secretScanningV2Keys.all, "project", orgId] as const,
@@ -242,27 +246,28 @@ export const useGetSecretScanningUnresolvedFindingCount = (
 };
 
 export const useListSecretScanningFindings = (
-  projectId: string,
+  params: TListSecretScanningFindingsDTO,
   options?: Omit<
     UseQueryOptions<
-      TSecretScanningFinding[],
+      TListSecretScanningFindingsResponse,
       unknown,
-      TSecretScanningFinding[],
-      ReturnType<typeof secretScanningV2Keys.listFindings>
+      TListSecretScanningFindingsResponse,
+      ReturnType<typeof secretScanningV2Keys.listFindingsWithParams>
     >,
     "queryKey" | "queryFn"
   >
 ) => {
   return useQuery({
-    queryKey: secretScanningV2Keys.listFindings(projectId),
+    queryKey: secretScanningV2Keys.listFindingsWithParams(params),
     queryFn: async () => {
       const { data } = await apiRequest.get<TListSecretScanningFindingsResponse>(
         "/api/v2/secret-scanning/findings",
-        { params: { projectId } }
+        { params }
       );
 
-      return data.findings;
+      return data;
     },
+    placeholderData: keepPreviousData,
     ...options
   });
 };

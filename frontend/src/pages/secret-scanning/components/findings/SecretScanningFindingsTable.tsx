@@ -1,4 +1,4 @@
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useState } from "react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { ChevronDownIcon, FilterIcon, ShieldCheckIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -16,7 +16,6 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuTrigger,
   Empty,
   EmptyContent,
@@ -36,6 +35,7 @@ import {
   TableRow,
   type TableSortDirection
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSub
@@ -46,11 +46,15 @@ import {
   SECRET_SCANNING_FINDING_STATUS_MAP,
   SECRET_SCANNING_FINDING_STATUS_ORDER
 } from "@app/helpers/secretScanningV2";
-import { usePagination, useResetPageHelper } from "@app/hooks";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
+  SecretScanningFindingOrderBy,
   SecretScanningFindingStatus,
   TSecretScanningDataSource,
   TSecretScanningFinding,
+  useListSecretScanningDataSources,
+  useListSecretScanningFindings,
+  useListSecretScanningResources,
   useUpdateMultipleSecretScanningFinding
 } from "@app/hooks/api/secretScanningV2";
 
@@ -60,56 +64,57 @@ import { FindingStatusDialog } from "./FindingStatusDialog";
 
 export type FindingsStatusFilter = SecretScanningFindingStatus | "all";
 
-enum FindingsOrderBy {
-  Rule = "rule",
-  Resource = "resource",
-  Author = "author",
-  Detected = "detected",
-  Status = "status"
-}
+type TSort = { orderBy: SecretScanningFindingOrderBy; orderDirection: OrderByDirection };
 
-type TSort = { column: FindingsOrderBy; direction: Exclude<TableSortDirection, "none"> };
-
-const DEFAULT_SORT: TSort = { column: FindingsOrderBy.Detected, direction: "descending" };
+const DEFAULT_SORT: TSort = {
+  orderBy: SecretScanningFindingOrderBy.CreatedAt,
+  orderDirection: OrderByDirection.DESC
+};
 
 const ALL_OPTION = "all";
 
-const compareFindings = (
-  a: TSecretScanningFinding,
-  b: TSecretScanningFinding,
-  column: FindingsOrderBy
-) => {
-  switch (column) {
-    case FindingsOrderBy.Rule:
-      return a.rule.localeCompare(b.rule);
-    case FindingsOrderBy.Resource:
-      return a.resourceName.localeCompare(b.resourceName);
-    case FindingsOrderBy.Author:
-      return (a.details.author ?? "").localeCompare(b.details.author ?? "");
-    case FindingsOrderBy.Status:
-      return (
-        SECRET_SCANNING_FINDING_STATUS_ORDER.indexOf(a.status) -
-        SECRET_SCANNING_FINDING_STATUS_ORDER.indexOf(b.status)
-      );
-    case FindingsOrderBy.Detected:
-    default:
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-  }
+type ResourceFilterProps = {
+  dataSource: Pick<TSecretScanningDataSource, "id" | "type">;
+  value: string | null;
+  onChange: (resourceId: string | null) => void;
 };
 
-const countBy = <T extends string>(
-  items: TSecretScanningFinding[],
-  key: (f: TSecretScanningFinding) => T
-) =>
-  items.reduce<Record<string, number>>((acc, item) => {
-    const value = key(item);
-    acc[value] = (acc[value] ?? 0) + 1;
-    return acc;
-  }, {});
+const ResourceFilter = ({ dataSource, value, onChange }: ResourceFilterProps) => {
+  const { data: resources = [] } = useListSecretScanningResources({
+    dataSourceId: dataSource.id,
+    type: dataSource.type
+  });
+
+  const { singularTitle, pluralTitle } = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
+  const selectedName = resources.find((r) => r.id === value)?.name;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline">
+          {singularTitle}: {selectedName ?? "All"}
+          <ChevronDownIcon />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="max-h-80 thin-scrollbar min-w-64 overflow-y-auto">
+        <DropdownMenuRadioGroup
+          value={value ?? ALL_OPTION}
+          onValueChange={(next) => onChange(next === ALL_OPTION ? null : next)}
+        >
+          <DropdownMenuRadioItem value={ALL_OPTION}>All {pluralTitle}</DropdownMenuRadioItem>
+          <DropdownMenuSeparator />
+          {resources.map((resource) => (
+            <DropdownMenuRadioItem key={resource.id} value={resource.id}>
+              <span className="truncate font-mono">{resource.name}</span>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
 
 type Props = {
-  findings: TSecretScanningFinding[];
-  isPending: boolean;
   dataSource?: TSecretScanningDataSource;
   initialStatus?: FindingsStatusFilter;
   initialDataSourceId?: string;
@@ -118,161 +123,150 @@ type Props = {
 };
 
 export const SecretScanningFindingsTable = ({
-  findings,
-  isPending,
   dataSource,
   initialStatus = SecretScanningFindingStatus.Unresolved,
   initialDataSourceId,
   initialResourceId,
   cardHeader
 }: Props) => {
+  const { currentProject } = useProject();
   const isScoped = Boolean(dataSource);
 
   const [statusFilter, setStatusFilter] = useState<FindingsStatusFilter>(initialStatus);
   const [dataSourceFilter, setDataSourceFilter] = useState<string | null>(
-    initialDataSourceId ?? null
+    dataSource?.id ?? initialDataSourceId ?? null
   );
   const [resourceFilter, setResourceFilter] = useState<string | null>(initialResourceId ?? null);
   const [sort, setSort] = useState<TSort>(DEFAULT_SORT);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(20);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [openFindingId, setOpenFindingId] = useState<string | null>(null);
+  // a snapshot keeps the sheet open when a status change moves the finding out of the current filter
+  const [openFinding, setOpenFinding] = useState<TSecretScanningFinding | null>(null);
   const [statusChange, setStatusChange] = useState<{
-    findingIds: string[];
+    findings: TSecretScanningFinding[];
     status: SecretScanningFindingStatus;
   } | null>(null);
 
-  const { page, setPage, perPage, setPerPage, offset } = usePagination(FindingsOrderBy.Detected, {
-    initPerPage: 20
+  const { data, isPending } = useListSecretScanningFindings(
+    {
+      projectId: currentProject.id,
+      status: statusFilter === "all" ? undefined : statusFilter,
+      dataSourceId: dataSourceFilter ?? undefined,
+      resourceId: resourceFilter ?? undefined,
+      ...sort,
+      offset: (page - 1) * perPage,
+      limit: perPage
+    },
+    { refetchInterval: 30000 }
+  );
+
+  const { data: dataSources = [] } = useListSecretScanningDataSources(currentProject.id, {
+    enabled: !isScoped
   });
+
+  const selectedDataSource = dataSource ?? dataSources.find((d) => d.id === dataSourceFilter);
 
   const reopenFinding = useUpdateMultipleSecretScanningFinding();
 
-  const scopedFindings = useMemo(
-    () => (dataSource ? findings.filter((f) => f.dataSourceId === dataSource.id) : findings),
-    [findings, dataSource]
-  );
-
-  const dataSourceOptions = useMemo(() => {
-    const counts = countBy(scopedFindings, (f) => f.dataSourceId);
-    const seen = new Map<string, TSecretScanningFinding>();
-    scopedFindings.forEach((f) => {
-      if (!seen.has(f.dataSourceId)) seen.set(f.dataSourceId, f);
-    });
-    return [...seen.values()]
-      .map((f) => ({
-        id: f.dataSourceId,
-        name: f.dataSourceName,
-        type: f.dataSourceType,
-        count: counts[f.dataSourceId]
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [scopedFindings]);
-
-  const sourceFilteredFindings = useMemo(
-    () =>
-      dataSourceFilter
-        ? scopedFindings.filter((f) => f.dataSourceId === dataSourceFilter)
-        : scopedFindings,
-    [scopedFindings, dataSourceFilter]
-  );
-
-  const resourceOptions = useMemo(() => {
-    const counts = countBy(sourceFilteredFindings, (f) => f.resourceId);
-    const seen = new Map<string, string>();
-    sourceFilteredFindings.forEach((f) => {
-      if (!seen.has(f.resourceId)) seen.set(f.resourceId, f.resourceName);
-    });
-    return [...seen.entries()]
-      .map(([id, name]) => ({ id, name, count: counts[id] }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [sourceFilteredFindings]);
-
-  const inScopeFindings = useMemo(
-    () =>
-      resourceFilter
-        ? sourceFilteredFindings.filter((f) => f.resourceId === resourceFilter)
-        : sourceFilteredFindings,
-    [sourceFilteredFindings, resourceFilter]
-  );
-
-  const statusCounts = useMemo(() => countBy(inScopeFindings, (f) => f.status), [inScopeFindings]);
-
-  const filteredFindings = useMemo(() => {
-    const direction = sort.direction === "ascending" ? 1 : -1;
-    return inScopeFindings
-      .filter((f) => statusFilter === "all" || f.status === statusFilter)
-      .sort((a, b) => compareFindings(a, b, sort.column) * direction);
-  }, [inScopeFindings, statusFilter, sort]);
-
-  useResetPageHelper({ totalCount: filteredFindings.length, offset, setPage });
-
-  const pageFindings = filteredFindings.slice(offset, offset + perPage);
-  const pageIds = pageFindings.map((f) => f.id);
-  const selectedFindings = filteredFindings.filter((f) => selectedIds.includes(f.id));
+  const findings = data?.findings ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  const pageIds = findings.map((f) => f.id);
+  const selectedFindings = findings.filter((f) => selectedIds.includes(f.id));
   const isPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
 
-  const openFinding = findings.find((f) => f.id === openFindingId);
-  const openIndex = openFindingId ? filteredFindings.findIndex((f) => f.id === openFindingId) : -1;
+  const visibleOpenFinding = openFinding
+    ? (findings.find((f) => f.id === openFinding.id) ?? openFinding)
+    : undefined;
+  const openIndex = openFinding ? pageIds.indexOf(openFinding.id) : -1;
 
-  const resourceLabel = dataSource
-    ? RESOURCE_DESCRIPTION_HELPER[dataSource.type].singularTitle
+  const resourceLabel = selectedDataSource
+    ? RESOURCE_DESCRIPTION_HELPER[selectedDataSource.type].singularTitle
     : "Resource";
-  const selectedResourceName = resourceOptions.find((r) => r.id === resourceFilter)?.name;
-  const selectedDataSourceName = dataSourceOptions.find((d) => d.id === dataSourceFilter)?.name;
+  const isFiltered =
+    statusFilter !== "all" || Boolean(resourceFilter) || (!isScoped && Boolean(dataSourceFilter));
 
   const resetSelection = () => setSelectedIds([]);
 
-  const handleSortChange = (column: FindingsOrderBy, direction: TableSortDirection) => {
-    setSort(direction === "none" ? DEFAULT_SORT : { column, direction });
+  const applyFilterChange = (change: () => void) => {
+    change();
+    setPage(1);
+    resetSelection();
   };
 
-  const getSortDirection = (column: FindingsOrderBy): TableSortDirection =>
-    sort.column === column ? sort.direction : "none";
-
-  const getSortIconClassName = (column: FindingsOrderBy) =>
-    twMerge(
-      "transition-transform",
-      getSortDirection(column) === "descending" && "rotate-180",
-      getSortDirection(column) === "none" && "opacity-30"
+  const handleSortChange = (orderBy: SecretScanningFindingOrderBy, direction: TableSortDirection) =>
+    applyFilterChange(() =>
+      setSort(
+        direction === "none"
+          ? DEFAULT_SORT
+          : {
+              orderBy,
+              orderDirection:
+                direction === "ascending" ? OrderByDirection.ASC : OrderByDirection.DESC
+            }
+      )
     );
+
+  const getSortDirection = (orderBy: SecretScanningFindingOrderBy): TableSortDirection => {
+    if (sort.orderBy !== orderBy) return "none";
+    return sort.orderDirection === OrderByDirection.ASC ? "ascending" : "descending";
+  };
+
+  const renderSortableHead = (
+    orderBy: SecretScanningFindingOrderBy,
+    label: string,
+    className?: string
+  ) => {
+    const direction = getSortDirection(orderBy);
+    return (
+      <TableHead
+        className={className}
+        sortDirection={direction}
+        onSortChange={(next) => handleSortChange(orderBy, next)}
+      >
+        {label}
+        <ChevronDownIcon
+          className={twMerge(
+            "transition-transform",
+            direction === "descending" && "rotate-180",
+            direction === "none" && "opacity-30"
+          )}
+        />
+      </TableHead>
+    );
+  };
 
   const handleChangeStatus = (
     targetFindings: TSecretScanningFinding[],
     status: SecretScanningFindingStatus
   ) => {
     if (status !== SecretScanningFindingStatus.Unresolved) {
-      setStatusChange({ findingIds: targetFindings.map((f) => f.id), status });
+      setStatusChange({ findings: targetFindings, status });
       return;
     }
 
     reopenFinding.mutate(
       targetFindings.map((f) => ({ findingId: f.id, projectId: f.projectId, status })),
       {
-        onSuccess: () =>
+        onSuccess: () => {
+          setOpenFinding((prev) =>
+            prev && targetFindings.some((f) => f.id === prev.id) ? { ...prev, status } : prev
+          );
+          resetSelection();
           createNotification({
             type: "success",
             text:
               targetFindings.length === 1
                 ? "Finding reopened"
                 : `${targetFindings.length} findings reopened`
-          })
+          });
+        }
       }
     );
   };
 
-  const renderSortableHead = (column: FindingsOrderBy, label: string, className?: string) => (
-    <TableHead
-      className={className}
-      sortDirection={getSortDirection(column)}
-      onSortChange={(direction) => handleSortChange(column, direction)}
-    >
-      {label}
-      <ChevronDownIcon className={getSortIconClassName(column)} />
-    </TableHead>
-  );
-
   const renderEmpty = () => {
-    if (!scopedFindings.length) {
+    if (!isFiltered) {
       return (
         <Empty className="border">
           <EmptyHeader>
@@ -294,7 +288,7 @@ export const SecretScanningFindingsTable = ({
       statusFilter === "all"
         ? ""
         : `${SECRET_SCANNING_FINDING_STATUS_MAP[statusFilter].name.toLowerCase()} `;
-    const scopeName = selectedResourceName ?? selectedDataSourceName;
+    const scopeName = !resourceFilter && !isScoped ? selectedDataSource?.name : undefined;
 
     return (
       <Empty className="border">
@@ -308,7 +302,11 @@ export const SecretScanningFindingsTable = ({
         </EmptyHeader>
         {statusFilter !== "all" && (
           <EmptyContent>
-            <Button variant="outline" size="xs" onClick={() => setStatusFilter("all")}>
+            <Button
+              variant="outline"
+              size="xs"
+              onClick={() => applyFilterChange(() => setStatusFilter("all"))}
+            >
               Show All Statuses
             </Button>
           </EmptyContent>
@@ -317,7 +315,7 @@ export const SecretScanningFindingsTable = ({
     );
   };
 
-  const showEmpty = !isPending && filteredFindings.length === 0;
+  const showEmpty = !isPending && totalCount === 0;
 
   return (
     <>
@@ -335,13 +333,12 @@ export const SecretScanningFindingsTable = ({
                 <ChevronDownIcon />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-56">
+            <DropdownMenuContent align="end" className="min-w-48">
               <DropdownMenuRadioGroup
                 value={statusFilter}
-                onValueChange={(value) => {
-                  setStatusFilter(value as FindingsStatusFilter);
-                  resetSelection();
-                }}
+                onValueChange={(value) =>
+                  applyFilterChange(() => setStatusFilter(value as FindingsStatusFilter))
+                }
               >
                 {SECRET_SCANNING_FINDING_STATUS_ORDER.map((status) => {
                   const { Icon, className, name } = SECRET_SCANNING_FINDING_STATUS_MAP[status];
@@ -349,15 +346,11 @@ export const SecretScanningFindingsTable = ({
                     <DropdownMenuRadioItem key={status} value={status}>
                       <Icon className={className} />
                       {name}
-                      <DropdownMenuShortcut>{statusCounts[status] ?? 0}</DropdownMenuShortcut>
                     </DropdownMenuRadioItem>
                   );
                 })}
                 <DropdownMenuSeparator />
-                <DropdownMenuRadioItem value="all">
-                  All
-                  <DropdownMenuShortcut>{inScopeFindings.length}</DropdownMenuShortcut>
-                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value={ALL_OPTION}>All</DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -365,7 +358,7 @@ export const SecretScanningFindingsTable = ({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
-                  Data Source: {selectedDataSourceName ?? "All"}
+                  Data Source: {selectedDataSource?.name ?? "All"}
                   <ChevronDownIcon />
                 </Button>
               </DropdownMenuTrigger>
@@ -375,18 +368,16 @@ export const SecretScanningFindingsTable = ({
               >
                 <DropdownMenuRadioGroup
                   value={dataSourceFilter ?? ALL_OPTION}
-                  onValueChange={(value) => {
-                    setDataSourceFilter(value === ALL_OPTION ? null : value);
-                    setResourceFilter(null);
-                    resetSelection();
-                  }}
+                  onValueChange={(value) =>
+                    applyFilterChange(() => {
+                      setDataSourceFilter(value === ALL_OPTION ? null : value);
+                      setResourceFilter(null);
+                    })
+                  }
                 >
-                  <DropdownMenuRadioItem value={ALL_OPTION}>
-                    All Data Sources
-                    <DropdownMenuShortcut>{scopedFindings.length}</DropdownMenuShortcut>
-                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value={ALL_OPTION}>All Data Sources</DropdownMenuRadioItem>
                   <DropdownMenuSeparator />
-                  {dataSourceOptions.map((option) => (
+                  {dataSources.map((option) => (
                     <DropdownMenuRadioItem key={option.id} value={option.id}>
                       <ProviderIcon
                         alt={`${SECRET_SCANNING_DATA_SOURCE_MAP[option.type].name} data source`}
@@ -394,48 +385,19 @@ export const SecretScanningFindingsTable = ({
                         className="size-4"
                       />
                       <span className="truncate">{option.name}</span>
-                      <DropdownMenuShortcut>{option.count}</DropdownMenuShortcut>
                     </DropdownMenuRadioItem>
                   ))}
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                {resourceLabel}: {selectedResourceName ?? "All"}
-                <ChevronDownIcon />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="max-h-80 thin-scrollbar min-w-64 overflow-y-auto"
-            >
-              <DropdownMenuRadioGroup
-                value={resourceFilter ?? ALL_OPTION}
-                onValueChange={(value) => {
-                  setResourceFilter(value === ALL_OPTION ? null : value);
-                  resetSelection();
-                }}
-              >
-                <DropdownMenuRadioItem value={ALL_OPTION}>
-                  All{" "}
-                  {dataSource
-                    ? RESOURCE_DESCRIPTION_HELPER[dataSource.type].pluralTitle
-                    : "Resources"}
-                  <DropdownMenuShortcut>{sourceFilteredFindings.length}</DropdownMenuShortcut>
-                </DropdownMenuRadioItem>
-                <DropdownMenuSeparator />
-                {resourceOptions.map((option) => (
-                  <DropdownMenuRadioItem key={option.id} value={option.id}>
-                    <span className="truncate font-mono">{option.name}</span>
-                    <DropdownMenuShortcut>{option.count}</DropdownMenuShortcut>
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {selectedDataSource && (
+            <ResourceFilter
+              dataSource={selectedDataSource}
+              value={resourceFilter}
+              onChange={(value) => applyFilterChange(() => setResourceFilter(value))}
+            />
+          )}
         </CardContent>
 
         {showEmpty ? (
@@ -449,20 +411,14 @@ export const SecretScanningFindingsTable = ({
                     aria-label="Select all findings on this page"
                     isChecked={isPageSelected}
                     isDisabled={isPending || !pageIds.length}
-                    onCheckedChange={() =>
-                      setSelectedIds((prev) =>
-                        isPageSelected
-                          ? prev.filter((id) => !pageIds.includes(id))
-                          : [...new Set([...prev, ...pageIds])]
-                      )
-                    }
+                    onCheckedChange={() => setSelectedIds(isPageSelected ? [] : pageIds)}
                   />
                 </TableHead>
-                {renderSortableHead(FindingsOrderBy.Rule, "Rule")}
-                {renderSortableHead(FindingsOrderBy.Resource, resourceLabel)}
-                {renderSortableHead(FindingsOrderBy.Author, "Author")}
-                {renderSortableHead(FindingsOrderBy.Detected, "Detected", "w-36")}
-                {renderSortableHead(FindingsOrderBy.Status, "Status", "w-36")}
+                {renderSortableHead(SecretScanningFindingOrderBy.Rule, "Rule")}
+                {renderSortableHead(SecretScanningFindingOrderBy.ResourceName, resourceLabel)}
+                {renderSortableHead(SecretScanningFindingOrderBy.Author, "Author")}
+                {renderSortableHead(SecretScanningFindingOrderBy.CreatedAt, "Detected", "w-36")}
+                {renderSortableHead(SecretScanningFindingOrderBy.Status, "Status", "w-36")}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -480,7 +436,7 @@ export const SecretScanningFindingsTable = ({
                   </TableRow>
                 ))}
               {!isPending &&
-                pageFindings.map((finding) => {
+                findings.map((finding) => {
                   const isSelected = selectedIds.includes(finding.id);
                   const source = SECRET_SCANNING_DATA_SOURCE_MAP[finding.dataSourceType];
 
@@ -488,7 +444,7 @@ export const SecretScanningFindingsTable = ({
                     <TableRow
                       key={finding.id}
                       data-state={isSelected ? "selected" : undefined}
-                      onClick={() => setOpenFindingId(finding.id)}
+                      onClick={() => setOpenFinding(finding)}
                     >
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox
@@ -538,17 +494,17 @@ export const SecretScanningFindingsTable = ({
           </Table>
         )}
 
-        {!isPending && filteredFindings.length > 0 && (
+        {!isPending && totalCount > 0 && (
           <CardContent className="-mt-5 pt-0">
             <Pagination
-              count={filteredFindings.length}
+              count={totalCount}
               page={page}
               perPage={perPage}
-              onChangePage={setPage}
-              onChangePerPage={(newPerPage) => {
-                setPerPage(newPerPage);
-                setPage(1);
+              onChangePage={(newPage) => {
+                setPage(newPage);
+                resetSelection();
               }}
+              onChangePerPage={(newPerPage) => applyFilterChange(() => setPerPage(newPerPage))}
             />
           </CardContent>
         )}
@@ -591,25 +547,34 @@ export const SecretScanningFindingsTable = ({
       </SelectedActionBar>
 
       <FindingDetailSheet
-        finding={openFinding}
-        position={openIndex >= 0 ? { index: openIndex, total: filteredFindings.length } : null}
-        onClose={() => setOpenFindingId(null)}
+        finding={visibleOpenFinding}
+        position={openIndex >= 0 ? { index: openIndex, total: findings.length } : null}
+        onClose={() => setOpenFinding(null)}
         onPrevious={() => {
-          if (openIndex > 0) setOpenFindingId(filteredFindings[openIndex - 1].id);
+          if (openIndex > 0) setOpenFinding(findings[openIndex - 1]);
         }}
         onNext={() => {
-          if (openIndex >= 0 && openIndex < filteredFindings.length - 1)
-            setOpenFindingId(filteredFindings[openIndex + 1].id);
+          if (openIndex >= 0 && openIndex < findings.length - 1)
+            setOpenFinding(findings[openIndex + 1]);
         }}
-        onChangeStatus={(status) => openFinding && handleChangeStatus([openFinding], status)}
+        onChangeStatus={(status) =>
+          visibleOpenFinding && handleChangeStatus([visibleOpenFinding], status)
+        }
         isReopening={reopenFinding.isPending}
       />
 
       <FindingStatusDialog
-        findings={findings.filter((f) => statusChange?.findingIds.includes(f.id))}
+        findings={statusChange?.findings ?? []}
         status={statusChange?.status ?? null}
         onOpenChange={(isOpen) => !isOpen && setStatusChange(null)}
-        onComplete={resetSelection}
+        onComplete={({ status, comment }) => {
+          setOpenFinding((prev) =>
+            prev && statusChange?.findings.some((f) => f.id === prev.id)
+              ? { ...prev, status, triageComment: comment || prev.triageComment }
+              : prev
+          );
+          resetSelection();
+        }}
       />
     </>
   );

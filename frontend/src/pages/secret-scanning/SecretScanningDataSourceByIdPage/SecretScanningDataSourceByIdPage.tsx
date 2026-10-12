@@ -24,7 +24,7 @@ import {
   useGetSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
 
-import { SecretScanningFindingsSection } from "../components/findings";
+import { SecretScanningFindingsTable } from "../components/findings";
 import {
   SecretScanningDataSourceSection,
   SecretScanningResourceSection,
@@ -102,7 +102,7 @@ const PageContent = () => {
               I={ProjectPermissionSecretScanningFindingActions.Read}
               a={ProjectPermissionSub.SecretScanningFindings}
             >
-              <SecretScanningFindingsSection
+              <SecretScanningFindingsTable
                 dataSource={dataSource}
                 cardHeader={
                   <CardHeader>

@@ -4009,7 +4009,14 @@ export const SecretScanningDataSources = {
 
 export const SecretScanningFindings = {
   LIST: {
-    projectId: `The ID of the project to list Secret Scanning Findings from. Defaults to the organization's active Secret Scanning project.`
+    projectId: `The ID of the project to list Secret Scanning Findings from. Defaults to the organization's active Secret Scanning project.`,
+    status: "Only return findings with this status.",
+    dataSourceId: "Only return findings detected in this Data Source.",
+    resourceId: "Only return findings detected in this resource, such as a repository or project.",
+    orderBy: "The field to sort findings by.",
+    orderDirection: "The direction to sort findings in.",
+    offset: "The number of findings to skip, for pagination.",
+    limit: "The maximum number of findings to return, from 1 to 100."
   },
   UPDATE: {
     findingId: "The ID of the Secret Scanning Finding to update.",

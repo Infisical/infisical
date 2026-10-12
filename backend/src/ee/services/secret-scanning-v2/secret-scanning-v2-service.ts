@@ -57,7 +57,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { bitbucketSecretScanningService } from "./bitbucket/bitbucket-secret-scanning-service";
 import { gitlabSecretScanningService } from "./gitlab/gitlab-secret-scanning-service";
-import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
+import { TListSecretScanningFindingsFilter, TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
 import { TSecretScanningV2QueueServiceFactory } from "./secret-scanning-v2-queue";
 
 export type TSecretScanningV2ServiceFactoryDep = {
@@ -762,7 +762,11 @@ export const secretScanningV2ServiceFactory = ({
     });
   };
 
-  const listSecretScanningFindingsByProjectId = async (projectId: string, actor: OrgServiceActor) => {
+  const listSecretScanningFindingsByProjectId = async (
+    projectId: string,
+    filter: TListSecretScanningFindingsFilter,
+    actor: OrgServiceActor
+  ) => {
     const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
@@ -785,9 +789,9 @@ export const secretScanningV2ServiceFactory = ({
       ProjectPermissionSub.SecretScanningFindings
     );
 
-    const findings = await secretScanningV2DAL.findings.findByProjectId(projectId);
+    const { findings, totalCount } = await secretScanningV2DAL.findings.findByProjectId(projectId, filter);
 
-    return findings as TSecretScanningFinding[];
+    return { findings: findings as TSecretScanningFinding[], totalCount };
   };
 
   const updateSecretScanningFindingById = async (

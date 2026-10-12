@@ -1,3 +1,4 @@
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   TGitLabDataSource,
   TGitLabDataSourceOption
@@ -7,6 +8,7 @@ import { DiscriminativePick } from "@app/types";
 import {
   SecretScanningDataSource,
   SecretScanningFindingConfidence,
+  SecretScanningFindingOrderBy,
   SecretScanningFindingSeverity,
   SecretScanningFindingStatus,
   SecretScanningScanStatus,
@@ -179,6 +181,18 @@ export type TSecretScanningFinding = {
   updatedAt: string;
 };
 
+export type TListSecretScanningFindingsDTO = {
+  projectId: string;
+  status?: SecretScanningFindingStatus;
+  dataSourceId?: string;
+  resourceId?: string;
+  orderBy: SecretScanningFindingOrderBy;
+  orderDirection: OrderByDirection;
+  offset: number;
+  limit: number;
+};
+
 export type TListSecretScanningFindingsResponse = {
   findings: TSecretScanningFinding[];
+  totalCount: number;
 };

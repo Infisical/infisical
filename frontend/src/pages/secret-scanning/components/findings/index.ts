@@ -1,2 +1,2 @@
-export { SecretScanningFindingsSection } from "./SecretScanningFindingsSection";
 export type { FindingsStatusFilter } from "./SecretScanningFindingsTable";
+export { SecretScanningFindingsTable } from "./SecretScanningFindingsTable";

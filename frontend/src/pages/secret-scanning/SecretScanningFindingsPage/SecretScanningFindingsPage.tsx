@@ -9,7 +9,7 @@ import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningFindingActions } from "@app/context/ProjectPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
-import { SecretScanningFindingsSection } from "../components/findings";
+import { SecretScanningFindingsTable } from "../components/findings";
 
 export const SecretScanningFindingsPage = () => {
   const { t } = useTranslation();
@@ -35,7 +35,7 @@ export const SecretScanningFindingsPage = () => {
                 title="Findings"
                 description="Secrets detected across every data source."
               />
-              <SecretScanningFindingsSection
+              <SecretScanningFindingsTable
                 initialStatus={status}
                 initialDataSourceId={dataSourceId}
                 initialResourceId={resourceId}

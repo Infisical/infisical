@@ -9,6 +9,7 @@ import {
   TSecretScanningFindings
 } from "@app/db/schemas";
 import {
+  SecretScanningFindingOrderBy,
   SecretScanningFindingStatus,
   SecretScanningScanStatus
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
@@ -22,8 +23,26 @@ import {
   sqlNestRelationships,
   TFindOpt
 } from "@app/lib/knex";
+import { OrderByDirection } from "@app/lib/types";
 
 export type TSecretScanningV2DALFactory = ReturnType<typeof secretScanningV2DALFactory>;
+
+export type TListSecretScanningFindingsFilter = {
+  status?: SecretScanningFindingStatus;
+  dataSourceId?: string;
+  resourceId?: string;
+  orderBy: SecretScanningFindingOrderBy;
+  orderDirection: OrderByDirection;
+  offset: number;
+  limit: number;
+};
+
+const FINDING_STATUS_SORT_ORDER = [
+  SecretScanningFindingStatus.Unresolved,
+  SecretScanningFindingStatus.Resolved,
+  SecretScanningFindingStatus.FalsePositive,
+  SecretScanningFindingStatus.Ignore
+];
 
 type TSecretScanningDataSourceFindFilter = Parameters<typeof buildFindFilter<TSecretScanningDataSources>>[0];
 type TSecretScanningDataSourceFindOptions = TFindOpt<TSecretScanningDataSources, true, "name">;
@@ -530,14 +549,79 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         db.ref("name").withSchema(TableName.SecretScanningResource).as("resourceName")
       );
 
-  const findFindingsByProjectId = async (projectId: string, tx?: Knex) => {
-    try {
-      const findings = await findingWithDetailsQuery(tx).where(
-        `${TableName.SecretScanningDataSource}.projectId`,
-        projectId
-      );
+  const applyFindingFilters = <Q extends Knex.QueryBuilder>(
+    query: Q,
+    projectId: string,
+    {
+      status,
+      dataSourceId,
+      resourceId
+    }: Pick<TListSecretScanningFindingsFilter, "status" | "dataSourceId" | "resourceId">
+  ) => {
+    void query.where(`${TableName.SecretScanningDataSource}.projectId`, projectId);
+    if (status) void query.where(`${TableName.SecretScanningFinding}.status`, status);
+    if (dataSourceId) void query.where(`${TableName.SecretScanningDataSource}.id`, dataSourceId);
+    if (resourceId) void query.where(`${TableName.SecretScanningFinding}.resourceId`, resourceId);
+    return query;
+  };
 
-      return findings;
+  const applyFindingOrder = <Q extends Knex.QueryBuilder>(
+    query: Q,
+    orderBy: SecretScanningFindingOrderBy,
+    orderDirection: OrderByDirection
+  ) => {
+    const direction = orderDirection === OrderByDirection.ASC ? "asc" : "desc";
+
+    switch (orderBy) {
+      case SecretScanningFindingOrderBy.Rule:
+        void query.orderBy(`${TableName.SecretScanningFinding}.rule`, direction);
+        break;
+      case SecretScanningFindingOrderBy.ResourceName:
+        void query.orderBy(`${TableName.SecretScanningResource}.name`, direction);
+        break;
+      case SecretScanningFindingOrderBy.Author:
+        void query.orderByRaw(`??->>'author' ${direction}`, [`${TableName.SecretScanningFinding}.details`]);
+        break;
+      case SecretScanningFindingOrderBy.Status:
+        void query.orderByRaw(
+          `CASE ?? ${FINDING_STATUS_SORT_ORDER.map(() => "WHEN ? THEN ?").join(" ")} END ${direction}`,
+          [
+            `${TableName.SecretScanningFinding}.status`,
+            ...FINDING_STATUS_SORT_ORDER.flatMap((status, index) => [status, index])
+          ]
+        );
+        break;
+      case SecretScanningFindingOrderBy.CreatedAt:
+      default:
+        void query.orderBy(`${TableName.SecretScanningFinding}.createdAt`, direction);
+    }
+
+    // a unique tiebreaker keeps rows from repeating or vanishing across pages when sort values tie
+    void query.orderBy(`${TableName.SecretScanningFinding}.id`, direction);
+    return query;
+  };
+
+  const findFindingsByProjectId = async (
+    projectId: string,
+    { orderBy, orderDirection, offset, limit, ...filter }: TListSecretScanningFindingsFilter,
+    tx?: Knex
+  ) => {
+    try {
+      const findingsQuery = applyFindingOrder(
+        applyFindingFilters(findingWithDetailsQuery(tx), projectId, filter),
+        orderBy,
+        orderDirection
+      )
+        .offset(offset)
+        .limit(limit);
+
+      const countQuery = applyFindingFilters(baseFindingQuery(tx), projectId, filter)
+        .count({ count: `${TableName.SecretScanningFinding}.id` })
+        .first();
+
+      const [findings, countResult] = await Promise.all([findingsQuery, countQuery]);
+
+      return { findings, totalCount: Number(countResult?.count ?? 0) };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find By Project ID - Secret Scanning Finding" });
     }
