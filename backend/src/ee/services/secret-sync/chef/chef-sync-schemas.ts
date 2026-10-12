@@ -22,11 +22,7 @@ const ChefSyncDestinationConfigSchema = z.object({
     .min(1, "Data Bag Item Name is required")
     .max(256, "Data Bag Item Name cannot exceed 256 characters")
     .describe(SecretSyncs.DESTINATION_CONFIG.CHEF.dataBagItemName),
-  shouldEncryptSecrets: z
-    .boolean()
-    .optional()
-    .default(false)
-    .describe(SecretSyncs.DESTINATION_CONFIG.CHEF.shouldEncryptSecrets)
+  shouldEncryptSecrets: z.boolean().optional().describe(SecretSyncs.DESTINATION_CONFIG.CHEF.shouldEncryptSecrets)
 });
 
 const ChefSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };

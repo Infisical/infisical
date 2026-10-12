@@ -5,7 +5,7 @@ import { crypto } from "@app/lib/crypto";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
-import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
+import { TPreSaveTransformDestinationConfigFn, TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import {
   ChefSecret,
@@ -28,6 +28,18 @@ const resolveGatewayId = async (
     gatewayId: secretSync.connection.gatewayId,
     gatewayPoolId: secretSync.connection.gatewayPoolId
   });
+};
+
+// An update replaces the whole destination config, so without this a client that doesn't send
+// shouldEncryptSecrets would turn encryption off and the next sync would write plain text.
+export const chefPreSaveTransformDestinationConfig: TPreSaveTransformDestinationConfigFn = async ({
+  destinationConfig,
+  existingDestinationConfig
+}) => {
+  if (!destinationConfig || destinationConfig.shouldEncryptSecrets !== undefined) return destinationConfig;
+  if (existingDestinationConfig?.shouldEncryptSecrets === undefined) return destinationConfig;
+
+  return { ...destinationConfig, shouldEncryptSecrets: existingDestinationConfig.shouldEncryptSecrets };
 };
 
 const CHEF_ENCRYPTED_DATA_BAG_VERSION = 3;

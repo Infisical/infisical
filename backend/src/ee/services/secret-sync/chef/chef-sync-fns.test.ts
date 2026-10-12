@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 
-import { ChefSyncFns } from "./chef-sync-fns";
+import { chefPreSaveTransformDestinationConfig, ChefSyncFns } from "./chef-sync-fns";
 import { TChefSyncWithCredentials } from "./chef-sync-types";
 
 const store = vi.hoisted(() => ({ item: {} as Record<string, unknown> }));
@@ -146,5 +146,38 @@ describe("ChefSyncFns encrypted data bags", () => {
       )
     ).rejects.toThrow("Encryption is turned on for this sync");
     expect(store.item).toEqual({ id: "fixture", A: "1" });
+  });
+});
+
+describe("chefPreSaveTransformDestinationConfig", () => {
+  const destinationConfig = { dataBagName: "app", dataBagItemName: "fixture" };
+
+  test("keeps the saved encryption setting when an update leaves it out", async () => {
+    await expect(
+      chefPreSaveTransformDestinationConfig(
+        {
+          destinationConfig,
+          existingDestinationConfig: { ...destinationConfig, shouldEncryptSecrets: true },
+          connectionId: "c"
+        },
+        {} as never
+      )
+    ).resolves.toEqual({ ...destinationConfig, shouldEncryptSecrets: true });
+  });
+
+  test("applies an explicit change and leaves new syncs alone", async () => {
+    await expect(
+      chefPreSaveTransformDestinationConfig(
+        {
+          destinationConfig: { ...destinationConfig, shouldEncryptSecrets: false },
+          existingDestinationConfig: { ...destinationConfig, shouldEncryptSecrets: true },
+          connectionId: "c"
+        },
+        {} as never
+      )
+    ).resolves.toEqual({ ...destinationConfig, shouldEncryptSecrets: false });
+    await expect(
+      chefPreSaveTransformDestinationConfig({ destinationConfig, connectionId: "c" }, {} as never)
+    ).resolves.toEqual(destinationConfig);
   });
 });
