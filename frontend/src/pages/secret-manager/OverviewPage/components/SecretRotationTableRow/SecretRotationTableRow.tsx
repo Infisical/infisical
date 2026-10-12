@@ -64,7 +64,6 @@ type Props = {
   isSecretRotationInEnv: (name: string, env: string) => boolean;
   getSecretRotationByName: (slug: string, name: string) => TSecretRotationV2 | undefined;
   getSecretRotationStatusesByName: (name: string) => (SecretRotationStatus | null)[] | undefined;
-  tableWidth: number;
   isSelected: boolean;
   onToggleRotationSelect: (name: string, isShiftKey: boolean) => void;
   onEdit: (secretRotation: TSecretRotationV2) => void;
@@ -90,7 +89,6 @@ export const SecretRotationTableRow = ({
   secretRotationName,
   environments = [],
   isSecretRotationInEnv,
-  tableWidth,
   getSecretRotationByName,
   getSecretRotationStatusesByName,
   isSelected,
@@ -465,10 +463,7 @@ export const SecretRotationTableRow = ({
           className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
         >
           <TableCell colSpan={totalCols} className="border-0 p-0">
-            <div
-              style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 border-y border-border"
-            >
+            <div className="sticky left-0 max-w-(--overview-table-width) min-w-(--overview-table-width) border-y border-border">
               <Table
                 className="w-full min-w-[calc(var(--name-column-width,180px)+24rem)] table-fixed"
                 containerClassName="rounded-none border-0"
