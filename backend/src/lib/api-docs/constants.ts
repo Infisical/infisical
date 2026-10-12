@@ -3077,7 +3077,9 @@ export const AppConnections = {
       serverUrl: "The URL of the Chef server to connect to.",
       orgName: "The short name of the Chef organization to connect to.",
       userName: "The username used to access Chef.",
-      privateKey: "The private key used to access Chef."
+      privateKey: "The private key used to access Chef.",
+      dataBagSecret:
+        "The shared secret (the contents of your encrypted_data_bag_secret file) used to encrypt and decrypt Chef encrypted data bag items. Required only by secret syncs that encrypt secrets."
     },
     OCTOPUS_DEPLOY: {
       instanceUrl: "The Octopus Deploy instance URL to connect to.",
