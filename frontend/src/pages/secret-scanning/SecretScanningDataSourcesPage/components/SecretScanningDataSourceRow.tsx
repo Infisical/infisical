@@ -155,7 +155,7 @@ export const SecretScanningDataSourceRow = ({
                       orgId: currentOrg.id
                     },
                     search: {
-                      search: name,
+                      dataSourceId: id,
                       status: SecretScanningFindingStatus.Unresolved
                     }
                   });

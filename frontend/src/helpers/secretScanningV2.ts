@@ -72,26 +72,47 @@ export const RESOURCE_DESCRIPTION_HELPER: Record<
 
 export const SECRET_SCANNING_FINDING_STATUS_MAP: Record<
   SecretScanningFindingStatus,
-  { Icon: LucideIcon; variant: TBadgeProps["variant"]; className: string }
+  {
+    Icon: LucideIcon;
+    variant: TBadgeProps["variant"];
+    className: string;
+    name: string;
+    description: string;
+  }
 > = {
   [SecretScanningFindingStatus.Resolved]: {
     Icon: CheckIcon,
     variant: "success",
-    className: "text-success"
+    className: "text-success",
+    name: "Resolved",
+    description: "The credential was rotated or revoked."
   },
   [SecretScanningFindingStatus.Unresolved]: {
     Icon: AlertTriangleIcon,
     variant: "warning",
-    className: "text-warning"
+    className: "text-warning",
+    name: "Unresolved",
+    description: "Needs review. New findings start here."
   },
   [SecretScanningFindingStatus.Ignore]: {
     Icon: BanIcon,
     variant: "neutral",
-    className: "text-neutral"
+    className: "text-neutral",
+    name: "Ignored",
+    description: "The risk is accepted. Ignored findings don't count as unresolved."
   },
   [SecretScanningFindingStatus.FalsePositive]: {
     Icon: SearchSlashIcon,
     variant: "neutral",
-    className: "text-neutral"
+    className: "text-neutral",
+    name: "False Positive",
+    description: "Not a secret. The rule matched something harmless."
   }
 };
+
+export const SECRET_SCANNING_FINDING_STATUS_ORDER = [
+  SecretScanningFindingStatus.Unresolved,
+  SecretScanningFindingStatus.Resolved,
+  SecretScanningFindingStatus.FalsePositive,
+  SecretScanningFindingStatus.Ignore
+] as const;

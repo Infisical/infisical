@@ -5,16 +5,26 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, ContentLoader, EmptyState } from "@app/components/v2";
-import { ProviderIcon } from "@app/components/v3";
+import {
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DocumentationLinkBadge,
+  ProviderIcon
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
-import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
+import {
+  ProjectPermissionSecretScanningDataSourceActions,
+  ProjectPermissionSecretScanningFindingActions
+} from "@app/context/ProjectPermissionContext/types";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import {
   SecretScanningDataSource,
   useGetSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
 
+import { SecretScanningFindingsSection } from "../components/findings";
 import {
   SecretScanningDataSourceSection,
   SecretScanningResourceSection,
@@ -86,7 +96,25 @@ const PageContent = () => {
           <div className="mr-4 flex w-72 flex-col gap-4">
             <SecretScanningDataSourceSection dataSource={dataSource} />
           </div>
-          <div className="flex flex-1 flex-col gap-4">
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <ProjectPermissionCan
+              passThrough={false}
+              I={ProjectPermissionSecretScanningFindingActions.Read}
+              a={ProjectPermissionSub.SecretScanningFindings}
+            >
+              <SecretScanningFindingsSection
+                dataSource={dataSource}
+                cardHeader={
+                  <CardHeader>
+                    <CardTitle>
+                      Findings
+                      <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/findings" />
+                    </CardTitle>
+                    <CardDescription>Secrets detected in this data source.</CardDescription>
+                  </CardHeader>
+                }
+              />
+            </ProjectPermissionCan>
             <SecretScanningResourceSection dataSource={dataSource} />
             <SecretScanningScanSection dataSource={dataSource} />
           </div>
