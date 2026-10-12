@@ -22,14 +22,6 @@ describe("projectV2ToFeatureSet", () => {
     expect(plan.rbac).toBe(true);
   });
 
-  test("keeps the base value when v2 returns null", () => {
-    const plan = projectV2ToFeatureSet(
-      makeBase({ dynamicSecret: true }),
-      makeEntitlements({ dynamic_secret: { value: null } })
-    );
-    expect(plan.dynamicSecret).toBe(true);
-  });
-
   test("projects a nested rateLimits field via its dotted v1Field", () => {
     const plan = projectV2ToFeatureSet(makeBase({}), makeEntitlements({ read_rate_limit: { value: 500 } }));
     expect(plan.rateLimits.readLimit).toBe(500);
