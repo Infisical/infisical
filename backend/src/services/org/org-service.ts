@@ -870,18 +870,19 @@ export const orgServiceFactory = ({
       await licenseService.cancelOrgSubscription(orgId);
     }
 
+    // Outside the transaction: the cleanup runs its own queries per project, and inside it each
+    // concurrent delete would hold one pooled connection while waiting on a second.
+    const projects = await projectDAL.find({ orgId });
+    for await (const project of projects) {
+      await fnDeleteProjectSecretReminders(project.id, {
+        secretDAL,
+        reminderService,
+        projectBotService,
+        folderDAL
+      });
+    }
+
     const response = await orgDAL.transaction(async (tx) => {
-      const projects = await projectDAL.find({ orgId }, { tx });
-
-      for await (const project of projects) {
-        await fnDeleteProjectSecretReminders(project.id, {
-          secretDAL,
-          reminderService,
-          projectBotService,
-          folderDAL
-        });
-      }
-
       const deletedOrg = await orgDAL.deleteById(orgId, tx);
 
       // Generate new tokens without the organization ID present

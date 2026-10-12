@@ -67,7 +67,6 @@ import SecretRenameForm from "./SecretRenameForm";
 type Props = {
   secretKey: string;
   secretPath: string;
-  tableWidth: number;
   environments: { name: string; slug: string }[];
   isSelected: boolean;
   onToggleSecretSelect: (key: string, isShiftKey: boolean) => void;
@@ -134,7 +133,6 @@ type ExpandedTableSort = {
 
 export const SecretTableRow = ({
   secretKey,
-  tableWidth,
   environments = [],
   secretPath,
   getSecretByKey,
@@ -439,9 +437,9 @@ export const SecretTableRow = ({
             )}
           >
             <div
-              style={isExpanded ? { minWidth: tableWidth, maxWidth: tableWidth } : undefined}
               className={twMerge(
-                isExpanded && "sticky left-0 flex min-h-10 items-center bg-container-hover"
+                isExpanded &&
+                  "sticky left-0 flex min-h-10 max-w-(--overview-table-width) min-w-(--overview-table-width) items-center bg-container-hover"
               )}
             >
               {isExpanded && (
@@ -628,16 +626,10 @@ export const SecretTableRow = ({
           className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
         >
           <TableCell colSpan={totalCols} className="border-0 p-0">
-            <div
-              style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 border-y border-border bg-container"
-            >
+            <div className="@container sticky left-0 max-w-(--overview-table-width) min-w-(--overview-table-width) border-y border-border bg-container">
               <Table
                 className="w-full min-w-[600px] table-fixed"
-                containerClassName={twMerge(
-                  "rounded-none border-0",
-                  tableWidth >= 600 && "overflow-hidden"
-                )}
+                containerClassName="rounded-none border-0 @min-[600px]:overflow-hidden"
               >
                 <colgroup>
                   <col className="w-10" />
