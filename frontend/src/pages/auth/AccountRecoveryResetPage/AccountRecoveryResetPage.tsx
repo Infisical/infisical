@@ -3,7 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { createNotification } from "@app/components/notifications";
-import { ConfirmActionModal } from "@app/components/v2";
+import { DeleteConfirmDialog } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { usePopUp } from "@app/hooks";
 import { useEnableEmailAuthAccountRecovery } from "@app/hooks/api";
@@ -91,14 +91,15 @@ export const AccountRecoveryResetPage = () => {
           onBack={() => setStep(Steps.SelectRecoveryMethod)}
         />
       )}
-      <ConfirmActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.confirmEnableEmailAuth.isOpen}
         confirmKey="enable"
         title="Enable Email Authentication"
-        subTitle={`Do you want to enable email authentication for your account (${email})? This will allow you to log in using your email and password in the future.`}
-        onChange={(isOpen) => handlePopUpToggle("confirmEnableEmailAuth", isOpen)}
-        onConfirmed={handleEnableEmailAuth}
-        buttonText="Enable"
+        description={`Do you want to enable email authentication for your account (${email})? This will allow you to log in using your email and password in the future.`}
+        onOpenChange={(isOpen) => handlePopUpToggle("confirmEnableEmailAuth", isOpen)}
+        onConfirm={handleEnableEmailAuth}
+        confirmLabel="Enable"
+        confirmVariant="neutral"
       />
     </AuthPageLayout>
   );
