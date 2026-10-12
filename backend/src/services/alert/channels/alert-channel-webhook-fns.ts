@@ -105,11 +105,10 @@ const triggerWebhook = async (params: {
   customHeaders?: TWebhookChannelHeader[];
 }): Promise<void> => {
   const { url, payload, signingSecret, customHeaders } = params;
-  const headers: Record<string, string> = {};
-  customHeaders?.forEach(({ key, value }) => {
-    headers[key] = value;
-  });
-  headers["Content-Type"] = "application/json";
+  const headers: Record<string, string> = {
+    ...Object.fromEntries((customHeaders ?? []).map(({ key, value }) => [key, value])),
+    "Content-Type": "application/json"
+  };
 
   if (signingSecret) {
     const payloadString = JSON.stringify(payload);

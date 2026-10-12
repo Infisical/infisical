@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 import { PlusIcon, TrashIcon } from "lucide-react";
 
@@ -31,8 +30,6 @@ export const WebhookHeadersField = ({ index, isExisting }: Props) => {
   const { fields, append, remove } = useFieldArray({ control, name: `channels.${index}.headers` });
   const headerErrors = errors.channels?.[index]?.headers;
 
-  const [clearedRows, setClearedRows] = useState<Set<string>>(() => new Set());
-
   return (
     <Field>
       <FieldLabel>
@@ -63,10 +60,13 @@ export const WebhookHeadersField = ({ index, isExisting }: Props) => {
                     onFocus={() => {
                       if (getValues(valueName) !== ALERT_CHANNEL_REDACTED_VALUE) return;
                       setValue(valueName, "");
-                      setClearedRows((current) => new Set(current).add(field.id));
                     }}
                     onBlur={() => {
-                      if (!clearedRows.has(field.id) || getValues(valueName) !== "") return;
+                      if (
+                        field.value !== ALERT_CHANNEL_REDACTED_VALUE ||
+                        getValues(valueName) !== ""
+                      )
+                        return;
                       setValue(valueName, ALERT_CHANNEL_REDACTED_VALUE);
                     }}
                   />

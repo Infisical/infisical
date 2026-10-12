@@ -215,6 +215,40 @@ describe("alert channel service", () => {
     ]);
   });
 
+  test("stores webhook header names trimmed, so a redacted value can be kept later", async () => {
+    const { service, store } = buildService();
+    const created = await createChannel(
+      service,
+      {
+        name: "Ops webhook",
+        channelType: AlertChannelType.WEBHOOK,
+        config: { url: "https://example.com/hook", headers: [{ key: " Authorization ", value: "Bearer abc" }] },
+        orgId: "org-1",
+        ...CHANNEL_INPUT
+      },
+      encryptor as never,
+      tx
+    );
+
+    await updateChannel(
+      service,
+      {
+        recipientScope: RECIPIENT_SCOPE,
+        channelId: created.id,
+        config: {
+          url: "https://example.com/hook",
+          headers: [{ key: "Authorization", value: ALERT_CHANNEL_REDACTED_VALUE }]
+        }
+      },
+      store.get(created.id) as never,
+      cipher,
+      tx
+    );
+
+    const stored = JSON.parse(store.get(created.id)!.encryptedConfig.toString()) as Record<string, unknown>;
+    expect(stored.headers).toEqual([{ key: "Authorization", value: "Bearer abc" }]);
+  });
+
   test("rejects a redacted webhook header that has no stored value", async () => {
     const { service } = buildService();
     const channel = seedRow({
