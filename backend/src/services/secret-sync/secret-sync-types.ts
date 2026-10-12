@@ -114,6 +114,12 @@ import {
   TCloudflarePagesSyncWithCredentials
 } from "./cloudflare-pages/cloudflare-pages-types";
 import {
+  TCloudflareSecretsStoreSync,
+  TCloudflareSecretsStoreSyncInput,
+  TCloudflareSecretsStoreSyncListItem,
+  TCloudflareSecretsStoreSyncWithCredentials
+} from "./cloudflare-secrets-store";
+import {
   TCloudflareWorkersSync,
   TCloudflareWorkersSyncInput,
   TCloudflareWorkersSyncListItem,
@@ -159,6 +165,12 @@ import {
   THumanitecSyncListItem,
   THumanitecSyncWithCredentials
 } from "./humanitec";
+import {
+  TKeeperSync,
+  TKeeperSyncInput,
+  TKeeperSyncListItem,
+  TKeeperSyncWithCredentials
+} from "./keeper/keeper-sync-types";
 import {
   TLaravelForgeSync,
   TLaravelForgeSyncInput,
@@ -267,6 +279,7 @@ export type TSecretSync =
   | TGitLabSync
   | TCloudflarePagesSync
   | TCloudflareWorkersSync
+  | TCloudflareSecretsStoreSync
   | TZabbixSync
   | TRailwaySync
   | TChecklySync
@@ -287,7 +300,8 @@ export type TSecretSync =
   | THasuraCloudSync
   | TCloud66Sync
   | TSpaceliftSync
-  | TDaytonaSync;
+  | TDaytonaSync
+  | TKeeperSync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -316,6 +330,7 @@ export type TSecretSyncWithCredentials =
   | TGitLabSyncWithCredentials
   | TCloudflarePagesSyncWithCredentials
   | TCloudflareWorkersSyncWithCredentials
+  | TCloudflareSecretsStoreSyncWithCredentials
   | TZabbixSyncWithCredentials
   | TRailwaySyncWithCredentials
   | TChecklySyncWithCredentials
@@ -338,7 +353,8 @@ export type TSecretSyncWithCredentials =
   | THasuraCloudSyncWithCredentials
   | TCloud66SyncWithCredentials
   | TSpaceliftSyncWithCredentials
-  | TDaytonaSyncWithCredentials;
+  | TDaytonaSyncWithCredentials
+  | TKeeperSyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -367,6 +383,7 @@ export type TSecretSyncInput =
   | TGitLabSyncInput
   | TCloudflarePagesSyncInput
   | TCloudflareWorkersSyncInput
+  | TCloudflareSecretsStoreSyncInput
   | TZabbixSyncInput
   | TRailwaySyncInput
   | TChecklySyncInput
@@ -389,7 +406,8 @@ export type TSecretSyncInput =
   | THasuraCloudSyncInput
   | TCloud66SyncInput
   | TSpaceliftSyncInput
-  | TDaytonaSyncInput;
+  | TDaytonaSyncInput
+  | TKeeperSyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -419,6 +437,7 @@ export type TSecretSyncListItem =
   | TGitLabSyncListItem
   | TCloudflarePagesSyncListItem
   | TCloudflareWorkersSyncListItem
+  | TCloudflareSecretsStoreSyncListItem
   | TZabbixSyncListItem
   | TRailwaySyncListItem
   | TChecklySyncListItem
@@ -440,7 +459,8 @@ export type TSecretSyncListItem =
   | THasuraCloudSyncListItem
   | TCloud66SyncListItem
   | TSpaceliftSyncListItem
-  | TDaytonaSyncListItem;
+  | TDaytonaSyncListItem
+  | TKeeperSyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

@@ -9,6 +9,7 @@ import {
   PamApproverType,
   PamDiscoverySchedule,
   PamDiscoveryType,
+  PamFolderCallerAccess,
   PamHeartbeatStatus,
   PamNotificationEvent,
   PamPolicyType,
@@ -399,7 +400,11 @@ export type TDeletePamFolderDTO = {
   folderId: string;
 };
 
-export type TPamFolderWithCount = TPamFolder & { accountCount: number };
+export type TPamFolderWithCount = TPamFolder & {
+  accountCount: number;
+  // Only returned to org admins, who see every folder and can join one as admin.
+  callerAccess?: PamFolderCallerAccess;
+};
 
 export type TCreatePamAccountDTO = {
   accountType: PamAccountType;

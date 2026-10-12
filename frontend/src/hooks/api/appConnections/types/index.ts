@@ -43,6 +43,7 @@ import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
 import { THpeIloConnection } from "./hpe-ilo-connection";
 import { THumanitecConnection } from "./humanitec-connection";
+import { TKeeperConnection } from "./keeper-connection";
 import { TKempLoadMasterConnection } from "./kemp-loadmaster-connection";
 import { TLaravelForgeConnection } from "./laravel-forge-connection";
 import { TLdapConnection } from "./ldap-connection";
@@ -129,6 +130,7 @@ export * from "./hc-vault-connection";
 export * from "./heroku-connection";
 export * from "./hpe-ilo-connection";
 export * from "./humanitec-connection";
+export * from "./keeper-connection";
 export * from "./kemp-loadmaster-connection";
 export * from "./laravel-forge-connection";
 export * from "./ldap-connection";
@@ -263,6 +265,7 @@ export type TAppConnection =
   | TSpaceliftConnection
   | TDaytonaConnection
   | TStripeConnection
+  | TKeeperConnection
   | THpeIloConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;

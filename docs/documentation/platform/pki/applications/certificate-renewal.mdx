@@ -174,6 +174,9 @@ Deploy the renewed certificate before the previous one expires. Renewing doesn't
   <Accordion title="Can I renew a certificate that Infisical did not generate the key for?">
     Yes. Choose a new key pair, or supply a CSR generated from the existing key. A certificate issued from a signing request can also reuse its public key, in which case the renewal is made from that original request.
   </Accordion>
+  <Accordion title="Where can I see why a renewal failed?">
+    If a manual renewal fails, Infisical shows the reason when you submit it and records a [`certificate-issuance-failed` audit log event](/documentation/platform/audit-logs#certificate-issuance-failures) that links to the certificate being renewed. If an automatic renewal fails, Infisical records an `automated-renew-certificate-failed` event instead, unless the renewal had already been sent to an external CA, in which case the failure is recorded as `certificate-issuance-failed`.
+  </Accordion>
   <Accordion title="Can I renew several certificates at once?">
     Manual renewal handles one certificate at a time. To keep many certificates current without intervention, enable [automatic renewal](/documentation/platform/pki/applications/certificates) so Infisical reissues them before they expire.
   </Accordion>

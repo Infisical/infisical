@@ -912,6 +912,10 @@ export const ORGANIZATIONS = {
   },
   LIST_GROUPS: {
     organizationId: "The ID of the organization to list groups for."
+  },
+  GET_PRODUCT_STATS: {
+    secretScanningFindingsCount:
+      "The number of findings across the organization's Secret Scanning projects, in any status. Cached for up to 5 minutes."
   }
 } as const;
 
@@ -1507,6 +1511,10 @@ export const SECRET_IMPORTS = {
 } as const;
 
 export const DASHBOARD = {
+  SECRET_METADATA_SEARCH: {
+    searchLimit: "The candidate limit applied independently to plaintext matches and encrypted metadata candidates.",
+    tags: "The tags attached to the secret, including each tag's ID and slug."
+  },
   SECRET_METADATA_LIST: {
     projectId: "The ID of the project containing the secrets.",
     environment: "The slug of the environment containing the secrets.",
@@ -2901,6 +2909,14 @@ export const AppConnections = {
   ROTATE_CREDENTIALS: (app: AppConnection) => ({
     connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to rotate credentials for.`
   }),
+  KEEPER: {
+    LIST_SHARED_FOLDERS: {
+      connectionId: "The ID of the Keeper Connection to list shared folders from.",
+      sharedFolders: "The Keeper shared folders the connection can access, sorted by name.",
+      uid: "The UID of the Keeper shared folder.",
+      name: "The name of the Keeper shared folder. Falls back to the UID when the folder has no name."
+    }
+  },
   CREDENTIALS: {
     AUTH0_CONNECTION: {
       domain: "The domain of the Auth0 instance to connect to.",
@@ -3132,6 +3148,10 @@ export const AppConnections = {
     LITELLM: {
       apiKey: "The LiteLLM API key used to authenticate with the LiteLLM instance.",
       instanceUrl: "The base URL of your LiteLLM instance (e.g. https://litellm.example.com)."
+    },
+    KEEPER: {
+      apiKey: "The API key generated for Keeper Commander Service Mode.",
+      instanceUrl: "The base URL of your Keeper Commander Service Mode instance (e.g. https://keeper.company.com)."
     },
     FIREWORKS: {
       apiKey: "The Fireworks API key used to authenticate with the Fireworks API.",
@@ -3419,6 +3439,10 @@ export const SecretSyncs = {
       vaultId: "The ID of the 1Password vault to sync secrets to.",
       valueLabel: "The label of the entry that holds the secret value."
     },
+    KEEPER: {
+      folderUid: "The UID of the Keeper Password Manager shared folder to sync secrets to.",
+      folderName: "The name of the Keeper Password Manager shared folder to sync secrets to."
+    },
     HEROKU: {
       app: "The ID of the Heroku app to sync secrets to.",
       appName: "The name of the Heroku app to sync secrets to."
@@ -3456,6 +3480,12 @@ export const SecretSyncs = {
     },
     CLOUDFLARE_WORKERS: {
       scriptId: "The ID of the Cloudflare Workers script to sync secrets to."
+    },
+    CLOUDFLARE_SECRETS_STORE: {
+      storeId: "The ID of the Cloudflare Secrets Store to sync secrets to.",
+      storeName: "An optional display name for the Cloudflare Secrets Store.",
+      scopes:
+        "The Cloudflare services allowed to use the synced secrets. Applied every time a secret is written, so it replaces scopes set in Cloudflare."
     },
     ZABBIX: {
       scope: "The Zabbix scope that secrets should be synced to.",
@@ -3868,14 +3898,14 @@ export const SecretScanningDataSources = {
   LIST: (type?: SecretScanningDataSource) => ({
     projectId: `The ID of the project to list ${
       type ? SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type] : "Scanning"
-    } Data Sources from.`
+    } Data Sources from. Defaults to the organization's active Secret Scanning project.`
   }),
   GET_BY_ID: (type: SecretScanningDataSource) => ({
     dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to retrieve.`
   }),
   GET_BY_NAME: (type: SecretScanningDataSource) => ({
     sourceName: `The name of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to retrieve.`,
-    projectId: `The ID of the project the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source is located in.`
+    projectId: `The ID of the project the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source is located in. Defaults to the organization's active Secret Scanning project.`
   }),
   CREATE: (type: SecretScanningDataSource) => {
     const sourceType = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
@@ -3883,7 +3913,7 @@ export const SecretScanningDataSources = {
     return {
       name: `The name of the ${sourceType} Data Source to create. Must be slug-friendly.`,
       description: `An optional description for the ${sourceType} Data Source.`,
-      projectId: `The ID of the project to create the ${sourceType} Data Source in.`,
+      projectId: `The ID of the project to create the ${sourceType} Data Source in. Defaults to the organization's active Secret Scanning project.`,
       connectionId: `The ID of the ${
         APP_CONNECTION_NAME_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]]
       } Connection to use for this Data Source.`,
@@ -3937,7 +3967,7 @@ export const SecretScanningDataSources = {
 
 export const SecretScanningFindings = {
   LIST: {
-    projectId: `The ID of the project to list Secret Scanning Findings from.`
+    projectId: `The ID of the project to list Secret Scanning Findings from. Defaults to the organization's active Secret Scanning project.`
   },
   UPDATE: {
     findingId: "The ID of the Secret Scanning Finding to update.",
@@ -3948,11 +3978,29 @@ export const SecretScanningFindings = {
 
 export const SecretScanningConfigs = {
   GET_BY_PROJECT_ID: {
-    projectId: `The ID of the project to retrieve the Secret Scanning Configuration for.`
+    projectId: `The ID of the project to retrieve the Secret Scanning Configuration for. Defaults to the organization's active Secret Scanning project.`
   },
   UPDATE: {
-    projectId: "The ID of the project to update the Secret Scanning Configuration for.",
+    projectId:
+      "The ID of the project to update the Secret Scanning Configuration for. Defaults to the organization's active Secret Scanning project.",
     content: "The contents of the Secret Scanning Configuration file."
+  }
+};
+
+export const SecretScanningProjects = {
+  GET_ACTIVE: {
+    projectId:
+      "The ID of the organization's active Secret Scanning project, which is the most recently created one. One is created if the organization has none."
+  },
+  GET_INSTANCE: {
+    activeProjectId:
+      "The ID of the organization's active Secret Scanning project, which is the most recently created one. Null if the organization has none.",
+    projects: "Every Secret Scanning project in the organization, most recently created first.",
+    id: "The ID of the Secret Scanning project.",
+    name: "The name of the Secret Scanning project.",
+    slug: "The slug of the Secret Scanning project.",
+    createdAt: "When the Secret Scanning project was created.",
+    isMultiInstance: "Whether the organization has more than one Secret Scanning project."
   }
 };
 
@@ -4418,8 +4466,7 @@ export const AGENT_VAULT = {
     updatedAt: "When the variable was last changed."
   },
   MEMBER: {
-    memberId: "The ID of the access bundle membership.",
-    createdAt: "When the access bundle was granted.",
+    grantedAt: "When the access bundle was granted.",
     userId: "The ID of the user whose Agent Vault membership this is.",
     identityId: "The ID of the machine identity whose Agent Vault membership this is.",
     groupId: "The ID of the group whose Agent Vault membership this is.",
@@ -4450,6 +4497,7 @@ export const AGENT_VAULT = {
   MEMBERSHIP: {
     role: "The Agent Vault role: admin or member.",
     isActive: "Whether the member can currently reach Agent Vault.",
+    addedAt: "When the member was added to Agent Vault.",
     userIds: "The IDs of the users to act on.",
     machineIdentityIds: "The IDs of the machine identities to act on.",
     groupIds: "The IDs of the groups to act on.",

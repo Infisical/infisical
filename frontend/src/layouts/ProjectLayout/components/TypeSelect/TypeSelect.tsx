@@ -23,6 +23,7 @@ import { useImplicitProjectId } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { useGetSecretScanningInstanceState } from "@app/hooks/api/secretScanningV2";
 import {
   NavbarSwitcher,
   NavbarSwitcherContent,
@@ -196,6 +197,8 @@ export const TypeSelect = () => {
   const { data: projects = [] } = useGetUserProjects();
   const { data: certManagerInstance, isPending: isCertManagerInstancePending } =
     useCertManagerInstanceState();
+  const { currentOrg } = useOrganization();
+  const { data: secretScanningInstance } = useGetSecretScanningInstanceState(currentOrg.id);
 
   if (params.type && !params.projectId) {
     const resolvedType = urlSlugToProjectType(params.type);
@@ -230,7 +233,17 @@ export const TypeSelect = () => {
   if (params.projectId) {
     const project = projects.find((p) => p.id === params.projectId);
     if (project) {
-      return <TypeSelectInner currentType={project.type} showDivider />;
+      const isLegacySecretScanningProject =
+        project.type === ProjectType.SecretScanning &&
+        Boolean(secretScanningInstance?.isMultiInstance) &&
+        secretScanningInstance?.activeProjectId !== project.id;
+      return (
+        <TypeSelectInner
+          currentType={project.type}
+          currentProjectName={isLegacySecretScanningProject ? project.name : undefined}
+          showDivider={project.type !== ProjectType.SecretScanning}
+        />
+      );
     }
   }
 

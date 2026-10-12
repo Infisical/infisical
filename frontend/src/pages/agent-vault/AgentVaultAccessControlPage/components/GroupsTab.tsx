@@ -77,9 +77,9 @@ export const GroupsTab = () => {
   const handleRemove = async () => {
     try {
       if (!groupToRemove) return;
-      await revokeMembers.mutateAsync({ groupIds: [groupToRemove.actor.id] });
+      await revokeMembers.mutateAsync({ groupIds: [groupToRemove.id] });
       createNotification({
-        text: `"${groupToRemove.actor.name}" removed`,
+        text: `"${groupToRemove.name}" removed`,
         type: "success"
       });
       setGroupToRemove(null);
@@ -153,8 +153,8 @@ export const GroupsTab = () => {
             {!isPending &&
               rows.map((row) => (
                 <TableRow key={row.id}>
-                  <TableCell isTruncatable className="min-w-32" title={row.actor.name}>
-                    <HighlightText text={row.actor.name} highlight={debouncedSearch} />
+                  <TableCell isTruncatable className="min-w-32" title={row.name}>
+                    <HighlightText text={row.name} highlight={debouncedSearch} />
                   </TableCell>
                   <TableCell>
                     <ProductRoleBadge role={row.role} />
@@ -209,7 +209,7 @@ export const GroupsTab = () => {
       <ProductRoleDialog
         member={groupToEdit}
         onOpenChange={() => setGroupToEdit(null)}
-        subject={groupToEdit?.actor.name ?? ""}
+        subject={groupToEdit?.name ?? ""}
       />
 
       <DeleteConfirmDialog
@@ -217,9 +217,9 @@ export const GroupsTab = () => {
         onOpenChange={(isOpen) => {
           if (!isOpen) setGroupToRemove(null);
         }}
-        title={`Remove "${groupToRemove?.actor.name ?? ""}"`}
+        title={`Remove "${groupToRemove?.name ?? ""}"`}
         description="Everyone in the group loses Agent Vault access, along with every access bundle granted to the group."
-        confirmKey={groupToRemove?.actor.name ?? ""}
+        confirmKey={groupToRemove?.name ?? ""}
         confirmLabel="Remove"
         isPending={revokeMembers.isPending}
         onConfirm={handleRemove}

@@ -16,6 +16,7 @@ export enum ApprovalPolicyType {
   PamAccess = "pam-access",
   CertRequest = "cert-request",
   CertCodeSigning = "cert-code-signing",
+  SecretChange = "secret-change",
   SecretAccess = "secret-access"
 }
 
@@ -36,7 +37,9 @@ export enum ApprovalRequestStatus {
   Approved = "approved",
   Rejected = "rejected",
   Expired = "expired",
-  Cancelled = "cancelled"
+  Cancelled = "cancelled",
+  Open = "open",
+  Closed = "close"
 }
 
 export enum ApprovalRequestStepStatus {

@@ -13,6 +13,7 @@ import {
   TAgentVaultActorIdsDTO,
   TAgentVaultActorRef,
   TAgentVaultEnrollment,
+  TAgentVaultGrantedMember,
   TAgentVaultMemberWriteResult,
   TAgentVaultMintedSession,
   TAgentVaultProxy,
@@ -168,10 +169,9 @@ export const useAddAgentVaultAccessBundleMembers = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ accessBundleId, ...params }: TAddAgentVaultMembersDTO) => {
-      const { data } = await apiRequest.post<{
-        members: { id: string }[];
-        skipped: { type: AgentVaultMemberType; id: string }[];
-      }>(`/api/v1/agent-vault/access-bundles/${accessBundleId}/members`, params);
+      const { data } = await apiRequest.post<
+        TAgentVaultMemberWriteResult<TAgentVaultGrantedMember>
+      >(`/api/v1/agent-vault/access-bundles/${accessBundleId}/members`, params);
       return data;
     },
     onSuccess: (_, { accessBundleId }) => {
@@ -188,9 +188,10 @@ export const useRevokeAgentVaultAccessBundleMembers = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ accessBundleId, ...params }: TAddAgentVaultMembersDTO) => {
-      const { data } = await apiRequest.post<
-        TAgentVaultMemberWriteResult<{ id: string; actor: TAgentVaultActorRef }>
-      >(`/api/v1/agent-vault/access-bundles/${accessBundleId}/members/revoke`, params);
+      const { data } = await apiRequest.post<TAgentVaultMemberWriteResult<TAgentVaultActorRef>>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/members/revoke`,
+        params
+      );
       return data;
     },
     onSuccess: (_, { accessBundleId }) => {
@@ -329,7 +330,10 @@ export const useAddAgentVaultMembers = () => {
   return useMutation({
     mutationFn: async (dto: TAddAgentVaultProductMembersDTO) => {
       const { data } = await apiRequest.post<
-        TAgentVaultMemberWriteResult<TAgentVaultWrittenMember>
+        TAgentVaultMemberWriteResult<
+          TAgentVaultWrittenMember,
+          TAgentVaultActorRef & { identifier: string }
+        >
       >("/api/v1/agent-vault/members", dto);
       return data;
     },
@@ -357,9 +361,10 @@ export const useRevokeAgentVaultMembers = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (dto: TAgentVaultActorIdsDTO) => {
-      const { data } = await apiRequest.post<
-        TAgentVaultMemberWriteResult<TAgentVaultWrittenMember>
-      >("/api/v1/agent-vault/members/revoke", dto);
+      const { data } = await apiRequest.post<TAgentVaultMemberWriteResult<TAgentVaultActorRef>>(
+        "/api/v1/agent-vault/members/revoke",
+        dto
+      );
       return data;
     },
     onSuccess: () => invalidateMembers(queryClient, currentOrg.id)

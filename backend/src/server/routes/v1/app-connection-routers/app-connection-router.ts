@@ -146,6 +146,7 @@ import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
+import { KeeperConnectionListItemSchema, SanitizedKeeperConnectionSchema } from "@app/services/app-connection/keeper";
 import {
   KempLoadMasterConnectionListItemSchema,
   SanitizedKempLoadMasterConnectionSchema
@@ -364,6 +365,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSpaceliftConnectionSchema.options,
   ...SanitizedDaytonaConnectionSchema.options,
   ...SanitizedStripeConnectionSchema.options,
+  ...SanitizedKeeperConnectionSchema.options,
   ...SanitizedHpeIloConnectionSchema.options
 ]);
 
@@ -455,6 +457,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   SpaceliftConnectionListItemSchema,
   DaytonaConnectionListItemSchema,
   StripeConnectionListItemSchema,
+  KeeperConnectionListItemSchema,
   HpeIloConnectionListItemSchema
 ]);
 

@@ -95,8 +95,10 @@ const buildProvider = (opts?: {
   userLabel?: string;
 }) => {
   const dal = {
-    findIdentitiesByIds: async (ids: string[]) =>
-      (opts?.identities ?? [{ id: "ident-1", name: "ci-runner" }]).filter((identity) => ids.includes(identity.id)),
+    findIdentitiesByIds: async (ids: string[], orgId: string) =>
+      orgId === "org-1"
+        ? (opts?.identities ?? [{ id: "ident-1", name: "ci-runner" }]).filter((identity) => ids.includes(identity.id))
+        : [],
     findUserLabelById: async () => opts?.userLabel,
     findExpiringUaClientSecrets: async (args: {
       orgId: string;
@@ -154,6 +156,14 @@ const changePayload = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe("identity credential alert provider", () => {
+  test("getResourceNames returns identity names only from the caller's org", async () => {
+    const provider = buildProvider();
+    const names = await provider.getResourceNames?.({ orgId: "org-1", resourceIds: ["ident-1"] });
+    expect(names?.get("ident-1")).toBe("ci-runner");
+    const foreign = await provider.getResourceNames?.({ orgId: "org-2", resourceIds: ["ident-1"] });
+    expect(foreign?.size).toBe(0);
+  });
+
   test("expiry condition schema accepts 1d-90d and rejects everything else", () => {
     const schema = eventSchema(buildProvider(), IDENTITY_AUTHENTICATION_EXPIRY_EVENT);
     expect(schema.safeParse({ alertBefore: "1d" }).success).toBe(true);

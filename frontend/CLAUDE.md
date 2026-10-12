@@ -107,6 +107,10 @@ A new org-scoped product therefore needs: a `<product>ProjectId` on the `Organiz
 
 Certificate Manager is org-scoped too (`/organizations/$orgId/cert-manager/...`), but legacy orgs can hold several instances, so its layout resolves the project from instance state instead of an org field, through `resolveCertManagerProjectId` (`helpers/certManagerActiveProject.ts`): the `infisical-cm-active-project-<orgId>` cookie while the user is a member of that instance, else the active instance. The product switcher and the 403 page use the same helper. The layout writes the resolved id back to the cookie, because `inject-cert-manager-project-id.ts` resolves requests that name no project from it, and reloads the page when the resolved instance changes within one page load, since several cert-manager queries are not keyed by project. Consequences: anything that sends someone into a *specific* instance (the instance picker, a project-scoped identity row, a gateway's discovery row) sets that cookie first, since the URL can't say which; old `/projects/cert-manager/$projectId/...` URLs (emails and alerts sent before the move, bookmarks; the backend now links to `/cert-manager/...`, except legacy PKI Alerts V2 and the legacy-deprecation email) go through `redirects/cert-manager-project-url-redirect.tsx`, which pins the named instance and strips the id. In multi-instance orgs each tab also tags its Certificate Manager API requests with the instance it shows (`setTabCertManagerProjectId`, read by the `apiRequest` interceptor), because the cookie is shared across tabs; single-instance orgs send no project id. Shared views that pick project vs org scope from the URL use `useRouteProjectId()`, which also returns Certificate Manager's implicit project.
 
+### Single-project products
+
+Secret Scanning has one active project per org (see the root `CLAUDE.md`). Members are sent straight into it, and UI for orgs with older projects is gated on `isMultiInstance` from `useGetSecretScanningInstanceState`.
+
 ## Conventions
 
 - ESLint flat config (ESLint 9+) with airbnb-typescript + prettier. Double quotes enforced.

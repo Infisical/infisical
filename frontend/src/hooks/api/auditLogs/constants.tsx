@@ -352,6 +352,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.PAM_FOLDER_CREATE]: "Create PAM Folder",
   [EventType.PAM_FOLDER_UPDATE]: "Update PAM Folder",
   [EventType.PAM_FOLDER_DELETE]: "Delete PAM Folder",
+  [EventType.ORG_ADMIN_ACCESS_PAM_FOLDER]: "Org admin accessed PAM folder",
   [EventType.PAM_PRODUCT_MEMBER_ADD]: "Add PAM Product Member",
   [EventType.PAM_PRODUCT_MEMBER_UPDATE]: "Update PAM Product Member",
   [EventType.PAM_PRODUCT_MEMBER_REMOVE]: "Remove PAM Product Member",
@@ -389,6 +390,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.ISSUE_CERTIFICATE_FROM_PROFILE]: "Issue Certificate From Profile",
   [EventType.SIGN_CERTIFICATE_FROM_PROFILE]: "Sign Certificate From Profile",
   [EventType.ORDER_CERTIFICATE_FROM_PROFILE]: "Order Certificate From Profile",
+  [EventType.CERTIFICATE_ISSUANCE_FAILED]: "Certificate Issuance Failed",
   [EventType.GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE]:
     "Get Certificate Profile Latest Active Bundle",
 
@@ -519,6 +521,7 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.PAM_FOLDER_CREATE,
     EventType.PAM_FOLDER_UPDATE,
     EventType.PAM_FOLDER_DELETE,
+    EventType.ORG_ADMIN_ACCESS_PAM_FOLDER,
     EventType.PAM_PRODUCT_MEMBER_ADD,
     EventType.PAM_PRODUCT_MEMBER_UPDATE,
     EventType.PAM_PRODUCT_MEMBER_REMOVE,

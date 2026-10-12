@@ -11,6 +11,7 @@ import {
   projectTypeToUrlSlug
 } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { useGetSecretScanningInstanceState } from "@app/hooks/api/secretScanningV2";
 
 import { AgentVaultNav } from "./AgentVaultNav";
 import { CertManagerNav } from "./CertManagerNav";
@@ -22,8 +23,8 @@ import {
   CERT_APPROVALS_SUBMENU,
   CERT_CERTIFICATES_SUBMENU,
   CERT_INTEGRATIONS_SUBMENU,
+  getSecretScanningSettingsSubmenu,
   PROJECT_ACCESS_CONTROL_SUBMENU,
-  SECRET_SCANNING_SETTINGS_SUBMENU,
   SM_SETTINGS_SUBMENU
 } from "./submenus";
 import { ProjectSubmenuView } from "./SubmenuViews";
@@ -56,6 +57,10 @@ export const ProjectNav = () => {
   const isFromRootRequests = (locationSearch as { from?: string })?.from === "root-requests";
   const hasSignerContext = Boolean((locationSearch as { signerId?: string })?.signerId);
   const intermediateAvailable = hasIntermediateProjectsView(currentProject.type);
+  const { data: secretScanningInstance } = useGetSecretScanningInstanceState(currentOrg.id, {
+    enabled: currentProject.type === ProjectType.SecretScanning
+  });
+  const hasMultipleSecretScanningProjects = Boolean(secretScanningInstance?.isMultiInstance);
   let projectLabel: string;
   if (intermediateAvailable) projectLabel = "Projects";
   else if (isSubOrganization) projectLabel = "Sub-Organization";
@@ -88,7 +93,7 @@ export const ProjectNav = () => {
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretManager)
       return SM_SETTINGS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretScanning)
-      return SECRET_SCANNING_SETTINGS_SUBMENU;
+      return getSecretScanningSettingsSubmenu(hasMultipleSecretScanningProjects);
     if (isOnCertPolicies) return CERT_CERTIFICATES_SUBMENU;
     if (isOnCertApprovals) return CERT_APPROVALS_SUBMENU;
     return null;
@@ -98,7 +103,7 @@ export const ProjectNav = () => {
 
   useEffect(() => {
     setActiveSubmenu(getInitialProjectSubmenu());
-  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pathname, hasMultipleSecretScanningProjects]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmenuOpen = (submenu: Submenu) => {
     setActiveSubmenu(submenu);
