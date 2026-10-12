@@ -23,6 +23,11 @@ export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout"
 )({
   component: PkiManagerLayout,
+  // Opening a page whose search has defaults (discovery, approvals) reloads the route to add them while
+  // beforeLoad below is still pending, and the virtual parents those pages sit under (no beforeLoad of
+  // their own) keep the context from before it resolved. Context set here is synchronous, so their
+  // children still receive breadcrumbs to extend.
+  context: () => ({ breadcrumbs: [] }),
   beforeLoad: async ({ params, context, location }) => {
     const [instance, memberProjects] = await Promise.all([
       context.queryClient.ensureQueryData({
