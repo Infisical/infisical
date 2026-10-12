@@ -11,7 +11,6 @@ export * from "./agent-vault-service-substitutions";
 export * from "./agent-vault-service-variable-references";
 export * from "./agent-vault-services";
 export * from "./agent-vault-session-access-bundles";
-export * from "./agent-vault-session-log-chunks";
 export * from "./agent-vault-session-log-configs";
 export * from "./agent-vault-sessions";
 export * from "./agent-vault-variables";

@@ -1,4 +1,10 @@
-import { AssumeRoleCommand, GetCallerIdentityCommand, STSClient, STSServiceException } from "@aws-sdk/client-sts";
+import {
+  AssumeRoleCommand,
+  GetCallerIdentityCommand,
+  STSClient,
+  STSClientConfig,
+  STSServiceException
+} from "@aws-sdk/client-sts";
 import { AxiosError } from "axios";
 
 import { ProjectType } from "@app/db/schemas";
@@ -65,7 +71,11 @@ export const getAwsConnectionListItem = () => {
   };
 };
 
-export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig, region = AWSRegion.US_EAST_1) => {
+export const getAwsConnectionConfig = async (
+  appConnection: TAwsConnectionConfig,
+  region = AWSRegion.US_EAST_1,
+  { stsRequestHandler }: { stsRequestHandler?: STSClientConfig["requestHandler"] } = {}
+) => {
   const appCfg = getConfig();
 
   let accessKeyId: string;
@@ -94,7 +104,8 @@ export const getAwsConnectionConfig = async (appConnection: TAwsConnectionConfig
                 accessKeyId: appCfg.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID,
                 secretAccessKey: appCfg.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
               }
-            : undefined // if hosting on AWS
+            : undefined, // if hosting on AWS
+        ...(stsRequestHandler ? { requestHandler: stsRequestHandler } : {})
       });
 
       // v1 (legacy) always used orgId; v2+ uses projectId when available, orgId otherwise.
