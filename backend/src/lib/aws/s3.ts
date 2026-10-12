@@ -13,6 +13,9 @@ import { CustomAWSHasher } from "./hashing";
 
 type TS3Credentials = { accessKeyId: string; secretAccessKey: string; sessionToken?: string };
 
+// Without these the SDK waits on a stalled AWS endpoint indefinitely, past the point Infisical drops the request.
+export const AWS_REQUEST_TIMEOUTS = { connectionTimeout: 5_000, requestTimeout: 15_000, throwOnRequestTimeout: true };
+
 // Three attempts at the 15s request timeout fit inside this, and it stays under Infisical's 100s request cut-off.
 const S3_CALL_TIMEOUT_MS = 45_000;
 
@@ -34,8 +37,7 @@ export const createS3Bucket = ({
     useFipsEndpoint: crypto.isFipsModeEnabled(),
     sha256: CustomAWSHasher,
     credentials,
-    // Without these the SDK waits on a stalled S3 indefinitely, past the point Infisical drops the request.
-    requestHandler: { connectionTimeout: 5_000, requestTimeout: 15_000, throwOnRequestTimeout: true }
+    requestHandler: AWS_REQUEST_TIMEOUTS
   });
   // The request timeout stops once the headers arrive, so a reply that stalls after them needs an overall limit.
   const sendOptions = () => ({ abortSignal: AbortSignal.timeout(S3_CALL_TIMEOUT_MS) });

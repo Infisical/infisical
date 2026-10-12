@@ -1,7 +1,7 @@
 import { STSServiceException } from "@aws-sdk/client-sts";
 
 import { ProjectType } from "@app/db/schemas";
-import { createS3Bucket } from "@app/lib/aws/s3";
+import { AWS_REQUEST_TIMEOUTS, createS3Bucket } from "@app/lib/aws/s3";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -53,7 +53,8 @@ export const buildSessionLogStorage = async (
     // Session logs only accept org connections or Agent Vault's own, and both assume the role with the org ID.
     ({ credentials } = await getAwsConnectionConfig(
       { ...connection, projectType: ProjectType.AgentVault } as unknown as TAwsConnectionConfig,
-      config.region
+      config.region,
+      { stsRequestHandler: AWS_REQUEST_TIMEOUTS }
     ));
   } catch (err) {
     logger.warn({ err }, `Agent Vault session logs could not use their AWS connection [appConnectionId=${raw.id}]`);
