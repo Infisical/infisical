@@ -47,7 +47,7 @@ const PRODUCT_UPGRADE_INTENTS: Record<string, UpgradeIntent> = {
 
 const SectionHeading = ({ title }: { title: string }) => (
   <div className="mt-4 flex items-center gap-3">
-    <h2 className="shrink-0 text-sm font-medium">{title}</h2>
+    <h2 className="shrink-0 text-sm">{title}</h2>
     <Separator className="flex-1" />
   </div>
 );
