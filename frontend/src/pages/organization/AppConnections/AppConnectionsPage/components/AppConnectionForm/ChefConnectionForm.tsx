@@ -266,8 +266,9 @@ export const ChefConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     <Info />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-sm">
-                    The contents of your encrypted_data_bag_secret file. Needed only for syncs that
-                    encrypt secrets. Enter it again whenever you update these credentials.
+                    The contents of your encrypted_data_bag_secret file. Needed for syncs that
+                    encrypt secrets or read an encrypted data bag item. Enter it again whenever you
+                    update these credentials.
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
