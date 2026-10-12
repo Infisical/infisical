@@ -1056,6 +1056,21 @@ on must stay editable. The check reads the setting, not the plan, so it keeps ap
 Only exempt a mode that refuses pools outright, the way gateway Kubernetes auth in Gateway review mode does
 (`$assertCanAttachProxy` in `resource-auth-method-service.ts`), or the policy removes that mode entirely.
 
+### Audit Log Storage
+
+Audit logs live in **one** store at a time. When a ClickHouse client is configured and
+`CLICKHOUSE_AUDIT_LOG_ENABLED` is on (its default), `insertBatch` in `audit-log-queue.ts` writes only to
+ClickHouse and Postgres `audit_logs` receives nothing new. So **every reader of audit logs has to pick
+the store the same way** (`CLICKHOUSE_AUDIT_LOG_ENABLED && clickhouseAuditLogDAL`), as `auditLogService`,
+the audit report generators and insights do. A reader that only queries Postgres goes silently empty on
+ClickHouse instances, with no error anywhere; that is how the project insights cards broke. Postgres rows
+written before the switch are not backfilled, and readers do not merge the two stores.
+
+Two things to get right in a ClickHouse aggregate. `createdAt` is a `DateTime64(6)` with no column
+timezone, so pin day grouping and bound parameters to `'UTC'` or they follow the server's timezone. And
+the table is a `ReplacingMergeTree`: a retried batch inserts the same `id` twice and the copy goes away
+only at some later merge, so read with `FINAL` when an exact count matters.
+
 ### Audit Log Event Classes and Settings
 
 Every `EventType` belongs to exactly one class in

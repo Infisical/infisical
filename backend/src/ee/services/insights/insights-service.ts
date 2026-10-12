@@ -73,7 +73,13 @@ export type TInsightsServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   auditLogDAL: Pick<TAuditLogDALFactory, "countByDateAndActor" | "countByAuthMethod">;
-  clickhouseAuditLogDAL?: Pick<TClickHouseAuditLogDALFactory, "countByDateForOrg" | "countByIdentityAuthMethodForOrg">;
+  clickhouseAuditLogDAL?: Pick<
+    TClickHouseAuditLogDALFactory,
+    | "countByDateForOrg"
+    | "countByIdentityAuthMethodForOrg"
+    | "countByDateAndActorForProject"
+    | "countByAuthMethodForProject"
+  >;
   secretRotationV2DAL: Pick<
     TSecretRotationV2DALFactory,
     "findByProjectAndDateRange" | "findByProject" | "countByProject"
@@ -257,10 +263,20 @@ export const insightsServiceFactory = ({
     });
   };
 
+  // With ClickHouse audit logging on, new audit logs are written only to ClickHouse, so the project
+  // cards must read from there or they show nothing that happened after the switch.
+  const $getClickHouseAuditLogDAL = () =>
+    getConfig().CLICKHOUSE_AUDIT_LOG_ENABLED && clickhouseAuditLogDAL ? clickhouseAuditLogDAL : undefined;
+
   const getAccessVolume = async (dto: TGetAccessVolumeDTO, actorDto: OrgServiceActor) => {
     await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
-    const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, "access-volume");
+    const clickhouseDAL = $getClickHouseAuditLogDAL();
+    // The store is part of the key so switching it never serves counts cached from the other one.
+    const cacheKey = KeyStorePrefixes.InsightsCache(
+      dto.projectId,
+      `access-volume:${clickhouseDAL ? "clickhouse" : "postgres"}`
+    );
     return withCache({
       keyStore,
       key: cacheKey,
@@ -268,13 +284,16 @@ export const insightsServiceFactory = ({
       fetcher: async () => {
         const { dates, startDate, endDate } = buildAccessVolumeWindow();
 
-        const rows = await auditLogDAL.countByDateAndActor({
+        const countQuery = {
           orgId: actorDto.orgId,
           projectId: dto.projectId,
           eventTypes: VALUE_EVENT_TYPES,
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString()
-        });
+        };
+        const rows = clickhouseDAL
+          ? await clickhouseDAL.countByDateAndActorForProject(countQuery)
+          : await auditLogDAL.countByDateAndActor(countQuery);
 
         const userNameMap = await resolveUserDisplayNames(userDAL, [
           ...new Set(
@@ -314,7 +333,11 @@ export const insightsServiceFactory = ({
   const getAuthMethodDistribution = async (dto: TGetAuthMethodDistributionDTO, actorDto: OrgServiceActor) => {
     await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
-    const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `auth-methods:${dto.days}`);
+    const clickhouseDAL = $getClickHouseAuditLogDAL();
+    const cacheKey = KeyStorePrefixes.InsightsCache(
+      dto.projectId,
+      `auth-methods:${dto.days}:${clickhouseDAL ? "clickhouse" : "postgres"}`
+    );
     return withCache({
       keyStore,
       key: cacheKey,
@@ -324,13 +347,16 @@ export const insightsServiceFactory = ({
         const startDate = new Date();
         startDate.setUTCDate(startDate.getUTCDate() - dto.days);
 
-        const authRows = await auditLogDAL.countByAuthMethod({
+        const countQuery = {
           orgId: actorDto.orgId,
           projectId: dto.projectId,
           eventTypes: VALUE_EVENT_TYPES,
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString()
-        });
+        };
+        const authRows = clickhouseDAL
+          ? await clickhouseDAL.countByAuthMethodForProject(countQuery)
+          : await auditLogDAL.countByAuthMethod(countQuery);
 
         const methodCounts = new Map<string, number>();
 
