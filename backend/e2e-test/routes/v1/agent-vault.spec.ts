@@ -170,6 +170,27 @@ const createProjectGroup = async (projectId: string, name: string, role: Project
   };
 };
 
+// The caller can never name itself in a demotion or a removal, so while it holds an admin row of its own
+// no batch can reach the last-admin guard. Holding admin only through a group leaves every admin row
+// nameable, because the self check covers users and identities, not groups.
+const makeCallerAdminOnlyThroughGroup = async (projectId: string) => {
+  const own = await testDb("memberships")
+    .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: seedData1.id })
+    .first();
+  await testDb("membership_roles").where({ membershipId: own.id }).update({ role: ProjectMembershipRole.Member });
+  const group = await createProjectGroup(projectId, "av-caller-admins", ProjectMembershipRole.Admin);
+  await testDb("user_group_membership").insert({ groupId: group.id, userId: seedData1.id });
+
+  return {
+    groupId: group.id,
+    restore: async () => {
+      await testDb("membership_roles").where({ membershipId: own.id }).update({ role: ProjectMembershipRole.Admin });
+      await testDb("user_group_membership").where({ groupId: group.id }).delete();
+      await group.cleanup();
+    }
+  };
+};
+
 const getProjectId = async () =>
   (JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as { projectId: string }).projectId;
 
@@ -1859,24 +1880,22 @@ describe("Agent Vault V1 Router", async () => {
               .select("membership_roles.id")) as unknown[]
           ).length;
 
-        const before = await adminCount();
-        expect(before).toBe(3);
+        const callerGroup = await makeCallerAdminOnlyThroughGroup(projectId);
+        try {
+          expect(await adminCount()).toBe(3);
 
-        // Revoking each of these on its own would pass the guard, because the other two are still
-        // standing. Naming all three in one call is what the batch check exists for.
-        const refused = await inject("DELETE", membersUrl, {
-          userIds: [seedData1.id],
-          machineIdentityIds: [one.id, two.id]
-        });
-        expect(refused.statusCode).toBe(403);
-
-        // It refuses on the self check before it reaches the admin count, so take the caller out and the
-        // batch still cannot go through.
-        const withoutSelf = await inject("DELETE", membersUrl, {
-          machineIdentityIds: [one.id, two.id]
-        });
-        expect(withoutSelf.statusCode).toBe(200);
-        expect(await adminCount()).toBe(1);
+          // Revoking any one of these on its own would pass the guard, because the other two are still
+          // standing. Naming all three in one call is what the batch check exists for.
+          const refused = await inject("DELETE", membersUrl, {
+            groupIds: [callerGroup.groupId],
+            machineIdentityIds: [one.id, two.id]
+          });
+          expect(refused.statusCode).toBe(400);
+          expect(JSON.parse(refused.payload).message).toContain("must keep at least one admin");
+          expect(await adminCount()).toBe(3);
+        } finally {
+          await callerGroup.restore();
+        }
       } finally {
         await deleteOrgIdentity(one.id);
         await deleteOrgIdentity(two.id);
@@ -1904,6 +1923,53 @@ describe("Agent Vault V1 Router", async () => {
       } finally {
         await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] });
         await deleteOrgIdentity(identity.id);
+      }
+    });
+
+    test("a role change applies to the members it can and reports the rest as skipped", async () => {
+      const projectId = await getProjectId();
+      const toChange = await createOrgIdentity(`av-role-change-${Date.now()}`);
+      const alreadyAdmin = await createOrgIdentity(`av-role-same-${Date.now()}`);
+      const notMember = await createOrgIdentity(`av-role-none-${Date.now()}`);
+      const group = await createProjectGroup(projectId, "av-role-group", ProjectMembershipRole.Member);
+
+      try {
+        expect(
+          (await inject("POST", membersUrl, { machineIdentityIds: [toChange.id], role: "member" })).statusCode
+        ).toBe(200);
+        expect(
+          (await inject("POST", membersUrl, { machineIdentityIds: [alreadyAdmin.id], role: "admin" })).statusCode
+        ).toBe(200);
+
+        const res = await inject("PATCH", membersUrl, {
+          machineIdentityIds: [toChange.id, alreadyAdmin.id, notMember.id],
+          groupIds: [group.id],
+          role: "admin"
+        });
+        expect(res.statusCode).toBe(200);
+        const { members, skipped } = JSON.parse(res.payload) as {
+          members: { type: string; id: string; role: string }[];
+          skipped: { type: string; id: string }[];
+        };
+        expect(members.map((member) => `${member.type}:${member.id}:${member.role}`).sort()).toEqual(
+          [`group:${group.id}:admin`, `machineIdentity:${toChange.id}:admin`].sort()
+        );
+        expect(skipped.map((actor) => `${actor.type}:${actor.id}`).sort()).toEqual(
+          [`machineIdentity:${alreadyAdmin.id}`, `machineIdentity:${notMember.id}`].sort()
+        );
+
+        const roleOf = async (actorType: string, id: string) =>
+          (await listMembers(`actorType=${actorType}`)).members.find((member) => member.id === id)?.role;
+        expect(await roleOf("machineIdentity", toChange.id)).toBe("admin");
+        expect(await roleOf("machineIdentity", alreadyAdmin.id)).toBe("admin");
+        expect(await roleOf("group", group.id)).toBe("admin");
+        expect(await roleOf("machineIdentity", notMember.id)).toBeUndefined();
+      } finally {
+        await inject("DELETE", membersUrl, { machineIdentityIds: [toChange.id, alreadyAdmin.id] });
+        await group.cleanup();
+        await deleteOrgIdentity(toChange.id);
+        await deleteOrgIdentity(alreadyAdmin.id);
+        await deleteOrgIdentity(notMember.id);
       }
     });
 
@@ -2025,8 +2091,27 @@ describe("Agent Vault V1 Router", async () => {
       const noActors = await inject("PATCH", membersUrl, { role: "member" });
       expect(noActors.statusCode).toBe(422);
 
-      const selfInBatch = await inject("PATCH", membersUrl, { userIds: [seedData1.id], role: "member" });
-      expect(selfInBatch.statusCode).toBe(403);
+      const bystander = await createOrgIdentity(`av-role-self-${Date.now()}`);
+      try {
+        expect(
+          (await inject("POST", membersUrl, { machineIdentityIds: [bystander.id], role: "member" })).statusCode
+        ).toBe(200);
+
+        const selfInBatch = await inject("PATCH", membersUrl, {
+          userIds: [seedData1.id],
+          machineIdentityIds: [bystander.id],
+          role: "admin"
+        });
+        expect(selfInBatch.statusCode).toBe(403);
+        expect(JSON.parse(selfInBatch.payload).message).toContain("your own role");
+
+        // The other actor named in the same call keeps its role.
+        const listed = await listMembers("actorType=machineIdentity");
+        expect(listed.members.find((member) => member.id === bystander.id)?.role).toBe("member");
+      } finally {
+        await inject("DELETE", membersUrl, { machineIdentityIds: [bystander.id] });
+        await deleteOrgIdentity(bystander.id);
+      }
 
       const notAnId = await inject("DELETE", membersUrl, { userIds: ["not-a-uuid"] });
       expect(notAnId.statusCode).toBe(422);
@@ -3410,12 +3495,11 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("two admins demoted at once cannot both slip past the last-admin guard", async () => {
-      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
-        projectId: string;
-      };
+    test("two overlapping demotions cannot both slip past the last-admin guard", async () => {
+      const projectId = await getProjectId();
       const one = await createUaIdentity(`av-race-a-${Date.now()}`);
       const two = await createUaIdentity(`av-race-b-${Date.now()}`);
+      let callerGroup: Awaited<ReturnType<typeof makeCallerAdminOnlyThroughGroup>> | undefined;
 
       try {
         for await (const identity of [one, two]) {
@@ -3425,29 +3509,31 @@ describe("Agent Vault V1 Router", async () => {
           });
           expect(added.statusCode).toBe(200);
         }
+        callerGroup = await makeCallerAdminOnlyThroughGroup(projectId);
+        const { groupId } = callerGroup;
 
-        // Demote everyone at once. Whatever interleaving wins, an admin has to be left standing.
-        const admins = (await testDb("memberships")
-          .where({ scope: AccessScope.Project, scopeProjectId: projectId })
-          .select("id")) as { id: string }[];
-
-        await Promise.all(
+        // Either batch alone leaves an admin standing. Together they would leave none, so one has to be
+        // refused whichever commits first.
+        const results = await Promise.all(
           [one, two].map((identity) =>
             inject("PATCH", "/api/v1/agent-vault/members", {
+              groupIds: [groupId],
               machineIdentityIds: [identity.id],
               role: ProjectMembershipRole.Member
             })
           )
         );
+        expect(results.map((res) => res.statusCode).sort()).toEqual([200, 400]);
+        const refused = results.find((res) => res.statusCode === 400)!;
+        expect(JSON.parse(refused.payload).message).toContain("must keep at least one admin");
 
         const remainingAdmins = (await testDb("membership_roles")
-          .whereIn(
-            "membershipId",
-            admins.map((row) => row.id)
-          )
-          .where({ role: ProjectMembershipRole.Admin })) as unknown[];
-        expect(remainingAdmins.length).toBeGreaterThan(0);
+          .join("memberships", "memberships.id", "membership_roles.membershipId")
+          .where({ scope: AccessScope.Project, scopeProjectId: projectId, role: ProjectMembershipRole.Admin })
+          .select("memberships.id")) as unknown[];
+        expect(remainingAdmins).toHaveLength(1);
       } finally {
+        await callerGroup?.restore();
         await deleteUaIdentity(one.id);
         await deleteUaIdentity(two.id);
       }

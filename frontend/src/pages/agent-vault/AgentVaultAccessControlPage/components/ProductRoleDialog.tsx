@@ -13,18 +13,12 @@ import {
   FieldContent,
   FieldLabel
 } from "@app/components/v3";
+import { actorIdsPayload } from "@app/helpers/agentVaultMembers";
 import { useUpdateAgentVaultMemberRoles } from "@app/hooks/api/agentVault";
-import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
-import { TAgentVaultActorIdsDTO, TAgentVaultProductMember } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultProductMember } from "@app/hooks/api/agentVault/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { ProductRoleField } from "./ProductRoleField";
-
-const ACTOR_IDS_KEY: Record<AgentVaultMemberType, keyof TAgentVaultActorIdsDTO> = {
-  [AgentVaultMemberType.User]: "userIds",
-  [AgentVaultMemberType.Group]: "groupIds",
-  [AgentVaultMemberType.MachineIdentity]: "machineIdentityIds"
-};
 
 type Props = {
   member: Pick<TAgentVaultProductMember, "type" | "id" | "role"> | null;
@@ -45,10 +39,7 @@ export const ProductRoleDialog = ({ member, onOpenChange, subject }: Props) => {
     try {
       // Guarded here, not by returning null, so the exit animation still runs.
       if (!member) return;
-      const { members } = await updateRole.mutateAsync({
-        [ACTOR_IDS_KEY[member.type]]: [member.id],
-        role
-      });
+      const { members } = await updateRole.mutateAsync({ ...actorIdsPayload([member]), role });
       // Save is disabled for the current role, so a skip means the member changed under the dialog.
       createNotification(
         members.length
