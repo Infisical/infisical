@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal, Switch } from "@app/components/v2";
+import { Field, FieldContent, FieldDescription, FieldTitle, Toggle } from "@app/components/v3";
+import { DeleteConfirmDialog } from "@app/components/v3/platform";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 import { useDeleteSecretRotationV2 } from "@app/hooks/api/secretRotationsV2/mutations";
@@ -56,40 +57,46 @@ export const DeleteSecretRotationV2Modal = ({
   };
 
   return (
-    <DeleteActionModal
+    <DeleteConfirmDialog
       isOpen={isOpen}
-      onChange={onOpenChange}
+      onOpenChange={onOpenChange}
       title={`Are you sure you want to delete ${name}?`}
-      deleteKey={name}
-      onDeleteApproved={handleDeleteSecretRotation}
+      description="This action is irreversible."
+      confirmKey={name}
+      onConfirm={handleDeleteSecretRotation}
     >
-      <Switch
-        containerClassName="mt-4"
-        className="bg-muted/50 shadow-inner data-[state=checked]:bg-danger/50"
-        thumbClassName="bg-surface-raised"
-        isChecked={revokeGeneratedCredentials}
-        onCheckedChange={setRevokeGeneratedCredentials}
-        id="revoke-credentials"
-      >
-        Revoke Credentials
-      </Switch>
-      <p className="mt-1 font-sans text-sm text-muted">
-        Generated credentials will {revokeGeneratedCredentials ? "" : "not"} be revoked on deletion
-        {revokeGeneratedCredentials ? "" : " and remain active"}.
-      </p>
-      <Switch
-        containerClassName="mt-4"
-        className="bg-muted/50 shadow-inner data-[state=checked]:bg-danger/50"
-        thumbClassName="bg-surface-raised"
-        isChecked={deleteSecrets}
-        onCheckedChange={setDeleteSecrets}
-        id="delete-secrets"
-      >
-        Delete Secrets
-      </Switch>
-      <p className="mt-1 font-sans text-sm text-muted">
-        Rotation secrets will {deleteSecrets ? "" : "not"} be removed from your project on deletion.
-      </p>
-    </DeleteActionModal>
+      <Field orientation="horizontal">
+        <FieldContent>
+          <FieldTitle>Revoke Credentials</FieldTitle>
+          <FieldDescription>
+            Generated credentials will {revokeGeneratedCredentials ? "" : "not"} be revoked on
+            deletion{revokeGeneratedCredentials ? "" : " and remain active"}.
+          </FieldDescription>
+        </FieldContent>
+        <Toggle
+          id="revoke-credentials"
+          variant="danger"
+          aria-label="Revoke Credentials"
+          checked={revokeGeneratedCredentials}
+          onCheckedChange={setRevokeGeneratedCredentials}
+        />
+      </Field>
+      <Field orientation="horizontal">
+        <FieldContent>
+          <FieldTitle>Delete Secrets</FieldTitle>
+          <FieldDescription>
+            Rotation secrets will {deleteSecrets ? "" : "not"} be removed from your project on
+            deletion.
+          </FieldDescription>
+        </FieldContent>
+        <Toggle
+          id="delete-secrets"
+          variant="danger"
+          aria-label="Delete Secrets"
+          checked={deleteSecrets}
+          onCheckedChange={setDeleteSecrets}
+        />
+      </Field>
+    </DeleteConfirmDialog>
   );
 };
