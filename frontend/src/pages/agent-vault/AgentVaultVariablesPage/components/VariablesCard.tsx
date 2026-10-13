@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { ServiceIconStack } from "@app/components/agent-vault/ServiceIconStack";
 import { VariableFormDialog } from "@app/components/agent-vault/VariableFormDialog";
 import { createNotification } from "@app/components/notifications";
 import {
@@ -47,15 +46,16 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { toVariableReference } from "@app/helpers/agentVaultVariables";
+import { MAX_VARIABLES, toVariableReference } from "@app/helpers/agentVaultVariables";
 import {
   useListAgentVaultVariables,
   useRevealAgentVaultVariableValue
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultService, TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 import { DeleteVariableDialog } from "./DeleteVariableDialog";
+import { UsedByBundleBadges } from "./UsedByBundleBadges";
 
 enum SortColumn {
   Key = "key",
@@ -66,6 +66,109 @@ const MASK = "•".repeat(8);
 
 // A revealed value is held against the version it was read from, so an edit hides it again.
 const revealSlot = (variable: TAgentVaultVariable) => `${variable.id}:${variable.updatedAt}`;
+
+const FADE_MS = 200;
+
+const fadeClassName =
+  "col-start-1 row-start-1 font-mono text-sm transition-[opacity,filter] duration-200 ease-out motion-reduce:transition-none";
+
+// The value mounts hidden and fades in two frames later, once the hidden state has painted. Hiding fades it out
+// first and only then takes it out of the DOM, so it is never kept longer than the fade.
+//
+// The box eases between the mask's width and the value's so the button beside it slides rather than jumps. Its width
+// is pinned only while that runs: from where it is now to the text's width, capped at what the row leaves it, since
+// easing towards a long value's full width would reach the cap in a frame or two and jump anyway. Once the motion is
+// done the width goes back to auto.
+const RevealableValue = ({ value }: { value?: string }) => {
+  const [rendered, setRendered] = useState(value);
+  const [isShown, setIsShown] = useState(false);
+  const wrapperRef = useRef<HTMLSpanElement>(null);
+  const maskRef = useRef<HTMLSpanElement>(null);
+  const valueRef = useRef<HTMLSpanElement>(null);
+  const hasMounted = useRef(false);
+
+  useEffect(() => {
+    if (value !== undefined) {
+      setRendered(value);
+      let frame = requestAnimationFrame(() => {
+        frame = requestAnimationFrame(() => setIsShown(true));
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+    setIsShown(false);
+    const timer = setTimeout(() => setRendered(undefined), FADE_MS);
+    return () => clearTimeout(timer);
+  }, [value]);
+
+  useLayoutEffect(() => {
+    const wrapper = wrapperRef.current;
+    const row = wrapper?.parentElement;
+    const text = isShown ? valueRef.current : maskRef.current;
+    if (!hasMounted.current || !wrapper || !row || !text) {
+      hasMounted.current = true;
+      return undefined;
+    }
+
+    const siblings = [...row.children].filter((child) => child !== wrapper);
+    const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
+    const available =
+      row.clientWidth -
+      siblings.reduce((total, child) => total + child.getBoundingClientRect().width + gap, 0);
+
+    wrapper.style.width = `${wrapper.getBoundingClientRect().width}px`;
+    // Commits the starting width, so the change below transitions from it.
+    wrapper.getBoundingClientRect();
+    wrapper.style.width = `${Math.min(text.scrollWidth, available)}px`;
+
+    if (!isShown) return undefined;
+    const timer = setTimeout(() => {
+      wrapper.style.width = "";
+    }, FADE_MS);
+    return () => clearTimeout(timer);
+  }, [isShown]);
+
+  // The value enters the DOM before it is shown, and leaves after it is hidden. In both cases the box holds the mask's
+  // width until the slide starts or after it ends, or auto would size it to the value for a frame.
+  useLayoutEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+    if (rendered === undefined) {
+      wrapper.style.width = "";
+    } else if (!isShown && maskRef.current) {
+      wrapper.style.width = `${maskRef.current.scrollWidth}px`;
+    }
+    // Only the value entering or leaving matters here; isShown is read, not watched.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rendered]);
+
+  return (
+    <span
+      ref={wrapperRef}
+      className="grid min-w-0 grid-cols-[minmax(0,1fr)] items-center transition-[width] duration-200 ease-out motion-reduce:transition-none"
+    >
+      <span
+        ref={maskRef}
+        aria-hidden={isShown}
+        className={twMerge(
+          fadeClassName,
+          "justify-self-start tracking-widest text-muted",
+          isShown && "opacity-0 blur-[2px]"
+        )}
+      >
+        {MASK}
+      </span>
+      {rendered !== undefined && (
+        <span
+          ref={valueRef}
+          aria-hidden={!isShown}
+          className={twMerge(fadeClassName, "truncate", !isShown && "opacity-0 blur-[2px]")}
+        >
+          {rendered}
+        </span>
+      )}
+    </span>
+  );
+};
 
 // Opens only when the column cuts the key off, measured as it opens.
 const TruncatedKey = ({ value }: { value: string }) => {
@@ -90,13 +193,8 @@ const TruncatedKey = ({ value }: { value: string }) => {
   );
 };
 
-type Props = {
-  accessBundleId: string;
-  services: TAgentVaultService[];
-};
-
-export const VariablesCard = ({ accessBundleId, services }: Props) => {
-  const { data: variables = [], isPending } = useListAgentVaultVariables(accessBundleId);
+export const VariablesCard = () => {
+  const { data: variables = [], isPending } = useListAgentVaultVariables();
   const revealValue = useRevealAgentVaultVariableValue();
 
   const [search, setSearch] = useState("");
@@ -108,24 +206,13 @@ export const VariablesCard = ({ accessBundleId, services }: Props) => {
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [revealingId, setRevealingId] = useState<string | null>(null);
 
-  // Joined against the bundle's own service list, so a service deleted in the meantime drops out.
-  const servicesById = useMemo(
-    () => new Map(services.map((service) => [service.id, service])),
-    [services]
-  );
-  const usedByOf = (variable: TAgentVaultVariable | null) =>
-    (variable?.serviceIds ?? []).flatMap((serviceId) => {
-      const service = servicesById.get(serviceId);
-      return service ? [service] : [];
-    });
-
   const displayed = useMemo(() => {
     const term = search.trim().toLowerCase();
     const filtered = variables.filter((variable) => variable.key.toLowerCase().includes(term));
 
     const compare = (a: TAgentVaultVariable, b: TAgentVaultVariable) =>
       sortColumn === SortColumn.UsedBy
-        ? a.serviceIds.length - b.serviceIds.length || a.key.localeCompare(b.key)
+        ? a.usedBy.length - b.usedBy.length || a.key.localeCompare(b.key)
         : a.key.localeCompare(b.key);
 
     const ordered = [...filtered].sort(compare);
@@ -158,7 +245,7 @@ export const VariablesCard = ({ accessBundleId, services }: Props) => {
 
     setRevealingId(variable.id);
     try {
-      const value = await revealValue.mutateAsync({ accessBundleId, variableId: variable.id });
+      const value = await revealValue.mutateAsync(variable.id);
       setRevealed((prev) => ({ ...prev, [slot]: value }));
     } catch {
       // A failed request returns a 4xx that the global request handler surfaces as a toast
@@ -173,7 +260,7 @@ export const VariablesCard = ({ accessBundleId, services }: Props) => {
   const copyValue = async (variable: TAgentVaultVariable) => {
     let request: Promise<string> | undefined;
     try {
-      request = revealValue.mutateAsync({ accessBundleId, variableId: variable.id });
+      request = revealValue.mutateAsync(variable.id);
       if (typeof ClipboardItem === "undefined") {
         await navigator.clipboard.writeText(await request);
       } else {
@@ -194,6 +281,8 @@ export const VariablesCard = ({ accessBundleId, services }: Props) => {
     }
   };
 
+  const isAtLimit = variables.length >= MAX_VARIABLES;
+
   const openForm = (variable: TAgentVaultVariable | null) => {
     setVariableToEdit(variable);
     setIsFormOpen(true);
@@ -207,14 +296,32 @@ export const VariablesCard = ({ accessBundleId, services }: Props) => {
           <DocumentationLinkBadge href={AgentVaultDocsUrls.variables} />
         </CardTitle>
         <CardDescription>
-          A variable stores one value that any service in this bundle can use as{" "}
+          A variable stores one value that any service can use as{" "}
           <code className="font-mono">{toVariableReference("KEY")}</code>.
         </CardDescription>
         <CardAction>
-          <Button variant="av" onClick={() => openForm(null)}>
-            <PlusIcon />
-            Add Variable
-          </Button>
+          {isAtLimit ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+                <span tabIndex={0}>
+                  <Button variant="av" isDisabled>
+                    <PlusIcon />
+                    Add Variable
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                Agent Vault can hold at most {MAX_VARIABLES} variables. Delete one that no service
+                uses first.
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <Button variant="av" onClick={() => openForm(null)}>
+              <PlusIcon />
+              Add Variable
+            </Button>
+          )}
         </CardAction>
       </CardHeader>
 
@@ -242,7 +349,7 @@ export const VariablesCard = ({ accessBundleId, services }: Props) => {
               </EmptyTitle>
               <EmptyDescription>
                 {variables.length === 0
-                  ? "Add a variable to use one value across this bundle's services."
+                  ? "Add a variable to use one value across services in any access bundle."
                   : "Try a different search term."}
               </EmptyDescription>
             </EmptyHeader>
@@ -290,8 +397,6 @@ export const VariablesCard = ({ accessBundleId, services }: Props) => {
               displayed.map((variable) => {
                 const revealedValue = revealed[revealSlot(variable)];
                 const isRevealed = revealedValue !== undefined;
-                const usedBy = usedByOf(variable);
-
                 return (
                   <TableRow key={variable.id}>
                     <TableCell>
@@ -299,15 +404,7 @@ export const VariablesCard = ({ accessBundleId, services }: Props) => {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5">
-                        {isRevealed ? (
-                          <span className="min-w-0 truncate font-mono text-sm">
-                            {revealedValue}
-                          </span>
-                        ) : (
-                          <span className="font-mono text-sm tracking-widest text-muted">
-                            {MASK}
-                          </span>
-                        )}
+                        <RevealableValue value={revealedValue} />
                         <IconButton
                           variant="ghost"
                           size="xs"
@@ -321,10 +418,7 @@ export const VariablesCard = ({ accessBundleId, services }: Props) => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <ServiceIconStack
-                        services={usedBy}
-                        emptyPlaceholder={<span className="text-sm text-muted">Unused</span>}
-                      />
+                      <UsedByBundleBadges usedBy={variable.usedBy} />
                     </TableCell>
                     <TableCell variant="action">
                       <DropdownMenu>
@@ -362,15 +456,12 @@ export const VariablesCard = ({ accessBundleId, services }: Props) => {
       <VariableFormDialog
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
-        accessBundleId={accessBundleId}
         variable={variableToEdit}
         existingKeys={variables.map((variable) => variable.key)}
-        usedByCount={usedByOf(variableToEdit).length}
       />
 
       <DeleteVariableDialog
         variable={variableToDelete}
-        usedBy={usedByOf(variableToDelete)}
         onOpenChange={(isOpen) => {
           if (!isOpen) setVariableToDelete(null);
         }}

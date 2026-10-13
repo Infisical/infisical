@@ -115,6 +115,7 @@ tables:
     source: public.agent_vault_variables
     columns:
       - id
+      - projectId
       - accessBundleId
       - createdAt
       - updatedAt

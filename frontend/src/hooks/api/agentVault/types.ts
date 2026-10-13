@@ -396,27 +396,30 @@ export type TAgentVaultDecryptedSessionLogPage<
   decrypted: Record<string, TAgentVaultDecryptedChunk>;
 };
 
+export type TAgentVaultVariableUsage = {
+  id: string;
+  name: string;
+  hostPattern: string;
+  accessBundleId: string;
+  accessBundleName: string;
+};
+
 export type TAgentVaultVariable = {
   id: string;
-  accessBundleId: string;
   key: string;
-  serviceIds: string[];
+  // Every service that references the variable, across all access bundles.
+  usedBy: TAgentVaultVariableUsage[];
   createdAt: string;
   updatedAt: string;
 };
 
-export type TAgentVaultVariableRef = {
-  accessBundleId: string;
-  variableId: string;
-};
-
 export type TCreateAgentVaultVariableDTO = {
-  accessBundleId: string;
   key: string;
   value: string;
 };
 
-export type TUpdateAgentVaultVariableDTO = TAgentVaultVariableRef & {
+export type TUpdateAgentVaultVariableDTO = {
+  variableId: string;
   key?: string;
   value?: string;
 };

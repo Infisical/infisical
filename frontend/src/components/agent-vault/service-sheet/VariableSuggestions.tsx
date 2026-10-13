@@ -247,8 +247,8 @@ export const VariableSuggestions = ({
           ) : (
             <p className="px-2 py-1.5 text-xs text-muted">
               {variables?.length
-                ? "No variable in this bundle matches that name."
-                : "This bundle has no variables yet. Add one under Variables."}
+                ? "No variable matches that name."
+                : "No variables yet. Add one under Variables."}
             </p>
           )}
         </PopoverContent>

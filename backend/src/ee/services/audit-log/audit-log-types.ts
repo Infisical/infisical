@@ -6518,12 +6518,13 @@ interface AgentVaultServiceDeleteEvent {
   };
 }
 
-// Keys only. A variable's value never reaches an audit row.
+// Keys only. A variable's value never reaches an audit row. Variables belonged to an access bundle until they moved to
+// Agent Vault as a whole, so accessBundleId and accessBundleName are present only on events recorded before that.
 interface AgentVaultVariableCreateEvent {
   type: EventType.AGENT_VAULT_VARIABLE_CREATE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    accessBundleId?: string;
+    accessBundleName?: string;
     variableId: string;
     key: string;
   };
@@ -6532,8 +6533,8 @@ interface AgentVaultVariableCreateEvent {
 interface AgentVaultVariableUpdateEvent {
   type: EventType.AGENT_VAULT_VARIABLE_UPDATE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    accessBundleId?: string;
+    accessBundleName?: string;
     variableId: string;
     key: string;
     // Present only when the update changed the key.
@@ -6545,8 +6546,8 @@ interface AgentVaultVariableUpdateEvent {
 interface AgentVaultVariableDeleteEvent {
   type: EventType.AGENT_VAULT_VARIABLE_DELETE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    accessBundleId?: string;
+    accessBundleName?: string;
     variableId: string;
     key: string;
   };
@@ -6555,8 +6556,8 @@ interface AgentVaultVariableDeleteEvent {
 interface AgentVaultVariableValueViewEvent {
   type: EventType.AGENT_VAULT_VARIABLE_VALUE_VIEW;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    accessBundleId?: string;
+    accessBundleName?: string;
     variableId: string;
     key: string;
   };

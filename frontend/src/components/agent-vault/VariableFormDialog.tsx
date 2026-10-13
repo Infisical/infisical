@@ -51,7 +51,7 @@ const buildSchema = (takenKeys: string[], isValueRequired: boolean) =>
       .regex(VARIABLE_KEY_RE, VARIABLE_KEY_MESSAGE)
       .refine(
         (key) => !takenKeys.includes(key),
-        "This bundle already has a variable with this key."
+        (key) => ({ message: `A variable named '${key}' already exists.` })
       ),
     value: z
       .string()
@@ -72,11 +72,8 @@ type FormData = z.infer<ReturnType<typeof buildSchema>>;
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  accessBundleId: string;
   variable?: TAgentVaultVariable | null;
   existingKeys: string[];
-  /** How many services use the variable being edited, so a rename can say they keep working. */
-  usedByCount?: number;
   /** A key to start a new variable from, as when it was named in a service before it existed. */
   initialKey?: string;
   onCreated?: (variable: TAgentVaultVariable) => void;
@@ -86,10 +83,8 @@ type Props = {
 export const VariableFormDialog = ({
   isOpen,
   onOpenChange,
-  accessBundleId,
   variable,
   existingKeys,
-  usedByCount = 0,
   initialKey,
   onCreated,
   onCloseAutoFocus
@@ -97,6 +92,7 @@ export const VariableFormDialog = ({
   const createVariable = useCreateAgentVaultVariable();
   const updateVariable = useUpdateAgentVaultVariable();
   const isUpdate = Boolean(variable);
+  const usedByCount = variable?.usedBy.length ?? 0;
   const [isValueVisible, setIsValueVisible] = useState(false);
 
   const schema = useMemo(
@@ -132,7 +128,6 @@ export const VariableFormDialog = ({
     try {
       if (variable) {
         await updateVariable.mutateAsync({
-          accessBundleId,
           variableId: variable.id,
           key: data.key === variable.key ? undefined : data.key,
           value: data.value.length > 0 ? data.value : undefined
@@ -140,7 +135,6 @@ export const VariableFormDialog = ({
         createNotification({ text: `Variable "${data.key}" updated`, type: "success" });
       } else {
         const created = await createVariable.mutateAsync({
-          accessBundleId,
           key: data.key,
           value: data.value
         });
@@ -167,7 +161,7 @@ export const VariableFormDialog = ({
         <DialogHeader>
           <DialogTitle>{isUpdate ? "Edit Variable" : "Add Variable"}</DialogTitle>
           <DialogDescription>
-            Store a value once and use it from any service in this bundle.
+            Store a value once and use it from any service in any access bundle.
           </DialogDescription>
         </DialogHeader>
 

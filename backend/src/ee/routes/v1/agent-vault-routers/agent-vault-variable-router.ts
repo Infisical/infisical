@@ -1,0 +1,222 @@
+import { z } from "zod";
+
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AGENT_VAULT } from "@app/lib/api-docs";
+import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { readLimit, secretsLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { addNoCacheHeaders } from "@app/server/lib/caching";
+import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AuthMode } from "@app/services/auth/auth-type";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+import { actorContext } from "./agent-vault-router-fns";
+import {
+  AgentVaultVariableKeySchema,
+  AgentVaultVariableSchema,
+  AgentVaultVariableValueSchema
+} from "./agent-vault-schemas";
+
+export const registerAgentVaultVariableRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "listAgentVaultVariables",
+      description: "List the variables in Agent Vault",
+      tags: [ApiDocsTags.AgentVaultVariables],
+      response: { 200: z.object({ variables: AgentVaultVariableSchema.array() }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const variables = await server.services.agentVaultVariable.listVariables({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req)
+      });
+      return { variables };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "createAgentVaultVariable",
+      description: "Create a variable in Agent Vault",
+      tags: [ApiDocsTags.AgentVaultVariables],
+      body: z.object({
+        key: AgentVaultVariableKeySchema.describe(AGENT_VAULT.VARIABLE.key),
+        value: AgentVaultVariableValueSchema.describe(AGENT_VAULT.VARIABLE.value)
+      }),
+      response: { 200: z.object({ variable: AgentVaultVariableSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { variable } = await server.services.agentVaultVariable.createVariable({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_VARIABLE_CREATE,
+          metadata: { variableId: variable.id, key: variable.key }
+        }
+      });
+
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultVariableCreated,
+        properties: { variableId: variable.id }
+      });
+
+      return { variable };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:variableId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "updateAgentVaultVariable",
+      description: "Update a variable in Agent Vault",
+      tags: [ApiDocsTags.AgentVaultVariables],
+      params: z.object({
+        variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId)
+      }),
+      body: z
+        .object({
+          key: AgentVaultVariableKeySchema.optional().describe(AGENT_VAULT.VARIABLE.key),
+          value: AgentVaultVariableValueSchema.optional().describe(AGENT_VAULT.VARIABLE.updateValue)
+        })
+        .refine(
+          (body) => Object.values(body).some((value) => value !== undefined),
+          "Provide 'key', 'value' or both to update"
+        ),
+      response: { 200: z.object({ variable: AgentVaultVariableSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { variable, previousKey } = await server.services.agentVaultVariable.updateVariable({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        variableId: req.params.variableId,
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_VARIABLE_UPDATE,
+          metadata: {
+            variableId: variable.id,
+            key: variable.key,
+            previousKey: previousKey === variable.key ? undefined : previousKey,
+            valueReplaced: req.body.value !== undefined
+          }
+        }
+      });
+
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultVariableUpdated,
+        properties: {
+          variableId: variable.id,
+          keyChanged: previousKey !== variable.key,
+          valueReplaced: req.body.value !== undefined,
+          usedByServiceCount: variable.usedBy.length
+        }
+      });
+
+      return { variable };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:variableId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "deleteAgentVaultVariable",
+      description: "Delete a variable from Agent Vault. A variable a service uses can't be deleted.",
+      tags: [ApiDocsTags.AgentVaultVariables],
+      params: z.object({
+        variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId)
+      }),
+      response: { 200: z.object({ variable: AgentVaultVariableSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { variable } = await server.services.agentVaultVariable.deleteVariable({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        variableId: req.params.variableId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_VARIABLE_DELETE,
+          metadata: { variableId: variable.id, key: variable.key }
+        }
+      });
+
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultVariableDeleted,
+        properties: { variableId: variable.id }
+      });
+
+      return { variable };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:variableId/value",
+    config: { rateLimit: secretsLimit },
+    schema: {
+      hide: false,
+      operationId: "getAgentVaultVariableValue",
+      description: "Get the value of a variable in Agent Vault",
+      tags: [ApiDocsTags.AgentVaultVariables],
+      params: z.object({
+        variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId)
+      }),
+      response: { 200: z.object({ value: z.string().describe(AGENT_VAULT.VARIABLE.revealedValue) }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req, reply) => {
+      const { variableId, key, value } = await server.services.agentVaultVariable.getVariableValue({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        variableId: req.params.variableId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_VARIABLE_VALUE_VIEW,
+          metadata: { variableId, key }
+        }
+      });
+
+      addNoCacheHeaders(reply);
+      return { value };
+    }
+  });
+};

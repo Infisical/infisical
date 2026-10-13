@@ -49,7 +49,13 @@ describe("variableReferenceError", () => {
     }
   );
 
-  it("passes a well-formed reference to a key the bundle has", () => {
+  it("passes a well-formed reference to a key Agent Vault has", () => {
     expect(variableReferenceError("Bearer {{GITHUB_TOKEN}}", new Set(["GITHUB_TOKEN"]))).toBeNull();
+  });
+
+  it("names a key Agent Vault does not have, in the API's words", () => {
+    expect(variableReferenceError("Bearer {{GITHUB_TOKEN}}", new Set(["OTHER"]))).toBe(
+      "Agent Vault has no variable named 'GITHUB_TOKEN'. Add it under Variables, or correct the name."
+    );
   });
 });

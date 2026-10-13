@@ -156,7 +156,7 @@ export const ServiceSheet = ({
   const createService = useCreateAgentVaultService();
   const updateService = useUpdateAgentVaultService();
 
-  const { data: variables } = useListAgentVaultVariables(accessBundleId, isOpen);
+  const { data: variables } = useListAgentVaultVariables(isOpen);
   const variableKeys = useMemo(() => variables?.map((variable) => variable.key), [variables]);
   const storedKeys = useMemo(() => storedVariableKeys(service), [service]);
   // One dialog for every field. The request settles once the dialog has closed, not when the variable is
@@ -651,7 +651,6 @@ export const ServiceSheet = ({
           onOpenChange={(open) => {
             if (!open) setNewVariableKey(null);
           }}
-          accessBundleId={accessBundleId}
           initialKey={newVariableKey ?? undefined}
           existingKeys={variableKeys ?? []}
           onCreated={(variable) => {

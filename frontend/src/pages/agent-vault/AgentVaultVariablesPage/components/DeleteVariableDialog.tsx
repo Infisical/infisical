@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router";
+
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import { createNotification } from "@app/components/notifications";
 import {
@@ -10,26 +12,25 @@ import {
   AlertDialogTitle,
   Button
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import { useDeleteAgentVaultVariable } from "@app/hooks/api/agentVault";
-import { TAgentVaultService, TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 
 type Props = {
   variable: TAgentVaultVariable | null;
-  usedBy: TAgentVaultService[];
   onOpenChange: (isOpen: boolean) => void;
 };
 
-export const DeleteVariableDialog = ({ variable, usedBy, onOpenChange }: Props) => {
+export const DeleteVariableDialog = ({ variable, onOpenChange }: Props) => {
+  const { currentOrg } = useOrganization();
   const deleteVariable = useDeleteAgentVaultVariable();
+  const usedBy = variable?.usedBy ?? [];
   const isInUse = usedBy.length > 0;
 
   const handleDelete = async () => {
     if (!variable) return;
     try {
-      await deleteVariable.mutateAsync({
-        accessBundleId: variable.accessBundleId,
-        variableId: variable.id
-      });
+      await deleteVariable.mutateAsync(variable.id);
       createNotification({ text: `Variable "${variable.key}" deleted`, type: "success" });
       onOpenChange(false);
     } catch {
@@ -52,9 +53,18 @@ export const DeleteVariableDialog = ({ variable, usedBy, onOpenChange }: Props) 
         {isInUse && (
           <ul className="flex max-h-48 flex-col gap-2 overflow-y-auto rounded-md border border-border bg-container/50 p-3">
             {usedBy.map((service) => (
-              <li key={service.id} className="flex items-center gap-2 text-sm">
+              <li key={service.id} className="flex items-center gap-2">
                 <ServiceIcon hostPattern={service.hostPattern} />
-                {service.name}
+                <div className="flex min-w-0 flex-col">
+                  <span className="truncate text-sm">{service.name}</span>
+                  <Link
+                    to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
+                    params={{ orgId: currentOrg.id, accessBundleId: service.accessBundleId }}
+                    className="truncate text-xs text-muted underline-offset-4 hover:text-foreground hover:underline"
+                  >
+                    {service.accessBundleName}
+                  </Link>
+                </div>
               </li>
             ))}
           </ul>

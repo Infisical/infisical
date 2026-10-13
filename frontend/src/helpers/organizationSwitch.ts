@@ -27,6 +27,7 @@ const organizationSwitchSections = [
   "pam/access-management",
   "agent-vault/sessions",
   "agent-vault/access-bundles",
+  "agent-vault/variables",
   "agent-vault/proxies",
   "agent-vault/settings",
   "agent-vault/audit-logs",

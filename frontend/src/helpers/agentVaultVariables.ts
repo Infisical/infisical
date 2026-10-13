@@ -1,6 +1,7 @@
 export const VARIABLE_KEY_MAX_LENGTH = 64;
 export const VARIABLE_VALUE_MAX_LENGTH = 8192;
 export const MAX_REFERENCES_PER_FIELD = 3;
+export const MAX_VARIABLES = 500;
 
 export const VARIABLE_KEY_RE = /^[A-Z][A-Z0-9_]*$/;
 
@@ -86,7 +87,9 @@ export const variableReferenceError = (text: string, keys?: ReadonlySet<string>)
   }
 
   const missing = keys ? refs.find((ref) => !keys.has(ref)) : undefined;
-  if (missing) return `This bundle has no variable named ${missing}. Add it under Variables first.`;
+  if (missing) {
+    return `Agent Vault has no variable named '${missing}'. Add it under Variables, or correct the name.`;
+  }
 
   return null;
 };

@@ -17,7 +17,8 @@ never in anything the agent holds.
 
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
-agent-vault-access-bundle/   bundles, services, variables, credential encryption, grants
+agent-vault-access-bundle/   bundles, services, credential encryption, grants
+agent-vault-variable/        product-wide variables and the reads behind Used By
 agent-vault-member/          product membership (list, add, role, remove)
 agent-vault-session/         mint, revoke, list, get
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
@@ -168,8 +169,9 @@ header" is the name in every layer; unqualified "header" means the credential's 
 
 ## Variables
 
-A variable is a key and a sealed value on one bundle. A service uses one as `{{KEY}}` in its token, username,
-password, a custom header value or a substitution value. Nothing else takes one: a host pattern, method or
+A variable is a key and a sealed value on the Agent Vault project, so every bundle's services share one set and keys
+are unique per project. A service uses one as `{{KEY}}` in its token, username, password, a custom header value or a
+substitution value. Nothing else takes one: a host pattern, method or
 path decides what a service can reach, so it stays literal.
 
 - **Sealed text names a variable by id, `{{<uuid>}}`, never by key.** The key form exists only at the API
@@ -183,10 +185,15 @@ path decides what a service can reach, so it stays literal.
   the ids out of the decrypted fields, so a service saved mid-poll can never leave the two describing
   different versions of a field.
 - **The rows are read off the stored text, never off the request**: `findStoredVariableIds`, kept to the
-  bundle's own variables, which is exactly what resolve expands. Nothing in the database can compare the
+  project's own variables, which is exactly what resolve expands. Nothing in the database can compare the
   rows with sealed text, and an id with no row is a variable the delete refusal lets go while a service still
-  sends it. Any new path that seals a service field derives its rows the same way, and moving a service to
-  another bundle would have to remap its ids, since resolve expands only its own bundle's.
+  sends it. Any new path that seals a service field derives its rows the same way. Resolve expands only the
+  session project's variables, so a service can move between bundles without remapping its ids.
+- **A variable delete and a service save meet on the variable row, not the bundle.** The delete takes it `FOR
+  UPDATE` and then reads the references; a save takes the rows it is about to reference `FOR SHARE` right before
+  inserting them (`insertReferenceRows`). So the delete waits for an in-flight save and refuses with a 409 naming
+  each service and its bundle, and a save whose variable went first fails with a 400. Create serialises on a
+  per-project advisory lock for the cap and the key check; the `(projectId, key)` unique index is the backstop.
 - A stored value never comes back in any form, a lone `{{KEY}}` included. The sheet lists the keys a stored
   field uses under the field and keeps the field masked until it is retyped. Settled: putting a lone
   reference back in its field made it the one stored field that shows, and left a field mixing text with a
@@ -201,10 +208,15 @@ path decides what a service can reach, so it stays literal.
   and returns a 409 if the type changed, or, for a partial basic update, the sealed secret did. Otherwise the
   half left out is written back stale, and its rows describe text that is no longer sealed. That first read is
   on the primary (`findByIdInAccessBundle`): a replica still behind the previous save would 409 the next one.
-- The `variableId` key is `DEFERRABLE INITIALLY DEFERRED`. A bundle delete cascades to its services and its
-  variables in one statement, and an immediate check can fire before the service cascade has removed the
-  rows, depending on which constraint was created first. The refusal that matters is the check under the
-  bundle lock (a 409 naming the services); the deferred key is the backstop and only raises at commit.
+- The `variableId` key is `DEFERRABLE INITIALLY DEFERRED`. A project delete cascades to its bundles' services and
+  to its variables in one statement, and an immediate check can fire before the service cascade has removed the
+  rows, depending on which constraint was created first. The refusal that matters is the one under the variable
+  row lock; the deferred key is the backstop and only raises at commit. Deleting a bundle keeps its variables.
+- **Variables were per bundle until AGE2-130.** The migration gave each its bundle's project and, where two
+  bundles shared a key, kept it on the oldest and renamed the rest `KEY_1`, `KEY_2`, ... (skipping any key already
+  taken). That was safe only because sealed text names ids. `accessBundleId` survives, nullable and `SET NULL`,
+  so a pod on the previous release keeps resolving during the rollout; nothing reads or writes it, and a follow-up
+  migration drops it. Audit events from before the move still carry `accessBundleId` and `accessBundleName`.
 - Every `{{...}}` in a value must be an existing, well-formed key, or the save fails. A malformed one is
   refused without quoting it, because the text was cut from a secret. Placeholders and header prefixes (the
   bearer prefix and custom header prefixes) can't contain double braces, which would read as a reference the
@@ -223,7 +235,7 @@ path decides what a service can reach, so it stays literal.
   query can land on a different replica. An id with no variable behind it on either stays as text and is
   logged rather than dropping the service, which would also drop the service's method and path restrictions.
   Values saved before variables existed hold no id tokens, so they pass through untouched.
-- Admin only, reads included: every variable route checks `Edit` on access bundles, which a member lacks,
+- Admin only, reads included: every `/agent-vault/variables` route checks `Edit` on access bundles, which a member lacks,
   and the bundle read gives a member its services without `variableReferences` (left out, not empty, since
   an empty list would claim they use none). Every value is sealed and no response but the value route returns
   one. That route is a GET with no-store headers and one audit event per read.
