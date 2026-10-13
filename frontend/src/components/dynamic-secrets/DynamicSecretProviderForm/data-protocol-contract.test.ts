@@ -3,6 +3,7 @@ import { describe, it } from "vitest";
 
 import {
   DynamicSecretProviders,
+  KafkaAclResourceType,
   KubernetesDynamicSecretCredentialType
 } from "@app/hooks/api/dynamicSecret/types";
 
@@ -896,6 +897,23 @@ testDynamicSecretProviderContract({
         values: {
           ...kafkaCreateValues,
           inputs: { ...kafkaCreateValues.inputs, acls: [getDefaultKafkaAcl()] }
+        },
+        issuePaths: [["inputs", "acls", 0, "resourceName"]]
+      },
+      {
+        name: "Cluster ACL uses a name other than kafka-cluster",
+        values: {
+          ...kafkaCreateValues,
+          inputs: {
+            ...kafkaCreateValues.inputs,
+            acls: [
+              {
+                ...getDefaultKafkaAcl(),
+                resourceType: KafkaAclResourceType.Cluster,
+                resourceName: "prod"
+              }
+            ]
+          }
         },
         issuePaths: [["inputs", "acls", 0, "resourceName"]]
       }

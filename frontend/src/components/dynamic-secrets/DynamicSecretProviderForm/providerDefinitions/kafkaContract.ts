@@ -26,13 +26,24 @@ import {
 
 export const KAFKA_CUSTOM_RENDERER_REASONS = ["repeatable-fields", "non-scalar-value"] as const;
 
-const aclSchema = z.object({
-  resourceType: z.nativeEnum(KafkaAclResourceType),
-  patternType: z.nativeEnum(KafkaAclPatternType),
-  resourceName: z.string().trim().min(1, "Resource name is required"),
-  operation: z.nativeEnum(KafkaAclOperation),
-  permissionType: z.nativeEnum(KafkaAclPermissionType)
-});
+const KAFKA_CLUSTER_RESOURCE_NAME = "kafka-cluster";
+
+const aclSchema = z
+  .object({
+    resourceType: z.nativeEnum(KafkaAclResourceType),
+    patternType: z.nativeEnum(KafkaAclPatternType),
+    resourceName: z.string().trim().min(1, "Resource name is required"),
+    operation: z.nativeEnum(KafkaAclOperation),
+    permissionType: z.nativeEnum(KafkaAclPermissionType)
+  })
+  .refine(
+    ({ resourceType, resourceName }) =>
+      resourceType !== KafkaAclResourceType.Cluster || resourceName === KAFKA_CLUSTER_RESOURCE_NAME,
+    {
+      message: `Cluster ACLs must use the resource name '${KAFKA_CLUSTER_RESOURCE_NAME}'`,
+      path: ["resourceName"]
+    }
+  );
 
 const PORT_RANGE_MESSAGE = "Port must be a whole number from 1 to 65535";
 

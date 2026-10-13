@@ -168,7 +168,7 @@ const KafkaRows = <TName extends "inputs.bootstrapServers" | "inputs.acls">({
   const rows = useFieldArray<TKafkaFormValues, TName>({ control, name });
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="@container flex flex-col gap-3">
       {rows.fields.map(({ id }, index) => (
         <div key={id} className={cn("grid grid-cols-1 items-start gap-3", gridClassName)}>
           {columns.map((column) => {
@@ -286,7 +286,7 @@ const KafkaFields = () => {
         <KafkaRows
           name="inputs.acls"
           columns={aclColumns}
-          gridClassName="sm:grid-cols-[8rem_7rem_minmax(0,1fr)_9rem_6rem_auto]"
+          gridClassName="@xl:grid-cols-3"
           getNewRow={getDefaultKafkaAcl}
           itemLabel="ACL"
         />
