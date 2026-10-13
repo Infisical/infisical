@@ -138,7 +138,7 @@ export const GcpSecretManagerAuthorizePage = () => {
           <div>
             <Button
               onClick={handleIntegrateWithOAuth}
-              className="mx-0 mt-4 h-11 w-full"
+              className="mx-0 mt-4 w-full"
               variant="project"
             >
               <FontAwesomeIcon icon={faGoogle} className="mr-2" />

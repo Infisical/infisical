@@ -184,7 +184,6 @@ export const GitlabConfigurePage = () => {
         }
       });
 
-      setIsLoading(false);
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
@@ -197,6 +196,7 @@ export const GitlabConfigurePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
       setIsLoading(false);
     }
   };

@@ -274,7 +274,6 @@ export const GithubConfigurePage = () => {
           throw new Error("Invalid scope");
       }
 
-      setIsLoading(false);
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
@@ -286,6 +285,8 @@ export const GithubConfigurePage = () => {
         }
       });
     } catch {
+      return;
+    } finally {
       setIsLoading(false);
     }
   };
