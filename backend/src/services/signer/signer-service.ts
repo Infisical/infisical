@@ -452,7 +452,7 @@ export const signerServiceFactory = ({
         throw new NotFoundError({ message: `Certificate with ID '${dto.certificateId}' not found` });
       }
       if (certificate.projectId !== dto.projectId) {
-        throw new BadRequestError({ message: "Certificate must belong to the same project" });
+        throw new BadRequestError({ message: "Certificate must belong to the same organization" });
       }
       if (certificate.status === CertStatus.REVOKED) {
         throw new BadRequestError({ message: "Certificate has been revoked" });
@@ -478,7 +478,7 @@ export const signerServiceFactory = ({
       }
       const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(dto.caId as string);
       if (!ca || ca.projectId !== dto.projectId) {
-        throw new NotFoundError({ message: `Certificate authority '${dto.caId}' not found in this project.` });
+        throw new NotFoundError({ message: `Certificate authority '${dto.caId}' not found in this organization.` });
       }
       if (ca.status !== CaStatus.ACTIVE) {
         throw new BadRequestError({ message: "The selected certificate authority is not active." });
@@ -559,7 +559,7 @@ export const signerServiceFactory = ({
       const result = await signerDAL.transaction(async (tx) => {
         const project = await projectDAL.findOne({ id: dto.projectId }, tx);
         if (!project) {
-          throw new NotFoundError({ message: `Project '${dto.projectId}' not found.` });
+          throw new NotFoundError({ message: "Certificate Manager has not been set up for this organization." });
         }
         const policy = await approvalPolicyDAL.create(
           {
@@ -834,7 +834,9 @@ export const signerServiceFactory = ({
     } catch (error) {
       // 23505 = unique constraint violation
       if (error instanceof DatabaseError && (error.error as { code?: string })?.code === "23505") {
-        throw new BadRequestError({ message: `A signer with the name '${dto.name}' already exists in this project` });
+        throw new BadRequestError({
+          message: `A signer with the name '${dto.name}' already exists in this organization`
+        });
       }
       throw error;
     }
@@ -1268,7 +1270,7 @@ export const signerServiceFactory = ({
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(dto.caId);
     if (!ca || ca.projectId !== signer.projectId) {
-      throw new NotFoundError({ message: `Certificate authority '${dto.caId}' not found in this project.` });
+      throw new NotFoundError({ message: `Certificate authority '${dto.caId}' not found in this organization.` });
     }
     if (ca.status !== CaStatus.ACTIVE) {
       throw new BadRequestError({ message: "The selected certificate authority is not active." });
@@ -2008,7 +2010,7 @@ export const signerServiceFactory = ({
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(signer.caId);
     if (!ca || ca.projectId !== signer.projectId) {
-      const reason = `Certificate authority '${signer.caId}' is no longer available in the project.`;
+      const reason = `Certificate authority '${signer.caId}' is no longer available in this organization.`;
       logger.warn(`signer auto-renewal: ${reason} [signerId=${signer.id}]`);
       await signerDAL.updateById(signer.id, {
         status: SignerStatus.Failed,

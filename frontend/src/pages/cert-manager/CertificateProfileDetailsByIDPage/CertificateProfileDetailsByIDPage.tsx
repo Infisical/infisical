@@ -10,7 +10,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
 import { PageHeader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization } from "@app/context";
 import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
@@ -25,7 +25,6 @@ import { CreateProfileModal } from "../PoliciesPage/components/CertificateProfil
 import { ProfileDefaultsSection, ProfileOverviewSection } from "./components";
 
 const Page = () => {
-  const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
   const params = useParams({
@@ -42,17 +41,14 @@ const Page = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const projectId = currentProject?.id || "";
-
   const cameFromApplication = search.from === "application" && Boolean(search.applicationName);
 
   const navigateBack = () => {
     if (cameFromApplication && search.applicationName) {
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+        to: "/organizations/$orgId/cert-manager/applications/$applicationName",
         params: {
           orgId: currentOrg.id,
-          projectId,
           applicationName: search.applicationName
         }
       });
@@ -60,10 +56,9 @@ const Page = () => {
     }
 
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles",
+      to: "/organizations/$orgId/cert-manager/certificate-profiles",
       params: {
-        orgId: currentOrg.id,
-        projectId
+        orgId: currentOrg.id
       }
     });
   };
@@ -104,10 +99,9 @@ const Page = () => {
                   backLink={
                     cameFromApplication && search.applicationName ? (
                       <Link
-                        to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+                        to="/organizations/$orgId/cert-manager/applications/$applicationName"
                         params={{
                           orgId: currentOrg.id,
-                          projectId,
                           applicationName: search.applicationName
                         }}
                       >
@@ -116,10 +110,9 @@ const Page = () => {
                       </Link>
                     ) : (
                       <Link
-                        to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles"
+                        to="/organizations/$orgId/cert-manager/certificate-profiles"
                         params={{
-                          orgId: currentOrg.id,
-                          projectId
+                          orgId: currentOrg.id
                         }}
                       >
                         <FontAwesomeIcon icon={faChevronLeft} />

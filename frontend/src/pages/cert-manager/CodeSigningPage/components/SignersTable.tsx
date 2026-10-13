@@ -143,10 +143,9 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                     className="cursor-pointer hover:bg-surface-hover"
                     onClick={() =>
                       navigate({
-                        to: "/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId",
+                        to: "/organizations/$orgId/cert-manager/code-signing/$signerId",
                         params: {
                           orgId: currentOrg.id,
-                          projectId,
                           signerId: signer.id
                         }
                       })

@@ -12,7 +12,7 @@ const caDetailsSearchSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/ca/$caId"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/ca/$caId"
 )({
   component: CertAuthDetailsByIDPage,
   validateSearch: zodValidator(caDetailsSearchSchema),
@@ -23,10 +23,9 @@ export const Route = createFileRoute(
         {
           label: "Certificate Authorities",
           link: linkOptions({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities",
+            to: "/organizations/$orgId/cert-manager/certificate-authorities",
             params: {
-              orgId: params.orgId,
-              projectId: params.projectId
+              orgId: params.orgId
             }
           })
         }
