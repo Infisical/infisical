@@ -31,7 +31,7 @@ import { usePopUp } from "@app/hooks";
 import { useUpdateWorkspaceAuditLogsRetention } from "@app/hooks/api/projects/queries";
 
 const formSchema = z.object({
-  auditLogsRetentionDays: z.coerce.number().min(0)
+  auditLogsRetentionDays: z.coerce.number().int().min(0).max(36_500)
 });
 
 type TForm = z.infer<typeof formSchema>;

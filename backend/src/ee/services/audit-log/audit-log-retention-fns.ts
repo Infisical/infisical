@@ -7,6 +7,10 @@ const MS_IN_DAY = 24 * 60 * 60 * 1000;
 // capped here so no retention value can reach that overflow.
 export const MAX_AUDIT_LOG_EXPIRES_AT = new Date("2100-01-01T00:00:00.000Z");
 
+// Bounds what a project can request: past the expiry cap, so it never limits an unlimited plan, and
+// inside the integer column, so an oversized value is a 400 rather than a failed write.
+export const MAX_PROJECT_AUDIT_LOG_RETENTION_DAYS = 36_500;
+
 type TAuditLogRetentionPlan = Pick<TFeatureSet, "auditLogsRetentionDays">;
 
 // A null retention is the License Server's "No limit"; 0 means the plan keeps no audit logs.
