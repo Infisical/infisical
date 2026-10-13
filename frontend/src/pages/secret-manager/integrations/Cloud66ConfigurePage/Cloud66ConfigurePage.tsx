@@ -78,8 +78,6 @@ export const Cloud66ConfigurePage = () => {
         secretPath
       });
 
-      setIsLoading(false);
-
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
@@ -92,6 +90,8 @@ export const Cloud66ConfigurePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 

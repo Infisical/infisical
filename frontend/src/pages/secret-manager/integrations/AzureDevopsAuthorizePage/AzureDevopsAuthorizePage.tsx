@@ -50,8 +50,6 @@ export const AzureDevopsAuthorizePage = () => {
         accessToken: btoa(`:${apiKey}`) // This is a base64 encoding of the API key without any username
       });
 
-      setIsLoading(false);
-
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/azure-devops/create",
         params: {
@@ -64,6 +62,8 @@ export const AzureDevopsAuthorizePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 

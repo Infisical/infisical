@@ -92,7 +92,6 @@ export const AzureKeyVaultConfigurePage = () => {
           initialSyncBehavior
         }
       });
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
@@ -106,6 +105,8 @@ export const AzureKeyVaultConfigurePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 

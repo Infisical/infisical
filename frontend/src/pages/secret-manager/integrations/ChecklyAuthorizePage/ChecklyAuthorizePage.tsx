@@ -45,8 +45,6 @@ export const ChecklyAuthorizePage = () => {
         accessToken
       });
 
-      setIsLoading(false);
-
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/checkly/create",
         params: {
@@ -59,6 +57,8 @@ export const ChecklyAuthorizePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 

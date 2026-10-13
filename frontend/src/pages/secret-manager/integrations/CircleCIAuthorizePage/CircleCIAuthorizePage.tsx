@@ -44,8 +44,6 @@ export const CircleCIAuthorizePage = () => {
         accessToken: apiKey
       });
 
-      setIsLoading(false);
-
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/circleci/create",
         params: {
@@ -58,6 +56,8 @@ export const CircleCIAuthorizePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 

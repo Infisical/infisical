@@ -160,8 +160,6 @@ export const AWSParameterStoreConfigurePage = () => {
           ...(shouldDisableDelete && { shouldDisableDelete })
         }
       });
-
-      setIsLoading(false);
       setPathErrorText("");
 
       navigate({
@@ -176,6 +174,8 @@ export const AWSParameterStoreConfigurePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 

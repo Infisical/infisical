@@ -41,8 +41,6 @@ export const Cloud66AuthorizePage = () => {
         accessToken: apiKey
       });
 
-      setIsLoading(false);
-
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/cloud-66/create",
         params: {
@@ -55,6 +53,8 @@ export const Cloud66AuthorizePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
