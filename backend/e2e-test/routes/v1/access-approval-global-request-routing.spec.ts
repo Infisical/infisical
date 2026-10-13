@@ -27,7 +27,7 @@ const createLegacyPolicy = async (dto: { name: string; secretPath: string; id?: 
 
   const [policy] = await db(TableName.AccessApprovalPolicy)
     .insert({
-      id: dto.id,
+      ...(dto.id ? { id: dto.id } : {}),
       name: dto.name,
       secretPath: dto.secretPath,
       envId: env.id,
