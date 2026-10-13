@@ -304,6 +304,20 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         ]
       });
 
+      // counted separately because the join above drops resources whose findings are all resolved
+      const resourceCounts = await (tx || db.replicaNode())(TableName.SecretScanningResource)
+        .whereIn(
+          "dataSourceId",
+          results.map(({ id }) => id)
+        )
+        .groupBy("dataSourceId")
+        .select("dataSourceId")
+        .count({ count: "*" });
+
+      const resourceCountByDataSourceId = new Map(
+        resourceCounts.map(({ dataSourceId, count }) => [dataSourceId, Number(count)])
+      );
+
       return results.map(({ scans, findings, ...dataSource }) => {
         const lastScan =
           scans && scans.length
@@ -317,7 +331,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           lastScanStatus: lastScan?.status ?? null,
           lastScanStatusMessage: lastScan?.statusMessage ?? null,
           lastScannedAt: lastScan?.createdAt ?? null,
-          unresolvedFindings: scans.length ? findings.length : null
+          unresolvedFindings: scans.length ? findings.length : null,
+          resourceCount: resourceCountByDataSourceId.get(dataSource.id) ?? 0
         };
       });
     } catch (error) {

@@ -27,6 +27,7 @@ export type TSecretScanningDataSourceWithDetails = TSecretScanningDataSource & {
   lastScanStatus: SecretScanningScanStatus | null;
   lastScanStatusMessage: string | null;
   unresolvedFindings: number | null;
+  resourceCount: number;
 };
 
 export type TListSecretScanningDataSources = {
