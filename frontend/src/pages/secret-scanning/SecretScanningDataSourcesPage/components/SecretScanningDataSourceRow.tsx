@@ -73,8 +73,8 @@ export const SecretScanningDataSourceRow = ({ dataSource }: Props) => {
             </Badge>
           </TooltipTrigger>
           <TooltipContent className="max-w-sm">
-            The external data source has been removed and can no longer be scanned. Delete this
-            data source and reconnect it.
+            The external data source has been removed and can no longer be scanned. Delete this data
+            source and reconnect it.
           </TooltipContent>
         </Tooltip>
       );

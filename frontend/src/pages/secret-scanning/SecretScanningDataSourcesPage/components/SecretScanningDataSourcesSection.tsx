@@ -212,7 +212,9 @@ export const SecretScanningDataSourcesSection = () => {
             <DatabaseIcon />
           </EmptyMedia>
           <EmptyTitle>No data sources yet</EmptyTitle>
-          <EmptyDescription>Add a data source to start scanning it for leaked secrets.</EmptyDescription>
+          <EmptyDescription>
+            Add a data source to start scanning it for leaked secrets.
+          </EmptyDescription>
         </EmptyHeader>
       </Empty>
     );
@@ -332,10 +334,7 @@ export const SecretScanningDataSourcesSection = () => {
                   filteredDataSources
                     .slice(offset, perPage * page)
                     .map((dataSource) => (
-                      <SecretScanningDataSourceRow
-                        key={dataSource.id}
-                        dataSource={dataSource}
-                      />
+                      <SecretScanningDataSourceRow key={dataSource.id} dataSource={dataSource} />
                     ))}
               </TableBody>
             </Table>
