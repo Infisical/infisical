@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, Check, EditIcon, Info, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarX2Icon, Check, EditIcon, Info, Sparkles } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -814,6 +814,7 @@ export const ProductSheet = ({
           orgId={orgId}
           productId={prod.id}
           action="cancel_trial"
+          icon={<CalendarX2Icon />}
           title={
             upgradeTrialPlan
               ? `End your ${upgradeTrialPlan} trial`

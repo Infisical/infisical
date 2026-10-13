@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { CalendarX2Icon, Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -73,6 +74,7 @@ export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props
         orgId={orgId}
         productId={product.id}
         action="cancel_subscription"
+        icon={<CalendarX2Icon />}
         title="Cancel your subscription?"
         description={`${product.name} is the only product on your subscription, so removing it ends your subscription. ${hasCommitment ? COMMITMENT_MESSAGE : CREDIT_MESSAGE}`}
         reasonLabel="Why are you canceling?"
@@ -96,6 +98,7 @@ export const RemoveProductModal = ({ orgId, product, onClose, onRemoved }: Props
       orgId={orgId}
       productId={product.id}
       action="remove_product"
+      icon={<Trash2Icon />}
       title={`Remove ${product.name}?`}
       description={`${product.name} is removed right away. The unused time you already paid for is credited to your next invoice, and your other products are unaffected.`}
       reasonLabel={`Why are you removing ${product.name}?`}
