@@ -43,7 +43,7 @@ export const WebhookHeadersField = ({ index }: Props) => {
                 />
                 <FieldError errors={[headerErrors?.[i]?.key]} />
               </Field>
-              <Field className="grow">
+              <Field className="min-w-0 flex-1">
                 <Input
                   aria-label="Header value"
                   placeholder="production"

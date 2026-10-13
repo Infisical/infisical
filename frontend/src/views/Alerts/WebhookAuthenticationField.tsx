@@ -74,10 +74,14 @@ export const WebhookAuthenticationField = ({ index }: Props) => {
               secretPlaceholder = needsReentry ? REENTER_PLACEHOLDER : KEEP_PLACEHOLDER;
 
             return (
-              <TabsContent key={type} value={type} className="mt-0 flex flex-col gap-2">
-                <div className="flex items-start gap-2">
+              <TabsContent key={type} value={type} className="@container mt-0 flex flex-col gap-2">
+                <div className="flex flex-col gap-2 @md:flex-row @md:items-start">
                   {name && (
-                    <Field className={type === WebhookAuthType.Basic ? "min-w-0 flex-1" : "w-2/5"}>
+                    <Field
+                      className={
+                        type === WebhookAuthType.Basic ? "min-w-0 @md:flex-1" : "@md:w-2/5"
+                      }
+                    >
                       <Input
                         aria-label={name.label}
                         placeholder={name.placeholder}
@@ -87,7 +91,7 @@ export const WebhookAuthenticationField = ({ index }: Props) => {
                       <FieldError errors={[channelErrors?.[name.field]]} />
                     </Field>
                   )}
-                  <Field className="min-w-0 flex-1">
+                  <Field className="min-w-0 @md:flex-1">
                     <ChannelSecretInput
                       id={`channel-${index}-${secret.field}`}
                       ariaLabel={secret.label}
