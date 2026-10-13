@@ -72,7 +72,7 @@ To find out which kind of alert sent a request, read `data.alert.resourceType`:
 
 <Tabs>
   <Tab title="Expiration">
-    ```json
+    ```json expandable
     {
       "specversion": "1.0",
       "type": "com.infisical.cert-manager.application.certificate.expiry",
@@ -129,7 +129,7 @@ To find out which kind of alert sent a request, read `data.alert.resourceType`:
   <Tab title="Revocation">
     Revocation items also include a **Revocation Reason** field. Issuance and renewal requests have the same shape without that field.
 
-    ```json
+    ```json expandable
     {
       "specversion": "1.0",
       "type": "com.infisical.cert-manager.application.certificate.revocation",
@@ -185,7 +185,7 @@ To find out which kind of alert sent a request, read `data.alert.resourceType`:
   <Tab title="Certificate Manager alert">
     A Certificate Manager alert sends the same payload as an application alert, with `resourceType` set to `cert-manager`. This example shows a revocation:
 
-    ```json
+    ```json expandable
     {
       "specversion": "1.0",
       "type": "com.infisical.cert-manager.certificate.revocation",
@@ -239,7 +239,7 @@ To find out which kind of alert sent a request, read `data.alert.resourceType`:
     ```
   </Tab>
   <Tab title="Signer certificate expiration">
-    ```json
+    ```json expandable
     {
       "specversion": "1.0",
       "type": "com.infisical.cert-manager.signer.certificate.expiry",
