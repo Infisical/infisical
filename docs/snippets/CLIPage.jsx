@@ -1,4 +1,4 @@
-export const CLIPage = ({ title, description, children }) => {
+export const CLIPage = ({ title, description, movedAnchors = {}, children }) => {
   const rootRef = useRef(null);
 
   useEffect(() => {
@@ -15,7 +15,17 @@ export const CLIPage = ({ title, description, children }) => {
     // fonts and sticky headings settle), which pushes the target down. Keep realigning while the
     // page resizes, until the reader scrolls on their own or the layout has had time to settle.
     let stopAligning = () => {};
-    const hash = decodeURIComponent(window.location.hash.slice(1));
+    let hash = decodeURIComponent(window.location.hash.slice(1));
+    // Links to a command's old anchor are already published, so when a command moves under
+    // another one, `movedAnchors` maps the old id prefix to the new one. The longest prefix wins,
+    // so a subcommand that moved somewhere other than its parent can have its own entry.
+    const movedFrom = Object.keys(movedAnchors)
+      .filter((old) => hash === old || hash.startsWith(`${old}-`))
+      .sort((a, b) => b.length - a.length)[0];
+    if (movedFrom && !document.getElementById(hash)) {
+      hash = movedAnchors[movedFrom] + hash.slice(movedFrom.length);
+      window.history.replaceState(window.history.state, "", `#${hash}`);
+    }
     const target = hash ? document.getElementById(hash) : null;
     
     let pinned = target ? target.closest("[data-cli-command]") : null;
