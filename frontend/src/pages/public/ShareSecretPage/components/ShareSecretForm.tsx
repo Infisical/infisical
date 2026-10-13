@@ -11,8 +11,7 @@ import {
   ForwardIcon,
   Info,
   Lock,
-  MailCheck,
-  SlidersHorizontal
+  MailCheck
 } from "lucide-react";
 import { z } from "zod";
 
@@ -224,6 +223,14 @@ export const ShareSecretForm = ({
 
   const resolvedExpiry = formatExpiry(selectedExpiresIn);
 
+  const isValueLocked = value !== undefined;
+  const constraintCount = [
+    isLimitingView,
+    Boolean(watch("password")),
+    !isPublic && isOrgAccess,
+    !isPublic && parseRecipients(watch("emails")).length > 0
+  ].filter(Boolean).length;
+
   const onFormSubmit = async ({
     name,
     password,
@@ -380,10 +387,16 @@ export const ShareSecretForm = ({
                   placeholder="Enter sensitive data to share via an encrypted link"
                   {...field}
                   id="share-secret-value"
-                  containerClassName="min-h-16 items-start"
-                  isReadOnly={value !== undefined}
+                  containerClassName="min-h-16 items-start py-1"
+                  isReadOnly={isValueLocked}
                   isError={Boolean(error)}
                 />
+                {isValueLocked && (
+                  <FieldDescription>
+                    Locked to the stored value, so the link shares exactly what is saved in
+                    Infisical.
+                  </FieldDescription>
+                )}
                 {error && <FieldError>{error.message}</FieldError>}
               </Field>
             )}
@@ -437,11 +450,12 @@ export const ShareSecretForm = ({
           <AccordionItem value="options">
             <AccordionTrigger>
               <span className="flex flex-1 items-center justify-between gap-3">
-                <span className="inline-flex items-center gap-2">
-                  <SlidersHorizontal className="size-4 text-accent" />
-                  More Options
+                More Options
+                <span className="text-xs font-normal text-muted">
+                  {constraintCount === 0
+                    ? "No constraints"
+                    : `${constraintCount} constraint${constraintCount === 1 ? "" : "s"}`}
                 </span>
-                <span className="text-xs font-normal text-muted">Password, views, delivery</span>
               </span>
             </AccordionTrigger>
             <AccordionContent className="flex flex-col gap-6 p-5">
