@@ -12,7 +12,7 @@ export const PkiDocsUrls = {
 
   // Overview
   overview: `${PKI_DOCS_BASE_URL}/overview`,
-  gettingStarted: `${PKI_DOCS_BASE_URL}/getting-started`,
+  gettingStarted: `${PKI_DOCS_BASE_URL}/overview`,
   migration: `${PKI_DOCS_BASE_URL}/migration`,
 
   // Quick starts
