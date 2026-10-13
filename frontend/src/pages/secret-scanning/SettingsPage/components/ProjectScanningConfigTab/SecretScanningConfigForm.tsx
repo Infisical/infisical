@@ -74,8 +74,8 @@ export const SecretScanningConfigForm = ({ config }: Props) => {
                       }
                       aria-label="Project configuration"
                       {...field}
-                      rows={3}
-                      className="min-h-144 resize-y"
+                      rows={28}
+                      className="resize-y"
                       isError={Boolean(error)}
                       disabled={!isAllowed}
                     />
