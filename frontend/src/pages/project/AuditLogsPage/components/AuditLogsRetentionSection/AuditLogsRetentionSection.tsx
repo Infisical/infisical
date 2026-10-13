@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   Input
@@ -30,7 +31,7 @@ import { usePopUp } from "@app/hooks";
 import { useUpdateWorkspaceAuditLogsRetention } from "@app/hooks/api/projects/queries";
 
 const formSchema = z.object({
-  auditLogsRetentionDays: z.coerce.number().min(0)
+  auditLogsRetentionDays: z.coerce.number().int().min(0).max(36_500)
 });
 
 type TForm = z.infer<typeof formSchema>;
@@ -57,6 +58,9 @@ export const AuditLogsRetentionSection = () => {
 
   if (!currentProject) return null;
 
+  // A project value of 0 falls back to the plan, so under a plan with no limit it reads as unlimited.
+  const isPlanRetentionUnlimited = subscription?.auditLogsRetentionDays === null;
+
   const handleAuditLogsRetentionSubmit = async ({ auditLogsRetentionDays }: TForm) => {
     if (!subscription?.auditLogs) {
       handlePopUpOpen("upgradePlan", {
@@ -66,7 +70,10 @@ export const AuditLogsRetentionSection = () => {
       return;
     }
 
-    if (subscription && auditLogsRetentionDays > subscription?.auditLogsRetentionDays) {
+    if (
+      subscription?.auditLogsRetentionDays != null &&
+      auditLogsRetentionDays > subscription.auditLogsRetentionDays
+    ) {
       handlePopUpOpen("upgradePlan", {
         text: "Updating audit logs retention period to a higher value can be unlocked if you upgrade to Infisical Pro plan."
       });
@@ -115,12 +122,19 @@ export const AuditLogsRetentionSection = () => {
                   <Input
                     id="audit-logs-retention-days"
                     {...field}
+                    value={isPlanRetentionUnlimited && !field.value ? "" : field.value}
+                    placeholder={isPlanRetentionUnlimited ? "Unlimited" : undefined}
                     type="number"
                     min={1}
                     step={1}
                     disabled={!canEdit}
                     isError={Boolean(error)}
                   />
+                  {isPlanRetentionUnlimited && (
+                    <FieldDescription>
+                      Leave empty to use your plan&apos;s retention, which has no limit.
+                    </FieldDescription>
+                  )}
                   <FieldError>{error?.message}</FieldError>
                 </Field>
               )}
