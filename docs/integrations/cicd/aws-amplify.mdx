@@ -39,8 +39,8 @@ This approach enables you to fetch secrets from Infisical during Amplify build t
           phases:
             preBuild:
               commands:
-        - sudo curl -1sLf 'https://artifacts-cli.infisical.com/setup.rpm.sh' | sudo -E bash
-        - sudo yum -y install infisical
+                - sudo curl -1sLf 'https://artifacts-cli.infisical.com/setup.rpm.sh' | sudo -E bash
+                - sudo yum -y install infisical
         ```
       </Step>
 
@@ -52,9 +52,9 @@ This approach enables you to fetch secrets from Infisical during Amplify build t
           phases:
             build:
               commands:
-        - INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=${INFISICAL_MACHINE_IDENTITY_CLIENT_ID} --client-secret=${INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET} --silent --plain)
-            - infisical export --format=dotenv > .env
-            - <rest of the commands>
+                - INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=${INFISICAL_MACHINE_IDENTITY_CLIENT_ID} --client-secret=${INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET} --silent --plain)
+                - infisical export --format=dotenv > .env
+                - <rest of the commands>
         ```
       </Step>
     </Steps>
@@ -82,8 +82,8 @@ This approach enables you to fetch secrets from Infisical during Amplify build t
           phases:
             preBuild:
               commands:
-        - sudo curl -1sLf 'https://artifacts-cli.infisical.com/setup.rpm.sh' | sudo -E bash
-        - sudo yum -y install infisical
+                - sudo curl -1sLf 'https://artifacts-cli.infisical.com/setup.rpm.sh' | sudo -E bash
+                - sudo yum -y install infisical
         ```
       </Step>
       <Step title="Modify the build command">
@@ -94,9 +94,9 @@ This approach enables you to fetch secrets from Infisical during Amplify build t
           phases:
             build:
               commands:
-        - INFISICAL_TOKEN=${INFISICAL_TOKEN}
-            - infisical export --format=dotenv > .env
-            - <rest of the commands>
+                - INFISICAL_TOKEN=${INFISICAL_TOKEN}
+                - infisical export --format=dotenv > .env
+                - <rest of the commands>
         ```
       </Step>
     </Steps>
