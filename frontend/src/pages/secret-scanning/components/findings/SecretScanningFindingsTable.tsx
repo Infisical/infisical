@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { useState } from "react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { ChevronDownIcon, FilterIcon, ShieldCheckIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -9,7 +9,11 @@ import {
   Button,
   Card,
   CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Checkbox,
+  DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -96,7 +100,7 @@ const ResourceFilter = ({ dataSource, value, onChange }: ResourceFilterProps) =>
           <ChevronDownIcon />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="max-h-80 thin-scrollbar min-w-64 overflow-y-auto">
+      <DropdownMenuContent align="end">
         <DropdownMenuRadioGroup
           value={value ?? ALL_OPTION}
           onValueChange={(next) => onChange(next === ALL_OPTION ? null : next)}
@@ -119,7 +123,7 @@ type Props = {
   initialStatus?: FindingsStatusFilter;
   initialDataSourceId?: string;
   initialResourceId?: string;
-  cardHeader?: ReactNode;
+  description: string;
 };
 
 export const SecretScanningFindingsTable = ({
@@ -127,7 +131,7 @@ export const SecretScanningFindingsTable = ({
   initialStatus = SecretScanningFindingStatus.Unresolved,
   initialDataSourceId,
   initialResourceId,
-  cardHeader
+  description
 }: Props) => {
   const { currentProject } = useProject();
   const isScoped = Boolean(dataSource);
@@ -326,180 +330,185 @@ export const SecretScanningFindingsTable = ({
   return (
     <>
       <Card>
-        {cardHeader}
-        <CardContent className="flex flex-wrap items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <FilterIcon />
-                Status:{" "}
-                {statusFilter === "all"
-                  ? "All"
-                  : SECRET_SCANNING_FINDING_STATUS_MAP[statusFilter].name}
-                <ChevronDownIcon />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-48">
-              <DropdownMenuRadioGroup
-                value={statusFilter}
-                onValueChange={(value) =>
-                  applyFilterChange(() => setStatusFilter(value as FindingsStatusFilter))
-                }
-              >
-                {SECRET_SCANNING_FINDING_STATUS_ORDER.map((status) => {
-                  const { Icon, className, name } = SECRET_SCANNING_FINDING_STATUS_MAP[status];
-                  return (
-                    <DropdownMenuRadioItem key={status} value={status}>
-                      <Icon className={className} />
-                      {name}
-                    </DropdownMenuRadioItem>
-                  );
-                })}
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioItem value={ALL_OPTION}>All</DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {!isScoped && (
+        <CardHeader>
+          <CardTitle>
+            Findings
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/usage#findings" />
+          </CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-4 flex flex-wrap items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
-                  Data Source: {selectedDataSource?.name ?? "All"}
+                  <FilterIcon />
+                  Status:{" "}
+                  {statusFilter === "all"
+                    ? "All"
+                    : SECRET_SCANNING_FINDING_STATUS_MAP[statusFilter].name}
                   <ChevronDownIcon />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="max-h-80 thin-scrollbar min-w-64 overflow-y-auto"
-              >
+              <DropdownMenuContent align="end">
                 <DropdownMenuRadioGroup
-                  value={dataSourceFilter ?? ALL_OPTION}
+                  value={statusFilter}
                   onValueChange={(value) =>
-                    applyFilterChange(() => {
-                      setDataSourceFilter(value === ALL_OPTION ? null : value);
-                      setResourceFilter(null);
-                    })
+                    applyFilterChange(() => setStatusFilter(value as FindingsStatusFilter))
                   }
                 >
-                  <DropdownMenuRadioItem value={ALL_OPTION}>All Data Sources</DropdownMenuRadioItem>
+                  {SECRET_SCANNING_FINDING_STATUS_ORDER.map((status) => {
+                    const { Icon, className, name } = SECRET_SCANNING_FINDING_STATUS_MAP[status];
+                    return (
+                      <DropdownMenuRadioItem key={status} value={status}>
+                        <Icon className={className} />
+                        {name}
+                      </DropdownMenuRadioItem>
+                    );
+                  })}
                   <DropdownMenuSeparator />
-                  {dataSources.map((option) => (
-                    <DropdownMenuRadioItem key={option.id} value={option.id}>
-                      <ProviderIcon
-                        alt={`${SECRET_SCANNING_DATA_SOURCE_MAP[option.type].name} data source`}
-                        icon={SECRET_SCANNING_DATA_SOURCE_MAP[option.type].image}
-                        className="size-4"
-                      />
-                      <span className="truncate">{option.name}</span>
-                    </DropdownMenuRadioItem>
-                  ))}
+                  <DropdownMenuRadioItem value={ALL_OPTION}>All</DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
             </DropdownMenu>
-          )}
-          {selectedDataSource && (
-            <ResourceFilter
-              dataSource={selectedDataSource}
-              value={resourceFilter}
-              onChange={(value) => applyFilterChange(() => setResourceFilter(value))}
-            />
-          )}
-        </CardContent>
-
-        {showEmpty ? (
-          <CardContent>{renderEmpty()}</CardContent>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-0">
-                  <Checkbox
-                    aria-label="Select all findings on this page"
-                    isChecked={isPageSelected}
-                    isDisabled={isPending || !pageIds.length}
-                    onCheckedChange={() => setSelectedIds(isPageSelected ? [] : pageIds)}
-                  />
-                </TableHead>
-                {renderSortableHead(SecretScanningFindingOrderBy.ResourceName, resourceLabel)}
-                {renderSortableHead(SecretScanningFindingOrderBy.Rule, "Rule")}
-                {renderSortableHead(SecretScanningFindingOrderBy.Author, "Author")}
-                {renderSortableHead(SecretScanningFindingOrderBy.CreatedAt, "Detected", "w-36")}
-                {renderSortableHead(SecretScanningFindingOrderBy.Status, "Status", "w-36")}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isPending &&
-                Array.from({ length: 8 }).map((_, i) => (
-                  <TableRow key={`finding-skeleton-${i + 1}`}>
-                    <TableCell>
-                      <Skeleton className="size-4" />
-                    </TableCell>
-                    {Array.from({ length: 5 }).map((__, j) => (
-                      <TableCell key={`finding-skeleton-cell-${j + 1}`}>
-                        <Skeleton className="h-4 w-full" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              {!isPending &&
-                findings.map((finding) => {
-                  const isSelected = selectedIds.includes(finding.id);
-                  const source = SECRET_SCANNING_DATA_SOURCE_MAP[finding.dataSourceType];
-
-                  return (
-                    <TableRow
-                      key={finding.id}
-                      data-state={isSelected ? "selected" : undefined}
-                      onClick={() => setOpenFinding(finding)}
-                    >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          aria-label={`Select finding ${finding.rule}`}
-                          isChecked={isSelected}
-                          onCheckedChange={() =>
-                            setSelectedIds((prev) =>
-                              isSelected
-                                ? prev.filter((id) => id !== finding.id)
-                                : [...prev, finding.id]
-                            )
-                          }
+            {!isScoped && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    Data Source: {selectedDataSource?.name ?? "All"}
+                    <ChevronDownIcon />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuRadioGroup
+                    value={dataSourceFilter ?? ALL_OPTION}
+                    onValueChange={(value) =>
+                      applyFilterChange(() => {
+                        setDataSourceFilter(value === ALL_OPTION ? null : value);
+                        setResourceFilter(null);
+                      })
+                    }
+                  >
+                    <DropdownMenuRadioItem value={ALL_OPTION}>
+                      All Data Sources
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuSeparator />
+                    {dataSources.map((option) => (
+                      <DropdownMenuRadioItem key={option.id} value={option.id}>
+                        <ProviderIcon
+                          alt={`${SECRET_SCANNING_DATA_SOURCE_MAP[option.type].name} data source`}
+                          icon={SECRET_SCANNING_DATA_SOURCE_MAP[option.type].image}
+                          className="size-4"
                         />
-                      </TableCell>
-                      <TableCell isTruncatable>
-                        <p className="flex items-center gap-1.5 truncate">
-                          {!isScoped && (
-                            <ProviderIcon
-                              alt={`${source.name} data source ${finding.dataSourceName}`}
-                              title={finding.dataSourceName}
-                              icon={source.image}
-                              className="size-3.5"
-                            />
-                          )}
-                          {finding.resourceName}
-                        </p>
-                        <p className="truncate text-xs text-muted">
-                          {finding.details.file}:{finding.details.startLine}
-                        </p>
-                      </TableCell>
-                      <TableCell isTruncatable>{finding.rule}</TableCell>
-                      <TableCell isTruncatable>{finding.details.author}</TableCell>
-                      <TableCell>
-                        {formatDistanceToNowStrict(new Date(finding.createdAt), {
-                          addSuffix: true
-                        })}
-                      </TableCell>
-                      <TableCell>
-                        <FindingStatusBadge status={finding.status} />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-            </TableBody>
-          </Table>
-        )}
+                        <span className="truncate">{option.name}</span>
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            {selectedDataSource && (
+              <ResourceFilter
+                dataSource={selectedDataSource}
+                value={resourceFilter}
+                onChange={(value) => applyFilterChange(() => setResourceFilter(value))}
+              />
+            )}
+          </div>
 
-        {!isPending && totalCount > 0 && (
-          <CardContent className="-mt-5 pt-0">
+          {showEmpty ? (
+            renderEmpty()
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-0">
+                    <Checkbox
+                      aria-label="Select all findings on this page"
+                      isChecked={isPageSelected}
+                      isDisabled={isPending || !pageIds.length}
+                      onCheckedChange={() => setSelectedIds(isPageSelected ? [] : pageIds)}
+                    />
+                  </TableHead>
+                  {renderSortableHead(SecretScanningFindingOrderBy.ResourceName, resourceLabel)}
+                  {renderSortableHead(SecretScanningFindingOrderBy.Rule, "Rule")}
+                  {renderSortableHead(SecretScanningFindingOrderBy.Author, "Author")}
+                  {renderSortableHead(SecretScanningFindingOrderBy.CreatedAt, "Detected", "w-36")}
+                  {renderSortableHead(SecretScanningFindingOrderBy.Status, "Status", "w-36")}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isPending &&
+                  Array.from({ length: 8 }).map((_, i) => (
+                    <TableRow key={`finding-skeleton-${i + 1}`}>
+                      <TableCell>
+                        <Skeleton className="size-4" />
+                      </TableCell>
+                      {Array.from({ length: 5 }).map((__, j) => (
+                        <TableCell key={`finding-skeleton-cell-${j + 1}`}>
+                          <Skeleton className="h-4 w-full" />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                {!isPending &&
+                  findings.map((finding) => {
+                    const isSelected = selectedIds.includes(finding.id);
+                    const source = SECRET_SCANNING_DATA_SOURCE_MAP[finding.dataSourceType];
+
+                    return (
+                      <TableRow
+                        key={finding.id}
+                        data-state={isSelected ? "selected" : undefined}
+                        onClick={() => setOpenFinding(finding)}
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            aria-label={`Select finding ${finding.rule}`}
+                            isChecked={isSelected}
+                            onCheckedChange={() =>
+                              setSelectedIds((prev) =>
+                                isSelected
+                                  ? prev.filter((id) => id !== finding.id)
+                                  : [...prev, finding.id]
+                              )
+                            }
+                          />
+                        </TableCell>
+                        <TableCell isTruncatable>
+                          <p className="flex items-center gap-1.5 truncate">
+                            {!isScoped && (
+                              <ProviderIcon
+                                alt={`${source.name} data source ${finding.dataSourceName}`}
+                                title={finding.dataSourceName}
+                                icon={source.image}
+                                className="size-3.5"
+                              />
+                            )}
+                            {finding.resourceName}
+                          </p>
+                          <p className="truncate text-xs text-muted">
+                            {finding.details.file}:{finding.details.startLine}
+                          </p>
+                        </TableCell>
+                        <TableCell isTruncatable>{finding.rule}</TableCell>
+                        <TableCell isTruncatable>{finding.details.author}</TableCell>
+                        <TableCell>
+                          {formatDistanceToNowStrict(new Date(finding.createdAt), {
+                            addSuffix: true
+                          })}
+                        </TableCell>
+                        <TableCell>
+                          <FindingStatusBadge status={finding.status} />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+              </TableBody>
+            </Table>
+          )}
+
+          {!isPending && totalCount > 0 && (
             <Pagination
               count={totalCount}
               page={page}
@@ -510,8 +519,8 @@ export const SecretScanningFindingsTable = ({
               }}
               onChangePerPage={(newPerPage) => applyFilterChange(() => setPerPage(newPerPage))}
             />
-          </CardContent>
-        )}
+          )}
+        </CardContent>
       </Card>
 
       <SelectedActionBar

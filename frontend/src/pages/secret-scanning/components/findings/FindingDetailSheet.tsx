@@ -1,7 +1,6 @@
 import { format } from "date-fns";
-import { ChevronDownIcon, ChevronUpIcon, CopyIcon, ExternalLinkIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronUpIcon, ExternalLinkIcon } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -56,11 +55,6 @@ export const FindingDetailSheet = ({
   onChangeStatus,
   isReopening
 }: Props) => {
-  const handleCopyFindingId = (id: string) => {
-    navigator.clipboard.writeText(id);
-    createNotification({ type: "info", text: "Finding ID copied to clipboard" });
-  };
-
   return (
     <Sheet open={Boolean(finding)} onOpenChange={(open) => !open && onClose()}>
       <SheetContent size="form" onOpenAutoFocus={(event) => event.preventDefault()}>
@@ -181,11 +175,7 @@ export const FindingDetailSheet = ({
               )}
             </div>
 
-            <SheetFooter className="justify-between border-t">
-              <Button variant="outline" size="sm" onClick={() => handleCopyFindingId(finding.id)}>
-                <CopyIcon />
-                Copy Finding ID
-              </Button>
+            <SheetFooter>
               <ProjectPermissionCan
                 I={ProjectPermissionSecretScanningFindingActions.Update}
                 a={ProjectPermissionSub.SecretScanningFindings}

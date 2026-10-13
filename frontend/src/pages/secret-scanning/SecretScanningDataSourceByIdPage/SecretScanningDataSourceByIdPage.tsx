@@ -5,13 +5,7 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, ContentLoader, EmptyState } from "@app/components/v2";
-import {
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  DocumentationLinkBadge,
-  ProviderIcon
-} from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
 import {
@@ -33,7 +27,7 @@ import {
 
 const PageContent = () => {
   const navigate = useNavigate();
-  const { type, dataSourceId, orgId } = useParams({
+  const { type, dataSourceId, projectId, orgId } = useParams({
     from: ROUTE_PATHS.SecretScanning.DataSourceByIdPage.id,
     select: (params) => ({
       ...params,
@@ -74,8 +68,11 @@ const PageContent = () => {
           leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
           onClick={() => {
             navigate({
-              to: "/organizations/$orgId/secret-scanning/data-sources",
-              params: { orgId }
+              to: "/organizations/$orgId/projects/secret-scanning/$projectId/data-sources",
+              params: {
+                orgId,
+                projectId
+              }
             });
           }}
         >
@@ -104,15 +101,7 @@ const PageContent = () => {
             >
               <SecretScanningFindingsTable
                 dataSource={dataSource}
-                cardHeader={
-                  <CardHeader>
-                    <CardTitle>
-                      Findings
-                      <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/findings" />
-                    </CardTitle>
-                    <CardDescription>Secrets detected in this data source.</CardDescription>
-                  </CardHeader>
-                }
+                description="Secrets detected in this data source."
               />
             </ProjectPermissionCan>
             <SecretScanningResourceSection dataSource={dataSource} />

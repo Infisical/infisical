@@ -36,6 +36,7 @@ export const SecretScanningFindingsPage = () => {
                 description="Secrets detected across every data source."
               />
               <SecretScanningFindingsTable
+                description="Review and triage leaked secrets."
                 initialStatus={status}
                 initialDataSourceId={dataSourceId}
                 initialResourceId={resourceId}
