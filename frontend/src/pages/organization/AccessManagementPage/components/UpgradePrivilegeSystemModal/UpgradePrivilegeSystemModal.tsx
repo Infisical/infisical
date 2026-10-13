@@ -185,7 +185,7 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
               <div className="mb-4">
                 <p className="mb-3 text-sm font-medium">Required preparation checklist:</p>
 
-                <FieldGroup className="gap-4">
+                <FieldGroup>
                   <Controller
                     control={control}
                     name="isProjectPrivilegesUpdated"
