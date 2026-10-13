@@ -35,8 +35,11 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
     "editDetails"
   ] as const);
 
+  const matchingProjectTemplate =
+    projectTemplate?.type === projectType ? projectTemplate : undefined;
   const templateName =
-    projectTemplate?.name ?? projectTemplates.find((t) => t.id === templateId)?.name;
+    matchingProjectTemplate?.name ??
+    projectTemplates.find((t) => t.id === templateId && t.type === projectType)?.name;
 
   const isInfisicalTemplate = templateName === InfisicalProjectTemplate.Default;
 
@@ -73,16 +76,16 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
             description={
               <>
                 {getProjectTitle(projectType)}
-                {projectTemplate?.description && (
+                {matchingProjectTemplate?.description && (
                   <>
                     <span className="px-2 text-surface-selected">&bull;</span>
-                    {projectTemplate.description}
+                    {matchingProjectTemplate.description}
                   </>
                 )}
               </>
             }
           >
-            {!isInfisicalTemplate && (
+            {matchingProjectTemplate && !isInfisicalTemplate && (
               <>
                 <OrgPermissionCan
                   I={OrgPermissionActions.Edit}
@@ -122,17 +125,17 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
           </div>
         </div>
       </div>
-      {projectTemplate && (
+      {matchingProjectTemplate && (
         <>
           <ProjectTemplateDetailsModal
             projectType={projectType}
             isOpen={popUp.editDetails.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("editDetails", isOpen)}
-            projectTemplate={projectTemplate}
+            projectTemplate={matchingProjectTemplate}
           />
           <DeleteActionModal
             isOpen={popUp.removeTemplate.isOpen}
-            title={`Are you sure you want to delete ${projectTemplate.name}?`}
+            title={`Are you sure you want to delete ${matchingProjectTemplate.name}?`}
             deleteKey="confirm"
             onChange={(isOpen) => handlePopUpToggle("removeTemplate", isOpen)}
             onDeleteApproved={handleRemoveTemplate}

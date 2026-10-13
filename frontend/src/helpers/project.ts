@@ -123,6 +123,16 @@ const PROJECT_TYPES_WITH_INTERMEDIATE_VIEW = new Set<ProjectType>([
 export const hasIntermediateProjectsView = (type: ProjectType) =>
   PROJECT_TYPES_WITH_INTERMEDIATE_VIEW.has(type);
 
+const PROJECT_TYPES_WITH_PROJECT_TEMPLATES = new Set<ProjectType>([
+  ProjectType.SecretManager,
+  ProjectType.KMS,
+  ProjectType.SecretScanning,
+  ProjectType.PAM
+]);
+
+export const hasProjectTemplates = (type: ProjectType) =>
+  PROJECT_TYPES_WITH_PROJECT_TEMPLATES.has(type);
+
 // Products that live at /organizations/$orgId/<slug> over a single implicit project, with no $projectId
 // in the URL.
 const ORG_SCOPED_PRODUCT_TYPES = new Set<ProjectType>([
