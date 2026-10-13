@@ -48,7 +48,7 @@ export const PkiCollectionItemsTable = ({ collectionId, type, handlePopUpOpen }:
     type
   });
 
-  if (!isPending && !data?.collectionItems?.length) {
+  if (!isPending && !data?.totalCount) {
     return (
       <Empty className="border">
         <EmptyHeader>

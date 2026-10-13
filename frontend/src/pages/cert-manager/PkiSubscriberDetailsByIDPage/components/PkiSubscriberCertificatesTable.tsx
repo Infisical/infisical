@@ -108,7 +108,7 @@ export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen
     })
   );
 
-  if (!isPending && !data?.certificates?.length) {
+  if (!isPending && !data?.totalCount) {
     return (
       <Empty className="border">
         <EmptyHeader>
