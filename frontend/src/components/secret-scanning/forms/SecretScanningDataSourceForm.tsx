@@ -138,6 +138,7 @@ export const SecretScanningDataSourceForm = ({
           <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-border-control">
             {FORM_TABS.map((tab, index) => (
               <Tab
+                disabled={isSubmitting}
                 onClick={async (e) => {
                   e.preventDefault();
                   const isEnabled = await isTabEnabled(index);
@@ -179,7 +180,7 @@ export const SecretScanningDataSourceForm = ({
         >
           {isFinalStep ? `${dataSource ? "Update" : "Create"} Data Source` : "Next"}
         </Button>
-        <Button type="button" onClick={handlePrev} variant="ghost">
+        <Button type="button" onClick={handlePrev} isDisabled={isSubmitting} variant="ghost">
           Back
         </Button>
       </div>
