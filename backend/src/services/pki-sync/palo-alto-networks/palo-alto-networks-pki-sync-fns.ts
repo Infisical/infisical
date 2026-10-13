@@ -198,11 +198,10 @@ const importKeyPair = async (
       `${cert.trim()}\n${encryptedKey}`
     );
   } catch (error) {
-    throw new PanOsApiError(
-      describePanOsError(error)
-        .replaceAll(passphrase, "[redacted]")
-        .replace(PASSPHRASE_VALUE_PATTERN, "value: [redacted]")
-    );
+    const message = describePanOsError(error)
+      .replaceAll(passphrase, "[redacted]")
+      .replace(PASSPHRASE_VALUE_PATTERN, "value: [redacted]");
+    throw error instanceof PanOsApiError ? new PanOsApiError(message) : new Error(message);
   }
 };
 
@@ -487,7 +486,7 @@ export const paloAltoNetworksPkiSyncFactory = ({
     deployPending: TDeployPendingMarker;
   }) => {
     const isDeployPending = existingSyncRecords.some((record) => hasSyncMetadataFlag(record, DEPLOY_PENDING_FLAG));
-    if (hasDeviceChanges || isDeployPending || deployPending.isMarked()) {
+    if (hasDeviceChanges || isDeployPending) {
       await commitAndPush(client, config, { panorama, description });
     }
     if (isDeployPending || deployPending.isMarked()) {
@@ -556,6 +555,7 @@ export const paloAltoNetworksPkiSyncFactory = ({
 
         succeeded.push(upload);
       } catch (error) {
+        if (!(error instanceof PanOsApiError) && !(error instanceof PkiSyncError)) hasDeviceChanges = true;
         failedUploads.push({ name: upload.mapKey, error: describePanOsError(error) });
         logger.error(
           { error },
