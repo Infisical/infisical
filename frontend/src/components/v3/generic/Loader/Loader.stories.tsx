@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { RefreshCwIcon, Trash2Icon } from "lucide-react";
 
@@ -126,6 +127,22 @@ export const VariantBrand: Story = {
       description: {
         story:
           "The colored mark and the standalone default tint. Choose a token variant when the loader needs to follow the surface's scope or semantic intent."
+      }
+    }
+  }
+};
+
+export const VariantProduct: Story = {
+  name: "Variant: Product",
+  args: {
+    variant: "product",
+    style: { "--product-color": "var(--color-product-kms)" } as CSSProperties
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Set --product-color to the product's existing token. This example uses the KMS token; the product-color utility resolves its light-theme tint just as it does for a product Button."
       }
     }
   }
