@@ -58,11 +58,7 @@ import {
   useProject,
   useUser
 } from "@app/context";
-import {
-  getProjectBaseURL,
-  getProjectLabel,
-  hidesProjects
-} from "@app/helpers/project";
+import { getProjectBaseURL, getProjectLabel, hidesProjects } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import {
   getUserTablePreference,

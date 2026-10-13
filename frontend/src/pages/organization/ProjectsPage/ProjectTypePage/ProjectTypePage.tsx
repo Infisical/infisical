@@ -85,6 +85,7 @@ import {
   PROJECT_TILE_STYLE,
   urlSlugToProjectType
 } from "@app/helpers/project";
+import { setSecretScanningActiveProject } from "@app/helpers/secretScanningActiveProject";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -271,9 +272,10 @@ export const ProjectTypePage = () => {
     if (projectType !== ProjectType.SecretScanning) return;
 
     if (secretScanningProjectId) {
+      setSecretScanningActiveProject(orgId, secretScanningProjectId);
       navigate({
-        to: "/organizations/$orgId/projects/secret-scanning/$projectId/data-sources",
-        params: { orgId, projectId: secretScanningProjectId }
+        to: "/organizations/$orgId/secret-scanning/data-sources",
+        params: { orgId }
       });
     } else if (isSecretScanningProjectError) {
       // Failed queries are not reported globally, so without this the page would stay blank.

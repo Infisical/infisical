@@ -201,7 +201,9 @@ export const Page = () => {
                   <TooltipTrigger asChild>
                     <Badge variant="info" className="ml-2">
                       <InfoIcon />{" "}
-                      {hidesProjects(currentProject?.type) ? "Your membership" : "Your project membership"}
+                      {hidesProjects(currentProject?.type)
+                        ? "Your membership"
+                        : "Your project membership"}
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent side="right">

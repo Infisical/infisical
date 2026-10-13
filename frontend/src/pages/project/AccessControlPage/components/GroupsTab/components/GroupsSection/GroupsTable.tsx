@@ -33,11 +33,7 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import {
-  getProjectBaseURL,
-  getProjectLabel,
-  hidesProjects
-} from "@app/helpers/project";
+import { getProjectBaseURL, getProjectLabel, hidesProjects } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,

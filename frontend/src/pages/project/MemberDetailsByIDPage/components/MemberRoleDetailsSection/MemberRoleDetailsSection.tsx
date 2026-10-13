@@ -165,9 +165,7 @@ export const MemberRoleDetailsSection = ({
     <>
       <Card>
         <CardHeader>
-          <CardTitle>
-            {hidesProjects(currentProject?.type) ? "Roles" : "Project Roles"}
-          </CardTitle>
+          <CardTitle>{hidesProjects(currentProject?.type) ? "Roles" : "Project Roles"}</CardTitle>
           <CardDescription>Manage roles assigned to this user</CardDescription>
           {!isOwnProjectMembershipDetails && hasRoles && (
             <CardAction>

@@ -90,9 +90,7 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
             </DetailValue>
           </Detail>
           <Detail>
-            <DetailLabel>
-              {`Joined ${projectLabel.toLowerCase()}`}
-            </DetailLabel>
+            <DetailLabel>{`Joined ${projectLabel.toLowerCase()}`}</DetailLabel>
             <DetailValue>{format(groupMembership.createdAt, "PPpp")}</DetailValue>
           </Detail>
         </DetailGroup>

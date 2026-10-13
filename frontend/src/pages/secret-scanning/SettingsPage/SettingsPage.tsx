@@ -16,7 +16,7 @@ import { ProjectScanningConfigTab } from "./components/ProjectScanningConfigTab"
 export const SettingsPage = () => {
   const { t } = useTranslation();
   const { selectedTab } = useSearch({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout/settings"
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/settings"
   });
 
   const { currentOrg } = useOrganization();

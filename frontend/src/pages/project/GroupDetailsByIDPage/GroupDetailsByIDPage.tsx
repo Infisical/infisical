@@ -71,9 +71,7 @@ const Page = () => {
     }
 
     createNotification({
-      text: `Successfully removed group from ${
-        getProjectLabel(currentProject.type).toLowerCase()
-      }`,
+      text: `Successfully removed group from ${getProjectLabel(currentProject.type).toLowerCase()}`,
       type: "success"
     });
 

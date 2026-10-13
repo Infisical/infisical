@@ -6,9 +6,9 @@ import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { getProjectLabel, hidesProjects } from "@app/helpers/project";
 import { withProjectPermission } from "@app/hoc";
 import { AppConnectionsTable } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
-import { getProjectLabel, hidesProjects } from "@app/helpers/project";
 
 export const AppConnectionsPage = withProjectPermission(
   () => {
@@ -26,7 +26,9 @@ export const AppConnectionsPage = withProjectPermission(
             <PageHeader
               scope={currentProject.type}
               className="w-full"
-              title={hidesProjects(currentProject.type) ? "App Connections" : "Project App Connections"}
+              title={
+                hidesProjects(currentProject.type) ? "App Connections" : "Project App Connections"
+              }
               description={`Manage ${getProjectLabel(currentProject.type)} App Connections`}
             />
 

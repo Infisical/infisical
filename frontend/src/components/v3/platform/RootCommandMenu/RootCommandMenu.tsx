@@ -68,6 +68,7 @@ import {
 import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
 import { getOrganizationSwitchDestination } from "@app/helpers/organizationSwitch";
 import { getProjectDisplayName, getProjectLucideIcon, getProjectTitle } from "@app/helpers/project";
+import { setSecretScanningActiveProject } from "@app/helpers/secretScanningActiveProject";
 import { useImplicitProduct } from "@app/hooks";
 import { useGetOrganizationGroups, useGetOrganizationsWithSubOrgs } from "@app/hooks/api";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
@@ -181,9 +182,10 @@ const navigateToProject = (
         params: { orgId: project.orgId }
       });
     case ProjectType.SecretScanning:
+      setSecretScanningActiveProject(project.orgId, project.id);
       return navigate({
-        to: "/organizations/$orgId/projects/secret-scanning/$projectId/data-sources",
-        params: { orgId: project.orgId, projectId: project.id }
+        to: "/organizations/$orgId/secret-scanning/data-sources",
+        params: { orgId: project.orgId }
       });
     case ProjectType.PAM:
       return navigate({
@@ -864,32 +866,32 @@ const getProjectPageItems = ({
         getProjectLandingItem({ navigate, project, organizationName }),
         item("findings", "Findings", SearchIcon, "findings", () =>
           navigate({
-            to: "/organizations/$orgId/projects/secret-scanning/$projectId/findings",
-            params: { orgId: project.orgId, projectId: project.id }
+            to: "/organizations/$orgId/secret-scanning/findings",
+            params: { orgId: project.orgId }
           })
         ),
         item("app-connections", "App Connections", BlocksIcon, "app-connections", () =>
           navigate({
-            to: "/organizations/$orgId/projects/secret-scanning/$projectId/app-connections",
-            params: { orgId: project.orgId, projectId: project.id }
+            to: "/organizations/$orgId/secret-scanning/app-connections",
+            params: { orgId: project.orgId }
           })
         ),
         item("access-control", "Access Control", ShieldIcon, "access-management", () =>
           navigate({
-            to: "/organizations/$orgId/projects/secret-scanning/$projectId/access-management",
-            params: { orgId: project.orgId, projectId: project.id }
+            to: "/organizations/$orgId/secret-scanning/access-management",
+            params: { orgId: project.orgId }
           })
         ),
         item("audit-logs", "Audit Logs", FileTextIcon, "audit-logs", () =>
           navigate({
-            to: "/organizations/$orgId/projects/secret-scanning/$projectId/audit-logs",
-            params: { orgId: project.orgId, projectId: project.id }
+            to: "/organizations/$orgId/secret-scanning/audit-logs",
+            params: { orgId: project.orgId }
           })
         ),
         item("settings", "Settings", SettingsIcon, "settings", () =>
           navigate({
-            to: "/organizations/$orgId/projects/secret-scanning/$projectId/settings",
-            params: { orgId: project.orgId, projectId: project.id },
+            to: "/organizations/$orgId/secret-scanning/settings",
+            params: { orgId: project.orgId },
             search: { selectedTab: "general" }
           })
         )

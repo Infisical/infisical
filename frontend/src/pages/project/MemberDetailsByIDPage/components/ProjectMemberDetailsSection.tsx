@@ -114,9 +114,7 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
             </Detail>
           )}
           <Detail>
-            <DetailLabel>
-              {`Joined ${projectLabel.toLowerCase()}`}
-            </DetailLabel>
+            <DetailLabel>{`Joined ${projectLabel.toLowerCase()}`}</DetailLabel>
             <DetailValue>{format(membership.createdAt, "PPpp")}</DetailValue>
           </Detail>
         </DetailGroup>
