@@ -15,15 +15,15 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     return (
       <div className="flex flex-row">
         <Detail>
-          <DetailLabel className="text-sm font-medium text-label">Organization</DetailLabel>
+          <DetailLabel>Organization</DetailLabel>
           <div className="text-sm text-label">{integration?.owner || "-"}</div>
         </Detail>
         <Detail>
-          <DetailLabel className="text-sm font-medium text-label">Project</DetailLabel>
+          <DetailLabel>Project</DetailLabel>
           <div className="text-sm text-label">{integration?.targetService || "-"}</div>
         </Detail>
         <Detail>
-          <DetailLabel className="text-sm font-medium text-label">Target Environment</DetailLabel>
+          <DetailLabel>Target Environment</DetailLabel>
           <div className="text-sm text-label">{integration?.targetEnvironment || "-"}</div>
         </Detail>
       </div>
@@ -91,7 +91,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
 
     return (
       <Detail>
-        <DetailLabel className="text-sm font-medium text-label">{formLabel()}</DetailLabel>
+        <DetailLabel>{formLabel()}</DetailLabel>
         <div className="text-sm text-label">{contents()}</div>
       </Detail>
     );
@@ -101,7 +101,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     if (integration.integration === "bitbucket") {
       return (
         <Detail>
-          <DetailLabel className="text-sm font-medium text-label">Workspace</DetailLabel>
+          <DetailLabel>Workspace</DetailLabel>
           <div className="text-sm text-label">
             {integration.targetEnvironment || integration.targetEnvironmentId}
           </div>
@@ -112,7 +112,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     if (integration.integration === "octopus-deploy") {
       return (
         <Detail>
-          <DetailLabel className="text-sm font-medium text-label">Space</DetailLabel>
+          <DetailLabel>Space</DetailLabel>
           <div className="text-sm text-label">{integration.targetEnvironment}</div>
         </Detail>
       );
@@ -124,7 +124,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     ) {
       return (
         <Detail>
-          <DetailLabel className="text-sm font-medium text-label">Target Environment</DetailLabel>
+          <DetailLabel>Target Environment</DetailLabel>
           <div className="text-sm text-label">
             {integration.targetEnvironment || integration.targetEnvironmentId}
           </div>
@@ -139,7 +139,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     if (integration.integration === "checkly" && integration.targetService) {
       return (
         <Detail>
-          <DetailLabel className="text-sm font-medium text-label">Group</DetailLabel>
+          <DetailLabel>Group</DetailLabel>
           <div className="text-sm text-label">{integration.targetService}</div>
         </Detail>
       );
@@ -148,7 +148,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     if (integration.integration === "circleci" && integration.owner) {
       return (
         <Detail>
-          <DetailLabel className="text-sm font-medium text-label">Organization</DetailLabel>
+          <DetailLabel>Organization</DetailLabel>
           <div className="text-sm text-label">{integration.owner}</div>
         </Detail>
       );
@@ -157,7 +157,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     if (integration.integration === "terraform-cloud" && integration.targetService) {
       return (
         <Detail>
-          <DetailLabel className="text-sm font-medium text-label">Category</DetailLabel>
+          <DetailLabel>Category</DetailLabel>
           <div className="text-sm text-label">{integration.targetService}</div>
         </Detail>
       );
@@ -166,7 +166,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     if (integration.integration === "checkly" || integration.integration === "github") {
       return (
         <Detail>
-          <DetailLabel className="text-sm font-medium text-label">Secret Suffix</DetailLabel>
+          <DetailLabel>Secret Suffix</DetailLabel>
           <div className="text-sm text-label">{integration?.metadata?.secretSuffix || "-"}</div>
         </Detail>
       );
@@ -175,9 +175,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     if (integration.integration === "bitbucket" && integration.targetServiceId) {
       return (
         <Detail>
-          <DetailLabel className="text-sm font-medium text-label">
-            Deployment Environment
-          </DetailLabel>
+          <DetailLabel>Deployment Environment</DetailLabel>
           <div className="text-sm text-label">{integration.targetService}</div>
         </Detail>
       );
@@ -186,7 +184,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     if (integration.integration === "windmill" && integration.url) {
       return (
         <Detail>
-          <DetailLabel className="text-sm font-medium text-label">Instance URL</DetailLabel>
+          <DetailLabel>Instance URL</DetailLabel>
           <div className="text-sm text-label">{integration.url}</div>
         </Detail>
       );
@@ -206,21 +204,23 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
 
         <div className="space-y-2 rounded-lg border border-border-subtle bg-surface-raised p-2">
           <Detail>
-            <DetailLabel className="text-sm font-medium text-label">Environment</DetailLabel>
+            <DetailLabel>Environment</DetailLabel>
             <div className="text-sm text-label">{integration.environment.name}</div>
           </Detail>
           <Detail>
-            <DetailLabel className="text-sm font-medium text-label">Secret Path</DetailLabel>
+            <DetailLabel>Secret Path</DetailLabel>
             <div className="text-sm text-label">{integration.secretPath}</div>
           </Detail>
         </div>
 
         <DetailLabel className="my-2">Destination</DetailLabel>
         <div className="space-y-2 rounded-lg border border-border-subtle bg-surface-raised p-2">
-          <DetailLabel className="text-sm font-medium text-label">Platform</DetailLabel>
-          <div className="text-sm text-label">
-            {integrationSlugNameMapping?.[integration.integration]}
-          </div>
+          <Detail>
+            <DetailLabel>Platform</DetailLabel>
+            <div className="text-sm text-label">
+              {integrationSlugNameMapping?.[integration.integration]}
+            </div>
+          </Detail>
 
           {specifcQoveryDetails()}
           {isNotAwsManagerOneToOneDetails()}
