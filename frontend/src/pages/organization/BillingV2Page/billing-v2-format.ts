@@ -30,6 +30,12 @@ export const billingV2ErrorCode = (error: unknown): string | undefined =>
 export const fmtMoney = (n: number, maximumFractionDigits = 0): string =>
   `$${Number(n).toLocaleString("en-US", { maximumFractionDigits })}`;
 
+// Whole dollars stay whole ("$408"); any fractional amount always shows cents ("$22.20", "$0.60").
+export const fmtMoneyCents = (n: number): string =>
+  Number.isInteger(n)
+    ? fmtMoney(n)
+    : `$${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 // Pluralize a singular dimension noun (the catalog's "noun" field) for display beside a count, since
 // a limit meter always reads as a plural quantity ("0 / 100 certificates"). Conservative: a noun that
 // already ends in "s" is left alone so a value the server sends plural isn't doubled.
