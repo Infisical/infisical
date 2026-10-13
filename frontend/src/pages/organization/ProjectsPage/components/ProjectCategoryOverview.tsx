@@ -32,7 +32,7 @@ import {
   getProjectTitle,
   projectTypeToUrlSlug
 } from "@app/helpers/project";
-import { setSecretScanningActiveProject } from "@app/helpers/secretScanningActiveProject";
+import { setSecretScanningActiveProjectCookie } from "@app/helpers/secretScanningActiveProject";
 import { useGetOrgProductStats, useGetUserProjects } from "@app/hooks/api";
 import { fetchAgentVaultProjectId } from "@app/hooks/api/agentVault/queries";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
@@ -413,7 +413,7 @@ export const ProjectCategoryOverview = () => {
   };
 
   const navigateToSecretScanning = (projectId: string) => {
-    if (currentOrg?.id) setSecretScanningActiveProject(currentOrg.id, projectId);
+    if (currentOrg?.id) setSecretScanningActiveProjectCookie(currentOrg.id, projectId);
     navigate({
       to: "/organizations/$orgId/secret-scanning/data-sources",
       params: { orgId: currentOrg?.id ?? "" }

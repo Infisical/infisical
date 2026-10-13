@@ -85,7 +85,7 @@ import {
   PROJECT_TILE_STYLE,
   urlSlugToProjectType
 } from "@app/helpers/project";
-import { setSecretScanningActiveProject } from "@app/helpers/secretScanningActiveProject";
+import { setSecretScanningActiveProjectCookie } from "@app/helpers/secretScanningActiveProject";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -272,7 +272,7 @@ export const ProjectTypePage = () => {
     if (projectType !== ProjectType.SecretScanning) return;
 
     if (secretScanningProjectId) {
-      setSecretScanningActiveProject(orgId, secretScanningProjectId);
+      setSecretScanningActiveProjectCookie(orgId, secretScanningProjectId);
       navigate({
         to: "/organizations/$orgId/secret-scanning/data-sources",
         params: { orgId }

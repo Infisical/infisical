@@ -10,7 +10,7 @@ import {
 
 import { apiRequest } from "@app/config/request";
 import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
-import { setSecretScanningActiveProject } from "@app/helpers/secretScanningActiveProject";
+import { setSecretScanningActiveProjectCookie } from "@app/helpers/secretScanningActiveProject";
 import { createWorkspace } from "@app/hooks/api/projects/queries";
 import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
@@ -178,7 +178,7 @@ export const pinProjectForNavigation = (orgId: string, project: Pick<Project, "i
   if (project.type === ProjectType.CertificateManager) {
     setCertManagerActiveProjectCookie(orgId, project.id);
   } else if (project.type === ProjectType.SecretScanning) {
-    setSecretScanningActiveProject(orgId, project.id);
+    setSecretScanningActiveProjectCookie(orgId, project.id);
   }
 };
 

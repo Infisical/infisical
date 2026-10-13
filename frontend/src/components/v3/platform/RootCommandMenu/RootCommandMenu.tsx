@@ -68,7 +68,7 @@ import {
 import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
 import { getOrganizationSwitchDestination } from "@app/helpers/organizationSwitch";
 import { getProjectDisplayName, getProjectLucideIcon, getProjectTitle } from "@app/helpers/project";
-import { setSecretScanningActiveProject } from "@app/helpers/secretScanningActiveProject";
+import { setSecretScanningActiveProjectCookie } from "@app/helpers/secretScanningActiveProject";
 import { useImplicitProduct } from "@app/hooks";
 import { useGetOrganizationGroups, useGetOrganizationsWithSubOrgs } from "@app/hooks/api";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
@@ -182,7 +182,7 @@ const navigateToProject = (
         params: { orgId: project.orgId }
       });
     case ProjectType.SecretScanning:
-      setSecretScanningActiveProject(project.orgId, project.id);
+      setSecretScanningActiveProjectCookie(project.orgId, project.id);
       return navigate({
         to: "/organizations/$orgId/secret-scanning/data-sources",
         params: { orgId: project.orgId }

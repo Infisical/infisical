@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { setSecretScanningActiveProject } from "@app/helpers/secretScanningActiveProject";
+import { setSecretScanningActiveProjectCookie } from "@app/helpers/secretScanningActiveProject";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -12,7 +12,7 @@ export const Route = createFileRoute(
 )({
   beforeLoad: ({ params, location }) => {
     if (UUID_RE.test(params.projectId)) {
-      setSecretScanningActiveProject(params.orgId, params.projectId);
+      setSecretScanningActiveProjectCookie(params.orgId, params.projectId);
     }
 
     // _splat arrives decoded, and a trailing slash leaves an empty segment behind.

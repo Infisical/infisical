@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
 import { useOrganization } from "@app/context";
-import { setSecretScanningActiveProject } from "@app/helpers/secretScanningActiveProject";
+import { setSecretScanningActiveProjectCookie } from "@app/helpers/secretScanningActiveProject";
 import { useImplicitProjectId } from "@app/hooks";
 import { useGetSecretScanningInstanceState } from "@app/hooks/api/secretScanningV2";
 
@@ -40,7 +40,7 @@ export const SecretScanningInstanceBanner = () => {
           <Link
             to="/organizations/$orgId/secret-scanning/data-sources"
             params={{ orgId: currentOrg.id }}
-            onClick={() => setSecretScanningActiveProject(currentOrg.id, activeProjectId)}
+            onClick={() => setSecretScanningActiveProjectCookie(currentOrg.id, activeProjectId)}
             className="underline underline-offset-2 hover:text-warning"
           >
             Go to Secret Scanning →
