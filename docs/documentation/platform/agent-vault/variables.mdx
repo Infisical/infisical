@@ -28,20 +28,17 @@ To add a variable to an access bundle:
     Under **Variables**, select **Add Variable**.
 
     <Frame>
-      <img src="/images/platform/agent-vault/variable-create.png" alt="The Add Variable dialog with GITHUB_TOKEN as the key, a hidden value, and Secret selected" />
+      <img src="/images/platform/agent-vault/variable-create.png" alt="The Add Variable dialog with GITHUB_TOKEN as the key and a hidden value" />
     </Frame>
 
   </Step>
   <Step>
-    Enter a **Key** and a **Value**.
+    Enter a **Key** and a **Value**. The value is hidden once you save it. To view it later, select the eye icon next to it in the **Variables** list. Each time someone views or copies a value, Infisical records it in the audit log.
 
     <Note>
     A key must start with a letter, use only uppercase letters, numbers, and underscores, and can be up to 64 characters long. Two variables in the same access bundle can't have the same key.
     </Note>
 
-  </Step>
-  <Step>
-    Leave **Secret** selected to hide the value once you save it. If you're storing something that isn't sensitive, such as an organization ID, clear **Secret** so the value stays visible in the list.
   </Step>
   <Step>
     Select **Add Variable**. The variable appears in the **Variables** list.
@@ -123,7 +120,7 @@ To update a variable:
     In the **Variables** list, open the variable's actions menu and select **Edit**.
   </Step>
   <Step>
-    Update the key, the value, or whether the value is secret. If the variable is secret, leave **Value** blank to keep the current value.
+    Update the key or the value. Leave **Value** blank to keep the current value.
   </Step>
   <Step>
     Select **Save**.

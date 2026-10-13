@@ -1,5 +1,5 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, CircleAlertIcon, TriangleAlertIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -15,12 +15,14 @@ import { isOrgScopedProduct } from "@app/helpers/project";
 import type { NavItem, Submenu } from "./types";
 import { PROJECT_TYPE_PATH } from "./types";
 
-const NavDot = ({ variant }: { variant: NonNullable<NavItem["dotVariant"]> }) => (
+// Important, because the menu button sizes every icon inside it and recolors them while the item is active.
+const NavAlertIcon = ({ variant }: { variant: NonNullable<NavItem["alertVariant"]> }) => (
   <span className="ml-auto flex shrink-0">
-    <span
-      aria-hidden
-      className={twMerge("size-2 rounded-full", variant === "danger" ? "bg-danger" : "bg-warning")}
-    />
+    {variant === "danger" ? (
+      <CircleAlertIcon aria-hidden className="size-3.5! text-danger!" />
+    ) : (
+      <TriangleAlertIcon aria-hidden className="size-3.5! text-warning!" />
+    )}
     <span className="sr-only">Needs attention</span>
   </span>
 );
@@ -80,11 +82,11 @@ export const ProjectNavLink = ({
               {item.badgeCount}
             </Badge>
           )}
-          {item.dotVariant && <NavDot variant={item.dotVariant} />}
+          {item.alertVariant && <NavAlertIcon variant={item.alertVariant} />}
           <ChevronRight
             className={twMerge(
               "size-4 opacity-50",
-              !item.badgeCount && !item.dotVariant && "ml-auto"
+              !item.badgeCount && !item.alertVariant && "ml-auto"
             )}
           />
         </SidebarMenuButton>
@@ -121,7 +123,7 @@ export const ProjectNavLink = ({
               {item.badgeCount}
             </Badge>
           )}
-          {item.dotVariant && <NavDot variant={item.dotVariant} />}
+          {item.alertVariant && <NavAlertIcon variant={item.alertVariant} />}
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>

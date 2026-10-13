@@ -1,5 +1,6 @@
-import { useRef } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { InfiniteData, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
@@ -8,7 +9,12 @@ import { AgentVaultMemberType } from "./enums";
 import {
   createSessionLogChunkCache,
   decryptSessionLogPage,
+  doesGapFillLeaveAHole,
+  isLiveGapPossible,
+  isRetryableResult,
   mergeSessionLogPages,
+  SESSION_LOG_UPLOAD_GRACE_MS,
+  sessionLogChunkKey,
   TAgentVaultSessionLogChunkCache
 } from "./sessionLogDecrypt";
 import {
@@ -39,13 +45,16 @@ export const fetchAgentVaultProjectId = async () => {
   return data.projectId;
 };
 
-const SESSION_LOG_PAGE_RECORDS = 200;
-
-const SESSION_LOG_LIVE_RECORDS = 1000;
-
-const SESSION_LOG_LIVE_MAX_READS = 10;
-
 export const AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS = 15_000;
+
+const SESSION_LOG_GAP_FILL_INTERVAL_MS = 60_000;
+
+// The server's message when it can't read the bucket: the cause for an admin, a plain one for everyone else.
+export const getSessionLogStorageError = (error: unknown) =>
+  axios.isAxiosError<{ error?: string; message?: string }>(error) &&
+  error.response?.data?.error === "AgentVaultSessionLogStorageUnavailable"
+    ? (error.response.data.message ?? null)
+    : null;
 
 // Every key carries the org, because Agent Vault is org-scoped through the JWT rather than through a
 // path parameter: without it a switch to another org would serve the previous org's data from cache.
@@ -364,27 +373,40 @@ export const useGetAgentVaultSessionLogs = (
 
   // Reset during render so neither query fetches a new session into the old one's cache.
   const chunkCache = useRef<TAgentVaultSessionLogChunkCache | null>(null);
+  const lastGapFillAt = useRef(0);
+  const isGapPending = useRef(false);
   if (!chunkCache.current || chunkCache.current.sessionId !== sessionId) {
     chunkCache.current = createSessionLogChunkCache(sessionId ?? "");
+    lastGapFillAt.current = 0;
+    isGapPending.current = false;
   }
+  // Set when a gap fill couldn't reach the rows already shown, so some requests may be missing. Only a history load
+  // from the top that started after it can bring them back, since older pages lie below them.
+  const [unfilledGap, setUnfilledGap] = useState<{ sessionId: string; foundAt: number } | null>(
+    null
+  );
 
+  const historyKey = agentVaultKeys.sessionLogs(currentOrg.id, sessionId ?? "", range);
   const history = useInfiniteQuery({
-    queryKey: agentVaultKeys.sessionLogs(currentOrg.id, sessionId ?? "", range),
+    queryKey: historyKey,
     enabled: enabled && Boolean(sessionId),
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam, signal }) => {
       const cache = chunkCache.current as TAgentVaultSessionLogChunkCache;
+      const startedAt = Date.now();
       const { data } = await apiRequest.get<TAgentVaultSessionLogHistoryPage>(url, {
         params: {
-          limit: SESSION_LOG_PAGE_RECORDS,
           ...(pageParam ? { cursor: pageParam } : {}),
           ...(range.from ? { from: range.from } : {}),
           ...(range.to ? { to: range.to } : {})
         },
         signal
       });
+      if (!pageParam) setUnfilledGap((gap) => (gap && gap.foundAt < startedAt ? null : gap));
       return decryptSessionLogPage(data, cache, signal);
     },
+    // Trying again at once won't fix a bucket Infisical can't read; the panel offers Reload instead.
+    retry: (failureCount, error) => !getSessionLogStorageError(error) && failureCount < 1,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     placeholderData: (prev, prevQuery) =>
       sessionId && prevQuery?.queryKey.includes(sessionId) ? prev : undefined,
@@ -393,40 +415,117 @@ export const useGetAgentVaultSessionLogs = (
     gcTime: 0
   });
 
-  const liveFrom = history.isPlaceholderData ? undefined : history.data?.pages[0]?.liveCursor;
-  const isRecordable = history.data?.pages[0]?.sessionLogs.isRecordable !== false;
+  const isHistoryLoaded = Boolean(history.data) && !history.isPlaceholderData;
+  // While session logs are off, or for a session that can't be recorded, Infisical refuses every upload.
+  const canReceive =
+    history.data?.pages[0]?.sessionLogs.enabled !== false &&
+    history.data?.pages[0]?.sessionLogs.isRecordable !== false;
   const liveKey = agentVaultKeys.sessionLogsLive(currentOrg.id, sessionId ?? "", range);
 
   const live = useQuery({
     queryKey: liveKey,
-    enabled: enabled && isLive && isRecordable && Boolean(sessionId) && Boolean(liveFrom),
+    enabled: enabled && isLive && canReceive && Boolean(sessionId) && isHistoryLoaded,
     queryFn: async ({ signal }) => {
       const cache = chunkCache.current as TAgentVaultSessionLogChunkCache;
       let arrived =
         queryClient.getQueryData<TAgentVaultDecryptedSessionLogPage<TAgentVaultSessionLogTailPage>>(
           liveKey
         );
-      let cursor = arrived?.nextCursor ?? liveFrom;
-      let hasMore = true;
-      for (let read = 0; hasMore && read < SESSION_LOG_LIVE_MAX_READS; read += 1) {
-        // eslint-disable-next-line no-await-in-loop
-        const { data } = await apiRequest.get<TAgentVaultSessionLogTailPage>(tailUrl, {
-          params: { limit: SESSION_LOG_LIVE_RECORDS, cursor },
-          signal
-        });
-        // eslint-disable-next-line no-await-in-loop
-        arrived = mergeSessionLogPages(arrived, await decryptSessionLogPage(data, cache, signal));
-        cursor = data.nextCursor;
-        ({ hasMore } = data);
+
+      // The feed hands each chunk over once, so a chunk that hadn't landed yet is fetched again here, for as
+      // long as it may still be uploading.
+      const now = Date.now();
+      const uploading = (arrived?.chunks ?? []).filter((chunk) => {
+        const result = arrived?.decrypted[sessionLogChunkKey(chunk)];
+        const firstSeenAt = result?.gap?.firstSeenAt;
+        return (
+          result &&
+          isRetryableResult(result) &&
+          firstSeenAt != null &&
+          now < firstSeenAt + SESSION_LOG_UPLOAD_GRACE_MS
+        );
+      });
+      if (arrived && uploading.length) {
+        arrived = mergeSessionLogPages(
+          arrived,
+          await decryptSessionLogPage({ ...arrived, chunks: uploading }, cache, signal, {
+            isTail: true
+          })
+        );
       }
-      return arrived as TAgentVaultDecryptedSessionLogPage<TAgentVaultSessionLogTailPage>;
+
+      const lastPolledAt = arrived ? queryClient.getQueryState(liveKey)?.dataUpdatedAt : undefined;
+      const { data } = await apiRequest.get<TAgentVaultSessionLogTailPage>(tailUrl, {
+        params: arrived ? { cursor: arrived.nextCursor } : {},
+        signal
+      });
+
+      // The feed may have dropped chunks this tab never saw, so merge in the newest page of history, which lists
+      // them from the bucket. At most once a minute; a failed fill stays pending and is tried again on the next poll.
+      const polledAt = Date.now();
+      if (isLiveGapPossible({ lastPolledAt, now: polledAt, newChunkCount: data.chunks.length })) {
+        isGapPending.current = true;
+      }
+      if (
+        isGapPending.current &&
+        polledAt - lastGapFillAt.current > SESSION_LOG_GAP_FILL_INTERVAL_MS
+      ) {
+        try {
+          const { data: newest } = await apiRequest.get<TAgentVaultSessionLogHistoryPage>(url, {
+            params: {
+              ...(range.from ? { from: range.from } : {}),
+              ...(range.to ? { to: range.to } : {})
+            },
+            signal
+          });
+          const shown = new Set(
+            [
+              ...(arrived?.chunks ?? []),
+              ...(
+                queryClient.getQueryData<
+                  InfiniteData<TAgentVaultDecryptedSessionLogPage<TAgentVaultSessionLogHistoryPage>>
+                >(historyKey)?.pages ?? []
+              ).flatMap((page) => page.chunks)
+            ].map(sessionLogChunkKey)
+          );
+          const isGapUnfilled = doesGapFillLeaveAHole(newest, shown);
+          arrived = mergeSessionLogPages(
+            arrived,
+            await decryptSessionLogPage({ ...newest, nextCursor: data.nextCursor }, cache, signal)
+          );
+          lastGapFillAt.current = polledAt;
+          isGapPending.current = false;
+          // Only ever set here: rows from an earlier partial fill can make a later page look complete.
+          if (isGapUnfilled && sessionId) setUnfilledGap({ sessionId, foundAt: Date.now() });
+        } catch (error) {
+          if (signal.aborted) throw error;
+        }
+      }
+
+      // The tail page goes last: the merge keeps its cursor. It can list a chunk more than once, which counts
+      // toward a full feed above but is only opened once.
+      const tail = {
+        ...data,
+        chunks: [
+          ...new Map(data.chunks.map((chunk) => [sessionLogChunkKey(chunk), chunk])).values()
+        ]
+      };
+      return mergeSessionLogPages(
+        arrived,
+        await decryptSessionLogPage(tail, cache, signal, { isTail: true })
+      );
     },
     refetchInterval: AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
     staleTime: 0,
     gcTime: 0
   });
 
-  return { history, live, arrived: live.data };
+  return {
+    history,
+    live,
+    arrived: live.data,
+    isLiveGapUnfilled: Boolean(sessionId) && unfilledGap?.sessionId === sessionId
+  };
 };
 
 export const useListAgentVaultVariables = (accessBundleId: string, enabled = true) => {

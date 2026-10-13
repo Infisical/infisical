@@ -57,7 +57,7 @@ export const auditLogStreamServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
     const totalStreams = await auditLogStreamDAL.find({ orgId: actor.orgId });
-    if (totalStreams.length >= plan.auditLogStreamLimit) {
+    if (plan.auditLogStreamLimit !== null && totalStreams.length >= plan.auditLogStreamLimit) {
       throw new BadRequestError({
         message: "Failed to create Audit Log Stream: Plan limit reached. Contact Infisical to increase quota."
       });
