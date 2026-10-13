@@ -92,8 +92,6 @@ export const ChecklyConfigurePage = () => {
     try {
       if (!integrationAuth?.id) return;
 
-      setIsLoading(true);
-
       const targetApp = integrationAuthApps?.find(
         (integrationAuthApp) => integrationAuthApp.appId === targetAppId
       );
@@ -102,6 +100,8 @@ export const ChecklyConfigurePage = () => {
       );
 
       if (!targetApp) return;
+
+      setIsLoading(true);
 
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
