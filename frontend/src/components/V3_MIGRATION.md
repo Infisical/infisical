@@ -182,6 +182,14 @@ Use this recipe for every V2 `Modal`, `DeleteActionModal`, and `ConfirmActionMod
 
 V2 controls rendered inside the overlay move to V3 in the same change. A V2 `Select`, `FilterableSelect`, `Dropdown`, or `Tooltip` inside a V3 overlay does not join the layer contract. `FilterableSelect` becomes `Combobox`. Remove caller-owned `onPopupOpenChange` registries that only guard the parent Escape.
 
+**Creating an option with a form.** Dialog creation renders `DialogHeader` followed by `renderForm`. Return `<form className="flex min-h-0 flex-1 flex-col gap-6">` with `DialogBody` for fields and `DialogFooter` for actions. Do not pad the whole form or replace the footer with an inset button row. The dialog shell supplies its padding and the footer extends to its edges, as in the Dialog stories.
+
+Use `creation.mode = "sheet"` for multi-step forms, with the existing Sheet `size` (`form`, `wide`, or `workspace`). It uses the same `renderForm({ initialInput, complete, cancel })`, `isPending`, and `onDismiss(cancel)` contract as dialog creation. Return form content with a scrollable body and `SheetFooter`, not another `Sheet` or `SheetContent`. The default header requires `title` and `description`. Set `showHeader: false` when the form owns its header, and provide `SheetHeader`, `SheetTitle`, and `SheetDescription` inside `renderForm` for the accessible name and description. Follow the Header → body → Footer composition and body padding in the Sheet stories.
+
+Use one caller-owned pending state for the form and `creation.isPending`, including sub-wizard persistence. Route `onDismiss` and the form's Cancel through the same discard guard. Update controlled options and selection before calling `complete`. Completion closes the creation overlay and returns focus to the Combobox input. Cancel preserves the query and reopens the option popup without changing the selection. See `Combobox.creation.stories.tsx` for canonical dialog and sheet compositions.
+
+**Starting an in-place creation workflow.** Use `creation.mode = "action"` with `onAction(inputValue)` when the existing form switches into a sub-wizard without opening another overlay. The Create row remains available for empty, duplicate, and unmatched queries unless `isDisabled` is set. Selection closes only the picker and calls `onAction` with the trimmed query. This mode does not persist, track pending work, or select an option; the caller owns the workflow and any later option/selection updates.
+
 Before:
 
 ```tsx
