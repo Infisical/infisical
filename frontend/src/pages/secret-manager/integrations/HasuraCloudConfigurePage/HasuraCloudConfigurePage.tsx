@@ -6,8 +6,22 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "@app/components/v2";
-import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+import {
+  Button,
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  SecretPathInput,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -89,65 +103,77 @@ export const HasuraCloudConfigurePage = () => {
       <Helmet>
         <title>Set Up {APP_NAME} Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-border-control">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle={`Choose which environment or folder in Infisical you want to sync to ${APP_NAME} environment variables.`}
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
-              <img
-                src="/images/integrations/Hasura.svg"
-                height={30}
-                width={30}
-                alt={`${APP_NAME} logo`}
-              />
-            </div>
-            <span className="ml-2.5">{APP_NAME} Integration </span>
-            <a
-              target="_blank"
-              rel="noopener noreferrer"
-              href="https://infisical.com/docs/integrations/cloud/hasura-cloud"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <div className="flex flex-row items-center">
+              <div className="flex items-center pb-0.5">
+                <img
+                  src="/images/integrations/Hasura.svg"
+                  height={30}
+                  width={30}
+                  alt={`${APP_NAME} logo`}
                 />
               </div>
-            </a>
-          </div>
-        </CardTitle>
-
+              <span className="ml-2.5">{APP_NAME} Integration </span>
+              <a
+                target="_blank"
+                rel="noopener noreferrer"
+                href="https://infisical.com/docs/integrations/cloud/hasura-cloud"
+              >
+                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="text-xxs mb-[0.07rem] ml-1.5"
+                  />
+                </div>
+              </a>
+            </div>
+          </CardTitle>
+          <CardDescription>{`Choose which environment or folder in Infisical you want to sync to ${APP_NAME} environment variables.`}</CardDescription>
+        </CardHeader>
         <form onSubmit={handleSubmit(onFormSubmit)} className="flex w-full flex-col px-6">
           <Controller
             control={control}
             name="sourceEnvironment"
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Project Environment"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
+              <Field className="mb-4" data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="HasuraCloudConfigurePage-field-1">
+                  Project Environment
+                </FieldLabel>
                 <Select
-                  className="w-full border border-border-strong"
                   value={field.value}
                   onValueChange={(val) => {
                     field.onChange(val);
                   }}
                 >
-                  {currentProject?.environments.map((sourceEnvironment) => (
-                    <SelectItem
-                      value={sourceEnvironment.slug}
-                      key={`source-environment-${sourceEnvironment.slug}`}
-                    >
-                      {sourceEnvironment.name}
-                    </SelectItem>
-                  ))}
+                  <SelectTrigger
+                    id="HasuraCloudConfigurePage-field-1"
+                    aria-describedby="HasuraCloudConfigurePage-field-1-feedback"
+                    isError={Boolean(error)}
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currentProject?.environments.map((sourceEnvironment) => (
+                      <SelectItem
+                        value={sourceEnvironment.slug}
+                        key={`source-environment-${sourceEnvironment.slug}`}
+                      >
+                        {sourceEnvironment.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
-              </FormControl>
+                {Boolean(error) && (
+                  <FieldError id="HasuraCloudConfigurePage-field-1-feedback">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
 
@@ -155,9 +181,21 @@ export const HasuraCloudConfigurePage = () => {
             control={control}
             name="secretPath"
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="Secrets Path" errorText={error?.message} isError={Boolean(error)}>
-                <SecretPathInput {...field} environment={selectedSourceEnvironment} />
-              </FormControl>
+              <Field className="mb-4" data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="HasuraCloudConfigurePage-field-2">Secrets Path</FieldLabel>
+                <SecretPathInput
+                  id="HasuraCloudConfigurePage-field-2"
+                  aria-describedby="HasuraCloudConfigurePage-field-2-feedback"
+                  isError={Boolean(error)}
+                  {...field}
+                  environment={selectedSourceEnvironment}
+                />
+                {Boolean(error) && (
+                  <FieldError id="HasuraCloudConfigurePage-field-2-feedback">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
 
@@ -165,35 +203,47 @@ export const HasuraCloudConfigurePage = () => {
             control={control}
             name="appId"
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Hasura Cloud Project"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
+              <Field className="mb-4" data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="HasuraCloudConfigurePage-field-3">
+                  Hasura Cloud Project
+                </FieldLabel>
                 <Select
-                  className="w-full border border-border-strong"
                   value={field.value}
-                  isDisabled={integrationAuthApps?.length === 0}
                   onValueChange={(val) => {
                     field.onChange(val);
                   }}
+                  disabled={integrationAuthApps?.length === 0}
                 >
-                  {integrationAuthApps?.map((project) => (
-                    <SelectItem value={project.appId ?? ""} key={`project-id-${project.appId}`}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
+                  <SelectTrigger
+                    id="HasuraCloudConfigurePage-field-3"
+                    aria-describedby="HasuraCloudConfigurePage-field-3-feedback"
+                    isError={Boolean(error)}
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {integrationAuthApps?.map((project) => (
+                      <SelectItem value={project.appId ?? ""} key={`project-id-${project.appId}`}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
-              </FormControl>
+                {Boolean(error) && (
+                  <FieldError id="HasuraCloudConfigurePage-field-3-feedback">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
 
           <Button
             type="submit"
-            colorSchema="secondary"
-            variant="outline_bg"
             className="mt-2 mb-6 ml-auto"
-            isLoading={isSubmitting}
+            isPending={isSubmitting}
+            variant="project"
           >
             Create Integration
           </Button>

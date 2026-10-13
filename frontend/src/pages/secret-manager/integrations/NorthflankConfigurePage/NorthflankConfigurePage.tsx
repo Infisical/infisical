@@ -4,12 +4,17 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardHeader,
   CardTitle,
-  FormControl,
+  Field,
+  FieldLabel,
   Input,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -109,85 +114,117 @@ export const NorthflankConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthApps && targetAppId ? (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">Northflank Integration</CardTitle>
-        <FormControl label="Project Environment" className="mt-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Northflank Integration</CardTitle>
+        </CardHeader>
+        <Field className="mt-4 mb-4">
+          <FieldLabel htmlFor="NorthflankConfigurePage-field-1">Project Environment</FieldLabel>
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-border-strong"
           >
-            {currentProject?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`source-environment-${sourceEnvironment.slug}`}
-              >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
+            <SelectTrigger
+              id="NorthflankConfigurePage-field-1"
+              aria-describedby="NorthflankConfigurePage-field-1-feedback"
+              className="w-full"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {currentProject?.environments.map((sourceEnvironment) => (
+                <SelectItem
+                  value={sourceEnvironment.slug}
+                  key={`source-environment-${sourceEnvironment.slug}`}
+                >
+                  {sourceEnvironment.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
-        </FormControl>
-        <FormControl label="Secrets Path">
+        </Field>
+        <Field className="mb-4">
+          <FieldLabel htmlFor="NorthflankConfigurePage-field-2">Secrets Path</FieldLabel>
           <Input
+            id="NorthflankConfigurePage-field-2"
+            aria-describedby="NorthflankConfigurePage-field-2-feedback"
             value={secretPath}
             onChange={(evt) => setSecretPath(evt.target.value)}
             placeholder="Provide a path, default is /"
           />
-        </FormControl>
-        <FormControl label="Northflank Project" className="mt-4">
+        </Field>
+        <Field className="mt-4 mb-4">
+          <FieldLabel htmlFor="NorthflankConfigurePage-field-3">Northflank Project</FieldLabel>
           <Select
             value={targetAppId}
             onValueChange={(val) => setTargetAppId(val)}
-            className="w-full border border-border-strong"
-            isDisabled={integrationAuthApps.length === 0}
+            disabled={integrationAuthApps.length === 0}
           >
-            {integrationAuthApps.length > 0 ? (
-              integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem
-                  value={integrationAuthApp.appId as string}
-                  key={`target-environment-${integrationAuthApp.name}`}
-                >
-                  {integrationAuthApp.name}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-app-none">
-                No projects found
-              </SelectItem>
-            )}
-          </Select>
-        </FormControl>
-        {targetSecretGroupId !== "" && integrationAuthSecretGroups && (
-          <FormControl label="Secret Group" className="mt-4">
-            <Select
-              value={targetSecretGroupId}
-              onValueChange={(val) => setTargetSecretGroupId(val)}
-              className="w-full border border-border-strong"
-              isDisabled={integrationAuthSecretGroups.length === 0}
+            <SelectTrigger
+              id="NorthflankConfigurePage-field-3"
+              aria-describedby="NorthflankConfigurePage-field-3-feedback"
+              className="w-full"
             >
-              {integrationAuthSecretGroups.length > 0 ? (
-                integrationAuthSecretGroups.map((secretGroup: any) => (
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {integrationAuthApps.length > 0 ? (
+                integrationAuthApps.map((integrationAuthApp) => (
                   <SelectItem
-                    value={secretGroup.groupId}
-                    key={`target-secret-group-${secretGroup.groupId}`}
+                    value={integrationAuthApp.appId as string}
+                    key={`target-environment-${integrationAuthApp.name}`}
                   >
-                    {secretGroup.name}
+                    {integrationAuthApp.name}
                   </SelectItem>
                 ))
               ) : (
-                <SelectItem value="none" key="target-secret-group-none">
-                  No secret groups found
+                <SelectItem value="none" key="target-app-none">
+                  No projects found
                 </SelectItem>
               )}
+            </SelectContent>
+          </Select>
+        </Field>
+        {targetSecretGroupId !== "" && integrationAuthSecretGroups && (
+          <Field className="mt-4 mb-4">
+            <FieldLabel htmlFor="NorthflankConfigurePage-field-4">Secret Group</FieldLabel>
+            <Select
+              value={targetSecretGroupId}
+              onValueChange={(val) => setTargetSecretGroupId(val)}
+              disabled={integrationAuthSecretGroups.length === 0}
+            >
+              <SelectTrigger
+                id="NorthflankConfigurePage-field-4"
+                aria-describedby="NorthflankConfigurePage-field-4-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {integrationAuthSecretGroups.length > 0 ? (
+                  integrationAuthSecretGroups.map((secretGroup: any) => (
+                    <SelectItem
+                      value={secretGroup.groupId}
+                      key={`target-secret-group-${secretGroup.groupId}`}
+                    >
+                      {secretGroup.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" key="target-secret-group-none">
+                    No secret groups found
+                  </SelectItem>
+                )}
+              </SelectContent>
             </Select>
-          </FormControl>
+          </Field>
         )}
         <Button
           onClick={handleButtonClick}
-          colorSchema="secondary"
           className="mt-4"
-          isLoading={isLoading}
-          isDisabled={integrationAuthApps.length === 0 || integrationAuthSecretGroups?.length === 0}
+          isPending={isLoading}
+          disabled={integrationAuthApps.length === 0 || integrationAuthSecretGroups?.length === 0}
+          variant="project"
         >
           Create Integration
         </Button>

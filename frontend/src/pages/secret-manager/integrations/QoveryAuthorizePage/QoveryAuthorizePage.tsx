@@ -4,7 +4,17 @@ import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-sv
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 
-import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
@@ -55,53 +65,63 @@ export const QoveryAuthorizePage = () => {
       <Helmet>
         <title>Authorize Qovery Integration</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-border-control">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="After adding your API key, you will be prompted to set up an integration for a particular Infisical project and environment."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
-              <img src="/images/integrations/Qovery.png" height={30} width={30} alt="Qovery logo" />
-            </div>
-            <span className="ml-2.5">Qovery Integration </span>
-            <a
-              href="https://infisical.com/docs/integrations/cloud/qovery"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
+      <Card className="mb-12 w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <div className="flex flex-row items-center">
+              <div className="flex items-center pb-0.5">
+                <img
+                  src="/images/integrations/Qovery.png"
+                  height={30}
+                  width={30}
+                  alt="Qovery logo"
                 />
               </div>
-            </a>
-          </div>
-        </CardTitle>
-        <FormControl
-          label="Qovery API token"
-          errorText={accessTokenErrorText}
-          isError={accessTokenErrorText !== ""}
-          className="mx-6"
-        >
+              <span className="ml-2.5">Qovery Integration </span>
+              <a
+                href="https://infisical.com/docs/integrations/cloud/qovery"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="text-xxs mb-[0.07rem] ml-1.5"
+                  />
+                </div>
+              </a>
+            </div>
+          </CardTitle>
+          <CardDescription>
+            After adding your API key, you will be prompted to set up an integration for a
+            particular Infisical project and environment.
+          </CardDescription>
+        </CardHeader>
+        <Field className="mx-6 mb-4" data-invalid={accessTokenErrorText !== ""}>
+          <FieldLabel htmlFor="QoveryAuthorizePage-field-1">Qovery API token</FieldLabel>
           <Input
+            id="QoveryAuthorizePage-field-1"
+            aria-describedby="QoveryAuthorizePage-field-1-feedback"
+            isError={accessTokenErrorText !== ""}
             placeholder=""
             value={accessToken}
             type="password"
             autoComplete="new-password"
             onChange={(e) => setAccessToken(e.target.value)}
           />
-        </FormControl>
+          {accessTokenErrorText !== "" && (
+            <FieldError id="QoveryAuthorizePage-field-1-feedback">
+              {accessTokenErrorText}
+            </FieldError>
+          )}
+        </Field>
         <Button
           onClick={handleButtonClick}
-          colorSchema="primary"
-          variant="outline_bg"
           className="mt-2 mr-6 mb-6 ml-auto w-min"
-          isFullWidth={false}
-          isLoading={isLoading}
+          isPending={isLoading}
+          variant="project"
         >
           Connect to Qovery
         </Button>

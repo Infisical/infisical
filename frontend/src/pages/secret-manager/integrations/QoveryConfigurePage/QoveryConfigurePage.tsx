@@ -8,16 +8,22 @@ import { motion } from "motion/react";
 import {
   Button,
   Card,
+  CardDescription,
+  CardHeader,
   CardTitle,
-  FormControl,
+  Field,
+  FieldLabel,
   Input,
   Select,
+  SelectContent,
   SelectItem,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
-} from "@app/components/v2";
+  SelectTrigger,
+  SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -40,6 +46,17 @@ enum TabSections {
   InfisicalSettings = "infisicalSettings",
   QoverySettings = "qoverySettings"
 }
+
+/**
+ * Follow the logic:
+ * - Access token
+ * -> Get organizations (orgId) - select an organization
+ * -> Get projects belonging to the organization - select project
+ * -> Get environments belonging to the project - select environmnet
+ * -> Get qovery scopes / application (this is the application to sync to)
+ *
+ * Do we even need to get organizations?
+ */
 
 /**
  * Follow the logic:
@@ -195,40 +212,47 @@ export const QoveryConfigurePage = () => {
       <Helmet>
         <title>Set Up Qovery Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-border-control p-0">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Choose which environment in Infisical you want to sync to Checkly environment variables."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
-              <img src="/images/integrations/Qovery.png" height={30} width={30} alt="Qovery logo" />
-            </div>
-            <span className="ml-2.5">Qovery Integration </span>
-            <a
-              href="https://infisical.com/docs/integrations/cloud/qovery"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <div className="flex flex-row items-center">
+              <div className="flex items-center pb-0.5">
+                <img
+                  src="/images/integrations/Qovery.png"
+                  height={30}
+                  width={30}
+                  alt="Qovery logo"
                 />
               </div>
-            </a>
-          </div>
-        </CardTitle>
-        <Tabs defaultValue={TabSections.InfisicalSettings} className="px-6">
-          <TabList>
-            <div className="flex w-full flex-row border-b border-border-control">
-              <Tab value={TabSections.InfisicalSettings}>Infisical Settings</Tab>
-              <Tab value={TabSections.QoverySettings}>Qovery Settings</Tab>
+              <span className="ml-2.5">Qovery Integration </span>
+              <a
+                href="https://infisical.com/docs/integrations/cloud/qovery"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="text-xxs mb-[0.07rem] ml-1.5"
+                  />
+                </div>
+              </a>
             </div>
-          </TabList>
-          <TabPanel value={TabSections.InfisicalSettings}>
+          </CardTitle>
+          <CardDescription>
+            Choose which environment in Infisical you want to sync to Checkly environment variables.
+          </CardDescription>
+        </CardHeader>
+        <Tabs defaultValue={TabSections.InfisicalSettings} className="px-6">
+          <TabsList>
+            <div className="flex w-full flex-row border-b border-border-control">
+              <TabsTrigger value={TabSections.InfisicalSettings}>Infisical Settings</TabsTrigger>
+              <TabsTrigger value={TabSections.QoverySettings}>Qovery Settings</TabsTrigger>
+            </div>
+          </TabsList>
+          <TabsContent value={TabSections.InfisicalSettings}>
             <motion.div
               key="panel-1"
               transition={{ duration: 0.15 }}
@@ -236,32 +260,46 @@ export const QoveryConfigurePage = () => {
               animate={{ opacity: 1, translateX: 0 }}
               exit={{ opacity: 0, translateX: 30 }}
             >
-              <FormControl label="Infisical Project Environment">
+              <Field className="mb-4">
+                <FieldLabel htmlFor="QoveryConfigurePage-field-1">
+                  Infisical Project Environment
+                </FieldLabel>
                 <Select
                   value={selectedSourceEnvironment}
                   onValueChange={(val) => setSelectedSourceEnvironment(val)}
-                  className="w-full border border-border-strong"
                 >
-                  {currentProject?.environments.map((sourceEnvironment) => (
-                    <SelectItem
-                      value={sourceEnvironment.slug}
-                      key={`source-environment-${sourceEnvironment.slug}`}
-                    >
-                      {sourceEnvironment.name}
-                    </SelectItem>
-                  ))}
+                  <SelectTrigger
+                    id="QoveryConfigurePage-field-1"
+                    aria-describedby="QoveryConfigurePage-field-1-feedback"
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currentProject?.environments.map((sourceEnvironment) => (
+                      <SelectItem
+                        value={sourceEnvironment.slug}
+                        key={`source-environment-${sourceEnvironment.slug}`}
+                      >
+                        {sourceEnvironment.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
-              </FormControl>
-              <FormControl label="Secrets Path" className="pb-[14.68rem]">
+              </Field>
+              <Field className="mb-4 pb-[14.68rem]">
+                <FieldLabel htmlFor="QoveryConfigurePage-field-2">Secrets Path</FieldLabel>
                 <Input
+                  id="QoveryConfigurePage-field-2"
+                  aria-describedby="QoveryConfigurePage-field-2-feedback"
                   value={secretPath}
                   onChange={(evt) => setSecretPath(evt.target.value)}
                   placeholder="Provide a path, default is /"
                 />
-              </FormControl>
+              </Field>
             </motion.div>
-          </TabPanel>
-          <TabPanel value={TabSections.QoverySettings}>
+          </TabsContent>
+          <TabsContent value={TabSections.QoverySettings}>
             <motion.div
               key="panel-1"
               transition={{ duration: 0.15 }}
@@ -269,129 +307,169 @@ export const QoveryConfigurePage = () => {
               animate={{ opacity: 1, translateX: 0 }}
               exit={{ opacity: 0, translateX: 30 }}
             >
-              <FormControl label="Qovery Scope">
-                <Select
-                  value={scope}
-                  onValueChange={(val) => setScope(val)}
-                  className="w-full border border-border-strong"
-                >
-                  {qoveryScopes.map((qoveryScope) => (
-                    <SelectItem value={qoveryScope.value} key={`target-app-${qoveryScope.value}`}>
-                      {qoveryScope.label}
-                    </SelectItem>
-                  ))}
+              <Field className="mb-4">
+                <FieldLabel htmlFor="QoveryConfigurePage-field-3">Qovery Scope</FieldLabel>
+                <Select value={scope} onValueChange={(val) => setScope(val)}>
+                  <SelectTrigger
+                    id="QoveryConfigurePage-field-3"
+                    aria-describedby="QoveryConfigurePage-field-3-feedback"
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {qoveryScopes.map((qoveryScope) => (
+                      <SelectItem value={qoveryScope.value} key={`target-app-${qoveryScope.value}`}>
+                        {qoveryScope.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
-              </FormControl>
+              </Field>
               {integrationAuthOrgs && (
-                <FormControl label="Qovery Organization">
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="QoveryConfigurePage-field-4">Qovery Organization</FieldLabel>
                   <Select
                     value={targetOrgId}
                     onValueChange={(val) => setTargetOrgId(val)}
-                    className="w-full border border-border-strong"
-                    isDisabled={integrationAuthOrgs.length === 0}
+                    disabled={integrationAuthOrgs.length === 0}
                   >
-                    {integrationAuthOrgs.length > 0 ? (
-                      integrationAuthOrgs.map((integrationAuthOrg) => (
-                        <SelectItem
-                          value={integrationAuthOrg.orgId}
-                          key={`target-app-${integrationAuthOrg.orgId}`}
-                        >
-                          {integrationAuthOrg.name}
+                    <SelectTrigger
+                      id="QoveryConfigurePage-field-4"
+                      aria-describedby="QoveryConfigurePage-field-4-feedback"
+                      className="w-full"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {integrationAuthOrgs.length > 0 ? (
+                        integrationAuthOrgs.map((integrationAuthOrg) => (
+                          <SelectItem
+                            value={integrationAuthOrg.orgId}
+                            key={`target-app-${integrationAuthOrg.orgId}`}
+                          >
+                            {integrationAuthOrg.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" key="target-app-none">
+                          No organizaztions found
                         </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="none" key="target-app-none">
-                        No organizaztions found
-                      </SelectItem>
-                    )}
+                      )}
+                    </SelectContent>
                   </Select>
-                </FormControl>
+                </Field>
               )}
               {integrationAuthProjects && (
-                <FormControl label="Qovery Project">
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="QoveryConfigurePage-field-5">Qovery Project</FieldLabel>
                   <Select
                     value={targetProjectId}
                     onValueChange={(val) => setTargetProjectId(val)}
-                    className="w-full border border-border-strong"
-                    isDisabled={integrationAuthProjects.length === 0}
+                    disabled={integrationAuthProjects.length === 0}
                   >
-                    {integrationAuthProjects.length > 0 ? (
-                      integrationAuthProjects.map((integrationAuthProject) => (
-                        <SelectItem
-                          value={integrationAuthProject.projectId}
-                          key={`target-app-${integrationAuthProject.projectId}`}
-                        >
-                          {integrationAuthProject.name}
+                    <SelectTrigger
+                      id="QoveryConfigurePage-field-5"
+                      aria-describedby="QoveryConfigurePage-field-5-feedback"
+                      className="w-full"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {integrationAuthProjects.length > 0 ? (
+                        integrationAuthProjects.map((integrationAuthProject) => (
+                          <SelectItem
+                            value={integrationAuthProject.projectId}
+                            key={`target-app-${integrationAuthProject.projectId}`}
+                          >
+                            {integrationAuthProject.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" key="target-app-none">
+                          No projects found
                         </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="none" key="target-app-none">
-                        No projects found
-                      </SelectItem>
-                    )}
+                      )}
+                    </SelectContent>
                   </Select>
-                </FormControl>
+                </Field>
               )}
               {integrationAuthEnvironments && (
-                <FormControl label="Qovery Environment">
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="QoveryConfigurePage-field-6">Qovery Environment</FieldLabel>
                   <Select
                     value={targetEnvironmentId}
                     onValueChange={(val) => setTargetEnvironmentId(val)}
-                    className="w-full border border-border-strong"
-                    isDisabled={integrationAuthEnvironments.length === 0}
+                    disabled={integrationAuthEnvironments.length === 0}
                   >
-                    {integrationAuthEnvironments.length > 0 ? (
-                      integrationAuthEnvironments.map((integrationAuthEnvironment) => (
-                        <SelectItem
-                          value={integrationAuthEnvironment.environmentId}
-                          key={`target-app-${integrationAuthEnvironment.environmentId}`}
-                        >
-                          {integrationAuthEnvironment.name}
+                    <SelectTrigger
+                      id="QoveryConfigurePage-field-6"
+                      aria-describedby="QoveryConfigurePage-field-6-feedback"
+                      className="w-full"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {integrationAuthEnvironments.length > 0 ? (
+                        integrationAuthEnvironments.map((integrationAuthEnvironment) => (
+                          <SelectItem
+                            value={integrationAuthEnvironment.environmentId}
+                            key={`target-app-${integrationAuthEnvironment.environmentId}`}
+                          >
+                            {integrationAuthEnvironment.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" key="target-app-none">
+                          No environments found
                         </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="none" key="target-app-none">
-                        No environments found
-                      </SelectItem>
-                    )}
+                      )}
+                    </SelectContent>
                   </Select>
-                </FormControl>
+                </Field>
               )}
               {scope && integrationAuthApps && (
-                <FormControl label={`Qovery ${scope.charAt(0).toUpperCase() + scope.slice(1)}`}>
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="QoveryConfigurePage-field-7">{`Qovery ${scope.charAt(0).toUpperCase() + scope.slice(1)}`}</FieldLabel>
                   <Select
                     value={targetAppId}
                     onValueChange={(val) => setTargetAppId(val)}
-                    className="w-full border border-border-strong"
-                    isDisabled={integrationAuthApps.length === 0}
+                    disabled={integrationAuthApps.length === 0}
                   >
-                    {integrationAuthApps.length > 0 ? (
-                      integrationAuthApps.map((integrationAuthApp) => (
-                        <SelectItem
-                          value={integrationAuthApp.appId as string}
-                          key={`target-app-${integrationAuthApp.appId}`}
-                        >
-                          {integrationAuthApp.name}
+                    <SelectTrigger
+                      id="QoveryConfigurePage-field-7"
+                      aria-describedby="QoveryConfigurePage-field-7-feedback"
+                      className="w-full"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {integrationAuthApps.length > 0 ? (
+                        integrationAuthApps.map((integrationAuthApp) => (
+                          <SelectItem
+                            value={integrationAuthApp.appId as string}
+                            key={`target-app-${integrationAuthApp.appId}`}
+                          >
+                            {integrationAuthApp.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" key="target-app-none">
+                          No {scope}s found
                         </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="none" key="target-app-none">
-                        No {scope}s found
-                      </SelectItem>
-                    )}
+                      )}
+                    </SelectContent>
                   </Select>
-                </FormControl>
+                </Field>
               )}
             </motion.div>
-          </TabPanel>
+          </TabsContent>
         </Tabs>
         <Button
           onClick={handleButtonClick}
-          colorSchema="secondary"
-          variant="outline_bg"
           className="mr-6 mb-6 ml-auto"
-          isFullWidth={false}
-          isLoading={isLoading}
+          isPending={isLoading}
+          variant="project"
         >
           Create Integration
         </Button>

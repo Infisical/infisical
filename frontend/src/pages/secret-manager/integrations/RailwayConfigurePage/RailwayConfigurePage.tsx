@@ -4,12 +4,17 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardHeader,
   CardTitle,
-  FormControl,
+  Field,
+  FieldLabel,
   Input,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -133,100 +138,143 @@ export const RailwayConfigurePage = () => {
     targetServices &&
     filteredTargetServices ? (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">Railway Integration</CardTitle>
-        <FormControl label="Project Environment" className="mt-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Railway Integration</CardTitle>
+        </CardHeader>
+        <Field className="mt-4 mb-4">
+          <FieldLabel htmlFor="RailwayConfigurePage-field-1">Project Environment</FieldLabel>
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-border-strong"
           >
-            {currentProject?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`source-environment-${sourceEnvironment.slug}`}
-              >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
+            <SelectTrigger
+              id="RailwayConfigurePage-field-1"
+              aria-describedby="RailwayConfigurePage-field-1-feedback"
+              className="w-full"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {currentProject?.environments.map((sourceEnvironment) => (
+                <SelectItem
+                  value={sourceEnvironment.slug}
+                  key={`source-environment-${sourceEnvironment.slug}`}
+                >
+                  {sourceEnvironment.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
-        </FormControl>
-        <FormControl label="Secrets Path">
+        </Field>
+        <Field className="mb-4">
+          <FieldLabel htmlFor="RailwayConfigurePage-field-2">Secrets Path</FieldLabel>
           <Input
+            id="RailwayConfigurePage-field-2"
+            aria-describedby="RailwayConfigurePage-field-2-feedback"
             value={secretPath}
             onChange={(evt) => setSecretPath(evt.target.value)}
             placeholder="Provide a path, default is /"
           />
-        </FormControl>
-        <FormControl label="Railway Project">
+        </Field>
+        <Field className="mb-4">
+          <FieldLabel htmlFor="RailwayConfigurePage-field-3">Railway Project</FieldLabel>
           <Select
             value={targetAppId}
             onValueChange={(val) => setTargetAppId(val)}
-            className="w-full border border-border-strong"
-            isDisabled={integrationAuthApps.length === 0}
+            disabled={integrationAuthApps.length === 0}
           >
-            {integrationAuthApps.length > 0 ? (
-              integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem
-                  value={integrationAuthApp.appId as string}
-                  key={`target-app-${integrationAuthApp.appId as string}`}
-                >
-                  {integrationAuthApp.name}
+            <SelectTrigger
+              id="RailwayConfigurePage-field-3"
+              aria-describedby="RailwayConfigurePage-field-3-feedback"
+              className="w-full"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {integrationAuthApps.length > 0 ? (
+                integrationAuthApps.map((integrationAuthApp) => (
+                  <SelectItem
+                    value={integrationAuthApp.appId as string}
+                    key={`target-app-${integrationAuthApp.appId as string}`}
+                  >
+                    {integrationAuthApp.name}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="none" key="target-app-none">
+                  No projects found
                 </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-app-none">
-                No projects found
-              </SelectItem>
-            )}
+              )}
+            </SelectContent>
           </Select>
-        </FormControl>
-        <FormControl label="Railway Project Environment">
+        </Field>
+        <Field className="mb-4">
+          <FieldLabel htmlFor="RailwayConfigurePage-field-4">
+            Railway Project Environment
+          </FieldLabel>
           <Select
             value={targetEnvironmentId}
             onValueChange={(val) => setTargetEnvironmentId(val)}
-            className="w-full border border-border-strong"
-            isDisabled={targetEnvironments.length === 0}
+            disabled={targetEnvironments.length === 0}
           >
-            {targetEnvironments.length > 0 ? (
-              targetEnvironments.map((targetEnvironment) => (
-                <SelectItem
-                  value={targetEnvironment.environmentId as string}
-                  key={`target-environment-${targetEnvironment.environmentId as string}`}
-                >
-                  {targetEnvironment.name}
+            <SelectTrigger
+              id="RailwayConfigurePage-field-4"
+              aria-describedby="RailwayConfigurePage-field-4-feedback"
+              className="w-full"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {targetEnvironments.length > 0 ? (
+                targetEnvironments.map((targetEnvironment) => (
+                  <SelectItem
+                    value={targetEnvironment.environmentId as string}
+                    key={`target-environment-${targetEnvironment.environmentId as string}`}
+                  >
+                    {targetEnvironment.name}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="none" key="target-environment-none">
+                  No environments found
                 </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-environment-none">
-                No environments found
-              </SelectItem>
-            )}
+              )}
+            </SelectContent>
           </Select>
-        </FormControl>
-        <FormControl label="Railway Service (Optional)">
+        </Field>
+        <Field className="mb-4">
+          <FieldLabel htmlFor="RailwayConfigurePage-field-5">Railway Service (Optional)</FieldLabel>
           <Select
             value={targetServiceId}
             onValueChange={(val) => setTargetServiceId(val)}
-            className="w-full border border-border-strong"
-            isDisabled={targetServices.length === 0}
+            disabled={targetServices.length === 0}
           >
-            {filteredTargetServices.map((targetService) => (
-              <SelectItem
-                value={targetService.serviceId as string}
-                key={`target-service-${targetService.serviceId as string}`}
-              >
-                {targetService.name}
-              </SelectItem>
-            ))}
+            <SelectTrigger
+              id="RailwayConfigurePage-field-5"
+              aria-describedby="RailwayConfigurePage-field-5-feedback"
+              className="w-full"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredTargetServices.map((targetService) => (
+                <SelectItem
+                  value={targetService.serviceId as string}
+                  key={`target-service-${targetService.serviceId as string}`}
+                >
+                  {targetService.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
-        </FormControl>
+        </Field>
         <Button
           onClick={handleButtonClick}
-          colorSchema="secondary"
           className="mt-4"
-          isLoading={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
+          isPending={isLoading}
+          disabled={integrationAuthApps.length === 0}
+          variant="project"
         >
           Create Integration
         </Button>
