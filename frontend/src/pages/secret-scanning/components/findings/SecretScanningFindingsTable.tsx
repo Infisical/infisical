@@ -205,17 +205,28 @@ export const SecretScanningFindingsTable = ({
     resetSelection();
   };
 
-  const handleSortChange = (orderBy: SecretScanningFindingOrderBy, direction: TableSortDirection) =>
+  // TableHead's none/ascending/descending cycle can't leave the default column's default direction,
+  // so clicks toggle direction here instead
+  const handleSortChange = (orderBy: SecretScanningFindingOrderBy) =>
     applyFilterChange(() =>
-      setSort(
-        direction === "none"
-          ? DEFAULT_SORT
-          : {
-              orderBy,
-              orderDirection:
-                direction === "ascending" ? OrderByDirection.ASC : OrderByDirection.DESC
-            }
-      )
+      setSort((prev) => {
+        if (prev.orderBy === orderBy) {
+          return {
+            orderBy,
+            orderDirection:
+              prev.orderDirection === OrderByDirection.ASC
+                ? OrderByDirection.DESC
+                : OrderByDirection.ASC
+          };
+        }
+        return {
+          orderBy,
+          orderDirection:
+            orderBy === SecretScanningFindingOrderBy.CreatedAt
+              ? OrderByDirection.DESC
+              : OrderByDirection.ASC
+        };
+      })
     );
 
   const getSortDirection = (orderBy: SecretScanningFindingOrderBy): TableSortDirection => {
@@ -233,7 +244,7 @@ export const SecretScanningFindingsTable = ({
       <TableHead
         className={className}
         sortDirection={direction}
-        onSortChange={(next) => handleSortChange(orderBy, next)}
+        onSortChange={() => handleSortChange(orderBy)}
       >
         {label}
         <ChevronDownIcon
@@ -343,9 +354,7 @@ export const SecretScanningFindingsTable = ({
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/usage#findings" />
           </CardTitle>
           <CardDescription>{description}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
@@ -422,7 +431,8 @@ export const SecretScanningFindingsTable = ({
               />
             )}
           </div>
-
+        </CardHeader>
+        <CardContent>
           {showEmpty ? (
             renderEmpty()
           ) : (
