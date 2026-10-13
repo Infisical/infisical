@@ -57,6 +57,8 @@ type ComboboxDialogCreationConfig<TOption> = ComboboxCreationBaseConfig<TOption>
   renderForm: (props: ComboboxDialogCreationRenderProps) => React.ReactNode;
   /** Prevent dismissing the dialog while caller-owned persistence is pending. */
   isPending?: boolean;
+  /** Intercepts Escape, outside press, and the close button (e.g. to confirm discarding changes); call `cancel` to close. */
+  onDismiss?: (cancel: () => void) => void;
 };
 
 type ComboboxCreationConfig<TOption> =
@@ -752,9 +754,11 @@ const useComboboxDialogCreation = <TOption,>({
 
   const onOpenChange = React.useCallback(
     (nextOpen: boolean) => {
-      if (!nextOpen) cancel();
+      if (nextOpen) return;
+      if (dialogCreation?.onDismiss) dialogCreation.onDismiss(cancel);
+      else cancel();
     },
-    [cancel]
+    [cancel, dialogCreation]
   );
 
   const onCloseAutoFocus = React.useCallback(

@@ -13,9 +13,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { Combobox, Field, FieldError, FieldLabel } from "@app/components/v3";
-import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
-import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import { useProject } from "@app/context";
 import {
   CaSigningConfigType,
   useCreateCaSigningConfig,
@@ -27,7 +25,8 @@ import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { useAzureAdcsConnectionListTemplates } from "@app/hooks/api/appConnections/azure-adcs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { AppConnectionForm } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm";
+
+import { useConnectionCreation } from "./useConnectionCreation";
 
 const schema = z.object({
   appConnectionId: z.string().min(1, "App connection is required"),
@@ -53,24 +52,23 @@ export const AdcsCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
 
   const { data: availableAdcsConnections, isPending: isAdcsPending } =
     useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id);
-  const { permission } = useProjectPermission();
-  const createConnectionLabel = `Create ${APP_CONNECTION_MAP[AppConnection.AzureADCS].name} Connection`;
-  const canCreateConnection = permission.can(
-    ProjectPermissionAppConnectionActions.Create,
-    ProjectPermissionSub.AppConnections
-  );
 
   const {
     control,
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       maxPathLength: "-1"
     }
+  });
+
+  const connectionCreation = useConnectionCreation(AppConnection.AzureADCS, (connection) => {
+    setValue("appConnectionId", connection.id, { shouldValidate: true });
   });
 
   const selectedConnectionId = watch("appConnectionId");
@@ -158,29 +156,7 @@ export const AdcsCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
               placeholder="Select an Azure AD CS connection..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
-              creation={
-                canCreateConnection
-                  ? {
-                      mode: "dialog",
-                      title: createConnectionLabel,
-                      description: "The new connection is selected once it is created.",
-                      emptyLabel: createConnectionLabel,
-                      formatLabel: () => createConnectionLabel,
-                      renderForm: ({ complete, cancel }) => (
-                        <AppConnectionForm
-                          app={AppConnection.AzureADCS}
-                          projectId={currentProject.id}
-                          projectType={currentProject.type}
-                          onComplete={(connection) => {
-                            onChange(connection.id);
-                            complete();
-                          }}
-                          onCancel={cancel}
-                        />
-                      )
-                    }
-                  : undefined
-              }
+              creation={connectionCreation}
             />
             <FieldError errors={[error]} />
           </Field>
