@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Controller, ControllerRenderProps, useFormContext } from "react-hook-form";
-import { EyeIcon, EyeOffIcon, XIcon } from "lucide-react";
+import { XIcon } from "lucide-react";
 
 import {
   Alert,
@@ -69,7 +69,7 @@ export const SecretInput = <TName extends SecretName>({
   storedKeys?: string[];
 }) => {
   const { setFocus } = useFormContext<TServiceForm>();
-  const [isVisible, setIsVisible] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const [isCleared, setIsCleared] = useState(false);
   const descriptionId = useId();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -80,8 +80,9 @@ export const SecretInput = <TName extends SecretName>({
 
   const value = field.value ?? "";
   const isReferenceOnly = !isUntouched && isVariableReferenceOnly(value);
-  // The sentinel must never render as text, and a lone reference holds no secret.
-  const isShown = (isVisible && !isUntouched) || isReferenceOnly;
+  // The sentinel must never render as text, and a lone reference holds no secret. A stored value is
+  // never returned, so there is nothing to reveal: a typed value shows only while the field has focus.
+  const isShown = (isFocused && !isUntouched) || isReferenceOnly;
   const isHighlighted = isShown && value.includes("{{");
   // Focusing only empties the box: left empty, it gets the stored value back on blur.
   const isStoredValueKept = isUntouched || (hasStoredSecret && !value && !isCleared);
@@ -93,7 +94,6 @@ export const SecretInput = <TName extends SecretName>({
       setIsCleared(false);
       field.onChange(next);
       caretRef.current = caret;
-      setIsVisible(true);
     }
   });
 
@@ -101,11 +101,6 @@ export const SecretInput = <TName extends SecretName>({
   useEffect(() => {
     if (isUntouched) setIsCleared(false);
   }, [isUntouched]);
-
-  // A value that starts as a reference stays readable as text is typed around it.
-  useEffect(() => {
-    if (isReferenceOnly) setIsVisible(true);
-  }, [isReferenceOnly]);
 
   const syncOverlay = () => {
     if (overlayRef.current && inputRef.current) {
@@ -159,8 +154,6 @@ export const SecretInput = <TName extends SecretName>({
               data-bwignore
               onChange={(event) => {
                 setIsCleared(false);
-                // An emptied field masks again, since what is typed next may be a real secret.
-                if (!event.target.value) setIsVisible(false);
                 field.onChange(event);
                 autocomplete.refresh();
               }}
@@ -172,11 +165,13 @@ export const SecretInput = <TName extends SecretName>({
               onSelect={syncOverlay}
               onScroll={syncOverlay}
               onFocus={() => {
+                setIsFocused(true);
                 if (isUntouched) field.onChange("");
               }}
               // Empty reads the same whether the secret was meant to go or the field was only clicked into,
               // so the clear button is made the one way to say it and passing through loses nothing.
               onBlur={() => {
+                setIsFocused(false);
                 autocomplete.close();
                 if (hasStoredSecret && !field.value && !isCleared) field.onChange(UNCHANGED_SECRET);
                 field.onBlur();
@@ -185,8 +180,8 @@ export const SecretInput = <TName extends SecretName>({
               isError={isError}
             />
           </div>
-          <InputGroupAddon align="inline-end">
-            {canBeCleared && hasStoredSecret && (
+          {canBeCleared && hasStoredSecret && (
+            <InputGroupAddon align="inline-end">
               <InputGroupButton
                 isDisabled={isCleared}
                 aria-label={`Clear ${lowerLabel}`}
@@ -198,16 +193,8 @@ export const SecretInput = <TName extends SecretName>({
               >
                 <XIcon />
               </InputGroupButton>
-            )}
-            <InputGroupButton
-              // A stored credential is never returned, so until it is replaced there is nothing to reveal.
-              isDisabled={isUntouched || !field.value || isReferenceOnly}
-              aria-label={`${isVisible ? "Hide" : "Show"} ${lowerLabel}`}
-              onClick={() => setIsVisible((prev) => !prev)}
-            >
-              {isVisible ? <EyeOffIcon /> : <EyeIcon />}
-            </InputGroupButton>
-          </InputGroupAddon>
+            </InputGroupAddon>
+          )}
         </InputGroup>
       </VariableSuggestions>
       {hasStoredKeys && (
