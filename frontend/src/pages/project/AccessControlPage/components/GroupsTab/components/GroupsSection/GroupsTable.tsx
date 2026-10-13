@@ -35,8 +35,8 @@ import {
 } from "@app/context";
 import {
   getProjectBaseURL,
-  getSingleProjectProductName,
-  isSingleProjectProduct
+  getProjectLabel,
+  hidesProjects
 } from "@app/helpers/project";
 import {
   getUserTablePreference,
@@ -68,8 +68,8 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const navigate = useNavigate();
-  const productLabel = getSingleProjectProductName(currentProject?.type) ?? "Project";
-  const isSingleProject = isSingleProjectProduct(currentProject?.type);
+  const productLabel = getProjectLabel(currentProject?.type);
+  const projectsHidden = hidesProjects(currentProject?.type);
 
   const {
     search,
@@ -130,8 +130,8 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={isSingleProject ? "Search groups..." : "Search project groups..."}
-            aria-label={isSingleProject ? "Search groups" : "Search project groups"}
+            placeholder={projectsHidden ? "Search groups..." : "Search project groups..."}
+            aria-label={projectsHidden ? "Search groups" : "Search project groups"}
           />
         </InputGroup>
       </div>
@@ -141,10 +141,10 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
             <EmptyTitle>
               {/* eslint-disable-next-line no-nested-ternary */}
               {search
-                ? isSingleProject
+                ? projectsHidden
                   ? "No groups match search"
                   : "No project groups match search"
-                : isSingleProject
+                : projectsHidden
                   ? "No groups found"
                   : "No project groups found"}
             </EmptyTitle>

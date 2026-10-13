@@ -3,24 +3,24 @@ import { Helmet } from "react-helmet";
 import { LookingForOrgPageLink } from "@app/components/v3";
 import { PageHeader } from "@app/components/v3/platform";
 import { useProject } from "@app/context";
-import { isSingleProjectProduct } from "@app/helpers/project";
+import { hidesProjects } from "@app/helpers/project";
 
 import { ProjectAuditLogsTabs } from "./components";
 
 export const AuditLogsPage = () => {
   const { currentProject } = useProject();
-  const isSingleProject = isSingleProjectProduct(currentProject.type);
+  const projectsHidden = hidesProjects(currentProject.type);
   return (
     <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       <Helmet>
-        <title>{isSingleProject ? "Audit Logs" : "Project Audit Logs"}</title>
+        <title>{projectsHidden ? "Audit Logs" : "Project Audit Logs"}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <div className="flex h-full w-full justify-center bg-page text-foreground-inverse">
         <div className="w-full max-w-8xl">
           <PageHeader
             scope={currentProject.type}
-            title={isSingleProject ? "Audit logs" : "Project Audit logs"}
+            title={projectsHidden ? "Audit logs" : "Project Audit logs"}
             description="Audit logs for security and compliance teams to monitor information access."
           >
             <LookingForOrgPageLink page="auditLogs" />

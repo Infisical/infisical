@@ -48,7 +48,8 @@ import {
 } from "@app/context";
 import {
   getProjectBaseURL,
-  getSingleProjectProductName,
+  getProjectLabel,
+  hidesProjects,
   supportsAssumePrivileges
 } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
@@ -149,7 +150,7 @@ export const Page = () => {
 
   const isOwnProjectMembershipDetails = currentUserId === membershipDetails?.user?.id;
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const singleProjectProductName = getSingleProjectProductName(currentProject?.type);
+  const projectLabel = getProjectLabel(currentProject?.type);
   const isSecretManager = currentProject.type === ProjectType.SecretManager;
   const hasFolderRbacPlan = Boolean(subscription?.secretsFolderRbac);
   const canAssumePrivileges = !isCertManager && supportsAssumePrivileges(currentProject.type);
@@ -169,7 +170,7 @@ export const Page = () => {
           <PageHeader
             scope={currentProject.type}
             title={memberDisplayName}
-            description={`Configure and manage ${singleProjectProductName?.toLowerCase() ?? "project"} access control`}
+            description={`Configure and manage ${projectLabel.toLowerCase()} access control`}
             backLink={
               <Link
                 to={`${getProjectBaseURL(currentProject.type)}/access-management`}
@@ -182,7 +183,7 @@ export const Page = () => {
                 }}
               >
                 <ChevronLeftIcon aria-hidden className="size-4" />
-                {singleProjectProductName ? "Users" : "Project Users"}
+                {hidesProjects(currentProject?.type) ? "Users" : "Project Users"}
               </Link>
             }
           >
@@ -198,11 +199,11 @@ export const Page = () => {
                   <TooltipTrigger asChild>
                     <Badge variant="info" className="ml-2">
                       <InfoIcon />{" "}
-                      {singleProjectProductName ? "Your membership" : "Your project membership"}
+                      {hidesProjects(currentProject?.type) ? "Your membership" : "Your project membership"}
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                    {`You cannot modify your own membership. Ask a ${singleProjectProductName ?? "project"} admin to make changes to your membership.`}
+                    {`You cannot modify your own membership. Ask a ${hidesProjects(currentProject?.type) ? projectLabel : "project"} admin to make changes to your membership.`}
                   </TooltipContent>
                 </Tooltip>
               ) : (
@@ -267,7 +268,7 @@ export const Page = () => {
                           isDisabled={!isAllowed}
                           onClick={() => handlePopUpOpen("removeMember")}
                         >
-                          {`Remove User From ${singleProjectProductName ?? "Project"}`}
+                          {`Remove User From ${projectLabel}`}
                         </DropdownMenuItem>
                       )}
                     </ProjectPermissionCan>
@@ -318,7 +319,7 @@ export const Page = () => {
             onOpenChange={(isOpen) => {
               handlePopUpToggle("removeMember", isOpen);
             }}
-            title={`Remove ${memberDisplayName} from the ${singleProjectProductName?.toLowerCase() ?? "project"}?`}
+            title={`Remove ${memberDisplayName} from the ${projectLabel.toLowerCase()}?`}
             description={
               <Alert variant="danger" appearance="borderless">
                 <AlertDescription>

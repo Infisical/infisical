@@ -56,7 +56,8 @@ import {
 } from "@app/context";
 import {
   getProjectBaseURL,
-  getSingleProjectProductName,
+  getProjectLabel,
+  hidesProjects,
   supportsAssumePrivileges
 } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
@@ -117,12 +118,12 @@ const Page = () => {
     removeMenuItemLabel = "Remove From Agent Vault";
   }
 
-  const singleProjectProductName = getSingleProjectProductName(currentProject?.type);
-  const namesProduct = isStandaloneProduct || Boolean(singleProjectProductName);
+  const projectsHidden = hidesProjects(currentProject?.type);
+  const namesProduct = isStandaloneProduct || projectsHidden;
 
   let accessControlLabel = "project";
-  if (singleProjectProductName) {
-    accessControlLabel = singleProjectProductName.toLowerCase();
+  if (projectsHidden) {
+    accessControlLabel = getProjectLabel(currentProject?.type).toLowerCase();
   } else if (isPam) {
     accessControlLabel = "PAM";
   } else if (isAgentVault) {

@@ -49,7 +49,7 @@ import {
   type TableSortDirection
 } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
-import { getProjectBaseURL, isSingleProjectProduct } from "@app/helpers/project";
+import { getProjectBaseURL, hidesProjects } from "@app/helpers/project";
 import { isCustomProjectRole } from "@app/helpers/roles";
 import {
   getUserTablePreference,
@@ -86,7 +86,7 @@ export const ProjectRoleList = () => {
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const isSingleProject = isSingleProjectProduct(currentProject?.type);
+  const projectsHidden = hidesProjects(currentProject?.type);
 
   const { data: roles, isPending: isRolesLoading } = useGetProjectRoles(
     projectId,
@@ -175,7 +175,7 @@ export const ProjectRoleList = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {isSingleProject ? "Roles" : "Project Roles"}
+            {projectsHidden ? "Roles" : "Project Roles"}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/role-based-access-controls#project-level-access-controls" />
           </CardTitle>
           <CardDescription>
@@ -196,7 +196,7 @@ export const ProjectRoleList = () => {
                     isDisabled={!isAllowed}
                   >
                     <PlusIcon />
-                    {isSingleProject ? "Add Role" : "Add Project Role"}
+                    {projectsHidden ? "Add Role" : "Add Project Role"}
                   </Button>
                 )}
               </ProjectPermissionCan>
@@ -212,7 +212,7 @@ export const ProjectRoleList = () => {
               <InputGroupInput
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={isSingleProject ? "Search roles..." : "Search project roles..."}
+                placeholder={projectsHidden ? "Search roles..." : "Search project roles..."}
               />
             </InputGroup>
           </div>
@@ -222,10 +222,10 @@ export const ProjectRoleList = () => {
                 <EmptyTitle>
                   {/* eslint-disable-next-line no-nested-ternary */}
                   {roles?.length
-                    ? isSingleProject
+                    ? projectsHidden
                       ? "No roles match search"
                       : "No project roles match search"
-                    : isSingleProject
+                    : projectsHidden
                       ? "No roles available"
                       : "This project does not have any roles"}
                 </EmptyTitle>

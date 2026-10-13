@@ -17,7 +17,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { getSingleProjectProductName } from "@app/helpers/project";
+import { getProjectLabel } from "@app/helpers/project";
 import { useTimedReset } from "@app/hooks";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 
@@ -27,7 +27,7 @@ type Props = {
 
 export const ProjectMemberDetailsSection = ({ membership }: Props) => {
   const { currentProject } = useProject();
-  const singleProjectProductName = getSingleProjectProductName(currentProject?.type);
+  const projectLabel = getProjectLabel(currentProject?.type);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/naming-convention
   const [_copyId, isCopyingId, setCopyTextId] = useTimedReset<string>({
@@ -115,7 +115,7 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
           )}
           <Detail>
             <DetailLabel>
-              {`Joined ${singleProjectProductName?.toLowerCase() ?? "project"}`}
+              {`Joined ${projectLabel.toLowerCase()}`}
             </DetailLabel>
             <DetailValue>{format(membership.createdAt, "PPpp")}</DetailValue>
           </Detail>

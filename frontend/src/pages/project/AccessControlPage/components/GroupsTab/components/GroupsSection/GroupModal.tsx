@@ -26,7 +26,7 @@ import {
   Skeleton
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
-import { getSingleProjectProductName } from "@app/helpers/project";
+import { getProjectLabel } from "@app/helpers/project";
 import { useDebounce } from "@app/hooks";
 import {
   useAddGroupToWorkspace,
@@ -55,7 +55,7 @@ type Props = {
 const Content = ({ onClose }: { onClose: () => void }) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const productLabel = getSingleProjectProductName(currentProject?.type) ?? "Project";
+  const productLabel = getProjectLabel(currentProject?.type);
 
   const orgId = currentOrg?.id || "";
 
@@ -285,7 +285,7 @@ const Content = ({ onClose }: { onClose: () => void }) => {
 
 export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
-  const productLabel = getSingleProjectProductName(currentProject?.type) ?? "Project";
+  const productLabel = getProjectLabel(currentProject?.type);
 
   return (
     <Dialog

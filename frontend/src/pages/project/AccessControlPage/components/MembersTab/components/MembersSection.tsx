@@ -25,7 +25,7 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { getSingleProjectProductName, isSingleProjectProduct } from "@app/helpers/project";
+import { getProjectLabel, hidesProjects } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
@@ -36,8 +36,8 @@ import { MembersTable } from "./MembersTable";
 export const MembersSection = () => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const productLabel = getSingleProjectProductName(currentProject?.type) ?? "Project";
-  const isSingleProject = isSingleProjectProduct(currentProject?.type);
+  const productLabel = getProjectLabel(currentProject?.type);
+  const projectsHidden = hidesProjects(currentProject?.type);
 
   const removeUserMutation = useDeleteUserFromWorkspace();
 
@@ -72,7 +72,7 @@ export const MembersSection = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {isSingleProject ? "Users" : `${productLabel} Users`}
+            {projectsHidden ? "Users" : `${productLabel} Users`}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/user-identities" />
           </CardTitle>
           <CardDescription>
@@ -91,7 +91,7 @@ export const MembersSection = () => {
                     isDisabled={!isAllowed}
                   >
                     <UserPlusIcon />
-                    {isSingleProject ? "Add Users" : `Add Users to ${productLabel}`}
+                    {projectsHidden ? "Add Users" : `Add Users to ${productLabel}`}
                   </Button>
                 );
 

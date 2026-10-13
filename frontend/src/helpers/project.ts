@@ -129,18 +129,18 @@ const ORG_SCOPED_PRODUCT_TYPES = new Set<ProjectType>([ProjectType.PAM, ProjectT
 
 export const isOrgScopedProduct = (type: ProjectType) => ORG_SCOPED_PRODUCT_TYPES.has(type);
 
-// One active project per org but still a $projectId in the URL, so shared project pages name the product
-// instead of saying "project".
-const SINGLE_PROJECT_PRODUCT_NAMES: Partial<Record<ProjectType, string>> = {
+// This does not include PAM and Agent Vault because they use different
+// components for each type of project. They don't reuse the shared components
+const PROJECTLESS_PRODUCT_NAMES: Partial<Record<ProjectType, string>> = {
   [ProjectType.CertificateManager]: "Certificate Manager",
   [ProjectType.SecretScanning]: "Secret Scanning"
 };
 
-export const getSingleProjectProductName = (type?: ProjectType) =>
-  type ? SINGLE_PROJECT_PRODUCT_NAMES[type] : undefined;
+export const hidesProjects = (type?: ProjectType) =>
+  Boolean(type && PROJECTLESS_PRODUCT_NAMES[type]);
 
-export const isSingleProjectProduct = (type?: ProjectType) =>
-  Boolean(getSingleProjectProductName(type));
+export const getProjectLabel = (type?: ProjectType) =>
+  (type && PROJECTLESS_PRODUCT_NAMES[type]) || "Project";
 
 const PRODUCTS_WITHOUT_ASSUME_PRIVILEGES = new Set<ProjectType>([ProjectType.AgentVault]);
 

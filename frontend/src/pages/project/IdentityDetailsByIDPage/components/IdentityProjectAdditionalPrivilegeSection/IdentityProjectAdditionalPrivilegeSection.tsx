@@ -48,7 +48,7 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
-import { getSingleProjectProductName } from "@app/helpers/project";
+import { getProjectLabel } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteIdentityProjectAdditionalPrivilege } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
@@ -74,7 +74,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
   const { permission } = useProjectPermission();
   const identityId = identityMembershipDetails?.identity?.id;
   const { projectId, currentProject } = useProject();
-  const singleProjectProductName = getSingleProjectProductName(currentProject?.type);
+  const projectLabel = getProjectLabel(currentProject?.type);
 
   const { mutateAsync: deletePrivilege } = useDeleteIdentityProjectAdditionalPrivilege();
 
@@ -117,7 +117,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
       <Card>
         <CardHeader>
           <CardTitle>
-            {`${singleProjectProductName ?? "Project"} Additional Privileges`}
+            {`${projectLabel} Additional Privileges`}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/additional-privileges#api" />
           </CardTitle>
           <CardDescription>Assign one-off policies to this machine identity</CardDescription>

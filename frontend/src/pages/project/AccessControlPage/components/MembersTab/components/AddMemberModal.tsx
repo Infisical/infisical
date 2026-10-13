@@ -36,7 +36,7 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
-import { getSingleProjectProductName, isSingleProjectProduct } from "@app/helpers/project";
+import { getProjectLabel, hidesProjects } from "@app/helpers/project";
 import {
   useAddUserToWsNonE2EE,
   useGetOrgUsers,
@@ -82,8 +82,8 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const orgId = currentOrg?.id || "";
   const projectId = currentProject?.id || "";
-  const productLabel = getSingleProjectProductName(currentProject?.type) ?? "Project";
-  const isSingleProject = isSingleProjectProduct(currentProject?.type);
+  const productLabel = getProjectLabel(currentProject?.type);
+  const projectsHidden = hidesProjects(currentProject?.type);
 
   const {
     data: members,
@@ -208,7 +208,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
       }
     }
     createNotification({
-      text: `Successfully added user to ${isSingleProject ? productLabel : "the project"}`,
+      text: `Successfully added user to ${projectsHidden ? productLabel : "the project"}`,
       type: "success"
     });
     handlePopUpToggle("addMember", false);
@@ -263,7 +263,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>
-            {isSingleProject
+            {projectsHidden
               ? `Add Members to ${productLabel}`
               : (t("section.members.add-dialog.add-member-to-project") as string)}
           </DialogTitle>

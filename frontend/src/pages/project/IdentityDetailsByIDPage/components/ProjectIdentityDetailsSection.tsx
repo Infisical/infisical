@@ -30,7 +30,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub, useProject } from "@app/context";
-import { getSingleProjectProductName } from "@app/helpers/project";
+import { getProjectLabel, hidesProjects } from "@app/helpers/project";
 import { usePopUp, useTimedReset } from "@app/hooks";
 import { identityAuthToNameMap, TProjectIdentity } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
@@ -51,13 +51,13 @@ export const ProjectIdentityDetailsSection = ({
   membership
 }: Props) => {
   const { currentProject } = useProject();
-  const singleProjectProductName = getSingleProjectProductName(currentProject?.type);
+  const projectsHidden = hidesProjects(currentProject?.type);
   const isPam = currentProject?.type === ProjectType.PAM;
   const isAgentVault = currentProject?.type === ProjectType.AgentVault;
 
   let productLabel = "Project";
-  if (singleProjectProductName) {
-    productLabel = singleProjectProductName;
+  if (projectsHidden) {
+    productLabel = getProjectLabel(currentProject?.type);
   } else if (isPam) {
     productLabel = "PAM";
   } else if (isAgentVault) {
@@ -65,8 +65,8 @@ export const ProjectIdentityDetailsSection = ({
   }
 
   let joinedLabel = "Joined project";
-  if (singleProjectProductName) {
-    joinedLabel = `Joined ${singleProjectProductName.toLowerCase()}`;
+  if (projectsHidden) {
+    joinedLabel = `Joined ${getProjectLabel(currentProject?.type).toLowerCase()}`;
   } else if (isPam) {
     joinedLabel = "Joined PAM";
   } else if (isAgentVault) {

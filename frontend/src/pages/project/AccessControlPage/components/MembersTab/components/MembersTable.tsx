@@ -60,8 +60,8 @@ import {
 } from "@app/context";
 import {
   getProjectBaseURL,
-  getSingleProjectProductName,
-  isSingleProjectProduct
+  getProjectLabel,
+  hidesProjects
 } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import {
@@ -103,8 +103,8 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
   const filterRoles = useMemo(() => filter.roles, [filter.roles]);
 
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = getSingleProjectProductName(currentProject?.type) ?? "Project";
-  const isSingleProject = isSingleProjectProduct(currentProject?.type);
+  const productLabel = getProjectLabel(currentProject?.type);
+  const projectsHidden = hidesProjects(currentProject?.type);
   const userId = user?.id || "";
   const projectId = currentProject?.id || "";
   const {
@@ -223,7 +223,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={isSingleProject ? "Search users..." : "Search project users..."}
+            placeholder={projectsHidden ? "Search users..." : "Search project users..."}
           />
         </InputGroup>
         <DropdownMenu>
@@ -238,7 +238,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>
-              {isSingleProject ? "Filter by Role" : `Filter by ${productLabel} Role`}
+              {projectsHidden ? "Filter by Role" : `Filter by ${productLabel} Role`}
             </DropdownMenuLabel>
             {projectRoles?.map(({ id, slug, name }) => (
               <DropdownMenuCheckboxItem
@@ -297,10 +297,10 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
               <EmptyTitle>
                 {/* eslint-disable-next-line no-nested-ternary */}
                 {search || isTableFiltered
-                  ? isSingleProject
+                  ? projectsHidden
                     ? "No users match search"
                     : "No project users match search"
-                  : isSingleProject
+                  : projectsHidden
                     ? "No users found"
                     : "No project users found"}
               </EmptyTitle>
@@ -348,7 +348,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                       )}
                     />
                   </TableHead>
-                  <TableHead>{isSingleProject ? "Role" : `${productLabel} Role`}</TableHead>
+                  <TableHead>{projectsHidden ? "Role" : `${productLabel} Role`}</TableHead>
                   <TableHead variant="action" />
                 </TableRow>
               </TableHeader>

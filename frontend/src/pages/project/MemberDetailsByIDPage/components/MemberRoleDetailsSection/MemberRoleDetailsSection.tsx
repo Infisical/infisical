@@ -65,7 +65,7 @@ import {
   useProjectPermission,
   useUser
 } from "@app/context";
-import { getProjectBaseURL, isSingleProjectProduct } from "@app/helpers/project";
+import { getProjectBaseURL, hidesProjects } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
@@ -166,7 +166,7 @@ export const MemberRoleDetailsSection = ({
       <Card>
         <CardHeader>
           <CardTitle>
-            {isSingleProjectProduct(currentProject?.type) ? "Roles" : "Project Roles"}
+            {hidesProjects(currentProject?.type) ? "Roles" : "Project Roles"}
           </CardTitle>
           <CardDescription>Manage roles assigned to this user</CardDescription>
           {!isOwnProjectMembershipDetails && hasRoles && (

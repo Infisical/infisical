@@ -25,7 +25,7 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { getProjectBaseURL, getSingleProjectProductName } from "@app/helpers/project";
+import { getProjectBaseURL, getProjectLabel, hidesProjects } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteGroupFromWorkspace } from "@app/hooks/api";
 import { useGetWorkspaceGroupMembershipDetails } from "@app/hooks/api/projects/queries";
@@ -72,7 +72,7 @@ const Page = () => {
 
     createNotification({
       text: `Successfully removed group from ${
-        getSingleProjectProductName(currentProject.type)?.toLowerCase() ?? "project"
+        getProjectLabel(currentProject.type).toLowerCase()
       }`,
       type: "success"
     });
@@ -91,8 +91,7 @@ const Page = () => {
     });
   };
 
-  const singleProjectProductName = getSingleProjectProductName(currentProject.type);
-  const productLabel = singleProjectProductName ?? "Project";
+  const productLabel = getProjectLabel(currentProject.type);
 
   if (isPending) {
     return (
@@ -125,7 +124,7 @@ const Page = () => {
       selectedTab: ProjectAccessControlTabs.Groups
     }
   } as const;
-  const backLinkLabel = singleProjectProductName ? "Groups" : "Project Groups";
+  const backLinkLabel = hidesProjects(currentProject.type) ? "Groups" : "Project Groups";
 
   return (
     <div className="@container mx-auto flex max-w-8xl flex-col">

@@ -62,7 +62,7 @@ import {
   useProjectPermission,
   useUser
 } from "@app/context";
-import { getSingleProjectProductName } from "@app/helpers/project";
+import { getProjectLabel } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import {
   useDeleteProjectUserAdditionalPrivilege,
@@ -149,14 +149,14 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
   };
 
   const hasAdditionalPrivileges = Boolean(userProjectPrivileges?.length);
-  const singleProjectProductName = getSingleProjectProductName(currentProject?.type);
+  const projectLabel = getProjectLabel(currentProject?.type);
 
   return (
     <>
       <Card>
         <CardHeader>
           <CardTitle>
-            {`${singleProjectProductName ?? "Project"} Additional Privileges`}
+            {`${projectLabel} Additional Privileges`}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/additional-privileges#api" />
           </CardTitle>
           <CardDescription>Assign one-off policies to this user</CardDescription>
