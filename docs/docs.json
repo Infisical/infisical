@@ -99,7 +99,6 @@
                       "documentation/platform/secrets-mgmt/concepts/approval-workflows"
                     ]
                   },
-                  "documentation/platform/secret-sharing",
                   {
                     "group": "Migrate to Infisical",
                     "root": "documentation/platform/secrets-mgmt/quick-starts/migrate",
@@ -150,6 +149,7 @@
                       "documentation/platform/event-subscriptions"
                     ]
                   },
+                  "documentation/platform/secret-sharing",
                   {
                     "group": "Secret rotation",
                     "root": "documentation/platform/secret-rotation/overview",

@@ -3,7 +3,7 @@ title: "Kubernetes"
 description: "Choose how to deliver secrets from Infisical to the workloads in your Kubernetes cluster."
 ---
 
-Infisical can deliver secrets to your Kubernetes workloads in three ways. Most teams use the Kubernetes Operator. If your cluster already uses the Secrets Store CSI Driver, or you're moving from Vault Agent Injector, one of the other two might fit your setup better.
+Infisical can deliver secrets to your Kubernetes workloads in three ways. Most teams use the Kubernetes Operator.
 
 <Card title="Kubernetes Operator" icon="ship-wheel" href="/integrations/platforms/kubernetes/overview">
   <Badge color="green" size="sm">Recommended</Badge>
@@ -13,7 +13,7 @@ Infisical can deliver secrets to your Kubernetes workloads in three ways. Most t
 
 <CardGroup cols={2}>
   <Card title="Agent Injector" icon="syringe" href="/integrations/platforms/kubernetes-injector">
-    Adds an Infisical Agent container to your pods that writes secrets to a shared volume, without creating Kubernetes Secrets. It works like Vault Agent Injector.
+    Adds an Infisical Agent container to your pods that writes secrets to a shared volume, without creating Kubernetes Secrets.
   </Card>
   <Card title="CSI Provider" icon="hard-drive" href="/integrations/platforms/kubernetes-csi">
     Mounts secrets into your pods as files through the Secrets Store CSI Driver, without creating Kubernetes Secrets.
