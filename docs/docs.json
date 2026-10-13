@@ -610,14 +610,14 @@
                       "documentation/platform/pki/discovery/network"
                     ]
                   },
-                  "documentation/platform/pki/settings/alerts",
-                  "documentation/platform/pki/applications/alerting/overview",
                   {
-                    "group": "Alert channels",
+                    "group": "Alerts",
+                    "root": "documentation/platform/pki/applications/alerting/overview",
                     "pages": [
-                      "documentation/platform/pki/applications/alerting/webhook-alerts",
+                      "documentation/platform/pki/applications/alerting/email-alerts",
                       "documentation/platform/pki/applications/alerting/slack-alerts",
-                      "documentation/platform/pki/applications/alerting/pagerduty-alerts"
+                      "documentation/platform/pki/applications/alerting/pagerduty-alerts",
+                      "documentation/platform/pki/applications/alerting/webhook-alerts"
                     ]
                   },
                   "documentation/platform/pki/settings/certificate-cleanup"
@@ -5470,6 +5470,10 @@
     {
       "source": "/documentation/platform/pki/guides/overview",
       "destination": "/documentation/platform/pki/applications/enrollment-methods/overview"
+    },
+    {
+      "source": "/documentation/platform/pki/settings/alerts",
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
     },
     {
       "source": "/documentation/platform/oauth-applications",
