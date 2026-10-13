@@ -21,7 +21,7 @@ func TestSecret_ListTagPermissions(t *testing.T) {
 		newTaggedSecret(t, proj, "ALLOWED_KEY", newTag(t, proj, "read-allowed"))
 		newTaggedSecret(t, proj, "OTHER_KEY", newTag(t, proj, "other"))
 		secretmanager.CreateSecret(t, proj, "dev", "UNTAGGED", "v")
-		newRole(t, proj, "tag-reader", readSecretsTagged("read-allowed"))
+		proj.NewRole(t, "tag-reader", readSecretsTagged("read-allowed"))
 		reader := proj.NewMachineIdentity(t, fixture.WithRoles("tag-reader"))
 
 		// Action
@@ -41,7 +41,7 @@ func TestSecret_ListTagPermissions(t *testing.T) {
 		newTaggedSecret(t, proj, "RESTRICTED_KEY", plain, restricted)
 		deny := readSecretsTagged("restricted")
 		deny.Inverted = true
-		newRole(t, proj, "restricted-tag-reader", rolePermission{Subject: "secrets", Action: []string{"read"}}, deny)
+		proj.NewRole(t, "restricted-tag-reader", fixture.Permission{Subject: "secrets", Action: []string{"read"}}, deny)
 		reader := proj.NewMachineIdentity(t, fixture.WithRoles("restricted-tag-reader"))
 
 		// Action
@@ -61,9 +61,9 @@ func TestSecret_ListTagPermissions(t *testing.T) {
 		newTaggedSecret(t, proj, "RESTRICTED_KEY", plain, restricted)
 		deny := readSecretsTagged("restricted")
 		deny.Inverted = true
-		newRole(t, proj, "restricted-tag-reader",
-			rolePermission{Subject: "secrets", Action: []string{"read"}},
-			rolePermission{Subject: "secret-imports", Action: []string{"read"}},
+		proj.NewRole(t, "restricted-tag-reader",
+			fixture.Permission{Subject: "secrets", Action: []string{"read"}},
+			fixture.Permission{Subject: "secret-imports", Action: []string{"read"}},
 			deny)
 		reader := proj.NewUser(t, fixture.WithRoles("restricted-tag-reader"))
 
@@ -82,8 +82,8 @@ func TestSecret_ListTagPermissions(t *testing.T) {
 		newTaggedSecret(t, proj, "SHARED_KEY", newTag(t, proj, "shared"))
 		deny := readSecretsTagged("shared")
 		deny.Inverted = true
-		newRole(t, proj, "shared-allow", readSecretsTagged("shared"))
-		newRole(t, proj, "shared-deny", deny)
+		proj.NewRole(t, "shared-allow", readSecretsTagged("shared"))
+		proj.NewRole(t, "shared-deny", deny)
 		allowOnly := proj.NewMachineIdentity(t, fixture.WithRoles("shared-allow"))
 		both := proj.NewMachineIdentity(t, fixture.WithRoles("shared-allow", "shared-deny"))
 

@@ -1,8 +1,6 @@
 package secrets_test
 
 import (
-	"bytes"
-	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -30,29 +28,12 @@ func newTag(t *testing.T, proj *fixture.Project, slug string) string {
 	return res.JSON200.Tag.Id.String()
 }
 
-type rolePermission struct {
-	Subject    string         `json:"subject"`
-	Action     []string       `json:"action"`
-	Conditions map[string]any `json:"conditions,omitempty"`
-	Inverted   bool           `json:"inverted,omitempty"`
-}
-
-func readSecretsTagged(slugs ...string) rolePermission {
-	return rolePermission{
+func readSecretsTagged(slugs ...string) fixture.Permission {
+	return fixture.Permission{
 		Subject:    "secrets",
 		Action:     []string{"read"},
 		Conditions: map[string]any{"secretTags": map[string]any{"$in": slugs}},
 	}
-}
-
-func newRole(t *testing.T, proj *fixture.Project, slug string, permissions ...rolePermission) {
-	t.Helper()
-	body, err := json.Marshal(map[string]any{"slug": slug, "name": slug, "permissions": permissions})
-	require.NoError(t, err)
-	res, err := proj.Tenant().Admin.API.CreateProjectRoleWithBodyWithResponse(t.Context(), proj.ID,
-		"application/json", bytes.NewReader(body))
-	require.NoError(t, err)
-	require.Equalf(t, http.StatusOK, res.StatusCode(), "creating role %s: %s", slug, apierr.Body(res.Body))
 }
 
 func newTaggedSecret(t *testing.T, proj *fixture.Project, name string, tagIDs ...string) {

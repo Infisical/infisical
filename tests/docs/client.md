@@ -43,7 +43,7 @@ the spec is correct, and every Node API consumer reads it.
 
 - Narrow the action to the schema that fails. The existing one replaces only the
   `createProjectRole` body's permission items with a plain object, and the suite sends
-  rules as JSON (`rolePermission` in `suites/secretmanager/secrets/helpers_test.go`).
+  rules as JSON (`fixture.Permission` in `fixture/role.go`).
 - Overlays are strict: an action whose target matches nothing fails generation, so a
   renamed route shows up instead of silently undoing the patch.
 - Remove the action once an oapi-codegen release fixes the bug.
