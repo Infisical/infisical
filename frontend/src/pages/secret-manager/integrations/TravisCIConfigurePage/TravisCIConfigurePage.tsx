@@ -164,7 +164,7 @@ export const TravisCIConfigurePage = () => {
           onClick={handleButtonClick}
           className="mt-4"
           isPending={isLoading}
-          disabled={integrationAuthApps.length === 0}
+          isDisabled={integrationAuthApps.length === 0}
           variant="project"
         >
           Create Integration

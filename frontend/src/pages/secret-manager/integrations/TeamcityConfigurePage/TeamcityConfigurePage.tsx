@@ -253,7 +253,7 @@ export const TeamcityConfigurePage = () => {
           onClick={handleButtonClick}
           className="mt-2 mr-6 mb-6 ml-auto"
           isPending={isLoading}
-          disabled={integrationAuthApps.length === 0}
+          isDisabled={integrationAuthApps.length === 0}
           variant="project"
         >
           Create Integration

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
@@ -31,8 +32,8 @@ type FormData = z.infer<typeof schema>;
 
 export const RundeckAuthorizePage = () => {
   const navigate = useNavigate();
-
-  const { mutateAsync, isPending: isLoading } = useSaveIntegrationAccessToken();
+  const [isLoading, setIsLoading] = useState(false);
+  const { mutateAsync } = useSaveIntegrationAccessToken();
 
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
@@ -47,6 +48,8 @@ export const RundeckAuthorizePage = () => {
 
   const onFormSubmit = async ({ authToken, rundeckURL }: FormData) => {
     try {
+      setIsLoading(true);
+
       const integrationAuth = await mutateAsync({
         workspaceId: currentProject.id,
         integration: "rundeck",
@@ -54,6 +57,7 @@ export const RundeckAuthorizePage = () => {
         url: rundeckURL.trim()
       });
 
+      setIsLoading(false);
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/rundeck/create",
         params: {
@@ -65,6 +69,7 @@ export const RundeckAuthorizePage = () => {
         }
       });
     } catch (err) {
+      setIsLoading(false);
       console.error(err);
     }
   };

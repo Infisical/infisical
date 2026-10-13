@@ -191,7 +191,7 @@ export const SelectIntegrationAuthPage = () => {
                 return (
                   <Button
                     className="mt-3 w-3/4"
-                    disabled={isIntegrationAuthSelectLoading}
+                    isDisabled={isIntegrationAuthSelectLoading}
                     key={integrationAuth.id}
                     size="sm"
                     type="submit"
