@@ -308,6 +308,10 @@ export const ServiceSheet = ({
   }, [isOpen, service, isUpdate, prefillHost, reset, setStep]);
 
   const handleTemplatePicked = (picked: AgentVaultTemplate | null) => {
+    if (isDirty && picked?.key === template?.key) {
+      setStep(1);
+      return;
+    }
     setTemplate(picked);
     reset(
       picked
