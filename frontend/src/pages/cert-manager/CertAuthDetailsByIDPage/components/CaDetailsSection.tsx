@@ -17,19 +17,10 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Button as ButtonV2,
-  FormControl,
-  Input,
-  Modal,
-  ModalClose,
-  ModalContent,
-  Switch as SwitchV2,
-  Tooltip as TooltipV2
-} from "@app/components/v2";
-import {
   Alert,
   AlertTitle,
   Badge,
+  Button,
   Card,
   CardAction,
   CardContent,
@@ -40,7 +31,19 @@ import {
   DetailGroup,
   DetailLabel,
   DetailValue,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   IconButton,
+  Input,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -213,6 +216,7 @@ export const CaDetailsSection = ({ caId }: Props) => {
           {showAutoRenewal && (
             <CardAction>
               <IconButton
+                aria-label="Edit renewal settings"
                 variant="outline"
                 size="xs"
                 onClick={() => handlePopUpToggle("editAutoRenewal", true)}
@@ -347,13 +351,14 @@ export const CaDetailsSection = ({ caId }: Props) => {
                     <DetailValue>
                       {autoRenewal.lastRenewalStatus === CaRenewalStatus.FAILED &&
                       autoRenewal.lastRenewalMessage ? (
-                        <TooltipV2
-                          position="right"
-                          content={autoRenewal.lastRenewalMessage}
-                          className="max-w-md break-words"
-                        >
-                          <Badge variant="danger">Failed</Badge>
-                        </TooltipV2>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="danger">Failed</Badge>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="max-w-md break-words">
+                            {autoRenewal.lastRenewalMessage}
+                          </TooltipContent>
+                        </Tooltip>
                       ) : (
                         <Badge
                           variant={(() => {
@@ -410,30 +415,31 @@ export const CaDetailsSection = ({ caId }: Props) => {
         </CardContent>
       </Card>
 
-      <Modal
-        isOpen={popUp.editAutoRenewal.isOpen}
+      <Dialog
+        open={popUp.editAutoRenewal.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("editAutoRenewal", isOpen);
           if (!isOpen) reset();
         }}
       >
-        <ModalContent title="Edit Renewal Settings">
-          <form onSubmit={handleSubmit(onAutoRenewalSubmit)}>
+        <DialogContent isPending={isSubmitting}>
+          <DialogHeader>
+            <DialogTitle>Edit Renewal Settings</DialogTitle>
+          </DialogHeader>
+          <form className="flex flex-col gap-6" onSubmit={handleSubmit(onAutoRenewalSubmit)}>
             <Controller
               control={control}
               name="autoRenewalEnabled"
               render={({ field: { value, onChange } }) => (
-                <FormControl>
-                  <SwitchV2
+                <Field orientation="horizontal">
+                  <FieldLabel htmlFor="auto-renewal-enabled">Auto-Renewal</FieldLabel>
+                  <Toggle
                     id="auto-renewal-enabled"
-                    className="bg-muted/80 shadow-inner data-[state=checked]:bg-success/80"
-                    thumbClassName="bg-surface-raised"
-                    isChecked={value}
+                    variant="project"
+                    checked={value}
                     onCheckedChange={onChange}
-                  >
-                    Auto-Renewal
-                  </SwitchV2>
-                </FormControl>
+                  />
+                </Field>
               )}
             />
             {watchEnabled && (
@@ -441,35 +447,37 @@ export const CaDetailsSection = ({ caId }: Props) => {
                 control={control}
                 name="autoRenewalDaysBeforeExpiry"
                 render={({ field, fieldState: { error } }) => (
-                  <FormControl
-                    label="Days Before Expiry"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                    helperText="Number of days before certificate expiry to trigger auto-renewal"
-                  >
-                    <Input {...field} type="number" min={1} max={365} />
-                  </FormControl>
+                  <Field>
+                    <FieldLabel htmlFor="auto-renewal-days-before-expiry">
+                      Days Before Expiry
+                    </FieldLabel>
+                    <Input
+                      {...field}
+                      id="auto-renewal-days-before-expiry"
+                      type="number"
+                      min={1}
+                      max={365}
+                      isError={Boolean(error)}
+                    />
+                    <FieldDescription>
+                      Number of days before certificate expiry to trigger auto-renewal
+                    </FieldDescription>
+                    <FieldError>{error?.message}</FieldError>
+                  </Field>
                 )}
               />
             )}
-            <div className="flex w-full justify-between gap-4 pt-4">
-              <ModalClose asChild>
-                <ButtonV2 colorSchema="secondary" variant="plain">
-                  Cancel
-                </ButtonV2>
-              </ModalClose>
-              <ButtonV2
-                isLoading={isSubmitting}
-                isDisabled={isSubmitting}
-                type="submit"
-                colorSchema="secondary"
-              >
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="ghost">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" variant="project" isPending={isSubmitting}>
                 Save
-              </ButtonV2>
-            </div>
+              </Button>
+            </DialogFooter>
           </form>
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

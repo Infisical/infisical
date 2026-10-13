@@ -2,7 +2,6 @@ import { Plus, Rows3, Trash2, WrenchIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -12,6 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DeleteConfirmDialog,
   Empty,
   EmptyHeader,
   EmptyTitle,
@@ -219,12 +219,13 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
               </Empty>
             )}
           </CardContent>
-          <DeleteActionModal
+          <DeleteConfirmDialog
             isOpen={popUp.removeRole.isOpen}
-            deleteKey="remove"
+            confirmKey="remove"
             title={`Are you sure you want to remove the role ${roleToDelete?.slug}?`}
-            onChange={(isOpen) => handlePopUpToggle("removeRole", isOpen)}
-            onDeleteApproved={() => handleRemoveRole(roleToDelete?.slug)}
+            description="This action is irreversible."
+            onOpenChange={(isOpen) => handlePopUpToggle("removeRole", isOpen)}
+            onConfirm={() => handleRemoveRole(roleToDelete?.slug)}
           />
         </Card>
       )}

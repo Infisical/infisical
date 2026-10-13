@@ -5,7 +5,6 @@ import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
-import { DeleteActionModal, EmptyState } from "@app/components/v2";
 import {
   AccessRestrictedDialog,
   Button,
@@ -13,12 +12,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
   PageHeader,
   PageLoader,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { DeleteConfirmDialog } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionCertificateActions,
@@ -303,7 +306,13 @@ const Page = () => {
 
   let pageBody: React.ReactNode = null;
   if (!certificate) {
-    pageBody = <EmptyState title="Error: Unable to find the certificate." className="py-12" />;
+    pageBody = (
+      <Empty className="border border-dashed">
+        <EmptyHeader>
+          <EmptyTitle>Error: Unable to find the certificate.</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
+    );
   } else if (!canReadCertificate) {
     pageBody = (
       <AccessRestrictedDialog
@@ -531,13 +540,13 @@ const Page = () => {
         handlePopUpToggle={handlePopUpToggle}
         applicationName={fromApplication}
       />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteCertificate.isOpen}
         title="Are you sure you want to delete this certificate?"
-        subTitle="This action cannot be undone. The certificate will be permanently deleted."
-        onChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={onDeleteCertificateSubmit}
+        description="This action cannot be undone. The certificate will be permanently deleted."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
+        confirmKey="confirm"
+        onConfirm={onDeleteCertificateSubmit}
       />
     </div>
   );
