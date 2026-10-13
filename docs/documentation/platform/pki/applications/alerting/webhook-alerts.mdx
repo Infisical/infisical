@@ -16,10 +16,10 @@ A webhook channel on a certificate [alert](/documentation/platform/pki/applicati
     Select **Add Channel** > **Webhook** and enter the **URL** of your endpoint. The URL must use HTTPS.
   </Step>
   <Step>
-    Optionally, select **Add signing secret** and enter a secret, so your endpoint can [verify the signature](#verify-the-signature) of each request.
+    If your endpoint requires authentication, under **Authentication**, select **Bearer token**, **Basic auth**, or **API key**, and enter the [credentials](#authentication) it expects.
   </Step>
   <Step>
-    Optionally, select **Add authentication** and enter the [credentials](#authentication) your endpoint expects.
+    Optionally, select **Add signing secret** and enter a secret, so your endpoint can [verify the signature](#verify-the-signature) of each request.
   </Step>
   <Step>
     Optionally, select **Add header** to send [custom headers](#custom-headers) with each request.
@@ -40,9 +40,9 @@ A channel can have one authentication method, which Infisical sends as a header 
 |------|----------------|-----------------------------|
 | **Bearer token** | A token | `Authorization: Bearer <token>` |
 | **Basic auth** | A username and a password | `Authorization: Basic <base64 of username:password>` |
-| **API key header** | A header name, such as `X-API-Key`, and the key | `<header name>: <key>` |
+| **API key** | A header name, such as `X-API-Key`, and the key | `<header name>: <key>` |
 
-For an `Authorization` scheme other than `Bearer`, such as `GenieKey <key>`, select **API key header**, enter `Authorization` as the header name, and enter the full value, including the scheme.
+For an `Authorization` scheme other than `Bearer`, such as `GenieKey <key>`, select **API key**, enter `Authorization` as the header name, and enter the full value, including the scheme.
 
 Infisical doesn't show saved credentials again. When you edit the channel, leave a field blank to keep its saved value. If you change the URL, enter the credentials again, because Infisical only sends them to the URL they were saved with.
 

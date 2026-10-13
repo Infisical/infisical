@@ -223,8 +223,8 @@ export const ChannelCard = ({
               <FieldError errors={[channelErrors?.url]} />
             </FieldContent>
           </Field>
-          <WebhookSigningSecretField index={index} />
           <WebhookAuthenticationField index={index} />
+          <WebhookSigningSecretField index={index} />
           <WebhookHeadersField index={index} />
         </>
       )}

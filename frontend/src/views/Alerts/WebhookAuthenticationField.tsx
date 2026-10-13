@@ -1,19 +1,16 @@
-import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { PlusIcon, TrashIcon } from "lucide-react";
+import { useFormContext, useWatch } from "react-hook-form";
 
-import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import {
-  Button,
   Field,
   FieldContent,
+  FieldDescription,
   FieldError,
-  IconButton,
+  FieldLabel,
   Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
 } from "@app/components/v3";
 import {
   isWebhookUrlChanged,
@@ -23,6 +20,10 @@ import {
 } from "@app/hooks/api/alerts";
 
 import { ChannelSecretInput, KEEP_PLACEHOLDER } from "./ChannelSecretInput";
+
+const NO_AUTH = "none";
+
+const REENTER_PLACEHOLDER = "Re-enter for new URL";
 
 type Props = {
   index: number;
@@ -37,105 +38,72 @@ export const WebhookAuthenticationField = ({ index }: Props) => {
   } = useFormContext<TChannelsForm>();
   const channel = useWatch({ control, name: `channels.${index}` });
   const channelErrors = errors.channels?.[index];
-  const authType = channel?.authType;
-
-  const setAuthType = (type?: WebhookAuthType) =>
-    setValue(`channels.${index}.authType`, type, { shouldDirty: true });
-
-  const label = (
-    <FieldLabelWithTooltip tooltip="Credentials sent with each request, for endpoints that require a token, password, or API key.">
-      Authentication <span className="text-muted">(optional)</span>
-    </FieldLabelWithTooltip>
-  );
-
-  if (!authType) {
-    return (
-      <Field>
-        {label}
-        <FieldContent>
-          <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            className="self-start"
-            onClick={() => setAuthType(WebhookAuthType.Bearer)}
-          >
-            <PlusIcon className="size-3.5" />
-            Add authentication
-          </Button>
-        </FieldContent>
-      </Field>
-    );
-  }
-
-  const { name, secret } = WEBHOOK_AUTH_FIELDS[authType];
   const isUrlChanged = isWebhookUrlChanged(channel);
-  const hasSavedSecret = Boolean(channel.id && channel[secret.hasSaved]);
 
   return (
     <Field>
-      {label}
+      <FieldLabel>Authentication</FieldLabel>
       <FieldContent>
-        <div className="flex flex-col gap-2">
-          <div className="flex items-start gap-2">
-            <Controller
-              control={control}
-              name={`channels.${index}.authType`}
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className="w-full" aria-label="Authentication type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    {Object.values(WebhookAuthType).map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {WEBHOOK_AUTH_FIELDS[type].label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            <IconButton
-              aria-label="Remove authentication"
-              variant="outline"
-              onClick={() => setAuthType(undefined)}
-            >
-              <TrashIcon className="size-4" />
-            </IconButton>
-          </div>
-          <div className="flex items-start gap-2">
-            {name && (
-              <Field className="w-2/5">
-                <Input
-                  key={name.field}
-                  aria-label={name.label}
-                  placeholder={name.placeholder}
-                  isError={Boolean(channelErrors?.[name.field])}
-                  {...register(`channels.${index}.${name.field}`)}
-                />
-                <FieldError errors={[channelErrors?.[name.field]]} />
-              </Field>
-            )}
-            <Field className="grow">
-              <ChannelSecretInput
-                key={secret.field}
-                id={`channel-${index}-${secret.field}`}
-                ariaLabel={secret.label}
-                placeholder={hasSavedSecret && !isUrlChanged ? KEEP_PLACEHOLDER : secret.label}
-                isError={Boolean(channelErrors?.[secret.field])}
-                registration={register(`channels.${index}.${secret.field}`)}
-              />
-              <FieldError errors={[channelErrors?.[secret.field]]} />
-            </Field>
-          </div>
-          {hasSavedSecret && isUrlChanged && (
-            <p className="text-xs text-muted">
-              The URL changed, so enter the {secret.label.toLowerCase()} again. Saved credentials
-              are only sent to the URL they were saved with.
-            </p>
-          )}
-        </div>
+        <Tabs
+          value={channel?.authType ?? NO_AUTH}
+          onValueChange={(value) =>
+            setValue(
+              `channels.${index}.authType`,
+              value === NO_AUTH ? undefined : (value as WebhookAuthType),
+              { shouldDirty: true }
+            )
+          }
+        >
+          <TabsList variant="filled" aria-label="Authentication type" className="w-full">
+            <TabsTrigger value={NO_AUTH}>None</TabsTrigger>
+            {Object.values(WebhookAuthType).map((type) => (
+              <TabsTrigger key={type} value={type}>
+                {WEBHOOK_AUTH_FIELDS[type].label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          <TabsContent value={NO_AUTH} className="mt-0">
+            <FieldDescription>Requests are sent without authentication.</FieldDescription>
+          </TabsContent>
+          {Object.values(WebhookAuthType).map((type) => {
+            const { description, name, secret } = WEBHOOK_AUTH_FIELDS[type];
+            const hasSavedSecret = Boolean(channel?.id && channel[secret.hasSaved]);
+            const needsReentry = hasSavedSecret && isUrlChanged;
+            let secretPlaceholder = secret.label;
+            if (hasSavedSecret)
+              secretPlaceholder = needsReentry ? REENTER_PLACEHOLDER : KEEP_PLACEHOLDER;
+
+            return (
+              <TabsContent key={type} value={type} className="mt-0 flex flex-col gap-2">
+                <div className="flex items-start gap-2">
+                  {name && (
+                    <Field className={type === WebhookAuthType.Basic ? "min-w-0 flex-1" : "w-2/5"}>
+                      <Input
+                        aria-label={name.label}
+                        placeholder={name.placeholder}
+                        isError={Boolean(channelErrors?.[name.field])}
+                        {...register(`channels.${index}.${name.field}`)}
+                      />
+                      <FieldError errors={[channelErrors?.[name.field]]} />
+                    </Field>
+                  )}
+                  <Field className="min-w-0 flex-1">
+                    <ChannelSecretInput
+                      id={`channel-${index}-${secret.field}`}
+                      ariaLabel={secret.label}
+                      placeholder={secretPlaceholder}
+                      isError={Boolean(channelErrors?.[secret.field])}
+                      isWarning={needsReentry && !channel[secret.field]}
+                      registration={register(`channels.${index}.${secret.field}`)}
+                    />
+                    <FieldError errors={[channelErrors?.[secret.field]]} />
+                  </Field>
+                </div>
+                <FieldDescription>{description}</FieldDescription>
+              </TabsContent>
+            );
+          })}
+        </Tabs>
       </FieldContent>
     </Field>
   );
