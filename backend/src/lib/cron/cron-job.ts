@@ -61,7 +61,8 @@ const PARTICIPANT_SLOTS = 5;
 const PROCESS_BATCH_SIZE = 50;
 const NEXT_FIRE_BUFFER_MS = 1_000; // shared margin for fitsBeforeNextFire and jitterWindowMs
 const ERROR_MESSAGE_MAX_LEN = 4_000;
-// A fire due at most this many enqueue ticks ago counts as just due: pods may not have enqueued it yet.
+// Migration only, see "Migration, part 2 of 2" in ENQUEUE_RUN_LUA. A fire due at most this many
+// enqueue ticks ago counts as just due: pods may not have enqueued it yet.
 const JUST_DUE_ENQUEUE_TICKS = 2;
 
 const DEFAULTS = {
@@ -117,17 +118,22 @@ const ENQUEUE_RUN_LUA = `
     return ${EnqueueResult.AlreadyEnqueued}
   end
 
-  -- Backfill only, not scheduling logic. Pods without "lastKey" create the run hash but never
-  -- set "lastKey". If the run hash exists, the fire is already enqueued, so just record it.
-  -- Remove once every deployment sets "lastKey".
+  -- Migration, part 1 of 2. Not scheduling logic; remove together with part 2.
+  -- Pods without "lastKey" create the run hash but never set "lastKey". If the run hash exists,
+  -- the fire is already enqueued, so just record it. Without this, part 2 would enqueue that
+  -- fire a second time.
   if redis.call('exists', runKey) == 1 then
     redis.call('set', lastKey, scheduledAt)
     return ${EnqueueResult.AlreadyEnqueued}
   end
 
   -- No "last" means the job has never fired. Record this fire without running it, so the next
-  -- fire is the first run. A fire that "justBecameDue" still runs: on the first deploy of
+  -- fire is the first run.
+  --
+  -- Migration, part 2 of 2. A fire that "justBecameDue" still runs: on the first deploy of
   -- "lastKey", existing jobs have no "last" either, and no pod may have enqueued this fire yet.
+  -- To clean up, remove part 1, the "justBecameDue" argument and JUST_DUE_ENQUEUE_TICKS, so
+  -- this check becomes "if not last then", and remove the e2e tests labelled with each part.
   if not last and not justBecameDue then
     redis.call('set', lastKey, scheduledAt)
     return ${EnqueueResult.SkippedFirstFire}

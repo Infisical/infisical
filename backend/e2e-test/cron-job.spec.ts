@@ -552,6 +552,7 @@ describe("dedup across restarts", () => {
     expect(await testRedis.keys(RUN_KEYS("restart-job"))).toEqual([]);
   }, 10_000);
 
+  // Migration, part 1 of 2 (see ENQUEUE_RUN_LUA): remove with that branch.
   test("a run hash written without a last value is recorded instead of enqueued again", async () => {
     const scheduledAt = currentFireMs();
     await testRedis.hset(
@@ -585,9 +586,10 @@ describe("dedup across restarts", () => {
     expect(await testRedis.get(LAST_KEY("new-job"))).toBe(String(fire));
   }, 10_000);
 
-  // Jobs that ran before the last key existed have no last value either. When the first deploy
-  // that writes it lands just after a boundary, no pod may have enqueued that fire yet, and
-  // treating the job as new would silently drop it.
+  // Migration, part 2 of 2 (see ENQUEUE_RUN_LUA): remove with that branch. Jobs that ran before
+  // the last key existed have no last value either. When the first deploy that writes it lands
+  // just after a boundary, no pod may have enqueued that fire yet, and treating the job as new
+  // would silently drop it.
   test("a job with no last value still runs a fire that only just became due", async () => {
     freezeClockAfterFire(100);
     const handler = vi.fn().mockResolvedValue(undefined);
