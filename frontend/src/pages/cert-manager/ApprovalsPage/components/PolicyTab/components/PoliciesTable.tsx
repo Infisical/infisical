@@ -100,7 +100,7 @@ export const PoliciesTable = ({ handlePopUpOpen, applicationId }: Props) => {
                   <div className="flex items-center gap-x-2">
                     <span className="text-sm font-medium text-foreground">{policy.name}</span>
                     {policy.scopeType !== ApprovalPolicyScope.PkiApplication && (
-                      <span className="rounded bg-surface-active px-2 py-0.5 text-[10px] tracking-wide text-foreground-secondary uppercase">
+                      <span className="rounded bg-surface-active px-2 py-0.5 text-[10px] tracking-wide text-foreground-secondary">
                         Legacy
                       </span>
                     )}
