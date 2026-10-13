@@ -5,7 +5,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tabs, TabsContent } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionSub, useOrganization, useProject } from "@app/context";
+import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
@@ -15,7 +15,6 @@ import { AppConnectionsTab, PkiSyncsTab } from "./components";
 export const IntegrationsListPage = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
   const { t } = useTranslation();
 
   const { selectedTab } = useSearch({
@@ -31,7 +30,6 @@ export const IntegrationsListPage = () => {
         selectedTab: tab as IntegrationsListPageTabs
       },
       params: {
-        projectId: currentProject?.id,
         orgId: currentOrg.id
       }
     });
@@ -40,7 +38,7 @@ export const IntegrationsListPage = () => {
   return (
     <>
       <Helmet>
-        <title>{t("common.head-title", { title: t("integrations.title") })}</title>
+        <title>{t("common.head-title", { title: "Integrations" })}</title>
         <meta property="og:image" content="/images/message.png" />
         <meta property="og:title" content="Manage your certificates in seconds" />
         <meta name="og:description" content="Sync and manage PKI certificates across services" />
@@ -49,7 +47,7 @@ export const IntegrationsListPage = () => {
         <div className="mb-8 flex flex-col">
           <PageHeader
             scope={ProjectType.CertificateManager}
-            title="Project Integrations"
+            title="Integrations"
             description="Manage integrations with third-party certificate services."
           />
           <Tabs orientation="vertical" value={currentTab} onValueChange={updateSelectedTab}>

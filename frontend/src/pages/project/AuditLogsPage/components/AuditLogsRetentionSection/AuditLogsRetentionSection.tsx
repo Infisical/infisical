@@ -25,6 +25,7 @@ import {
   useSubscription
 } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { getProjectTitle, isOrgScopedProduct } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useUpdateWorkspaceAuditLogsRetention } from "@app/hooks/api/projects/queries";
 
@@ -98,7 +99,9 @@ export const AuditLogsRetentionSection = () => {
           <CardHeader>
             <CardTitle>Audit Logs Retention</CardTitle>
             <CardDescription>
-              Set the number of days to keep your project audit logs.
+              {isOrgScopedProduct(currentProject.type)
+                ? `Set the number of days to keep your ${getProjectTitle(currentProject.type)} audit logs.`
+                : "Set the number of days to keep your project audit logs."}
             </CardDescription>
           </CardHeader>
           <CardContent>
