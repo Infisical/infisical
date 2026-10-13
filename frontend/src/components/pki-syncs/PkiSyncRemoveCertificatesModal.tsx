@@ -21,7 +21,6 @@ import {
 } from "@app/hooks/api/pkiSyncs";
 
 import {
-  arePkiSyncRemovalOptionsComplete,
   hasPkiSyncRemovalOptions,
   PkiSyncRemovalOptionsFields
 } from "./PkiSyncRemovalOptionsFields";
@@ -89,13 +88,6 @@ export const PkiSyncRemoveCertificatesModal = ({ isOpen, onOpenChange, pkiSync }
             variant="danger"
             onClick={handleTriggerRemoveCertificates}
             isPending={triggerRemoveCertificates.isPending}
-            isDisabled={
-              !arePkiSyncRemovalOptionsComplete(
-                destination,
-                { remainingCertificateCount: 0 },
-                removalOptions
-              )
-            }
           >
             Remove Certificates
           </AlertDialogAction>
