@@ -148,7 +148,8 @@ export const SecretScanningScanTable = ({ dataSource }: Props) => {
 
   const getSortDirection = (col: ScansOrderBy) => {
     if (orderBy !== col) return "none" as const;
-    return orderDirection === OrderByDirection.ASC
+    const sortsLargestFirst = col === ScansOrderBy.Findings || col === ScansOrderBy.Timestamp;
+    return (orderDirection === OrderByDirection.ASC) !== sortsLargestFirst
       ? ("ascending" as const)
       : ("descending" as const);
   };

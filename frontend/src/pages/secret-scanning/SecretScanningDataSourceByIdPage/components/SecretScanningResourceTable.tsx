@@ -194,7 +194,9 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
 
   const getSortDirection = (col: ResourcesOrderBy) => {
     if (orderBy !== col) return "none" as const;
-    return orderDirection === OrderByDirection.ASC
+    const sortsLargestFirst =
+      col === ResourcesOrderBy.Findings || col === ResourcesOrderBy.LastScanned;
+    return (orderDirection === OrderByDirection.ASC) !== sortsLargestFirst
       ? ("ascending" as const)
       : ("descending" as const);
   };
