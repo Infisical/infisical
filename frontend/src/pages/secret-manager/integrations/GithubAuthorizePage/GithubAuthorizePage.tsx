@@ -9,13 +9,19 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   Button,
   Card,
-  CardBody,
+  CardContent,
+  CardDescription,
+  CardHeader,
   CardTitle,
-  FormControl,
+  Field,
+  FieldLabel,
+  ProviderIcon,
   Select,
-  SelectItem
-} from "@app/components/v2";
-import { ProviderIcon } from "@app/components/v3";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { localStorageService } from "@app/helpers/localStorage";
 import { useGetCloudIntegrations } from "@app/hooks/api";
@@ -39,45 +45,55 @@ export const GithubAuthorizePage = () => {
       <Helmet>
         <title>Select GitHub Integration Auth</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-border-control">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Select how you'd like to integrate with GitHub. We recommend using the GitHub App method for fine-grained access."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
-              <ProviderIcon icon="GitHub.png" height={30} width={30} alt="GitHub logo" />
-            </div>
-            <span className="ml-2.5">GitHub Integration </span>
-            <a
-              href="https://infisical.com/docs/integrations/cicd/githubactions"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
-                />
+      <Card className="mb-12 w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <div className="flex flex-row items-center">
+              <div className="flex items-center pb-0.5">
+                <ProviderIcon icon="GitHub.png" height={30} width={30} alt="GitHub logo" />
               </div>
-            </a>
-          </div>
-        </CardTitle>
-        <CardBody>
-          <FormControl label="Select authentication method">
+              <span className="ml-2.5">GitHub Integration </span>
+              <a
+                href="https://infisical.com/docs/integrations/cicd/githubactions"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="text-xxs mb-[0.07rem] ml-1.5"
+                  />
+                </div>
+              </a>
+            </div>
+          </CardTitle>
+          <CardDescription>
+            Select how you&apos;d like to integrate with GitHub. We recommend using the GitHub App
+            method for fine-grained access.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Field className="mb-4" data-invalid={false}>
+            <FieldLabel htmlFor="github-select-authentication-method">
+              Select authentication method
+            </FieldLabel>
             <Select
               value={selectedAuthMethod}
               onValueChange={(val) => {
                 setSelectedAuthMethod(val as AuthMethod);
               }}
-              className="w-full border border-border-strong"
             >
-              <SelectItem value={AuthMethod.APP}>GitHub App (Recommended)</SelectItem>
-              <SelectItem value={AuthMethod.OAUTH}>OAuth</SelectItem>
+              <SelectTrigger className="w-full" id="github-select-authentication-method">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={AuthMethod.APP}>GitHub App (Recommended)</SelectItem>
+                <SelectItem value={AuthMethod.OAUTH}>OAuth</SelectItem>
+              </SelectContent>
             </Select>
-          </FormControl>
+          </Field>
           <div className="flex items-end">
             <Button
               onClick={() => {
@@ -110,14 +126,13 @@ export const GithubAuthorizePage = () => {
                   );
                 }
               }}
-              colorSchema="primary"
-              variant="outline_bg"
               className="mt-4 ml-auto w-min"
+              variant="project"
             >
               Connect to GitHub
             </Button>
           </div>
-        </CardBody>
+        </CardContent>
       </Card>
     </div>
   );

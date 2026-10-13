@@ -7,7 +7,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
@@ -64,57 +75,74 @@ export const FlyioAuthorizePage = () => {
       <Helmet>
         <title>Authorize Fly.io Integration</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-border-control">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="After adding your access token, you will be prompted to set up an integration for a particular Infisical project and environment."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
-              <img src="/images/integrations/Flyio.svg" height={30} width={30} alt="Fly.io logo" />
-            </div>
-            <span className="ml-2.5">Fly.io Integration </span>
-            <a
-              href="https://infisical.com/docs/integrations/cloud/flyio"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
+      <Card className="mb-12 w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <div className="flex flex-row items-center">
+              <div className="flex items-center pb-0.5">
+                <img
+                  src="/images/integrations/Flyio.svg"
+                  height={30}
+                  width={30}
+                  alt="Fly.io logo"
                 />
               </div>
-            </a>
-          </div>
-        </CardTitle>
-        <form onSubmit={handleSubmit(onFormSubmit)} className="px-6 pb-8 text-right">
-          <Controller
-            control={control}
-            name="accessToken"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Fly.io Access Token"
-                errorText={error?.message}
-                isError={Boolean(error)}
+              <span className="ml-2.5">Fly.io Integration </span>
+              <a
+                href="https://infisical.com/docs/integrations/cloud/flyio"
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                <Input {...field} placeholder="" type="password" autoComplete="new-password" />
-              </FormControl>
-            )}
-          />
-          <Button
-            colorSchema="primary"
-            variant="outline_bg"
-            className="mt-2 w-min"
-            size="sm"
-            type="submit"
-            isLoading={isLoading}
-          >
-            Connect to Fly.io
-          </Button>
-        </form>
+                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="text-xxs mb-[0.07rem] ml-1.5"
+                  />
+                </div>
+              </a>
+            </div>
+          </CardTitle>
+          <CardDescription>
+            After adding your access token, you will be prompted to set up an integration for a
+            particular Infisical project and environment.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          <form onSubmit={handleSubmit(onFormSubmit)} className="pb-8 text-right">
+            <Controller
+              control={control}
+              name="accessToken"
+              render={({ field, fieldState: { error } }) => (
+                <Field className="mb-4" data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="flyio-accesstoken">Fly.io Access Token</FieldLabel>
+                  <Input
+                    {...field}
+                    placeholder=""
+                    type="password"
+                    autoComplete="new-password"
+                    id="flyio-accesstoken"
+                    isError={Boolean(error)}
+                    aria-describedby={error ? "flyio-accesstoken-error" : undefined}
+                  />
+                  {Boolean(error) && (
+                    <FieldError id="flyio-accesstoken-error">{error?.message}</FieldError>
+                  )}
+                </Field>
+              )}
+            />
+            <Button
+              className="mt-2 w-min"
+              size="sm"
+              type="submit"
+              isPending={isLoading}
+              variant="project"
+            >
+              Connect to Fly.io
+            </Button>
+          </form>
+        </CardContent>
       </Card>
     </div>
   );

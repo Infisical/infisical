@@ -1,8 +1,22 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "@app/components/v2";
-import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldLabel,
+  SecretPathInput,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -81,70 +95,92 @@ export const CloudflareWorkersConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthApps && targetApp ? (
     <div className="flex h-full w-full items-center justify-center bg-linear-to-tr from-surface-base to-page-deep">
-      <Card className="max-w-lg rounded-md border border-border-control p-0">
-        <CardTitle
-          className="px-6 text-left"
-          subTitle="Choose which environment in Infisical you want to sync with your Cloudflare Workers project."
-        >
-          Cloudflare Workers Integration
-        </CardTitle>
-        <FormControl label="Infisical Project Environment" className="mt-2 px-6">
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-border-strong"
-          >
-            {currentProject?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`source-environment-${sourceEnvironment.slug}`}
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>Cloudflare Workers Integration</CardTitle>
+          <CardDescription>
+            Choose which environment in Infisical you want to sync with your Cloudflare Workers
+            project.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          <Field className="mt-2" data-invalid={false}>
+            <FieldLabel htmlFor="cloudflareworkers-infisical-project-environment">
+              Infisical Project Environment
+            </FieldLabel>
+            <Select
+              value={selectedSourceEnvironment}
+              onValueChange={(val) => setSelectedSourceEnvironment(val)}
+            >
+              <SelectTrigger
+                className="w-full"
+                id="cloudflareworkers-infisical-project-environment"
               >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl label="Infisical Secret Path" className="mt-2 px-6">
-          <SecretPathInput
-            value={secretPath}
-            onChange={(value) => setSecretPath(value)}
-            environment={selectedSourceEnvironment}
-            placeholder="Provide a path, default is /"
-          />
-        </FormControl>
-        <FormControl label="Cloudflare Workers Project" className="mt-4 px-6">
-          <Select
-            value={targetApp}
-            onValueChange={(val) => setTargetApp(val)}
-            className="w-full border border-border-strong"
-            isDisabled={integrationAuthApps.length === 0}
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {currentProject?.environments.map((sourceEnvironment) => (
+                  <SelectItem
+                    value={sourceEnvironment.slug}
+                    key={`source-environment-${sourceEnvironment.slug}`}
+                  >
+                    {sourceEnvironment.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field className="mt-2" data-invalid={false}>
+            <FieldLabel htmlFor="cloudflareworkers-infisical-secret-path">
+              Infisical Secret Path
+            </FieldLabel>
+            <SecretPathInput
+              value={secretPath}
+              onChange={(value) => setSecretPath(value)}
+              environment={selectedSourceEnvironment}
+              placeholder="Provide a path, default is /"
+              id="cloudflareworkers-infisical-secret-path"
+            />
+          </Field>
+          <Field className="mt-4" data-invalid={false}>
+            <FieldLabel htmlFor="cloudflareworkers-cloudflare-workers-project">
+              Cloudflare Workers Project
+            </FieldLabel>
+            <Select
+              value={targetApp}
+              onValueChange={(val) => setTargetApp(val)}
+              disabled={integrationAuthApps.length === 0}
+            >
+              <SelectTrigger className="w-full" id="cloudflareworkers-cloudflare-workers-project">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {integrationAuthApps.length > 0 ? (
+                  integrationAuthApps.map((integrationAuthApp) => (
+                    <SelectItem
+                      value={integrationAuthApp.name}
+                      key={`target-app-${integrationAuthApp.name}`}
+                    >
+                      {integrationAuthApp.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" key="target-app-none">
+                    No apps found
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Button
+            onClick={handleButtonClick}
+            className="mt-2 mr-6 mb-6 ml-auto"
+            isPending={isLoading}
+            variant="project"
           >
-            {integrationAuthApps.length > 0 ? (
-              integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem
-                  value={integrationAuthApp.name}
-                  key={`target-app-${integrationAuthApp.name}`}
-                >
-                  {integrationAuthApp.name}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-app-none">
-                No apps found
-              </SelectItem>
-            )}
-          </Select>
-        </FormControl>
-        <Button
-          onClick={handleButtonClick}
-          colorSchema="secondary"
-          variant="outline_bg"
-          className="mt-2 mr-6 mb-6 ml-auto"
-          isFullWidth={false}
-          isLoading={isLoading}
-        >
-          Create Integration
-        </Button>
+            Create Integration
+          </Button>
+        </CardContent>
       </Card>
     </div>
   ) : (

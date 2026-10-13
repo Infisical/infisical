@@ -7,7 +7,18 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import { localStorageService } from "@app/helpers/localStorage";
 import { useGetCloudIntegrations } from "@app/hooks/api";
@@ -65,56 +76,66 @@ export const GitlabAuthorizePage = () => {
       <Helmet>
         <title>Authorize GitLab Integration</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-border-control">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Authorize this integration to sync secrets from Infisical to GitLab. If no self-hosted GitLab URL is specified, then Infisical will connect you to GitLab Cloud."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
-              <img src="/images/integrations/GitLab.png" height={28} width={28} alt="Gitlab logo" />
-            </div>
-            <span className="ml-2.5">GitLab Integration </span>
-            <a
-              href="https://infisical.com/docs/integrations/cicd/gitlab"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
+      <Card className="mb-12 w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <div className="flex flex-row items-center">
+              <div className="flex items-center pb-0.5">
+                <img
+                  src="/images/integrations/GitLab.png"
+                  height={28}
+                  width={28}
+                  alt="Gitlab logo"
                 />
               </div>
-            </a>
-          </div>
-        </CardTitle>
-        <form onSubmit={handleSubmit(onFormSubmit)} className="px-6 pb-8 text-right">
-          <Controller
-            control={control}
-            name="gitLabURL"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Self-hosted URL (optional)"
-                errorText={error?.message}
-                isError={Boolean(error)}
+              <span className="ml-2.5">GitLab Integration </span>
+              <a
+                href="https://infisical.com/docs/integrations/cicd/gitlab"
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                <Input {...field} placeholder="https://self-hosted-gitlab.com" />
-              </FormControl>
-            )}
-          />
-          <Button
-            colorSchema="primary"
-            variant="outline_bg"
-            className="mt-2 w-min"
-            size="sm"
-            type="submit"
-          >
-            Continue with OAuth
-          </Button>
-        </form>
+                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="text-xxs mb-[0.07rem] ml-1.5"
+                  />
+                </div>
+              </a>
+            </div>
+          </CardTitle>
+          <CardDescription>
+            Authorize this integration to sync secrets from Infisical to GitLab. If no self-hosted
+            GitLab URL is specified, then Infisical will connect you to GitLab Cloud.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          <form onSubmit={handleSubmit(onFormSubmit)} className="pb-8 text-right">
+            <Controller
+              control={control}
+              name="gitLabURL"
+              render={({ field, fieldState: { error } }) => (
+                <Field className="mb-4" data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="gitlab-gitlaburl">Self-hosted URL (optional)</FieldLabel>
+                  <Input
+                    {...field}
+                    placeholder="https://self-hosted-gitlab.com"
+                    id="gitlab-gitlaburl"
+                    isError={Boolean(error)}
+                    aria-describedby={error ? "gitlab-gitlaburl-error" : undefined}
+                  />
+                  {Boolean(error) && (
+                    <FieldError id="gitlab-gitlaburl-error">{error?.message}</FieldError>
+                  )}
+                </Field>
+              )}
+            />
+            <Button className="mt-2 w-min" size="sm" type="submit" variant="project">
+              Continue with OAuth
+            </Button>
+          </form>
+        </CardContent>
       </Card>
     </div>
   );

@@ -1,7 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
-import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
@@ -49,23 +59,42 @@ export const DigitalOceanAppPlatformAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">Digital Ocean App Platform Integration</CardTitle>
-        <FormControl
-          label="Digital Ocean API Key"
-          errorText={apiKeyErrorText}
-          isError={apiKeyErrorText !== ""}
-        >
-          <Input placeholder="" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-        </FormControl>
-        <Button
-          onClick={handleButtonClick}
-          colorSchema="secondary"
-          className="mt-4"
-          isLoading={isLoading}
-        >
-          Connect to Digital Ocean App Platform
-        </Button>
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Digital Ocean App Platform Integration</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          <Field data-invalid={apiKeyErrorText !== ""}>
+            <FieldLabel htmlFor="digitaloceanappplatform-digital-ocean-api-key">
+              Digital Ocean API Key
+            </FieldLabel>
+            <Input
+              placeholder=""
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              id="digitaloceanappplatform-digital-ocean-api-key"
+              isError={apiKeyErrorText !== ""}
+              aria-describedby={
+                apiKeyErrorText !== ""
+                  ? "digitaloceanappplatform-digital-ocean-api-key-error"
+                  : undefined
+              }
+            />
+            {apiKeyErrorText !== "" && (
+              <FieldError id="digitaloceanappplatform-digital-ocean-api-key-error">
+                {apiKeyErrorText}
+              </FieldError>
+            )}
+          </Field>
+          <Button
+            onClick={handleButtonClick}
+            className="mt-4"
+            isPending={isLoading}
+            variant="outline"
+          >
+            Connect to Digital Ocean App Platform
+          </Button>
+        </CardContent>
       </Card>
     </div>
   );

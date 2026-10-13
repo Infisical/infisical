@@ -13,12 +13,19 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
   CardTitle,
-  FormControl,
+  Field,
+  FieldLabel,
   Input,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -102,99 +109,114 @@ export const DatabricksConfigurePage = () => {
       <Helmet>
         <title>Set Up Databricks Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-border-control">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Choose which environment or folder in Infisical you want to sync to which Databricks secrets scope."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
-              <img
-                src="/images/integrations/Databricks.png"
-                height={30}
-                width={30}
-                alt="Databricks logo"
-              />
-            </div>
-            <span className="ml-1.5">Databricks Integration </span>
-            <a
-              href="https://infisical.com/docs/integrations/cloud/databricks"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <div className="flex flex-row items-center">
+              <div className="flex items-center pb-0.5">
+                <img
+                  src="/images/integrations/Databricks.png"
+                  height={30}
+                  width={30}
+                  alt="Databricks logo"
                 />
               </div>
-            </a>
-          </div>
-        </CardTitle>
-
-        <FormControl label="Project Environment" className="px-6">
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-border-strong"
-          >
-            {currentProject?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`source-environment-${sourceEnvironment.slug}`}
+              <span className="ml-1.5">Databricks Integration </span>
+              <a
+                href="https://infisical.com/docs/integrations/cloud/databricks"
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl label="Secrets Path" className="px-6">
-          <Input
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-          />
-        </FormControl>
-
-        {integrationAuthScopes && (
-          <FormControl label="Databricks Scope" className="px-6">
+                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="text-xxs mb-[0.07rem] ml-1.5"
+                  />
+                </div>
+              </a>
+            </div>
+          </CardTitle>
+          <CardDescription>
+            Choose which environment or folder in Infisical you want to sync to which Databricks
+            secrets scope.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          <Field data-invalid={false}>
+            <FieldLabel htmlFor="databricks-project-environment">Project Environment</FieldLabel>
             <Select
-              value={targetScope}
-              onValueChange={(val) => {
-                setTargetScope(val);
-              }}
-              className="w-full border border-border-strong"
-              placeholder={
-                integrationAuthScopes.length === 0 ? "No scopes found." : "Select scope..."
-              }
-              isDisabled={integrationAuthScopes.length === 0}
+              value={selectedSourceEnvironment}
+              onValueChange={(val) => setSelectedSourceEnvironment(val)}
             >
-              {integrationAuthScopes.length > 0 ? (
-                integrationAuthScopes.map((scope) => (
-                  <SelectItem value={scope.name!} key={`target-scope-${scope.name}`}>
-                    {scope.name}
+              <SelectTrigger className="w-full" id="databricks-project-environment">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {currentProject?.environments.map((sourceEnvironment) => (
+                  <SelectItem
+                    value={sourceEnvironment.slug}
+                    key={`source-environment-${sourceEnvironment.slug}`}
+                  >
+                    {sourceEnvironment.name}
                   </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="none" key="target-app-none">
-                  No scopes found
-                </SelectItem>
-              )}
+                ))}
+              </SelectContent>
             </Select>
-          </FormControl>
-        )}
-        <Button
-          onClick={handleButtonClick}
-          colorSchema="primary"
-          variant="outline_bg"
-          className="mt-2 mr-6 mb-6 ml-auto w-min"
-          isLoading={isPending}
-          isDisabled={integrationAuthScopes.length === 0 || isPending}
-        >
-          Create Integration
-        </Button>
+          </Field>
+          <Field data-invalid={false}>
+            <FieldLabel htmlFor="databricks-secrets-path">Secrets Path</FieldLabel>
+            <Input
+              value={secretPath}
+              onChange={(evt) => setSecretPath(evt.target.value)}
+              placeholder="Provide a path, default is /"
+              id="databricks-secrets-path"
+            />
+          </Field>
+          {integrationAuthScopes && (
+            <Field data-invalid={false}>
+              <FieldLabel htmlFor="databricks-databricks-scope">Databricks Scope</FieldLabel>
+              <Select
+                value={targetScope}
+                onValueChange={(val) => {
+                  setTargetScope(val);
+                }}
+                disabled={integrationAuthScopes.length === 0}
+              >
+                <SelectTrigger className="w-full" id="databricks-databricks-scope">
+                  <SelectValue
+                    placeholder={
+                      integrationAuthScopes.length === 0 ? "No scopes found." : "Select scope..."
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {integrationAuthScopes.length > 0 ? (
+                    integrationAuthScopes.map((scope) => (
+                      <SelectItem value={scope.name!} key={`target-scope-${scope.name}`}>
+                        {scope.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" key="target-app-none">
+                      No scopes found
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
+          <Button
+            onClick={handleButtonClick}
+            className="mt-2 mr-6 mb-6 ml-auto w-min"
+            isPending={isPending}
+            isDisabled={integrationAuthScopes.length === 0 || isPending}
+            variant="project"
+          >
+            Create Integration
+          </Button>
+        </CardContent>
       </Card>
       <div className="mt-6 w-full max-w-md border-t border-border-faint" />
       <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-border-control bg-surface-raised p-4">

@@ -1,7 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
-import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
@@ -57,45 +68,70 @@ export const CloudflarePagesAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="mb-12 max-w-lg rounded-md border border-border-control">
-        <CardTitle
-          className="px-6 text-left"
-          subTitle="After adding your API-key, you will be prompted to set up an integration for a particular Infisical project and environment."
-        >
-          Cloudflare Pages Integration
-        </CardTitle>
-        <FormControl
-          label="Cloudflare Pages API token"
-          errorText={accessKeyErrorText}
-          isError={accessKeyErrorText !== ""}
-          className="mx-6"
-        >
-          <Input
-            placeholder=""
-            value={accessKey}
-            type="password"
-            autoComplete="new-password"
-            onChange={(e) => setAccessKey(e.target.value)}
-          />
-        </FormControl>
-        <FormControl
-          label="Cloudflare Pages Account ID"
-          errorText={accountIdErrorText}
-          isError={accountIdErrorText !== ""}
-          className="mx-6"
-        >
-          <Input placeholder="" value={accountId} onChange={(e) => setAccountId(e.target.value)} />
-        </FormControl>
-        <Button
-          onClick={handleButtonClick}
-          colorSchema="secondary"
-          variant="outline_bg"
-          className="mt-2 mr-6 mb-6 ml-auto w-min"
-          isFullWidth={false}
-          isLoading={isLoading}
-        >
-          Connect to Cloudflare Pages
-        </Button>
+      <Card className="mb-12 w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>Cloudflare Pages Integration</CardTitle>
+          <CardDescription>
+            After adding your API-key, you will be prompted to set up an integration for a
+            particular Infisical project and environment.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          <Field data-invalid={accessKeyErrorText !== ""}>
+            <FieldLabel htmlFor="cloudflarepages-cloudflare-pages-api-token">
+              Cloudflare Pages API token
+            </FieldLabel>
+            <Input
+              placeholder=""
+              value={accessKey}
+              type="password"
+              autoComplete="new-password"
+              onChange={(e) => setAccessKey(e.target.value)}
+              id="cloudflarepages-cloudflare-pages-api-token"
+              isError={accessKeyErrorText !== ""}
+              aria-describedby={
+                accessKeyErrorText !== ""
+                  ? "cloudflarepages-cloudflare-pages-api-token-error"
+                  : undefined
+              }
+            />
+            {accessKeyErrorText !== "" && (
+              <FieldError id="cloudflarepages-cloudflare-pages-api-token-error">
+                {accessKeyErrorText}
+              </FieldError>
+            )}
+          </Field>
+          <Field data-invalid={accountIdErrorText !== ""}>
+            <FieldLabel htmlFor="cloudflarepages-cloudflare-pages-account-id">
+              Cloudflare Pages Account ID
+            </FieldLabel>
+            <Input
+              placeholder=""
+              value={accountId}
+              onChange={(e) => setAccountId(e.target.value)}
+              id="cloudflarepages-cloudflare-pages-account-id"
+              isError={accountIdErrorText !== ""}
+              aria-describedby={
+                accountIdErrorText !== ""
+                  ? "cloudflarepages-cloudflare-pages-account-id-error"
+                  : undefined
+              }
+            />
+            {accountIdErrorText !== "" && (
+              <FieldError id="cloudflarepages-cloudflare-pages-account-id-error">
+                {accountIdErrorText}
+              </FieldError>
+            )}
+          </Field>
+          <Button
+            onClick={handleButtonClick}
+            className="mt-2 mr-6 mb-6 ml-auto w-min"
+            isPending={isLoading}
+            variant="project"
+          >
+            Connect to Cloudflare Pages
+          </Button>
+        </CardContent>
       </Card>
     </div>
   );
