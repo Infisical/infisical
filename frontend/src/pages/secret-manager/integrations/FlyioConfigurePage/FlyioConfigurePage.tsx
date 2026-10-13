@@ -91,8 +91,6 @@ export const FlyioConfigurePage = () => {
         secretPath
       });
 
-      setIsLoading(false);
-
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
@@ -105,6 +103,8 @@ export const FlyioConfigurePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 

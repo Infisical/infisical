@@ -75,8 +75,6 @@ export const DigitalOceanAppPlatformConfigurePage = () => {
         secretPath
       });
 
-      setIsLoading(false);
-
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
@@ -89,6 +87,8 @@ export const DigitalOceanAppPlatformConfigurePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 

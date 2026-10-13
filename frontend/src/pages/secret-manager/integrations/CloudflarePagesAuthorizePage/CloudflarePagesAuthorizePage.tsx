@@ -49,7 +49,6 @@ export const CloudflarePagesAuthorizePage = () => {
 
       setAccessKey("");
       setAccountId("");
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/cloudflare-pages/create",
@@ -63,6 +62,8 @@ export const CloudflarePagesAuthorizePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 

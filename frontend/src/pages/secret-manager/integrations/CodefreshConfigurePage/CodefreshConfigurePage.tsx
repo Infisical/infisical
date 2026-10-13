@@ -74,8 +74,6 @@ export const CodefreshConfigurePage = () => {
         secretPath
       });
 
-      setIsLoading(false);
-
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
@@ -88,6 +86,8 @@ export const CodefreshConfigurePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 

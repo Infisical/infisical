@@ -40,8 +40,6 @@ export const CodefreshAuthorizePage = () => {
         accessToken: apiKey
       });
 
-      setIsLoading(false);
-
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/codefresh/create",
         params: {
@@ -54,6 +52,8 @@ export const CodefreshAuthorizePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 

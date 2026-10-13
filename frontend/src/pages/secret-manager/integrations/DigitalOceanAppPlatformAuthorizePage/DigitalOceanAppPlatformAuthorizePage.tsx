@@ -40,8 +40,6 @@ export const DigitalOceanAppPlatformAuthorizePage = () => {
         accessToken: apiKey
       });
 
-      setIsLoading(false);
-
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/digital-ocean-app-platform/create",
         params: {
@@ -54,6 +52,8 @@ export const DigitalOceanAppPlatformAuthorizePage = () => {
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
