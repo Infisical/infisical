@@ -203,10 +203,9 @@ export const CreateSecretForm = ({
           metadata:
             editSecret.metadata?.map((entry) => ({
               ...entry,
-              isEncrypted:
-                entry.isEncrypted ??
-                currentProject?.enforceEncryptedSecretManagerSecretMetadata ??
-                false
+              isEncrypted: currentProject?.enforceEncryptedSecretManagerSecretMetadata
+                ? true
+                : (entry.isEncrypted ?? false)
             })) ?? []
         }
       ]

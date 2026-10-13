@@ -787,11 +787,11 @@ export const SecretEditTableRow = ({
     }
     if (changes.secretComment !== undefined) {
       lastAppliedRef.current.comment = changes.secretComment;
-      resetField("comment", { defaultValue: changes.secretComment });
+      setValue("comment", changes.secretComment);
     }
     if (changes.tags !== undefined) {
       lastAppliedRef.current.tags = changes.tags;
-      resetField("tags", { defaultValue: changes.tags });
+      setValue("tags", changes.tags);
     }
     if (changes.secretMetadata !== undefined) {
       const metadata = changes.secretMetadata.map((entry) => ({
@@ -799,7 +799,7 @@ export const SecretEditTableRow = ({
         isEncrypted: entry.isEncrypted ?? false
       }));
       lastAppliedRef.current.metadata = metadata;
-      resetField("metadata", { defaultValue: metadata });
+      setValue("metadata", metadata);
     }
   };
 
@@ -2190,11 +2190,12 @@ export const SecretEditTableRow = ({
                         <IconButton
                           aria-label="View secret comment"
                           variant="ghost-muted"
-                          size="xs"
-                          className="size-3.5 rounded-none border-0 [&>svg]:size-3.5 [&>svg]:stroke-2"
-                          onClick={() => setIsCommentOpen(true)}
+                          size="2xs"
+                          onClick={() => {
+                            if (!isPendingDelete) setIsCommentOpen(true);
+                          }}
                         >
-                          <MessageSquareIcon className="size-3.5" />
+                          <MessageSquareIcon />
                         </IconButton>
                       </TooltipTrigger>
                       <TooltipContent className="max-w-72">
