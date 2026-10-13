@@ -252,8 +252,6 @@ export const AgentVaultVariableSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
   accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
   key: z.string().describe(AGENT_VAULT.VARIABLE.key),
-  isSecret: z.boolean().describe(AGENT_VAULT.VARIABLE.isSecret),
-  value: z.string().nullable().describe(AGENT_VAULT.VARIABLE.listedValue),
   serviceIds: z.string().uuid().array().describe(AGENT_VAULT.VARIABLE.serviceIds),
   createdAt: z.date().describe(AGENT_VAULT.VARIABLE.createdAt),
   updatedAt: z.date().describe(AGENT_VAULT.VARIABLE.updatedAt)
@@ -268,9 +266,11 @@ const memberIdsShape = (docs: { userIds: string; machineIdentityIds: string; gro
 const namedCount = (body: { userIds: string[]; machineIdentityIds: string[]; groupIds: string[]; emails?: string[] }) =>
   body.userIds.length + body.machineIdentityIds.length + body.groupIds.length + (body.emails?.length ?? 0);
 
+// x-default only shapes the docs: Mintlify pre-fills its request example from a default, and a required
+// enum without one is left out, so the copied example fails with a 422. Validation still requires role.
 export const AgentVaultProductRoleSchema = z
   .enum([ProjectMembershipRole.Admin, ProjectMembershipRole.Member])
-  .describe(AGENT_VAULT.MEMBERSHIP.role);
+  .describe(JSON.stringify({ description: AGENT_VAULT.MEMBERSHIP.role, "x-default": ProjectMembershipRole.Member }));
 
 const atLeastOne = "Name at least one user, machine identity, or group";
 
@@ -317,7 +317,19 @@ export const AgentVaultProductMemberAddSchema = z
       .default([])
       .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase")
       .describe(AGENT_VAULT.MEMBERSHIP.emails),
-    role: z.enum([ProjectMembershipRole.Admin, ProjectMembershipRole.Member]).describe(AGENT_VAULT.MEMBERSHIP.role)
+    role: AgentVaultProductRoleSchema
+  })
+  .refine((body) => namedCount(body) > 0, atLeastOne)
+  .refine((body) => namedCount(body) <= AGENT_VAULT_MAX_GRANTEES, atMost("Act on"));
+
+export const AgentVaultProductMemberRoleUpdateSchema = z
+  .object({
+    ...memberIdsShape({
+      userIds: AGENT_VAULT.MEMBERSHIP.userIds,
+      machineIdentityIds: AGENT_VAULT.MEMBERSHIP.machineIdentityIds,
+      groupIds: AGENT_VAULT.MEMBERSHIP.groupIds
+    }),
+    role: AgentVaultProductRoleSchema
   })
   .refine((body) => namedCount(body) > 0, atLeastOne)
   .refine((body) => namedCount(body) <= AGENT_VAULT_MAX_GRANTEES, atMost("Act on"));

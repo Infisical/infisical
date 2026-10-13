@@ -266,7 +266,7 @@ const Content = ({ onClose }: { onClose: () => void }) => {
     <div className="flex flex-col gap-4">
       <p className="text-sm">
         {totalOrgGroups === 0
-          ? "Your organization has no groups yet. Create one at the organization level to add it to this project."
+          ? `Your organization has no groups yet. Create one at the organization level to add it to ${isCertManager ? productLabel : "this project"}.`
           : "Every group in your organization is already added. To add another group, create one at the organization level first."}
       </p>
       <DialogFooter>

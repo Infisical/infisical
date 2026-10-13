@@ -13,6 +13,8 @@ import {
   FieldLabel,
   Input
 } from "@app/components/v3";
+import { useProject } from "@app/context";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 type Props = {
   isOpen: boolean;
@@ -31,6 +33,7 @@ export const DeleteProjectRoleDialog = ({
   onOpenChange,
   onConfirm
 }: Props) => {
+  const { currentProject } = useProject();
   const [confirmation, setConfirmation] = useState("");
   const isConfirmed = confirmation === confirmationKey;
 
@@ -45,7 +48,8 @@ export const DeleteProjectRoleDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete &quot;{roleName}&quot;?</AlertDialogTitle>
           <AlertDialogDescription>
-            This project role and its policies will be deleted. This action cannot be undone.
+            This {currentProject.type === ProjectType.CertificateManager ? "role" : "project role"}{" "}
+            and its policies will be deleted. This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <Field>

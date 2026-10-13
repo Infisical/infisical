@@ -85,8 +85,6 @@ const Page = () => {
   const parentApplication = certificate?.applicationName ?? fromApplication;
   const isInventoryView = !parentApplication;
 
-  const projectId = currentProject?.id || "";
-
   const { mutateAsync: deleteCert } = useDeleteCert();
   const { mutateAsync: downloadCertPkcs12 } = useDownloadCertPkcs12();
   const { mutateAsync: updateRenewalConfig } = useUpdateRenewalConfig();
@@ -126,20 +124,18 @@ const Page = () => {
     handlePopUpClose("deleteCertificate");
     if (fromApplication) {
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+        to: "/organizations/$orgId/cert-manager/applications/$applicationName",
         params: {
           orgId: currentOrg.id,
-          projectId,
           applicationName: fromApplication
         },
         search: { selectedTab: ApplicationTab.Certificates }
       });
     } else {
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/inventory",
+        to: "/organizations/$orgId/cert-manager/inventory",
         params: {
-          orgId: currentOrg.id,
-          projectId
+          orgId: currentOrg.id
         }
       });
     }
@@ -266,10 +262,9 @@ const Page = () => {
 
   let certificateBackLink = (
     <Link
-      to="/organizations/$orgId/projects/cert-manager/$projectId/inventory"
+      to="/organizations/$orgId/cert-manager/inventory"
       params={{
-        orgId: currentOrg.id,
-        projectId
+        orgId: currentOrg.id
       }}
     >
       <ChevronLeftIcon size={16} />
@@ -280,10 +275,9 @@ const Page = () => {
   if (parentApplication) {
     certificateBackLink = (
       <Link
-        to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
+        to="/organizations/$orgId/cert-manager/applications/$applicationName"
         params={{
           orgId: currentOrg.id,
-          projectId,
           applicationName: parentApplication
         }}
         search={{ selectedTab: ApplicationTab.Certificates }}
@@ -295,10 +289,9 @@ const Page = () => {
   } else if (fromHsmConnector) {
     certificateBackLink = (
       <Link
-        to="/organizations/$orgId/projects/cert-manager/$projectId/hsm-connectors/$connectorId"
+        to="/organizations/$orgId/cert-manager/hsm-connectors/$connectorId"
         params={{
           orgId: currentOrg.id,
-          projectId,
           connectorId: fromHsmConnector
         }}
       >

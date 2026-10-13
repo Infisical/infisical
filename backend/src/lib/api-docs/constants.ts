@@ -3085,7 +3085,9 @@ export const AppConnections = {
       serverUrl: "The URL of the Chef server to connect to.",
       orgName: "The short name of the Chef organization to connect to.",
       userName: "The username used to access Chef.",
-      privateKey: "The private key used to access Chef."
+      privateKey: "The private key used to access Chef.",
+      dataBagSecret:
+        "The shared secret (the contents of your encrypted_data_bag_secret file) used to encrypt and decrypt Chef encrypted data bag items. Required by secret syncs that encrypt secrets or read a data bag item that's already encrypted."
     },
     OCTOPUS_DEPLOY: {
       instanceUrl: "The Octopus Deploy instance URL to connect to.",
@@ -3526,7 +3528,9 @@ export const SecretSyncs = {
     },
     CHEF: {
       dataBagName: "The name of the Chef data bag to sync secrets to.",
-      dataBagItemName: "The name of the Chef data bag item to sync secrets to."
+      dataBagItemName: "The name of the Chef data bag item to sync secrets to.",
+      shouldEncryptSecrets:
+        "Whether to write the data bag item as a Chef encrypted data bag item (version 3), using the data bag secret on the Chef connection."
     },
     CLOUD66: {
       stackId: "The unique identifier (uid) of the Cloud 66 stack to sync secrets to.",
@@ -3717,6 +3721,8 @@ export const SecretRotations = {
     },
     OPEN_ROUTER_API_KEY: {
       name: "The name for the generated OpenRouter API key.",
+      workspaceId:
+        "The optional ID of the OpenRouter workspace to create API keys in. If omitted, OpenRouter creates keys in the account's Default workspace.",
       limit: "The optional spending limit in USD for the generated API key.",
       limitReset: "The type of limit reset for the API key (daily, weekly, monthly, or null for no reset).",
       includeByokInLimit:
@@ -4456,9 +4462,6 @@ export const AGENT_VAULT = {
     key: "The name services use to refer to the variable, as `{{KEY}}`. Starts with a letter and uses only upper case letters, numbers and underscores.",
     value: "The value the proxy puts in place of each `{{KEY}}`.",
     updateValue: "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value.",
-    isSecret: "Whether the value is hidden once saved. A secret value is only returned by the value endpoint.",
-    listedValue:
-      "The value, for a variable that is not secret. Null for a secret one: read it from the value endpoint.",
     revealedValue: "The variable's value.",
     serviceIds:
       "The IDs of the services in the access bundle that use this variable. A variable in use can't be deleted.",
@@ -4505,6 +4508,8 @@ export const AGENT_VAULT = {
     identifier: "The ID or email address the request named, echoed back so a reply can be matched to it.",
     addSkipped: "The requested members who already had access to Agent Vault and were left as they were.",
     revokeSkipped: "The requested members who did not have access to Agent Vault, so nothing was removed.",
+    updateSkipped:
+      "The requested members who did not have access to Agent Vault or already had the role, so nothing was changed.",
     actorTypeFilter: "List only users, only groups or only machine identities.",
     search: "Match members by name, username or email address.",
     limit: "The maximum number of members to return.",

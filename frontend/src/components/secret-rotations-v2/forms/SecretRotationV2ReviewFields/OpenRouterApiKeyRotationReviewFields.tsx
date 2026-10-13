@@ -25,6 +25,9 @@ export const OpenRouterApiKeyRotationReviewFields = () => {
     <>
       <SecretRotationReviewSection label="Parameters">
         <ReviewField label="Key Name">{parameters.name}</ReviewField>
+        {parameters.workspaceId && (
+          <ReviewField label="Workspace ID">{parameters.workspaceId}</ReviewField>
+        )}
         {parameters.limit != null && (
           <ReviewField label="Credit Limit">${parameters.limit} USD</ReviewField>
         )}

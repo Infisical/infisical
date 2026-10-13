@@ -10,7 +10,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal } from "@app/components/v2";
 import { PageHeader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization } from "@app/context";
 import {
   ProjectPermissionCertificatePolicyActions,
   ProjectPermissionSub
@@ -35,7 +35,6 @@ import {
 } from "./components";
 
 const Page = () => {
-  const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
   const params = useParams({
@@ -63,8 +62,6 @@ const Page = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const projectId = currentProject?.id || "";
-
   const hasAnyEnforcement = Boolean(
     policy?.subject ||
       policy?.sans ||
@@ -90,10 +87,9 @@ const Page = () => {
 
       setIsDeleteModalOpen(false);
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies",
+        to: "/organizations/$orgId/cert-manager/certificate-policies",
         params: {
-          orgId: currentOrg.id,
-          projectId
+          orgId: currentOrg.id
         }
       });
     } catch (error) {
@@ -119,10 +115,9 @@ const Page = () => {
                   backLink={
                     cameFromProfile && search.profileId ? (
                       <Link
-                        to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId"
+                        to="/organizations/$orgId/cert-manager/certificate-profiles/$profileId"
                         params={{
                           orgId: currentOrg.id,
-                          projectId,
                           profileId: search.profileId
                         }}
                         search={{
@@ -135,10 +130,9 @@ const Page = () => {
                       </Link>
                     ) : (
                       <Link
-                        to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-policies"
+                        to="/organizations/$orgId/cert-manager/certificate-policies"
                         params={{
-                          orgId: currentOrg.id,
-                          projectId
+                          orgId: currentOrg.id
                         }}
                       >
                         <FontAwesomeIcon icon={faChevronLeft} />

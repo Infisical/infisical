@@ -86,12 +86,17 @@ Please access your **starter kit** to get all the required information to create
         Complete the form by providing:
         - A descriptive name for the connection
         - An optional description
-        - Server URL(optional): The URL of the Chef server to connect with (defaults to https://api.chef.io)
-        - Organization short name
-        - User name
-        - Private key: Your Chef user's private key (.pem file)
+        - **Chef Server URL** (optional): The URL of the Chef server to connect with (defaults to `https://api.chef.io`)
+        - **Organization Short Name**: The short name of your Chef organization
+        - **User Name**: The name of your Chef user
+        - **Private Key**: Your Chef user's private key (`.pem` file)
+        - **Data Bag Secret** (optional): The contents of your `encrypted_data_bag_secret` file, needed if a [Chef sync encrypts secrets](/integrations/secret-syncs/chef#encrypt-secrets-in-chef) or reads a data bag item that's already encrypted
 
         Optionally select a **Gateway** to route the connection through an Infisical Gateway for private network access.
+
+        <Note>
+          If you later update the connection's credentials, enter the data bag secret again. Otherwise, the connection no longer has a data bag secret, and every Chef sync that encrypts secrets fails.
+        </Note>
 
         ![Chef Connection Modal](/images/app-connections/chef/app-connection-form.png)
       </Step>
