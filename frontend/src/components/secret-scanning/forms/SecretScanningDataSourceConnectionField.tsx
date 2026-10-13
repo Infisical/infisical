@@ -1,9 +1,11 @@
+import { ComponentProps, useEffect, useRef, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { InfoIcon } from "lucide-react";
 
 import { AppConnectionOptionContent } from "@app/components/app-connections";
 import {
   Combobox,
+  DiscardChangesAlertDialog,
   Field,
   FieldDescription,
   FieldError,
@@ -17,9 +19,9 @@ import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/con
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/helpers/secretScanningV2";
-import { usePopUp } from "@app/hooks";
+import { useDiscardChangesGuard } from "@app/hooks";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
-import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
+import { AppConnectionForm } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm";
 
 import { TSecretScanningDataSourceForm } from "./schemas";
 
@@ -28,14 +30,41 @@ type Props = {
   isUpdate?: boolean;
 };
 
+const PersistedConnectionForm = (props: ComponentProps<typeof AppConnectionForm>) => {
+  const { getValues } = useFormContext<TSecretScanningDataSourceForm>();
+
+  useEffect(() => {
+    localStorage.setItem("secretScanningDataSourceFormData", JSON.stringify(getValues()));
+  }, [getValues]);
+
+  return <AppConnectionForm {...props} />;
+};
+
 export const SecretScanningDataSourceConnectionField = ({
   onChange: callback,
   isUpdate
 }: Props) => {
   const { permission } = useProjectPermission();
-  const { control, watch, setValue } = useFormContext<TSecretScanningDataSourceForm>();
+  const { control, watch } = useFormContext<TSecretScanningDataSourceForm>();
 
-  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addConnection"] as const);
+  const [isConnectionDirty, setIsConnectionDirty] = useState(false);
+  const cancelRef = useRef<VoidFunction>(() => {});
+  const attemptRef = useRef(0);
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({
+      isDirty: isConnectionDirty,
+      onDiscard: () => {
+        attemptRef.current += 1;
+        setIsConnectionDirty(false);
+        localStorage.removeItem("secretScanningDataSourceFormData");
+        cancelRef.current();
+      }
+    });
+
+  const requestCancel = (cancel: VoidFunction) => {
+    cancelRef.current = cancel;
+    requestDiscard();
+  };
 
   const dataSourceType = watch("type");
   const app = SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSourceType];
@@ -53,6 +82,8 @@ export const SecretScanningDataSourceConnectionField = ({
     ProjectPermissionAppConnectionActions.Create,
     ProjectPermissionSub.AppConnections
   );
+  const creationLabel = `Create ${connectionName} Connection`;
+  const attempt = attemptRef.current;
 
   return (
     <>
@@ -86,23 +117,51 @@ export const SecretScanningDataSourceConnectionField = ({
               value={value}
               isClearable={false}
               onValueChange={(newValue) => {
-                if (newValue.id === "_create") {
-                  handlePopUpOpen("addConnection");
-                  onChange(null);
-                  // store for oauth callback connections
-                  localStorage.setItem("secretScanningDataSourceFormData", JSON.stringify(watch()));
-                  if (callback) callback();
-                  return;
-                }
-
                 onChange(newValue);
                 if (callback) callback();
               }}
               isLoading={isPending}
-              options={[
-                ...(canCreateConnection ? [{ id: "_create", name: "Create Connection" }] : []),
-                ...(availableConnections ?? [])
-              ]}
+              options={availableConnections ?? []}
+              creation={
+                canCreateConnection && !isUpdate
+                  ? {
+                      mode: "dialog",
+                      title: creationLabel,
+                      description: "The new connection is selected once it is created.",
+                      emptyLabel: creationLabel,
+                      formatLabel: () => creationLabel,
+                      isDuplicate: () => false,
+                      onDismiss: requestCancel,
+                      renderForm: ({ complete, cancel }) => (
+                        <>
+                          <PersistedConnectionForm
+                            app={app}
+                            projectId={currentProject.id}
+                            projectType={currentProject.type}
+                            onDirtyChange={setIsConnectionDirty}
+                            onCancel={() => requestCancel(cancel)}
+                            onComplete={(connection) => {
+                              if (attempt !== attemptRef.current) return;
+                              setIsConnectionDirty(false);
+                              setIsDiscardDialogOpen(false);
+                              localStorage.removeItem("secretScanningDataSourceFormData");
+                              onChange(connection);
+                              if (callback) callback();
+                              complete();
+                            }}
+                          />
+                          <DiscardChangesAlertDialog
+                            open={isDiscardDialogOpen}
+                            onOpenChange={setIsDiscardDialogOpen}
+                            onDiscard={confirmDiscard}
+                            title="Discard Connection Setup?"
+                            description="Your progress configuring this connection will be lost."
+                          />
+                        </>
+                      )
+                    }
+                  : undefined
+              }
               isDisabled={isUpdate}
               isError={Boolean(error)}
               aria-describedby={`secret-scanning-data-source-connection-help${error ? " secret-scanning-data-source-connection-error" : ""}`}
@@ -111,12 +170,7 @@ export const SecretScanningDataSourceConnectionField = ({
               loadingMessage={`Loading ${connectionName} connections...`}
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
-              renderOption={(option) => (
-                <AppConnectionOptionContent
-                  data={option}
-                  isOnlyOption={option.id === "_create" && !availableConnections?.length}
-                />
-              )}
+              renderOption={(option) => <AppConnectionOptionContent data={option} />}
             />
             <FieldDescription id="secret-scanning-data-source-connection-help">
               {isUpdate ? (
@@ -150,22 +204,6 @@ export const SecretScanningDataSourceConnectionField = ({
           one.
         </p>
       )}
-      <AddAppConnectionModal
-        isOpen={popUp.addConnection.isOpen}
-        onOpenChange={(isOpen) => {
-          // remove form storage, not oauth connection
-          localStorage.removeItem("secretScanningDataSourceFormData");
-          handlePopUpToggle("addConnection", isOpen);
-        }}
-        projectType={currentProject.type}
-        projectId={currentProject.id}
-        app={app}
-        onComplete={(connection) => {
-          if (connection) {
-            setValue("connection", connection);
-          }
-        }}
-      />
     </>
   );
 };
