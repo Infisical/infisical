@@ -305,7 +305,8 @@ export const pamFolderAlertProviderFactory = ({
     const plan = await licenseService.getPlan(orgId);
     if (!plan.pamEnterpriseAlerting) {
       throw new BadRequestError({
-        message: `Failed to add a ${gatedType} channel due to plan restriction. Upgrade plan to send PAM alerts to channels other than email.`
+        message:
+          "Your plan only allows email channels for PAM alerts. Upgrade to the Enterprise plan to use Slack, webhook, or PagerDuty channels."
       });
     }
   };

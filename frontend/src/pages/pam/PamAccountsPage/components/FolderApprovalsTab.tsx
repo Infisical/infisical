@@ -548,7 +548,6 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
               resourceType={AlertResourceType.PamFolder}
               resourceId={folderId}
               projectId={currentProject.id}
-              renderPermissionGate={(render) => render(true)}
               channelPaywall={
                 subscription?.pamEnterpriseAlerting
                   ? undefined

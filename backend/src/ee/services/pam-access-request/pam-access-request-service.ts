@@ -227,6 +227,7 @@ export const pamAccessRequestServiceFactory = ({
       bypassers: dedupedBreakGlassUsers
     });
 
+    let removedNotificationConfigIds: string[] = [];
     if (notificationConfigs !== undefined) {
       if (notificationConfigs.length > 0) {
         const integrationIds = [...new Set(notificationConfigs.map((c) => c.workflowIntegrationId))];
@@ -247,32 +248,28 @@ export const pamAccessRequestServiceFactory = ({
       }
 
       // Legacy Slack configs can only be removed, so every config sent back must match a stored one.
-      await pamFolderNotificationConfigDAL.transaction(async (tx) => {
-        const unmatchedKeyById = new Map(
-          (await pamFolderNotificationConfigDAL.findByFolderIdWithIntegration(folderId, tx)).map((row) => [
-            row.id,
-            toNotificationConfigKey({
-              workflowIntegrationId: row.workflowIntegrationId,
-              channels: parseNotificationChannels(row.channels),
-              events: parseNotificationEvents(row.events)
-            })
-          ])
-        );
-        for (const config of notificationConfigs) {
-          const key = toNotificationConfigKey(config);
-          const matchedId = [...unmatchedKeyById.keys()].find((id) => unmatchedKeyById.get(id) === key);
-          if (!matchedId) {
-            throw new BadRequestError({
-              message:
-                "Slack notifications on PAM folders can no longer be added or edited, only removed. Create an alert on the folder instead."
-            });
-          }
-          unmatchedKeyById.delete(matchedId);
+      const unmatchedKeyById = new Map<string, string>(
+        (await pamFolderNotificationConfigDAL.findByFolderIdWithIntegration(folderId)).map((row) => [
+          row.id,
+          toNotificationConfigKey({
+            workflowIntegrationId: row.workflowIntegrationId,
+            channels: parseNotificationChannels(row.channels),
+            events: parseNotificationEvents(row.events)
+          })
+        ])
+      );
+      for (const config of notificationConfigs) {
+        const key = toNotificationConfigKey(config);
+        const matchedId = [...unmatchedKeyById.keys()].find((id) => unmatchedKeyById.get(id) === key);
+        if (!matchedId) {
+          throw new BadRequestError({
+            message:
+              "Slack notifications on PAM folders can no longer be added or edited, only removed. Create an alert on the folder instead."
+          });
         }
-        if (unmatchedKeyById.size > 0) {
-          await pamFolderNotificationConfigDAL.delete({ $in: { id: [...unmatchedKeyById.keys()] } }, tx);
-        }
-      });
+        unmatchedKeyById.delete(matchedId);
+      }
+      removedNotificationConfigIds = [...unmatchedKeyById.keys()];
     }
 
     const { policyId } = await approvalPolicyService.setScopeConfiguration(
@@ -288,6 +285,11 @@ export const pamAccessRequestServiceFactory = ({
       },
       toApprovalActor(ctx)
     );
+
+    // Removed only once the policy saves, so a failed save keeps the Slack configs.
+    if (removedNotificationConfigIds.length > 0) {
+      await pamFolderNotificationConfigDAL.delete({ $in: { id: removedNotificationConfigIds } });
+    }
 
     return {
       policyId,
