@@ -9,7 +9,13 @@ import { format } from "date-fns";
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { createNotification } from "@app/components/notifications";
-import { Button, DeleteActionModal, Tooltip } from "@app/components/v2";
+import {
+  Button,
+  DeleteConfirmDialog,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { usePopUp } from "@app/hooks";
 import {
   useGetMyDuplicateAccount,
@@ -85,16 +91,16 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
                       </div>
                     </div>
                     <div>
-                      <Tooltip
-                        className="max-w-lg"
-                        content={
+                      <Tooltip hoverable delayDuration={50}>
+                        <TooltipTrigger asChild>
+                          <FontAwesomeIcon icon={faInfoCircle} />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-lg">
                           <div className="flex flex-col space-y-1 text-sm">
                             <div>IP: {lastSession?.ip || "-"}</div>
                             <div>User Agent: {lastSession?.userAgent || "-"}</div>
                           </div>
-                        }
-                      >
-                        <FontAwesomeIcon icon={faInfoCircle} />
+                        </TooltipContent>
                       </Tooltip>
                     </div>
                   </div>
@@ -104,14 +110,17 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
             <div className="mt-4 flex w-full flex-col">
               <div className="flex gap-6">
                 <Button
+                  variant="project"
+                  size="lg"
                   className="flex-1 grow"
-                  isLoading={removeDuplicateEmails.isPending}
+                  isPending={removeDuplicateEmails.isPending}
                   onClick={() => handlePopUpToggle("removeDuplicateConfirm", true)}
                 >
                   Delete all other accounts
                 </Button>
                 <Button
-                  variant="outline_bg"
+                  variant="outline"
+                  size="lg"
                   onClick={() => onRemoveDuplicateLater()}
                   className="flex-1 grow"
                 >
@@ -119,9 +128,9 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
                 </Button>
               </div>
               <Button
-                isLoading={logout.isPending}
-                variant="plain"
-                colorSchema="secondary"
+                isPending={logout.isPending}
+                variant="ghost"
+                size="lg"
                 className="mt-4"
                 onClick={handleLogout}
               >
@@ -131,14 +140,14 @@ export const EmailDuplicationConfirmation = ({ onRemoveDuplicateLater }: Props) 
           </form>
         </AuthPagePanel>
       </AuthPageLayout>
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.removeDuplicateConfirm.isOpen}
-        subTitle={`You’re currently logged in as ${duplicateAccounts?.data?.myAccount?.username}. Once you confirm, your other duplicate accounts will be permanently removed. Please make sure none of those accounts contain any production secrets, as this action cannot be undone.`}
+        description={`You’re currently logged in as ${duplicateAccounts?.data?.myAccount?.username}. Once you confirm, your other duplicate accounts will be permanently removed. Please make sure none of those accounts contain any production secrets, as this action cannot be undone.`}
         title="Confirmation Required"
-        onChange={(isOpen) => handlePopUpToggle("removeDuplicateConfirm", isOpen)}
-        deleteKey="remove"
-        buttonText="Confirm"
-        onDeleteApproved={() =>
+        onOpenChange={(isOpen) => handlePopUpToggle("removeDuplicateConfirm", isOpen)}
+        confirmKey="remove"
+        confirmLabel="Confirm"
+        onConfirm={() =>
           removeDuplicateEmails.mutateAsync(undefined, {
             onSuccess: () => {
               createNotification({
