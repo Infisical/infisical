@@ -429,7 +429,9 @@ export const identityKubernetesAuthServiceFactory = ({
           const serviceAccountJwtFingerprint = getJwtFingerprintForLog(serviceAccountJwt);
 
           if (err instanceof AxiosError) {
-            logger.error(
+            const status = err.response?.status;
+            const level = status === 401 || status === 403 ? "warn" : "error";
+            logger[level](
               {
                 host,
                 port,
@@ -449,7 +451,7 @@ export const identityKubernetesAuthServiceFactory = ({
             );
           }
 
-          logger.error(
+          logger[isKnownError(err) ? "warn" : "error"](
             { error: err as Error, host, port, tokenReviewerJwtFingerprint, serviceAccountJwtFingerprint },
             `tokenReviewCallbackRaw: Kubernetes token review request error (non-request error) [identityId=${identityKubernetesAuth.identityId}]`
           );

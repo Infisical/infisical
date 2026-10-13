@@ -5,7 +5,6 @@ import { MoreHorizontal, Plus, Radar, Search, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { HighlightText } from "@app/components/utilities/HighlightText";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -37,7 +36,7 @@ import {
   TableRow
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
-import { PageHeader } from "@app/components/v3/platform";
+import { DeleteConfirmDialog, PageHeader } from "@app/components/v3/platform";
 import {
   TPamDiscoverySource,
   useDeletePamDiscoverySource,
@@ -286,12 +285,13 @@ export const PamDiscoveryPage = () => {
         }}
       />
 
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteSource.isOpen}
-        onChange={(isOpen) => handlePopUpToggle("deleteSource", isOpen)}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteSource", isOpen)}
         title={`Delete ${(popUp.deleteSource.data as TPamDiscoverySource | undefined)?.name ?? "source"}?`}
-        deleteKey="confirm"
-        onDeleteApproved={handleDelete}
+        description="This action is irreversible."
+        confirmKey="confirm"
+        onConfirm={handleDelete}
       />
     </>
   );
