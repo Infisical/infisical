@@ -1,7 +1,8 @@
 import {
   PaloAltoNetworksPkiSyncConfigSchema,
   PaloAltoNetworksPkiSyncOptionsSchema,
-  PaloAltoNetworksSslTlsProfilePkiSyncConfigSchema
+  PaloAltoNetworksSslTlsProfilePkiSyncConfigSchema,
+  PaloAltoNetworksSslTlsProfileRemovalOptionsSchema
 } from "./palo-alto-networks-pki-sync-schemas";
 
 const parseNameSchema = (certificateNameSchema: string) =>
@@ -44,5 +45,20 @@ describe("Palo Alto Networks destination config validation", () => {
     expect(
       PaloAltoNetworksSslTlsProfilePkiSyncConfigSchema.safeParse({ sslTlsServiceProfileName: "p<x/>" }).success
     ).toBe(false);
+  });
+});
+
+describe("Palo Alto Networks SSL/TLS profile removal options validation", () => {
+  const parse = (value: unknown) => PaloAltoNetworksSslTlsProfileRemovalOptionsSchema.safeParse(value).success;
+
+  test("accepts no replacement and a valid certificate name", () => {
+    expect(parse({})).toBe(true);
+    expect(parse({ replacementCertificateName: "backup-cert" })).toBe(true);
+  });
+
+  test("rejects unknown keys and names PAN-OS would not accept", () => {
+    expect(parse({ replacementCertificate: "backup-cert" })).toBe(false);
+    expect(parse({ replacementCertificateName: "a<b/>" })).toBe(false);
+    expect(parse({ replacementCertificateName: "x".repeat(64) })).toBe(false);
   });
 });

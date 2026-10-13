@@ -35,6 +35,7 @@ import { usePaloAltoNetworksConnectionListTemplates } from "@app/hooks/api/appCo
 import {
   PkiSync,
   TPkiSync,
+  TPkiSyncRemovalOptions,
   useCanSetHealthCheckCommand,
   useCanSetPostSyncCommand,
   usePkiSyncOption,
@@ -43,6 +44,11 @@ import {
 } from "@app/hooks/api/pkiSyncs";
 import { TPkiSyncFilterPreview } from "@app/hooks/api/pkiSyncs/types";
 
+import {
+  arePkiSyncRemovalOptionsComplete,
+  hasPkiSyncRemovalOptions,
+  PkiSyncRemovalOptionsFields
+} from "../PkiSyncRemovalOptionsFields";
 import {
   isPaloAltoNetworksTemplateMissing,
   PALO_ALTO_NETWORKS_TEMPLATE_REQUIRED_MESSAGE
@@ -242,7 +248,6 @@ export const EditPkiSyncForm = ({
   const {
     handleSubmit,
     control,
-    getValues,
     setError,
     formState: { isSubmitting, isDirty }
   } = formMethods;
@@ -252,6 +257,7 @@ export const EditPkiSyncForm = ({
     });
 
   const previewFilters = usePreviewPkiSyncFilters();
+  const [unlinkRemovalOptions, setUnlinkRemovalOptions] = useState<TPkiSyncRemovalOptions>({});
   const [pendingUnlink, setPendingUnlink] = useState<{
     preview: TPkiSyncFilterPreview;
     formData: TUpdatePkiSyncForm;
@@ -261,7 +267,10 @@ export const EditPkiSyncForm = ({
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
-  const applyUpdate = async ({ connection, ...formData }: TUpdatePkiSyncForm) => {
+  const applyUpdate = async (
+    { connection, ...formData }: TUpdatePkiSyncForm,
+    removalOptions?: TPkiSyncRemovalOptions
+  ) => {
     const hasNewExportPassword = Boolean(
       (formData as { credentials?: { exportPassword?: string } }).credentials?.exportPassword
     );
@@ -272,7 +281,8 @@ export const EditPkiSyncForm = ({
         ...(hasNewExportPassword ? {} : { credentials: undefined }),
         connectionId: connection.id,
         projectId: pkiSync.projectId,
-        destination: pkiSync.destination
+        destination: pkiSync.destination,
+        ...(removalOptions ? { removalOptions } : {})
       });
 
       createNotification({
@@ -290,7 +300,7 @@ export const EditPkiSyncForm = ({
       isPaloAltoNetworksPkiSync(pkiSync.destination) &&
       isPaloAltoNetworksTemplateMissing(
         paloAltoNetworksDevice?.isPanorama,
-        getValues("destinationConfig")
+        formData.destinationConfig
       )
     ) {
       setError("destinationConfig.template" as FieldPath<TUpdatePkiSyncForm>, {
@@ -312,6 +322,7 @@ export const EditPkiSyncForm = ({
         });
 
         if (preview.toUnlink.length > 0) {
+          setUnlinkRemovalOptions({});
           setPendingUnlink({ preview, formData });
           return;
         }
@@ -322,6 +333,23 @@ export const EditPkiSyncForm = ({
 
     await applyUpdate(formData);
   };
+
+  const needsUnlinkRemovalOptions = Boolean(
+    pendingUnlink &&
+      hasPkiSyncRemovalOptions(pkiSync.destination) &&
+      (pendingUnlink.formData.syncOptions as { canRemoveCertificates?: boolean } | undefined)
+        ?.canRemoveCertificates &&
+      pendingUnlink.preview.toUnlinkAtDestinationCount > 0
+  );
+
+  const areUnlinkRemovalOptionsComplete =
+    !pendingUnlink ||
+    !needsUnlinkRemovalOptions ||
+    arePkiSyncRemovalOptionsComplete(
+      pkiSync.destination,
+      { remainingCertificateCount: pendingUnlink.preview.matchedCount },
+      unlinkRemovalOptions
+    );
 
   const currentStep = steps[selectedStepIndex];
 
@@ -496,15 +524,15 @@ export const EditPkiSyncForm = ({
         }}
       >
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia>
+          <AlertDialogHeader className="sm:grid-rows-[auto]!">
+            <AlertDialogMedia className="mb-0 sm:row-span-1!">
               <AlertTriangleIcon className="text-warning" />
             </AlertDialogMedia>
             <AlertDialogTitle>
               {pendingUnlink?.preview.toUnlink.length} certificate
               {pendingUnlink?.preview.toUnlink.length === 1 ? "" : "s"} will no longer be synced
             </AlertDialogTitle>
-            <AlertDialogDescription asChild>
+            <AlertDialogDescription asChild className="sm:col-span-2">
               <div className="flex flex-col gap-2">
                 <p>
                   These certificates no longer match the filters, so this sync will stop holding
@@ -525,17 +553,32 @@ export const EditPkiSyncForm = ({
                 )}
               </div>
             </AlertDialogDescription>
+            {needsUnlinkRemovalOptions && (
+              <div className="mt-2 w-full text-wrap sm:col-span-2">
+                <PkiSyncRemovalOptionsFields
+                  pkiSync={pkiSync}
+                  value={unlinkRemovalOptions}
+                  onChange={setUnlinkRemovalOptions}
+                />
+              </div>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={isSubmitting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
               isPending={isSubmitting}
+              isDisabled={!areUnlinkRemovalOptionsComplete}
               onClick={(event) => {
                 event.preventDefault();
                 const pending = pendingUnlink;
                 setPendingUnlink(null);
-                if (pending) applyUpdate(pending.formData).catch(() => {});
+                if (pending) {
+                  applyUpdate(
+                    pending.formData,
+                    needsUnlinkRemovalOptions ? unlinkRemovalOptions : undefined
+                  ).catch(() => {});
+                }
               }}
             >
               Save changes

@@ -36,8 +36,8 @@ export const registerPaloAltoNetworksConnectionRouter = async (server: FastifyZo
       }),
       response: {
         200: z.object({
-          isPanorama: z.boolean().describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.isPanorama),
-          templates: z.string().array().describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.templates)
+          isPanorama: z.boolean(),
+          templates: z.string().array()
         })
       }
     },
@@ -69,8 +69,8 @@ export const registerPaloAltoNetworksConnectionRouter = async (server: FastifyZo
         200: z.object({
           sslTlsServiceProfiles: z
             .object({
-              name: z.string().describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.profileName),
-              vsys: z.string().nullable().describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.profileVsys)
+              name: z.string(),
+              vsys: z.string().nullable()
             })
             .array()
         })
@@ -83,6 +83,43 @@ export const registerPaloAltoNetworksConnectionRouter = async (server: FastifyZo
         req.permission
       );
       return { sslTlsServiceProfiles };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/certificates`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listPaloAltoNetworksCertificates",
+      params: z.object({
+        connectionId: z.string().uuid().describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.connectionId)
+      }),
+      querystring: z.object({
+        template: PanOsObjectNameSchema("Template")
+          .optional()
+          .describe(AppConnections.PALO_ALTO_NETWORKS_LOOKUPS.template)
+      }),
+      response: {
+        200: z.object({
+          certificates: z
+            .object({
+              name: z.string(),
+              vsys: z.string().nullable()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const certificates = await server.services.appConnection.paloAltoNetworks.listCertificates(
+        { connectionId: req.params.connectionId, template: req.query.template },
+        req.permission
+      );
+      return { certificates };
     }
   });
 };

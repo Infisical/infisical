@@ -134,9 +134,12 @@ export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {
   };
 };
 
+export type TPkiSyncRemovalOptions = Record<string, unknown>;
+
 export type TUpdatePkiSyncDTO = Partial<Omit<TCreatePkiSyncDTO, "projectId">> & {
   syncId: string;
   projectId: string;
+  removalOptions?: TPkiSyncRemovalOptions;
 };
 
 export type TDeletePkiSyncDTO = {
@@ -161,6 +164,7 @@ export type TTriggerPkiSyncRemoveCertificatesDTO = {
   syncId: string;
   destination: PkiSync;
   projectId: string;
+  removalOptions?: TPkiSyncRemovalOptions;
 };
 
 export * from "./aws-certificate-manager-sync";

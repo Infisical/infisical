@@ -11,6 +11,7 @@ import {
   FieldLabel,
   FilterableSelect,
   Label,
+  Spinner,
   Toggle,
   Tooltip,
   TooltipContent,
@@ -86,7 +87,7 @@ export const PaloAltoNetworksPkiSyncFields = ({
 
   let profilePlaceholder = "Select an SSL/TLS service profile";
   if (!connectionId) profilePlaceholder = "Select a connection first";
-  else if (isDetectingDevice) profilePlaceholder = "Detecting device type...";
+  else if (isDetectingDevice) profilePlaceholder = "Loading...";
   else if (isPanorama && !template) profilePlaceholder = "Select a template first";
 
   const deviceError =
@@ -118,7 +119,20 @@ export const PaloAltoNetworksPkiSyncFields = ({
           clearProfile();
         }}
       />
-      {deviceError && <FieldError className="-mt-2 mb-4" errors={[deviceError]} />}
+      {deviceError && <FieldError className="mb-4" errors={[deviceError]} />}
+      {connectionId && isDetectingDevice && (
+        <FieldDescription className="mb-4 flex items-center gap-2">
+          <Spinner size="xs" />
+          Detecting device type...
+        </FieldDescription>
+      )}
+      {connectionId && templatesData && (
+        <FieldDescription className="mb-4">
+          {templatesData.isPanorama
+            ? "Palo Alto Networks Panorama: Certificates are imported into the selected template."
+            : "Palo Alto Networks Firewall: Certificates are imported into the shared certificate store."}
+        </FieldDescription>
+      )}
       {isPanorama && (
         <Controller
           name="destinationConfig.template"

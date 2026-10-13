@@ -68,7 +68,7 @@ export const PkiSyncOptionsFields = ({ destination, isUpdate }: Props) => {
         <SyncSwitchField
           name="syncOptions.canRemoveCertificates"
           id="can-remove-certificates"
-          label="Allow to remove certificates from destination"
+          label="Remove certificates from destination"
           description={
             <>
               When enabled, Infisical deletes a certificate from the destination once this sync

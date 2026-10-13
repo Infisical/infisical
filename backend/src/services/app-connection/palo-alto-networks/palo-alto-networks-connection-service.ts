@@ -7,6 +7,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   describePanOsError,
   isPanorama,
+  listCertificatesWithPrivateKey,
   listPanoramaTemplates,
   listSslTlsServiceProfiles,
   TPanOsClient,
@@ -55,5 +56,10 @@ export const paloAltoNetworksConnectionService = (
       listSslTlsServiceProfiles(client, template)
     );
 
-  return { listTemplates, listSslTlsServiceProfiles: listProfiles };
+  const listCertificates = async (
+    { connectionId, template }: { connectionId: string; template?: string },
+    actor: OrgServiceActor
+  ) => withClient(connectionId, actor, "certificates", (client) => listCertificatesWithPrivateKey(client, template));
+
+  return { listTemplates, listSslTlsServiceProfiles: listProfiles, listCertificates };
 };

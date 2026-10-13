@@ -51,7 +51,10 @@ import {
   PALO_ALTO_NETWORKS_PKI_SYNC_LIST_OPTION,
   PALO_ALTO_NETWORKS_SSL_TLS_PROFILE_PKI_SYNC_LIST_OPTION
 } from "./palo-alto-networks/palo-alto-networks-pki-sync-constants";
-import { paloAltoNetworksPkiSyncFactory } from "./palo-alto-networks/palo-alto-networks-pki-sync-fns";
+import {
+  assertPaloAltoNetworksUnlinkKeepsProfileCertificate,
+  paloAltoNetworksPkiSyncFactory
+} from "./palo-alto-networks/palo-alto-networks-pki-sync-fns";
 import {
   buildManagedCertificateNameRegexSource,
   certificateNameSchemaAllowsMultipleCertificates,
@@ -75,6 +78,7 @@ import {
   TCertificateMap,
   THealthCheckTarget,
   TPkiSyncFilters,
+  TPkiSyncRemovalOptions,
   TPkiSyncSyncResult,
   TPkiSyncWithCredentials
 } from "./pki-sync-types";
@@ -134,10 +138,21 @@ export const listPkiSyncOptions = () => {
     .sort((a, b) => a.name.localeCompare(b.name));
 };
 
-const CONNECTION_SERIALISED_PKI_SYNC_DESTINATIONS = new Set<PkiSync>(PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATIONS);
-
 export const isPkiSyncSerialisedPerConnection = (destination: PkiSync) =>
-  CONNECTION_SERIALISED_PKI_SYNC_DESTINATIONS.has(destination);
+  PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATIONS.includes(destination);
+
+type TPkiSyncUnlinkAssertion = (args: {
+  pkiSync: { syncOptions: unknown; destinationConfig: unknown };
+  remainingCertificateCount: number;
+  unlinkedAtDestinationCount: number;
+  removalOptions?: TPkiSyncRemovalOptions;
+}) => void;
+
+const PKI_SYNC_UNLINK_ASSERTIONS: Partial<Record<PkiSync, TPkiSyncUnlinkAssertion>> = {
+  [PkiSync.PaloAltoNetworksSslTlsProfile]: assertPaloAltoNetworksUnlinkKeepsProfileCertificate
+};
+
+export const getPkiSyncUnlinkAssertion = (destination: PkiSync) => PKI_SYNC_UNLINK_ASSERTIONS[destination];
 
 export const getPkiSyncProviderCapabilities = (destination: PkiSync) => {
   const providerOption = PKI_SYNC_LIST_OPTIONS[destination];
@@ -556,6 +571,7 @@ export const PkiSyncFns = {
       certificateSyncDAL: TCertificateSyncDALFactory;
       certificateDAL: TCertificateDALFactory;
       certificateMap: TCertificateMap;
+      removalOptions?: TPkiSyncRemovalOptions;
       gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
       gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
       keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
@@ -662,7 +678,8 @@ export const PkiSyncFns = {
           gatewayPoolService: dependencies.gatewayPoolService
         });
         await paloAltoNetworksPkiSync.removeCertificates(pkiSync, certificateNames, {
-          certificateMap: dependencies.certificateMap
+          certificateMap: dependencies.certificateMap,
+          removalOptions: dependencies.removalOptions
         });
         break;
       }

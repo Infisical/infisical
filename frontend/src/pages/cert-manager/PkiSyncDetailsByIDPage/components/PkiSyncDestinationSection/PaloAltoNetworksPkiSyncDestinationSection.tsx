@@ -17,6 +17,10 @@ export const PaloAltoNetworksPkiSyncDestinationSection = ({ pkiSync }: Props) =>
 
   return (
     <>
+      <Detail>
+        <DetailLabel>Device Type</DetailLabel>
+        <DetailValue>{template ? "Panorama" : "Firewall"}</DetailValue>
+      </Detail>
       {template && (
         <>
           <Detail>

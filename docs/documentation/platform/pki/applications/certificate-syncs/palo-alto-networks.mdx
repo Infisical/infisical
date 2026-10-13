@@ -6,7 +6,7 @@ description: "Deploy certificates to the certificate store of PAN-OS firewalls a
 
 A Palo Alto Networks sync imports certificates and their private keys into the certificate store of a PAN-OS firewall or a Panorama template, then commits the change.
 
-If a service on the device needs to use the certificate, such as the management web interface or a GlobalProtect portal, use a [Palo Alto Networks SSL/TLS Profile sync](/documentation/platform/pki/applications/certificate-syncs/palo-alto-networks-ssl-tls-profile) instead. That sync also points an SSL/TLS service profile at the certificate.
+For a certificate that a service on the device uses, such as the management web interface or a GlobalProtect portal, use a [Palo Alto Networks SSL/TLS Profile sync](/documentation/platform/pki/applications/certificate-syncs/palo-alto-networks-ssl-tls-profile) instead. It also sets the certificate on the service's SSL/TLS service profile.
 
 ## Prerequisites
 
@@ -35,7 +35,7 @@ If a service on the device needs to use the certificate, such as the management 
             <Step>
                 Configure the sync options, then select **Continue**:
 
-                - **Allow to remove certificates from destination**: delete a certificate from the device when it's no longer active in Infisical
+                - **Remove certificates from destination**: delete a certificate from the device when it's no longer active in Infisical
                 - **Preserve certificate on renewal**: replace the certificate in place when it's renewed (see [Certificate renewal](#certificate-renewal))
                 - **Certificate name schema**: the name of each certificate object on the device, up to 31 characters (use `{{shortCertificateId}}` rather than `{{certificateId}}`, which is too long; see [Certificate name schema](/documentation/platform/pki/applications/certificate-syncs/overview#certificate-name-schema))
                 - **Auto-sync on change**: sync certificates as soon as they're issued or renewed
@@ -134,11 +134,11 @@ Each time it runs, the sync:
 When a certificate is renewed, the result depends on **Preserve certificate on renewal**:
 
 - **On (default)**: the sync replaces the certificate object in place, so anything that references it by name uses the renewed certificate
-- **Off**: the sync creates a new certificate object, and deletes the old one only if **Allow to remove certificates from destination** is on
+- **Off**: the sync creates a new certificate object, and deletes the old one only if **Remove certificates from destination** is on
 
 ## Removing certificates
 
-If **Allow to remove certificates from destination** is on, the sync deletes the certificate object of a certificate that's no longer active in Infisical. The CA certificate objects stay on the device.
+If **Remove certificates from destination** is on, the sync deletes the certificate object of a certificate that's no longer active in Infisical. The CA certificate objects stay on the device.
 
 PAN-OS doesn't delete a certificate that's still in use, such as by an SSL/TLS service profile. If that happens, the sync shows the PAN-OS error. Remove the reference on the device, then sync again.
 
@@ -158,7 +158,7 @@ To remove certificates on demand, use the [Remove certificates from Palo Alto Ne
 
 <CardGroup cols={2}>
   <Card title="Palo Alto Networks SSL/TLS profile" icon="lock" href="/documentation/platform/pki/applications/certificate-syncs/palo-alto-networks-ssl-tls-profile">
-    Point an SSL/TLS service profile at a synced certificate.
+    Use a synced certificate in an SSL/TLS service profile.
   </Card>
   <Card title="Renewal" icon="rotate-cw" href="/documentation/platform/pki/applications/certificate-renewal">
     Renew a certificate, and change its details as part of the renewal.

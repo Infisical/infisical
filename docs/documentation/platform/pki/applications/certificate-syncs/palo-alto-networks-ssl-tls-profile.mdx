@@ -1,10 +1,10 @@
 ---
 title: "Palo Alto Networks SSL/TLS profile"
 sidebarTitle: "Palo Alto Networks SSL/TLS profile"
-description: "Deploy a certificate to a PAN-OS firewall or Panorama template and point an SSL/TLS service profile at it."
+description: "Deploy a certificate to a PAN-OS firewall or Panorama template and set it on an SSL/TLS service profile."
 ---
 
-A Palo Alto Networks SSL/TLS Profile sync deploys one certificate to a PAN-OS firewall or a Panorama template, then points an existing SSL/TLS service profile at that certificate. Use this sync for a service that reads its certificate from an SSL/TLS service profile, such as the management web interface or a GlobalProtect portal.
+A Palo Alto Networks SSL/TLS Profile sync deploys one certificate to a PAN-OS firewall or a Panorama template, then sets it as the certificate of an existing SSL/TLS service profile. Use it for services that take their certificate from a profile, such as the management web interface or a GlobalProtect portal.
 
 To deploy several certificates without changing a profile, use a [Palo Alto Networks sync](/documentation/platform/pki/applications/certificate-syncs/palo-alto-networks) instead.
 
@@ -31,13 +31,13 @@ To deploy several certificates without changing a profile, use a [Palo Alto Netw
 
                 - **Palo Alto Networks Connection**: the connection to the firewall or Panorama
                 - **Template** (Panorama only): the template to import the certificate into
-                - **SSL/TLS Service Profile**: the profile to point at the synced certificate
+                - **SSL/TLS Service Profile**: the profile that uses the synced certificate
                 - **Push to Devices** (Panorama only): whether the sync pushes the committed changes to firewalls (on by default)
             </Step>
             <Step>
                 Configure the sync options, then select **Continue**:
 
-                - **Allow to remove certificates from destination**: delete the old certificate from the device when it's replaced or no longer active in Infisical
+                - **Remove certificates from destination**: delete the old certificate from the device when it's replaced or no longer active in Infisical
                 - **Preserve certificate on renewal**: replace the certificate in place when it's renewed (see [Certificate renewal](#certificate-renewal))
                 - **Certificate name schema**: the name of the certificate object on the device, up to 31 characters (use `{{shortCertificateId}}` rather than `{{certificateId}}`, which is too long)
                 - **Auto-sync on change**: sync the certificate as soon as it's issued or renewed
@@ -126,29 +126,22 @@ To deploy several certificates without changing a profile, use a [Palo Alto Netw
 
 ## How it works
 
-Each time it runs, the sync imports the certificate the same way a [Palo Alto Networks sync](/documentation/platform/pki/applications/certificate-syncs/palo-alto-networks#how-it-works) does, then points the SSL/TLS service profile at it. The sync doesn't create the profile or change its other settings.
+Each time it runs, the sync imports the certificate the same way a [Palo Alto Networks sync](/documentation/platform/pki/applications/certificate-syncs/palo-alto-networks#how-it-works) does, then sets it as the profile's certificate. The sync doesn't create the profile or change its other settings.
 
 ## Certificate renewal
 
 When the certificate is renewed, the result depends on **Preserve certificate on renewal**:
 
 - **On (default)**: the sync replaces the certificate object in place, so the profile keeps using it
-- **Off**: the sync creates a new certificate object, points the profile at it, and deletes the old one only if **Allow to remove certificates from destination** is on
+- **Off**: the sync creates a new certificate object, switches the profile to it, and deletes the old one only if **Remove certificates from destination** is on
 
 ## Removing the certificate
 
-PAN-OS doesn't let the sync delete the certificate while the profile uses it. If you change the sync's certificate order, the sync points the profile at the new certificate before it deletes the old one.
+PAN-OS won't delete a certificate that a profile still uses. When you switch the sync to another certificate order, the sync moves the profile to the new certificate first, then deletes the old one.
 
-To remove the certificate without replacing it:
+To remove the certificate without switching orders, pick a **Replacement Certificate** from the device. The field appears in **Remove Certificates**, and when you save an edit that drops the certificate. The sync moves the profile to the replacement, then deletes the synced certificate. Through the API, pass `removalOptions.replacementCertificateName` to the [Remove certificates](/api-reference/endpoints/pki/syncs/palo-alto-networks-ssl-tls-profile/remove-certificates) or [Update](/api-reference/endpoints/pki/syncs/palo-alto-networks-ssl-tls-profile/update) endpoint.
 
-<Steps>
-    <Step>
-        On the device, point the SSL/TLS service profile at another certificate, then commit the change.
-    </Step>
-    <Step>
-        Use the [Remove certificates from Palo Alto Networks SSL/TLS Profile](/api-reference/endpoints/pki/syncs/palo-alto-networks-ssl-tls-profile/remove-certificates) endpoint.
-    </Step>
-</Steps>
+Without a replacement, the edit isn't saved and **Remove Certificates** fails. The certificate stays on the device.
 
 ## Manual sync
 
@@ -157,10 +150,7 @@ To sync on demand, use the [Sync certificates to Palo Alto Networks SSL/TLS Prof
 ## FAQ
 
 <AccordionGroup>
-  <Accordion title="Why can this sync hold only one certificate?">
-    An SSL/TLS service profile uses one certificate at a time. To deploy more certificates to the same device, create a [Palo Alto Networks sync](/documentation/platform/pki/applications/certificate-syncs/palo-alto-networks).
-  </Accordion>
-  <Accordion title="Can I point several profiles at the same certificate?">
+  <Accordion title="Can several profiles use the same certificate?">
     Yes. Each sync updates one profile, so create one sync for each profile.
   </Accordion>
 </AccordionGroup>

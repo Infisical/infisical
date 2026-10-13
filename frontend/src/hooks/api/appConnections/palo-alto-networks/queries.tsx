@@ -26,7 +26,9 @@ const paloAltoNetworksConnectionKeys = {
       "ssl-tls-service-profiles",
       connectionId,
       template
-    ] as const
+    ] as const,
+  listCertificates: (connectionId: string, template?: string) =>
+    [...paloAltoNetworksConnectionKeys.all, "certificates", connectionId, template] as const
 };
 
 export const usePaloAltoNetworksConnectionListTemplates = (
@@ -51,7 +53,6 @@ export const usePaloAltoNetworksConnectionListTemplates = (
       return data;
     },
     staleTime: DEVICE_LOOKUP_STALE_TIME_MS,
-    refetchOnWindowFocus: false,
     ...options,
     enabled: Boolean(connectionId) && (options?.enabled ?? true)
   });
@@ -82,8 +83,31 @@ export const usePaloAltoNetworksConnectionListSslTlsServiceProfiles = (
       return data.sslTlsServiceProfiles;
     },
     staleTime: DEVICE_LOOKUP_STALE_TIME_MS,
-    refetchOnWindowFocus: false,
     ...options,
     enabled: Boolean(connectionId) && (options?.enabled ?? true)
+  });
+};
+
+export type TPaloAltoNetworksCertificate = {
+  name: string;
+  vsys: string | null;
+};
+
+export const usePaloAltoNetworksConnectionListCertificates = (
+  connectionId: string,
+  template?: string
+) => {
+  return useQuery({
+    queryKey: paloAltoNetworksConnectionKeys.listCertificates(connectionId, template),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ certificates: TPaloAltoNetworksCertificate[] }>(
+        `/api/v1/app-connections/palo-alto-networks/${connectionId}/certificates`,
+        { params: template ? { template } : {} }
+      );
+
+      return data.certificates;
+    },
+    staleTime: DEVICE_LOOKUP_STALE_TIME_MS,
+    enabled: Boolean(connectionId)
   });
 };

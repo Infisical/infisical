@@ -3179,12 +3179,7 @@ export const AppConnections = {
   },
   PALO_ALTO_NETWORKS_LOOKUPS: {
     connectionId: "The ID of the Palo Alto Networks Connection to read from.",
-    template:
-      "The Panorama template to list SSL/TLS service profiles from. Leave it out when the connection points to a firewall.",
-    isPanorama: "Whether the connection points to a Panorama rather than a firewall.",
-    templates: "The names of the Panorama templates. Empty when the connection points to a firewall.",
-    profileName: "The name of the SSL/TLS service profile.",
-    profileVsys: "The virtual system the profile belongs to, or null for a shared profile."
+    template: "The Panorama template to read from. Leave it out when the connection points to a firewall."
   }
 };
 
@@ -4590,7 +4585,9 @@ export const PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATION_CONFIG = {
     "Whether to push every template stack that contains the template to its firewalls after a commit. Applies to Panorama only.",
   sslTlsServiceProfileName: "The name of the SSL/TLS service profile to point at the synced certificate.",
   sslTlsServiceProfileVsys:
-    "The virtual system the SSL/TLS service profile belongs to. Leave it out for a shared profile."
+    "The virtual system the SSL/TLS service profile belongs to. Leave it out for a shared profile.",
+  replacementCertificateName:
+    "The certificate on the device that the SSL/TLS service profile switches to before the synced certificate is deleted. Required when the removal would leave the profile without a certificate."
 };
 
 export const PKI_SYNC_FILTERS = {

@@ -24,7 +24,7 @@ const PAN_OS_DEFAULT_PORT = 443;
 const PAN_OS_REQUEST_TIMEOUT_MS = 60_000;
 const PAN_OS_JOB_POLL_INTERVAL_MS = 3_000;
 const PAN_OS_JOB_TIMEOUT_MS = 15 * 60_000;
-const NO_CHANGES_PATTERN = new RE2("no changes to commit", "i");
+const NO_CHANGES_PATTERN = new RE2("no changes to commit|same as the previous commit", "i");
 const JOB_ID_PATTERN = new RE2("^\\d+$");
 
 export const PAN_OS_LOCALHOST_ENTRY = "entry[@name='localhost.localdomain']";
@@ -44,7 +44,6 @@ type TPanOsXmlNode = Record<string, unknown>;
 
 type TPanOsResponse = {
   "@_status"?: string;
-  "@_code"?: string;
   result?: TPanOsXmlNode;
   msg?: unknown;
 };
@@ -65,7 +64,7 @@ export class PanOsApiError extends Error {
 
 const collectText = (node: unknown): string[] => {
   if (node === undefined || node === null) return [];
-  if (typeof node === "string" || typeof node === "number") return [String(node).trim()].filter(Boolean);
+  if (typeof node === "string") return [node.trim()].filter(Boolean);
   if (Array.isArray(node)) return node.flatMap(collectText);
   if (typeof node === "object") {
     return Object.entries(node)
@@ -304,19 +303,36 @@ export const listSslTlsServiceProfiles = async (client: TPanOsClient, template?:
   return profiles;
 };
 
+export const listCertificatesWithPrivateKey = async (client: TPanOsClient, template?: string) => {
+  const root = getConfigRoot(template);
+  const [sharedResult, vsysResult] = await Promise.all([
+    client.getConfig(`${root}/shared/certificate`),
+    client.getConfig(`${root}/devices/${PAN_OS_LOCALHOST_ENTRY}/vsys`)
+  ]);
+  const withPrivateKey = (certificates: unknown, vsys: string | null) =>
+    getEntries(certificates)
+      .filter((entry) => entry["private-key"] !== undefined)
+      .map((entry) => ({ name: String(entry["@_name"]), vsys }));
+
+  return [
+    ...withPrivateKey(sharedResult.certificate, null),
+    ...getEntries(vsysResult.vsys).flatMap((vsys) => withPrivateKey(vsys.certificate, String(vsys["@_name"])))
+  ];
+};
+
 const UNTRUSTED_TLS_CODES = new Set([
   "DEPTH_ZERO_SELF_SIGNED_CERT",
   "SELF_SIGNED_CERT_IN_CHAIN",
   "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
   "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
-  "CERT_HAS_EXPIRED",
-  "ERR_TLS_CERT_ALTNAME_INVALID"
+  "CERT_HAS_EXPIRED"
 ]);
 
 const UNTRUSTED_TLS_PATTERN = new RE2(
-  "self[- ]signed certificate|unable to verify the first certificate|unable to get local issuer|certificate has expired|altnames",
+  "self[- ]signed certificate|unable to verify the first certificate|unable to get local issuer|certificate has expired",
   "i"
 );
+const HOSTNAME_MISMATCH_PATTERN = new RE2("altnames|does not match certificate", "i");
 const GATEWAY_TRANSPORT_PATTERN = new RE2("gateway mTLS", "i");
 const UNREACHABLE_PATTERN = new RE2(
   [...RETRYABLE_NETWORK_ERRORS, "socket disconnected before secure TLS connection", "socket hang up"].join("|"),
@@ -329,6 +345,9 @@ export const describePanOsError = (error: unknown) => {
   const detail = error instanceof Error ? error.message : "Unknown error";
   if (error instanceof GatewayTransportError || GATEWAY_TRANSPORT_PATTERN.test(detail)) {
     return "the gateway could not be reached. Check that the gateway is running and connected to its relay.";
+  }
+  if (code === "ERR_TLS_CERT_ALTNAME_INVALID" || HOSTNAME_MISMATCH_PATTERN.test(detail)) {
+    return `the management interface's TLS certificate isn't issued to this hostname (${detail}). The PAN-OS default certificate is issued to the device's serial number. Connect with a name the certificate lists, install a different management certificate, or turn off Reject Unauthorized.`;
   }
   if ((code && UNTRUSTED_TLS_CODES.has(code)) || UNTRUSTED_TLS_PATTERN.test(detail)) {
     return `the management interface's TLS certificate is not trusted (${detail}). Add its CA certificate in the connection's SSL settings, or turn off Reject Unauthorized.`;

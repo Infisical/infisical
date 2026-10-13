@@ -31,7 +31,7 @@ export const PkiSyncOptionsSection = ({ pkiSync }: Props) => {
 
   return (
     <>
-      <Separator className="mt-4" />
+      <Separator />
       <Accordion type="multiple" variant="ghost">
         <AccordionItem value="sync-options">
           <AccordionTrigger className="py-4">Sync Options</AccordionTrigger>

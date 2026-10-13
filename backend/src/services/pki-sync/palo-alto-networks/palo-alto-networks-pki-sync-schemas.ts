@@ -32,6 +32,14 @@ export const PaloAltoNetworksSslTlsProfilePkiSyncConfigSchema = PaloAltoNetworks
     .describe(PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATION_CONFIG.sslTlsServiceProfileVsys)
 });
 
+export const PaloAltoNetworksSslTlsProfileRemovalOptionsSchema = z
+  .object({
+    replacementCertificateName: PanOsObjectNameSchema("Replacement certificate")
+      .optional()
+      .describe(PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATION_CONFIG.replacementCertificateName)
+  })
+  .strict();
+
 const ANY_NAME_PLACEHOLDER = new RE2("\\{\\{\\w+\\}\\}");
 const CERTIFICATE_NAME_PLACEHOLDER = new RE2("\\{\\{(certificateId|shortCertificateId|commonName)\\}\\}");
 
@@ -45,9 +53,7 @@ export const PaloAltoNetworksPkiSyncOptionsSchema = BasePkiSyncOptionsSchema.ext
 
 const PaloAltoNetworksMultiCertificatePkiSyncOptionsSchema = PaloAltoNetworksPkiSyncOptionsSchema.refine(
   ({ certificateNameSchema }) =>
-    !certificateNameSchema ||
-    !ANY_NAME_PLACEHOLDER.test(certificateNameSchema) ||
-    CERTIFICATE_NAME_PLACEHOLDER.test(certificateNameSchema),
+    !ANY_NAME_PLACEHOLDER.test(certificateNameSchema) || CERTIFICATE_NAME_PLACEHOLDER.test(certificateNameSchema),
   {
     message:
       "Certificate name schema must include {{shortCertificateId}} or {{commonName}} so each certificate gets its own name, or use no placeholder for a single certificate.",
@@ -62,8 +68,10 @@ const buildPaloAltoNetworksPkiSyncSchemas = <
 >(
   destination: TDestination,
   destinationConfig: TConfig,
-  inputSyncOptions: TInputOptions
+  inputSyncOptions: TInputOptions,
+  removalOptionsSchema?: z.AnyZodObject
 ) => ({
+  removalOptionsSchema,
   responseSchema: PkiSyncSchema.extend({
     destination: z.literal(destination),
     destinationConfig,
@@ -90,7 +98,8 @@ const buildPaloAltoNetworksPkiSyncSchemas = <
     syncOptions: inputSyncOptions.optional(),
     subscriberId: z.string().uuid().nullish(),
     connectionId: z.string().uuid().optional(),
-    filters: UpdatePkiSyncFiltersField
+    filters: UpdatePkiSyncFiltersField,
+    removalOptions: (removalOptionsSchema ?? z.object({}).strict()).optional()
   })
 });
 
@@ -103,5 +112,6 @@ export const PaloAltoNetworksPkiSyncSchemas = buildPaloAltoNetworksPkiSyncSchema
 export const PaloAltoNetworksSslTlsProfilePkiSyncSchemas = buildPaloAltoNetworksPkiSyncSchemas(
   PkiSync.PaloAltoNetworksSslTlsProfile,
   PaloAltoNetworksSslTlsProfilePkiSyncConfigSchema,
-  PaloAltoNetworksPkiSyncOptionsSchema
+  PaloAltoNetworksPkiSyncOptionsSchema,
+  PaloAltoNetworksSslTlsProfileRemovalOptionsSchema
 );

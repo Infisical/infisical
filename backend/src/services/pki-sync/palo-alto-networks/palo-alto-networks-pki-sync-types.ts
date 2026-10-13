@@ -3,7 +3,8 @@ import { z } from "zod";
 import {
   PaloAltoNetworksPkiSyncConfigSchema,
   PaloAltoNetworksPkiSyncOptionsSchema,
-  PaloAltoNetworksSslTlsProfilePkiSyncConfigSchema
+  PaloAltoNetworksSslTlsProfilePkiSyncConfigSchema,
+  PaloAltoNetworksSslTlsProfileRemovalOptionsSchema
 } from "./palo-alto-networks-pki-sync-schemas";
 
 export type TPaloAltoNetworksPkiSyncOptions = z.infer<typeof PaloAltoNetworksPkiSyncOptionsSchema>;
@@ -15,3 +16,7 @@ export type TPaloAltoNetworksPkiSyncConfig = z.infer<typeof PaloAltoNetworksPkiS
       "sslTlsServiceProfileName" | "sslTlsServiceProfileVsys"
     >
   >;
+
+export type TPaloAltoNetworksSslTlsProfileRemovalOptions = z.infer<
+  typeof PaloAltoNetworksSslTlsProfileRemovalOptionsSchema
+>;

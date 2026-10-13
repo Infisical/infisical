@@ -5,6 +5,7 @@ import RE2 from "re2";
 import { TCertificateSyncs } from "@app/db/schemas";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import {
   describePanOsError,
@@ -22,24 +23,25 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { splitPemChain } from "@app/services/certificate/certificate-fns";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
-import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
+import { TCertificateMap, TPkiSyncRemovalOptions } from "@app/services/pki-sync/pki-sync-types";
 
 import {
   buildManagedCertificateNameRegexSource,
   certificateNameSchemaHasFreeTextPlaceholder,
-  compileCertificateNameSchema,
   SHORT_UUID_NAME_REGEX_FRAGMENT,
   UUID_NAME_REGEX_FRAGMENT
 } from "../pki-sync-certificate-name-fns";
-import { PkiSync } from "../pki-sync-enums";
 import { PkiSyncError } from "../pki-sync-errors";
 import { TPkiSyncWithCredentials } from "../pki-sync-types";
 import {
   PALO_ALTO_NETWORKS_CA_CERTIFICATE_PREFIX,
-  PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATIONS,
-  PALO_ALTO_NETWORKS_PKI_SYNC_LIST_OPTION
+  PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATIONS
 } from "./palo-alto-networks-pki-sync-constants";
-import { TPaloAltoNetworksPkiSyncConfig, TPaloAltoNetworksPkiSyncOptions } from "./palo-alto-networks-pki-sync-types";
+import {
+  TPaloAltoNetworksPkiSyncConfig,
+  TPaloAltoNetworksPkiSyncOptions,
+  TPaloAltoNetworksSslTlsProfileRemovalOptions
+} from "./palo-alto-networks-pki-sync-types";
 
 type TPaloAltoNetworksPkiSyncFactoryDeps = {
   certificateSyncDAL: Pick<
@@ -58,6 +60,7 @@ type TPaloAltoNetworksPkiSyncFactoryDeps = {
 };
 
 const CERTIFICATE_ID_PLACEHOLDER = new RE2("\\{\\{(certificateId|shortCertificateId)\\}\\}");
+const LEADING_ZEROS = new RE2("^0+");
 const DEPLOY_PENDING_FLAG = "panOsDeployPending";
 const REMOVE_PENDING_FLAG = "panOsRemovePending";
 const PASSPHRASE_VALUE_PATTERN = new RE2("value: \\S+", "g");
@@ -66,9 +69,6 @@ const MAX_COMMIT_DESCRIPTION_LENGTH = 255;
 
 const hasSyncMetadataFlag = (record: TCertificateSyncs, flag: string) =>
   Boolean((record.syncMetadata as Record<string, unknown> | null)?.[flag]);
-
-const hasDeployPending = (records: TCertificateSyncs[]) =>
-  records.some((record) => hasSyncMetadataFlag(record, DEPLOY_PENDING_FLAG));
 
 const escapeXml = (value: string) =>
   value
@@ -114,7 +114,7 @@ const assertDeviceMatchesConfig = async (client: TPanOsClient, config: TPaloAlto
       shouldRetry: false
     });
   }
-  if (panorama && config.template && !(await listPanoramaTemplates(client)).includes(config.template)) {
+  if (panorama && !(await listPanoramaTemplates(client)).includes(config.template!)) {
     throw new PkiSyncError({
       message: `Template '${config.template}' was not found on the Panorama. Select an existing template, then sync again.`,
       shouldRetry: false
@@ -287,15 +287,12 @@ const commitAndPush = async (
   }
 };
 
-export const buildManagedCertNamePattern = (certificateNameSchema: string | undefined): RE2 => {
-  const pattern = buildManagedCertificateNameRegexSource(
-    certificateNameSchema ?? PALO_ALTO_NETWORKS_PKI_SYNC_LIST_OPTION.defaultCertificateNameSchema,
-    {
-      uuid: UUID_NAME_REGEX_FRAGMENT,
-      shortUuid: SHORT_UUID_NAME_REGEX_FRAGMENT,
-      freeText: "[a-zA-Z0-9_-]*"
-    }
-  );
+export const buildManagedCertNamePattern = (certificateNameSchema: string): RE2 => {
+  const pattern = buildManagedCertificateNameRegexSource(certificateNameSchema, {
+    uuid: UUID_NAME_REGEX_FRAGMENT,
+    shortUuid: SHORT_UUID_NAME_REGEX_FRAGMENT,
+    freeText: "[a-zA-Z0-9_-]*"
+  });
   return new RE2(`^${pattern}$`);
 };
 
@@ -323,7 +320,7 @@ const planUploads = ({
   existingCertificates: Map<string, string | undefined>;
   removePendingCertificateIds: Set<string>;
 }) => {
-  const { preserveItemOnRenewal, certificateNameSchema } = pkiSync.syncOptions as TPaloAltoNetworksPkiSyncOptions;
+  const { preserveItemOnRenewal } = pkiSync.syncOptions as TPaloAltoNetworksPkiSyncOptions;
   const plannedUploads: TPlannedUpload[] = [];
   const activeNames = new Set<string>();
   const skippedCertificates: Array<{ name: string; reason: string }> = [];
@@ -367,17 +364,6 @@ const planUploads = ({
         oldCertificateIdToRemove = certificate?.renewedFromCertificateId ?? undefined;
       } else if (certificate?.renewedFromCertificateId && !preserveItemOnRenewal) {
         replacedName = renewedFromRecord?.externalIdentifier ?? directRecord?.externalIdentifier ?? undefined;
-        name = compileCertificateNameSchema(
-          certificateNameSchema ?? PALO_ALTO_NETWORKS_PKI_SYNC_LIST_OPTION.defaultCertificateNameSchema,
-          {
-            certificateId,
-            profileId: certData.profileId,
-            applicationId: pkiSync.applicationId,
-            applicationName: pkiSync.applicationName,
-            commonName: certData.commonName
-          },
-          PkiSync.PaloAltoNetworks
-        );
       } else if (directRecord?.externalIdentifier && existingCertificates.has(directRecord.externalIdentifier)) {
         name = directRecord.externalIdentifier;
       }
@@ -449,6 +435,27 @@ export const paloAltoNetworksPkiSyncFactory = ({
 
   type TDeployPendingMarker = ReturnType<typeof createDeployPendingMarker>;
 
+  const isIssuedByInfisical = async (
+    client: TPanOsClient,
+    config: TPaloAltoNetworksPkiSyncConfig,
+    projectId: string,
+    name: string
+  ) => {
+    const pem = getEntries(await client.getConfig(getCertificateEntryXpath(config, name)))[0]?.["public-key"];
+    if (typeof pem !== "string") return false;
+    let serial: string;
+    try {
+      serial = new crypto.X509Certificate(pem).serialNumber.toLowerCase().replace(LEADING_ZEROS, "");
+    } catch {
+      return false;
+    }
+    const matches = await certificateDAL.find({
+      projectId,
+      $in: { serialNumber: [serial, `0${serial}`, serial.padStart(40, "0")] }
+    });
+    return matches.length > 0;
+  };
+
   const findNamesOwnedByOtherSyncs = (pkiSync: TPkiSyncWithCredentials, names: string[]) =>
     certificateSyncDAL.findExternalIdentifiersInUse(names, {
       excludePkiSyncId: pkiSync.id,
@@ -474,7 +481,7 @@ export const paloAltoNetworksPkiSyncFactory = ({
     hasDeviceChanges: boolean;
     deployPending: TDeployPendingMarker;
   }) => {
-    const isDeployPending = hasDeployPending(existingSyncRecords);
+    const isDeployPending = existingSyncRecords.some((record) => hasSyncMetadataFlag(record, DEPLOY_PENDING_FLAG));
     if (hasDeviceChanges || isDeployPending) {
       await commitAndPush(client, config, { panorama, description });
     }
@@ -486,7 +493,8 @@ export const paloAltoNetworksPkiSyncFactory = ({
   const importPlannedUploads = async ({
     client,
     config,
-    pkiSyncId,
+    pkiSync,
+    ownedNames,
     plannedUploads,
     existingCertificates,
     knownCaFingerprints,
@@ -494,7 +502,8 @@ export const paloAltoNetworksPkiSyncFactory = ({
   }: {
     client: TPanOsClient;
     config: TPaloAltoNetworksPkiSyncConfig;
-    pkiSyncId: string;
+    pkiSync: TPkiSyncWithCredentials;
+    ownedNames: Set<string>;
     plannedUploads: TPlannedUpload[];
     existingCertificates: Map<string, string | undefined>;
     knownCaFingerprints: Set<string | undefined>;
@@ -506,8 +515,20 @@ export const paloAltoNetworksPkiSyncFactory = ({
 
     for (const upload of plannedUploads) {
       try {
+        const fingerprint = getFingerprint(upload.cert);
+        if (
+          existingCertificates.has(upload.name) &&
+          existingCertificates.get(upload.name) !== fingerprint &&
+          !ownedNames.has(upload.name) &&
+          !(await isIssuedByInfisical(client, config, pkiSync.projectId, upload.name))
+        ) {
+          throw new PkiSyncError({
+            message: `A certificate named '${upload.name}' already exists on the device and wasn't deployed by Infisical, so it was left unchanged. Change the certificate name schema so it doesn't match an existing certificate.`,
+            shouldRetry: false
+          });
+        }
         if (upload.certificateId) {
-          await certificateSyncDAL.claimExternalIdentifier(pkiSyncId, upload.certificateId, upload.name);
+          await certificateSyncDAL.claimExternalIdentifier(pkiSync.id, upload.certificateId, upload.name);
         }
         await deployPending.mark();
 
@@ -520,7 +541,6 @@ export const paloAltoNetworksPkiSyncFactory = ({
         );
         hasDeviceChanges ||= importedCa;
 
-        const fingerprint = getFingerprint(upload.cert);
         if (!fingerprint || existingCertificates.get(upload.name) !== fingerprint) {
           await importKeyPair(client, config, upload.name, upload.cert, upload.privateKey);
           hasDeviceChanges = true;
@@ -532,7 +552,7 @@ export const paloAltoNetworksPkiSyncFactory = ({
         failedUploads.push({ name: upload.mapKey, error: describePanOsError(error) });
         logger.error(
           { error },
-          `Palo Alto Networks PKI sync failed to import certificate [syncId=${pkiSyncId}] [name=${upload.name}]`
+          `Palo Alto Networks PKI sync failed to import certificate [syncId=${pkiSync.id}] [name=${upload.name}]`
         );
       }
     }
@@ -564,28 +584,24 @@ export const paloAltoNetworksPkiSyncFactory = ({
     const candidates = new Set(
       existingSyncRecords
         .map((record) => record.externalIdentifier)
-        .filter(
-          (name): name is string =>
-            Boolean(name) && !activeNames.has(name as string) && existingCertificates.has(name as string)
-        )
+        .filter((name): name is string => !!name && !activeNames.has(name) && existingCertificates.has(name))
     );
 
     if (
-      CERTIFICATE_ID_PLACEHOLDER.test(
-        certificateNameSchema ?? PALO_ALTO_NETWORKS_PKI_SYNC_LIST_OPTION.defaultCertificateNameSchema
-      ) &&
+      CERTIFICATE_ID_PLACEHOLDER.test(certificateNameSchema) &&
       !certificateNameSchemaHasFreeTextPlaceholder(certificateNameSchema)
     ) {
       const managedPattern = buildManagedCertNamePattern(certificateNameSchema);
-      existingCertificates.forEach((_, name) => {
-        if (
+      const untrackedMatches = [...existingCertificates.keys()].filter(
+        (name) =>
           managedPattern.test(name) &&
           !activeNames.has(name) &&
+          !candidates.has(name) &&
           !name.startsWith(PALO_ALTO_NETWORKS_CA_CERTIFICATE_PREFIX)
-        ) {
-          candidates.add(name);
-        }
-      });
+      );
+      for (const name of untrackedMatches) {
+        if (await isIssuedByInfisical(client, config, pkiSync.projectId, name)) candidates.add(name);
+      }
     }
 
     const ownedByOtherSync = await findNamesOwnedByOtherSyncs(pkiSync, [...candidates]);
@@ -673,7 +689,10 @@ export const paloAltoNetworksPkiSyncFactory = ({
       const imports = await importPlannedUploads({
         client,
         config,
-        pkiSyncId: pkiSync.id,
+        pkiSync,
+        ownedNames: new Set(
+          existingSyncRecords.map((record) => record.externalIdentifier).filter((name): name is string => !!name)
+        ),
         plannedUploads,
         existingCertificates,
         knownCaFingerprints,
@@ -752,8 +771,9 @@ export const paloAltoNetworksPkiSyncFactory = ({
   const removeCertificates = async (
     pkiSync: TPkiSyncWithCredentials,
     certificateNames: string[],
-    deps?: { certificateMap?: TCertificateMap }
+    deps?: { certificateMap?: TCertificateMap; removalOptions?: TPkiSyncRemovalOptions }
   ): Promise<void> => {
+    const { replacementCertificateName } = (deps?.removalOptions ?? {}) as TPaloAltoNetworksSslTlsProfileRemovalOptions;
     const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
     const syncRecordsByCertId = new Map(existingSyncRecords.map((record) => [record.certificateId ?? "", record]));
 
@@ -778,31 +798,65 @@ export const paloAltoNetworksPkiSyncFactory = ({
     const deferredCertificateIds = await withClient(pkiSync, async (client, panorama, config) => {
       const [existingCertificates, profileCertificate] = await Promise.all([
         listCertificates(client, config),
-        config.sslTlsServiceProfileName && replacementRecords.length ? getProfileCertificate(client, config) : undefined
+        config.sslTlsServiceProfileName
+          ? getProfileCertificate(client, config).catch((error: unknown) => {
+              if (error instanceof PkiSyncError) return undefined;
+              throw error;
+            })
+          : undefined
       ]);
       const deployPending = createDeployPendingMarker(pkiSync.id);
       let hasDeviceChanges = false;
       const deferred = new Set<string>();
+      const profileTargets = targets.filter((target) => target.externalIdentifier === profileCertificate);
 
-      if (targets.some((target) => target.externalIdentifier === profileCertificate)) {
+      if (profileTargets.length) {
         const replacementOnDevice = replacementRecords.find(
           (record) => record.externalIdentifier && existingCertificates.has(record.externalIdentifier)
         );
-        if (replacementOnDevice) {
+        let replacementName = replacementOnDevice?.externalIdentifier ?? undefined;
+
+        if (replacementCertificateName) {
+          const isReplacementVisible =
+            existingCertificates.has(replacementCertificateName) ||
+            (config.sslTlsServiceProfileVsys
+              ? (await listCertificates(client, config, config.sslTlsServiceProfileVsys)).has(
+                  replacementCertificateName
+                )
+              : false);
+          if (
+            !isReplacementVisible ||
+            targets.some((target) => target.externalIdentifier === replacementCertificateName)
+          ) {
+            throw new PkiSyncError({
+              message: `Replacement certificate '${replacementCertificateName}' isn't on the device or is being removed. Choose another one for SSL/TLS service profile '${config.sslTlsServiceProfileName}'.`,
+              shouldRetry: false
+            });
+          }
+          replacementName = replacementCertificateName;
+        }
+
+        if (replacementName) {
           await deployPending.mark();
           await client.editConfig(
             `${getProfileXpath(config)}/certificate`,
-            `<certificate>${replacementOnDevice.externalIdentifier}</certificate>`
+            `<certificate>${replacementName}</certificate>`
           );
           hasDeviceChanges = true;
-          await certificateSyncDAL.clearSyncMetadataFlag(pkiSync.id, REMOVE_PENDING_FLAG, undefined, [
-            replacementOnDevice.certificateId as string
-          ]);
-        } else {
-          targets
-            .filter((target) => target.externalIdentifier === profileCertificate)
-            .forEach((target) => deferred.add(target.certificateId));
+          const replacementRecord = replacementRecords.find((record) => record.externalIdentifier === replacementName);
+          if (replacementRecord) {
+            await certificateSyncDAL.clearSyncMetadataFlag(pkiSync.id, REMOVE_PENDING_FLAG, undefined, [
+              replacementRecord.certificateId as string
+            ]);
+          }
+        } else if (replacementRecords.length) {
+          profileTargets.forEach((target) => deferred.add(target.certificateId));
           await certificateSyncDAL.setSyncMetadataFlag(pkiSync.id, REMOVE_PENDING_FLAG, [...deferred]);
+        } else {
+          throw new PkiSyncError({
+            message: `SSL/TLS service profile '${config.sslTlsServiceProfileName}' still uses certificate '${profileCertificate}', and PAN-OS won't leave a profile without a certificate. Remove the certificate again and choose a replacement certificate for the profile, or switch the profile to another certificate on the device first.`,
+            shouldRetry: false
+          });
         }
       }
 
@@ -849,4 +903,31 @@ export const paloAltoNetworksPkiSyncFactory = ({
   const testReachability = (pkiSync: TPkiSyncWithCredentials) => withClient(pkiSync, async () => undefined);
 
   return { syncCertificates, removeCertificates, testReachability };
+};
+
+export const assertPaloAltoNetworksUnlinkKeepsProfileCertificate = ({
+  pkiSync,
+  remainingCertificateCount,
+  unlinkedAtDestinationCount,
+  removalOptions
+}: {
+  pkiSync: { syncOptions: unknown; destinationConfig: unknown };
+  remainingCertificateCount: number;
+  unlinkedAtDestinationCount: number;
+  removalOptions?: TPkiSyncRemovalOptions;
+}) => {
+  const { canRemoveCertificates } = pkiSync.syncOptions as TPaloAltoNetworksPkiSyncOptions;
+  const { sslTlsServiceProfileName } = pkiSync.destinationConfig as TPaloAltoNetworksPkiSyncConfig;
+  const { replacementCertificateName } = (removalOptions ?? {}) as TPaloAltoNetworksSslTlsProfileRemovalOptions;
+  if (
+    !canRemoveCertificates ||
+    unlinkedAtDestinationCount === 0 ||
+    remainingCertificateCount > 0 ||
+    replacementCertificateName
+  )
+    return;
+
+  throw new BadRequestError({
+    message: `This change deletes the certificate that SSL/TLS service profile '${sslTlsServiceProfileName}' uses, and PAN-OS won't leave a profile without a certificate. Choose a replacement certificate, or select another certificate order for the sync.`
+  });
 };
