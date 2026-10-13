@@ -48,77 +48,77 @@ export const PkiCollectionItemsTable = ({ collectionId, type, handlePopUpOpen }:
     type
   });
 
-  if (!isPending && !data?.totalCount) {
-    return (
-      <Empty className="border">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <BoxesIcon />
-          </EmptyMedia>
-          <EmptyTitle>{`No ${pkiItemTypeToNameMap[type]}s have been added to this collection`}</EmptyTitle>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
-
   return (
     <div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Friendly Name</TableHead>
-            <TableHead>Not Before</TableHead>
-            <TableHead>Not After</TableHead>
-            <TableHead className="w-5" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {isPending && <TableSkeletonRows columns={4} />}
-          {!isPending &&
-            data?.collectionItems.map((collectionItem) => {
-              return (
-                <TableRow className="group" key={`pki-collection-item-${collectionItem.id}`}>
-                  <TableCell className="w-1/3">{collectionItem.friendlyName}</TableCell>
-                  <TableCell>{format(new Date(collectionItem.notBefore), "yyyy-MM-dd")}</TableCell>
-                  <TableCell>{format(new Date(collectionItem.notAfter), "yyyy-MM-dd")}</TableCell>
-                  <TableCell>
-                    <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                      <ProjectPermissionCan
-                        I={ProjectPermissionActions.Delete}
-                        a={ProjectPermissionSub.PkiCollections}
-                      >
-                        {(isAllowed) => (
-                          <Tooltip hoverable delayDuration={50}>
-                            <TooltipTrigger asChild>
-                              <span className="inline-flex">
-                                <IconButton
-                                  aria-label="Remove"
-                                  variant="ghost"
-                                  size="xs"
-                                  isDisabled={!isAllowed}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePopUpOpen("deletePkiCollectionItem", {
-                                      collectionId,
-                                      itemId: collectionItem.id
-                                    });
-                                  }}
-                                >
-                                  <XIcon />
-                                </IconButton>
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>Remove</TooltipContent>
-                          </Tooltip>
-                        )}
-                      </ProjectPermissionCan>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-        </TableBody>
-      </Table>
+      {!isPending && !data?.collectionItems?.length ? (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <BoxesIcon />
+            </EmptyMedia>
+            <EmptyTitle>{`No ${pkiItemTypeToNameMap[type]}s have been added to this collection`}</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Friendly Name</TableHead>
+              <TableHead>Not Before</TableHead>
+              <TableHead>Not After</TableHead>
+              <TableHead className="w-5" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isPending && <TableSkeletonRows columns={4} />}
+            {!isPending &&
+              data?.collectionItems.map((collectionItem) => {
+                return (
+                  <TableRow className="group" key={`pki-collection-item-${collectionItem.id}`}>
+                    <TableCell className="w-1/3">{collectionItem.friendlyName}</TableCell>
+                    <TableCell>
+                      {format(new Date(collectionItem.notBefore), "yyyy-MM-dd")}
+                    </TableCell>
+                    <TableCell>{format(new Date(collectionItem.notAfter), "yyyy-MM-dd")}</TableCell>
+                    <TableCell>
+                      <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                        <ProjectPermissionCan
+                          I={ProjectPermissionActions.Delete}
+                          a={ProjectPermissionSub.PkiCollections}
+                        >
+                          {(isAllowed) => (
+                            <Tooltip hoverable delayDuration={50}>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex">
+                                  <IconButton
+                                    aria-label="Remove"
+                                    variant="ghost"
+                                    size="xs"
+                                    isDisabled={!isAllowed}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePopUpOpen("deletePkiCollectionItem", {
+                                        collectionId,
+                                        itemId: collectionItem.id
+                                      });
+                                    }}
+                                  >
+                                    <XIcon />
+                                  </IconButton>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>Remove</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </ProjectPermissionCan>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+          </TableBody>
+        </Table>
+      )}
       {!isPending && data?.totalCount !== undefined && data.totalCount >= PER_PAGE_INIT && (
         <Pagination
           count={data.totalCount}

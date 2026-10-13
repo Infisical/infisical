@@ -108,108 +108,106 @@ export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen
     })
   );
 
-  if (!isPending && !data?.totalCount) {
-    return (
-      <Empty className="border">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <ScrollTextIcon />
-          </EmptyMedia>
-          <EmptyTitle>
-            {canListPkiSubscriberCerts
-              ? "No certificates have been issued for this subscriber"
-              : "You do not have permission to view this subscriber's certificates"}
-          </EmptyTitle>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
-
   return (
     <div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Common Name</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Not Before</TableHead>
-            <TableHead>Not After</TableHead>
-            <TableHead />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {isPending && <TableSkeletonRows columns={5} />}
-          {!isPending &&
-            data?.certificates?.map((certificate) => {
-              return (
-                <TableRow key={`certificate-${certificate.id}`}>
-                  <TableCell>{certificate.commonName}</TableCell>
-                  <TableCell>
-                    {getCertStatusBadge(certificate.status, certificate.notAfter)}
-                  </TableCell>
-                  <TableCell>
-                    {certificate.notBefore
-                      ? format(new Date(certificate.notBefore), "yyyy-MM-dd")
-                      : "-"}
-                  </TableCell>
-                  <TableCell>
-                    {certificate.notAfter
-                      ? format(new Date(certificate.notAfter), "yyyy-MM-dd")
-                      : "-"}
-                  </TableCell>
-                  <TableCell variant="action">
-                    {(() => {
-                      const caType = caCapabilityMap[certificate.caId];
-                      const supportsRevocation =
-                        caType && caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES);
+      {!isPending && !data?.certificates?.length ? (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <ScrollTextIcon />
+            </EmptyMedia>
+            <EmptyTitle>
+              {canListPkiSubscriberCerts
+                ? "No certificates have been issued for this subscriber"
+                : "You do not have permission to view this subscriber's certificates"}
+            </EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Common Name</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Not Before</TableHead>
+              <TableHead>Not After</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isPending && <TableSkeletonRows columns={5} />}
+            {!isPending &&
+              data?.certificates?.map((certificate) => {
+                return (
+                  <TableRow key={`certificate-${certificate.id}`}>
+                    <TableCell>{certificate.commonName}</TableCell>
+                    <TableCell>
+                      {getCertStatusBadge(certificate.status, certificate.notAfter)}
+                    </TableCell>
+                    <TableCell>
+                      {certificate.notBefore
+                        ? format(new Date(certificate.notBefore), "yyyy-MM-dd")
+                        : "-"}
+                    </TableCell>
+                    <TableCell>
+                      {certificate.notAfter
+                        ? format(new Date(certificate.notAfter), "yyyy-MM-dd")
+                        : "-"}
+                    </TableCell>
+                    <TableCell variant="action">
+                      {(() => {
+                        const caType = caCapabilityMap[certificate.caId];
+                        const supportsRevocation =
+                          caType && caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES);
 
-                      // Don't show dropdown for CAs that don't support revocation
-                      if (!supportsRevocation) {
-                        return null;
-                      }
+                        // Don't show dropdown for CAs that don't support revocation
+                        if (!supportsRevocation) {
+                          return null;
+                        }
 
-                      return (
-                        <DropdownMenu>
-                          <Tooltip hoverable delayDuration={50}>
-                            <TooltipTrigger asChild>
-                              <DropdownMenuTrigger asChild>
-                                <IconButton aria-label="More options" variant="ghost" size="xs">
-                                  <MoreHorizontalIcon />
-                                </IconButton>
-                              </DropdownMenuTrigger>
-                            </TooltipTrigger>
-                            <TooltipContent>More options</TooltipContent>
-                          </Tooltip>
-                          <DropdownMenuContent align="start">
-                            <ProjectPermissionCan
-                              I={ProjectPermissionPkiSubscriberActions.Delete}
-                              a={ProjectPermissionSub.PkiSubscribers}
-                            >
-                              {(isAllowed) => (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handlePopUpOpen &&
-                                    handlePopUpOpen("revokeCertificate", {
-                                      certificateId: certificate.id
-                                    })
-                                  }
-                                  isDisabled={!isAllowed}
-                                >
-                                  <Trash2Icon />
-                                  Revoke Certificate
-                                </DropdownMenuItem>
-                              )}
-                            </ProjectPermissionCan>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      );
-                    })()}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-        </TableBody>
-      </Table>
+                        return (
+                          <DropdownMenu>
+                            <Tooltip hoverable delayDuration={50}>
+                              <TooltipTrigger asChild>
+                                <DropdownMenuTrigger asChild>
+                                  <IconButton aria-label="More options" variant="ghost" size="xs">
+                                    <MoreHorizontalIcon />
+                                  </IconButton>
+                                </DropdownMenuTrigger>
+                              </TooltipTrigger>
+                              <TooltipContent>More options</TooltipContent>
+                            </Tooltip>
+                            <DropdownMenuContent align="start">
+                              <ProjectPermissionCan
+                                I={ProjectPermissionPkiSubscriberActions.Delete}
+                                a={ProjectPermissionSub.PkiSubscribers}
+                              >
+                                {(isAllowed) => (
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handlePopUpOpen &&
+                                      handlePopUpOpen("revokeCertificate", {
+                                        certificateId: certificate.id
+                                      })
+                                    }
+                                    isDisabled={!isAllowed}
+                                  >
+                                    <Trash2Icon />
+                                    Revoke Certificate
+                                  </DropdownMenuItem>
+                                )}
+                              </ProjectPermissionCan>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        );
+                      })()}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+          </TableBody>
+        </Table>
+      )}
       {!isPending && data?.totalCount !== undefined && data.totalCount >= PER_PAGE_INIT && (
         <Pagination
           count={data.totalCount}
