@@ -161,7 +161,6 @@ export const GcpSecretManagerAuthorizePage = () => {
                   </FieldLabel>
                   <TextArea
                     {...field}
-                    className="h-48"
                     id="gcpsecretmanager-accesstoken"
                     isError={Boolean(error)}
                     aria-describedby={error ? "gcpsecretmanager-accesstoken-error" : undefined}
