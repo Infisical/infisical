@@ -9,6 +9,7 @@ import z from "zod";
 import {
   Button,
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -83,30 +84,32 @@ export function AzureKeyVaultAuthorizePage() {
             Authenticate with a specific tenant ID or let OAuth handle it automatically.
           </CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit(onFormSubmit)} className="px-6 pb-8 text-right">
-          <Controller
-            control={control}
-            name="tenantId"
-            render={({ field, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
-                <FieldLabel htmlFor="azurekeyvault-tenantid">Tenant ID (optional)</FieldLabel>
-                <Input
-                  {...field}
-                  placeholder="2e39537c-9a01-4bd6-a7b8-c3b88cbb8db9"
-                  id="azurekeyvault-tenantid"
-                  isError={Boolean(error)}
-                  aria-describedby={error ? "azurekeyvault-tenantid-error" : undefined}
-                />
-                {Boolean(error) && (
-                  <FieldError id="azurekeyvault-tenantid-error">{error?.message}</FieldError>
-                )}
-              </Field>
-            )}
-          />
-          <Button className="mt-2 w-min" size="sm" type="submit" variant="project">
-            Connect to Azure Key Vault
-          </Button>
-        </form>
+        <CardContent className="flex flex-col gap-5">
+          <form onSubmit={handleSubmit(onFormSubmit)} className="pb-8 text-right">
+            <Controller
+              control={control}
+              name="tenantId"
+              render={({ field, fieldState: { error } }) => (
+                <Field className="mb-4" data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="azurekeyvault-tenantid">Tenant ID (optional)</FieldLabel>
+                  <Input
+                    {...field}
+                    placeholder="2e39537c-9a01-4bd6-a7b8-c3b88cbb8db9"
+                    id="azurekeyvault-tenantid"
+                    isError={Boolean(error)}
+                    aria-describedby={error ? "azurekeyvault-tenantid-error" : undefined}
+                  />
+                  {Boolean(error) && (
+                    <FieldError id="azurekeyvault-tenantid-error">{error?.message}</FieldError>
+                  )}
+                </Field>
+              )}
+            />
+            <Button className="mt-2 w-min" size="sm" type="submit" variant="project">
+              Connect to Azure Key Vault
+            </Button>
+          </form>
+        </CardContent>
       </Card>
     </div>
   );

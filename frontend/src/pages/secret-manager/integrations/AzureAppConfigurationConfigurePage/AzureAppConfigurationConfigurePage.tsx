@@ -11,6 +11,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -192,207 +193,209 @@ export const AzureAppConfigurationConfigurePage = () => {
             Choose which environment in Infisical you want to sync to your Azure App Configuration.
           </CardDescription>
         </CardHeader>
-        <div className="px-6">
-          <div className="">
+        <CardContent className="flex flex-col gap-5">
+          <div>
+            <div className="">
+              <Controller
+                control={control}
+                name="sourceEnvironment"
+                render={({ field, fieldState: { error } }) => (
+                  <Field className="mb-4" data-invalid={Boolean(error)}>
+                    <FieldLabel htmlFor="azureappconfiguration-sourceenvironment">
+                      Project Environment
+                    </FieldLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={(val) => {
+                        field.onChange(val);
+                      }}
+                    >
+                      <SelectTrigger
+                        className="w-full"
+                        id="azureappconfiguration-sourceenvironment"
+                        isError={Boolean(error)}
+                        aria-describedby={
+                          error ? "azureappconfiguration-sourceenvironment-error" : undefined
+                        }
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {workspace?.environments.map((sourceEnvironment) => (
+                          <SelectItem
+                            value={sourceEnvironment.slug}
+                            key={`source-environment-${sourceEnvironment.slug}`}
+                          >
+                            {sourceEnvironment.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {Boolean(error) && (
+                      <FieldError id="azureappconfiguration-sourceenvironment-error">
+                        {error?.message}
+                      </FieldError>
+                    )}
+                  </Field>
+                )}
+              />
+
+              <div className="mb-2 flex w-full flex-col gap-1">
+                <Controller
+                  control={control}
+                  name="useLabels"
+                  render={({ field: { onChange, value } }) => (
+                    <Field orientation="horizontal">
+                      <FieldLabel htmlFor="use-environment-labels">Use Labels</FieldLabel>
+                      <Toggle
+                        id="use-environment-labels"
+                        onCheckedChange={(isChecked) => onChange(isChecked)}
+                        checked={value}
+                        variant="project"
+                      />
+                    </Field>
+                  )}
+                />
+
+                {shouldUseLabels && (
+                  <Controller
+                    control={control}
+                    name="azureLabel"
+                    render={({ field, fieldState: { error } }) => (
+                      <Field className="mb-4" data-invalid={Boolean(error)}>
+                        <Input
+                          {...field}
+                          placeholder="pre-prod"
+                          id="azureappconfiguration-azurelabel"
+                          isError={Boolean(error)}
+                          aria-describedby={
+                            error ? "azureappconfiguration-azurelabel-error" : undefined
+                          }
+                        />
+                        {Boolean(error) && (
+                          <FieldError id="azureappconfiguration-azurelabel-error">
+                            {error?.message}
+                          </FieldError>
+                        )}
+                      </Field>
+                    )}
+                  />
+                )}
+              </div>
+            </div>
             <Controller
               control={control}
-              name="sourceEnvironment"
+              name="secretPath"
               render={({ field, fieldState: { error } }) => (
                 <Field className="mb-4" data-invalid={Boolean(error)}>
-                  <FieldLabel htmlFor="azureappconfiguration-sourceenvironment">
-                    Project Environment
-                  </FieldLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={(val) => {
-                      field.onChange(val);
-                    }}
-                  >
-                    <SelectTrigger
-                      className="w-full"
-                      id="azureappconfiguration-sourceenvironment"
-                      isError={Boolean(error)}
-                      aria-describedby={
-                        error ? "azureappconfiguration-sourceenvironment-error" : undefined
-                      }
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {workspace?.environments.map((sourceEnvironment) => (
-                        <SelectItem
-                          value={sourceEnvironment.slug}
-                          key={`source-environment-${sourceEnvironment.slug}`}
-                        >
-                          {sourceEnvironment.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FieldLabel htmlFor="azureappconfiguration-secretpath">Secrets Path</FieldLabel>
+                  <SecretPathInput
+                    {...field}
+                    environment={selectedEnvironment}
+                    id="azureappconfiguration-secretpath"
+                    isError={Boolean(error)}
+                    aria-describedby={error ? "azureappconfiguration-secretpath-error" : undefined}
+                  />
                   {Boolean(error) && (
-                    <FieldError id="azureappconfiguration-sourceenvironment-error">
+                    <FieldError id="azureappconfiguration-secretpath-error">
                       {error?.message}
                     </FieldError>
                   )}
                 </Field>
               )}
             />
-
-            <div className="mb-2 flex w-full flex-col gap-1">
-              <Controller
-                control={control}
-                name="useLabels"
-                render={({ field: { onChange, value } }) => (
-                  <Field orientation="horizontal">
-                    <FieldLabel htmlFor="use-environment-labels">Use Labels</FieldLabel>
-                    <Toggle
-                      id="use-environment-labels"
-                      onCheckedChange={(isChecked) => onChange(isChecked)}
-                      checked={value}
-                      variant="project"
-                    />
-                  </Field>
-                )}
-              />
-
-              {shouldUseLabels && (
-                <Controller
-                  control={control}
-                  name="azureLabel"
-                  render={({ field, fieldState: { error } }) => (
-                    <Field className="mb-4" data-invalid={Boolean(error)}>
-                      <Input
-                        {...field}
-                        placeholder="pre-prod"
-                        id="azureappconfiguration-azurelabel"
-                        isError={Boolean(error)}
-                        aria-describedby={
-                          error ? "azureappconfiguration-azurelabel-error" : undefined
-                        }
-                      />
-                      {Boolean(error) && (
-                        <FieldError id="azureappconfiguration-azurelabel-error">
-                          {error?.message}
-                        </FieldError>
-                      )}
-                    </Field>
+            <Controller
+              control={control}
+              name="baseUrl"
+              render={({ field, fieldState: { error } }) => (
+                <Field className="mb-4" data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="azureappconfiguration-baseurl">
+                    Azure App Configuration URL
+                  </FieldLabel>
+                  <Input
+                    placeholder="https://infisical-configuration-integration-test.azconfig.io"
+                    {...field}
+                    id="azureappconfiguration-baseurl"
+                    isError={Boolean(error)}
+                    aria-describedby={error ? "azureappconfiguration-baseurl-error" : undefined}
+                  />
+                  {Boolean(error) && (
+                    <FieldError id="azureappconfiguration-baseurl-error">
+                      {error?.message}
+                    </FieldError>
                   )}
-                />
+                </Field>
               )}
-            </div>
-          </div>
-          <Controller
-            control={control}
-            name="secretPath"
-            render={({ field, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
-                <FieldLabel htmlFor="azureappconfiguration-secretpath">Secrets Path</FieldLabel>
-                <SecretPathInput
-                  {...field}
-                  environment={selectedEnvironment}
-                  id="azureappconfiguration-secretpath"
-                  isError={Boolean(error)}
-                  aria-describedby={error ? "azureappconfiguration-secretpath-error" : undefined}
-                />
-                {Boolean(error) && (
-                  <FieldError id="azureappconfiguration-secretpath-error">
-                    {error?.message}
-                  </FieldError>
-                )}
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="baseUrl"
-            render={({ field, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
-                <FieldLabel htmlFor="azureappconfiguration-baseurl">
-                  Azure App Configuration URL
-                </FieldLabel>
-                <Input
-                  placeholder="https://infisical-configuration-integration-test.azconfig.io"
-                  {...field}
-                  id="azureappconfiguration-baseurl"
-                  isError={Boolean(error)}
-                  aria-describedby={error ? "azureappconfiguration-baseurl-error" : undefined}
-                />
-                {Boolean(error) && (
-                  <FieldError id="azureappconfiguration-baseurl-error">{error?.message}</FieldError>
-                )}
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="secretPrefix"
-            render={({ field, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
-                <FieldLabel htmlFor="azureappconfiguration-secretprefix">Key Prefix</FieldLabel>
-                <Input
-                  {...field}
-                  id="azureappconfiguration-secretprefix"
-                  isError={Boolean(error)}
-                  aria-describedby={error ? "azureappconfiguration-secretprefix-error" : undefined}
-                />
-                {Boolean(error) && (
-                  <FieldError id="azureappconfiguration-secretprefix-error">
-                    {error?.message}
-                  </FieldError>
-                )}
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="initialSyncBehavior"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
-                <FieldLabel htmlFor="azureappconfiguration-initialsyncbehavior">
-                  Initial Sync Behavior
-                </FieldLabel>
-                <Select defaultValue={field.value} onValueChange={(e) => onChange(e)}>
-                  <SelectTrigger
-                    className="w-full"
-                    id="azureappconfiguration-initialsyncbehavior"
+            />
+            <Controller
+              control={control}
+              name="secretPrefix"
+              render={({ field, fieldState: { error } }) => (
+                <Field className="mb-4" data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="azureappconfiguration-secretprefix">Key Prefix</FieldLabel>
+                  <Input
+                    {...field}
+                    id="azureappconfiguration-secretprefix"
                     isError={Boolean(error)}
                     aria-describedby={
-                      error ? "azureappconfiguration-initialsyncbehavior-error" : undefined
+                      error ? "azureappconfiguration-secretprefix-error" : undefined
                     }
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {initialSyncBehaviors.map((b) => {
-                      return (
-                        <SelectItem
-                          value={b.value}
-                          key={`sync-behavior-${b.value}`}
-                          className="w-full"
-                        >
-                          {b.label}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                {Boolean(error) && (
-                  <FieldError id="azureappconfiguration-initialsyncbehavior-error">
-                    {error?.message}
-                  </FieldError>
-                )}
-              </Field>
-            )}
-          />
-          <Button
-            type="submit"
-            className="mt-4 mb-6 ml-auto"
-            isPending={isSubmitting}
-            variant="project"
-          >
-            Create Integration
-          </Button>
-        </div>
+                  />
+                  {Boolean(error) && (
+                    <FieldError id="azureappconfiguration-secretprefix-error">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="initialSyncBehavior"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <Field className="mb-4" data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="azureappconfiguration-initialsyncbehavior">
+                    Initial Sync Behavior
+                  </FieldLabel>
+                  <Select defaultValue={field.value} onValueChange={(e) => onChange(e)}>
+                    <SelectTrigger
+                      className="w-full"
+                      id="azureappconfiguration-initialsyncbehavior"
+                      isError={Boolean(error)}
+                      aria-describedby={
+                        error ? "azureappconfiguration-initialsyncbehavior-error" : undefined
+                      }
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {initialSyncBehaviors.map((b) => {
+                        return (
+                          <SelectItem value={b.value} key={`sync-behavior-${b.value}`}>
+                            {b.label}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {Boolean(error) && (
+                    <FieldError id="azureappconfiguration-initialsyncbehavior-error">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
+              )}
+            />
+            <Button
+              type="submit"
+              className="mt-4 mb-6 ml-auto"
+              isPending={isSubmitting}
+              variant="project"
+            >
+              Create Integration
+            </Button>
+          </div>
+        </CardContent>
       </Card>
     </form>
   ) : (

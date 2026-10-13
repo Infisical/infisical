@@ -7,6 +7,7 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -99,30 +100,32 @@ export const CircleCIAuthorizePage = () => {
             particular Infisical project and environment.
           </CardDescription>
         </CardHeader>
-        <Field className="mb-4 px-6" data-invalid={apiKeyErrorText !== ""}>
-          <FieldLabel htmlFor="circleci-circleci-api-token">CircleCI API Token</FieldLabel>
-          <Input
-            placeholder=""
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            id="circleci-circleci-api-token"
-            isError={apiKeyErrorText !== ""}
-            aria-describedby={
-              apiKeyErrorText !== "" ? "circleci-circleci-api-token-error" : undefined
-            }
-          />
-          {apiKeyErrorText !== "" && (
-            <FieldError id="circleci-circleci-api-token-error">{apiKeyErrorText}</FieldError>
-          )}
-        </Field>
-        <Button
-          onClick={handleButtonClick}
-          className="mt-2 mr-6 mb-6 ml-auto w-min"
-          isPending={isLoading}
-          variant="project"
-        >
-          Connect to CircleCI
-        </Button>
+        <CardContent className="flex flex-col gap-5">
+          <Field data-invalid={apiKeyErrorText !== ""}>
+            <FieldLabel htmlFor="circleci-circleci-api-token">CircleCI API Token</FieldLabel>
+            <Input
+              placeholder=""
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              id="circleci-circleci-api-token"
+              isError={apiKeyErrorText !== ""}
+              aria-describedby={
+                apiKeyErrorText !== "" ? "circleci-circleci-api-token-error" : undefined
+              }
+            />
+            {apiKeyErrorText !== "" && (
+              <FieldError id="circleci-circleci-api-token-error">{apiKeyErrorText}</FieldError>
+            )}
+          </Field>
+          <Button
+            onClick={handleButtonClick}
+            className="mt-2 mr-6 mb-6 ml-auto w-min"
+            isPending={isLoading}
+            variant="project"
+          >
+            Connect to CircleCI
+          </Button>
+        </CardContent>
       </Card>
     </div>
   );

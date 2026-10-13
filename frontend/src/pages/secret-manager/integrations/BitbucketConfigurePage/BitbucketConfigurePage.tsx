@@ -9,6 +9,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Card,
+  CardContent,
   CardHeader,
   CardTitle,
   Combobox,
@@ -201,177 +202,184 @@ export const BitbucketConfigurePage = () => {
             Bitbucket Integration
           </CardTitle>
         </CardHeader>
-        <Controller
-          control={control}
-          name="sourceEnvironment"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field className="mb-4" data-invalid={Boolean(error)}>
-              <FieldLabel htmlFor="bitbucket-sourceenvironment">Project Environment</FieldLabel>
-              <Combobox
-                isClearable={false}
-                getOptionValue={(option) => option.slug}
-                value={value}
-                getOptionLabel={(option) => option.name}
-                onValueChange={onChange}
-                options={currentProject?.environments}
-                placeholder="Select a project environment"
-                isDisabled={!currentProject?.environments.length}
-                id="bitbucket-sourceenvironment"
-                isError={Boolean(error)}
-                aria-describedby={error ? "bitbucket-sourceenvironment-error" : undefined}
-              />
-              {Boolean(error) && (
-                <FieldError id="bitbucket-sourceenvironment-error">{error?.message}</FieldError>
-              )}
-            </Field>
-          )}
-        />
-        <Controller
-          control={control}
-          name="secretPath"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field className="mb-4" data-invalid={Boolean(error)}>
-              <FieldLabel htmlFor="bitbucket-secretpath">Secrets Path</FieldLabel>
-              <Input
-                value={value}
-                onChange={onChange}
-                placeholder='Provide a path (defaults to "/")'
-                id="bitbucket-secretpath"
-                isError={Boolean(error)}
-                aria-describedby={error ? "bitbucket-secretpath-error" : undefined}
-              />
-            </Field>
-          )}
-        />
-        <Controller
-          control={control}
-          name="targetWorkspace"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field className="mb-4" data-invalid={Boolean(error)}>
-              <FieldLabel htmlFor="bitbucket-targetworkspace">Bitbucket Workspace</FieldLabel>
-              <Combobox
-                isClearable={false}
-                getOptionValue={(option) => option.slug}
-                value={value}
-                getOptionLabel={(option) => option.name}
-                onValueChange={(option) => {
-                  onChange(option);
-                  setValue("targetRepo", null);
-                  setValue("targetEnvironment", null);
-                }}
-                options={bitbucketWorkspaces}
-                placeholder={
-                  bitbucketWorkspaces?.length ? "Select a workspace..." : "No workspaces found..."
-                }
-                isLoading={isBitbucketWorkspacesLoading}
-                isDisabled={!bitbucketWorkspaces?.length || isBitbucketWorkspacesLoading}
-                id="bitbucket-targetworkspace"
-                isError={Boolean(error)}
-                aria-describedby={error ? "bitbucket-targetworkspace-error" : undefined}
-              />
-              {Boolean(error) && (
-                <FieldError id="bitbucket-targetworkspace-error">{error?.message}</FieldError>
-              )}
-            </Field>
-          )}
-        />
-        <Controller
-          control={control}
-          name="targetRepo"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field className="mb-4" data-invalid={Boolean(error)}>
-              <FieldLabel htmlFor="bitbucket-targetrepo">Bitbucket Repo</FieldLabel>
-              <Combobox
-                isClearable={false}
-                getOptionValue={(option) => option.appId!}
-                value={value}
-                getOptionLabel={(option) => option.name}
-                onValueChange={(option) => {
-                  onChange(option);
-                  setValue("targetEnvironment", null);
-                }}
-                options={bitbucketRepos}
-                placeholder={
-                  bitbucketRepos?.length ? "Select a repository..." : "No repositories found..."
-                }
-                isLoading={isBitbucketReposLoading}
-                isDisabled={!bitbucketRepos?.length || isBitbucketReposLoading}
-                id="bitbucket-targetrepo"
-                isError={Boolean(error)}
-                aria-describedby={error ? "bitbucket-targetrepo-error" : undefined}
-              />
-              {Boolean(error) && (
-                <FieldError id="bitbucket-targetrepo-error">{error?.message}</FieldError>
-              )}
-            </Field>
-          )}
-        />
-        <Controller
-          control={control}
-          name="scope"
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field className="mb-4" data-invalid={Boolean(error)}>
-              <FieldLabel htmlFor="bitbucket-scope">Scope</FieldLabel>
-              <Combobox
-                isClearable={false}
-                value={value}
-                getOptionValue={(option) => option.value}
-                getOptionLabel={(option) => option.label}
-                onValueChange={onChange}
-                options={ScopeOptions}
-                id="bitbucket-scope"
-                isError={Boolean(error)}
-                aria-describedby={error ? "bitbucket-scope-error" : undefined}
-              />
-              {Boolean(error) && (
-                <FieldError id="bitbucket-scope-error">{error?.message}</FieldError>
-              )}
-            </Field>
-          )}
-        />
-        {scope?.value === BitbucketScope.Env && (
+        <CardContent className="flex flex-col gap-5">
           <Controller
             control={control}
-            name="targetEnvironment"
+            name="sourceEnvironment"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
-                <FieldLabel htmlFor="bitbucket-targetenvironment">
-                  Bitbucket Deployment Environment
-                </FieldLabel>
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="bitbucket-sourceenvironment">Project Environment</FieldLabel>
                 <Combobox
+                  includeMissingSelectedOptions={false}
                   isClearable={false}
-                  getOptionValue={(option) => option.uuid}
+                  getOptionValue={(option) => option.slug}
                   value={value}
                   getOptionLabel={(option) => option.name}
                   onValueChange={onChange}
-                  options={bitbucketEnvironments}
-                  placeholder={
-                    bitbucketEnvironments?.length
-                      ? "Select an environment..."
-                      : "No environments found..."
-                  }
-                  isLoading={isBitbucketEnvironmentsLoading && Boolean(bitbucketRepo)}
-                  isDisabled={!bitbucketEnvironments?.length || isBitbucketEnvironmentsLoading}
-                  id="bitbucket-targetenvironment"
+                  options={currentProject?.environments}
+                  placeholder="Select a project environment"
+                  isDisabled={!currentProject?.environments.length}
+                  id="bitbucket-sourceenvironment"
                   isError={Boolean(error)}
-                  aria-describedby={error ? "bitbucket-targetenvironment-error" : undefined}
+                  aria-describedby={error ? "bitbucket-sourceenvironment-error" : undefined}
                 />
                 {Boolean(error) && (
-                  <FieldError id="bitbucket-targetenvironment-error">{error?.message}</FieldError>
+                  <FieldError id="bitbucket-sourceenvironment-error">{error?.message}</FieldError>
                 )}
               </Field>
             )}
           />
-        )}
-        <Button
-          type="submit"
-          className="mt-4"
-          isPending={createIntegration.isPending}
-          isDisabled={createIntegration.isPending || !bitbucketRepos?.length}
-          variant="project"
-        >
-          Create Integration
-        </Button>
+          <Controller
+            control={control}
+            name="secretPath"
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="bitbucket-secretpath">Secrets Path</FieldLabel>
+                <Input
+                  value={value}
+                  onChange={onChange}
+                  placeholder='Provide a path (defaults to "/")'
+                  id="bitbucket-secretpath"
+                  isError={Boolean(error)}
+                  aria-describedby={error ? "bitbucket-secretpath-error" : undefined}
+                />
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name="targetWorkspace"
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="bitbucket-targetworkspace">Bitbucket Workspace</FieldLabel>
+                <Combobox
+                  includeMissingSelectedOptions={false}
+                  isClearable={false}
+                  getOptionValue={(option) => option.slug}
+                  value={value}
+                  getOptionLabel={(option) => option.name}
+                  onValueChange={(option) => {
+                    onChange(option);
+                    setValue("targetRepo", null);
+                    setValue("targetEnvironment", null);
+                  }}
+                  options={bitbucketWorkspaces}
+                  placeholder={
+                    bitbucketWorkspaces?.length ? "Select a workspace..." : "No workspaces found..."
+                  }
+                  isLoading={isBitbucketWorkspacesLoading}
+                  isDisabled={!bitbucketWorkspaces?.length || isBitbucketWorkspacesLoading}
+                  id="bitbucket-targetworkspace"
+                  isError={Boolean(error)}
+                  aria-describedby={error ? "bitbucket-targetworkspace-error" : undefined}
+                />
+                {Boolean(error) && (
+                  <FieldError id="bitbucket-targetworkspace-error">{error?.message}</FieldError>
+                )}
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name="targetRepo"
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="bitbucket-targetrepo">Bitbucket Repo</FieldLabel>
+                <Combobox
+                  includeMissingSelectedOptions={false}
+                  isClearable={false}
+                  getOptionValue={(option) => option.appId!}
+                  value={value}
+                  getOptionLabel={(option) => option.name}
+                  onValueChange={(option) => {
+                    onChange(option);
+                    setValue("targetEnvironment", null);
+                  }}
+                  options={bitbucketRepos}
+                  placeholder={
+                    bitbucketRepos?.length ? "Select a repository..." : "No repositories found..."
+                  }
+                  isLoading={isBitbucketReposLoading}
+                  isDisabled={!bitbucketRepos?.length || isBitbucketReposLoading}
+                  id="bitbucket-targetrepo"
+                  isError={Boolean(error)}
+                  aria-describedby={error ? "bitbucket-targetrepo-error" : undefined}
+                />
+                {Boolean(error) && (
+                  <FieldError id="bitbucket-targetrepo-error">{error?.message}</FieldError>
+                )}
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name="scope"
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="bitbucket-scope">Scope</FieldLabel>
+                <Combobox
+                  includeMissingSelectedOptions={false}
+                  isClearable={false}
+                  value={value}
+                  getOptionValue={(option) => option.value}
+                  getOptionLabel={(option) => option.label}
+                  onValueChange={onChange}
+                  options={ScopeOptions}
+                  id="bitbucket-scope"
+                  isError={Boolean(error)}
+                  aria-describedby={error ? "bitbucket-scope-error" : undefined}
+                />
+                {Boolean(error) && (
+                  <FieldError id="bitbucket-scope-error">{error?.message}</FieldError>
+                )}
+              </Field>
+            )}
+          />
+          {scope?.value === BitbucketScope.Env && (
+            <Controller
+              control={control}
+              name="targetEnvironment"
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="bitbucket-targetenvironment">
+                    Bitbucket Deployment Environment
+                  </FieldLabel>
+                  <Combobox
+                    includeMissingSelectedOptions={false}
+                    isClearable={false}
+                    getOptionValue={(option) => option.uuid}
+                    value={value}
+                    getOptionLabel={(option) => option.name}
+                    onValueChange={onChange}
+                    options={bitbucketEnvironments}
+                    placeholder={
+                      bitbucketEnvironments?.length
+                        ? "Select an environment..."
+                        : "No environments found..."
+                    }
+                    isLoading={isBitbucketEnvironmentsLoading && Boolean(bitbucketRepo)}
+                    isDisabled={!bitbucketEnvironments?.length || isBitbucketEnvironmentsLoading}
+                    id="bitbucket-targetenvironment"
+                    isError={Boolean(error)}
+                    aria-describedby={error ? "bitbucket-targetenvironment-error" : undefined}
+                  />
+                  {Boolean(error) && (
+                    <FieldError id="bitbucket-targetenvironment-error">{error?.message}</FieldError>
+                  )}
+                </Field>
+              )}
+            />
+          )}
+          <Button
+            type="submit"
+            className="mt-4"
+            isPending={createIntegration.isPending}
+            isDisabled={createIntegration.isPending || !bitbucketRepos?.length}
+            variant="project"
+          >
+            Create Integration
+          </Button>
+        </CardContent>
       </Card>
     </form>
   );

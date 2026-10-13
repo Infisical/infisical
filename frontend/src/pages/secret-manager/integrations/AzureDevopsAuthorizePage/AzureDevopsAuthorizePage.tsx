@@ -7,6 +7,7 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -104,65 +105,70 @@ export const AzureDevopsAuthorizePage = () => {
             After adding the details below, you will be prompted to set up an integration for a
             particular Infisical project and environment.
           </CardDescription>
-        </CardHeader>{" "}
-        <Field className="mb-4 px-6" data-invalid={apiKeyErrorText !== ""}>
-          <FieldLabel htmlFor="azuredevops-azure-devops-api-token">
-            Azure DevOps API Token
-          </FieldLabel>
-          <Input
-            placeholder=""
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            id="azuredevops-azure-devops-api-token"
-            isError={apiKeyErrorText !== ""}
-            aria-describedby={
-              apiKeyErrorText !== "" ? "azuredevops-azure-devops-api-token-error" : undefined
-            }
-          />
-          {apiKeyErrorText !== "" && (
-            <FieldError id="azuredevops-azure-devops-api-token-error">{apiKeyErrorText}</FieldError>
-          )}
-        </Field>
-        <Field className="mb-4 px-6" data-invalid={apiKeyErrorText !== ""}>
-          <FieldLabel htmlFor="azuredevops-azure-devops-organization-name">
-            Azure DevOps Organization Name
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button type="button" aria-label="More information">
-                  ?
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>
-                This is the slug of the organization. An example would be &apos;my-acme-org&apos;
-              </TooltipContent>
-            </Tooltip>
-          </FieldLabel>
-          <Input
-            placeholder=""
-            value={devopsOrgName}
-            onChange={(e) => setDevopsOrgName(e.target.value)}
-            id="azuredevops-azure-devops-organization-name"
-            isError={apiKeyErrorText !== ""}
-            aria-describedby={
-              apiKeyErrorText !== ""
-                ? "azuredevops-azure-devops-organization-name-error"
-                : undefined
-            }
-          />
-          {apiKeyErrorText !== "" && (
-            <FieldError id="azuredevops-azure-devops-organization-name-error">
-              {apiKeyErrorText}
-            </FieldError>
-          )}
-        </Field>
-        <Button
-          onClick={handleButtonClick}
-          className="mt-2 mr-6 mb-6 ml-auto w-min"
-          isPending={isLoading}
-          variant="project"
-        >
-          Connect to Azure DevOps
-        </Button>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          {" "}
+          <Field data-invalid={apiKeyErrorText !== ""}>
+            <FieldLabel htmlFor="azuredevops-azure-devops-api-token">
+              Azure DevOps API Token
+            </FieldLabel>
+            <Input
+              placeholder=""
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              id="azuredevops-azure-devops-api-token"
+              isError={apiKeyErrorText !== ""}
+              aria-describedby={
+                apiKeyErrorText !== "" ? "azuredevops-azure-devops-api-token-error" : undefined
+              }
+            />
+            {apiKeyErrorText !== "" && (
+              <FieldError id="azuredevops-azure-devops-api-token-error">
+                {apiKeyErrorText}
+              </FieldError>
+            )}
+          </Field>
+          <Field data-invalid={apiKeyErrorText !== ""}>
+            <FieldLabel htmlFor="azuredevops-azure-devops-organization-name">
+              Azure DevOps Organization Name
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" aria-label="More information">
+                    ?
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  This is the slug of the organization. An example would be &apos;my-acme-org&apos;
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <Input
+              placeholder=""
+              value={devopsOrgName}
+              onChange={(e) => setDevopsOrgName(e.target.value)}
+              id="azuredevops-azure-devops-organization-name"
+              isError={apiKeyErrorText !== ""}
+              aria-describedby={
+                apiKeyErrorText !== ""
+                  ? "azuredevops-azure-devops-organization-name-error"
+                  : undefined
+              }
+            />
+            {apiKeyErrorText !== "" && (
+              <FieldError id="azuredevops-azure-devops-organization-name-error">
+                {apiKeyErrorText}
+              </FieldError>
+            )}
+          </Field>
+          <Button
+            onClick={handleButtonClick}
+            className="mt-2 mr-6 mb-6 ml-auto w-min"
+            isPending={isLoading}
+            variant="project"
+          >
+            Connect to Azure DevOps
+          </Button>
+        </CardContent>
       </Card>
     </div>
   );

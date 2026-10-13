@@ -4,6 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardContent,
   CardHeader,
   CardTitle,
   Field,
@@ -63,34 +64,36 @@ export const Cloud66AuthorizePage = () => {
         <CardHeader>
           <CardTitle>Cloud 66 Integration</CardTitle>
         </CardHeader>
-        <Field className="mb-4" data-invalid={apiKeyErrorText !== ""}>
-          <FieldLabel htmlFor="cloud66-cloud-66-personal-access-token">
-            Cloud 66 Personal Access Token
-          </FieldLabel>
-          <Input
-            placeholder=""
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            id="cloud66-cloud-66-personal-access-token"
-            isError={apiKeyErrorText !== ""}
-            aria-describedby={
-              apiKeyErrorText !== "" ? "cloud66-cloud-66-personal-access-token-error" : undefined
-            }
-          />
-          {apiKeyErrorText !== "" && (
-            <FieldError id="cloud66-cloud-66-personal-access-token-error">
-              {apiKeyErrorText}
-            </FieldError>
-          )}
-        </Field>
-        <Button
-          onClick={handleButtonClick}
-          className="mt-4"
-          isPending={isLoading}
-          variant="outline"
-        >
-          Connect to Cloud 66
-        </Button>
+        <CardContent className="flex flex-col gap-5">
+          <Field data-invalid={apiKeyErrorText !== ""}>
+            <FieldLabel htmlFor="cloud66-cloud-66-personal-access-token">
+              Cloud 66 Personal Access Token
+            </FieldLabel>
+            <Input
+              placeholder=""
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              id="cloud66-cloud-66-personal-access-token"
+              isError={apiKeyErrorText !== ""}
+              aria-describedby={
+                apiKeyErrorText !== "" ? "cloud66-cloud-66-personal-access-token-error" : undefined
+              }
+            />
+            {apiKeyErrorText !== "" && (
+              <FieldError id="cloud66-cloud-66-personal-access-token-error">
+                {apiKeyErrorText}
+              </FieldError>
+            )}
+          </Field>
+          <Button
+            onClick={handleButtonClick}
+            className="mt-4"
+            isPending={isLoading}
+            variant="outline"
+          >
+            Connect to Cloud 66
+          </Button>
+        </CardContent>
       </Card>
     </div>
   );

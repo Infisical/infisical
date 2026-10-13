@@ -7,6 +7,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -142,72 +143,74 @@ export const AzureDevopsConfigurePage = () => {
             Choose which environment in Infisical you want to sync to secrets in Azure DevOps.
           </CardDescription>
         </CardHeader>
-        <Field className="mt-4 mb-4 px-6" data-invalid={false}>
-          <FieldLabel htmlFor="azuredevops-project-environment">Project Environment</FieldLabel>
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-          >
-            <SelectTrigger className="w-full" id="azuredevops-project-environment">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {workspace?.environments.map((sourceEnvironment) => (
-                <SelectItem
-                  value={sourceEnvironment.slug}
-                  key={`source-environment-${sourceEnvironment.slug}`}
-                >
-                  {sourceEnvironment.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field className="mb-4 px-6" data-invalid={false}>
-          <FieldLabel htmlFor="azuredevops-secrets-path">Secrets Path</FieldLabel>
-          <Input
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-            id="azuredevops-secrets-path"
-          />
-        </Field>
-        <Field className="mb-4 px-6" data-invalid={false}>
-          <FieldLabel htmlFor="azuredevops-azure-devops-project">Azure DevOps Project</FieldLabel>
-          <Select
-            value={targetApp}
-            onValueChange={(val) => setTargetApp(val)}
-            disabled={integrationAuthApps.length === 0}
-          >
-            <SelectTrigger className="w-full" id="azuredevops-azure-devops-project">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {integrationAuthApps.length > 0 ? (
-                integrationAuthApps.map((integrationAuthApp) => (
+        <CardContent className="flex flex-col gap-5">
+          <Field className="mt-4" data-invalid={false}>
+            <FieldLabel htmlFor="azuredevops-project-environment">Project Environment</FieldLabel>
+            <Select
+              value={selectedSourceEnvironment}
+              onValueChange={(val) => setSelectedSourceEnvironment(val)}
+            >
+              <SelectTrigger className="w-full" id="azuredevops-project-environment">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {workspace?.environments.map((sourceEnvironment) => (
                   <SelectItem
-                    value={integrationAuthApp.name}
-                    key={`target-environment-${integrationAuthApp.name}`}
+                    value={sourceEnvironment.slug}
+                    key={`source-environment-${sourceEnvironment.slug}`}
                   >
-                    {integrationAuthApp.name}
+                    {sourceEnvironment.name}
                   </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="none" key="target-app-none">
-                  No projects found
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Button
-          onClick={handleButtonClick}
-          className="mt-2 mr-6 mb-6 ml-auto w-min"
-          isPending={isLoading}
-          variant="project"
-        >
-          Create Integration
-        </Button>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field data-invalid={false}>
+            <FieldLabel htmlFor="azuredevops-secrets-path">Secrets Path</FieldLabel>
+            <Input
+              value={secretPath}
+              onChange={(evt) => setSecretPath(evt.target.value)}
+              placeholder="Provide a path, default is /"
+              id="azuredevops-secrets-path"
+            />
+          </Field>
+          <Field data-invalid={false}>
+            <FieldLabel htmlFor="azuredevops-azure-devops-project">Azure DevOps Project</FieldLabel>
+            <Select
+              value={targetApp}
+              onValueChange={(val) => setTargetApp(val)}
+              disabled={integrationAuthApps.length === 0}
+            >
+              <SelectTrigger className="w-full" id="azuredevops-azure-devops-project">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {integrationAuthApps.length > 0 ? (
+                  integrationAuthApps.map((integrationAuthApp) => (
+                    <SelectItem
+                      value={integrationAuthApp.name}
+                      key={`target-environment-${integrationAuthApp.name}`}
+                    >
+                      {integrationAuthApp.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" key="target-app-none">
+                    No projects found
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Button
+            onClick={handleButtonClick}
+            className="mt-2 mr-6 mb-6 ml-auto w-min"
+            isPending={isLoading}
+            variant="project"
+          >
+            Create Integration
+          </Button>
+        </CardContent>
       </Card>
     </div>
   ) : (

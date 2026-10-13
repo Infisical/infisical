@@ -7,6 +7,7 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -100,32 +101,34 @@ export const ChecklyAuthorizePage = () => {
             particular Infisical project and environment.
           </CardDescription>
         </CardHeader>
-        <Field className="mb-4" data-invalid={accessTokenErrorText !== ""}>
-          <FieldLabel htmlFor="checkly-checkly-api-key">Checkly API key</FieldLabel>
-          <Input
-            placeholder=""
-            value={accessToken}
-            type="password"
-            autoComplete="new-password"
-            onChange={(e) => setAccessToken(e.target.value)}
-            id="checkly-checkly-api-key"
-            isError={accessTokenErrorText !== ""}
-            aria-describedby={
-              accessTokenErrorText !== "" ? "checkly-checkly-api-key-error" : undefined
-            }
-          />
-          {accessTokenErrorText !== "" && (
-            <FieldError id="checkly-checkly-api-key-error">{accessTokenErrorText}</FieldError>
-          )}
-        </Field>
-        <Button
-          onClick={handleButtonClick}
-          className="mt-2 mr-6 mb-6 ml-auto w-min"
-          isPending={isLoading}
-          variant="project"
-        >
-          Connect to Checkly
-        </Button>
+        <CardContent className="flex flex-col gap-5">
+          <Field data-invalid={accessTokenErrorText !== ""}>
+            <FieldLabel htmlFor="checkly-checkly-api-key">Checkly API key</FieldLabel>
+            <Input
+              placeholder=""
+              value={accessToken}
+              type="password"
+              autoComplete="new-password"
+              onChange={(e) => setAccessToken(e.target.value)}
+              id="checkly-checkly-api-key"
+              isError={accessTokenErrorText !== ""}
+              aria-describedby={
+                accessTokenErrorText !== "" ? "checkly-checkly-api-key-error" : undefined
+              }
+            />
+            {accessTokenErrorText !== "" && (
+              <FieldError id="checkly-checkly-api-key-error">{accessTokenErrorText}</FieldError>
+            )}
+          </Field>
+          <Button
+            onClick={handleButtonClick}
+            className="mt-2 mr-6 mb-6 ml-auto w-min"
+            isPending={isLoading}
+            variant="project"
+          >
+            Connect to Checkly
+          </Button>
+        </CardContent>
       </Card>
     </div>
   );

@@ -8,6 +8,7 @@ import { motion } from "motion/react";
 import {
   Button,
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -176,137 +177,139 @@ export const ChecklyConfigurePage = () => {
             Choose which environment in Infisical you want to sync to Checkly environment variables.
           </CardDescription>
         </CardHeader>
-        <Tabs defaultValue={TabSections.Connection} className="px-6">
-          <TabsList variant="project">
-            <TabsTrigger value={TabSections.Connection}>Connection</TabsTrigger>
-            <TabsTrigger value={TabSections.Options}>Options</TabsTrigger>
-          </TabsList>
-          <TabsContent value={TabSections.Connection}>
-            <motion.div
-              key="panel-1"
-              transition={{ duration: 0.15 }}
-              initial={{ opacity: 0, translateX: 30 }}
-              animate={{ opacity: 1, translateX: 0 }}
-              exit={{ opacity: 0, translateX: 30 }}
-            >
-              <Field className="mb-4" data-invalid={false}>
-                <FieldLabel htmlFor="checkly-infisical-project-environment">
-                  Infisical Project Environment
-                </FieldLabel>
-                <Select
-                  value={selectedSourceEnvironment}
-                  onValueChange={(val) => setSelectedSourceEnvironment(val)}
-                >
-                  <SelectTrigger className="w-full" id="checkly-infisical-project-environment">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {workspace?.environments.map((sourceEnvironment) => (
-                      <SelectItem
-                        value={sourceEnvironment.slug}
-                        key={`source-environment-${sourceEnvironment.slug}`}
-                      >
-                        {sourceEnvironment.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field className="mb-4" data-invalid={false}>
-                <FieldLabel htmlFor="checkly-secrets-path">Secrets Path</FieldLabel>
-                <Input
-                  value={secretPath}
-                  onChange={(evt) => setSecretPath(evt.target.value)}
-                  placeholder="Provide a path, default is /"
-                  id="checkly-secrets-path"
-                />
-              </Field>
-              <Field className="mb-4" data-invalid={false}>
-                <FieldLabel htmlFor="checkly-checkly-account">Checkly Account</FieldLabel>
-                <Select
-                  value={targetAppId}
-                  onValueChange={(val) => setTargetAppId(val)}
-                  disabled={integrationAuthApps.length === 0}
-                >
-                  <SelectTrigger className="w-full" id="checkly-checkly-account">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {integrationAuthApps.length > 0 ? (
-                      integrationAuthApps.map((integrationAuthApp) => (
+        <CardContent className="flex flex-col gap-5">
+          <Tabs defaultValue={TabSections.Connection}>
+            <TabsList variant="project">
+              <TabsTrigger value={TabSections.Connection}>Connection</TabsTrigger>
+              <TabsTrigger value={TabSections.Options}>Options</TabsTrigger>
+            </TabsList>
+            <TabsContent value={TabSections.Connection}>
+              <motion.div
+                key="panel-1"
+                transition={{ duration: 0.15 }}
+                initial={{ opacity: 0, translateX: 30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: 30 }}
+              >
+                <Field className="mb-4" data-invalid={false}>
+                  <FieldLabel htmlFor="checkly-infisical-project-environment">
+                    Infisical Project Environment
+                  </FieldLabel>
+                  <Select
+                    value={selectedSourceEnvironment}
+                    onValueChange={(val) => setSelectedSourceEnvironment(val)}
+                  >
+                    <SelectTrigger className="w-full" id="checkly-infisical-project-environment">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {workspace?.environments.map((sourceEnvironment) => (
                         <SelectItem
-                          value={integrationAuthApp.appId as string}
-                          key={`target-app-${integrationAuthApp.appId as string}`}
+                          value={sourceEnvironment.slug}
+                          key={`source-environment-${sourceEnvironment.slug}`}
                         >
-                          {integrationAuthApp.name}
+                          {sourceEnvironment.name}
                         </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="none" key="target-app-none">
-                        No apps found
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field className="mb-4" data-invalid={false}>
-                <FieldLabel htmlFor="checkly-checkly-group-optional-">
-                  Checkly Group (Optional)
-                </FieldLabel>
-                <Select value={targetGroupId} onValueChange={(val) => setTargetGroupId(val)}>
-                  <SelectTrigger className="w-full" id="checkly-checkly-group-optional-">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {integrationAuthGroups.length > 0 ? (
-                      integrationAuthGroups.map((integrationAuthGroup) => (
-                        <SelectItem
-                          value={String(integrationAuthGroup.groupId)}
-                          key={`target-group-${String(integrationAuthGroup.groupId)}`}
-                        >
-                          {integrationAuthGroup.name}
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field className="mb-4" data-invalid={false}>
+                  <FieldLabel htmlFor="checkly-secrets-path">Secrets Path</FieldLabel>
+                  <Input
+                    value={secretPath}
+                    onChange={(evt) => setSecretPath(evt.target.value)}
+                    placeholder="Provide a path, default is /"
+                    id="checkly-secrets-path"
+                  />
+                </Field>
+                <Field className="mb-4" data-invalid={false}>
+                  <FieldLabel htmlFor="checkly-checkly-account">Checkly Account</FieldLabel>
+                  <Select
+                    value={targetAppId}
+                    onValueChange={(val) => setTargetAppId(val)}
+                    disabled={integrationAuthApps.length === 0}
+                  >
+                    <SelectTrigger className="w-full" id="checkly-checkly-account">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {integrationAuthApps.length > 0 ? (
+                        integrationAuthApps.map((integrationAuthApp) => (
+                          <SelectItem
+                            value={integrationAuthApp.appId as string}
+                            key={`target-app-${integrationAuthApp.appId as string}`}
+                          >
+                            {integrationAuthApp.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" key="target-app-none">
+                          No apps found
                         </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="none" key="target-group-none">
-                        No groups found
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </Field>
-            </motion.div>
-          </TabsContent>
-          <TabsContent value={TabSections.Options}>
-            <motion.div
-              key="panel-1"
-              transition={{ duration: 0.15 }}
-              initial={{ opacity: 0, translateX: -30 }}
-              animate={{ opacity: 1, translateX: 0 }}
-              exit={{ opacity: 0, translateX: 30 }}
-            >
-              <Field className="mb-4 pb-39" data-invalid={false}>
-                <FieldLabel htmlFor="checkly-append-secret-names-with-">
-                  Append Secret Names with...
-                </FieldLabel>
-                <Input
-                  value={secretSuffix}
-                  onChange={(evt) => setSecretSuffix(evt.target.value)}
-                  placeholder="Provide a suffix for secret names, default is no suffix"
-                  id="checkly-append-secret-names-with-"
-                />
-              </Field>
-            </motion.div>
-          </TabsContent>
-        </Tabs>
-        <Button
-          onClick={handleButtonClick}
-          className="mr-6 mb-6 ml-auto"
-          isPending={isLoading}
-          variant="project"
-        >
-          Create Integration
-        </Button>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field className="mb-4" data-invalid={false}>
+                  <FieldLabel htmlFor="checkly-checkly-group-optional-">
+                    Checkly Group (Optional)
+                  </FieldLabel>
+                  <Select value={targetGroupId} onValueChange={(val) => setTargetGroupId(val)}>
+                    <SelectTrigger className="w-full" id="checkly-checkly-group-optional-">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {integrationAuthGroups.length > 0 ? (
+                        integrationAuthGroups.map((integrationAuthGroup) => (
+                          <SelectItem
+                            value={String(integrationAuthGroup.groupId)}
+                            key={`target-group-${String(integrationAuthGroup.groupId)}`}
+                          >
+                            {integrationAuthGroup.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" key="target-group-none">
+                          No groups found
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </motion.div>
+            </TabsContent>
+            <TabsContent value={TabSections.Options}>
+              <motion.div
+                key="panel-1"
+                transition={{ duration: 0.15 }}
+                initial={{ opacity: 0, translateX: -30 }}
+                animate={{ opacity: 1, translateX: 0 }}
+                exit={{ opacity: 0, translateX: 30 }}
+              >
+                <Field className="mb-4 pb-39" data-invalid={false}>
+                  <FieldLabel htmlFor="checkly-append-secret-names-with-">
+                    Append Secret Names with...
+                  </FieldLabel>
+                  <Input
+                    value={secretSuffix}
+                    onChange={(evt) => setSecretSuffix(evt.target.value)}
+                    placeholder="Provide a suffix for secret names, default is no suffix"
+                    id="checkly-append-secret-names-with-"
+                  />
+                </Field>
+              </motion.div>
+            </TabsContent>
+          </Tabs>
+          <Button
+            onClick={handleButtonClick}
+            className="mr-6 mb-6 ml-auto"
+            isPending={isLoading}
+            variant="project"
+          >
+            Create Integration
+          </Button>
+        </CardContent>
       </Card>
     </div>
   ) : (

@@ -4,6 +4,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardContent,
   CardHeader,
   CardTitle,
   Field,
@@ -100,73 +101,75 @@ export const Cloud66ConfigurePage = () => {
         <CardHeader>
           <CardTitle>Cloud 66 Integration</CardTitle>
         </CardHeader>
-        <Field className="mt-4 mb-4" data-invalid={false}>
-          <FieldLabel htmlFor="cloud66-project-environment">Project Environment</FieldLabel>
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-          >
-            <SelectTrigger className="w-full" id="cloud66-project-environment">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {currentProject?.environments.map((sourceEnvironment) => (
-                <SelectItem
-                  value={sourceEnvironment.slug}
-                  key={`source-environment-${sourceEnvironment.slug}`}
-                >
-                  {sourceEnvironment.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field className="mb-4" data-invalid={false}>
-          <FieldLabel htmlFor="cloud66-secrets-path">Secrets Path</FieldLabel>
-          <Input
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-            id="cloud66-secrets-path"
-          />
-        </Field>
-        <Field className="mt-4 mb-4" data-invalid={false}>
-          <FieldLabel htmlFor="cloud66-cloud-66-application">Cloud 66 Application</FieldLabel>
-          <Select
-            value={targetApp}
-            onValueChange={(val) => setTargetApp(val)}
-            disabled={integrationAuthApps.length === 0}
-          >
-            <SelectTrigger className="w-full" id="cloud66-cloud-66-application">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {integrationAuthApps.length > 0 ? (
-                integrationAuthApps.map((integrationAuthApp) => (
+        <CardContent className="flex flex-col gap-5">
+          <Field className="mt-4" data-invalid={false}>
+            <FieldLabel htmlFor="cloud66-project-environment">Project Environment</FieldLabel>
+            <Select
+              value={selectedSourceEnvironment}
+              onValueChange={(val) => setSelectedSourceEnvironment(val)}
+            >
+              <SelectTrigger className="w-full" id="cloud66-project-environment">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {currentProject?.environments.map((sourceEnvironment) => (
                   <SelectItem
-                    value={integrationAuthApp.name}
-                    key={`target-app-${integrationAuthApp.name}`}
+                    value={sourceEnvironment.slug}
+                    key={`source-environment-${sourceEnvironment.slug}`}
                   >
-                    {integrationAuthApp.name}
+                    {sourceEnvironment.name}
                   </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="none" key="target-app-none">
-                  No applications found
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Button
-          onClick={handleButtonClick}
-          className="mt-4"
-          isPending={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
-          variant="outline"
-        >
-          Create Integration
-        </Button>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field data-invalid={false}>
+            <FieldLabel htmlFor="cloud66-secrets-path">Secrets Path</FieldLabel>
+            <Input
+              value={secretPath}
+              onChange={(evt) => setSecretPath(evt.target.value)}
+              placeholder="Provide a path, default is /"
+              id="cloud66-secrets-path"
+            />
+          </Field>
+          <Field className="mt-4" data-invalid={false}>
+            <FieldLabel htmlFor="cloud66-cloud-66-application">Cloud 66 Application</FieldLabel>
+            <Select
+              value={targetApp}
+              onValueChange={(val) => setTargetApp(val)}
+              disabled={integrationAuthApps.length === 0}
+            >
+              <SelectTrigger className="w-full" id="cloud66-cloud-66-application">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {integrationAuthApps.length > 0 ? (
+                  integrationAuthApps.map((integrationAuthApp) => (
+                    <SelectItem
+                      value={integrationAuthApp.name}
+                      key={`target-app-${integrationAuthApp.name}`}
+                    >
+                      {integrationAuthApp.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" key="target-app-none">
+                    No applications found
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Button
+            onClick={handleButtonClick}
+            className="mt-4"
+            isPending={isLoading}
+            isDisabled={integrationAuthApps.length === 0}
+            variant="outline"
+          >
+            Create Integration
+          </Button>
+        </CardContent>
       </Card>
     </div>
   ) : (
