@@ -40,7 +40,7 @@ export const PaloAltoNetworksSslTlsProfileRemovalOptionsSchema = z
   })
   .strict();
 
-const ANY_NAME_PLACEHOLDER = new RE2("\\{\\{\\w+\\}\\}");
+export const ANY_NAME_PLACEHOLDER = new RE2("\\{\\{\\w+\\}\\}");
 const CERTIFICATE_NAME_PLACEHOLDER = new RE2("\\{\\{(certificateId|shortCertificateId|commonName)\\}\\}");
 
 export const PaloAltoNetworksPkiSyncOptionsSchema = BasePkiSyncOptionsSchema.extend({
