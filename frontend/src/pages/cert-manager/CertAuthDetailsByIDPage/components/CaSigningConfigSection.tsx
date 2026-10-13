@@ -236,10 +236,12 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
     AppConnection.AzureADCS,
     (connection) => {
       azureAdcsSetValue("appConnectionId", connection.id, { shouldDirty: true });
+      azureAdcsSetValue("template", "", { shouldDirty: true });
     }
   );
   const nativeAdcsConnectionCreation = useConnectionCreation(AppConnection.ADCS, (connection) => {
     nativeAdcsSetValue("appConnectionId", connection.id, { shouldDirty: true });
+    nativeAdcsSetValue("template", "", { shouldDirty: true });
   });
 
   if (!ca || ca.status === CaStatus.PENDING_CERTIFICATE || !signingConfig) {
@@ -426,6 +428,7 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
                       )}
                       onValueChange={(selected) => {
                         onChange(selected.id);
+                        azureAdcsSetValue("template", "", { shouldDirty: true });
                       }}
                       options={availableAzureAdcsConnections || []}
                       placeholder="Select an Azure AD CS connection..."
@@ -561,6 +564,7 @@ export const CaSigningConfigSection = ({ caId }: Props) => {
                       )}
                       onValueChange={(selected) => {
                         onChange(selected.id);
+                        nativeAdcsSetValue("template", "", { shouldDirty: true });
                       }}
                       options={availableNativeAdcsConnections || []}
                       placeholder="Select an ADCS connection..."
