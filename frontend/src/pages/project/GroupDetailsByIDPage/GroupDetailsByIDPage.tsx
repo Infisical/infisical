@@ -220,12 +220,12 @@ const Page = () => {
 export const GroupDetailsByIDPage = () => {
   const { t } = useTranslation();
   const { currentProject } = useProject();
-  const isCertManager = currentProject.type === ProjectType.CertificateManager;
+  const projectsHidden = hidesProjects(currentProject.type);
   return (
     <>
       <Helmet>
         <title>
-          {t("common.head-title", { title: isCertManager ? "Group" : "Project Group" })}
+          {t("common.head-title", { title: projectsHidden ? "Group" : "Project Group" })}
         </title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>

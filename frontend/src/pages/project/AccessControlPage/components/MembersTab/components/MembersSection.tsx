@@ -59,7 +59,7 @@ export const MembersSection = () => {
       orgId: currentOrg.id
     });
     createNotification({
-      text: `Successfully removed user from ${isCertManager ? productLabel : "project"}`,
+      text: `Successfully removed user from ${projectsHidden ? productLabel : "project"}`,
       type: "success"
     });
     handlePopUpClose("removeMember");

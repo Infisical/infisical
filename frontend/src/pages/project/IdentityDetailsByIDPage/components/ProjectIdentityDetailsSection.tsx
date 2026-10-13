@@ -230,7 +230,7 @@ export const ProjectIdentityDetailsSection = ({
         <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>
-              Edit {isAgentVault || isCertManager ? "Machine" : "Project"} Identity
+              Edit {isAgentVault || projectsHidden ? "Machine" : "Project"} Identity
             </DialogTitle>
             <DialogDescription>
               Update the identity&apos;s name, delete protection, and metadata.

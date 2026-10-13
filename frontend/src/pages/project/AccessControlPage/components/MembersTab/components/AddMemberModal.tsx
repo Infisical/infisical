@@ -191,7 +191,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
 
       if (inviteeEmails.length !== selectedMembers.length) {
         createNotification({
-          text: `Failed to add users to ${isCertManager ? productLabel : "project"}. One or more users were invalid.`,
+          text: `Failed to add users to ${projectsHidden ? productLabel : "project"}. One or more users were invalid.`,
           type: "error"
         });
         return;
@@ -317,7 +317,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                           {!projectInviteList.list.length && (
                             <p>
                               All organization members are already assigned to{" "}
-                              {isCertManager ? productLabel : "this project"}.
+                              {projectsHidden ? productLabel : "this project"}.
                             </p>
                           )}
                           <p>
@@ -404,7 +404,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
           {requesterEmail && projectInviteList.requesterStatus.isProjectUser && (
             <Alert variant="danger">
               <AlertDescription>
-                Requested user is part of {isCertManager ? productLabel : "the project"}.
+                Requested user is part of {projectsHidden ? productLabel : "the project"}.
               </AlertDescription>
             </Alert>
           )}
