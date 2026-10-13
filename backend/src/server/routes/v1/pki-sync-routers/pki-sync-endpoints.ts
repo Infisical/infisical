@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -21,6 +22,7 @@ export const registerSyncPkiEndpoints = ({
   responseSchema,
   syncOptions,
   healthCheckTestSchema,
+  removalOptionsSchema,
   enableOperationId = true
 }: {
   destination: PkiSync;
@@ -47,7 +49,9 @@ export const registerSyncPkiEndpoints = ({
     isAutoSyncEnabled?: boolean;
     subscriberId?: string | null;
     filters?: TPkiSyncFilters | null;
+    removalOptions?: Record<string, unknown>;
   }>;
+  removalOptionsSchema?: z.AnyZodObject;
   healthCheckTestSchema?: z.ZodType<{
     connectionId: string;
     applicationId?: string;
@@ -511,6 +515,9 @@ export const registerSyncPkiEndpoints = ({
         params: z.object({
           pkiSyncId: z.string()
         }),
+        ...(removalOptionsSchema
+          ? { body: z.object({ removalOptions: removalOptionsSchema.optional() }).optional() }
+          : {}),
         response: {
           200: z.object({ message: z.string() })
         }
@@ -518,10 +525,15 @@ export const registerSyncPkiEndpoints = ({
       onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
       handler: async (req) => {
         const { pkiSyncId } = req.params;
+        const { removalOptions } = (req.body as { removalOptions?: Record<string, unknown> } | undefined) ?? {};
+        if (removalOptions && !removalOptionsSchema) {
+          throw new BadRequestError({ message: `${destinationName} PKI syncs don't accept removal options.` });
+        }
 
         const result = await server.services.pkiSync.triggerPkiSyncRemoveCertificatesById(
           {
-            id: pkiSyncId
+            id: pkiSyncId,
+            removalOptions
           },
           req.permission
         );

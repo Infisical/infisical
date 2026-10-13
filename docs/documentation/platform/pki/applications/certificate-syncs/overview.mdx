@@ -83,6 +83,12 @@ flowchart LR
   <Card title="NetScaler" icon="server" href="/documentation/platform/pki/applications/certificate-syncs/netscaler">
     Deploy certificates to Citrix NetScaler ADC.
   </Card>
+  <Card title="Palo Alto Networks" icon="shield" href="/documentation/platform/pki/applications/certificate-syncs/palo-alto-networks">
+    Deploy certificates to PAN-OS firewalls and Panorama templates.
+  </Card>
+  <Card title="Palo Alto Networks SSL/TLS profile" icon="shield" href="/documentation/platform/pki/applications/certificate-syncs/palo-alto-networks-ssl-tls-profile">
+    Point a PAN-OS SSL/TLS service profile at a synced certificate.
+  </Card>
   <Card title="Kemp LoadMaster" icon="scale" href="/documentation/platform/pki/applications/certificate-syncs/kemp-loadmaster">
     Deploy certificates to Progress Kemp LoadMaster.
   </Card>
@@ -145,7 +151,7 @@ Matching is exact, and a certificate has to match every filter you set. Two filt
 
 ### Dropping a certificate can delete it at the destination
 
-A certificate that leaves a sync is deleted from the destination when **Allow to remove certificates from destination** is enabled, whether it left because it was deleted, because it stopped being active, or because a filter changed.
+A certificate that leaves a sync is deleted from the destination when **Remove certificates from destination** is enabled, whether it left because it was deleted, because it stopped being active, or because a filter changed.
 
 So a filter edit can be destructive. A load balancer serving a certificate loses it the moment that certificate stops matching. Before you save, Infisical lists the certificates the change would drop and asks you to confirm.
 
@@ -153,7 +159,7 @@ So a filter edit can be destructive. A load balancer serving a certificate loses
 
 | Option | Description |
 |--------|-------------|
-| **Allow to remove certificates from destination** | Delete a certificate from the destination once it leaves this sync |
+| **Remove certificates from destination** | Delete a certificate from the destination once it leaves this sync |
 | **Include Root CA** | Include the root CA certificate in the chain |
 | **Certificate naming** | Customize how certificates are named in the destination via the Certificate Name Schema (default: `Infisical-{{certificateId}}`) |
 
