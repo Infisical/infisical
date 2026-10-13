@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   TextArea
@@ -35,7 +36,10 @@ type Props = {
   findings: TSecretScanningFinding[];
   status: SecretScanningFindingStatus | null;
   onOpenChange: (isOpen: boolean) => void;
-  onComplete?: (result: { status: SecretScanningFindingStatus; comment: string }) => void;
+  onComplete?: (result: {
+    status: SecretScanningFindingStatus;
+    triageComment: string | null;
+  }) => void;
 };
 
 export const FindingStatusDialog = ({ findings, status, onOpenChange, onComplete }: Props) => {
@@ -56,14 +60,17 @@ export const FindingStatusDialog = ({ findings, status, onOpenChange, onComplete
 
   const { name, description } = SECRET_SCANNING_FINDING_STATUS_MAP[status];
   const isBulk = findings.length > 1;
+  const hasExistingComment = findings.some((finding) => Boolean(finding.triageComment));
 
   const onSubmit = ({ comment }: TFormData) => {
+    const triageComment = comment || null;
+
     updateFindings.mutate(
       findings.map((finding) => ({
         findingId: finding.id,
         projectId: finding.projectId,
         status,
-        triageComment: comment || undefined
+        triageComment
       })),
       {
         onSuccess: () => {
@@ -74,7 +81,7 @@ export const FindingStatusDialog = ({ findings, status, onOpenChange, onComplete
               : `Finding marked as ${name}`
           });
           onOpenChange(false);
-          onComplete?.({ status, comment });
+          onComplete?.({ status, triageComment });
         }
       }
     );
@@ -103,6 +110,9 @@ export const FindingStatusDialog = ({ findings, status, onOpenChange, onComplete
                   placeholder="Explain why, e.g. rotated in the provider and redeployed."
                   isError={Boolean(error)}
                 />
+                <FieldDescription isOpen={hasExistingComment}>
+                  Leave blank to remove the current {isBulk ? "comments" : "comment"}.
+                </FieldDescription>
                 <FieldError>{error?.message}</FieldError>
               </Field>
             )}

@@ -236,14 +236,8 @@ export const SecretScanningFindingsTable = ({
     );
   };
 
-  const handleChangeStatus = (
-    targetFindings: TSecretScanningFinding[],
-    status: SecretScanningFindingStatus
-  ) => {
-    if (status !== SecretScanningFindingStatus.Unresolved) {
-      setStatusChange({ findings: targetFindings, status });
-      return;
-    }
+  const reopenFindings = (targetFindings: TSecretScanningFinding[]) => {
+    const status = SecretScanningFindingStatus.Unresolved;
 
     reopenFinding.mutate(
       targetFindings.map((f) => ({ findingId: f.id, projectId: f.projectId, status })),
@@ -263,6 +257,18 @@ export const SecretScanningFindingsTable = ({
         }
       }
     );
+  };
+
+  const handleChangeStatus = (
+    targetFindings: TSecretScanningFinding[],
+    status: SecretScanningFindingStatus
+  ) => {
+    if (status !== SecretScanningFindingStatus.Unresolved) {
+      setStatusChange({ findings: targetFindings, status });
+      return;
+    }
+
+    reopenFindings(targetFindings);
   };
 
   const renderEmpty = () => {
@@ -459,13 +465,13 @@ export const SecretScanningFindingsTable = ({
                           }
                         />
                       </TableCell>
-                      <TableCell isTruncatable className="h-auto py-2">
+                      <TableCell isTruncatable>
                         <p className="truncate font-mono">{finding.rule}</p>
                         <p className="truncate font-mono text-xs text-muted">
                           {finding.details.file}:{finding.details.startLine}
                         </p>
                       </TableCell>
-                      <TableCell isTruncatable className="h-auto py-2">
+                      <TableCell isTruncatable>
                         <p className="truncate font-mono">{finding.resourceName}</p>
                         {!isScoped && (
                           <p className="flex items-center gap-1.5 truncate text-xs text-muted">
@@ -567,10 +573,14 @@ export const SecretScanningFindingsTable = ({
         findings={statusChange?.findings ?? []}
         status={statusChange?.status ?? null}
         onOpenChange={(isOpen) => !isOpen && setStatusChange(null)}
-        onComplete={({ status, comment }) => {
+        onComplete={({ status, triageComment }) => {
           setOpenFinding((prev) =>
             prev && statusChange?.findings.some((f) => f.id === prev.id)
-              ? { ...prev, status, triageComment: comment || prev.triageComment }
+              ? {
+                  ...prev,
+                  status,
+                  triageComment
+                }
               : prev
           );
           resetSelection();

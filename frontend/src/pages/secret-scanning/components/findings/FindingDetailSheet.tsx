@@ -101,7 +101,7 @@ export const FindingDetailSheet = ({
                 </IconButton>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <SheetTitle className="font-mono">{finding.rule}</SheetTitle>
+                <SheetTitle>{finding.rule}</SheetTitle>
                 <FindingStatusBadge status={finding.status} />
               </div>
               <SheetDescription>{finding.details.description}</SheetDescription>
@@ -110,25 +110,29 @@ export const FindingDetailSheet = ({
             <div className="grid flex-1 grid-cols-2 content-start gap-4 overflow-y-auto p-4">
               <Detail className="col-span-2">
                 <DetailLabel>File</DetailLabel>
-                <DetailValue className="font-mono">
+                <DetailValue>
                   {finding.details.link ? (
                     <a
                       href={finding.details.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 hover:underline hover:underline-offset-2"
+                      className="inline-flex items-center gap-1.5 font-mono hover:underline hover:underline-offset-2"
                     >
                       {finding.details.file}:{finding.details.startLine}
                       <ExternalLinkIcon className="size-3.5 shrink-0" />
                     </a>
                   ) : (
-                    `${finding.details.file}:${finding.details.startLine}`
+                    <span className="font-mono">
+                      {finding.details.file}:{finding.details.startLine}
+                    </span>
                   )}
                 </DetailValue>
               </Detail>
               <Detail>
                 <DetailLabel>Resource</DetailLabel>
-                <DetailValue className="font-mono">{finding.resourceName}</DetailValue>
+                <DetailValue>
+                  <span className="font-mono">{finding.resourceName}</span>
+                </DetailValue>
               </Detail>
               <Detail>
                 <DetailLabel>Detected</DetailLabel>
@@ -136,21 +140,21 @@ export const FindingDetailSheet = ({
               </Detail>
               <Detail>
                 <DetailLabel>Commit</DetailLabel>
-                <DetailValue className="font-mono">
-                  {finding.details.commit.slice(0, 7)}
+                <DetailValue>
+                  <span className="font-mono">{finding.details.commit.slice(0, 7)}</span>
+                  {finding.details.message && (
+                    <p className="line-clamp-3 text-xs text-muted">{finding.details.message}</p>
+                  )}
                 </DetailValue>
-                {finding.details.message && (
-                  <DetailValue className="line-clamp-3 text-xs text-muted">
-                    {finding.details.message}
-                  </DetailValue>
-                )}
               </Detail>
               <Detail>
                 <DetailLabel>Author</DetailLabel>
-                <DetailValue>{finding.details.author}</DetailValue>
-                {finding.details.email && (
-                  <DetailValue className="text-xs text-muted">{finding.details.email}</DetailValue>
-                )}
+                <DetailValue>
+                  {finding.details.author}
+                  {finding.details.email && (
+                    <p className="text-xs text-muted">{finding.details.email}</p>
+                  )}
+                </DetailValue>
               </Detail>
               <Detail>
                 <DetailLabel>Committed</DetailLabel>
@@ -158,19 +162,27 @@ export const FindingDetailSheet = ({
               </Detail>
               <Detail>
                 <DetailLabel>Severity</DetailLabel>
-                <DetailValue className="capitalize">{finding.severity}</DetailValue>
+                <DetailValue>
+                  <span className="capitalize">{finding.severity}</span>
+                </DetailValue>
               </Detail>
               <Detail className="col-span-2">
                 <DetailLabel>Fingerprint</DetailLabel>
-                <DetailValue className="flex items-center gap-1 font-mono text-xs">
-                  <span className="min-w-0 break-all">{finding.fingerprint}</span>
-                  <CopyButton value={finding.fingerprint} ariaLabel="Copy fingerprint" />
+                <DetailValue>
+                  <span className="flex items-center gap-1">
+                    <span className="min-w-0 font-mono text-xs break-all">
+                      {finding.fingerprint}
+                    </span>
+                    <CopyButton value={finding.fingerprint} ariaLabel="Copy fingerprint" />
+                  </span>
                 </DetailValue>
               </Detail>
               {finding.triageComment && (
                 <Detail className="col-span-2">
                   <DetailLabel>Comment</DetailLabel>
-                  <DetailValue className="whitespace-pre-wrap">{finding.triageComment}</DetailValue>
+                  <DetailValue>
+                    <p className="whitespace-pre-wrap">{finding.triageComment}</p>
+                  </DetailValue>
                 </Detail>
               )}
             </div>
