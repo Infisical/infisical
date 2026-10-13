@@ -466,7 +466,7 @@ const StorageHostnamesSettingsCard = ({
     await updateServerConfig(formData);
     reset(formData);
     createNotification({
-      text: "Allowed storage hostnames updated.",
+      text: "Allowed storage hostnames updated. Reload the page before using them in this tab.",
       type: "success"
     });
   };
