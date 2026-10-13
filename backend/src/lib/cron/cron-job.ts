@@ -61,6 +61,8 @@ const PARTICIPANT_SLOTS = 5;
 const PROCESS_BATCH_SIZE = 50;
 const NEXT_FIRE_BUFFER_MS = 1_000; // shared margin for fitsBeforeNextFire and jitterWindowMs
 const ERROR_MESSAGE_MAX_LEN = 4_000;
+// A fire due at most this many enqueue ticks ago counts as just due: pods may not have enqueued it yet.
+const JUST_DUE_ENQUEUE_TICKS = 2;
 
 const DEFAULTS = {
   slotTtlMs: 60_000,
@@ -98,20 +100,49 @@ const F = {
   NextAttemptAt: "next_attempt_at"
 } as const;
 
-// ARGV[2] = unjittered scheduled_at; ARGV[6] = eligibleAt (pending zset score).
+const EnqueueResult = {
+  AlreadyEnqueued: 0,
+  Enqueued: 1,
+  SkippedFirstFire: 2
+} as const;
+
+// Dedup checks "lastKey" rather than the run hash, because the run hash expires and "lastKey" does not.
 const ENQUEUE_RUN_LUA = `
-  if redis.call('exists', KEYS[1]) == 0 then
-    redis.call('hset', KEYS[1],
-      'name', ARGV[1],
-      'scheduled_at', ARGV[2],
-      'status', 'pending',
-      'attempts', 0,
-      'enqueued_at_ms', ARGV[5])
-    redis.call('expire', KEYS[1], ARGV[3])
-    redis.call('zadd', KEYS[2], ARGV[6], ARGV[4])
-    return 1
+  local runKey, pendingZset, lastKey = KEYS[1], KEYS[2], KEYS[3]
+  local name, scheduledAt, runHashTtlS, runId, enqueuedAtMs, eligibleAt, justBecameDue =
+    ARGV[1], ARGV[2], ARGV[3], ARGV[4], ARGV[5], ARGV[6], ARGV[7] == '1'
+
+  local last = tonumber(redis.call('get', lastKey))
+  if last and last >= tonumber(scheduledAt) then
+    return ${EnqueueResult.AlreadyEnqueued}
   end
-  return 0
+
+  -- Backfill only, not scheduling logic. Pods without "lastKey" create the run hash but never
+  -- set "lastKey". If the run hash exists, the fire is already enqueued, so just record it.
+  -- Remove once every deployment sets "lastKey".
+  if redis.call('exists', runKey) == 1 then
+    redis.call('set', lastKey, scheduledAt)
+    return ${EnqueueResult.AlreadyEnqueued}
+  end
+
+  -- No "last" means the job has never fired. Record this fire without running it, so the next
+  -- fire is the first run. A fire that "justBecameDue" still runs: on the first deploy of
+  -- "lastKey", existing jobs have no "last" either, and no pod may have enqueued this fire yet.
+  if not last and not justBecameDue then
+    redis.call('set', lastKey, scheduledAt)
+    return ${EnqueueResult.SkippedFirstFire}
+  end
+
+  redis.call('hset', runKey,
+    'name', name,
+    'scheduled_at', scheduledAt,
+    'status', 'pending',
+    'attempts', 0,
+    'enqueued_at_ms', enqueuedAtMs)
+  redis.call('expire', runKey, runHashTtlS)
+  redis.call('zadd', pendingZset, eligibleAt, runId)
+  redis.call('set', lastKey, scheduledAt)
+  return ${EnqueueResult.Enqueued}
 `;
 
 // Release slot only if we still own it (stale stop() after TTL expiry).
@@ -195,6 +226,7 @@ export const cronJobFactory = ({
   const SLOT_KEY = (i: number) => `${keyPrefix}:slot:${i}`;
   const RUN_KEY = (id: string) => `${keyPrefix}:run:${id}`;
   const LEASE_KEY = (id: string) => `${keyPrefix}:lease:${id}`;
+  const LAST_KEY = (name: string) => `${keyPrefix}:last:${name}`;
   const PENDING_ZSET = `${keyPrefix}:pending`;
 
   if (!schedulingEnabled) {
@@ -401,23 +433,31 @@ export const cronJobFactory = ({
       const id = `${entry.name}:${scheduledAt}`;
       const eligibleAt = eligibleAtMs(entry, scheduledAt, nextFireMs(entry.pattern));
       // eslint-disable-next-line no-await-in-loop
-      const initialized = await redis.eval(
+      const result = await redis.eval(
         ENQUEUE_RUN_LUA,
-        2,
+        3,
         RUN_KEY(id),
         PENDING_ZSET,
+        LAST_KEY(entry.name),
         entry.name,
         String(scheduledAt),
         String(entry.runHashTtlS),
         id,
         String(Date.now()),
-        String(eligibleAt)
+        String(eligibleAt),
+        Date.now() - scheduledAt <= JUST_DUE_ENQUEUE_TICKS * enqueueIntervalMs ? "1" : "0"
       );
-      if (initialized)
+      if (result === EnqueueResult.Enqueued)
         logger.info(
           `cron[${entry.name}]: enqueued run [id=${id}] [scheduled_at=${new Date(
             scheduledAt
           ).toISOString()}] [eligible_at=${new Date(eligibleAt).toISOString()}]`
+        );
+      if (result === EnqueueResult.SkippedFirstFire)
+        logger.info(
+          `cron[${entry.name}]: first registration, skipped the fire due before it, next fire is the first run [scheduled_at=${new Date(
+            scheduledAt
+          ).toISOString()}] [next_fire=${new Date(nextFireMs(entry.pattern)).toISOString()}]`
         );
       lastEnqueuedAt.set(entry.name, scheduledAt);
     }
