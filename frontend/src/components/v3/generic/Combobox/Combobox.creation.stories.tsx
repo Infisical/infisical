@@ -31,7 +31,7 @@ import { Stepper, StepperList, StepperStep } from "../Stepper";
 import { Combobox, type ComboboxFormCreationRenderProps } from ".";
 
 type Profile = { id: string; name: string };
-const PROFILES: Profile[] = [{ id: "existing", name: "Existing profile" }];
+const PROFILES: Profile[] = [{ id: "existing", name: "Existing Profile" }];
 const ISSUERS: Profile[] = [
   { id: "internal", name: "Internal CA" },
   { id: "external", name: "External CA" }
@@ -103,7 +103,7 @@ const ProfileForm = ({
             <h2 className="mb-6 font-alliance text-lg">{STEPS[step]}</h2>
             {step === 0 && (
               <Field>
-                <FieldLabel htmlFor="profile-name">Profile name</FieldLabel>
+                <FieldLabel htmlFor="profile-name">Profile Name</FieldLabel>
                 <Input
                   id="profile-name"
                   value={name}
@@ -142,7 +142,7 @@ const ProfileForm = ({
             <p>This synthetic form uses the shared Sheet, Stepper, and Combobox.</p>
             {isPending && (
               <Button className="mt-4" variant="outline" onClick={finishSave}>
-                Finish simulated save
+                Finish Simulated Save
               </Button>
             )}
           </aside>
@@ -217,7 +217,7 @@ const SheetCreationRender = ({ showHeader }: { showHeader: boolean }) => {
         >
           <DialogBody>
             <Field>
-              <FieldLabel htmlFor="attach-profiles">Certificate profiles</FieldLabel>
+              <FieldLabel htmlFor="attach-profiles">Certificate Profiles</FieldLabel>
               <Combobox
                 id="attach-profiles"
                 multiple
@@ -235,7 +235,7 @@ const SheetCreationRender = ({ showHeader }: { showHeader: boolean }) => {
                         description: "Configure a profile before attaching it to the application."
                       }
                     : { showHeader: false }),
-                  emptyLabel: "Create new profile",
+                  emptyLabel: "Create New Profile",
                   isPending,
                   onDismiss: requestCancel,
                   renderForm: (props) => (
@@ -310,7 +310,7 @@ const DialogCreationRender = () => {
   return (
     <div className="w-80">
       <Field>
-        <FieldLabel htmlFor="dialog-profile">Certificate profile</FieldLabel>
+        <FieldLabel htmlFor="dialog-profile">Certificate Profile</FieldLabel>
         <Combobox
           id="dialog-profile"
           options={options}
@@ -337,7 +337,7 @@ const DialogCreationRender = () => {
               >
                 <DialogBody>
                   <Field>
-                    <FieldLabel htmlFor="dialog-profile-name">Profile name</FieldLabel>
+                    <FieldLabel htmlFor="dialog-profile-name">Profile Name</FieldLabel>
                     <Input
                       id="dialog-profile-name"
                       name="name"
@@ -388,18 +388,18 @@ const ActionCreationRender = () => {
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {wizard ? (
             <div className="flex flex-col gap-4">
-              <h2 className="font-alliance text-lg">New policy for {wizard.field}</h2>
+              <h2 className="font-alliance text-lg">New Policy for {wizard.field}</h2>
               <p>Initial query: {wizard.initialInput || "(empty)"}</p>
               <p>Primary selection: {primary?.name}</p>
               <p>Additional selections: {additional.map((option) => option.name).join(", ")}</p>
               <Button variant="outline" onClick={() => setWizard(null)}>
-                Back to issuer
+                Back to Issuer
               </Button>
             </div>
           ) : (
             <div className="flex flex-col gap-6">
               <Field>
-                <FieldLabel htmlFor="primary-policy">Primary policy</FieldLabel>
+                <FieldLabel htmlFor="primary-policy">Primary Policy</FieldLabel>
                 <Combobox
                   id="primary-policy"
                   options={ISSUERS}
@@ -409,15 +409,15 @@ const ActionCreationRender = () => {
                   getOptionLabel={(option) => option.name}
                   creation={{
                     mode: "action",
-                    emptyLabel: "Create new policy",
-                    formatLabel: () => "Create new policy",
+                    emptyLabel: "Create New Policy",
+                    formatLabel: () => "Create New Policy",
                     isDisabled,
-                    onAction: (initialInput) => setWizard({ field: "primary", initialInput })
+                    onAction: (initialInput) => setWizard({ field: "Primary", initialInput })
                   }}
                 />
               </Field>
               <Field>
-                <FieldLabel htmlFor="additional-policies">Additional policies</FieldLabel>
+                <FieldLabel htmlFor="additional-policies">Additional Policies</FieldLabel>
                 <Combobox
                   id="additional-policies"
                   multiple
@@ -428,15 +428,15 @@ const ActionCreationRender = () => {
                   getOptionLabel={(option) => option.name}
                   creation={{
                     mode: "action",
-                    emptyLabel: "Create new policy",
-                    formatLabel: () => "Create new policy",
+                    emptyLabel: "Create New Policy",
+                    formatLabel: () => "Create New Policy",
                     isDisabled,
-                    onAction: (initialInput) => setWizard({ field: "additional", initialInput })
+                    onAction: (initialInput) => setWizard({ field: "Additional", initialInput })
                   }}
                 />
               </Field>
               <Button variant="outline" onClick={() => setIsDisabled(!isDisabled)}>
-                {isDisabled ? "Enable creation" : "Disable creation"}
+                {isDisabled ? "Enable Creation" : "Disable Creation"}
               </Button>
             </div>
           )}
