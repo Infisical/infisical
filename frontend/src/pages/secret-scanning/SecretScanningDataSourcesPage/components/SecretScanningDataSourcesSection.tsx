@@ -3,8 +3,13 @@ import { ChevronDownIcon, DatabaseIcon, FilterIcon, PlusIcon, SearchIcon } from 
 import { twMerge } from "tailwind-merge";
 
 import { SecretScanningUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { CreateSecretScanningDataSourceModal } from "@app/components/secret-scanning";
+import {
+  CreateSecretScanningDataSourceModal,
+  EditSecretScanningDataSourceModal
+} from "@app/components/secret-scanning";
+import { DeleteSecretScanningDataSourceModal } from "@app/components/secret-scanning/DeleteSecretScanningDataSourceModal";
 import {
   Button,
   Card,
@@ -48,8 +53,11 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   SecretScanningDataSource,
   SecretScanningScanStatus,
+  TSecretScanningDataSource,
   TSecretScanningDataSourceWithDetails,
-  useListSecretScanningDataSources
+  useListSecretScanningDataSources,
+  useTriggerSecretScanningDataSource,
+  useUpdateSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
 
 import { SecretScanningDataSourceRow } from "./SecretScanningDataSourceRow";
@@ -61,7 +69,7 @@ enum DataSourcesOrderBy {
 }
 
 const SKELETON_ROWS = ["first", "second", "third"];
-const SKELETON_CELLS = ["type", "name", "resources", "findings", "last-scan", "status"];
+const SKELETON_CELLS = ["type", "name", "resources", "findings", "last-scan", "status", "actions"];
 
 const sortDataSources = (
   a: TSecretScanningDataSourceWithDetails,
@@ -95,7 +103,9 @@ const sortDataSources = (
 export const SecretScanningDataSourcesSection = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addDataSource",
-    "upgradePlan"
+    "upgradePlan",
+    "deleteDataSource",
+    "editDataSource"
   ] as const);
 
   const { subscription } = useSubscription();
@@ -109,6 +119,9 @@ export const SecretScanningDataSourcesSection = () => {
     }
   );
   const isLoading = subscription.secretScanning && isPending;
+
+  const triggerDataSourceScan = useTriggerSecretScanningDataSource();
+  const updateDataSource = useUpdateSecretScanningDataSource();
 
   const [typeFilter, setTypeFilter] = useState<SecretScanningDataSource[]>([]);
 
@@ -188,6 +201,35 @@ export const SecretScanningDataSourcesSection = () => {
         />
       </TableHead>
     );
+  };
+
+  const handleToggleEnableAutoScan = async (dataSource: TSecretScanningDataSource) => {
+    const isAutoScanEnabled = !dataSource.isAutoScanEnabled;
+
+    await updateDataSource.mutateAsync({
+      dataSourceId: dataSource.id,
+      type: dataSource.type,
+      isAutoScanEnabled,
+      projectId: dataSource.projectId
+    });
+
+    createNotification({
+      text: `Auto-scan ${isAutoScanEnabled ? "enabled" : "disabled"} for "${dataSource.name}"`,
+      type: "success"
+    });
+  };
+
+  const handleTriggerScan = async (dataSource: TSecretScanningDataSource) => {
+    await triggerDataSourceScan.mutateAsync({
+      dataSourceId: dataSource.id,
+      type: dataSource.type,
+      projectId: dataSource.projectId
+    });
+
+    createNotification({
+      text: `Scan triggered for "${dataSource.name}"`,
+      type: "success"
+    });
   };
 
   const renderEmpty = () => {
@@ -317,6 +359,7 @@ export const SecretScanningDataSourcesSection = () => {
                   {renderSortableHead(DataSourcesOrderBy.Findings, "Unresolved Findings")}
                   {renderSortableHead(DataSourcesOrderBy.LastScan, "Last Scan")}
                   <TableHead>Status</TableHead>
+                  <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -334,7 +377,14 @@ export const SecretScanningDataSourcesSection = () => {
                   filteredDataSources
                     .slice(offset, perPage * page)
                     .map((dataSource) => (
-                      <SecretScanningDataSourceRow key={dataSource.id} dataSource={dataSource} />
+                      <SecretScanningDataSourceRow
+                        key={dataSource.id}
+                        dataSource={dataSource}
+                        onDelete={(ds) => handlePopUpOpen("deleteDataSource", ds)}
+                        onEdit={(ds) => handlePopUpOpen("editDataSource", ds)}
+                        onTriggerScan={handleTriggerScan}
+                        onToggleEnableAutoScan={handleToggleEnableAutoScan}
+                      />
                     ))}
               </TableBody>
             </Table>
@@ -353,6 +403,16 @@ export const SecretScanningDataSourcesSection = () => {
       <CreateSecretScanningDataSourceModal
         isOpen={popUp.addDataSource.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addDataSource", isOpen)}
+      />
+      <DeleteSecretScanningDataSourceModal
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteDataSource", isOpen)}
+        isOpen={popUp.deleteDataSource.isOpen}
+        dataSource={popUp.deleteDataSource.data}
+      />
+      <EditSecretScanningDataSourceModal
+        onOpenChange={(isOpen) => handlePopUpToggle("editDataSource", isOpen)}
+        isOpen={popUp.editDataSource.isOpen}
+        dataSource={popUp.editDataSource.data}
       />
       <UpgradeGate
         paywallKey="secret-scanning.secret-scanning-data-sources"

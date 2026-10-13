@@ -1,10 +1,28 @@
 import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNowStrict } from "date-fns";
-import { CircleCheckIcon, PauseIcon, UnplugIcon } from "lucide-react";
+import {
+  CircleCheckIcon,
+  CopyIcon,
+  MoreHorizontalIcon,
+  PauseIcon,
+  PencilIcon,
+  PlayIcon,
+  ScanSearchIcon,
+  TrashIcon,
+  UnplugIcon
+} from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretScanningScanStatusBadge } from "@app/components/secret-scanning";
 import {
   Badge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  IconButton,
   ProviderIcon,
   TableCell,
   TableRow,
@@ -13,7 +31,8 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useOrganization } from "@app/context";
+import { ProjectPermissionSub, useOrganization } from "@app/context";
+import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import {
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_MAP
@@ -25,9 +44,19 @@ import {
 
 type Props = {
   dataSource: TSecretScanningDataSourceWithDetails;
+  onDelete: (dataSource: TSecretScanningDataSourceWithDetails) => void;
+  onTriggerScan: (dataSource: TSecretScanningDataSourceWithDetails) => void;
+  onToggleEnableAutoScan: (dataSource: TSecretScanningDataSourceWithDetails) => void;
+  onEdit: (dataSource: TSecretScanningDataSourceWithDetails) => void;
 };
 
-export const SecretScanningDataSourceRow = ({ dataSource }: Props) => {
+export const SecretScanningDataSourceRow = ({
+  dataSource,
+  onDelete,
+  onEdit,
+  onTriggerScan,
+  onToggleEnableAutoScan
+}: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const {
@@ -45,6 +74,11 @@ export const SecretScanningDataSourceRow = ({ dataSource }: Props) => {
   } = dataSource;
   const sourceDetails = SECRET_SCANNING_DATA_SOURCE_MAP[type];
   const resourceDescription = RESOURCE_DESCRIPTION_HELPER[type];
+
+  const handleCopyId = () => {
+    navigator.clipboard.writeText(id);
+    createNotification({ text: "Data source ID copied to clipboard", type: "info" });
+  };
 
   const renderLastScan = () => {
     if (lastScanStatus && lastScanStatus !== SecretScanningScanStatus.Completed) {
@@ -137,6 +171,71 @@ export const SecretScanningDataSourceRow = ({ dataSource }: Props) => {
       </TableCell>
       <TableCell>{renderLastScan()}</TableCell>
       <TableCell>{renderStatus()}</TableCell>
+      <TableCell variant="action" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton aria-label="Data source options" variant="ghost" size="sm">
+              <MoreHorizontalIcon />
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleCopyId}>
+              <CopyIcon />
+              Copy Data Source ID
+            </DropdownMenuItem>
+            <ProjectPermissionCan
+              I={ProjectPermissionSecretScanningDataSourceActions.TriggerScans}
+              a={ProjectPermissionSub.SecretScanningDataSources}
+            >
+              {(isAllowed: boolean) => (
+                <DropdownMenuItem
+                  isDisabled={!isAllowed || isDisconnected}
+                  onClick={() => onTriggerScan(dataSource)}
+                >
+                  <ScanSearchIcon />
+                  Trigger Scan
+                </DropdownMenuItem>
+              )}
+            </ProjectPermissionCan>
+            <ProjectPermissionCan
+              I={ProjectPermissionSecretScanningDataSourceActions.Edit}
+              a={ProjectPermissionSub.SecretScanningDataSources}
+            >
+              {(isAllowed: boolean) => (
+                <>
+                  <DropdownMenuItem
+                    isDisabled={!isAllowed}
+                    onClick={() => onToggleEnableAutoScan(dataSource)}
+                  >
+                    {isAutoScanEnabled ? <PauseIcon /> : <PlayIcon />}
+                    {isAutoScanEnabled ? "Disable" : "Enable"} Auto-Scan
+                  </DropdownMenuItem>
+                  <DropdownMenuItem isDisabled={!isAllowed} onClick={() => onEdit(dataSource)}>
+                    <PencilIcon />
+                    Edit Data Source
+                  </DropdownMenuItem>
+                </>
+              )}
+            </ProjectPermissionCan>
+            <DropdownMenuSeparator />
+            <ProjectPermissionCan
+              I={ProjectPermissionSecretScanningDataSourceActions.Delete}
+              a={ProjectPermissionSub.SecretScanningDataSources}
+            >
+              {(isAllowed: boolean) => (
+                <DropdownMenuItem
+                  isDisabled={!isAllowed}
+                  variant="danger"
+                  onClick={() => onDelete(dataSource)}
+                >
+                  <TrashIcon />
+                  Delete Data Source
+                </DropdownMenuItem>
+              )}
+            </ProjectPermissionCan>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
     </TableRow>
   );
 };
