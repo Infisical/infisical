@@ -520,6 +520,11 @@ export const paloAltoNetworksPkiSyncFactory = ({
     let hasDeviceChanges = false;
 
     for (const upload of plannedUploads) {
+      let isWriting = false;
+      const beforeWrite = async () => {
+        isWriting = true;
+        await deployPending.mark();
+      };
       try {
         const fingerprint = getFingerprint(upload.cert);
         if (
@@ -542,12 +547,12 @@ export const paloAltoNetworksPkiSyncFactory = ({
           upload.fullCertificateChain ?? upload.certificateChain,
           existingCertificates,
           knownCaFingerprints,
-          deployPending.mark
+          beforeWrite
         );
         hasDeviceChanges ||= importedCa;
 
         if (!fingerprint || existingCertificates.get(upload.name) !== fingerprint || keylessNames.has(upload.name)) {
-          await deployPending.mark();
+          await beforeWrite();
           await importKeyPair(client, config, upload.name, upload.cert, upload.privateKey);
           hasDeviceChanges = true;
           existingCertificates.set(upload.name, fingerprint);
@@ -555,7 +560,7 @@ export const paloAltoNetworksPkiSyncFactory = ({
 
         succeeded.push(upload);
       } catch (error) {
-        if (!(error instanceof PanOsApiError) && !(error instanceof PkiSyncError)) hasDeviceChanges = true;
+        if (isWriting && !(error instanceof PanOsApiError)) hasDeviceChanges = true;
         failedUploads.push({ name: upload.mapKey, error: describePanOsError(error) });
         logger.error(
           { error },
