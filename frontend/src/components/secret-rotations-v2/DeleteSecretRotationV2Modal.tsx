@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
-import { Field, FieldContent, FieldDescription, FieldTitle, Toggle } from "@app/components/v3";
+import { Field, FieldContent, FieldDescription, FieldLabel, Toggle } from "@app/components/v3";
 import { DeleteConfirmDialog } from "@app/components/v3/platform";
 import { SECRET_ROTATION_MAP } from "@app/helpers/secretRotationsV2";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
@@ -67,7 +67,7 @@ export const DeleteSecretRotationV2Modal = ({
     >
       <Field orientation="horizontal">
         <FieldContent>
-          <FieldTitle>Revoke Credentials</FieldTitle>
+          <FieldLabel htmlFor="revoke-credentials">Revoke Credentials</FieldLabel>
           <FieldDescription>
             Generated credentials will {revokeGeneratedCredentials ? "" : "not"} be revoked on
             deletion{revokeGeneratedCredentials ? "" : " and remain active"}.
@@ -76,14 +76,13 @@ export const DeleteSecretRotationV2Modal = ({
         <Toggle
           id="revoke-credentials"
           variant="danger"
-          aria-label="Revoke Credentials"
           checked={revokeGeneratedCredentials}
           onCheckedChange={setRevokeGeneratedCredentials}
         />
       </Field>
       <Field orientation="horizontal">
         <FieldContent>
-          <FieldTitle>Delete Secrets</FieldTitle>
+          <FieldLabel htmlFor="delete-secrets">Delete Secrets</FieldLabel>
           <FieldDescription>
             Rotation secrets will {deleteSecrets ? "" : "not"} be removed from your project on
             deletion.
@@ -92,7 +91,6 @@ export const DeleteSecretRotationV2Modal = ({
         <Toggle
           id="delete-secrets"
           variant="danger"
-          aria-label="Delete Secrets"
           checked={deleteSecrets}
           onCheckedChange={setDeleteSecrets}
         />
