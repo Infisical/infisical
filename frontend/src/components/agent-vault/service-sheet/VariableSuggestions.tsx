@@ -1,5 +1,5 @@
 import { KeyboardEvent, ReactNode, RefObject, useId, useMemo, useRef, useState } from "react";
-import { LockIcon, PlusIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 
 import { Popover, PopoverAnchor, PopoverContent } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
@@ -187,16 +187,7 @@ export const VariableSuggestions = ({
       onClick={() => choose(suggestion)}
     >
       {suggestion.type === "variable" ? (
-        <>
-          <span className="flex-1 truncate font-mono text-xs">{suggestion.variable.key}</span>
-          {suggestion.variable.isSecret ? (
-            <LockIcon className="size-3 shrink-0 text-muted" aria-label="Secret" />
-          ) : (
-            <span className="max-w-32 truncate text-xs text-muted">
-              {suggestion.variable.value}
-            </span>
-          )}
-        </>
+        <span className="flex-1 truncate font-mono text-xs">{suggestion.variable.key}</span>
       ) : (
         <>
           <PlusIcon className="size-3.5 shrink-0 text-muted" />
