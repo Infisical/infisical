@@ -21,6 +21,12 @@ export const accessApprovalPolicyEnvironmentDALFactory = (db: TDbClient) => {
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter({ envId }, TableName.AccessApprovalPolicyEnvironment))
         .whereNull(`${TableName.AccessApprovalPolicy}.deletedAt`)
+        .whereNotExists((qb) => {
+          void qb
+            .select(db.raw("1"))
+            .from(TableName.ApprovalPolicies)
+            .whereRaw(`"${TableName.ApprovalPolicies}"."id" = "${TableName.AccessApprovalPolicy}"."id"`);
+        })
         .select(selectAllTableCols(TableName.AccessApprovalPolicyEnvironment));
       return docs;
     } catch (error) {

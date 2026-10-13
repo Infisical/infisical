@@ -278,6 +278,12 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
         const docs = await db
           .replicaNode()(TableName.AccessApprovalRequest)
           .whereIn(`${TableName.AccessApprovalRequest}.policyId`, policyIds)
+          .whereNotExists((qb) => {
+            void qb
+              .select(db.raw("1"))
+              .from(TableName.ApprovalRequests)
+              .whereRaw(`"${TableName.ApprovalRequests}"."id" = "${TableName.AccessApprovalRequest}"."id"`);
+          })
           .leftJoin(
             TableName.AdditionalPrivilege,
             `${TableName.AccessApprovalRequest}.privilegeId`,
@@ -904,6 +910,12 @@ export const accessApprovalRequestDALFactory = (db: TDbClient): TAccessApprovalR
           `${TableName.AccessApprovalRequestReviewer}.requestId`
         )
         .where(`${TableName.Environment}.projectId`, projectId)
+        .whereNotExists((qb) => {
+          void qb
+            .select(db.raw("1"))
+            .from(TableName.ApprovalRequests)
+            .whereRaw(`"${TableName.ApprovalRequests}"."id" = "${TableName.AccessApprovalRequest}"."id"`);
+        })
         .where((qb) => {
           if (policyId) {
             void qb.where(`${TableName.AccessApprovalPolicy}.id`, policyId);

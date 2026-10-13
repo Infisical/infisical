@@ -398,6 +398,12 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
     const result = await tx(TableName.AccessApprovalPolicy)
       // eslint-disable-next-line
       .where(buildFindFilter(filter))
+      .whereNotExists((qb) => {
+        void qb
+          .select(db.raw("1"))
+          .from(TableName.ApprovalPolicies)
+          .whereRaw(`"${TableName.ApprovalPolicies}"."id" = "${TableName.AccessApprovalPolicy}"."id"`);
+      })
       .where((qb) => {
         if (customFilter?.policyId) {
           void qb.where(`${TableName.AccessApprovalPolicy}.id`, "=", customFilter.policyId);

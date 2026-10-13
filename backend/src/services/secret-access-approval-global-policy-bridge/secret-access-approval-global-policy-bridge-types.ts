@@ -33,7 +33,10 @@ export type TSecretAccessApprovalGlobalPolicyBridgeServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
-  accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath">;
+  accessApprovalPolicyDAL: Pick<
+    TAccessApprovalPolicyDALFactory,
+    "findPolicyByEnvIdAndSecretPath" | "findOne" | "softDeleteById"
+  >;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "create" | "transaction" | "updateById" | "deleteById">;
   approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "insertMany" | "delete">;
   approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "insertMany">;
