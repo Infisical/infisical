@@ -22,16 +22,17 @@ export const projectV2ToFeatureSet = (base: TFeatureSet, entitlements: TEntitlem
     if (mapping.v1Field === null) {
       return;
     }
-    const raw = entitlements.features[mapping.v2Key];
-    if (!raw || raw.value === null || raw.value === undefined) {
+    const isLegacyGranted = mapping.legacyV2Keys?.some((key) => entitlements.features[key]?.value === true);
+    const value = isLegacyGranted ? true : entitlements.features[mapping.v2Key]?.value;
+    if (value === null || value === undefined) {
       return;
     }
 
     if (mapping.v1Field.includes(".")) {
       const [parent, child] = mapping.v1Field.split(".");
-      (plan[parent] as Record<string, unknown>)[child] = raw.value;
+      (plan[parent] as Record<string, unknown>)[child] = value;
     } else {
-      plan[mapping.v1Field] = raw.value;
+      plan[mapping.v1Field] = value;
     }
   });
 
