@@ -5,13 +5,23 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FormControl,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
   Input,
-  Modal,
-  ModalContent,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { useGenerateCaCertificate } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -96,76 +106,74 @@ export const CaGenerateRootCertModal = ({ popUp, handlePopUpToggle }: Props) => 
   };
 
   return (
-    <Modal
-      isOpen={popUp?.generateRootCaCert?.isOpen}
+    <Dialog
+      open={popUp?.generateRootCaCert?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("generateRootCaCert", isOpen);
         reset();
       }}
     >
-      <ModalContent title="Generate Root CA Certificate">
-        <form onSubmit={handleSubmit(onFormSubmit)}>
+      <DialogContent isPending={isSubmitting}>
+        <DialogHeader>
+          <DialogTitle>Generate Root CA Certificate</DialogTitle>
+        </DialogHeader>
+        <form className="flex flex-col gap-6" onSubmit={handleSubmit(onFormSubmit)}>
           <Controller
             control={control}
             defaultValue=""
             name="notAfter"
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Valid Until"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                isRequired
-              >
-                <Input {...field} placeholder="YYYY-MM-DD" />
-              </FormControl>
+              <Field>
+                <FieldLabel htmlFor="generate-root-ca-not-after">
+                  Valid Until <span className="text-danger">*</span>
+                </FieldLabel>
+                <Input
+                  {...field}
+                  id="generate-root-ca-not-after"
+                  placeholder="YYYY-MM-DD"
+                  isError={Boolean(error)}
+                />
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
           />
           <Controller
             control={control}
             defaultValue="-1"
             name="maxPathLength"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl
-                label="Max Path Length"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                helperText="Maximum depth of valid certificate paths"
-              >
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                  className="w-full"
-                >
-                  {[-1, 0, 1, 2, 3, 4].map((value) => (
-                    <SelectItem value={String(value)} key={`ca-max-path-length-${value}`}>
-                      {`${value}`}
-                    </SelectItem>
-                  ))}
+            render={({ field: { onChange, value }, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="generate-root-ca-max-path-length">Max Path Length</FieldLabel>
+                <Select value={value} onValueChange={onChange}>
+                  <SelectTrigger id="generate-root-ca-max-path-length" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {[-1, 0, 1, 2, 3, 4].map((pathLength) => (
+                      <SelectItem
+                        value={String(pathLength)}
+                        key={`ca-max-path-length-${pathLength}`}
+                      >
+                        {`${pathLength}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
-              </FormControl>
+                <FieldDescription>Maximum depth of valid certificate paths</FieldDescription>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
           />
-          <div className="flex items-center">
-            <Button
-              className="mr-4"
-              size="sm"
-              type="submit"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
-            >
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="ghost">Cancel</Button>
+            </DialogClose>
+            <Button type="submit" variant="project" isPending={isSubmitting}>
               Generate Certificate
             </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
-              onClick={() => handlePopUpToggle("generateRootCaCert", false)}
-            >
-              Cancel
-            </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

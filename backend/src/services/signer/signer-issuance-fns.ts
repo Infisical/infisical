@@ -91,7 +91,7 @@ export const issueSignerCertificate = async (
   const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
   if (!ca || ca.projectId !== projectId) {
     throw new BadRequestError({
-      message: `Certificate authority '${caId}' is not in this project.`
+      message: `Certificate authority '${caId}' is not in this organization.`
     });
   }
   if (ca.status !== CaStatus.ACTIVE) {
@@ -239,7 +239,7 @@ export const issueHsmBackedSignerCertificate = async (
   const ca = await deps.certificateAuthorityDAL.findByIdWithAssociatedCa(input.caId);
   if (!ca || ca.projectId !== input.projectId) {
     throw new BadRequestError({
-      message: `Certificate authority '${input.caId}' is not in this project.`
+      message: `Certificate authority '${input.caId}' is not in this organization.`
     });
   }
   if (ca.status !== CaStatus.ACTIVE) {

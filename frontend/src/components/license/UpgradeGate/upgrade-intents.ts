@@ -11,6 +11,7 @@ export const BillingPlan = {
 } as const;
 
 export const UpgradeFeature = {
+  SecretsManagement: "secrets-management",
   DynamicSecrets: "dynamic-secrets",
   SecretRotations: "secret-rotations",
   HoneyTokens: "honey-tokens",
@@ -53,6 +54,16 @@ export type UpgradeIntent = {
   quotaNotice?: string;
   quota?: { used: number; limit: number };
 };
+
+export const SecretsManagementUpgradeIntent = {
+  featureKey: UpgradeFeature.SecretsManagement,
+  productKey: BillingProduct.SecretsManagement,
+  planKey: BillingPlan.Pro,
+  upgradeLabel: "Unlock Secrets Management",
+  title: "Open Secrets Management",
+  description:
+    "Secrets Management is included with the Pro plan. Review the plans or start a free trial to continue."
+} satisfies UpgradeIntent;
 
 export const DynamicSecretsUpgradeIntent = {
   featureKey: UpgradeFeature.DynamicSecrets,

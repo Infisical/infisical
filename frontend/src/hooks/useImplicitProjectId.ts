@@ -1,6 +1,6 @@
 import { useRouterState } from "@tanstack/react-router";
 
-// PAM and Agent Vault carry no $projectId in the URL, so their layouts publish the id they resolved in
+// Certificate Manager, PAM and Agent Vault carry no $projectId in the URL, so their layouts publish the id they resolved in
 // beforeLoad. Every gate that decides whether a useProject caller renders reads the matched routes too
 // (see useImplicitProduct), so the id and the gate move together.
 export const useImplicitProjectId = () =>
