@@ -202,7 +202,7 @@ export const IntegrationRow = ({
                       }}
                       aria-label="delete"
                       isDisabled={!isAllowed}
-                      variant="ghost"
+                      variant="danger"
                     >
                       <FontAwesomeIcon icon={faTrash} className="px-1" />
                     </IconButton>
