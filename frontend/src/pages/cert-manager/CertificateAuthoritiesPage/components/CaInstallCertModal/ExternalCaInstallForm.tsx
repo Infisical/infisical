@@ -132,7 +132,7 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
                   {...field}
                   id="ca-install-certificate"
                   placeholder="PEM-encoded certificate..."
-                  className="h-32 resize-none font-mono text-xs"
+                  rows={6}
                   isError={Boolean(error)}
                 />
                 <FieldError errors={[error]} />
@@ -149,7 +149,7 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
                   {...field}
                   id="ca-install-certificate-chain"
                   placeholder="PEM-encoded certificate chain..."
-                  className="h-32 resize-none font-mono text-xs"
+                  rows={6}
                   isError={Boolean(error)}
                 />
                 <FieldError errors={[error]} />

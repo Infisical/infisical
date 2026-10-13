@@ -179,6 +179,7 @@ export const AdcsCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
                 Certificate Template <span className="text-danger">*</span>
               </FieldLabel>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isTemplatesLoading && !!selectedConnectionId}
                 isDisabled={!selectedConnectionId}
                 modal

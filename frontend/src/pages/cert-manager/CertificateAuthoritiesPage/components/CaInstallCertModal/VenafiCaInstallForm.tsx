@@ -199,6 +199,7 @@ export const VenafiCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
                 Application <span className="text-danger">*</span>
               </FieldLabel>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isApplicationsLoading && !!selectedConnectionId}
                 isDisabled={!selectedConnectionId}
                 modal
@@ -228,6 +229,7 @@ export const VenafiCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
                 Issuing Template <span className="text-danger">*</span>
               </FieldLabel>
               <Combobox
+                isError={Boolean(error)}
                 isLoading={isTemplatesLoading && !!selectedApplicationId}
                 isDisabled={!selectedApplicationId}
                 modal
