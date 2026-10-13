@@ -10,7 +10,6 @@ type Props = {
   id: string;
   placeholder?: string;
   isError?: boolean;
-  isWarning?: boolean;
   registration: UseFormRegisterReturn;
   ariaLabel?: string;
 };
@@ -19,14 +18,13 @@ export const ChannelSecretInput = ({
   id,
   placeholder,
   isError,
-  isWarning,
   registration,
   ariaLabel
 }: Props) => {
   const [isRevealed, setIsRevealed] = useState(false);
 
   return (
-    <InputGroup className={isWarning ? "border-warning/60" : undefined}>
+    <InputGroup>
       <InputGroupInput
         {...registration}
         id={id}

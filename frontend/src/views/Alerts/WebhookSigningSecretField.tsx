@@ -71,7 +71,7 @@ export const WebhookSigningSecretField = ({ index }: Props) => {
             onClick={() => setEnabled(true)}
           >
             <PlusIcon className="size-3.5" />
-            Add signing secret
+            Add Signing Secret
           </Button>
         )}
       </FieldContent>

@@ -37,7 +37,7 @@ export const WebhookHeadersField = ({ index }: Props) => {
               <Field className="w-2/5">
                 <Input
                   aria-label="Header name"
-                  placeholder="x-env"
+                  placeholder="X-Env"
                   isError={Boolean(headerErrors?.[i]?.key)}
                   {...register(`channels.${index}.headers.${i}.key`)}
                 />
@@ -46,7 +46,7 @@ export const WebhookHeadersField = ({ index }: Props) => {
               <Field className="min-w-0 flex-1">
                 <Input
                   aria-label="Header value"
-                  placeholder="production"
+                  placeholder="Production"
                   isError={Boolean(headerErrors?.[i]?.value)}
                   {...register(`channels.${index}.headers.${i}.value`)}
                 />
@@ -65,7 +65,7 @@ export const WebhookHeadersField = ({ index }: Props) => {
             onClick={() => append({ key: "", value: "" })}
           >
             <PlusIcon className="size-3.5" />
-            Add header
+            Add Header
           </Button>
         </div>
       </FieldContent>

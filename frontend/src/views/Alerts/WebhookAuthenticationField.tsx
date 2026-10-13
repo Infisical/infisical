@@ -23,7 +23,8 @@ import { ChannelSecretInput, KEEP_PLACEHOLDER } from "./ChannelSecretInput";
 
 const NO_AUTH = "none";
 
-const REENTER_PLACEHOLDER = "Re-enter for new URL";
+const REENTER_DESCRIPTION =
+  "The URL changed, so enter the credentials again. Saved credentials are only sent to the URL they were saved with.";
 
 type Props = {
   index: number;
@@ -69,9 +70,8 @@ export const WebhookAuthenticationField = ({ index }: Props) => {
             const { description, name, secret } = WEBHOOK_AUTH_FIELDS[type];
             const hasSavedSecret = Boolean(channel?.id && channel[secret.hasSaved]);
             const needsReentry = hasSavedSecret && isUrlChanged;
-            let secretPlaceholder = secret.label;
-            if (hasSavedSecret)
-              secretPlaceholder = needsReentry ? REENTER_PLACEHOLDER : KEEP_PLACEHOLDER;
+            const secretPlaceholder =
+              hasSavedSecret && !needsReentry ? KEEP_PLACEHOLDER : secret.label;
 
             return (
               <TabsContent key={type} value={type} className="@container mt-0 flex flex-col gap-2">
@@ -97,13 +97,14 @@ export const WebhookAuthenticationField = ({ index }: Props) => {
                       ariaLabel={secret.label}
                       placeholder={secretPlaceholder}
                       isError={Boolean(channelErrors?.[secret.field])}
-                      isWarning={needsReentry && !channel[secret.field]}
                       registration={register(`channels.${index}.${secret.field}`)}
                     />
                     <FieldError errors={[channelErrors?.[secret.field]]} />
                   </Field>
                 </div>
-                <FieldDescription>{description}</FieldDescription>
+                <FieldDescription>
+                  {needsReentry && !channel[secret.field] ? REENTER_DESCRIPTION : description}
+                </FieldDescription>
               </TabsContent>
             );
           })}

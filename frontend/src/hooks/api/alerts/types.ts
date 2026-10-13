@@ -39,18 +39,18 @@ export const WEBHOOK_AUTH_FIELDS: Record<
   }
 > = {
   [WebhookAuthType.Bearer]: {
-    label: "Bearer token",
+    label: "Bearer Token",
     description: "Sends the token as Authorization: Bearer <token>.",
     secret: { field: "authCredentials", label: "Token", hasSaved: "hasAuthCredentials" }
   },
   [WebhookAuthType.Basic]: {
-    label: "Basic auth",
+    label: "Basic Auth",
     description: "Sends the username and password as Authorization: Basic <credentials>.",
     name: { field: "basicUsername", label: "Username", placeholder: "Username" },
     secret: { field: "basicPassword", label: "Password", hasSaved: "hasBasicPassword" }
   },
   [WebhookAuthType.Header]: {
-    label: "API key",
+    label: "API Key",
     description: "Sends the key in the header you name, such as X-API-Key.",
     name: { field: "authHeaderName", label: "Header name", placeholder: "X-API-Key" },
     secret: { field: "authHeaderValue", label: "API key", hasSaved: "hasAuthHeaderValue" }
