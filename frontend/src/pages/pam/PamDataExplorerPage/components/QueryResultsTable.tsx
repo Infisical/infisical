@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 
-import { Spinner } from "@app/components/v2";
 import { DataGrid, useDataGrid } from "@app/components/v3/generic/DataGrid";
+import { Spinner } from "@app/components/v3/generic/Spinner";
 
 import type { FieldInfo } from "../data-explorer-types";
 
