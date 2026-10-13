@@ -6,7 +6,11 @@ description: "Send certificate alert notifications by email."
 
 import StartAlert from "/snippets/documentation/platform/pki/applications/alerting/start-alert.mdx";
 
-An email channel on a certificate [alert](/documentation/platform/pki/applications/alerting/overview) emails the recipients you choose whenever the alert fires. Email channels are available on every plan and need no setup outside Infisical.
+An email channel on a certificate [alert](/documentation/platform/pki/applications/alerting/overview) emails the recipients you choose whenever the alert fires. Email channels are available on every plan.
+
+<Note>
+  If you self-host Infisical, [configure an SMTP server](/self-hosting/configuration/envars#email-service) before you create an email alert. Without one, Infisical writes alert emails to its logs instead of sending them, so a **Send test** can look successful even though no email arrives.
+</Note>
 
 ## Prerequisites
 
