@@ -19,7 +19,8 @@ type TBootstrapInput = {
   adminIdentityIds?: string[];
 };
 
-// Orgs created before this existed get their project lazily from the secret scanning project resolver.
+// Orgs created before this existed, or created with no admin yet (the admin console), get their project
+// lazily from the secret scanning project resolver.
 export const bootstrapSecretScanningProject = async (
   { orgId, adminUserIds = [], adminIdentityIds = [] }: TBootstrapInput,
   { projectDAL, membershipDAL, membershipRoleDAL }: TBootstrapDeps,

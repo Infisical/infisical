@@ -802,14 +802,18 @@ export const orgServiceFactory = ({
         tx
       );
 
-      await bootstrapSecretScanningProject(
-        {
-          orgId: org.id,
-          adminUserIds: userId ? [userId] : []
-        },
-        { projectDAL, membershipDAL, membershipRoleDAL },
-        tx
-      );
+      // Orgs created from the admin console have no creator; their admins are invited afterwards, so the
+      // project is left to the lazy resolver, which makes every org admin a project admin.
+      if (userId) {
+        await bootstrapSecretScanningProject(
+          {
+            orgId: org.id,
+            adminUserIds: [userId]
+          },
+          { projectDAL, membershipDAL, membershipRoleDAL },
+          tx
+        );
+      }
 
       return org;
     };
