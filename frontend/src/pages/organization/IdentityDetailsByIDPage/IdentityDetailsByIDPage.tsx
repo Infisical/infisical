@@ -221,7 +221,7 @@ const Page = () => {
         open={popUp?.identity?.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("identity", isOpen)}
       >
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-xl overflow-hidden">
           <DialogHeader>
             <DialogTitle>
               {`${popUp?.identity?.data ? "Update" : "Create"} Machine Identity`}
