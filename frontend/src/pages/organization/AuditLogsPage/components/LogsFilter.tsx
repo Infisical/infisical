@@ -20,7 +20,7 @@ import {
   Separator
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { isOrgScopedProduct } from "@app/helpers/project";
+import { getProjectDisplayName, isOrgScopedProduct } from "@app/helpers/project";
 import { useScopeVariant } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
 import {
@@ -36,7 +36,7 @@ import {
 } from "@app/hooks/api/auditLogSettings/constants";
 import { AuditLogEventClass } from "@app/hooks/api/auditLogSettings/types";
 import { UserAgentType } from "@app/hooks/api/auth/types";
-import { Project } from "@app/hooks/api/projects/types";
+import { Project, ProjectType } from "@app/hooks/api/projects/types";
 
 import { LogFilterItem } from "./LogFilterItem";
 import { auditLogFilterFormSchema, Presets, TAuditLogFilterFormData } from "./types";
@@ -89,6 +89,8 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
   const scopeVariant = useScopeVariant();
 
   const workspacesInOrg = workspaces.filter((ws) => ws.orgId === currentOrg?.id);
+  const isCertManagerMultiInstance =
+    workspacesInOrg.filter((ws) => ws.type === ProjectType.CertificateManager).length > 1;
 
   const { control, watch, setValue, handleSubmit, formState } = useForm<TAuditLogFilterFormData>({
     resolver: zodResolver(auditLogFilterFormSchema),
@@ -297,7 +299,9 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                           type
                         }))}
                         getOptionValue={(option) => option.id}
-                        getOptionLabel={(option) => option.name}
+                        getOptionLabel={(option) =>
+                          getProjectDisplayName(option, isCertManagerMultiInstance)
+                        }
                         isError={Boolean(error)}
                       />
                       <FieldError errors={[error]} />

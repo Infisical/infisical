@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { PamAccountType } from "../pam/pam-enums";
 import { ActiveDirectoryDiscoveryConfigSchema } from "./active-directory/active-directory-discovery-schemas";
+import { MsSqlDiscoveryConfigSchema } from "./mssql/mssql-discovery-schemas";
 import { PamDiscoveryType } from "./pam-discovery-enums";
 import { PostgresDiscoveryConfigSchema } from "./postgres/postgres-discovery-schemas";
 import { UnixDiscoveryConfigSchema } from "./unix/unix-discovery-schemas";
@@ -24,6 +25,12 @@ export const DISCOVERY_TYPE_CONFIGS = {
     icon: "Postgres.png",
     credentialAccountType: PamAccountType.Postgres,
     configuration: PostgresDiscoveryConfigSchema
+  },
+  [PamDiscoveryType.MsSQL]: {
+    name: "Microsoft SQL Server",
+    icon: "MsSql.png",
+    credentialAccountType: PamAccountType.MsSQL,
+    configuration: MsSqlDiscoveryConfigSchema
   }
 } as const satisfies Partial<
   Record<

@@ -206,8 +206,7 @@ export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
 
 // Cosmetic overrides for requestProjectAccess; unlisted types fall back to the raw type/name.
 const PROJECT_ACCESS_REQUEST_URL_SLUGS: Partial<Record<ProjectType, string>> = {
-  [ProjectType.SecretManager]: "secret-management",
-  [ProjectType.CertificateManager]: "cert-manager"
+  [ProjectType.SecretManager]: "secret-management"
 };
 
 const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
@@ -2304,6 +2303,7 @@ export const projectServiceFactory = ({
     const encodedRequesterEmail = encodeURIComponent(userDetails.email ?? "");
 
     const orgScopedProductPath: Partial<Record<ProjectType, string>> = {
+      [ProjectType.CertificateManager]: "cert-manager",
       [ProjectType.PAM]: "pam",
       [ProjectType.AgentVault]: "agent-vault"
     };

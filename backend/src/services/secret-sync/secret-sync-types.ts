@@ -643,6 +643,7 @@ export type TPreSaveTransformSyncOptionsParams = {
 
 export type TPreSaveTransformDestinationConfigParams = {
   destinationConfig: Record<string, unknown> | undefined;
+  existingDestinationConfig?: Record<string, unknown>;
   connectionId: string;
 };
 

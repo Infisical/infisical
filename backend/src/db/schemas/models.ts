@@ -285,6 +285,7 @@ export enum TableName {
   AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
   AgentVaultProxy = "agent_vault_proxies",
   AgentVaultSessionLogConfig = "agent_vault_session_log_configs",
+  // Dropped; kept only for the migrations that create and drop it.
   AgentVaultSessionLogChunk = "agent_vault_session_log_chunks",
 
   ExternalMigrationConfig = "external_migration_configs",

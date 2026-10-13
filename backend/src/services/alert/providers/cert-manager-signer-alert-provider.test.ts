@@ -164,7 +164,7 @@ describe("cert manager signer alert provider", () => {
     const viewUrl = await provider.buildViewUrl(signerAlert);
     const payload = provider.buildPayload(signerAlert, [signerCertificate()], viewUrl);
 
-    expect(viewUrl).toBe("https://app.infisical.com/organizations/org-1/projects/cert-manager/proj-1/code-signing");
+    expect(viewUrl).toBe("https://app.infisical.com/organizations/org-1/cert-manager/code-signing");
     expect(payload.eventKey).toBe(EXPIRY_EVENT);
     expect(payload.webhookType).toBe(`com.infisical.${EXPIRY_EVENT}`);
     expect(payload.webhookSource).toBe("/alerts/alert-1");

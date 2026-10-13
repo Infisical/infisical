@@ -191,7 +191,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
 
       if (inviteeEmails.length !== selectedMembers.length) {
         createNotification({
-          text: "Failed to add users to project. One or more users were invalid.",
+          text: `Failed to add users to ${isCertManager ? productLabel : "project"}. One or more users were invalid.`,
           type: "error"
         });
         return;
@@ -315,7 +315,10 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                       noOptionsMessage={() => (
                         <>
                           {!projectInviteList.list.length && (
-                            <p>All organization members are already assigned to this project.</p>
+                            <p>
+                              All organization members are already assigned to{" "}
+                              {isCertManager ? productLabel : "this project"}.
+                            </p>
                           )}
                           <p>
                             Invite new users to your organization by typing out their email address.
@@ -400,17 +403,23 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
           />
           {requesterEmail && projectInviteList.requesterStatus.isProjectUser && (
             <Alert variant="danger">
-              <AlertDescription>Requested user is part of the project.</AlertDescription>
-            </Alert>
-          )}
-          {requesterEmail && !projectInviteList.requesterStatus.isProjectUser && (
-            <Alert>
               <AlertDescription>
-                Assign a role to provide access to requesting user{" "}
-                <b>{projectInviteList.requesterStatus.userLabel}</b>.
+                Requested user is part of {isCertManager ? productLabel : "the project"}.
               </AlertDescription>
             </Alert>
           )}
+          {requesterEmail &&
+            !projectInviteList.requesterStatus.isProjectUser &&
+            projectInviteList.requesterStatus.userId && (
+              <Alert>
+                <AlertDescription>
+                  <p>
+                    Assign a role to provide access to requesting user{" "}
+                    <b>{projectInviteList.requesterStatus.userLabel}</b>.
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
           <DialogFooter>
             <Button
               variant="ghost"

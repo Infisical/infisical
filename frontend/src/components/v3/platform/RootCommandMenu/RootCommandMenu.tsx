@@ -65,10 +65,12 @@ import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSecretSyncActions
 } from "@app/context/ProjectPermissionContext/types";
+import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
 import { getOrganizationSwitchDestination } from "@app/helpers/organizationSwitch";
-import { getProjectLucideIcon, getProjectTitle } from "@app/helpers/project";
+import { getProjectDisplayName, getProjectLucideIcon, getProjectTitle } from "@app/helpers/project";
 import { useImplicitProduct } from "@app/hooks";
 import { useGetOrganizationGroups, useGetOrganizationsWithSubOrgs } from "@app/hooks/api";
+import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useGetAccessibleProjectsWithSubOrgs } from "@app/hooks/api/projects/queries";
 import type { Project, TProjectNavigation } from "@app/hooks/api/projects/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -173,9 +175,10 @@ const navigateToProject = (
         params: { orgId: project.orgId, projectId: project.id }
       });
     case ProjectType.CertificateManager:
+      setCertManagerActiveProjectCookie(project.orgId, project.id);
       return navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
-        params: { orgId: project.orgId, projectId: project.id }
+        to: "/organizations/$orgId/cert-manager/overview",
+        params: { orgId: project.orgId }
       });
     case ProjectType.SecretScanning:
       return navigate({
@@ -235,6 +238,14 @@ const useEntityCommandGroups = ({
     organizations.map((organization) => [organization.id, organization])
   );
 
+  const certManagerProjectCountByOrg: Record<string, number> = {};
+  projects.forEach((project) => {
+    if (project.type === ProjectType.CertificateManager) {
+      certManagerProjectCountByOrg[project.orgId] =
+        (certManagerProjectCountByOrg[project.orgId] ?? 0) + 1;
+    }
+  });
+
   const projectItems: GlobalCommandMenuItem[] = projects.map((project) => {
     const organization = organizationsById.get(project.orgId);
     const organizationPath = [
@@ -246,7 +257,7 @@ const useEntityCommandGroups = ({
 
     return {
       id: `entity-project-${project.id}`,
-      label: project.name,
+      label: getProjectDisplayName(project, (certManagerProjectCountByOrg[project.orgId] ?? 0) > 1),
       breadcrumb: `${organizationPath} / ${getProjectTitle(project.type)}`,
       icon: getProjectLucideIcon(project.type),
       iconClassName: projectIconClassNames[project.type],
@@ -704,14 +715,16 @@ const getProjectLandingItem = ({
   navigate,
   project,
   organizationName,
-  isCertificateManagerAdmin
+  isCertificateManagerAdmin,
+  isCertManagerMultiInstance = false
 }: {
   navigate: ReturnType<typeof useNavigate>;
   project: Project;
   organizationName: string;
   isCertificateManagerAdmin?: boolean;
+  isCertManagerMultiInstance?: boolean;
 }): GlobalCommandMenuItem => {
-  const breadcrumb = `${organizationName} / ${project.name}`;
+  const breadcrumb = `${organizationName} / ${getProjectDisplayName(project, isCertManagerMultiInstance)}`;
 
   if (project.type === ProjectType.CertificateManager && !isCertificateManagerAdmin) {
     return {
@@ -724,8 +737,8 @@ const getProjectLandingItem = ({
       priority: 40,
       onSelect: () =>
         navigate({
-          to: "/organizations/$orgId/projects/cert-manager/$projectId/requests",
-          params: { orgId: project.orgId, projectId: project.id }
+          to: "/organizations/$orgId/cert-manager/requests",
+          params: { orgId: project.orgId }
         })
     };
   }
@@ -757,15 +770,17 @@ const getProjectPageItems = ({
   project,
   organizationName,
   pathname,
-  isCertificateManagerAdmin
+  isCertificateManagerAdmin,
+  isCertManagerMultiInstance = false
 }: {
   navigate: ReturnType<typeof useNavigate>;
   project: Project;
   organizationName: string;
   pathname: string;
   isCertificateManagerAdmin?: boolean;
+  isCertManagerMultiInstance?: boolean;
 }): GlobalCommandMenuItem[] => {
-  const breadcrumb = `${organizationName} / ${project.name}`;
+  const breadcrumb = `${organizationName} / ${getProjectDisplayName(project, isCertManagerMultiInstance)}`;
   const item = (
     id: string,
     label: string,
@@ -884,39 +899,40 @@ const getProjectPageItems = ({
         navigate,
         project,
         organizationName,
-        isCertificateManagerAdmin
+        isCertificateManagerAdmin,
+        isCertManagerMultiInstance
       });
       if (!isCertificateManagerAdmin) return [landing];
       return sortByContext([
         landing,
         item("inventory", "Inventory", DatabaseIcon, "inventory", () =>
           navigate({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/inventory",
-            params: { orgId: project.orgId, projectId: project.id }
+            to: "/organizations/$orgId/cert-manager/inventory",
+            params: { orgId: project.orgId }
           })
         ),
         item("discovery", "Discovery", SearchIcon, "discovery", () =>
           navigate({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery",
-            params: { orgId: project.orgId, projectId: project.id }
+            to: "/organizations/$orgId/cert-manager/discovery",
+            params: { orgId: project.orgId }
           })
         ),
         item("access-control", "Access Control", ShieldIcon, "access-management", () =>
           navigate({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/access-management",
-            params: { orgId: project.orgId, projectId: project.id }
+            to: "/organizations/$orgId/cert-manager/access-management",
+            params: { orgId: project.orgId }
           })
         ),
         item("audit-logs", "Audit Logs", FileTextIcon, "audit-logs", () =>
           navigate({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/audit-logs",
-            params: { orgId: project.orgId, projectId: project.id }
+            to: "/organizations/$orgId/cert-manager/audit-logs",
+            params: { orgId: project.orgId }
           })
         ),
         item("settings", "Settings", SettingsIcon, "settings", () =>
           navigate({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
-            params: { orgId: project.orgId, projectId: project.id }
+            to: "/organizations/$orgId/cert-manager/settings",
+            params: { orgId: project.orgId }
           })
         )
       ]);
@@ -996,26 +1012,30 @@ const CertificateProjectCommandMenu = ({
   const { currentProject } = useProject();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { data: certManagerInstance } = useCertManagerInstanceState();
+  const isCertManagerMultiInstance = Boolean(certManagerInstance?.isMultiInstance);
   const projectItems = filterProjectPageItems(
     getProjectPageItems({
       navigate,
       project: currentProject,
       organizationName: currentOrg.name,
       pathname,
-      isCertificateManagerAdmin: hasProjectRole("admin")
+      isCertificateManagerAdmin: hasProjectRole("admin"),
+      isCertManagerMultiInstance
     }),
     permission
   );
+  const menuHeading = getProjectDisplayName(currentProject, isCertManagerMultiInstance);
 
   return (
     <NavigationCommandMenu
       shell="organization"
       searchStatus={content.searchStatus}
       browseGroups={[
-        { heading: currentProject.name, items: projectItems.slice(0, 2) },
+        { heading: menuHeading, items: projectItems.slice(0, 2) },
         ...content.browseGroups
       ]}
-      searchGroups={[{ heading: "Current Project", items: projectItems }, ...content.searchGroups]}
+      searchGroups={[{ heading: menuHeading, items: projectItems }, ...content.searchGroups]}
     />
   );
 };

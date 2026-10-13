@@ -41,9 +41,6 @@ import {
   TAgentVaultSessionAccessBundles,
   TAgentVaultSessionAccessBundlesInsert,
   TAgentVaultSessionAccessBundlesUpdate,
-  TAgentVaultSessionLogChunks,
-  TAgentVaultSessionLogChunksInsert,
-  TAgentVaultSessionLogChunksUpdate,
   TAgentVaultSessionLogConfigs,
   TAgentVaultSessionLogConfigsInsert,
   TAgentVaultSessionLogConfigsUpdate,
@@ -1861,11 +1858,6 @@ declare module "knex/types/tables" {
       TAgentVaultSessionLogConfigs,
       TAgentVaultSessionLogConfigsInsert,
       TAgentVaultSessionLogConfigsUpdate
-    >;
-    [TableName.AgentVaultSessionLogChunk]: KnexOriginal.CompositeTableType<
-      TAgentVaultSessionLogChunks,
-      TAgentVaultSessionLogChunksInsert,
-      TAgentVaultSessionLogChunksUpdate
     >;
     [TableName.PamAccountPolicy]: KnexOriginal.CompositeTableType<
       TPamAccountPolicies,

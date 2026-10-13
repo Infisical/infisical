@@ -74,10 +74,10 @@ In the table, E is the number of external consumer files and I is the number of 
 | `Spinner/Spinner.tsx` | 19 / 1 | V3 Spinner; preserve wait semantics, sizing, and caller disabling. | `frontend/src/pages/auth/SelectOrgPage/SelectOrgPage.tsx:346` |
 | `Stepper/Stepper.tsx` | 0 / 0 | Deleted in first wave; no consumer. | Only its own/root barrels exported it. |
 | `Switch/Switch.tsx` | 20 / 0 | V3 Toggle; preserve checked/value contract, labels, disabled and mutation state. | `frontend/src/components/secret-rotations-v2/DeleteSecretRotationV2Modal.tsx:66` |
-| `Table/Table.tsx` | 30 / 0 | V3 Table/DataGrid chosen by workflow; preserve selection, sort, resize, virtualization and pagination state. | `frontend/src/pages/organization/GroupDetailsByIDPage/components/AddGroupProjectModal.tsx:109` |
+| `Table/Table.tsx` | 30 / 0 | V3 Table/DataGrid chosen by workflow; preserve selection, sort, resize, virtualization and pagination state. `TableSkeleton` maps to `TableSkeletonRows` (`columns`, optional `rows`; drop `innerKey`). Long-text columns that wrapped in V2 set `isWrappable` on each `TableCell`; otherwise V3 keeps cells on one line. | `frontend/src/pages/organization/GroupDetailsByIDPage/components/AddGroupProjectModal.tsx:109` |
 | `Tabs/Tabs.tsx` | 10 / 0 | V3 Tabs; preserve controlled/default state, URL state, panel lifetime and keyboard navigation. | `frontend/src/pages/kms/SettingsPage/SettingsPage.tsx:33` |
 | `Tag/Tag.tsx` | 3 / 0 | V3 Badge composition; preserve diff/status intent and accessible text. | `frontend/src/components/secrets/diff/FieldDiffRenderers.tsx:128` |
-| `TextArea/TextArea.tsx` | 15 / 0 | V3 TextArea + Field; preserve controlled values, multiline input and validation. | `frontend/src/pages/organization/SettingsPage/components/ProjectTemplatesTab/components/ProjectTemplateDetailsModal.tsx:159` |
+| `TextArea/TextArea.tsx` | 15 / 0 | V3 TextArea + Field; preserve controlled values, multiline input and validation. | `frontend/src/pages/cert-manager/ApprovalsPage/components/RequestsTab/RequestDetailModal.tsx:396` |
 | `Tooltip/Tooltip.tsx` | 64 / 3 | V3 Tooltip; preserve providers, disabled triggers, long text and focus access. | `frontend/src/pages/root.tsx:53` |
 
 First wave deletes **17 families / 35 files** plus their root exports. The candidate retains **35 families / 72 V2 files including the barrel**, and the same 312 external consumer files. These are candidate-worktree numbers until the PR is explicitly merged; the baseline does not change because a PR was opened.
@@ -90,7 +90,7 @@ Counts below are baseline runtime consumer files, excluding the one menu type-on
 | --- | ---: | --- | --- |
 | Certificate Manager routes | 81 | `pages/cert-manager/PkiSubscribersPage/components/PkiSubscriberModal.tsx` | Split subscribers/issuance, authorities, applications, discovery and settings; preserve certificate mutations, validation, selection and permissions. |
 | Secret Manager routes | 80 | `pages/secret-manager/integrations/SelectIntegrationAuthPage/SelectIntegrationAuthPage.tsx` | Integrations, settings, old dashboard, approvals; preserve hidden values, leases, bulk/table state and environment/path semantics. Held secret edit forms remain owned separately. |
-| Organization routes | 53 | `pages/organization/SettingsPage/components/ProjectTemplatesTab/components/ProjectTemplateDetailsModal.tsx` | Groups/membership, projects/settings, auth policies; preserve RBAC and async form recovery. UpgradeGate held choices stay separate. |
+| Organization routes | 53 | `pages/organization/UserDetailsByIDPage/components/UserOrgMembershipModal.tsx` | Groups/membership, projects/settings, auth policies; preserve RBAC and async form recovery. UpgradeGate held choices stay separate. |
 | Secret Scanning routes | 23 | `pages/secret-scanning/SecretScanningFindingsPage/components/SecretScanningFindingRow.tsx` | Tables/detail/settings; preserve filtering, finding states, and mutations. Include the shared provider forms below. |
 | PAM routes | 18 | `pages/pam/PamDiscoveryPage/PamDiscoveryPage.tsx` | Focused page headers, loading and confirmations; preserve org-scoped project resolution and access gates. |
 | KMS routes | 13 | `pages/kms/OverviewPage/components/CmekEncryptModal.tsx` | Crypto operation overlays/settings; preserve operation-specific validation, masking and permission checks. |

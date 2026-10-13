@@ -1,3 +1,5 @@
+import { S3ServiceException } from "@aws-sdk/client-s3";
+
 import type * as RealS3 from "../../src/lib/aws/s3";
 
 // Stands in for the S3 bucket helper so the specs can drive uploads and downloads through presigned
@@ -6,13 +8,15 @@ import type * as RealS3 from "../../src/lib/aws/s3";
 //
 // It keeps the two rules the real links sign and S3 enforces: the body is the declared size, and an
 // upload never overwrites an object already stored. The SHA-256 is not checked, because the specs
-// upload filler bytes against a fixed digest.
+// upload filler bytes against a fixed digest. Listing follows S3: names in binary order, after
+// StartAfter, at most MaxKeys, with IsTruncated when more remain.
 
 type TAccessFailure = "unreachable" | "unwritable";
 
 type TFakeState = {
   objects: Map<string, Buffer>;
   accessFailure: TAccessFailure | null;
+  isListFailing: boolean;
   presignedPuts: Map<string, { bucket: string; key: string; contentLength: number }>;
   presignedGets: Map<string, { bucket: string; key: string }>;
   nextUrlId: number;
@@ -21,6 +25,7 @@ type TFakeState = {
 const freshState = (): TFakeState => ({
   objects: new Map(),
   accessFailure: null,
+  isListFailing: false,
   presignedPuts: new Map(),
   presignedGets: new Map(),
   nextUrlId: 0
@@ -43,6 +48,16 @@ export const fakeS3Bucket = {
   // Pass null to go back to accepting.
   failsAccessCheckWith: (failure: TAccessFailure | null) => {
     state.accessFailure = failure;
+  },
+
+  // Make listPage fail the way S3 does when the role can't list the bucket.
+  failsListWith: (isFailing: boolean) => {
+    state.isListFailing = isFailing;
+  },
+
+  // Store an object no link was minted for, as someone with access to the bucket could.
+  putDirect: (bucket: string, key: string, body: Buffer) => {
+    state.objects.set(objectId(bucket, key), body);
   },
 
   put: (url: string, body: Buffer) => {
@@ -91,6 +106,27 @@ export const createS3Bucket = ({ bucket }: Parameters<typeof RealS3.createS3Buck
       return Promise.resolve(url);
     },
 
+    listPage: ({ prefix, startAfter, maxKeys }: { prefix: string; startAfter?: string; maxKeys: number }) => {
+      if (state.isListFailing) {
+        return Promise.reject(
+          new S3ServiceException({ name: "AccessDenied", $fault: "client", $metadata: {}, message: "Access Denied" })
+        );
+      }
+      const matching = [...state.objects.entries()]
+        .filter(([id]) => id.startsWith(`${bucket}/`))
+        .map(([id, body]) => ({ key: id.slice(bucket.length + 1), size: body.length }))
+        .filter(({ key }) => key.startsWith(prefix) && (startAfter === undefined || key > startAfter))
+        .sort((a, b) => Buffer.compare(Buffer.from(a.key), Buffer.from(b.key)));
+      return Promise.resolve({ objects: matching.slice(0, maxKeys), isTruncated: matching.length > maxKeys });
+    },
+
+    checkReachable: (): Promise<{ ok: true } | { ok: false; error: unknown }> =>
+      Promise.resolve(
+        state.accessFailure === "unreachable"
+          ? { ok: false, error: new Error("fake bucket is unreachable") }
+          : { ok: true }
+      ),
+
     checkAccess: (): Promise<RealS3.TS3AccessCheck> =>
       Promise.resolve(
         state.accessFailure
@@ -105,5 +141,7 @@ export const assertFakeMatchesRealS3: Pick<typeof RealS3, "createS3Bucket"> = { 
 export const assertFakeBucketShapeMatches: { [K in keyof RealS3.TS3Bucket]: unknown } = {
   presignCreateOnlyPut: null,
   presignGet: null,
+  listPage: null,
+  checkReachable: null,
   checkAccess: null
 };

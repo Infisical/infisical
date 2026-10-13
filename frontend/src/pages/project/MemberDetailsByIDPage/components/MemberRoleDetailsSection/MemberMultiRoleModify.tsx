@@ -86,7 +86,10 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onClo
       <div className="p-4">
         <Alert variant="danger">
           <CircleAlertIcon />
-          <AlertTitle>Could not load project roles</AlertTitle>
+          <AlertTitle>
+            Could not load{" "}
+            {currentProject?.type === ProjectType.CertificateManager ? "roles" : "project roles"}
+          </AlertTitle>
           <AlertDescription>
             <span>Retry to edit this user&apos;s roles.</span>
             <Button

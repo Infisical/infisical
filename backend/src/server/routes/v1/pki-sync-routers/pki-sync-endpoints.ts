@@ -81,7 +81,7 @@ export const registerSyncPkiEndpoints = ({
       hide: false,
       ...(enableOperationId ? { operationId: `list${destinationNameForOpId}PkiSyncs` } : {}),
       tags: [ApiDocsTags.PkiSyncs],
-      description: `List the ${destinationName} PKI Syncs for the specified project.`,
+      description: `List the ${destinationName} PKI Syncs.`,
       querystring: z.object({
         projectId: z.string().trim().optional().describe(openApiHidden())
       }),
@@ -165,7 +165,7 @@ export const registerSyncPkiEndpoints = ({
       hide: false,
       ...(enableOperationId ? { operationId: `create${destinationNameForOpId}PkiSync` } : {}),
       tags: [ApiDocsTags.PkiSyncs],
-      description: `Create a ${destinationName} PKI Sync for the specified project.`,
+      description: `Create a ${destinationName} PKI Sync.`,
       body: createSchema,
       response: {
         200: responseSchema

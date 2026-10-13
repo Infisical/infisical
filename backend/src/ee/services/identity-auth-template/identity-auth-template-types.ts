@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
+import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TProjectPermission } from "@app/lib/types";
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 
@@ -61,6 +62,7 @@ export type TOidcTemplateFields = {
 
 export type TDeleteIdentityAuthTemplateDTO = {
   templateId: string;
+  auditLogInfo?: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetIdentityAuthTemplateDTO = {
@@ -84,4 +86,5 @@ export type TFindTemplateUsagesDTO = {
 export type TUnlinkTemplateUsageDTO = {
   templateId: string;
   identityIds: string[];
+  auditLogInfo?: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;

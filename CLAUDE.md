@@ -113,7 +113,7 @@ PAM and Agent Vault are products over one implicit project per organization, not
 
 ### Single-Project Products
 
-Secret Scanning has one active project per organization (the newest) but keeps `$projectId` in its URLs, like Certificate Manager. New orgs and sub-orgs get it at creation (`bootstrapSecretScanningProject`), older orgs lazily from `GET /api/v2/secret-scanning/project`, and `projectId` is optional on its API (`inject-secret-scanning-project-id`). Do not add a project picker or a way to create more Secret Scanning projects.
+Secret Scanning has one active project per organization (the newest) but, unlike Certificate Manager, keeps `$projectId` in its URLs. It is created lazily by `GET /api/v2/secret-scanning/project`, and `projectId` is optional on its API (`inject-secret-scanning-project-id`). Do not add a project picker or a way to create more Secret Scanning projects.
 
 ### Service Factory + Manual DI (Backend)
 
