@@ -63,6 +63,7 @@ export const useConnectionCreation = (
           onComplete={(connection) => {
             if (attempt !== attemptRef.current) return;
             setIsDirty(false);
+            setIsDiscardDialogOpen(false);
             onCreated(connection);
             complete();
           }}
