@@ -532,6 +532,51 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const selectSecretTags = (subQuery: Knex.QueryBuilder) =>
+    subQuery
+      .select(db.raw("1"))
+      .from(TableName.SecretV2JnTag)
+      .join(TableName.SecretTag, `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`, `${TableName.SecretTag}.id`)
+      .whereRaw(`??.?? = ??.??`, [TableName.SecretV2JnTag, `${TableName.SecretV2}Id`, TableName.SecretV2, "id"]);
+
+  const whereSecretHasTagSlugs = (bd: Knex.QueryBuilder, slugs: string[]) =>
+    bd.whereExists((subQuery) => {
+      void selectSecretTags(subQuery).whereIn(`${TableName.SecretTag}.slug`, slugs);
+    });
+
+  const whereSecretMatchesSearch = (
+    bd: Knex.QueryBuilder,
+    {
+      search,
+      includeTagsInSearch,
+      includeMetadataInSearch
+    }: { search?: string; includeTagsInSearch?: boolean; includeMetadataInSearch?: boolean }
+  ) => {
+    if (!search) return;
+    const searchPattern = `%${sanitizeSqlLikeString(search)}%`;
+    void bd.where((searchBd) => {
+      void searchBd.whereILike(`${TableName.SecretV2}.key`, searchPattern);
+      if (includeTagsInSearch) {
+        void searchBd.orWhereExists((subQuery) => {
+          void selectSecretTags(subQuery).whereILike(`${TableName.SecretTag}.slug`, searchPattern);
+        });
+      }
+      if (includeMetadataInSearch) {
+        void searchBd.orWhereExists((subQuery) => {
+          void subQuery
+            .select(db.raw("1"))
+            .from(TableName.ResourceMetadata)
+            .whereRaw(`??.?? = ??.??`, [TableName.ResourceMetadata, "secretId", TableName.SecretV2, "id"])
+            .where((metadataBd) => {
+              void metadataBd
+                .whereILike(`${TableName.ResourceMetadata}.key`, searchPattern)
+                .orWhereILike(`${TableName.ResourceMetadata}.value`, searchPattern);
+            });
+        });
+      }
+    });
+  };
+
   // get unique secret count by folder IDs
   const countByFolderIds = async (
     folderIds: string[],
@@ -565,18 +610,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         )
         .whereIn("folderId", folderIds)
         .where((bd) => {
-          if (filters?.search) {
-            const searchPattern = `%${sanitizeSqlLikeString(filters.search)}%`;
-            void bd.whereILike(`${TableName.SecretV2}.key`, searchPattern);
-            if (filters?.includeTagsInSearch) {
-              void bd.orWhereILike(`${TableName.SecretTag}.slug`, searchPattern);
-            }
-            if (filters?.includeMetadataInSearch) {
-              void bd
-                .orWhereILike(`${TableName.ResourceMetadata}.key`, searchPattern)
-                .orWhereILike(`${TableName.ResourceMetadata}.value`, searchPattern);
-            }
-          }
+          whereSecretMatchesSearch(bd, filters ?? {});
         })
         .where((bd) => {
           void bd.whereNull(`${TableName.SecretV2}.userId`);
@@ -586,32 +620,11 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         })
         .countDistinct(`${TableName.SecretV2}.key`);
 
-      // only need to join tags if filtering by tag slugs
       const slugs = filters?.tagSlugs?.filter(Boolean);
-      if ((slugs && slugs.length > 0) || filters?.includeTagsInSearch) {
-        void query
-          .leftJoin(
-            TableName.SecretV2JnTag,
-            `${TableName.SecretV2}.id`,
-            `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
-          )
-          .leftJoin(
-            TableName.SecretTag,
-            `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
-            `${TableName.SecretTag}.id`
-          );
-
-        if (slugs?.length) {
-          void query.whereIn("slug", slugs);
-        }
-      }
-
-      if (filters?.includeMetadataInSearch) {
-        void query.leftJoin(
-          TableName.ResourceMetadata,
-          `${TableName.SecretV2}.id`,
-          `${TableName.ResourceMetadata}.secretId`
-        );
+      if (slugs?.length) {
+        void query.where((bd) => {
+          void whereSecretHasTagSlugs(bd, slugs);
+        });
       }
 
       if (filters?.excludeRotatedSecrets) {
@@ -718,18 +731,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
       const query = (tx || db.replicaNode())(TableName.SecretV2)
         .whereIn(`${TableName.SecretV2}.folderId`, folderIds)
         .where((bd) => {
-          if (filters?.search) {
-            const searchPattern = `%${sanitizeSqlLikeString(filters.search)}%`;
-            void bd.whereILike(`${TableName.SecretV2}.key`, searchPattern);
-            if (filters?.includeTagsInSearch) {
-              void bd.orWhereILike(`${TableName.SecretTag}.slug`, searchPattern);
-            }
-            if (filters?.includeMetadataInSearch) {
-              void bd
-                .orWhereILike(`${TableName.ResourceMetadata}.key`, searchPattern)
-                .orWhereILike(`${TableName.ResourceMetadata}.value`, searchPattern);
-            }
-          }
+          whereSecretMatchesSearch(bd, filters ?? {});
 
           if (filters?.keys) {
             void bd.whereIn(`${TableName.SecretV2}.key`, filters.keys);
@@ -798,23 +800,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .where((bd) => {
           const slugs = filters?.tagSlugs?.filter(Boolean);
           if (slugs && slugs.length > 0) {
-            void bd.whereExists((subQuery) => {
-              void subQuery
-                .select(db.raw("1"))
-                .from(TableName.SecretV2JnTag)
-                .join(
-                  TableName.SecretTag,
-                  `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
-                  `${TableName.SecretTag}.id`
-                )
-                .whereRaw(`??.?? = ??.??`, [
-                  TableName.SecretV2JnTag,
-                  `${TableName.SecretV2}Id`,
-                  TableName.SecretV2,
-                  "id"
-                ])
-                .whereIn(`${TableName.SecretTag}.slug`, slugs);
-            });
+            void whereSecretHasTagSlugs(bd, slugs);
           }
         })
         .where((bd) => {

@@ -51,6 +51,29 @@ func TestSecret_ListTagPermissions(t *testing.T) {
 		require.ElementsMatch(t, []string{"PLAIN_KEY"}, keys)
 	})
 
+	t.Run("should leave out a secret carrying a denied tag when a dashboard search matches only its other tag", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
+		plain, restricted := newTag(t, proj, "plain"), newTag(t, proj, "restricted")
+		newTaggedSecret(t, proj, "PLAIN_KEY", plain)
+		newTaggedSecret(t, proj, "RESTRICTED_KEY", plain, restricted)
+		deny := readSecretsTagged("restricted")
+		deny.Inverted = true
+		newRole(t, proj, "restricted-tag-reader",
+			rolePermission{Subject: "secrets", Action: []string{"read"}},
+			rolePermission{Subject: "secret-imports", Action: []string{"read"}},
+			deny)
+		reader := proj.NewUser(t, fixture.WithRoles("restricted-tag-reader"))
+
+		// Action
+		keys, _ := listDashboardKeys(t, reader, proj, new("plain"), nil)
+
+		// Assert
+		require.ElementsMatch(t, []string{"PLAIN_KEY"}, keys)
+	})
+
 	t.Run("should leave out a secret when one role allows its tag and another role denies it", func(t *testing.T) {
 		t.Parallel()
 

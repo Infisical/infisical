@@ -78,3 +78,26 @@ func listKeys(t *testing.T, pr *harness.Principal, proj *fixture.Project, tagSlu
 	}
 	return keys
 }
+
+func listDashboardKeys(t *testing.T, pr *harness.Principal, proj *fixture.Project, search, tags *string) ([]string, float32) {
+	t.Helper()
+	res, err := pr.API.ListProjectSecretsDetailsWithResponse(t.Context(), &api.ListProjectSecretsDetailsParams{
+		ProjectId:   proj.ID,
+		Environment: "dev",
+		Search:      search,
+		Tags:        tags,
+	})
+	require.NoError(t, err)
+	require.NotNilf(t, res.JSON200, "dashboard listing returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	keys := []string{}
+	if res.JSON200.Secrets != nil {
+		for _, s := range *res.JSON200.Secrets {
+			keys = append(keys, s.SecretKey)
+		}
+	}
+	var total float32
+	if res.JSON200.TotalSecretCount != nil {
+		total = *res.JSON200.TotalSecretCount
+	}
+	return keys, total
+}

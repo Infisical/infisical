@@ -1509,6 +1509,1932 @@ func (e LoginWithUniversalAuth500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for ListProjectSecretsDetailsParamsOrderBy.
+const (
+	Name ListProjectSecretsDetailsParamsOrderBy = "name"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetailsParamsOrderBy enum.
+func (e ListProjectSecretsDetailsParamsOrderBy) Valid() bool {
+	switch e {
+	case Name:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetailsParamsOrderDirection.
+const (
+	ListProjectSecretsDetailsParamsOrderDirectionAsc  ListProjectSecretsDetailsParamsOrderDirection = "asc"
+	ListProjectSecretsDetailsParamsOrderDirectionDesc ListProjectSecretsDetailsParamsOrderDirection = "desc"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetailsParamsOrderDirection enum.
+func (e ListProjectSecretsDetailsParamsOrderDirection) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetailsParamsOrderDirectionAsc:
+		return true
+	case ListProjectSecretsDetailsParamsOrderDirectionDesc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations0ConnectionApp.
+const (
+	Postgres ListProjectSecretsDetails200JSONResponseBodySecretRotations0ConnectionApp = "postgres"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations0ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations0ConnectionApp) Valid() bool {
+	switch e {
+	case Postgres:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations0Type.
+const (
+	PostgresCredentials ListProjectSecretsDetails200JSONResponseBodySecretRotations0Type = "postgres-credentials"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations0Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations0Type) Valid() bool {
+	switch e {
+	case PostgresCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations1ConnectionApp.
+const (
+	Mssql ListProjectSecretsDetails200JSONResponseBodySecretRotations1ConnectionApp = "mssql"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations1ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations1ConnectionApp) Valid() bool {
+	switch e {
+	case Mssql:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations1Type.
+const (
+	MssqlCredentials ListProjectSecretsDetails200JSONResponseBodySecretRotations1Type = "mssql-credentials"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations1Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations1Type) Valid() bool {
+	switch e {
+	case MssqlCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations2ConnectionApp.
+const (
+	Mysql ListProjectSecretsDetails200JSONResponseBodySecretRotations2ConnectionApp = "mysql"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations2ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations2ConnectionApp) Valid() bool {
+	switch e {
+	case Mysql:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations2Type.
+const (
+	MysqlCredentials ListProjectSecretsDetails200JSONResponseBodySecretRotations2Type = "mysql-credentials"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations2Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations2Type) Valid() bool {
+	switch e {
+	case MysqlCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations3ConnectionApp.
+const (
+	Oracledb ListProjectSecretsDetails200JSONResponseBodySecretRotations3ConnectionApp = "oracledb"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations3ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations3ConnectionApp) Valid() bool {
+	switch e {
+	case Oracledb:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations3Type.
+const (
+	OracledbCredentials ListProjectSecretsDetails200JSONResponseBodySecretRotations3Type = "oracledb-credentials"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations3Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations3Type) Valid() bool {
+	switch e {
+	case OracledbCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations4ConnectionApp.
+const (
+	Auth0 ListProjectSecretsDetails200JSONResponseBodySecretRotations4ConnectionApp = "auth0"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations4ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations4ConnectionApp) Valid() bool {
+	switch e {
+	case Auth0:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations4Type.
+const (
+	Auth0ClientSecret ListProjectSecretsDetails200JSONResponseBodySecretRotations4Type = "auth0-client-secret"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations4Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations4Type) Valid() bool {
+	switch e {
+	case Auth0ClientSecret:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations5ConnectionApp.
+const (
+	AzureClientSecrets ListProjectSecretsDetails200JSONResponseBodySecretRotations5ConnectionApp = "azure-client-secrets"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations5ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations5ConnectionApp) Valid() bool {
+	switch e {
+	case AzureClientSecrets:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations5Type.
+const (
+	AzureClientSecret ListProjectSecretsDetails200JSONResponseBodySecretRotations5Type = "azure-client-secret"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations5Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations5Type) Valid() bool {
+	switch e {
+	case AzureClientSecret:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations6ConnectionApp.
+const (
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations6ConnectionAppLdap ListProjectSecretsDetails200JSONResponseBodySecretRotations6ConnectionApp = "ldap"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations6ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations6ConnectionApp) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations6ConnectionAppLdap:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations6ParametersRotationMethod.
+const (
+	ConnectionPrincipal ListProjectSecretsDetails200JSONResponseBodySecretRotations6ParametersRotationMethod = "connection-principal"
+	TargetPrincipal     ListProjectSecretsDetails200JSONResponseBodySecretRotations6ParametersRotationMethod = "target-principal"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations6ParametersRotationMethod enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations6ParametersRotationMethod) Valid() bool {
+	switch e {
+	case ConnectionPrincipal:
+		return true
+	case TargetPrincipal:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations6Type.
+const (
+	LdapPassword ListProjectSecretsDetails200JSONResponseBodySecretRotations6Type = "ldap-password"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations6Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations6Type) Valid() bool {
+	switch e {
+	case LdapPassword:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations7ConnectionApp.
+const (
+	Aws ListProjectSecretsDetails200JSONResponseBodySecretRotations7ConnectionApp = "aws"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations7ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations7ConnectionApp) Valid() bool {
+	switch e {
+	case Aws:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion.
+const (
+	AfSouth1     ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "af-south-1"
+	ApEast1      ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "ap-east-1"
+	ApNortheast1 ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "ap-northeast-1"
+	ApNortheast2 ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "ap-northeast-2"
+	ApNortheast3 ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "ap-northeast-3"
+	ApSouth1     ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "ap-south-1"
+	ApSouth2     ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "ap-south-2"
+	ApSoutheast1 ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "ap-southeast-1"
+	ApSoutheast2 ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "ap-southeast-2"
+	ApSoutheast3 ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "ap-southeast-3"
+	ApSoutheast4 ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "ap-southeast-4"
+	CaCentral1   ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "ca-central-1"
+	EuCentral1   ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "eu-central-1"
+	EuCentral2   ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "eu-central-2"
+	EuNorth1     ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "eu-north-1"
+	EuSouth1     ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "eu-south-1"
+	EuSouth2     ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "eu-south-2"
+	EuWest1      ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "eu-west-1"
+	EuWest2      ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "eu-west-2"
+	EuWest3      ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "eu-west-3"
+	MeCentral1   ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "me-central-1"
+	MeSouth1     ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "me-south-1"
+	SaEast1      ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "sa-east-1"
+	UsEast1      ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "us-east-1"
+	UsEast2      ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "us-east-2"
+	UsGovEast1   ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "us-gov-east-1"
+	UsGovWest1   ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "us-gov-west-1"
+	UsWest1      ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "us-west-1"
+	UsWest2      ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion = "us-west-2"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion) Valid() bool {
+	switch e {
+	case AfSouth1:
+		return true
+	case ApEast1:
+		return true
+	case ApNortheast1:
+		return true
+	case ApNortheast2:
+		return true
+	case ApNortheast3:
+		return true
+	case ApSouth1:
+		return true
+	case ApSouth2:
+		return true
+	case ApSoutheast1:
+		return true
+	case ApSoutheast2:
+		return true
+	case ApSoutheast3:
+		return true
+	case ApSoutheast4:
+		return true
+	case CaCentral1:
+		return true
+	case EuCentral1:
+		return true
+	case EuCentral2:
+		return true
+	case EuNorth1:
+		return true
+	case EuSouth1:
+		return true
+	case EuSouth2:
+		return true
+	case EuWest1:
+		return true
+	case EuWest2:
+		return true
+	case EuWest3:
+		return true
+	case MeCentral1:
+		return true
+	case MeSouth1:
+		return true
+	case SaEast1:
+		return true
+	case UsEast1:
+		return true
+	case UsEast2:
+		return true
+	case UsGovEast1:
+		return true
+	case UsGovWest1:
+		return true
+	case UsWest1:
+		return true
+	case UsWest2:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations7Type.
+const (
+	AwsIamUserSecret ListProjectSecretsDetails200JSONResponseBodySecretRotations7Type = "aws-iam-user-secret"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations7Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations7Type) Valid() bool {
+	switch e {
+	case AwsIamUserSecret:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations8ConnectionApp.
+const (
+	Okta ListProjectSecretsDetails200JSONResponseBodySecretRotations8ConnectionApp = "okta"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations8ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations8ConnectionApp) Valid() bool {
+	switch e {
+	case Okta:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations8Type.
+const (
+	OktaClientSecret ListProjectSecretsDetails200JSONResponseBodySecretRotations8Type = "okta-client-secret"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations8Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations8Type) Valid() bool {
+	switch e {
+	case OktaClientSecret:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations9ConnectionApp.
+const (
+	Redis ListProjectSecretsDetails200JSONResponseBodySecretRotations9ConnectionApp = "redis"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations9ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations9ConnectionApp) Valid() bool {
+	switch e {
+	case Redis:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations9Type.
+const (
+	RedisCredentials ListProjectSecretsDetails200JSONResponseBodySecretRotations9Type = "redis-credentials"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations9Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations9Type) Valid() bool {
+	switch e {
+	case RedisCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations10ConnectionApp.
+const (
+	Mongodb ListProjectSecretsDetails200JSONResponseBodySecretRotations10ConnectionApp = "mongodb"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations10ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations10ConnectionApp) Valid() bool {
+	switch e {
+	case Mongodb:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations10Type.
+const (
+	MongodbCredentials ListProjectSecretsDetails200JSONResponseBodySecretRotations10Type = "mongodb-credentials"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations10Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations10Type) Valid() bool {
+	switch e {
+	case MongodbCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations11ConnectionApp.
+const (
+	Databricks ListProjectSecretsDetails200JSONResponseBodySecretRotations11ConnectionApp = "databricks"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations11ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations11ConnectionApp) Valid() bool {
+	switch e {
+	case Databricks:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations11Type.
+const (
+	DatabricksServicePrincipalSecret ListProjectSecretsDetails200JSONResponseBodySecretRotations11Type = "databricks-service-principal-secret"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations11Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations11Type) Valid() bool {
+	switch e {
+	case DatabricksServicePrincipalSecret:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations12ConnectionApp.
+const (
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations12ConnectionAppSsh ListProjectSecretsDetails200JSONResponseBodySecretRotations12ConnectionApp = "ssh"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations12ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations12ConnectionApp) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations12ConnectionAppSsh:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations12ParametersRotationMethod.
+const (
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations12ParametersRotationMethodLoginAsRoot   ListProjectSecretsDetails200JSONResponseBodySecretRotations12ParametersRotationMethod = "login-as-root"
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations12ParametersRotationMethodLoginAsTarget ListProjectSecretsDetails200JSONResponseBodySecretRotations12ParametersRotationMethod = "login-as-target"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations12ParametersRotationMethod enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations12ParametersRotationMethod) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations12ParametersRotationMethodLoginAsRoot:
+		return true
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations12ParametersRotationMethodLoginAsTarget:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations12Type.
+const (
+	UnixLinuxLocalAccount ListProjectSecretsDetails200JSONResponseBodySecretRotations12Type = "unix-linux-local-account"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations12Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations12Type) Valid() bool {
+	switch e {
+	case UnixLinuxLocalAccount:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations13ConnectionApp.
+const (
+	Dbt ListProjectSecretsDetails200JSONResponseBodySecretRotations13ConnectionApp = "dbt"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations13ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations13ConnectionApp) Valid() bool {
+	switch e {
+	case Dbt:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet.
+const (
+	AccountAdmin          ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "account_admin"
+	AccountViewer         ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "account_viewer"
+	Admin                 ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "admin"
+	Analyst               ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "analyst"
+	BillingAdmin          ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "billing_admin"
+	CostInsightsAdmin     ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "cost_insights_admin"
+	CostInsightsViewer    ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "cost_insights_viewer"
+	CostManagementAdmin   ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "cost_management_admin"
+	CostManagementViewer  ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "cost_management_viewer"
+	DatabaseAdmin         ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "database_admin"
+	Developer             ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "developer"
+	FusionAdmin           ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "fusion_admin"
+	GitAdmin              ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "git_admin"
+	JobAdmin              ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "job_admin"
+	JobRunner             ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "job_runner"
+	JobViewer             ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "job_viewer"
+	ManageMarketplaceApps ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "manage_marketplace_apps"
+	Member                ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "member"
+	MetadataOnly          ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "metadata_only"
+	Owner                 ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "owner"
+	ProjectCreator        ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "project_creator"
+	Readonly              ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "readonly"
+	ScimOnly              ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "scim_only"
+	SecurityAdmin         ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "security_admin"
+	SemanticLayerOnly     ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "semantic_layer_only"
+	Stakeholder           ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "stakeholder"
+	TeamAdmin             ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "team_admin"
+	WebhooksOnly          ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet = "webhooks_only"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet) Valid() bool {
+	switch e {
+	case AccountAdmin:
+		return true
+	case AccountViewer:
+		return true
+	case Admin:
+		return true
+	case Analyst:
+		return true
+	case BillingAdmin:
+		return true
+	case CostInsightsAdmin:
+		return true
+	case CostInsightsViewer:
+		return true
+	case CostManagementAdmin:
+		return true
+	case CostManagementViewer:
+		return true
+	case DatabaseAdmin:
+		return true
+	case Developer:
+		return true
+	case FusionAdmin:
+		return true
+	case GitAdmin:
+		return true
+	case JobAdmin:
+		return true
+	case JobRunner:
+		return true
+	case JobViewer:
+		return true
+	case ManageMarketplaceApps:
+		return true
+	case Member:
+		return true
+	case MetadataOnly:
+		return true
+	case Owner:
+		return true
+	case ProjectCreator:
+		return true
+	case Readonly:
+		return true
+	case ScimOnly:
+		return true
+	case SecurityAdmin:
+		return true
+	case SemanticLayerOnly:
+		return true
+	case Stakeholder:
+		return true
+	case TeamAdmin:
+		return true
+	case WebhooksOnly:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations13Type.
+const (
+	DbtServiceToken ListProjectSecretsDetails200JSONResponseBodySecretRotations13Type = "dbt-service-token"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations13Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations13Type) Valid() bool {
+	switch e {
+	case DbtServiceToken:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations14ConnectionApp.
+const (
+	Smb ListProjectSecretsDetails200JSONResponseBodySecretRotations14ConnectionApp = "smb"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations14ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations14ConnectionApp) Valid() bool {
+	switch e {
+	case Smb:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations14ParametersRotationMethod.
+const (
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations14ParametersRotationMethodLoginAsRoot   ListProjectSecretsDetails200JSONResponseBodySecretRotations14ParametersRotationMethod = "login-as-root"
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations14ParametersRotationMethodLoginAsTarget ListProjectSecretsDetails200JSONResponseBodySecretRotations14ParametersRotationMethod = "login-as-target"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations14ParametersRotationMethod enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations14ParametersRotationMethod) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations14ParametersRotationMethodLoginAsRoot:
+		return true
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations14ParametersRotationMethodLoginAsTarget:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations14Type.
+const (
+	WindowsLocalAccount ListProjectSecretsDetails200JSONResponseBodySecretRotations14Type = "windows-local-account"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations14Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations14Type) Valid() bool {
+	switch e {
+	case WindowsLocalAccount:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations15ConnectionApp.
+const (
+	OpenRouter ListProjectSecretsDetails200JSONResponseBodySecretRotations15ConnectionApp = "open-router"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations15ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations15ConnectionApp) Valid() bool {
+	switch e {
+	case OpenRouter:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations15ParametersLimitReset.
+const (
+	Daily   ListProjectSecretsDetails200JSONResponseBodySecretRotations15ParametersLimitReset = "daily"
+	Monthly ListProjectSecretsDetails200JSONResponseBodySecretRotations15ParametersLimitReset = "monthly"
+	Weekly  ListProjectSecretsDetails200JSONResponseBodySecretRotations15ParametersLimitReset = "weekly"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations15ParametersLimitReset enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations15ParametersLimitReset) Valid() bool {
+	switch e {
+	case Daily:
+		return true
+	case Monthly:
+		return true
+	case Weekly:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations15Type.
+const (
+	OpenRouterApiKey ListProjectSecretsDetails200JSONResponseBodySecretRotations15Type = "open-router-api-key"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations15Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations15Type) Valid() bool {
+	switch e {
+	case OpenRouterApiKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations16ConnectionApp.
+const (
+	Litellm ListProjectSecretsDetails200JSONResponseBodySecretRotations16ConnectionApp = "litellm"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations16ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations16ConnectionApp) Valid() bool {
+	switch e {
+	case Litellm:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations16Type.
+const (
+	LitellmApiKey ListProjectSecretsDetails200JSONResponseBodySecretRotations16Type = "litellm-api-key"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations16Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations16Type) Valid() bool {
+	switch e {
+	case LitellmApiKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations17ConnectionApp.
+const (
+	Openai ListProjectSecretsDetails200JSONResponseBodySecretRotations17ConnectionApp = "openai"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations17ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations17ConnectionApp) Valid() bool {
+	switch e {
+	case Openai:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations17Type.
+const (
+	OpenaiServiceAccount ListProjectSecretsDetails200JSONResponseBodySecretRotations17Type = "openai-service-account"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations17Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations17Type) Valid() bool {
+	switch e {
+	case OpenaiServiceAccount:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionApp.
+const (
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionAppHpeIlo ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionApp = "hpe-ilo"
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionAppSsh    ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionApp = "ssh"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionApp) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionAppHpeIlo:
+		return true
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionAppSsh:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations18ParametersRotationMethod.
+const (
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations18ParametersRotationMethodLoginAsRoot   ListProjectSecretsDetails200JSONResponseBodySecretRotations18ParametersRotationMethod = "login-as-root"
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations18ParametersRotationMethodLoginAsTarget ListProjectSecretsDetails200JSONResponseBodySecretRotations18ParametersRotationMethod = "login-as-target"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations18ParametersRotationMethod enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations18ParametersRotationMethod) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations18ParametersRotationMethodLoginAsRoot:
+		return true
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations18ParametersRotationMethodLoginAsTarget:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations18Type.
+const (
+	HpIloLocalAccount ListProjectSecretsDetails200JSONResponseBodySecretRotations18Type = "hp-ilo-local-account"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations18Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations18Type) Valid() bool {
+	switch e {
+	case HpIloLocalAccount:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations19ConnectionApp.
+const (
+	Supabase ListProjectSecretsDetails200JSONResponseBodySecretRotations19ConnectionApp = "supabase"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations19ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations19ConnectionApp) Valid() bool {
+	switch e {
+	case Supabase:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations19ParametersKeyType.
+const (
+	Publishable ListProjectSecretsDetails200JSONResponseBodySecretRotations19ParametersKeyType = "publishable"
+	Secret      ListProjectSecretsDetails200JSONResponseBodySecretRotations19ParametersKeyType = "secret"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations19ParametersKeyType enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations19ParametersKeyType) Valid() bool {
+	switch e {
+	case Publishable:
+		return true
+	case Secret:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations19Type.
+const (
+	SupabaseApiKey ListProjectSecretsDetails200JSONResponseBodySecretRotations19Type = "supabase-api-key"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations19Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations19Type) Valid() bool {
+	switch e {
+	case SupabaseApiKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations20ConnectionApp.
+const (
+	Salesforce ListProjectSecretsDetails200JSONResponseBodySecretRotations20ConnectionApp = "salesforce"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations20ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations20ConnectionApp) Valid() bool {
+	switch e {
+	case Salesforce:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations20Type.
+const (
+	SalesforceOauthCredentials ListProjectSecretsDetails200JSONResponseBodySecretRotations20Type = "salesforce-oauth-credentials"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations20Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations20Type) Valid() bool {
+	switch e {
+	case SalesforceOauthCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations21ConnectionApp.
+const (
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations21ConnectionAppDatadog ListProjectSecretsDetails200JSONResponseBodySecretRotations21ConnectionApp = "datadog"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations21ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations21ConnectionApp) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations21ConnectionAppDatadog:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations21Type.
+const (
+	DatadogApplicationKeySecret ListProjectSecretsDetails200JSONResponseBodySecretRotations21Type = "datadog-application-key-secret"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations21Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations21Type) Valid() bool {
+	switch e {
+	case DatadogApplicationKeySecret:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations22ConnectionApp.
+const (
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations22ConnectionAppDatadog ListProjectSecretsDetails200JSONResponseBodySecretRotations22ConnectionApp = "datadog"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations22ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations22ConnectionApp) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations22ConnectionAppDatadog:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations22Type.
+const (
+	DatadogApiKey ListProjectSecretsDetails200JSONResponseBodySecretRotations22Type = "datadog-api-key"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations22Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations22Type) Valid() bool {
+	switch e {
+	case DatadogApiKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations23ConnectionApp.
+const (
+	Convex ListProjectSecretsDetails200JSONResponseBodySecretRotations23ConnectionApp = "convex"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations23ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations23ConnectionApp) Valid() bool {
+	switch e {
+	case Convex:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations23Type.
+const (
+	ConvexAccessKey ListProjectSecretsDetails200JSONResponseBodySecretRotations23Type = "convex-access-key"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations23Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations23Type) Valid() bool {
+	switch e {
+	case ConvexAccessKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations24ConnectionApp.
+const (
+	Fireworks ListProjectSecretsDetails200JSONResponseBodySecretRotations24ConnectionApp = "fireworks"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations24ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations24ConnectionApp) Valid() bool {
+	switch e {
+	case Fireworks:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations24Type.
+const (
+	FireworksApiKey ListProjectSecretsDetails200JSONResponseBodySecretRotations24Type = "fireworks-api-key"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations24Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations24Type) Valid() bool {
+	switch e {
+	case FireworksApiKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations25ConnectionApp.
+const (
+	Snowflake ListProjectSecretsDetails200JSONResponseBodySecretRotations25ConnectionApp = "snowflake"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations25ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations25ConnectionApp) Valid() bool {
+	switch e {
+	case Snowflake:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0.
+const (
+	N2048 ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0 = 2048
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0 enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0) Valid() bool {
+	switch e {
+	case N2048:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1.
+const (
+	N4096 ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1 = 4096
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1 enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1) Valid() bool {
+	switch e {
+	case N4096:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations25Type.
+const (
+	SnowflakeUserKeyPair ListProjectSecretsDetails200JSONResponseBodySecretRotations25Type = "snowflake-user-key-pair"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations25Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations25Type) Valid() bool {
+	switch e {
+	case SnowflakeUserKeyPair:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations26ConnectionApp.
+const (
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations26ConnectionAppCloudflare ListProjectSecretsDetails200JSONResponseBodySecretRotations26ConnectionApp = "cloudflare"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations26ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations26ConnectionApp) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations26ConnectionAppCloudflare:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations26ParametersPoliciesEffect.
+const (
+	Allow ListProjectSecretsDetails200JSONResponseBodySecretRotations26ParametersPoliciesEffect = "allow"
+	Deny  ListProjectSecretsDetails200JSONResponseBodySecretRotations26ParametersPoliciesEffect = "deny"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations26ParametersPoliciesEffect enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations26ParametersPoliciesEffect) Valid() bool {
+	switch e {
+	case Allow:
+		return true
+	case Deny:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations26ParametersPoliciesScope.
+const (
+	Account  ListProjectSecretsDetails200JSONResponseBodySecretRotations26ParametersPoliciesScope = "account"
+	AllZones ListProjectSecretsDetails200JSONResponseBodySecretRotations26ParametersPoliciesScope = "all-zones"
+	Zones    ListProjectSecretsDetails200JSONResponseBodySecretRotations26ParametersPoliciesScope = "zones"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations26ParametersPoliciesScope enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations26ParametersPoliciesScope) Valid() bool {
+	switch e {
+	case Account:
+		return true
+	case AllZones:
+		return true
+	case Zones:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations26Type.
+const (
+	CloudflareApiToken ListProjectSecretsDetails200JSONResponseBodySecretRotations26Type = "cloudflare-api-token"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations26Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations26Type) Valid() bool {
+	switch e {
+	case CloudflareApiToken:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations27ConnectionApp.
+const (
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations27ConnectionAppCloudflare ListProjectSecretsDetails200JSONResponseBodySecretRotations27ConnectionApp = "cloudflare"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations27ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations27ConnectionApp) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations27ConnectionAppCloudflare:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersAccessLevel.
+const (
+	ObjectRead      ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersAccessLevel = "object-read"
+	ObjectReadWrite ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersAccessLevel = "object-read-write"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersAccessLevel enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersAccessLevel) Valid() bool {
+	switch e {
+	case ObjectRead:
+		return true
+	case ObjectReadWrite:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersBucketsJurisdiction.
+const (
+	Default ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersBucketsJurisdiction = "default"
+	Eu      ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersBucketsJurisdiction = "eu"
+	Fedramp ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersBucketsJurisdiction = "fedramp"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersBucketsJurisdiction enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersBucketsJurisdiction) Valid() bool {
+	switch e {
+	case Default:
+		return true
+	case Eu:
+		return true
+	case Fedramp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations27Type.
+const (
+	CloudflareR2AccessKey ListProjectSecretsDetails200JSONResponseBodySecretRotations27Type = "cloudflare-r2-access-key"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations27Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations27Type) Valid() bool {
+	switch e {
+	case CloudflareR2AccessKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations28ConnectionApp.
+const (
+	Stripe ListProjectSecretsDetails200JSONResponseBodySecretRotations28ConnectionApp = "stripe"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations28ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations28ConnectionApp) Valid() bool {
+	switch e {
+	case Stripe:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions.
+const (
+	AccountLinkWrite                            ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "account_link_write"
+	AdjustmentRead                              ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "adjustment_read"
+	ApiKeyWrite                                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "api_key_write"
+	ApplePayDomainRead                          ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "apple_pay_domain_read"
+	ApplePayDomainWrite                         ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "apple_pay_domain_write"
+	ApplicationFeeRead                          ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "application_fee_read"
+	ApplicationFeeWrite                         ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "application_fee_write"
+	BalanceRead                                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "balance_read"
+	BalanceTransactionSourceRead                ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "balance_transaction_source_read"
+	BillingAnalyticsMeterUsageRead              ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "billing_analytics_meter_usage_read"
+	BillingClockRead                            ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "billing_clock_read"
+	BillingClockWrite                           ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "billing_clock_write"
+	BillingIntentRead                           ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "billing_intent_read"
+	BillingMeterEventRead                       ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "billing_meter_event_read"
+	BillingMeterEventWrite                      ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "billing_meter_event_write"
+	BillingMeterRead                            ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "billing_meter_read"
+	BillingMeterWrite                           ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "billing_meter_write"
+	BillingProfileRead                          ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "billing_profile_read"
+	BillingProfileWrite                         ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "billing_profile_write"
+	BillingSettingsRead                         ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "billing_settings_read"
+	BillingSettingsWrite                        ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "billing_settings_write"
+	CapitalForPlatformsFinancingOfferRead       ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "capital_for_platforms_financing_offer_read"
+	CapitalForPlatformsFinancingOfferWrite      ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "capital_for_platforms_financing_offer_write"
+	CapitalForPlatformsFinancingSummaryRead     ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "capital_for_platforms_financing_summary_read"
+	CapitalForPlatformsFinancingTransactionRead ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "capital_for_platforms_financing_transaction_read"
+	ChargeRead                                  ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "charge_read"
+	ChargeWrite                                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "charge_write"
+	CheckoutSessionRead                         ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "checkout_session_read"
+	CheckoutSessionWrite                        ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "checkout_session_write"
+	ConfirmationTokenClientRead                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "confirmation_token_client_read"
+	ConfirmationTokenClientWrite                ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "confirmation_token_client_write"
+	ConfirmationTokenRead                       ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "confirmation_token_read"
+	ConnectedAccountRead                        ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "connected_account_read"
+	CouponRead                                  ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "coupon_read"
+	CouponWrite                                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "coupon_write"
+	CreditNoteRead                              ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "credit_note_read"
+	CreditNoteWrite                             ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "credit_note_write"
+	CustomerPortalRead                          ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "customer_portal_read"
+	CustomerPortalWrite                         ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "customer_portal_write"
+	CustomerRead                                ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "customer_read"
+	CustomerSessionRead                         ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "customer_session_read"
+	CustomerSessionWrite                        ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "customer_session_write"
+	CustomerWrite                               ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "customer_write"
+	DisputeRead                                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "dispute_read"
+	DisputeWrite                                ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "dispute_write"
+	EditLinkWrite                               ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "edit_link_write"
+	EntitlementRead                             ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "entitlement_read"
+	EventRead                                   ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "event_read"
+	FeeDomainResourcesRead                      ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "fee_domain_resources_read"
+	FileRead                                    ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "file_read"
+	FileWrite                                   ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "file_write"
+	FinancialAccountRead                        ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "financial_account_read"
+	InboundTransferRead                         ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "inbound_transfer_read"
+	InvoiceRead                                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "invoice_read"
+	InvoiceWrite                                ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "invoice_write"
+	IssuingAuthorizationRead                    ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "issuing_authorization_read"
+	IssuingAuthorizationWrite                   ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "issuing_authorization_write"
+	IssuingCardRead                             ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "issuing_card_read"
+	IssuingCardWrite                            ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "issuing_card_write"
+	IssuingCardholderRead                       ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "issuing_cardholder_read"
+	IssuingCardholderWrite                      ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "issuing_cardholder_write"
+	IssuingCreditLedgerRead                     ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "issuing_credit_ledger_read"
+	IssuingCreditLedgerWrite                    ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "issuing_credit_ledger_write"
+	IssuingDisputeRead                          ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "issuing_dispute_read"
+	IssuingDisputeWrite                         ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "issuing_dispute_write"
+	IssuingRead                                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "issuing_read"
+	IssuingTokenNetworkDataRead                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "issuing_token_network_data_read"
+	IssuingTokenRead                            ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "issuing_token_read"
+	IssuingTokenWrite                           ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "issuing_token_write"
+	IssuingTransactionRead                      ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "issuing_transaction_read"
+	IssuingTransactionWrite                     ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "issuing_transaction_write"
+	IssuingVerificationWrite                    ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "issuing_verification_write"
+	IssuingWrite                                ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "issuing_write"
+	MandateRead                                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "mandate_read"
+	MandateWrite                                ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "mandate_write"
+	OrderRead                                   ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "order_read"
+	OrderWrite                                  ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "order_write"
+	OutboundPaymentRead                         ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "outbound_payment_read"
+	OutboundTransferRead                        ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "outbound_transfer_read"
+	PaymentIntentRead                           ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "payment_intent_read"
+	PaymentIntentWrite                          ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "payment_intent_write"
+	PaymentLinksRead                            ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "payment_links_read"
+	PaymentLinksWrite                           ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "payment_links_write"
+	PaymentMethodConfigurationsRead             ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "payment_method_configurations_read"
+	PaymentMethodConfigurationsWrite            ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "payment_method_configurations_write"
+	PaymentMethodDomainRead                     ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "payment_method_domain_read"
+	PaymentMethodDomainWrite                    ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "payment_method_domain_write"
+	PaymentMethodRead                           ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "payment_method_read"
+	PaymentMethodWrite                          ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "payment_method_write"
+	PaymentRecordsRead                          ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "payment_records_read"
+	PaymentRecordsWrite                         ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "payment_records_write"
+	PayoutIntentRead                            ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "payout_intent_read"
+	PayoutRead                                  ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "payout_read"
+	PayoutWrite                                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "payout_write"
+	PlanRead                                    ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "plan_read"
+	PlanWrite                                   ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "plan_write"
+	ProductCatalogImportRead                    ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "product_catalog_import_read"
+	ProductCatalogImportWrite                   ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "product_catalog_import_write"
+	ProductRead                                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "product_read"
+	ProductWrite                                ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "product_write"
+	PromotionCodeRead                           ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "promotion_code_read"
+	PromotionCodeWrite                          ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "promotion_code_write"
+	ProvisioningAccountRequestRead              ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "provisioning_account_request_read"
+	ProvisioningAccountRequestWrite             ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "provisioning_account_request_write"
+	ProvisioningProjectRead                     ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "provisioning_project_read"
+	ProvisioningProjectWrite                    ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "provisioning_project_write"
+	ProvisioningResourceRead                    ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "provisioning_resource_read"
+	ProvisioningResourceWrite                   ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "provisioning_resource_write"
+	QuoteRead                                   ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "quote_read"
+	QuoteWrite                                  ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "quote_write"
+	RateCardSubscriptionWrite                   ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "rate_card_subscription_write"
+	RateCardWrite                               ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "rate_card_write"
+	ReceivedCreditRead                          ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "received_credit_read"
+	ReceivedDebitRead                           ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "received_debit_read"
+	RecipientVerificationRead                   ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "recipient_verification_read"
+	ReportRunsAndReportTypesRead                ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "report_runs_and_report_types_read"
+	ReportRunsAndReportTypesWrite               ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "report_runs_and_report_types_write"
+	ReviewRead                                  ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "review_read"
+	ReviewWrite                                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "review_write"
+	SecretRead                                  ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "secret_read"
+	SecretWrite                                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "secret_write"
+	SetupIntentRead                             ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "setup_intent_read"
+	SetupIntentWrite                            ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "setup_intent_write"
+	ShippingRateRead                            ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "shipping_rate_read"
+	ShippingRateWrite                           ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "shipping_rate_write"
+	SkuRead                                     ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "sku_read"
+	SkuWrite                                    ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "sku_write"
+	SourceRead                                  ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "source_read"
+	SourceWrite                                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "source_write"
+	SubscriptionRead                            ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "subscription_read"
+	SubscriptionWrite                           ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "subscription_write"
+	TaxCalculationsAndTransactionsRead          ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "tax_calculations_and_transactions_read"
+	TaxCalculationsAndTransactionsWrite         ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "tax_calculations_and_transactions_write"
+	TaxLocationsRead                            ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "tax_locations_read"
+	TaxLocationsWrite                           ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "tax_locations_write"
+	TaxRateRead                                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "tax_rate_read"
+	TaxRateWrite                                ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "tax_rate_write"
+	TaxSettingsRead                             ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "tax_settings_read"
+	TaxSettingsWrite                            ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "tax_settings_write"
+	TerminalConfigurationRead                   ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "terminal_configuration_read"
+	TerminalConfigurationWrite                  ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "terminal_configuration_write"
+	TerminalConnectionTokenWrite                ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "terminal_connection_token_write"
+	TerminalLocationRead                        ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "terminal_location_read"
+	TerminalLocationWrite                       ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "terminal_location_write"
+	TerminalReaderRead                          ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "terminal_reader_read"
+	TerminalReaderWrite                         ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "terminal_reader_write"
+	TokenRead                                   ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "token_read"
+	TokenWrite                                  ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "token_write"
+	TopUpRead                                   ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "top_up_read"
+	TopUpWrite                                  ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "top_up_write"
+	TransactionRead                             ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "transaction_read"
+	TransferRead                                ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "transfer_read"
+	TransferWrite                               ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "transfer_write"
+	TreasuryTransactionRead                     ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "treasury_transaction_read"
+	UsageRecordRead                             ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "usage_record_read"
+	UsageRecordWrite                            ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "usage_record_write"
+	WebhookRead                                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "webhook_read"
+	WebhookWrite                                ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "webhook_write"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions) Valid() bool {
+	switch e {
+	case AccountLinkWrite:
+		return true
+	case AdjustmentRead:
+		return true
+	case ApiKeyWrite:
+		return true
+	case ApplePayDomainRead:
+		return true
+	case ApplePayDomainWrite:
+		return true
+	case ApplicationFeeRead:
+		return true
+	case ApplicationFeeWrite:
+		return true
+	case BalanceRead:
+		return true
+	case BalanceTransactionSourceRead:
+		return true
+	case BillingAnalyticsMeterUsageRead:
+		return true
+	case BillingClockRead:
+		return true
+	case BillingClockWrite:
+		return true
+	case BillingIntentRead:
+		return true
+	case BillingMeterEventRead:
+		return true
+	case BillingMeterEventWrite:
+		return true
+	case BillingMeterRead:
+		return true
+	case BillingMeterWrite:
+		return true
+	case BillingProfileRead:
+		return true
+	case BillingProfileWrite:
+		return true
+	case BillingSettingsRead:
+		return true
+	case BillingSettingsWrite:
+		return true
+	case CapitalForPlatformsFinancingOfferRead:
+		return true
+	case CapitalForPlatformsFinancingOfferWrite:
+		return true
+	case CapitalForPlatformsFinancingSummaryRead:
+		return true
+	case CapitalForPlatformsFinancingTransactionRead:
+		return true
+	case ChargeRead:
+		return true
+	case ChargeWrite:
+		return true
+	case CheckoutSessionRead:
+		return true
+	case CheckoutSessionWrite:
+		return true
+	case ConfirmationTokenClientRead:
+		return true
+	case ConfirmationTokenClientWrite:
+		return true
+	case ConfirmationTokenRead:
+		return true
+	case ConnectedAccountRead:
+		return true
+	case CouponRead:
+		return true
+	case CouponWrite:
+		return true
+	case CreditNoteRead:
+		return true
+	case CreditNoteWrite:
+		return true
+	case CustomerPortalRead:
+		return true
+	case CustomerPortalWrite:
+		return true
+	case CustomerRead:
+		return true
+	case CustomerSessionRead:
+		return true
+	case CustomerSessionWrite:
+		return true
+	case CustomerWrite:
+		return true
+	case DisputeRead:
+		return true
+	case DisputeWrite:
+		return true
+	case EditLinkWrite:
+		return true
+	case EntitlementRead:
+		return true
+	case EventRead:
+		return true
+	case FeeDomainResourcesRead:
+		return true
+	case FileRead:
+		return true
+	case FileWrite:
+		return true
+	case FinancialAccountRead:
+		return true
+	case InboundTransferRead:
+		return true
+	case InvoiceRead:
+		return true
+	case InvoiceWrite:
+		return true
+	case IssuingAuthorizationRead:
+		return true
+	case IssuingAuthorizationWrite:
+		return true
+	case IssuingCardRead:
+		return true
+	case IssuingCardWrite:
+		return true
+	case IssuingCardholderRead:
+		return true
+	case IssuingCardholderWrite:
+		return true
+	case IssuingCreditLedgerRead:
+		return true
+	case IssuingCreditLedgerWrite:
+		return true
+	case IssuingDisputeRead:
+		return true
+	case IssuingDisputeWrite:
+		return true
+	case IssuingRead:
+		return true
+	case IssuingTokenNetworkDataRead:
+		return true
+	case IssuingTokenRead:
+		return true
+	case IssuingTokenWrite:
+		return true
+	case IssuingTransactionRead:
+		return true
+	case IssuingTransactionWrite:
+		return true
+	case IssuingVerificationWrite:
+		return true
+	case IssuingWrite:
+		return true
+	case MandateRead:
+		return true
+	case MandateWrite:
+		return true
+	case OrderRead:
+		return true
+	case OrderWrite:
+		return true
+	case OutboundPaymentRead:
+		return true
+	case OutboundTransferRead:
+		return true
+	case PaymentIntentRead:
+		return true
+	case PaymentIntentWrite:
+		return true
+	case PaymentLinksRead:
+		return true
+	case PaymentLinksWrite:
+		return true
+	case PaymentMethodConfigurationsRead:
+		return true
+	case PaymentMethodConfigurationsWrite:
+		return true
+	case PaymentMethodDomainRead:
+		return true
+	case PaymentMethodDomainWrite:
+		return true
+	case PaymentMethodRead:
+		return true
+	case PaymentMethodWrite:
+		return true
+	case PaymentRecordsRead:
+		return true
+	case PaymentRecordsWrite:
+		return true
+	case PayoutIntentRead:
+		return true
+	case PayoutRead:
+		return true
+	case PayoutWrite:
+		return true
+	case PlanRead:
+		return true
+	case PlanWrite:
+		return true
+	case ProductCatalogImportRead:
+		return true
+	case ProductCatalogImportWrite:
+		return true
+	case ProductRead:
+		return true
+	case ProductWrite:
+		return true
+	case PromotionCodeRead:
+		return true
+	case PromotionCodeWrite:
+		return true
+	case ProvisioningAccountRequestRead:
+		return true
+	case ProvisioningAccountRequestWrite:
+		return true
+	case ProvisioningProjectRead:
+		return true
+	case ProvisioningProjectWrite:
+		return true
+	case ProvisioningResourceRead:
+		return true
+	case ProvisioningResourceWrite:
+		return true
+	case QuoteRead:
+		return true
+	case QuoteWrite:
+		return true
+	case RateCardSubscriptionWrite:
+		return true
+	case RateCardWrite:
+		return true
+	case ReceivedCreditRead:
+		return true
+	case ReceivedDebitRead:
+		return true
+	case RecipientVerificationRead:
+		return true
+	case ReportRunsAndReportTypesRead:
+		return true
+	case ReportRunsAndReportTypesWrite:
+		return true
+	case ReviewRead:
+		return true
+	case ReviewWrite:
+		return true
+	case SecretRead:
+		return true
+	case SecretWrite:
+		return true
+	case SetupIntentRead:
+		return true
+	case SetupIntentWrite:
+		return true
+	case ShippingRateRead:
+		return true
+	case ShippingRateWrite:
+		return true
+	case SkuRead:
+		return true
+	case SkuWrite:
+		return true
+	case SourceRead:
+		return true
+	case SourceWrite:
+		return true
+	case SubscriptionRead:
+		return true
+	case SubscriptionWrite:
+		return true
+	case TaxCalculationsAndTransactionsRead:
+		return true
+	case TaxCalculationsAndTransactionsWrite:
+		return true
+	case TaxLocationsRead:
+		return true
+	case TaxLocationsWrite:
+		return true
+	case TaxRateRead:
+		return true
+	case TaxRateWrite:
+		return true
+	case TaxSettingsRead:
+		return true
+	case TaxSettingsWrite:
+		return true
+	case TerminalConfigurationRead:
+		return true
+	case TerminalConfigurationWrite:
+		return true
+	case TerminalConnectionTokenWrite:
+		return true
+	case TerminalLocationRead:
+		return true
+	case TerminalLocationWrite:
+		return true
+	case TerminalReaderRead:
+		return true
+	case TerminalReaderWrite:
+		return true
+	case TokenRead:
+		return true
+	case TokenWrite:
+		return true
+	case TopUpRead:
+		return true
+	case TopUpWrite:
+		return true
+	case TransactionRead:
+		return true
+	case TransferRead:
+		return true
+	case TransferWrite:
+		return true
+	case TreasuryTransactionRead:
+		return true
+	case UsageRecordRead:
+		return true
+	case UsageRecordWrite:
+		return true
+	case WebhookRead:
+		return true
+	case WebhookWrite:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations28Type.
+const (
+	StripeApiKey ListProjectSecretsDetails200JSONResponseBodySecretRotations28Type = "stripe-api-key"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations28Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations28Type) Valid() bool {
+	switch e {
+	case StripeApiKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations29ConnectionApp.
+const (
+	Gcp ListProjectSecretsDetails200JSONResponseBodySecretRotations29ConnectionApp = "gcp"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations29ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations29ConnectionApp) Valid() bool {
+	switch e {
+	case Gcp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type.
+const (
+	GcpServiceAccountKey ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type = "gcp-service-account-key"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type) Valid() bool {
+	switch e {
+	case GcpServiceAccountKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails400JSONResponseBodyStatusCode.
+const (
+	ListProjectSecretsDetails400JSONResponseBodyStatusCodeN400 ListProjectSecretsDetails400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails400JSONResponseBodyStatusCode enum.
+func (e ListProjectSecretsDetails400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails401JSONResponseBodyStatusCode.
+const (
+	ListProjectSecretsDetails401JSONResponseBodyStatusCodeN401 ListProjectSecretsDetails401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails401JSONResponseBodyStatusCode enum.
+func (e ListProjectSecretsDetails401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails403JSONResponseBodyStatusCode.
+const (
+	ListProjectSecretsDetails403JSONResponseBodyStatusCodeN403 ListProjectSecretsDetails403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails403JSONResponseBodyStatusCode enum.
+func (e ListProjectSecretsDetails403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails404JSONResponseBodyStatusCode.
+const (
+	ListProjectSecretsDetails404JSONResponseBodyStatusCodeN404 ListProjectSecretsDetails404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails404JSONResponseBodyStatusCode enum.
+func (e ListProjectSecretsDetails404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails422JSONResponseBodyStatusCode.
+const (
+	ListProjectSecretsDetails422JSONResponseBodyStatusCodeN422 ListProjectSecretsDetails422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails422JSONResponseBodyStatusCode enum.
+func (e ListProjectSecretsDetails422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails500JSONResponseBodyStatusCode.
+const (
+	ListProjectSecretsDetails500JSONResponseBodyStatusCodeN500 ListProjectSecretsDetails500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails500JSONResponseBodyStatusCode enum.
+func (e ListProjectSecretsDetails500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateGroup400JSONResponseBodyStatusCode.
 const (
 	CreateGroup400JSONResponseBodyStatusCodeN400 CreateGroup400JSONResponseBodyStatusCode = 400
@@ -3536,16 +5462,16 @@ func (e ListSecretApprovalRequestsParamsOrderBy) Valid() bool {
 
 // Defines values for ListSecretApprovalRequestsParamsOrderDirection.
 const (
-	Asc  ListSecretApprovalRequestsParamsOrderDirection = "asc"
-	Desc ListSecretApprovalRequestsParamsOrderDirection = "desc"
+	ListSecretApprovalRequestsParamsOrderDirectionAsc  ListSecretApprovalRequestsParamsOrderDirection = "asc"
+	ListSecretApprovalRequestsParamsOrderDirectionDesc ListSecretApprovalRequestsParamsOrderDirection = "desc"
 )
 
 // Valid indicates whether the value is a known member of the ListSecretApprovalRequestsParamsOrderDirection enum.
 func (e ListSecretApprovalRequestsParamsOrderDirection) Valid() bool {
 	switch e {
-	case Asc:
+	case ListSecretApprovalRequestsParamsOrderDirectionAsc:
 		return true
-	case Desc:
+	case ListSecretApprovalRequestsParamsOrderDirectionDesc:
 		return true
 	default:
 		return false
@@ -9156,6 +11082,2280 @@ type LoginWithUniversalAuth422JSONResponseBodyStatusCode float32
 // LoginWithUniversalAuth500JSONResponseBodyStatusCode defines parameters for LoginWithUniversalAuth.
 type LoginWithUniversalAuth500JSONResponseBodyStatusCode float32
 
+// ListProjectSecretsDetailsParams defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsParams struct {
+	// ProjectId The ID of the project to list secrets/folders from.
+	ProjectId string `form:"projectId" json:"projectId"`
+
+	// Environment The slug of the environment to list secrets/folders from.
+	Environment string `form:"environment" json:"environment"`
+
+	// SecretPath The secret path to list secrets/folders from.
+	SecretPath *string `form:"secretPath,omitempty" json:"secretPath,omitempty"`
+
+	// Offset The offset to start from. If you enter 10, it will start from the 10th secret/folder.
+	Offset *float32 `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// Limit The number of secrets/folders to return.
+	Limit *float32 `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// OrderBy The column to order secrets/folders by.
+	OrderBy *ListProjectSecretsDetailsParamsOrderBy `form:"orderBy,omitempty" json:"orderBy,omitempty"`
+
+	// OrderDirection The direction to order secrets/folders in.
+	OrderDirection *ListProjectSecretsDetailsParamsOrderDirection `form:"orderDirection,omitempty" json:"orderDirection,omitempty"`
+
+	// Search The text string to filter secret keys and folder names by.
+	Search *string `form:"search,omitempty" json:"search,omitempty"`
+
+	// Tags The tags to filter secrets by (comma separated, ie 'tags=billing,engineering').
+	Tags *string `form:"tags,omitempty" json:"tags,omitempty"`
+
+	// IncludeSecrets Whether to include project secrets in the response.
+	IncludeSecrets *struct {
+		union json.RawMessage
+	} `form:"includeSecrets,omitempty" json:"includeSecrets,omitempty"`
+
+	// IncludeFolders Whether to include project folders in the response.
+	IncludeFolders *struct {
+		union json.RawMessage
+	} `form:"includeFolders,omitempty" json:"includeFolders,omitempty"`
+
+	// IncludeDynamicSecrets Whether to include dynamic project secrets in the response.
+	IncludeDynamicSecrets *struct {
+		union json.RawMessage
+	} `form:"includeDynamicSecrets,omitempty" json:"includeDynamicSecrets,omitempty"`
+
+	// IncludeImports Whether to include project secret imports in the response.
+	IncludeImports *struct {
+		union json.RawMessage
+	} `form:"includeImports,omitempty" json:"includeImports,omitempty"`
+
+	// IncludeSecretRotations Whether to include secret rotations in the response.
+	IncludeSecretRotations *struct {
+		union json.RawMessage
+	} `form:"includeSecretRotations,omitempty" json:"includeSecretRotations,omitempty"`
+
+	// IncludeHoneyTokens Whether to include honey tokens in the response.
+	IncludeHoneyTokens *struct {
+		union json.RawMessage
+	} `form:"includeHoneyTokens,omitempty" json:"includeHoneyTokens,omitempty"`
+
+	// IncludeProxiedServices Whether to include proxied services in the response.
+	IncludeProxiedServices *struct {
+		union json.RawMessage
+	} `form:"includeProxiedServices,omitempty" json:"includeProxiedServices,omitempty"`
+}
+
+// ListProjectSecretsDetailsParamsOrderBy defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsParamsOrderBy string
+
+// ListProjectSecretsDetailsParamsOrderDirection defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsParamsOrderDirection string
+
+// ListProjectSecretsDetailsParamsIncludeSecrets0 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsParamsIncludeSecrets0 = bool
+
+// ListProjectSecretsDetailsParamsIncludeSecrets1 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsParamsIncludeSecrets1 = string
+
+// ListProjectSecretsDetailsParamsIncludeFolders0 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsParamsIncludeFolders0 = bool
+
+// ListProjectSecretsDetailsParamsIncludeFolders1 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsParamsIncludeFolders1 = string
+
+// ListProjectSecretsDetailsParamsIncludeDynamicSecrets0 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsParamsIncludeDynamicSecrets0 = bool
+
+// ListProjectSecretsDetailsParamsIncludeDynamicSecrets1 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsParamsIncludeDynamicSecrets1 = string
+
+// ListProjectSecretsDetailsParamsIncludeImports0 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsParamsIncludeImports0 = bool
+
+// ListProjectSecretsDetailsParamsIncludeImports1 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsParamsIncludeImports1 = string
+
+// ListProjectSecretsDetailsParamsIncludeSecretRotations0 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsParamsIncludeSecretRotations0 = bool
+
+// ListProjectSecretsDetailsParamsIncludeSecretRotations1 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsParamsIncludeSecretRotations1 = string
+
+// ListProjectSecretsDetailsParamsIncludeHoneyTokens0 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsParamsIncludeHoneyTokens0 = bool
+
+// ListProjectSecretsDetailsParamsIncludeHoneyTokens1 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsParamsIncludeHoneyTokens1 = string
+
+// ListProjectSecretsDetailsParamsIncludeProxiedServices0 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsParamsIncludeProxiedServices0 = bool
+
+// ListProjectSecretsDetailsParamsIncludeProxiedServices1 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetailsParamsIncludeProxiedServices1 = string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations0 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations0 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations0ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                        `json:"id"`
+		Name string                                                                    `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// PasswordRequirements The password requirements to use when generating the new password.
+		PasswordRequirements *struct {
+			// AllowedSymbols The allowed symbols to use in the generated password (defaults to "-_.~!*").
+			AllowedSymbols *string `json:"allowedSymbols,omitempty"`
+
+			// Length The length of the password to generate.
+			Length   float32 `json:"length"`
+			Required struct {
+				// Digits The amount of digits to require in the generated password.
+				Digits float32 `json:"digits"`
+
+				// Lowercase The amount of lowercase characters to require in the generated password.
+				Lowercase float32 `json:"lowercase"`
+
+				// Symbols The amount of symbols to require in the generated password.
+				Symbols float32 `json:"symbols"`
+
+				// Uppercase The amount of uppercase characters to require in the generated password.
+				Uppercase float32 `json:"uppercase"`
+			} `json:"required"`
+		} `json:"passwordRequirements,omitempty"`
+
+		// RotationStatement The SQL template query used for rotation.
+		RotationStatement *string `json:"rotationStatement,omitempty"`
+
+		// Username1 The username of the first login to rotate passwords for. This user must already exists in your database.
+		Username1 string `json:"username1"`
+
+		// Username2 The username of the second login to rotate passwords for. This user must already exists in your database.
+		Username2 string `json:"username2"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the generated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the active username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations0Type `json:"type"`
+	UpdatedAt time.Time                                                        `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations0ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations0ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations0Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations0Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations1 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations1 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations1ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                        `json:"id"`
+		Name string                                                                    `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// PasswordRequirements The password requirements to use when generating the new password.
+		PasswordRequirements *struct {
+			// AllowedSymbols The allowed symbols to use in the generated password (defaults to "-_.~!*").
+			AllowedSymbols *string `json:"allowedSymbols,omitempty"`
+
+			// Length The length of the password to generate.
+			Length   float32 `json:"length"`
+			Required struct {
+				// Digits The amount of digits to require in the generated password.
+				Digits float32 `json:"digits"`
+
+				// Lowercase The amount of lowercase characters to require in the generated password.
+				Lowercase float32 `json:"lowercase"`
+
+				// Symbols The amount of symbols to require in the generated password.
+				Symbols float32 `json:"symbols"`
+
+				// Uppercase The amount of uppercase characters to require in the generated password.
+				Uppercase float32 `json:"uppercase"`
+			} `json:"required"`
+		} `json:"passwordRequirements,omitempty"`
+
+		// RotationStatement The SQL template query used for rotation.
+		RotationStatement *string `json:"rotationStatement,omitempty"`
+
+		// Username1 The username of the first login to rotate passwords for. This user must already exists in your database.
+		Username1 string `json:"username1"`
+
+		// Username2 The username of the second login to rotate passwords for. This user must already exists in your database.
+		Username2 string `json:"username2"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the generated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the active username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations1Type `json:"type"`
+	UpdatedAt time.Time                                                        `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations1ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations1ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations1Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations1Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations2 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations2 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations2ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                        `json:"id"`
+		Name string                                                                    `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// PasswordRequirements The password requirements to use when generating the new password.
+		PasswordRequirements *struct {
+			// AllowedSymbols The allowed symbols to use in the generated password (defaults to "-_.~!*").
+			AllowedSymbols *string `json:"allowedSymbols,omitempty"`
+
+			// Length The length of the password to generate.
+			Length   float32 `json:"length"`
+			Required struct {
+				// Digits The amount of digits to require in the generated password.
+				Digits float32 `json:"digits"`
+
+				// Lowercase The amount of lowercase characters to require in the generated password.
+				Lowercase float32 `json:"lowercase"`
+
+				// Symbols The amount of symbols to require in the generated password.
+				Symbols float32 `json:"symbols"`
+
+				// Uppercase The amount of uppercase characters to require in the generated password.
+				Uppercase float32 `json:"uppercase"`
+			} `json:"required"`
+		} `json:"passwordRequirements,omitempty"`
+
+		// RotationStatement The SQL template query used for rotation.
+		RotationStatement *string `json:"rotationStatement,omitempty"`
+
+		// Username1 The username of the first login to rotate passwords for. This user must already exists in your database.
+		Username1 string `json:"username1"`
+
+		// Username2 The username of the second login to rotate passwords for. This user must already exists in your database.
+		Username2 string `json:"username2"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the generated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the active username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations2Type `json:"type"`
+	UpdatedAt time.Time                                                        `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations2ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations2ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations2Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations2Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations3 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations3 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations3ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                        `json:"id"`
+		Name string                                                                    `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// PasswordRequirements The password requirements to use when generating the new password.
+		PasswordRequirements *struct {
+			// AllowedSymbols The allowed symbols to use in the generated password (defaults to "-_.~!*").
+			AllowedSymbols *string `json:"allowedSymbols,omitempty"`
+
+			// Length The length of the password to generate.
+			Length   float32 `json:"length"`
+			Required struct {
+				// Digits The amount of digits to require in the generated password.
+				Digits float32 `json:"digits"`
+
+				// Lowercase The amount of lowercase characters to require in the generated password.
+				Lowercase float32 `json:"lowercase"`
+
+				// Symbols The amount of symbols to require in the generated password.
+				Symbols float32 `json:"symbols"`
+
+				// Uppercase The amount of uppercase characters to require in the generated password.
+				Uppercase float32 `json:"uppercase"`
+			} `json:"required"`
+		} `json:"passwordRequirements,omitempty"`
+
+		// RotationStatement The SQL template query used for rotation.
+		RotationStatement *string `json:"rotationStatement,omitempty"`
+
+		// Username1 The username of the first login to rotate passwords for. This user must already exists in your database.
+		Username1 string `json:"username1"`
+
+		// Username2 The username of the second login to rotate passwords for. This user must already exists in your database.
+		Username2 string `json:"username2"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the generated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the active username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations3Type `json:"type"`
+	UpdatedAt time.Time                                                        `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations3ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations3ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations3Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations3Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations4 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations4 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations4ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                        `json:"id"`
+		Name string                                                                    `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// ClientId The client ID of the Auth0 Application to rotate the client secret for.
+		ClientId string `json:"clientId"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// ClientId The name of the secret that the client ID will be mapped to.
+		ClientId string `json:"clientId"`
+
+		// ClientSecret The name of the secret that the rotated client secret will be mapped to.
+		ClientSecret string `json:"clientSecret"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations4Type `json:"type"`
+	UpdatedAt time.Time                                                        `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations4ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations4ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations4Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations4Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations5 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations5 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations5ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                        `json:"id"`
+		Name string                                                                    `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// AppName The name of the Azure Application to rotate the client secret for.
+		AppName *string `json:"appName,omitempty"`
+
+		// ClientId The client ID of the Azure Application to rotate the client secret for.
+		ClientId string `json:"clientId"`
+
+		// ObjectId The ID of the Azure Application to rotate the client secret for.
+		ObjectId string `json:"objectId"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// ClientId The name of the secret that the client ID will be mapped to.
+		ClientId string `json:"clientId"`
+
+		// ClientSecret The name of the secret that the rotated client secret will be mapped to.
+		ClientSecret string `json:"clientSecret"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations5Type `json:"type"`
+	UpdatedAt time.Time                                                        `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations5ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations5ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations5Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations5Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations6 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations6 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations6ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                        `json:"id"`
+		Name string                                                                    `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// Dn The Distinguished Name (DN) or User Principal Name (UPN) of the principal to rotate the password for.
+		Dn string `json:"dn"`
+
+		// PasswordRequirements The password requirements to use when generating the new password.
+		PasswordRequirements *struct {
+			// AllowedSymbols The allowed symbols to use in the generated password (defaults to "-_.~!*").
+			AllowedSymbols *string `json:"allowedSymbols,omitempty"`
+
+			// Length The length of the password to generate.
+			Length   float32 `json:"length"`
+			Required struct {
+				// Digits The amount of digits to require in the generated password.
+				Digits float32 `json:"digits"`
+
+				// Lowercase The amount of lowercase characters to require in the generated password.
+				Lowercase float32 `json:"lowercase"`
+
+				// Symbols The amount of symbols to require in the generated password.
+				Symbols float32 `json:"symbols"`
+
+				// Uppercase The amount of uppercase characters to require in the generated password.
+				Uppercase float32 `json:"uppercase"`
+			} `json:"required"`
+		} `json:"passwordRequirements,omitempty"`
+
+		// RotationMethod Whether the rotation should be performed by the LDAP "connection-principal" or the "target-principal" (defaults to 'connection-principal').
+		RotationMethod *ListProjectSecretsDetails200JSONResponseBodySecretRotations6ParametersRotationMethod `json:"rotationMethod,omitempty"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Dn The name of the secret that the Distinguished Name (DN) or User Principal Name (UPN) of the principal will be mapped to.
+		Dn string `json:"dn"`
+
+		// Password The name of the secret that the rotated password will be mapped to.
+		Password string `json:"password"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations6Type `json:"type"`
+	UpdatedAt time.Time                                                        `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations6ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations6ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations6ParametersRotationMethod defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations6ParametersRotationMethod string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations6Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations6Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations7 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations7 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations7ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                        `json:"id"`
+		Name string                                                                    `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// Region The AWS region the client is present in.
+		Region *ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion `json:"region,omitempty"`
+
+		// UserName The name of the client to rotate credentials for.
+		UserName string `json:"userName"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// AccessKeyId The name of the secret that the access key ID will be mapped to.
+		AccessKeyId string `json:"accessKeyId"`
+
+		// SecretAccessKey The name of the secret that the rotated secret access key will be mapped to.
+		SecretAccessKey string `json:"secretAccessKey"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations7Type `json:"type"`
+	UpdatedAt time.Time                                                        `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations7ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations7ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations7ParametersRegion string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations7Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations7Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations8 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations8 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations8ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                        `json:"id"`
+		Name string                                                                    `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// ClientId The ID of the Okta Application to rotate the client secret for.
+		ClientId string `json:"clientId"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// ClientId The name of the secret that the client ID will be mapped to.
+		ClientId string `json:"clientId"`
+
+		// ClientSecret The name of the secret that the rotated client secret will be mapped to.
+		ClientSecret string `json:"clientSecret"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations8Type `json:"type"`
+	UpdatedAt time.Time                                                        `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations8ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations8ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations8Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations8Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations9 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations9 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations9ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                        `json:"id"`
+		Name string                                                                    `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// PasswordRequirements The password requirements to use when generating the new password.
+		PasswordRequirements *struct {
+			// AllowedSymbols The allowed symbols to use in the generated password (defaults to "-_.~!*").
+			AllowedSymbols *string `json:"allowedSymbols,omitempty"`
+
+			// Length The length of the password to generate.
+			Length   float32 `json:"length"`
+			Required struct {
+				// Digits The amount of digits to require in the generated password.
+				Digits float32 `json:"digits"`
+
+				// Lowercase The amount of lowercase characters to require in the generated password.
+				Lowercase float32 `json:"lowercase"`
+
+				// Symbols The amount of symbols to require in the generated password.
+				Symbols float32 `json:"symbols"`
+
+				// Uppercase The amount of uppercase characters to require in the generated password.
+				Uppercase float32 `json:"uppercase"`
+			} `json:"required"`
+		} `json:"passwordRequirements,omitempty"`
+
+		// PermissionScope The ACL permission scope to assign to the issued Redis users.
+		PermissionScope string `json:"permissionScope"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the rotated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations9Type `json:"type"`
+	UpdatedAt time.Time                                                        `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations9ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations9ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations9Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations9Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations10 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations10 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations10ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// Username1 The username of the first login to rotate passwords for. This user must already exists in your database.
+		Username1 string `json:"username1"`
+
+		// Username2 The username of the second login to rotate passwords for. This user must already exists in your database.
+		Username2 string `json:"username2"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the generated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the active username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations10Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations10ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations10ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations10Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations10Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations11 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations11 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations11ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// ClientId The client ID of the Databricks Service Principal to rotate the OAuth secret for.
+		ClientId string `json:"clientId"`
+
+		// ServicePrincipalId The ID of the Databricks Service Principal to rotate the OAuth secret for.
+		ServicePrincipalId string `json:"servicePrincipalId"`
+
+		// ServicePrincipalName The name of the Databricks Service Principal to rotate the OAuth secret for.
+		ServicePrincipalName *string `json:"servicePrincipalName,omitempty"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// ClientId The name of the secret that the client ID will be mapped to.
+		ClientId string `json:"clientId"`
+
+		// ClientSecret The name of the secret that the rotated OAuth client secret will be mapped to.
+		ClientSecret string `json:"clientSecret"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations11Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations11ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations11ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations11Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations11Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations12 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations12 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations12ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// PasswordRequirements The password requirements to use when generating the new password.
+		PasswordRequirements *struct {
+			// AllowedSymbols The allowed symbols to use in the generated password (defaults to "-_.~!*").
+			AllowedSymbols *string `json:"allowedSymbols,omitempty"`
+
+			// Length The length of the password to generate.
+			Length   float32 `json:"length"`
+			Required struct {
+				// Digits The amount of digits to require in the generated password.
+				Digits float32 `json:"digits"`
+
+				// Lowercase The amount of lowercase characters to require in the generated password.
+				Lowercase float32 `json:"lowercase"`
+
+				// Symbols The amount of symbols to require in the generated password.
+				Symbols float32 `json:"symbols"`
+
+				// Uppercase The amount of uppercase characters to require in the generated password.
+				Uppercase float32 `json:"uppercase"`
+			} `json:"required"`
+		} `json:"passwordRequirements,omitempty"`
+
+		// RotationMethod Whether the rotation should be performed using "login-as-target" (the target user's own credentials) or "login-as-root" (the SSH connection's admin credentials). Defaults to "login-as-target".
+		RotationMethod *ListProjectSecretsDetails200JSONResponseBodySecretRotations12ParametersRotationMethod `json:"rotationMethod,omitempty"`
+
+		// UseSudo If true, uses sudo when executing the password rotation command. Defaults to false.
+		UseSudo *bool `json:"useSudo,omitempty"`
+
+		// Username The username of the Unix/Linux user account to rotate the password for.
+		Username string `json:"username"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the rotated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations12Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations12ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations12ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations12ParametersRotationMethod defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations12ParametersRotationMethod string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations12Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations12Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations13 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations13 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations13ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// PermissionGrants The permission grants to apply to the service token.
+		PermissionGrants []struct {
+			PermissionSet ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet `json:"permissionSet"`
+			ProjectId     *float32                                                                                             `json:"projectId,omitempty"`
+		} `json:"permissionGrants"`
+
+		// TokenName The name of the service token to create.
+		TokenName string `json:"tokenName"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// ServiceToken The name of the secret that the service token will be mapped to.
+		ServiceToken string `json:"serviceToken"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations13Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations13ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations13ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations13ParametersPermissionGrantsPermissionSet string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations13Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations13Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations14 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations14 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations14ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// PasswordRequirements The password requirements to use when generating the new password.
+		PasswordRequirements *struct {
+			// AllowedSymbols The allowed symbols to use in the generated password (defaults to "-_.~!*").
+			AllowedSymbols *string `json:"allowedSymbols,omitempty"`
+
+			// Length The length of the password to generate.
+			Length   float32 `json:"length"`
+			Required struct {
+				// Digits The amount of digits to require in the generated password.
+				Digits float32 `json:"digits"`
+
+				// Lowercase The amount of lowercase characters to require in the generated password.
+				Lowercase float32 `json:"lowercase"`
+
+				// Symbols The amount of symbols to require in the generated password.
+				Symbols float32 `json:"symbols"`
+
+				// Uppercase The amount of uppercase characters to require in the generated password.
+				Uppercase float32 `json:"uppercase"`
+			} `json:"required"`
+		} `json:"passwordRequirements,omitempty"`
+
+		// RotationMethod Whether the rotation should be performed using "login-as-target" (the target user's own credentials) or "login-as-root" (the SSH connection's admin credentials). Defaults to "login-as-target".
+		RotationMethod *ListProjectSecretsDetails200JSONResponseBodySecretRotations14ParametersRotationMethod `json:"rotationMethod,omitempty"`
+
+		// Username The username of the Windows user account to rotate the password for.
+		Username string `json:"username"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the rotated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations14Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations14ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations14ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations14ParametersRotationMethod defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations14ParametersRotationMethod string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations14Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations14Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations15 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations15 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations15ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// IncludeByokInLimit Whether to include BYOK (Bring Your Own Key) usage in the spending limit. When enabled, usage from your own provider keys counts toward this key's limit. See OpenRouter BYOK docs for details.
+		IncludeByokInLimit *bool `json:"includeByokInLimit,omitempty"`
+
+		// Limit The optional spending limit in USD for the generated API key.
+		Limit *float32 `json:"limit,omitempty"`
+
+		// LimitReset The type of limit reset for the API key (daily, weekly, monthly, or null for no reset).
+		LimitReset *ListProjectSecretsDetails200JSONResponseBodySecretRotations15ParametersLimitReset `json:"limitReset,omitempty"`
+
+		// Name The name for the generated OpenRouter API key.
+		Name string `json:"name"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// ApiKey The name of the secret that the rotated OpenRouter API key will be mapped to.
+		ApiKey string `json:"apiKey"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations15Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations15ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations15ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations15ParametersLimitReset defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations15ParametersLimitReset string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations15Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations15Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations16 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations16 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations16ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// AdditionalOptions A JSON object of additional LiteLLM /key/generate options (e.g. max_budget, tpm_limit, metadata). Reserved fields (key_alias, auto_rotate, rotation_interval, duration, send_invite_email, key_type, user_id, team_id, models) are managed by Infisical or set via dedicated fields and cannot be set here.
+		AdditionalOptions *string `json:"additionalOptions,omitempty"`
+
+		// Models The list of model names the generated key is allowed to access. An empty list allows all models.
+		Models *[]string `json:"models,omitempty"`
+
+		// Name The name for the generated LiteLLM API key. Infisical appends a timestamp to keep each rotated key unique and record its creation time.
+		Name string `json:"name"`
+
+		// TeamId The ID of the LiteLLM team to associate the generated key with.
+		TeamId *string `json:"teamId,omitempty"`
+
+		// UserId The ID of the LiteLLM user to associate the generated key with.
+		UserId *string `json:"userId,omitempty"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// ApiKey The name of the secret that the rotated LiteLLM API key will be mapped to.
+		ApiKey string `json:"apiKey"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations16Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations16ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations16ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations16Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations16Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations17 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations17 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations17ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// Name The name for the generated OpenAI service account.
+		Name string `json:"name"`
+
+		// ProjectId The ID of the OpenAI project to create service accounts in.
+		ProjectId string `json:"projectId"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// ApiKey The name of the secret that the rotated OpenAI service account API key will be mapped to.
+		ApiKey string `json:"apiKey"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations17Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations17ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations17ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations17Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations17Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations18 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations18 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// PasswordRequirements The password requirements to use when generating the new password.
+		PasswordRequirements *struct {
+			// AllowedSymbols The allowed symbols to use in the generated password (defaults to "-_.~!*").
+			AllowedSymbols *string `json:"allowedSymbols,omitempty"`
+
+			// Length The length of the password to generate.
+			Length   float32 `json:"length"`
+			Required struct {
+				// Digits The amount of digits to require in the generated password.
+				Digits float32 `json:"digits"`
+
+				// Lowercase The amount of lowercase characters to require in the generated password.
+				Lowercase float32 `json:"lowercase"`
+
+				// Symbols The amount of symbols to require in the generated password.
+				Symbols float32 `json:"symbols"`
+
+				// Uppercase The amount of uppercase characters to require in the generated password.
+				Uppercase float32 `json:"uppercase"`
+			} `json:"required"`
+		} `json:"passwordRequirements,omitempty"`
+
+		// RotationMethod Whether the rotation should be performed using "login-as-target" (the target user's own credentials) or "login-as-root" (the SSH connection's admin credentials). Defaults to "login-as-root".
+		RotationMethod *ListProjectSecretsDetails200JSONResponseBodySecretRotations18ParametersRotationMethod `json:"rotationMethod,omitempty"`
+
+		// Username The username of the HP iLO account to rotate the password for.
+		Username string `json:"username"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the rotated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations18Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations18ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations18ParametersRotationMethod defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations18ParametersRotationMethod string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations18Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations18Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations19 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations19 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations19ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// KeyType The type of the API key to rotate (e.g. publishable, secret).
+		KeyType ListProjectSecretsDetails200JSONResponseBodySecretRotations19ParametersKeyType `json:"keyType"`
+
+		// ProjectRef The reference ID of the Supabase project to rotate the API key for.
+		ProjectRef string `json:"projectRef"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// ApiKey The name of the secret that the rotated Supabase API key will be mapped to.
+		ApiKey string `json:"apiKey"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations19Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations19ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations19ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations19ParametersKeyType defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations19ParametersKeyType string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations19Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations19Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations20 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations20 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations20ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// AppId The identifier of the Salesforce External Client App to rotate the consumer secret for.
+		AppId string `json:"appId"`
+
+		// AppName The developer name of the Salesforce External Client App to rotate the consumer secret for.
+		AppName string `json:"appName"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// ConsumerKey The name of the secret that the rotated Salesforce consumer key will be mapped to.
+		ConsumerKey string `json:"consumerKey"`
+
+		// ConsumerSecret The name of the secret that the rotated Salesforce consumer secret will be mapped to.
+		ConsumerSecret string `json:"consumerSecret"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations20Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations20ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations20ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations20Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations20Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations21 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations21 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations21ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// ServiceAccountId The ID of the Datadog service account to rotate the application key for.
+		ServiceAccountId string `json:"serviceAccountId"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// ApplicationKey The name of the secret that the rotated Datadog application key value will be mapped to.
+		ApplicationKey string `json:"applicationKey"`
+
+		// ApplicationKeyId The name of the secret that the rotated Datadog application key ID will be mapped to.
+		ApplicationKeyId string `json:"applicationKeyId"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations21Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations21ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations21ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations21Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations21Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations22 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations22 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations22ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// Name The name for the generated Datadog API key.
+		Name string `json:"name"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// ApiKey The name of the secret that the rotated Datadog API key value will be mapped to.
+		ApiKey string `json:"apiKey"`
+
+		// ApiKeyId The name of the secret that the rotated Datadog API key ID will be mapped to.
+		ApiKeyId string `json:"apiKeyId"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations22Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations22ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations22ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations22Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations22Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations23 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations23 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations23ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// NamePrefix A prefix to use when naming the generated Convex access key.
+		NamePrefix string `json:"namePrefix"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// AccessKey The name of the secret that the rotated Convex access key will be mapped to.
+		AccessKey string `json:"accessKey"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations23Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations23ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations23ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations23Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations23Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations24 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations24 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations24ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// ServiceAccountUserId The user ID of the Fireworks service account to create the API key for.
+		ServiceAccountUserId string `json:"serviceAccountUserId"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// ApiKey The name of the secret that the rotated Fireworks API key will be mapped to.
+		ApiKey string `json:"apiKey"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations24Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations24ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations24ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations24Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations24Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations25 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations25 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations25ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// ModulusLength The modulus length in bits of the generated RSA key pairs. Defaults to 2048.
+		ModulusLength *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength `json:"modulusLength,omitempty"`
+
+		// Username The Snowflake user whose RSA key pair will be rotated. If the user does not exist, it is created as a key-pair-only SERVICE user.
+		Username string `json:"username"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// PrivateKey The name of the secret that the generated RSA private key (PKCS#8 PEM) will be mapped to.
+		PrivateKey string `json:"privateKey"`
+
+		// PublicKey The name of the secret that the generated RSA public key (SPKI PEM) will be mapped to.
+		PublicKey string `json:"publicKey"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations25Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations25ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations25ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0 float32
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1 float32
+
+// ListProjectSecretsDetails200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength struct {
+	union json.RawMessage
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations25Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations25Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations26 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations26 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations26ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// AllowedIps The IP addresses or CIDR blocks the generated Cloudflare API token is restricted to.
+		AllowedIps *[]string `json:"allowedIps,omitempty"`
+
+		// DisallowedIps The IP addresses or CIDR blocks the generated Cloudflare API token is denied from.
+		DisallowedIps *[]string `json:"disallowedIps,omitempty"`
+
+		// Name The name for the generated Cloudflare API token.
+		Name string `json:"name"`
+
+		// Policies The access policies to attach to the generated Cloudflare API token. Each policy scopes a set of permission groups to the entire account, to all zones in the account, or to a specific set of zones.
+		Policies []struct {
+			Effect             ListProjectSecretsDetails200JSONResponseBodySecretRotations26ParametersPoliciesEffect `json:"effect"`
+			PermissionGroupIds []string                                                                              `json:"permissionGroupIds"`
+			Scope              ListProjectSecretsDetails200JSONResponseBodySecretRotations26ParametersPoliciesScope  `json:"scope"`
+			ZoneIds            *[]string                                                                             `json:"zoneIds,omitempty"`
+		} `json:"policies"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// ApiToken The name of the secret that the rotated Cloudflare API token value will be mapped to.
+		ApiToken string `json:"apiToken"`
+
+		// TokenId The name of the secret that the rotated Cloudflare API token ID will be mapped to.
+		TokenId string `json:"tokenId"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations26Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations26ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations26ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations26ParametersPoliciesEffect defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations26ParametersPoliciesEffect string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations26ParametersPoliciesScope defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations26ParametersPoliciesScope string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations26Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations26Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations27 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations27 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations27ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// AccessLevel The level of access the generated key has over the selected buckets (object-read for read and list, object-read-write to also write).
+		AccessLevel *ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersAccessLevel `json:"accessLevel,omitempty"`
+
+		// AllowedIps The IP addresses or CIDR blocks the generated R2 access key is restricted to.
+		AllowedIps *[]string `json:"allowedIps,omitempty"`
+
+		// Buckets The R2 buckets the generated access key is scoped to. Each entry is a bucket name plus its jurisdiction (default, eu, or fedramp).
+		Buckets []struct {
+			Jurisdiction *ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersBucketsJurisdiction `json:"jurisdiction,omitempty"`
+			Name         string                                                                                      `json:"name"`
+		} `json:"buckets"`
+
+		// DisallowedIps The IP addresses or CIDR blocks the generated R2 access key is denied from.
+		DisallowedIps *[]string `json:"disallowedIps,omitempty"`
+
+		// Name The name for the generated Cloudflare API token that backs the R2 access key.
+		Name string `json:"name"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// AccessKeyId The name of the secret that the rotated R2 access key ID will be mapped to.
+		AccessKeyId string `json:"accessKeyId"`
+
+		// SecretAccessKey The name of the secret that the rotated R2 secret access key will be mapped to.
+		SecretAccessKey string `json:"secretAccessKey"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations27Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations27ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations27ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersAccessLevel defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersAccessLevel string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersBucketsJurisdiction defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersBucketsJurisdiction string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations27Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations27Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations28 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations28 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations28ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// KeyName The name for each Stripe API key this rotation creates, up to 80 characters. Infisical appends a timestamp so the old and new key can be told apart. Defaults to 'infisical-managed'.
+		KeyName *string `json:"keyName,omitempty"`
+
+		// Permissions The permissions granted to the generated Stripe API key. Stripe has no wildcard permission, so this is the full list of what the key may do.
+		Permissions []ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions `json:"permissions"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// ApiKey The name of the secret that the rotated Stripe API key will be mapped to.
+		ApiKey string `json:"apiKey"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations28Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations28ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations28ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations28Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations28Type string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations29 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations29 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations29ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// ServiceAccountEmail The email of the GCP service account whose keys will be rotated, e.g. my-app@my-project.iam.gserviceaccount.com. The connection's service account needs the Service Account Key Admin role (roles/iam.serviceAccountKeyAdmin) on it.
+		ServiceAccountEmail openapi_types.Email `json:"serviceAccountEmail"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// ServiceAccountKey The name of the secret that the rotated service account key (the JSON key file) will be mapped to.
+		ServiceAccountKey string `json:"serviceAccountKey"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations29ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations29ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type string
+
+// ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item struct {
+	Secrets []*struct {
+		UnderscoreId string `json:"_id"`
+		Actor        *struct {
+			ActorId      *string `json:"actorId,omitempty"`
+			ActorType    *string `json:"actorType,omitempty"`
+			GroupId      *string `json:"groupId,omitempty"`
+			MembershipId *string `json:"membershipId,omitempty"`
+			Name         *string `json:"name,omitempty"`
+		} `json:"actor,omitempty"`
+		CreatedAt       time.Time `json:"createdAt"`
+		Environment     string    `json:"environment"`
+		Id              string    `json:"id"`
+		IsEmpty         bool      `json:"isEmpty"`
+		IsRotatedSecret *bool     `json:"isRotatedSecret,omitempty"`
+		Reminder        *struct {
+			CreatedAt        time.Time           `json:"createdAt"`
+			FromDate         *time.Time          `json:"fromDate,omitempty"`
+			Id               openapi_types.UUID  `json:"id"`
+			Message          *string             `json:"message,omitempty"`
+			NextReminderDate time.Time           `json:"nextReminderDate"`
+			Recipients       []string            `json:"recipients"`
+			RepeatDays       *float32            `json:"repeatDays,omitempty"`
+			SecretId         *openapi_types.UUID `json:"secretId,omitempty"`
+			UpdatedAt        time.Time           `json:"updatedAt"`
+		} `json:"reminder"`
+		RotationId     *openapi_types.UUID `json:"rotationId,omitempty"`
+		SecretComment  string              `json:"secretComment"`
+		SecretKey      string              `json:"secretKey"`
+		SecretMetadata *[]struct {
+			IsEncrypted *bool   `json:"isEncrypted,omitempty"`
+			Key         string  `json:"key"`
+			Value       *string `json:"value,omitempty"`
+		} `json:"secretMetadata,omitempty"`
+		SecretPath               *string  `json:"secretPath,omitempty"`
+		SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
+		SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
+		SecretValueHidden        bool     `json:"secretValueHidden"`
+		SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
+		Tags                     *[]struct {
+			Color *string            `json:"color,omitempty"`
+			Id    openapi_types.UUID `json:"id"`
+			Name  string             `json:"name"`
+			Slug  string             `json:"slug"`
+		} `json:"tags,omitempty"`
+		Type      string    `json:"type"`
+		UpdatedAt time.Time `json:"updatedAt"`
+		Version   float32   `json:"version"`
+		Workspace string    `json:"workspace"`
+	} `json:"secrets"`
+	union json.RawMessage
+}
+
+// ListProjectSecretsDetails400JSONResponseBodyStatusCode defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails400JSONResponseBodyStatusCode float32
+
+// ListProjectSecretsDetails401JSONResponseBodyStatusCode defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails401JSONResponseBodyStatusCode float32
+
+// ListProjectSecretsDetails403JSONResponseBodyStatusCode defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails403JSONResponseBodyStatusCode float32
+
+// ListProjectSecretsDetails404JSONResponseBodyStatusCode defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails404JSONResponseBodyStatusCode float32
+
+// ListProjectSecretsDetails422JSONResponseBodyStatusCode defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails422JSONResponseBodyStatusCode float32
+
+// ListProjectSecretsDetails500JSONResponseBodyStatusCode defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails500JSONResponseBodyStatusCode float32
+
 // CreateGroupJSONBody defines parameters for CreateGroup.
 type CreateGroupJSONBody struct {
 	// Name The name of the group to create.
@@ -13239,6 +17439,892 @@ func (t *DeleteGitHubAppConnection200JSONResponseBody_AppConnection) UnmarshalJS
 	return err
 }
 
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength as a ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength) AsListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0() (ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength) FromListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0(v ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0(v ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength as a ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength) AsListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1() (ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength) FromListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1(v ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1(v ListProjectSecretsDetails200JSONResponseBodySecretRotations25ParametersModulusLength1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_25_Parameters_ModulusLength) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations0 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations0
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations0() (ListProjectSecretsDetails200JSONResponseBodySecretRotations0, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations0 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations0
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations0(v ListProjectSecretsDetails200JSONResponseBodySecretRotations0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations0 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations0
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations0(v ListProjectSecretsDetails200JSONResponseBodySecretRotations0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations1 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations1
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations1() (ListProjectSecretsDetails200JSONResponseBodySecretRotations1, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations1 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations1
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations1(v ListProjectSecretsDetails200JSONResponseBodySecretRotations1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations1 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations1
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations1(v ListProjectSecretsDetails200JSONResponseBodySecretRotations1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations2 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations2
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations2() (ListProjectSecretsDetails200JSONResponseBodySecretRotations2, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations2 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations2
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations2(v ListProjectSecretsDetails200JSONResponseBodySecretRotations2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations2 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations2
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations2(v ListProjectSecretsDetails200JSONResponseBodySecretRotations2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations3 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations3
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations3() (ListProjectSecretsDetails200JSONResponseBodySecretRotations3, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations3
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations3 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations3
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations3(v ListProjectSecretsDetails200JSONResponseBodySecretRotations3) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations3 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations3
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations3(v ListProjectSecretsDetails200JSONResponseBodySecretRotations3) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations4 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations4
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations4() (ListProjectSecretsDetails200JSONResponseBodySecretRotations4, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations4
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations4 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations4
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations4(v ListProjectSecretsDetails200JSONResponseBodySecretRotations4) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations4 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations4
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations4(v ListProjectSecretsDetails200JSONResponseBodySecretRotations4) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations5 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations5
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations5() (ListProjectSecretsDetails200JSONResponseBodySecretRotations5, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations5
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations5 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations5
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations5(v ListProjectSecretsDetails200JSONResponseBodySecretRotations5) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations5 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations5
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations5(v ListProjectSecretsDetails200JSONResponseBodySecretRotations5) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations6 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations6
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations6() (ListProjectSecretsDetails200JSONResponseBodySecretRotations6, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations6
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations6 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations6
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations6(v ListProjectSecretsDetails200JSONResponseBodySecretRotations6) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations6 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations6
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations6(v ListProjectSecretsDetails200JSONResponseBodySecretRotations6) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations7 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations7
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations7() (ListProjectSecretsDetails200JSONResponseBodySecretRotations7, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations7
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations7 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations7
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations7(v ListProjectSecretsDetails200JSONResponseBodySecretRotations7) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations7 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations7
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations7(v ListProjectSecretsDetails200JSONResponseBodySecretRotations7) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations8 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations8
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations8() (ListProjectSecretsDetails200JSONResponseBodySecretRotations8, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations8
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations8 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations8
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations8(v ListProjectSecretsDetails200JSONResponseBodySecretRotations8) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations8 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations8
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations8(v ListProjectSecretsDetails200JSONResponseBodySecretRotations8) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations9 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations9
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations9() (ListProjectSecretsDetails200JSONResponseBodySecretRotations9, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations9
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations9 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations9
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations9(v ListProjectSecretsDetails200JSONResponseBodySecretRotations9) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations9 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations9
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations9(v ListProjectSecretsDetails200JSONResponseBodySecretRotations9) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations10 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations10
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations10() (ListProjectSecretsDetails200JSONResponseBodySecretRotations10, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations10
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations10 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations10
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations10(v ListProjectSecretsDetails200JSONResponseBodySecretRotations10) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations10 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations10
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations10(v ListProjectSecretsDetails200JSONResponseBodySecretRotations10) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations11 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations11
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations11() (ListProjectSecretsDetails200JSONResponseBodySecretRotations11, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations11
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations11 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations11
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations11(v ListProjectSecretsDetails200JSONResponseBodySecretRotations11) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations11 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations11
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations11(v ListProjectSecretsDetails200JSONResponseBodySecretRotations11) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations12 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations12
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations12() (ListProjectSecretsDetails200JSONResponseBodySecretRotations12, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations12
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations12 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations12
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations12(v ListProjectSecretsDetails200JSONResponseBodySecretRotations12) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations12 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations12
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations12(v ListProjectSecretsDetails200JSONResponseBodySecretRotations12) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations13 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations13
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations13() (ListProjectSecretsDetails200JSONResponseBodySecretRotations13, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations13
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations13 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations13
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations13(v ListProjectSecretsDetails200JSONResponseBodySecretRotations13) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations13 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations13
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations13(v ListProjectSecretsDetails200JSONResponseBodySecretRotations13) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations14 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations14
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations14() (ListProjectSecretsDetails200JSONResponseBodySecretRotations14, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations14
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations14 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations14
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations14(v ListProjectSecretsDetails200JSONResponseBodySecretRotations14) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations14 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations14
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations14(v ListProjectSecretsDetails200JSONResponseBodySecretRotations14) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations15 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations15
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations15() (ListProjectSecretsDetails200JSONResponseBodySecretRotations15, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations15
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations15 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations15
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations15(v ListProjectSecretsDetails200JSONResponseBodySecretRotations15) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations15 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations15
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations15(v ListProjectSecretsDetails200JSONResponseBodySecretRotations15) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations16 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations16
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations16() (ListProjectSecretsDetails200JSONResponseBodySecretRotations16, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations16
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations16 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations16
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations16(v ListProjectSecretsDetails200JSONResponseBodySecretRotations16) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations16 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations16
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations16(v ListProjectSecretsDetails200JSONResponseBodySecretRotations16) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations17 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations17
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations17() (ListProjectSecretsDetails200JSONResponseBodySecretRotations17, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations17
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations17 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations17
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations17(v ListProjectSecretsDetails200JSONResponseBodySecretRotations17) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations17 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations17
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations17(v ListProjectSecretsDetails200JSONResponseBodySecretRotations17) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations18 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations18
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations18() (ListProjectSecretsDetails200JSONResponseBodySecretRotations18, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations18
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations18 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations18
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations18(v ListProjectSecretsDetails200JSONResponseBodySecretRotations18) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations18 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations18
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations18(v ListProjectSecretsDetails200JSONResponseBodySecretRotations18) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations19 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations19
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations19() (ListProjectSecretsDetails200JSONResponseBodySecretRotations19, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations19
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations19 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations19
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations19(v ListProjectSecretsDetails200JSONResponseBodySecretRotations19) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations19 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations19
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations19(v ListProjectSecretsDetails200JSONResponseBodySecretRotations19) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations20 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations20
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations20() (ListProjectSecretsDetails200JSONResponseBodySecretRotations20, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations20
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations20 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations20
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations20(v ListProjectSecretsDetails200JSONResponseBodySecretRotations20) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations20 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations20
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations20(v ListProjectSecretsDetails200JSONResponseBodySecretRotations20) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations21 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations21
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations21() (ListProjectSecretsDetails200JSONResponseBodySecretRotations21, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations21
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations21 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations21
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations21(v ListProjectSecretsDetails200JSONResponseBodySecretRotations21) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations21 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations21
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations21(v ListProjectSecretsDetails200JSONResponseBodySecretRotations21) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations22 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations22
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations22() (ListProjectSecretsDetails200JSONResponseBodySecretRotations22, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations22
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations22 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations22
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations22(v ListProjectSecretsDetails200JSONResponseBodySecretRotations22) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations22 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations22
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations22(v ListProjectSecretsDetails200JSONResponseBodySecretRotations22) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations23 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations23
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations23() (ListProjectSecretsDetails200JSONResponseBodySecretRotations23, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations23
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations23 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations23
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations23(v ListProjectSecretsDetails200JSONResponseBodySecretRotations23) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations23 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations23
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations23(v ListProjectSecretsDetails200JSONResponseBodySecretRotations23) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations24 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations24
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations24() (ListProjectSecretsDetails200JSONResponseBodySecretRotations24, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations24
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations24 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations24
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations24(v ListProjectSecretsDetails200JSONResponseBodySecretRotations24) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations24 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations24
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations24(v ListProjectSecretsDetails200JSONResponseBodySecretRotations24) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations25 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations25
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations25() (ListProjectSecretsDetails200JSONResponseBodySecretRotations25, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations25
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations25 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations25
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations25(v ListProjectSecretsDetails200JSONResponseBodySecretRotations25) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations25 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations25
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations25(v ListProjectSecretsDetails200JSONResponseBodySecretRotations25) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations26 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations26
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations26() (ListProjectSecretsDetails200JSONResponseBodySecretRotations26, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations26
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations26 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations26
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations26(v ListProjectSecretsDetails200JSONResponseBodySecretRotations26) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations26 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations26
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations26(v ListProjectSecretsDetails200JSONResponseBodySecretRotations26) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations27 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations27
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations27() (ListProjectSecretsDetails200JSONResponseBodySecretRotations27, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations27
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations27 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations27
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations27(v ListProjectSecretsDetails200JSONResponseBodySecretRotations27) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations27 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations27
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations27(v ListProjectSecretsDetails200JSONResponseBodySecretRotations27) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations28 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations28
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations28() (ListProjectSecretsDetails200JSONResponseBodySecretRotations28, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations28
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations28 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations28
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations28(v ListProjectSecretsDetails200JSONResponseBodySecretRotations28) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations28 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations28
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations28(v ListProjectSecretsDetails200JSONResponseBodySecretRotations28) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations29 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations29
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations29() (ListProjectSecretsDetails200JSONResponseBodySecretRotations29, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations29
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations29 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations29
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations29(v ListProjectSecretsDetails200JSONResponseBodySecretRotations29) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations29 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations29
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations29(v ListProjectSecretsDetails200JSONResponseBodySecretRotations29) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	object := make(map[string]json.RawMessage)
+	if t.union != nil {
+		err = json.Unmarshal(b, &object)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if t.Secrets != nil {
+		object["secrets"], err = json.Marshal(t.Secrets)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'secrets': %w", err)
+		}
+	}
+	b, err = json.Marshal(object)
+	return b, err
+}
+
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	if err != nil {
+		return err
+	}
+	object := make(map[string]json.RawMessage)
+	err = json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["secrets"]; found {
+		err = json.Unmarshal(raw, &t.Secrets)
+		if err != nil {
+			return fmt.Errorf("error reading 'secrets': %w", err)
+		}
+	}
+
+	return err
+}
+
 // AsUpdateOrganizationJSONBodySecretShareBrandConfigPrimaryColor00 returns the union data inside the UpdateOrganizationJSONBodySecretShareBrandConfigPrimaryColor0 as a UpdateOrganizationJSONBodySecretShareBrandConfigPrimaryColor00
 func (t UpdateOrganizationJSONBodySecretShareBrandConfigPrimaryColor0) AsUpdateOrganizationJSONBodySecretShareBrandConfigPrimaryColor00() (UpdateOrganizationJSONBodySecretShareBrandConfigPrimaryColor00, error) {
 	var body UpdateOrganizationJSONBodySecretShareBrandConfigPrimaryColor00
@@ -15344,6 +20430,11 @@ type ClientInterface interface {
 	// Login with Universal Auth for machine identity.
 	LoginWithUniversalAuth(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListProjectSecretsDetails performs a GET /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request.
+	//
+	// List project secrets details.
+	ListProjectSecretsDetails(ctx context.Context, params *ListProjectSecretsDetailsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateGroupWithBody performs a POST /api/v1/groups (the `CreateGroup` operationId) request,
 	// with any type of body and a specified content type.
 	CreateGroupWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -16003,6 +21094,21 @@ func (c *Client) LoginWithUniversalAuthWithBody(ctx context.Context, contentType
 // Login with Universal Auth for machine identity.
 func (c *Client) LoginWithUniversalAuth(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewLoginWithUniversalAuthRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListProjectSecretsDetails performs a GET /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request.
+//
+// List project secrets details.
+func (c *Client) ListProjectSecretsDetails(ctx context.Context, params *ListProjectSecretsDetailsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListProjectSecretsDetailsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -17722,6 +22828,232 @@ func NewLoginWithUniversalAuthRequestWithBody(server string, contentType string,
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListProjectSecretsDetailsRequest constructs an http.Request for the ListProjectSecretsDetails method
+func NewListProjectSecretsDetailsRequest(server string, params *ListProjectSecretsDetailsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/dashboard/secrets-details")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "projectId", params.ProjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "environment", params.Environment, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.SecretPath != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "secretPath", *params.SecretPath, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "number", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "number", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.OrderBy != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "orderBy", *params.OrderBy, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.OrderDirection != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "orderDirection", *params.OrderDirection, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Search != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "search", *params.Search, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Tags != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "tags", *params.Tags, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.IncludeSecrets != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeSecrets", *params.IncludeSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.IncludeFolders != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeFolders", *params.IncludeFolders, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.IncludeDynamicSecrets != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeDynamicSecrets", *params.IncludeDynamicSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.IncludeImports != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeImports", *params.IncludeImports, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.IncludeSecretRotations != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeSecretRotations", *params.IncludeSecretRotations, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.IncludeHoneyTokens != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeHoneyTokens", *params.IncludeHoneyTokens, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.IncludeProxiedServices != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeProxiedServices", *params.IncludeProxiedServices, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -20780,6 +26112,13 @@ type ClientWithResponsesInterface interface {
 	// Login with Universal Auth for machine identity.
 	LoginWithUniversalAuthWithResponse(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginWithUniversalAuthResponse, error)
 
+	// ListProjectSecretsDetailsWithResponse performs a GET /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request.
+	//
+	// List project secrets details.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListProjectSecretsDetailsWithResponse(ctx context.Context, params *ListProjectSecretsDetailsParams, reqEditors ...RequestEditorFn) (*ListProjectSecretsDetailsResponse, error)
+
 	// CreateGroupWithBodyWithResponse performs a POST /api/v1/groups (the `CreateGroup` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -22889,6 +28228,543 @@ func (r LoginWithUniversalAuthResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r LoginWithUniversalAuthResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListProjectSecretsDetailsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		DynamicSecrets *[]struct {
+			CreatedAt     time.Time           `json:"createdAt"`
+			DefaultTTL    string              `json:"defaultTTL"`
+			FolderId      openapi_types.UUID  `json:"folderId"`
+			GatewayId     *openapi_types.UUID `json:"gatewayId,omitempty"`
+			GatewayPoolId *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+			GatewayV2Id   *openapi_types.UUID `json:"gatewayV2Id,omitempty"`
+			Id            openapi_types.UUID  `json:"id"`
+			MaxTTL        *string             `json:"maxTTL,omitempty"`
+			Metadata      *[]struct {
+				Key   string  `json:"key"`
+				Value *string `json:"value,omitempty"`
+			} `json:"metadata,omitempty"`
+			Name             string              `json:"name"`
+			ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+			Status           *string             `json:"status,omitempty"`
+			StatusDetails    *string             `json:"statusDetails,omitempty"`
+			Type             string              `json:"type"`
+			UpdatedAt        time.Time           `json:"updatedAt"`
+			UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
+			Version          float32             `json:"version"`
+		} `json:"dynamicSecrets,omitempty"`
+		Folders *[]struct {
+			CreatedAt          time.Time           `json:"createdAt"`
+			Description        *string             `json:"description,omitempty"`
+			EnvId              openapi_types.UUID  `json:"envId"`
+			Id                 openapi_types.UUID  `json:"id"`
+			IsReserved         *bool               `json:"isReserved,omitempty"`
+			LastSecretModified *time.Time          `json:"lastSecretModified,omitempty"`
+			Name               string              `json:"name"`
+			ParentId           *openapi_types.UUID `json:"parentId,omitempty"`
+			UpdatedAt          time.Time           `json:"updatedAt"`
+			Version            *float32            `json:"version,omitempty"`
+		} `json:"folders,omitempty"`
+		HoneyTokens *[]struct {
+			CreatedAt   time.Time `json:"createdAt"`
+			Description *string   `json:"description,omitempty"`
+			Environment struct {
+				Id   string `json:"id"`
+				Name string `json:"name"`
+				Slug string `json:"slug"`
+			} `json:"environment"`
+			Folder struct {
+				Path string `json:"path"`
+			} `json:"folder"`
+			FolderId       openapi_types.UUID `json:"folderId"`
+			Id             openapi_types.UUID `json:"id"`
+			Name           string             `json:"name"`
+			ProjectId      string             `json:"projectId"`
+			SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
+			Status         *string            `json:"status,omitempty"`
+			Type           string             `json:"type"`
+			UpdatedAt      time.Time          `json:"updatedAt"`
+		} `json:"honeyTokens,omitempty"`
+		ImportedBy *[]struct {
+			Environment struct {
+				Name string `json:"name"`
+				Slug string `json:"slug"`
+			} `json:"environment"`
+			Folders []struct {
+				IsImported bool   `json:"isImported"`
+				Name       string `json:"name"`
+				Secrets    *[]struct {
+					ReferencedSecretEnv string `json:"referencedSecretEnv"`
+					ReferencedSecretKey string `json:"referencedSecretKey"`
+					SecretId            string `json:"secretId"`
+				} `json:"secrets,omitempty"`
+			} `json:"folders"`
+			Project *struct {
+				Id   string `json:"id"`
+				Name string `json:"name"`
+				Slug string `json:"slug"`
+			} `json:"project,omitempty"`
+		} `json:"importedBy,omitempty"`
+		Imports *[]struct {
+			CreatedAt time.Time          `json:"createdAt"`
+			FolderId  openapi_types.UUID `json:"folderId"`
+			Id        openapi_types.UUID `json:"id"`
+			ImportEnv struct {
+				Id        string  `json:"id"`
+				Name      string  `json:"name"`
+				ProjectId *string `json:"projectId,omitempty"`
+				Slug      string  `json:"slug"`
+			} `json:"importEnv"`
+			ImportPath           string     `json:"importPath"`
+			IsAccessRevoked      bool       `json:"isAccessRevoked"`
+			IsReplication        *bool      `json:"isReplication,omitempty"`
+			IsReplicationSuccess *bool      `json:"isReplicationSuccess,omitempty"`
+			IsReserved           *bool      `json:"isReserved,omitempty"`
+			LastReplicated       *time.Time `json:"lastReplicated,omitempty"`
+			Position             float32    `json:"position"`
+			ReplicationStatus    *string    `json:"replicationStatus,omitempty"`
+			SourceProjectName    *string    `json:"sourceProjectName,omitempty"`
+			UpdatedAt            time.Time  `json:"updatedAt"`
+			Version              *float32   `json:"version,omitempty"`
+		} `json:"imports,omitempty"`
+		ProxiedServices *[]struct {
+			CreatedAt   time.Time `json:"createdAt"`
+			Credentials []struct {
+				DynamicSecretField   *string            `json:"dynamicSecretField,omitempty"`
+				DynamicSecretName    *string            `json:"dynamicSecretName,omitempty"`
+				HeaderName           *string            `json:"headerName,omitempty"`
+				HeaderPrefix         *string            `json:"headerPrefix,omitempty"`
+				HeaderPurpose        *string            `json:"headerPurpose,omitempty"`
+				Id                   openapi_types.UUID `json:"id"`
+				PlaceholderKey       *string            `json:"placeholderKey,omitempty"`
+				PlaceholderValue     *string            `json:"placeholderValue,omitempty"`
+				Role                 string             `json:"role"`
+				SecretKey            *string            `json:"secretKey,omitempty"`
+				ServiceId            openapi_types.UUID `json:"serviceId"`
+				SubstitutionSurfaces *[]string          `json:"substitutionSurfaces,omitempty"`
+			} `json:"credentials"`
+			Environment struct {
+				Id   string `json:"id"`
+				Name string `json:"name"`
+				Slug string `json:"slug"`
+			} `json:"environment"`
+			Folder struct {
+				Path string `json:"path"`
+			} `json:"folder"`
+			FolderId    openapi_types.UUID `json:"folderId"`
+			HostPattern string             `json:"hostPattern"`
+			Id          openapi_types.UUID `json:"id"`
+			IsEnabled   *bool              `json:"isEnabled,omitempty"`
+			LastUsedAt  *time.Time         `json:"lastUsedAt,omitempty"`
+			Name        string             `json:"name"`
+			UpdatedAt   time.Time          `json:"updatedAt"`
+		} `json:"proxiedServices,omitempty"`
+		SecretRotations *[]ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item `json:"secretRotations,omitempty"`
+		Secrets         *[]struct {
+			UnderscoreId string `json:"_id"`
+			Actor        *struct {
+				ActorId      *string `json:"actorId,omitempty"`
+				ActorType    *string `json:"actorType,omitempty"`
+				GroupId      *string `json:"groupId,omitempty"`
+				MembershipId *string `json:"membershipId,omitempty"`
+				Name         *string `json:"name,omitempty"`
+			} `json:"actor,omitempty"`
+			CreatedAt          time.Time `json:"createdAt"`
+			Environment        string    `json:"environment"`
+			Id                 string    `json:"id"`
+			IsEmpty            bool      `json:"isEmpty"`
+			IsHoneyTokenSecret *bool     `json:"isHoneyTokenSecret,omitempty"`
+			IsRotatedSecret    *bool     `json:"isRotatedSecret,omitempty"`
+			Reminder           *struct {
+				CreatedAt        time.Time           `json:"createdAt"`
+				FromDate         *time.Time          `json:"fromDate,omitempty"`
+				Id               openapi_types.UUID  `json:"id"`
+				Message          *string             `json:"message,omitempty"`
+				NextReminderDate time.Time           `json:"nextReminderDate"`
+				Recipients       *[]string           `json:"recipients,omitempty"`
+				RepeatDays       *float32            `json:"repeatDays,omitempty"`
+				SecretId         *openapi_types.UUID `json:"secretId,omitempty"`
+				UpdatedAt        time.Time           `json:"updatedAt"`
+			} `json:"reminder,omitempty"`
+			RotationId     *openapi_types.UUID `json:"rotationId,omitempty"`
+			SecretComment  string              `json:"secretComment"`
+			SecretKey      string              `json:"secretKey"`
+			SecretMetadata *[]struct {
+				IsEncrypted *bool   `json:"isEncrypted,omitempty"`
+				Key         string  `json:"key"`
+				Value       *string `json:"value,omitempty"`
+			} `json:"secretMetadata,omitempty"`
+			SecretPath               *string  `json:"secretPath,omitempty"`
+			SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
+			SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
+			SecretValueHidden        bool     `json:"secretValueHidden"`
+			SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
+			Tags                     *[]struct {
+				Color *string            `json:"color,omitempty"`
+				Id    openapi_types.UUID `json:"id"`
+				Name  string             `json:"name"`
+				Slug  string             `json:"slug"`
+			} `json:"tags,omitempty"`
+			Type      string    `json:"type"`
+			UpdatedAt time.Time `json:"updatedAt"`
+			Version   float32   `json:"version"`
+			Workspace string    `json:"workspace"`
+		} `json:"secrets,omitempty"`
+		TotalCount               float32  `json:"totalCount"`
+		TotalDynamicSecretCount  *float32 `json:"totalDynamicSecretCount,omitempty"`
+		TotalFolderCount         *float32 `json:"totalFolderCount,omitempty"`
+		TotalHoneyTokenCount     *float32 `json:"totalHoneyTokenCount,omitempty"`
+		TotalImportCount         *float32 `json:"totalImportCount,omitempty"`
+		TotalProxiedServiceCount *float32 `json:"totalProxiedServiceCount,omitempty"`
+		TotalSecretCount         *float32 `json:"totalSecretCount,omitempty"`
+		TotalSecretRotationCount *float32 `json:"totalSecretRotationCount,omitempty"`
+		UsedBySecretSyncs        *[]struct {
+			Destination string `json:"destination"`
+			Environment string `json:"environment"`
+			Id          string `json:"id"`
+			Name        string `json:"name"`
+			Path        string `json:"path"`
+		} `json:"usedBySecretSyncs,omitempty"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode ListProjectSecretsDetails400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode ListProjectSecretsDetails401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode ListProjectSecretsDetails403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode ListProjectSecretsDetails404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                 `json:"error"`
+		Message    interface{}                                            `json:"message,omitempty"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode ListProjectSecretsDetails422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode ListProjectSecretsDetails500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListProjectSecretsDetailsResponse) GetJSON200() *struct {
+	DynamicSecrets *[]struct {
+		CreatedAt     time.Time           `json:"createdAt"`
+		DefaultTTL    string              `json:"defaultTTL"`
+		FolderId      openapi_types.UUID  `json:"folderId"`
+		GatewayId     *openapi_types.UUID `json:"gatewayId,omitempty"`
+		GatewayPoolId *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+		GatewayV2Id   *openapi_types.UUID `json:"gatewayV2Id,omitempty"`
+		Id            openapi_types.UUID  `json:"id"`
+		MaxTTL        *string             `json:"maxTTL,omitempty"`
+		Metadata      *[]struct {
+			Key   string  `json:"key"`
+			Value *string `json:"value,omitempty"`
+		} `json:"metadata,omitempty"`
+		Name             string              `json:"name"`
+		ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+		Status           *string             `json:"status,omitempty"`
+		StatusDetails    *string             `json:"statusDetails,omitempty"`
+		Type             string              `json:"type"`
+		UpdatedAt        time.Time           `json:"updatedAt"`
+		UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
+		Version          float32             `json:"version"`
+	} `json:"dynamicSecrets,omitempty"`
+	Folders *[]struct {
+		CreatedAt          time.Time           `json:"createdAt"`
+		Description        *string             `json:"description,omitempty"`
+		EnvId              openapi_types.UUID  `json:"envId"`
+		Id                 openapi_types.UUID  `json:"id"`
+		IsReserved         *bool               `json:"isReserved,omitempty"`
+		LastSecretModified *time.Time          `json:"lastSecretModified,omitempty"`
+		Name               string              `json:"name"`
+		ParentId           *openapi_types.UUID `json:"parentId,omitempty"`
+		UpdatedAt          time.Time           `json:"updatedAt"`
+		Version            *float32            `json:"version,omitempty"`
+	} `json:"folders,omitempty"`
+	HoneyTokens *[]struct {
+		CreatedAt   time.Time `json:"createdAt"`
+		Description *string   `json:"description,omitempty"`
+		Environment struct {
+			Id   string `json:"id"`
+			Name string `json:"name"`
+			Slug string `json:"slug"`
+		} `json:"environment"`
+		Folder struct {
+			Path string `json:"path"`
+		} `json:"folder"`
+		FolderId       openapi_types.UUID `json:"folderId"`
+		Id             openapi_types.UUID `json:"id"`
+		Name           string             `json:"name"`
+		ProjectId      string             `json:"projectId"`
+		SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
+		Status         *string            `json:"status,omitempty"`
+		Type           string             `json:"type"`
+		UpdatedAt      time.Time          `json:"updatedAt"`
+	} `json:"honeyTokens,omitempty"`
+	ImportedBy *[]struct {
+		Environment struct {
+			Name string `json:"name"`
+			Slug string `json:"slug"`
+		} `json:"environment"`
+		Folders []struct {
+			IsImported bool   `json:"isImported"`
+			Name       string `json:"name"`
+			Secrets    *[]struct {
+				ReferencedSecretEnv string `json:"referencedSecretEnv"`
+				ReferencedSecretKey string `json:"referencedSecretKey"`
+				SecretId            string `json:"secretId"`
+			} `json:"secrets,omitempty"`
+		} `json:"folders"`
+		Project *struct {
+			Id   string `json:"id"`
+			Name string `json:"name"`
+			Slug string `json:"slug"`
+		} `json:"project,omitempty"`
+	} `json:"importedBy,omitempty"`
+	Imports *[]struct {
+		CreatedAt time.Time          `json:"createdAt"`
+		FolderId  openapi_types.UUID `json:"folderId"`
+		Id        openapi_types.UUID `json:"id"`
+		ImportEnv struct {
+			Id        string  `json:"id"`
+			Name      string  `json:"name"`
+			ProjectId *string `json:"projectId,omitempty"`
+			Slug      string  `json:"slug"`
+		} `json:"importEnv"`
+		ImportPath           string     `json:"importPath"`
+		IsAccessRevoked      bool       `json:"isAccessRevoked"`
+		IsReplication        *bool      `json:"isReplication,omitempty"`
+		IsReplicationSuccess *bool      `json:"isReplicationSuccess,omitempty"`
+		IsReserved           *bool      `json:"isReserved,omitempty"`
+		LastReplicated       *time.Time `json:"lastReplicated,omitempty"`
+		Position             float32    `json:"position"`
+		ReplicationStatus    *string    `json:"replicationStatus,omitempty"`
+		SourceProjectName    *string    `json:"sourceProjectName,omitempty"`
+		UpdatedAt            time.Time  `json:"updatedAt"`
+		Version              *float32   `json:"version,omitempty"`
+	} `json:"imports,omitempty"`
+	ProxiedServices *[]struct {
+		CreatedAt   time.Time `json:"createdAt"`
+		Credentials []struct {
+			DynamicSecretField   *string            `json:"dynamicSecretField,omitempty"`
+			DynamicSecretName    *string            `json:"dynamicSecretName,omitempty"`
+			HeaderName           *string            `json:"headerName,omitempty"`
+			HeaderPrefix         *string            `json:"headerPrefix,omitempty"`
+			HeaderPurpose        *string            `json:"headerPurpose,omitempty"`
+			Id                   openapi_types.UUID `json:"id"`
+			PlaceholderKey       *string            `json:"placeholderKey,omitempty"`
+			PlaceholderValue     *string            `json:"placeholderValue,omitempty"`
+			Role                 string             `json:"role"`
+			SecretKey            *string            `json:"secretKey,omitempty"`
+			ServiceId            openapi_types.UUID `json:"serviceId"`
+			SubstitutionSurfaces *[]string          `json:"substitutionSurfaces,omitempty"`
+		} `json:"credentials"`
+		Environment struct {
+			Id   string `json:"id"`
+			Name string `json:"name"`
+			Slug string `json:"slug"`
+		} `json:"environment"`
+		Folder struct {
+			Path string `json:"path"`
+		} `json:"folder"`
+		FolderId    openapi_types.UUID `json:"folderId"`
+		HostPattern string             `json:"hostPattern"`
+		Id          openapi_types.UUID `json:"id"`
+		IsEnabled   *bool              `json:"isEnabled,omitempty"`
+		LastUsedAt  *time.Time         `json:"lastUsedAt,omitempty"`
+		Name        string             `json:"name"`
+		UpdatedAt   time.Time          `json:"updatedAt"`
+	} `json:"proxiedServices,omitempty"`
+	SecretRotations *[]ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item `json:"secretRotations,omitempty"`
+	Secrets         *[]struct {
+		UnderscoreId string `json:"_id"`
+		Actor        *struct {
+			ActorId      *string `json:"actorId,omitempty"`
+			ActorType    *string `json:"actorType,omitempty"`
+			GroupId      *string `json:"groupId,omitempty"`
+			MembershipId *string `json:"membershipId,omitempty"`
+			Name         *string `json:"name,omitempty"`
+		} `json:"actor,omitempty"`
+		CreatedAt          time.Time `json:"createdAt"`
+		Environment        string    `json:"environment"`
+		Id                 string    `json:"id"`
+		IsEmpty            bool      `json:"isEmpty"`
+		IsHoneyTokenSecret *bool     `json:"isHoneyTokenSecret,omitempty"`
+		IsRotatedSecret    *bool     `json:"isRotatedSecret,omitempty"`
+		Reminder           *struct {
+			CreatedAt        time.Time           `json:"createdAt"`
+			FromDate         *time.Time          `json:"fromDate,omitempty"`
+			Id               openapi_types.UUID  `json:"id"`
+			Message          *string             `json:"message,omitempty"`
+			NextReminderDate time.Time           `json:"nextReminderDate"`
+			Recipients       *[]string           `json:"recipients,omitempty"`
+			RepeatDays       *float32            `json:"repeatDays,omitempty"`
+			SecretId         *openapi_types.UUID `json:"secretId,omitempty"`
+			UpdatedAt        time.Time           `json:"updatedAt"`
+		} `json:"reminder,omitempty"`
+		RotationId     *openapi_types.UUID `json:"rotationId,omitempty"`
+		SecretComment  string              `json:"secretComment"`
+		SecretKey      string              `json:"secretKey"`
+		SecretMetadata *[]struct {
+			IsEncrypted *bool   `json:"isEncrypted,omitempty"`
+			Key         string  `json:"key"`
+			Value       *string `json:"value,omitempty"`
+		} `json:"secretMetadata,omitempty"`
+		SecretPath               *string  `json:"secretPath,omitempty"`
+		SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
+		SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
+		SecretValueHidden        bool     `json:"secretValueHidden"`
+		SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
+		Tags                     *[]struct {
+			Color *string            `json:"color,omitempty"`
+			Id    openapi_types.UUID `json:"id"`
+			Name  string             `json:"name"`
+			Slug  string             `json:"slug"`
+		} `json:"tags,omitempty"`
+		Type      string    `json:"type"`
+		UpdatedAt time.Time `json:"updatedAt"`
+		Version   float32   `json:"version"`
+		Workspace string    `json:"workspace"`
+	} `json:"secrets,omitempty"`
+	TotalCount               float32  `json:"totalCount"`
+	TotalDynamicSecretCount  *float32 `json:"totalDynamicSecretCount,omitempty"`
+	TotalFolderCount         *float32 `json:"totalFolderCount,omitempty"`
+	TotalHoneyTokenCount     *float32 `json:"totalHoneyTokenCount,omitempty"`
+	TotalImportCount         *float32 `json:"totalImportCount,omitempty"`
+	TotalProxiedServiceCount *float32 `json:"totalProxiedServiceCount,omitempty"`
+	TotalSecretCount         *float32 `json:"totalSecretCount,omitempty"`
+	TotalSecretRotationCount *float32 `json:"totalSecretRotationCount,omitempty"`
+	UsedBySecretSyncs        *[]struct {
+		Destination string `json:"destination"`
+		Environment string `json:"environment"`
+		Id          string `json:"id"`
+		Name        string `json:"name"`
+		Path        string `json:"path"`
+	} `json:"usedBySecretSyncs,omitempty"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListProjectSecretsDetailsResponse) GetJSON400() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListProjectSecretsDetails400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListProjectSecretsDetailsResponse) GetJSON401() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListProjectSecretsDetails401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListProjectSecretsDetailsResponse) GetJSON403() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListProjectSecretsDetails403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListProjectSecretsDetailsResponse) GetJSON404() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListProjectSecretsDetails404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListProjectSecretsDetailsResponse) GetJSON422() *struct {
+	Error      string                                                 `json:"error"`
+	Message    interface{}                                            `json:"message,omitempty"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListProjectSecretsDetails422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListProjectSecretsDetailsResponse) GetJSON500() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListProjectSecretsDetails500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListProjectSecretsDetailsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListProjectSecretsDetailsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListProjectSecretsDetailsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListProjectSecretsDetailsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -33978,6 +39854,19 @@ func (c *ClientWithResponses) LoginWithUniversalAuthWithResponse(ctx context.Con
 	return ParseLoginWithUniversalAuthResponse(rsp)
 }
 
+// ListProjectSecretsDetailsWithResponse performs a GET /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request.
+//
+// List project secrets details.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListProjectSecretsDetailsWithResponse(ctx context.Context, params *ListProjectSecretsDetailsParams, reqEditors ...RequestEditorFn) (*ListProjectSecretsDetailsResponse, error) {
+	rsp, err := c.ListProjectSecretsDetails(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListProjectSecretsDetailsResponse(rsp)
+}
+
 // CreateGroupWithBodyWithResponse performs a POST /api/v1/groups (the `CreateGroup` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -36098,6 +41987,301 @@ func ParseLoginWithUniversalAuthResponse(rsp *http.Response) (*LoginWithUniversa
 			Message    string                                              `json:"message"`
 			ReqId      string                                              `json:"reqId"`
 			StatusCode LoginWithUniversalAuth500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListProjectSecretsDetailsResponse parses an HTTP response from a ListProjectSecretsDetailsWithResponse call
+func ParseListProjectSecretsDetailsResponse(rsp *http.Response) (*ListProjectSecretsDetailsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListProjectSecretsDetailsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			DynamicSecrets *[]struct {
+				CreatedAt     time.Time           `json:"createdAt"`
+				DefaultTTL    string              `json:"defaultTTL"`
+				FolderId      openapi_types.UUID  `json:"folderId"`
+				GatewayId     *openapi_types.UUID `json:"gatewayId,omitempty"`
+				GatewayPoolId *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+				GatewayV2Id   *openapi_types.UUID `json:"gatewayV2Id,omitempty"`
+				Id            openapi_types.UUID  `json:"id"`
+				MaxTTL        *string             `json:"maxTTL,omitempty"`
+				Metadata      *[]struct {
+					Key   string  `json:"key"`
+					Value *string `json:"value,omitempty"`
+				} `json:"metadata,omitempty"`
+				Name             string              `json:"name"`
+				ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+				Status           *string             `json:"status,omitempty"`
+				StatusDetails    *string             `json:"statusDetails,omitempty"`
+				Type             string              `json:"type"`
+				UpdatedAt        time.Time           `json:"updatedAt"`
+				UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
+				Version          float32             `json:"version"`
+			} `json:"dynamicSecrets,omitempty"`
+			Folders *[]struct {
+				CreatedAt          time.Time           `json:"createdAt"`
+				Description        *string             `json:"description,omitempty"`
+				EnvId              openapi_types.UUID  `json:"envId"`
+				Id                 openapi_types.UUID  `json:"id"`
+				IsReserved         *bool               `json:"isReserved,omitempty"`
+				LastSecretModified *time.Time          `json:"lastSecretModified,omitempty"`
+				Name               string              `json:"name"`
+				ParentId           *openapi_types.UUID `json:"parentId,omitempty"`
+				UpdatedAt          time.Time           `json:"updatedAt"`
+				Version            *float32            `json:"version,omitempty"`
+			} `json:"folders,omitempty"`
+			HoneyTokens *[]struct {
+				CreatedAt   time.Time `json:"createdAt"`
+				Description *string   `json:"description,omitempty"`
+				Environment struct {
+					Id   string `json:"id"`
+					Name string `json:"name"`
+					Slug string `json:"slug"`
+				} `json:"environment"`
+				Folder struct {
+					Path string `json:"path"`
+				} `json:"folder"`
+				FolderId       openapi_types.UUID `json:"folderId"`
+				Id             openapi_types.UUID `json:"id"`
+				Name           string             `json:"name"`
+				ProjectId      string             `json:"projectId"`
+				SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
+				Status         *string            `json:"status,omitempty"`
+				Type           string             `json:"type"`
+				UpdatedAt      time.Time          `json:"updatedAt"`
+			} `json:"honeyTokens,omitempty"`
+			ImportedBy *[]struct {
+				Environment struct {
+					Name string `json:"name"`
+					Slug string `json:"slug"`
+				} `json:"environment"`
+				Folders []struct {
+					IsImported bool   `json:"isImported"`
+					Name       string `json:"name"`
+					Secrets    *[]struct {
+						ReferencedSecretEnv string `json:"referencedSecretEnv"`
+						ReferencedSecretKey string `json:"referencedSecretKey"`
+						SecretId            string `json:"secretId"`
+					} `json:"secrets,omitempty"`
+				} `json:"folders"`
+				Project *struct {
+					Id   string `json:"id"`
+					Name string `json:"name"`
+					Slug string `json:"slug"`
+				} `json:"project,omitempty"`
+			} `json:"importedBy,omitempty"`
+			Imports *[]struct {
+				CreatedAt time.Time          `json:"createdAt"`
+				FolderId  openapi_types.UUID `json:"folderId"`
+				Id        openapi_types.UUID `json:"id"`
+				ImportEnv struct {
+					Id        string  `json:"id"`
+					Name      string  `json:"name"`
+					ProjectId *string `json:"projectId,omitempty"`
+					Slug      string  `json:"slug"`
+				} `json:"importEnv"`
+				ImportPath           string     `json:"importPath"`
+				IsAccessRevoked      bool       `json:"isAccessRevoked"`
+				IsReplication        *bool      `json:"isReplication,omitempty"`
+				IsReplicationSuccess *bool      `json:"isReplicationSuccess,omitempty"`
+				IsReserved           *bool      `json:"isReserved,omitempty"`
+				LastReplicated       *time.Time `json:"lastReplicated,omitempty"`
+				Position             float32    `json:"position"`
+				ReplicationStatus    *string    `json:"replicationStatus,omitempty"`
+				SourceProjectName    *string    `json:"sourceProjectName,omitempty"`
+				UpdatedAt            time.Time  `json:"updatedAt"`
+				Version              *float32   `json:"version,omitempty"`
+			} `json:"imports,omitempty"`
+			ProxiedServices *[]struct {
+				CreatedAt   time.Time `json:"createdAt"`
+				Credentials []struct {
+					DynamicSecretField   *string            `json:"dynamicSecretField,omitempty"`
+					DynamicSecretName    *string            `json:"dynamicSecretName,omitempty"`
+					HeaderName           *string            `json:"headerName,omitempty"`
+					HeaderPrefix         *string            `json:"headerPrefix,omitempty"`
+					HeaderPurpose        *string            `json:"headerPurpose,omitempty"`
+					Id                   openapi_types.UUID `json:"id"`
+					PlaceholderKey       *string            `json:"placeholderKey,omitempty"`
+					PlaceholderValue     *string            `json:"placeholderValue,omitempty"`
+					Role                 string             `json:"role"`
+					SecretKey            *string            `json:"secretKey,omitempty"`
+					ServiceId            openapi_types.UUID `json:"serviceId"`
+					SubstitutionSurfaces *[]string          `json:"substitutionSurfaces,omitempty"`
+				} `json:"credentials"`
+				Environment struct {
+					Id   string `json:"id"`
+					Name string `json:"name"`
+					Slug string `json:"slug"`
+				} `json:"environment"`
+				Folder struct {
+					Path string `json:"path"`
+				} `json:"folder"`
+				FolderId    openapi_types.UUID `json:"folderId"`
+				HostPattern string             `json:"hostPattern"`
+				Id          openapi_types.UUID `json:"id"`
+				IsEnabled   *bool              `json:"isEnabled,omitempty"`
+				LastUsedAt  *time.Time         `json:"lastUsedAt,omitempty"`
+				Name        string             `json:"name"`
+				UpdatedAt   time.Time          `json:"updatedAt"`
+			} `json:"proxiedServices,omitempty"`
+			SecretRotations *[]ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item `json:"secretRotations,omitempty"`
+			Secrets         *[]struct {
+				UnderscoreId string `json:"_id"`
+				Actor        *struct {
+					ActorId      *string `json:"actorId,omitempty"`
+					ActorType    *string `json:"actorType,omitempty"`
+					GroupId      *string `json:"groupId,omitempty"`
+					MembershipId *string `json:"membershipId,omitempty"`
+					Name         *string `json:"name,omitempty"`
+				} `json:"actor,omitempty"`
+				CreatedAt          time.Time `json:"createdAt"`
+				Environment        string    `json:"environment"`
+				Id                 string    `json:"id"`
+				IsEmpty            bool      `json:"isEmpty"`
+				IsHoneyTokenSecret *bool     `json:"isHoneyTokenSecret,omitempty"`
+				IsRotatedSecret    *bool     `json:"isRotatedSecret,omitempty"`
+				Reminder           *struct {
+					CreatedAt        time.Time           `json:"createdAt"`
+					FromDate         *time.Time          `json:"fromDate,omitempty"`
+					Id               openapi_types.UUID  `json:"id"`
+					Message          *string             `json:"message,omitempty"`
+					NextReminderDate time.Time           `json:"nextReminderDate"`
+					Recipients       *[]string           `json:"recipients,omitempty"`
+					RepeatDays       *float32            `json:"repeatDays,omitempty"`
+					SecretId         *openapi_types.UUID `json:"secretId,omitempty"`
+					UpdatedAt        time.Time           `json:"updatedAt"`
+				} `json:"reminder,omitempty"`
+				RotationId     *openapi_types.UUID `json:"rotationId,omitempty"`
+				SecretComment  string              `json:"secretComment"`
+				SecretKey      string              `json:"secretKey"`
+				SecretMetadata *[]struct {
+					IsEncrypted *bool   `json:"isEncrypted,omitempty"`
+					Key         string  `json:"key"`
+					Value       *string `json:"value,omitempty"`
+				} `json:"secretMetadata,omitempty"`
+				SecretPath               *string  `json:"secretPath,omitempty"`
+				SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
+				SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
+				SecretValueHidden        bool     `json:"secretValueHidden"`
+				SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
+				Tags                     *[]struct {
+					Color *string            `json:"color,omitempty"`
+					Id    openapi_types.UUID `json:"id"`
+					Name  string             `json:"name"`
+					Slug  string             `json:"slug"`
+				} `json:"tags,omitempty"`
+				Type      string    `json:"type"`
+				UpdatedAt time.Time `json:"updatedAt"`
+				Version   float32   `json:"version"`
+				Workspace string    `json:"workspace"`
+			} `json:"secrets,omitempty"`
+			TotalCount               float32  `json:"totalCount"`
+			TotalDynamicSecretCount  *float32 `json:"totalDynamicSecretCount,omitempty"`
+			TotalFolderCount         *float32 `json:"totalFolderCount,omitempty"`
+			TotalHoneyTokenCount     *float32 `json:"totalHoneyTokenCount,omitempty"`
+			TotalImportCount         *float32 `json:"totalImportCount,omitempty"`
+			TotalProxiedServiceCount *float32 `json:"totalProxiedServiceCount,omitempty"`
+			TotalSecretCount         *float32 `json:"totalSecretCount,omitempty"`
+			TotalSecretRotationCount *float32 `json:"totalSecretRotationCount,omitempty"`
+			UsedBySecretSyncs        *[]struct {
+				Destination string `json:"destination"`
+				Environment string `json:"environment"`
+				Id          string `json:"id"`
+				Name        string `json:"name"`
+				Path        string `json:"path"`
+			} `json:"usedBySecretSyncs,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListProjectSecretsDetails400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListProjectSecretsDetails401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListProjectSecretsDetails403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListProjectSecretsDetails404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    interface{}                                            `json:"message,omitempty"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListProjectSecretsDetails422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListProjectSecretsDetails500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
