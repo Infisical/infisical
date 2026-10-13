@@ -7,7 +7,6 @@ import {
 } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -18,6 +17,7 @@ import {
   CardTitle,
   DocumentationLinkBadge
 } from "@app/components/v3";
+import { DeleteConfirmDialog } from "@app/components/v3/platform";
 import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub,
@@ -156,36 +156,36 @@ export const CaSection = () => {
       {upgradeGate}
       <CaInstallCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CaCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteCa.isOpen}
         title={`Are you sure you want to remove the CA ${
           (popUp?.deleteCa?.data as { dn: string })?.dn || ""
         }?`}
-        subTitle={`This action will delete other CAs and certificates below it in your CA hierarchy.${
+        description={`This action will delete other CAs and certificates below it in your CA hierarchy.${
           pendingDeleteHsmKeyLabel
             ? ` This CA's key on the HSM (label: ${pendingDeleteHsmKeyLabel}) is not removed automatically and will remain as an orphaned key.`
             : ""
         }`}
-        onChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() => onRemoveCaSubmit((popUp?.deleteCa?.data as { caId: string })?.caId)}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() => onRemoveCaSubmit((popUp?.deleteCa?.data as { caId: string })?.caId)}
       />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.caStatus.isOpen}
         title={`Are you sure you want to ${
           (popUp?.caStatus?.data as { status: string })?.status === CaStatus.ACTIVE
             ? "enable"
             : "disable"
         } the CA ${(popUp?.caStatus?.data as { dn: string })?.dn || ""}?`}
-        subTitle={
+        description={
           (popUp?.caStatus?.data as { status: string })?.status === CaStatus.ACTIVE
             ? "This action will allow the CA to start issuing certificates again."
             : "This action will prevent the CA from issuing new certificates."
         }
-        onChange={(isOpen) => handlePopUpToggle("caStatus", isOpen)}
-        buttonText="Confirm"
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        onOpenChange={(isOpen) => handlePopUpToggle("caStatus", isOpen)}
+        confirmLabel="Confirm"
+        confirmKey="confirm"
+        onConfirm={() =>
           onUpdateCaStatus(popUp?.caStatus?.data as { caId: string; status: CaStatus })
         }
       />

@@ -1,24 +1,24 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faRefresh, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { twMerge } from "tailwind-merge";
+import { MoreVerticalIcon, RefreshCwIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
   Checkbox,
-  DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EmptyState,
-  Tooltip
-} from "@app/components/v2";
-import { PageHeader } from "@app/components/v3/platform";
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  Field,
+  FieldLabel
+} from "@app/components/v3";
+import { DeleteConfirmDialog, PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionActions, OrgPermissionSubjects, useProject } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
@@ -90,14 +90,13 @@ export const IntegrationDetailsByIDPage = () => {
               title={`${integrationSlugNameMapping[integration.integration]} Integration`}
             >
               <DropdownMenu>
-                <DropdownMenuTrigger asChild className="rounded-lg">
-                  <div className="hover:text-project data-[state=open]:text-project">
-                    <Tooltip content="More options">
-                      <Button variant="outline_bg">More</Button>
-                    </Tooltip>
-                  </div>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <MoreVerticalIcon />
+                    More
+                  </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="p-1">
+                <DropdownMenuContent align="end">
                   <DropdownMenuItem
                     onClick={async () => {
                       await syncIntegration({
@@ -107,10 +106,8 @@ export const IntegrationDetailsByIDPage = () => {
                       });
                     }}
                   >
-                    <div className="flex items-center gap-2">
-                      <FontAwesomeIcon icon={faRefresh} />
-                      Manually Sync
-                    </div>
+                    <RefreshCwIcon />
+                    Manually Sync
                   </DropdownMenuItem>
                   <OrgPermissionCan
                     I={OrgPermissionActions.Delete}
@@ -118,21 +115,15 @@ export const IntegrationDetailsByIDPage = () => {
                   >
                     {(isAllowed) => (
                       <DropdownMenuItem
-                        className={twMerge(
-                          isAllowed
-                            ? "hover:bg-danger! hover:text-white!"
-                            : "pointer-events-none cursor-not-allowed opacity-50"
-                        )}
+                        variant="danger"
                         onClick={() => {
                           setShouldDeleteSecrets.off();
                           handlePopUpOpen("deleteConfirmation", integration);
                         }}
-                        disabled={!isAllowed}
+                        isDisabled={!isAllowed}
                       >
-                        <div className="flex items-center gap-2">
-                          <FontAwesomeIcon icon={faTrash} />
-                          Delete Integration
-                        </div>
+                        <TrashIcon />
+                        Delete Integration
                       </DropdownMenuItem>
                     )}
                   </OrgPermissionCan>
@@ -151,19 +142,22 @@ export const IntegrationDetailsByIDPage = () => {
             </div>
           </div>
         ) : (
-          <div>
-            <EmptyState title="Error: Unable to fetch integration." className="py-12" />
-          </div>
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>Error: Unable to fetch integration.</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         )}
       </div>
 
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteConfirmation.isOpen}
         title={`Are you sure you want to remove ${integration?.integration || " "} integration for ${
           integration?.app || "this project"
         }?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}
-        deleteKey={
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}
+        confirmKey={
           (integration?.integration === "azure-app-configuration" &&
             integration?.app?.split("//")[1]?.split(".")[0]) ||
           integration?.app ||
@@ -172,7 +166,7 @@ export const IntegrationDetailsByIDPage = () => {
           integration?.integration ||
           ""
         }
-        onDeleteApproved={async () => {
+        onConfirm={async () => {
           if (shouldDeleteSecrets) {
             handlePopUpOpen("deleteSecretsConfirmation");
             return;
@@ -184,23 +178,26 @@ export const IntegrationDetailsByIDPage = () => {
         }}
       >
         {integration?.integration === "github" && (
-          <div className="mt-4">
+          <Field orientation="horizontal">
             <Checkbox
               id="delete-integration-secrets"
+              variant="danger"
+              isChecked={shouldDeleteSecrets}
               onCheckedChange={() => setShouldDeleteSecrets.toggle()}
-            >
+            />
+            <FieldLabel htmlFor="delete-integration-secrets">
               Delete previously synced secrets from the destination
-            </Checkbox>
-          </div>
+            </FieldLabel>
+          </Field>
         )}
-      </DeleteActionModal>
-      <DeleteActionModal
+      </DeleteConfirmDialog>
+      <DeleteConfirmDialog
         isOpen={popUp.deleteSecretsConfirmation.isOpen}
         title={`Are you sure you also want to delete secrets on ${integration?.integration}?`}
-        subTitle="By confirming, you acknowledge that all secrets managed by this integration will be removed from the destination. This action is irreversible."
-        onChange={(isOpen) => handlePopUpToggle("deleteSecretsConfirmation", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={async () => {
+        description="By confirming, you acknowledge that all secrets managed by this integration will be removed from the destination. This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteSecretsConfirmation", isOpen)}
+        confirmKey="confirm"
+        onConfirm={async () => {
           await handleIntegrationDelete(true);
           handlePopUpClose("deleteSecretsConfirmation");
           handlePopUpClose("deleteConfirmation");
