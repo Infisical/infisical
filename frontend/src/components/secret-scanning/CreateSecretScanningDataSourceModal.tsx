@@ -2,8 +2,14 @@ import { useEffect, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 
 import { TSecretScanningDataSourceForm } from "@app/components/secret-scanning/forms/schemas";
-import { Modal, ModalContent } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import {
+  DocumentationLinkBadge,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle
+} from "@app/components/v3";
 import {
   SecretScanningDataSource,
   TSecretScanningDataSource
@@ -11,10 +17,6 @@ import {
 
 import { SecretScanningDataSourceForm } from "./forms";
 import { SecretScanningDataSourceModalHeader } from "./SecretScanningDataSourceModalHeader";
-import {
-  SecretScanningDataSourcePopupContext,
-  useSecretScanningDataSourcePopupRegistry
-} from "./SecretScanningDataSourcePopupContext";
 import { SecretScanningDataSourceSelect } from "./SecretScanningDataSourceSelect";
 
 type Props = {
@@ -28,6 +30,7 @@ type ContentProps = {
   setSelectedDataSource: (selectedDataSource: SecretScanningDataSource | null) => void;
   initialFormData?: Partial<TSecretScanningDataSourceForm>;
   onCancel: () => void;
+  onSubmittingChange: (isSubmitting: boolean) => void;
 };
 
 const Content = ({
@@ -46,11 +49,11 @@ const Content = ({
 };
 
 export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...props }: Props) => {
-  const popupRegistry = useSecretScanningDataSourcePopupRegistry();
   const [selectedDataSource, setSelectedDataSource] = useState<SecretScanningDataSource | null>(
     null
   );
   const [initialFormData, setInitialFormData] = useState<Partial<TSecretScanningDataSourceForm>>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     location: {
@@ -98,8 +101,8 @@ export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...p
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
+    <Sheet
+      open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
           resetModal();
@@ -107,42 +110,40 @@ export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...p
         onOpenChange(open);
       }}
     >
-      {/* z-50 (not the v2 default z-[60]) so the inline "Create Connection" Sheet and its v3 Select
-          menus (all z-50, portaled later) stack above this modal instead of being buried behind it,
-          while the backdrop still covers page chrome up to z-50 by portal order. */}
-      <ModalContent
-        onEscapeKeyDown={popupRegistry.onEscapeKeyDown}
-        overlayClassName="z-50"
-        title={
-          selectedDataSource ? (
-            <SecretScanningDataSourceModalHeader isConfigured={false} type={selectedDataSource} />
+      <SheetContent size="form" isPending={isSubmitting}>
+        <SheetHeader>
+          {selectedDataSource ? (
+            <>
+              <SheetTitle className="sr-only">Add Data Source</SheetTitle>
+              <SecretScanningDataSourceModalHeader isConfigured={false} type={selectedDataSource} />
+            </>
           ) : (
-            <div className="flex items-center gap-x-2 text-label">
-              Add Data Source
-              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/overview" />
-            </div>
-          )
-        }
-        className={selectedDataSource ? "z-50 max-w-2xl" : "z-50 max-w-3xl"}
-        subTitle={
-          selectedDataSource ? undefined : "Select a data source to configure secret scanning for."
-        }
-        bodyClassName="overflow-visible"
-      >
-        <SecretScanningDataSourcePopupContext.Provider value={popupRegistry.onPopupOpenChange}>
+            <>
+              <SheetTitle className="flex items-center gap-x-2">
+                Add Data Source
+                <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/overview" />
+              </SheetTitle>
+              <SheetDescription>
+                Select a data source to configure secret scanning for.
+              </SheetDescription>
+            </>
+          )}
+        </SheetHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <Content
             onComplete={() => {
               resetModal();
               onOpenChange(false);
             }}
             onCancel={resetModal}
+            onSubmittingChange={setIsSubmitting}
             selectedDataSource={selectedDataSource}
             setSelectedDataSource={setSelectedDataSource}
             initialFormData={initialFormData}
             {...props}
           />
-        </SecretScanningDataSourcePopupContext.Provider>
-      </ModalContent>
-    </Modal>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 };

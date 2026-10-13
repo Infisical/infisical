@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v3";
@@ -28,6 +27,7 @@ type Props = {
   onCancel: () => void;
   dataSource?: TSecretScanningDataSource;
   initialFormData?: Partial<TSecretScanningDataSourceForm>;
+  onSubmittingChange?: (isSubmitting: boolean) => void;
 };
 
 const FORM_TABS: { name: string; key: string; fields: (keyof TSecretScanningDataSourceForm)[] }[] =
@@ -42,7 +42,8 @@ export const SecretScanningDataSourceForm = ({
   onComplete,
   onCancel,
   dataSource,
-  initialFormData
+  initialFormData,
+  onSubmittingChange
 }: Props) => {
   const createDataSource = useCreateSecretScanningDataSource();
   const updateDataSource = useUpdateSecretScanningDataSource();
@@ -97,6 +98,12 @@ export const SecretScanningDataSourceForm = ({
     formState: { isSubmitting }
   } = formMethods;
 
+  useEffect(() => {
+    if (!isSubmitting) return undefined;
+    onSubmittingChange?.(true);
+    return () => onSubmittingChange?.(false);
+  }, [isSubmitting, onSubmittingChange]);
+
   const isStepValid = async (index: number) => trigger(FORM_TABS[index].fields);
 
   const isFinalStep = selectedTabIndex === FORM_TABS.length - 1;
@@ -125,7 +132,7 @@ export const SecretScanningDataSourceForm = ({
   };
 
   return (
-    <form className={twMerge(isFinalStep && "max-h-[70vh] overflow-y-auto")}>
+    <form>
       <FormProvider {...formMethods}>
         <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
           <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-border-control">

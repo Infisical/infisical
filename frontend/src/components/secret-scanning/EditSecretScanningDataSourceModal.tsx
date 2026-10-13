@@ -1,12 +1,10 @@
-import { Modal, ModalContent } from "@app/components/v2";
+import { useState } from "react";
+
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@app/components/v3";
 import { TSecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 
 import { SecretScanningDataSourceForm } from "./forms";
 import { SecretScanningDataSourceModalHeader } from "./SecretScanningDataSourceModalHeader";
-import {
-  SecretScanningDataSourcePopupContext,
-  useSecretScanningDataSourcePopupRegistry
-} from "./SecretScanningDataSourcePopupContext";
 
 type Props = {
   isOpen: boolean;
@@ -14,31 +12,28 @@ type Props = {
   dataSource?: TSecretScanningDataSource;
 };
 
-export const EditSecretScanningDataSourceModal = ({
-  dataSource,
-  onOpenChange,
-  ...props
-}: Props) => {
-  const popupRegistry = useSecretScanningDataSourcePopupRegistry();
+export const EditSecretScanningDataSourceModal = ({ dataSource, isOpen, onOpenChange }: Props) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   if (!dataSource) return null;
 
   return (
-    <Modal {...props} onOpenChange={onOpenChange}>
-      <ModalContent
-        onEscapeKeyDown={popupRegistry.onEscapeKeyDown}
-        title={<SecretScanningDataSourceModalHeader isConfigured type={dataSource.type} />}
-        className="max-w-2xl"
-        bodyClassName="overflow-visible"
-      >
-        <SecretScanningDataSourcePopupContext.Provider value={popupRegistry.onPopupOpenChange}>
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+      <SheetContent size="form" isPending={isSubmitting}>
+        <SheetHeader>
+          <SheetTitle className="sr-only">Edit Data Source</SheetTitle>
+          <SecretScanningDataSourceModalHeader isConfigured type={dataSource.type} />
+        </SheetHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <SecretScanningDataSourceForm
             onComplete={() => onOpenChange(false)}
             onCancel={() => onOpenChange(false)}
+            onSubmittingChange={setIsSubmitting}
             dataSource={dataSource}
             type={dataSource.type}
           />
-        </SecretScanningDataSourcePopupContext.Provider>
-      </ModalContent>
-    </Modal>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 };

@@ -1,10 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { MultiValue, SingleValue } from "react-select";
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { InfoIcon } from "lucide-react";
 
-import { FilterableSelect, FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
+import {
+  Combobox,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  IconButton,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import {
   TGitLabGroup,
@@ -23,7 +36,44 @@ enum ScanMethod {
   SelectProjects = "select-projects"
 }
 
+const SCAN_METHOD_LABELS: Record<ScanMethod, string> = {
+  [ScanMethod.AllProjects]: "All Projects",
+  [ScanMethod.SelectProjects]: "Select Projects"
+};
+
+const SCOPE_LABELS: Record<GitLabDataSourceScope, string> = {
+  [GitLabDataSourceScope.Project]: "Project",
+  [GitLabDataSourceScope.Group]: "Group"
+};
+
 const GITLAB_DATA_SOURCE_LIST_LIMIT = 20;
+
+const getGitLabProjectOptionLabel = (project: TGitLabProject) => {
+  const shortName = project.name.split("/").pop() || project.name;
+  return `${shortName} · ${project.name}`;
+};
+
+const MissingOptionHelp = ({ id, subject }: { id: string; subject: "project" | "group" }) => (
+  <FieldDescription id={id} className="flex items-center gap-1">
+    Don&apos;t see the {subject} you&apos;re looking for?
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <IconButton
+          type="button"
+          variant="ghost-muted"
+          size="2xs"
+          aria-label={`About missing ${subject}s`}
+        >
+          <InfoIcon />
+        </IconButton>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-md">
+        Ensure the {subject} exists in the connection&apos;s GitLab instance URL and the connection
+        has access to it. Only the first results are shown, search by name to find more.
+      </TooltipContent>
+    </Tooltip>
+  </FieldDescription>
+);
 
 const formatGitLabGroupOptionLabel = (group: TGitLabGroup) => (
   <div className="flex min-w-0 items-center gap-2">
@@ -157,102 +207,104 @@ export const GitLabDataSourceConfigFields = () => {
         control={control}
         defaultValue={GitLabDataSourceScope.Project}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Scope"
-            helperText={isUpdate ? "Cannot be updated" : undefined}
-            tooltipText={
-              <div className="flex flex-col gap-3">
-                <p>Specify the GitLab scope scanning should be performed at:</p>
-                <ul className="flex list-disc flex-col gap-3 pl-4">
-                  <li>
-                    <p className="text-label">
-                      <span className="font-medium text-foreground-soft">Project</span>: Scan an
-                      individual GitLab project.
-                    </p>
-                  </li>
-                  <li>
-                    <p className="text-label">
-                      <span className="font-medium text-foreground-soft">Group</span>: Scan one or
-                      more projects belonging to a GitLab group.
-                    </p>
-                  </li>
-                </ul>
-              </div>
-            }
-          >
+          <Field className="mb-4" data-invalid={Boolean(error)} data-disabled={isUpdate}>
+            <div className="flex items-center gap-1">
+              <FieldLabel htmlFor="gitlab-data-source-scope">Scope</FieldLabel>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    type="button"
+                    variant="ghost-muted"
+                    size="2xs"
+                    aria-label="About GitLab scopes"
+                  >
+                    <InfoIcon />
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-md">
+                  <div className="flex flex-col gap-3">
+                    <p>Specify the GitLab scope scanning should be performed at:</p>
+                    <ul className="flex list-disc flex-col gap-3 pl-4">
+                      <li>
+                        <span className="font-medium">Project</span>: Scan an individual GitLab
+                        project.
+                      </li>
+                      <li>
+                        <span className="font-medium">Group</span>: Scan one or more projects
+                        belonging to a GitLab group.
+                      </li>
+                    </ul>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <Select
               value={value}
               onValueChange={(v) => {
                 onChange(v);
                 clearAllFields();
               }}
-              className="w-full border border-border-strong capitalize"
-              position="popper"
-              isDisabled={isUpdate}
-              dropdownContainerClassName="max-w-none"
+              disabled={isUpdate}
             >
-              {Object.values(GitLabDataSourceScope).map((method) => {
-                return (
-                  <SelectItem className="capitalize" value={method} key={method}>
-                    {method}
+              <SelectTrigger
+                id="gitlab-data-source-scope"
+                className="w-full"
+                isError={Boolean(error)}
+                aria-describedby={`gitlab-data-source-scope-help${error ? " gitlab-data-source-scope-error" : ""}`}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                {Object.values(GitLabDataSourceScope).map((method) => (
+                  <SelectItem value={method} key={method}>
+                    {SCOPE_LABELS[method]}
                   </SelectItem>
-                );
-              })}
+                ))}
+              </SelectContent>
             </Select>
-          </FormControl>
+            <FieldDescription id="gitlab-data-source-scope-help">
+              {isUpdate ? "Cannot be updated" : undefined}
+            </FieldDescription>
+            <FieldError id="gitlab-data-source-scope-error">{error?.message}</FieldError>
+          </Field>
         )}
       />
       {scope === GitLabDataSourceScope.Project ? (
         <Controller
           name="config.projectId"
           control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="Project"
-              helperText={
-                <Tooltip
-                  className="max-w-md"
-                  content={
-                    <>
-                      Ensure the project exists in the connection&apos;s GitLab instance URL and the
-                      connection has access to it. Only the first results are shown, search by name
-                      to find more.
-                    </>
-                  }
-                >
-                  <div>
-                    <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
-                    <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
-                  </div>
-                </Tooltip>
-              }
-            >
-              <FilterableSelect
+          render={({ field: { value, onChange, onBlur, name }, fieldState: { error } }) => (
+            <Field className="mb-4" data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="gitlab-data-source-project">Project</FieldLabel>
+              <Combobox
+                id="gitlab-data-source-project"
+                name={name}
+                onBlur={onBlur}
+                isClearable={false}
                 isLoading={isProjectsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
-                value={projectOptions.find((project) => value === Number.parseInt(project.id, 10))}
-                onChange={(newValue) => {
-                  const project = newValue as SingleValue<TGitLabProject>;
-
-                  onChange(project ? Number.parseInt(project.id, 10) : null);
-                  setValue("config.projectName", project?.name ?? "");
+                isError={Boolean(error)}
+                value={
+                  projectOptions.find((project) => value === Number.parseInt(project.id, 10)) ??
+                  null
+                }
+                onValueChange={(project) => {
+                  onChange(Number.parseInt(project.id, 10));
+                  setValue("config.projectName", project.name);
                 }}
-                onInputChange={(newValue) => setProjectSearch(newValue)}
-                filterOption={null}
+                onSearchChange={setProjectSearch}
                 options={projectOptions}
                 placeholder="Search for a project..."
-                getOptionLabel={(option) => {
-                  const shortName = option.name.split("/").pop() || option.name;
-                  return `${shortName} · ${option.name}`;
-                }}
-                formatOptionLabel={formatGitLabProjectOptionLabel}
+                searchAriaLabel="Search GitLab projects"
+                loadingMessage="Loading projects..."
+                getOptionLabel={getGitLabProjectOptionLabel}
                 getOptionValue={(option) => option.name}
+                renderOption={formatGitLabProjectOptionLabel}
+                aria-describedby={`gitlab-data-source-project-help${error ? " gitlab-data-source-project-error" : ""}`}
               />
-            </FormControl>
+              <MissingOptionHelp id="gitlab-data-source-project-help" subject="project" />
+              <FieldError id="gitlab-data-source-project-error">{error?.message}</FieldError>
+            </Field>
           )}
         />
       ) : (
@@ -260,124 +312,99 @@ export const GitLabDataSourceConfigFields = () => {
           <Controller
             name="config.groupId"
             control={control}
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                isError={Boolean(error)}
-                errorText={error?.message}
-                label="Group"
-                helperText={
-                  <Tooltip
-                    className="max-w-md"
-                    content={
-                      <>
-                        Ensure the group exists in the connection&apos;s GitLab instance URL and the
-                        connection has access to it. Only the first results are shown, search by
-                        name to find more.
-                      </>
-                    }
-                  >
-                    <div>
-                      <span>Don&#39;t see the group you&#39;re looking for?</span>{" "}
-                      <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
-                    </div>
-                  </Tooltip>
-                }
-              >
-                <FilterableSelect
+            render={({ field: { value, onChange, onBlur, name }, fieldState: { error } }) => (
+              <Field className="mb-4" data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="gitlab-data-source-group">Group</FieldLabel>
+                <Combobox
+                  id="gitlab-data-source-group"
+                  name={name}
+                  onBlur={onBlur}
+                  isClearable={false}
                   isLoading={isGroupsPending && Boolean(connectionId)}
                   isDisabled={!connectionId}
-                  value={groupOptions.find((group) => value === Number.parseInt(group.id, 10))}
-                  onChange={(newValue) => {
-                    const group = newValue as SingleValue<TGitLabGroup>;
-
-                    onChange(group ? Number.parseInt(group.id, 10) : null);
-                    setValue("config.groupName", group?.fullName ?? "");
+                  isError={Boolean(error)}
+                  value={
+                    groupOptions.find((group) => value === Number.parseInt(group.id, 10)) ?? null
+                  }
+                  onValueChange={(group) => {
+                    onChange(Number.parseInt(group.id, 10));
+                    setValue("config.groupName", group.fullName);
                     setValue("config.includeProjects", ["*"]);
                   }}
-                  onInputChange={(newValue) => setGroupSearch(newValue)}
-                  filterOption={null}
+                  onSearchChange={setGroupSearch}
                   options={groupOptions}
                   placeholder="Search for a group..."
+                  searchAriaLabel="Search GitLab groups"
+                  loadingMessage="Loading groups..."
                   getOptionLabel={(option) => `${option.name} · ${option.fullPath}`}
-                  formatOptionLabel={formatGitLabGroupOptionLabel}
                   getOptionValue={(option) => option.id}
+                  renderOption={formatGitLabGroupOptionLabel}
+                  aria-describedby={`gitlab-data-source-group-help${error ? " gitlab-data-source-group-error" : ""}`}
                 />
-              </FormControl>
+                <MissingOptionHelp id="gitlab-data-source-group-help" subject="group" />
+                <FieldError id="gitlab-data-source-group-error">{error?.message}</FieldError>
+              </Field>
             )}
           />
-          <FormControl label="Scan Projects">
+          <Field className="mb-4" data-disabled={!connectionId}>
+            <FieldLabel htmlFor="gitlab-data-source-scan-method">Scan Projects</FieldLabel>
             <Select
               value={scanMethod}
               onValueChange={(val) => {
                 setValue("config.includeProjects", val === ScanMethod.AllProjects ? ["*"] : []);
               }}
-              className="w-full border border-border-strong capitalize"
-              position="popper"
-              dropdownContainerClassName="max-w-none"
-              isDisabled={!connectionId}
+              disabled={!connectionId}
             >
-              {Object.values(ScanMethod).map((method) => {
-                return (
-                  <SelectItem className="capitalize" value={method} key={method}>
-                    {method.replace("-", " ")}
+              <SelectTrigger id="gitlab-data-source-scan-method" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                {Object.values(ScanMethod).map((method) => (
+                  <SelectItem value={method} key={method}>
+                    {SCAN_METHOD_LABELS[method]}
                   </SelectItem>
-                );
-              })}
+                ))}
+              </SelectContent>
             </Select>
-          </FormControl>
+          </Field>
           {scanMethod === ScanMethod.SelectProjects && (
             <Controller
               name="config.includeProjects"
               defaultValue={["*"]}
               control={control}
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <FormControl
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  label="Include Projects"
-                  helperText={
-                    <Tooltip
-                      className="max-w-md"
-                      content={
-                        <>
-                          Ensure the project exists in the connection&apos;s GitLab instance URL and
-                          the connection has access to it. Only the first results are shown, search
-                          by name to find more.
-                        </>
-                      }
-                    >
-                      <div>
-                        <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
-                        <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
-                      </div>
-                    </Tooltip>
-                  }
-                >
-                  <FilterableSelect
-                    menuPlacement="top"
+              render={({ field: { value, onChange, onBlur, name }, fieldState: { error } }) => (
+                <Field className="mb-4" data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="gitlab-data-source-include-projects">
+                    Include Projects
+                  </FieldLabel>
+                  <Combobox
+                    id="gitlab-data-source-include-projects"
+                    name={name}
+                    onBlur={onBlur}
+                    multiple
                     isLoading={isProjectsPending && Boolean(connectionId)}
                     isDisabled={!connectionId || !groupName}
-                    isMulti
+                    isError={Boolean(error)}
                     value={includeProjectOptions.filter((project) => value.includes(project.name))}
-                    onChange={(newValue) => {
-                      onChange(
-                        newValue
-                          ? (newValue as MultiValue<TGitLabProject>).map((p) => p.name)
-                          : null
-                      );
-                    }}
-                    onInputChange={(newValue) => setProjectSearch(newValue)}
-                    filterOption={null}
+                    onValueChange={(newValue) => onChange(newValue.map((p) => p.name))}
+                    onSearchChange={setProjectSearch}
                     options={includeProjectOptions}
                     placeholder="Search for projects..."
-                    getOptionLabel={(option) => {
-                      const shortName = option.name.split("/").pop() || option.name;
-                      return `${shortName} · ${option.name}`;
-                    }}
-                    formatOptionLabel={formatGitLabProjectOptionLabel}
+                    searchAriaLabel="Search GitLab projects"
+                    loadingMessage="Loading projects..."
+                    getOptionLabel={getGitLabProjectOptionLabel}
                     getOptionValue={(option) => option.name}
+                    renderOption={formatGitLabProjectOptionLabel}
+                    aria-describedby={`gitlab-data-source-include-projects-help${error ? " gitlab-data-source-include-projects-error" : ""}`}
                   />
-                </FormControl>
+                  <MissingOptionHelp
+                    id="gitlab-data-source-include-projects-help"
+                    subject="project"
+                  />
+                  <FieldError id="gitlab-data-source-include-projects-error">
+                    {error?.message}
+                  </FieldError>
+                </Field>
               )}
             />
           )}

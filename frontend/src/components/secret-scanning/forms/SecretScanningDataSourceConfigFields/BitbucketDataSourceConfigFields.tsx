@@ -1,14 +1,25 @@
 import { useEffect, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { MultiValue, SingleValue } from "react-select";
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { InfoIcon } from "lucide-react";
 
-import { FilterableSelect, FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
+import {
+  Combobox,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  IconButton,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import {
-  TBitbucketRepo,
-  TBitbucketWorkspace,
   useBitbucketConnectionListRepositories,
   useBitbucketConnectionListWorkspaces
 } from "@app/hooks/api/appConnections/bitbucket";
@@ -21,6 +32,32 @@ enum ScanMethod {
   AllRepositories = "all-repositories",
   SelectRepositories = "select-repositories"
 }
+
+const SCAN_METHOD_LABELS: Record<ScanMethod, string> = {
+  [ScanMethod.AllRepositories]: "All Repositories",
+  [ScanMethod.SelectRepositories]: "Select Repositories"
+};
+
+const MissingOptionHelp = ({ id, subject }: { id: string; subject: string }) => (
+  <FieldDescription id={id} className="flex items-center gap-1">
+    Don&apos;t see the {subject} you&apos;re looking for?
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <IconButton
+          type="button"
+          variant="ghost-muted"
+          size="2xs"
+          aria-label={`About missing ${subject}`}
+        >
+          <InfoIcon />
+        </IconButton>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-md">
+        Ensure that your connection has the correct permissions.
+      </TooltipContent>
+    </Tooltip>
+  </FieldDescription>
+);
 
 export const BitbucketDataSourceConfigFields = () => {
   const { control, watch, setValue } = useFormContext<
@@ -74,107 +111,101 @@ export const BitbucketDataSourceConfigFields = () => {
       <Controller
         name="config.workspaceSlug"
         control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            isError={Boolean(error)}
-            errorText={error?.message}
-            label="Workspace"
-            helperText={
-              <Tooltip
-                className="max-w-md"
-                content={<>Ensure that your connection has the correct permissions.</>}
-              >
-                <div>
-                  <span>Don&#39;t see the workspaces you&#39;re looking for?</span>{" "}
-                  <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
-                </div>
-              </Tooltip>
-            }
-          >
-            <FilterableSelect
-              menuPlacement="top"
+        render={({ field: { value, onChange, onBlur, name }, fieldState: { error } }) => (
+          <Field className="mb-4" data-invalid={Boolean(error)}>
+            <FieldLabel htmlFor="bitbucket-data-source-workspace">Workspace</FieldLabel>
+            <Combobox
+              id="bitbucket-data-source-workspace"
+              name={name}
+              onBlur={onBlur}
+              isClearable={false}
               isLoading={areWorkspacesLoading && Boolean(connectionId)}
               isDisabled={!connectionId}
+              isError={Boolean(error)}
               value={value ? { slug: value } : null}
-              onChange={(newValue) => {
-                onChange((newValue as SingleValue<TBitbucketWorkspace>)?.slug);
+              onValueChange={(newValue) => {
+                onChange(newValue.slug);
                 if (scanMethod === ScanMethod.SelectRepositories) {
                   setValue("config.includeRepos", []);
                 }
               }}
-              onInputChange={(newValue) => setWorkspaceSearch(newValue)}
-              filterOption={null}
-              options={workspaces}
+              onSearchChange={setWorkspaceSearch}
+              options={workspaces ?? []}
               placeholder="Search for a workspace..."
+              searchAriaLabel="Search workspaces"
+              loadingMessage="Loading workspaces..."
               getOptionLabel={(option) => option.slug}
               getOptionValue={(option) => option.slug}
-              noOptionsMessage={({ inputValue }) =>
+              emptyMessage={(inputValue) =>
                 inputValue ? "No workspaces found matching your search." : "No workspaces found."
               }
+              aria-describedby={`bitbucket-data-source-workspace-help${error ? " bitbucket-data-source-workspace-error" : ""}`}
             />
-          </FormControl>
+            <MissingOptionHelp id="bitbucket-data-source-workspace-help" subject="workspaces" />
+            <FieldError id="bitbucket-data-source-workspace-error">{error?.message}</FieldError>
+          </Field>
         )}
       />
-      <FormControl label="Scan Repositories">
+      <Field className="mb-4" data-disabled={!connectionId}>
+        <FieldLabel htmlFor="bitbucket-data-source-scan-method">Scan Repositories</FieldLabel>
         <Select
           value={scanMethod}
           onValueChange={(val) => {
             setValue("config.includeRepos", val === ScanMethod.AllRepositories ? ["*"] : []);
           }}
-          className="w-full border border-border-strong capitalize"
-          position="popper"
-          dropdownContainerClassName="max-w-none"
-          isDisabled={!connectionId}
+          disabled={!connectionId}
         >
-          {Object.values(ScanMethod).map((method) => {
-            return (
-              <SelectItem className="capitalize" value={method} key={method}>
-                {method.replace("-", " ")}
+          <SelectTrigger id="bitbucket-data-source-scan-method" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent position="popper">
+            {Object.values(ScanMethod).map((method) => (
+              <SelectItem value={method} key={method}>
+                {SCAN_METHOD_LABELS[method]}
               </SelectItem>
-            );
-          })}
+            ))}
+          </SelectContent>
         </Select>
-      </FormControl>
+      </Field>
       {scanMethod === ScanMethod.SelectRepositories && (
         <Controller
           name="config.includeRepos"
           control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="Include Repositories"
-              helperText={
-                <Tooltip
-                  className="max-w-md"
-                  content={<>Ensure that your connection has the correct permissions.</>}
-                >
-                  <div>
-                    <span>Don&#39;t see the repository you&#39;re looking for?</span>{" "}
-                    <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
-                  </div>
-                </Tooltip>
-              }
-            >
-              <FilterableSelect
-                menuPlacement="top"
+          render={({ field: { value, onChange, onBlur, name }, fieldState: { error } }) => (
+            <Field className="mb-4" data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="bitbucket-data-source-include-repositories">
+                Include Repositories
+              </FieldLabel>
+              <Combobox
+                id="bitbucket-data-source-include-repositories"
+                name={name}
+                onBlur={onBlur}
+                multiple
                 isLoading={areRepositoriesLoading && Boolean(connectionId)}
                 isDisabled={!connectionId || !selectedWorkspaceSlug}
-                isMulti
-                value={repositories?.filter((repository) =>
-                  (value as string[]).includes(repository.full_name)
-                )}
-                onChange={(newValue) => {
-                  onChange(
-                    newValue ? (newValue as MultiValue<TBitbucketRepo>).map((p) => p.full_name) : []
-                  );
-                }}
-                options={repositories}
+                isError={Boolean(error)}
+                value={
+                  repositories?.filter((repository) =>
+                    (value as string[]).includes(repository.full_name)
+                  ) ?? []
+                }
+                onValueChange={(newValue) => onChange(newValue.map((p) => p.full_name))}
+                options={repositories ?? []}
                 placeholder="Select repositories..."
+                searchAriaLabel="Search repositories"
+                loadingMessage="Loading repositories..."
                 getOptionLabel={(option) => option.full_name}
                 getOptionValue={(option) => option.full_name}
+                aria-describedby={`bitbucket-data-source-include-repositories-help${error ? " bitbucket-data-source-include-repositories-error" : ""}`}
               />
-            </FormControl>
+              <MissingOptionHelp
+                id="bitbucket-data-source-include-repositories-help"
+                subject="repository"
+              />
+              <FieldError id="bitbucket-data-source-include-repositories-error">
+                {error?.message}
+              </FieldError>
+            </Field>
           )}
         />
       )}

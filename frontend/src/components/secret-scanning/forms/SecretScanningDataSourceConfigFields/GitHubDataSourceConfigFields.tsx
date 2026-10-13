@@ -1,14 +1,24 @@
 import { useEffect } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { MultiValue } from "react-select";
-import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { InfoIcon } from "lucide-react";
 
-import { FilterableSelect, FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
 import {
-  TGitHubRadarConnectionRepository,
-  useGitHubRadarConnectionListRepositories
-} from "@app/hooks/api/appConnections/github-radar";
+  Combobox,
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  IconButton,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
+import { useGitHubRadarConnectionListRepositories } from "@app/hooks/api/appConnections/github-radar";
 import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 
 import { TSecretScanningDataSourceForm } from "../schemas";
@@ -18,6 +28,11 @@ enum ScanMethod {
   AllRepositories = "all-repositories",
   SelectRepositories = "select-repositories"
 }
+
+const SCAN_METHOD_LABELS: Record<ScanMethod, string> = {
+  [ScanMethod.AllRepositories]: "All Repositories",
+  [ScanMethod.SelectRepositories]: "Select Repositories"
+};
 
 export const GitHubDataSourceConfigFields = () => {
   const { control, watch, setValue } = useFormContext<
@@ -55,69 +70,80 @@ export const GitHubDataSourceConfigFields = () => {
           }
         }}
       />
-      <FormControl label="Scan Repositories">
+      <Field className="mb-4" data-disabled={!connectionId}>
+        <FieldLabel htmlFor="github-data-source-scan-method">Scan Repositories</FieldLabel>
         <Select
           value={scanMethod}
           onValueChange={(val) => {
             setValue("config.includeRepos", val === ScanMethod.AllRepositories ? ["*"] : []);
           }}
-          className="w-full border border-border-strong capitalize"
-          position="popper"
-          dropdownContainerClassName="max-w-none"
-          isDisabled={!connectionId}
+          disabled={!connectionId}
         >
-          {Object.values(ScanMethod).map((method) => {
-            return (
-              <SelectItem className="capitalize" value={method} key={method}>
-                {method.replace("-", " ")}
+          <SelectTrigger id="github-data-source-scan-method" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent position="popper">
+            {Object.values(ScanMethod).map((method) => (
+              <SelectItem value={method} key={method}>
+                {SCAN_METHOD_LABELS[method]}
               </SelectItem>
-            );
-          })}
+            ))}
+          </SelectContent>
         </Select>
-      </FormControl>
+      </Field>
       {scanMethod === ScanMethod.SelectRepositories && (
         <Controller
           name="config.includeRepos"
           defaultValue={["*"]}
           control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error)}
-              errorText={error?.message}
-              label="Include Repositories"
-              helperText={
-                <Tooltip
-                  className="max-w-md"
-                  content={<>Ensure that your connection has the correct permissions.</>}
-                >
-                  <div>
-                    <span>Don&#39;t see the repository you&#39;re looking for?</span>{" "}
-                    <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
-                  </div>
-                </Tooltip>
-              }
-            >
-              <FilterableSelect
-                menuPlacement="top"
+          render={({ field: { value, onChange, onBlur, name }, fieldState: { error } }) => (
+            <Field className="mb-4" data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="github-data-source-include-repositories">
+                Include Repositories
+              </FieldLabel>
+              <Combobox
+                id="github-data-source-include-repositories"
+                name={name}
+                onBlur={onBlur}
+                multiple
                 isLoading={areRepositoriesLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
-                isMulti
-                value={repositories?.filter((repository) => value.includes(repository.name))}
-                onChange={(newValue) => {
-                  onChange(
-                    newValue
-                      ? (newValue as MultiValue<TGitHubRadarConnectionRepository>).map(
-                          (p) => p.name
-                        )
-                      : null
-                  );
-                }}
-                options={repositories}
+                isError={Boolean(error)}
+                value={repositories?.filter((repository) => value.includes(repository.name)) ?? []}
+                onValueChange={(newValue) => onChange(newValue.map((p) => p.name))}
+                options={repositories ?? []}
                 placeholder="Select repositories..."
+                searchAriaLabel="Search repositories"
+                loadingMessage="Loading repositories..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.name}
+                aria-describedby={`github-data-source-include-repositories-help${error ? " github-data-source-include-repositories-error" : ""}`}
               />
-            </FormControl>
+              <FieldDescription
+                id="github-data-source-include-repositories-help"
+                className="flex items-center gap-1"
+              >
+                Don&apos;t see the repository you&apos;re looking for?
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <IconButton
+                      type="button"
+                      variant="ghost-muted"
+                      size="2xs"
+                      aria-label="About missing repositories"
+                    >
+                      <InfoIcon />
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-md">
+                    Ensure that your connection has the correct permissions.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldDescription>
+              <FieldError id="github-data-source-include-repositories-error">
+                {error?.message}
+              </FieldError>
+            </Field>
           )}
         />
       )}

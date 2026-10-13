@@ -1,4 +1,3 @@
-import { useCallback, useContext, useId } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { InfoIcon } from "lucide-react";
 
@@ -22,7 +21,6 @@ import { usePopUp } from "@app/hooks";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
-import { SecretScanningDataSourcePopupContext } from "../SecretScanningDataSourcePopupContext";
 import { TSecretScanningDataSourceForm } from "./schemas";
 
 type Props = {
@@ -34,12 +32,6 @@ export const SecretScanningDataSourceConnectionField = ({
   onChange: callback,
   isUpdate
 }: Props) => {
-  const reportPopupOpen = useContext(SecretScanningDataSourcePopupContext);
-  const popupId = useId();
-  const onPopupOpenChange = useCallback(
-    (open: boolean) => reportPopupOpen?.(popupId, open),
-    [popupId, reportPopupOpen]
-  );
   const { permission } = useProjectPermission();
   const { control, watch, setValue } = useFormContext<TSecretScanningDataSourceForm>();
 
@@ -92,8 +84,6 @@ export const SecretScanningDataSourceConnectionField = ({
               name={name}
               onBlur={onBlur}
               value={value}
-              modal
-              onPopupOpenChange={onPopupOpenChange}
               isClearable={false}
               onValueChange={(newValue) => {
                 if (newValue.id === "_create") {
