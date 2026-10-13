@@ -33,6 +33,10 @@ export type TListSecretScanningDataSources = {
   dataSources: TSecretScanningDataSourceWithDetails[];
 };
 
+export type TListSecretScanningBasicDataSources = {
+  dataSources: TSecretScanningDataSource[];
+};
+
 export type TSecretScanningDataSourceOption =
   | TGitHubDataSourceOption
   | TBitbucketDataSourceOption
@@ -105,6 +109,15 @@ export type TSecretScanningResourceWithDetails = {
 
 export type TListSecretScanningResourcesResponse = {
   resources: TSecretScanningResourceWithDetails[];
+};
+
+export type TSecretScanningResource = Pick<
+  TSecretScanningResourceWithDetails,
+  "id" | "dataSourceId" | "externalId" | "name" | "createdAt" | "updatedAt"
+>;
+
+export type TListSecretScanningBasicResourcesResponse = {
+  resources: TSecretScanningResource[];
 };
 
 export type TSecretScanningScanWithDetails = {

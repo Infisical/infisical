@@ -6,6 +6,8 @@ import {
   TGetSecretScanningConfigResponse,
   TGetSecretScanningDataSource,
   TGetSecretScanningUnresolvedFindingsResponse,
+  TListSecretScanningBasicDataSources,
+  TListSecretScanningBasicResourcesResponse,
   TListSecretScanningDataSourceOptions,
   TListSecretScanningDataSources,
   TListSecretScanningFindingsDTO,
@@ -17,6 +19,7 @@ import {
   TSecretScanningDataSourceOption,
   TSecretScanningDataSourceResponse,
   TSecretScanningDataSourceWithDetails,
+  TSecretScanningResource,
   TSecretScanningResourceWithDetails,
   TSecretScanningScanWithDetails
 } from "./types";
@@ -37,6 +40,16 @@ export const secretScanningV2Keys = {
     dataSourceId
   ],
   listDataSources: (projectId: string) => [...secretScanningV2Keys.dataSource(), "list", projectId],
+  listBasicDataSources: (projectId: string) => [
+    ...secretScanningV2Keys.dataSource(),
+    "list-basic",
+    projectId
+  ],
+  listBasicResources: (dataSourceId: string) => [
+    ...secretScanningV2Keys.dataSource(),
+    "resources-basic",
+    dataSourceId
+  ],
   listResources: (dataSourceId: string) => [
     ...secretScanningV2Keys.dataSource(),
     "resources",
@@ -144,6 +157,58 @@ export const useListSecretScanningDataSources = (
       );
 
       return data.dataSources;
+    },
+    ...options
+  });
+};
+
+// Unlike the dashboard lists, these include sources and resources whose findings are all closed.
+export const useListSecretScanningBasicDataSources = (
+  projectId: string,
+  options?: Omit<
+    UseQueryOptions<
+      TSecretScanningDataSource[],
+      unknown,
+      TSecretScanningDataSource[],
+      ReturnType<typeof secretScanningV2Keys.listBasicDataSources>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretScanningV2Keys.listBasicDataSources(projectId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TListSecretScanningBasicDataSources>(
+        "/api/v2/secret-scanning/data-sources",
+        { params: { projectId } }
+      );
+
+      return data.dataSources;
+    },
+    ...options
+  });
+};
+
+export const useListSecretScanningBasicResources = (
+  { dataSourceId, type }: TGetSecretScanningDataSource,
+  options?: Omit<
+    UseQueryOptions<
+      TSecretScanningResource[],
+      unknown,
+      TSecretScanningResource[],
+      ReturnType<typeof secretScanningV2Keys.listBasicResources>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretScanningV2Keys.listBasicResources(dataSourceId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TListSecretScanningBasicResourcesResponse>(
+        `/api/v2/secret-scanning/data-sources/${type}/${dataSourceId}/resources`
+      );
+
+      return data.resources;
     },
     ...options
   });

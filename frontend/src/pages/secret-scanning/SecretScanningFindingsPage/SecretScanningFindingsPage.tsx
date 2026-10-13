@@ -36,6 +36,8 @@ export const SecretScanningFindingsPage = () => {
                 description="Secrets detected across every data source."
               />
               <SecretScanningFindingsTable
+                // filters are only read from the URL on mount, so a navigation that changes them needs a fresh table
+                key={`${status ?? ""}:${dataSourceId ?? ""}:${resourceId ?? ""}`}
                 description="Review and triage leaked secrets."
                 initialStatus={status}
                 initialDataSourceId={dataSourceId}

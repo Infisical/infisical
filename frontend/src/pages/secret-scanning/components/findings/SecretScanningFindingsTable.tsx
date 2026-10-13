@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { ChevronDownIcon, FilterIcon, ShieldCheckIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -56,9 +56,9 @@ import {
   SecretScanningFindingStatus,
   TSecretScanningDataSource,
   TSecretScanningFinding,
-  useListSecretScanningDataSources,
+  useListSecretScanningBasicDataSources,
+  useListSecretScanningBasicResources,
   useListSecretScanningFindings,
-  useListSecretScanningResources,
   useUpdateMultipleSecretScanningFinding
 } from "@app/hooks/api/secretScanningV2";
 
@@ -84,7 +84,7 @@ type ResourceFilterProps = {
 };
 
 const ResourceFilter = ({ dataSource, value, onChange }: ResourceFilterProps) => {
-  const { data: resources = [] } = useListSecretScanningResources({
+  const { data: resources = [] } = useListSecretScanningBasicResources({
     dataSourceId: dataSource.id,
     type: dataSource.type
   });
@@ -152,7 +152,7 @@ export const SecretScanningFindingsTable = ({
     status: SecretScanningFindingStatus;
   } | null>(null);
 
-  const { data, isPending } = useListSecretScanningFindings(
+  const { data, isPending, isPlaceholderData } = useListSecretScanningFindings(
     {
       projectId: currentProject.id,
       status: statusFilter === "all" ? undefined : statusFilter,
@@ -165,7 +165,14 @@ export const SecretScanningFindingsTable = ({
     { refetchInterval: 30000 }
   );
 
-  const { data: dataSources = [] } = useListSecretScanningDataSources(currentProject.id, {
+  // closing the last findings on a page shrinks the total, which can leave the current page empty
+  useEffect(() => {
+    if (!data || isPlaceholderData) return;
+    const lastPage = Math.max(1, Math.ceil(data.totalCount / perPage));
+    if (page > lastPage) setPage(lastPage);
+  }, [data, isPlaceholderData, page, perPage]);
+
+  const { data: dataSources = [] } = useListSecretScanningBasicDataSources(currentProject.id, {
     enabled: !isScoped
   });
 
@@ -426,7 +433,7 @@ export const SecretScanningFindingsTable = ({
                     <Checkbox
                       aria-label="Select all findings on this page"
                       isChecked={isPageSelected}
-                      isDisabled={isPending || !pageIds.length}
+                      isDisabled={isPending || isPlaceholderData || !pageIds.length}
                       onCheckedChange={() => setSelectedIds(isPageSelected ? [] : pageIds)}
                     />
                   </TableHead>
@@ -460,12 +467,13 @@ export const SecretScanningFindingsTable = ({
                       <TableRow
                         key={finding.id}
                         data-state={isSelected ? "selected" : undefined}
-                        onClick={() => setOpenFinding(finding)}
+                        onClick={isPlaceholderData ? undefined : () => setOpenFinding(finding)}
                       >
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <Checkbox
                             aria-label={`Select finding ${finding.rule}`}
                             isChecked={isSelected}
+                            isDisabled={isPlaceholderData}
                             onCheckedChange={() =>
                               setSelectedIds((prev) =>
                                 isSelected
@@ -535,7 +543,7 @@ export const SecretScanningFindingsTable = ({
           {(isAllowed) => (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="project" size="xs" isDisabled={!isAllowed}>
+                <Button variant="project" size="xs" isDisabled={!isAllowed || isPlaceholderData}>
                   Set Status
                   <ChevronDownIcon />
                 </Button>

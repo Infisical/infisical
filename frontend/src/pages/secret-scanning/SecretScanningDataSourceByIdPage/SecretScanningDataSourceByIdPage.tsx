@@ -100,6 +100,7 @@ const PageContent = () => {
               a={ProjectPermissionSub.SecretScanningFindings}
             >
               <SecretScanningFindingsTable
+                key={dataSource.id}
                 dataSource={dataSource}
                 description="Secrets detected in this data source."
               />
