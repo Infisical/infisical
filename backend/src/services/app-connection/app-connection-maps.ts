@@ -88,7 +88,9 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Spacelift]: "Spacelift",
   [AppConnection.Daytona]: "Daytona",
   [AppConnection.MicrosoftIntune]: "Microsoft Intune",
-  [AppConnection.Stripe]: "Stripe"
+  [AppConnection.Stripe]: "Stripe",
+  [AppConnection.Keeper]: "Keeper",
+  [AppConnection.HpeIloRedFish]: "HPE iLO"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -179,5 +181,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Spacelift]: AppConnectionPlanType.Regular,
   [AppConnection.Daytona]: AppConnectionPlanType.Regular,
   [AppConnection.MicrosoftIntune]: AppConnectionPlanType.Enterprise,
-  [AppConnection.Stripe]: AppConnectionPlanType.Regular
+  [AppConnection.Stripe]: AppConnectionPlanType.Regular,
+  [AppConnection.Keeper]: AppConnectionPlanType.Regular,
+  [AppConnection.HpeIloRedFish]: AppConnectionPlanType.Regular
 };

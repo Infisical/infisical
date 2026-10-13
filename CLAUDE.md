@@ -23,6 +23,7 @@ infisical/
 ├── frontend/              # React 18 SPA (see frontend/CLAUDE.md)
 ├── wasm/                  # Rust crates compiled to WASM for the frontend (see wasm/<crate>/CLAUDE.md)
 ├── e2e/                   # External Playwright suite — gates prod deploys against gamma (see e2e/CLAUDE.md)
+├── tests/                 # Go blackbox suite — real containers, HTTP only (see tests/CLAUDE.md)
 ├── docs/                  # Documentation site (Mintlify-based)
 ├── build-versions.env            # Versions pinned across several Dockerfiles (see Dependency Policy)
 ├── docker-compose.dev.yml        # Local dev (PostgreSQL, Redis, backend, frontend, Nginx)
@@ -41,6 +42,8 @@ infisical/
 - **`wasm/`** — Rust crates that compile to WASM for the frontend. Generated bindings are committed under `frontend/src/lib/<crate>/` so the frontend builds without a Rust toolchain. Each crate has its own `CLAUDE.md` with the rebuild command (e.g. [`wasm/ironrdp-decoder/CLAUDE.md`](wasm/ironrdp-decoder/CLAUDE.md)) — run it after any change to that crate's `src/` or `Cargo.toml` so source and bindings stay in sync.
 - **`docs/`** — Product documentation site. Has its own Dockerfile for building. Reference docs for up-to-date feature descriptions and API usage.
 - **`e2e/`** — Playwright suite that runs against a deployed environment (gamma) between deploy and prod promotion. Distinct from `backend/e2e-test/` (in-process Vitest). Failure blocks every prod-deploy job. Covers SCIM + SAML flows (SP-initiated, IdP-initiated, deactivation, response rejection) against a mock IdP we control — see [`e2e/CLAUDE.md`](e2e/CLAUDE.md) for the harness and the one-time gamma bootstrap.
+
+- **`tests/`** — Go blackbox suite. Boots a real Infisical in Docker and talks to it over HTTP only, so the same tests run against the Node and Go servers unchanged. Distinct from `backend/e2e-test/` (in-process Vitest, compiled against the Node source) and from `e2e/` (Playwright against a deployed gamma). `make test-suites` from `tests/` runs everything; see [`tests/CLAUDE.md`](tests/CLAUDE.md) before writing one.
 
 Enterprise features live in `backend/src/ee/` (services and routes), registered before community routes so they can override/extend them.
 
@@ -107,6 +110,10 @@ Auth modes (JWT, IDENTITY_ACCESS_TOKEN, SCIM_TOKEN) are extracted in `backend/sr
 ### Org-Scoped Products
 
 PAM and Agent Vault are products over one implicit project per organization, not projects a user creates. Their URLs are `/organizations/$orgId/<product>/…` with no `$projectId`, the frontend resolves the project from the org (`useImplicitProjectId`), the backend bootstraps it lazily and blocks generic create and delete, their roles are admin or member only, and each has its own metered identities dimension (`pam_identities`, `agent_vault_identities`). When you add a `ProjectType.PAM` arm anywhere, add the Agent Vault arm beside it. See `backend/src/ee/services/pam/CLAUDE.md` and `backend/src/ee/services/agent-vault/CLAUDE.md`.
+
+### Single-Project Products
+
+Secret Scanning has one active project per organization (the newest) but keeps `$projectId` in its URLs, like Certificate Manager. It is created lazily by `GET /api/v2/secret-scanning/project`, and `projectId` is optional on its API (`inject-secret-scanning-project-id`). Do not add a project picker or a way to create more Secret Scanning projects.
 
 ### Service Factory + Manual DI (Backend)
 

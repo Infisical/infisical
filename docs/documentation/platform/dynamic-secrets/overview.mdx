@@ -4,6 +4,9 @@ sidebarTitle: "Overview"
 description: "Learn how to generate secrets dynamically on-demand."
 ---
 
+import { CatalogBrowser } from "/snippets/CatalogBrowser.jsx";
+import { dynamicSecrets, dynamicSecretCategories } from "/snippets/catalogs/dynamic-secrets.jsx";
+
 <Info>
   Dynamic secrets are available under Infisical's [Advanced](https://infisical.com/pricing) plan.
   
@@ -15,6 +18,15 @@ description: "Learn how to generate secrets dynamically on-demand."
 Contrary to static key-value secrets, which require manual input of data into the secure Infisical storage, **dynamic secrets are generated on-demand upon access**. 
 
 **Dynamic secrets are unique to every identity using them**. Such secrets are generated only at the moment they're retrieved, eliminating the possibility of theft or reuse by another identity. Thanks to Infisical's integrated revocation capabilities, dynamic secrets can be promptly invalidated post-use, significantly reducing their lifespan.
+
+## Supported services
+
+<CatalogBrowser
+  id="dynamic-secrets"
+  items={dynamicSecrets}
+  categories={dynamicSecretCategories}
+  noun="dynamic secret"
+/>
 
 ## Benefits of dynamic secrets
 
@@ -31,15 +43,6 @@ This approach offers several advantages in terms of security and management:
 - **Scalability**: Dynamic secret management systems can scale more effectively to handle a large number of services and applications, as they automate much of the overhead associated with manual secret management.
 
 Dynamic secrets are particularly useful in environments with stringent security requirements, such as cloud environments, distributed systems, and microservices architectures, where they help to manage database credentials, API keys, tokens, and other types of secrets.
-
-## Infisical dynamic secret templates
-
-1. [PostgreSQL](./postgresql)
-2. [MySQL](./mysql)
-3. [Cassandra](./cassandra)
-4. [Oracle](./oracle)
-6. [Redis](./redis)
-5. [AWS IAM](./aws-iam)
 
 **FAQ**
 

@@ -1,0 +1,69 @@
+version: v0.166.4
+releasedAt: 2026-10-12T18:33:18+05:30
+sourceTag: v0.166.4
+previousTag: v0.166.3
+impactLevel: low
+summary: Startup runs two alert-related database migrations. Agent Vault
+  membership API responses also change shape for clients that consume them
+  directly.
+requiresDbMigration: true
+breakingChanges:
+  - title: Agent Vault membership API
+    description: Agent Vault member write and list responses are now keyed by actor
+      and no longer include a membership id. API clients that read or store the
+      old membership id field can break after upgrade.
+    action: Update custom Agent Vault API clients to use actor type and actor id
+      instead of membership id.
+    confidence: medium
+    evidence:
+      - type: pr
+        ref: "#8373"
+        url: https://github.com/Infisical/infisical/pull/8373
+      - type: file
+        ref: backend/src/ee/routes/v1/agent-vault-routers/agent-vault-membership-router.ts
+        path: backend/src/ee/routes/v1/agent-vault-routers/agent-vault-membership-router.ts
+        description: Membership routes return actor-based member refs
+      - type: file
+        ref: backend/src/ee/routes/v1/agent-vault-routers/agent-vault-schemas.ts
+        path: backend/src/ee/routes/v1/agent-vault-routers/agent-vault-schemas.ts
+        description: Schema comment drops membership id
+dbSchemaChanges:
+  - title: Secret reminder alerts migration
+    description: Startup backfills alert records and alert channels for existing
+      secret reminders, and makes alert creator ids nullable for
+      platform-created rows.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260929120000_alerts-nullable-created-by-actor-id.ts
+        path: backend/src/db/migrations/20260929120000_alerts-nullable-created-by-actor-id.ts
+        description: Makes alert creator ids nullable
+      - type: file
+        ref: backend/src/db/migrations/20260929130000_migrate-secret-reminders-to-alerts.ts
+        path: backend/src/db/migrations/20260929130000_migrate-secret-reminders-to-alerts.ts
+        description: Backfills alerts from reminders
+configChanges: []
+deploymentNotes:
+  - title: Reminder migration startup risk
+    description: The reminder backfill migration initializes KMS and processes
+      reminders in batches during startup. Large reminder datasets can extend
+      startup time, and startup can fail if migration encryption dependencies
+      are unavailable.
+    action: If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: medium
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20260929130000_migrate-secret-reminders-to-alerts.ts
+        path: backend/src/db/migrations/20260929130000_migrate-secret-reminders-to-alerts.ts
+        description: Migration initializes KMS and HSM services
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-10-12T13:52:21.357Z
+  sourceRange:
+    from: v0.166.3
+    to: v0.166.4

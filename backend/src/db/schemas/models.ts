@@ -285,6 +285,7 @@ export enum TableName {
   AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
   AgentVaultProxy = "agent_vault_proxies",
   AgentVaultSessionLogConfig = "agent_vault_session_log_configs",
+  // Dropped; kept only for the migrations that create and drop it.
   AgentVaultSessionLogChunk = "agent_vault_session_log_chunks",
 
   ExternalMigrationConfig = "external_migration_configs",
@@ -329,6 +330,7 @@ export enum TableName {
   ApprovalRequestStepEligibleApprovers = "approval_request_step_eligible_approvers",
   ApprovalRequestApprovals = "approval_request_approvals",
   ApprovalRequestGrants = "approval_request_grants",
+  SecretChangeRequests = "secret_change_requests",
 
   // Code Signing
   PkiSigners = "pki_signers",

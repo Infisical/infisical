@@ -141,10 +141,12 @@ import {
   SanitizedHCVaultConnectionSchema
 } from "@app/services/app-connection/hc-vault";
 import { HerokuConnectionListItemSchema, SanitizedHerokuConnectionSchema } from "@app/services/app-connection/heroku";
+import { HpeIloConnectionListItemSchema, SanitizedHpeIloConnectionSchema } from "@app/services/app-connection/hpe-ilo";
 import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
+import { KeeperConnectionListItemSchema, SanitizedKeeperConnectionSchema } from "@app/services/app-connection/keeper";
 import {
   KempLoadMasterConnectionListItemSchema,
   SanitizedKempLoadMasterConnectionSchema
@@ -367,7 +369,9 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedPowerDnsConnectionSchema.options,
   ...SanitizedSpaceliftConnectionSchema.options,
   ...SanitizedDaytonaConnectionSchema.options,
-  ...SanitizedStripeConnectionSchema.options
+  ...SanitizedStripeConnectionSchema.options,
+  ...SanitizedKeeperConnectionSchema.options,
+  ...SanitizedHpeIloConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -458,7 +462,9 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   PowerDnsConnectionListItemSchema,
   SpaceliftConnectionListItemSchema,
   DaytonaConnectionListItemSchema,
-  StripeConnectionListItemSchema
+  StripeConnectionListItemSchema,
+  KeeperConnectionListItemSchema,
+  HpeIloConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

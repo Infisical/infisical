@@ -126,6 +126,7 @@ const ProjectSelectInner = () => {
 
   if (
     currentWorkspace.type === ProjectType.CertificateManager ||
+    currentWorkspace.type === ProjectType.SecretScanning ||
     isOrgScopedProduct(currentWorkspace.type)
   ) {
     return null;

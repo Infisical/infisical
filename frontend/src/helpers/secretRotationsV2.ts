@@ -149,6 +149,11 @@ export const SECRET_ROTATION_MAP: Record<
     name: "Stripe API Key",
     image: "Stripe.svg",
     size: 50
+  },
+  [SecretRotation.GcpServiceAccountKey]: {
+    name: "GCP Service Account Key",
+    image: "Google Cloud Platform.png",
+    size: 50
   }
 };
 
@@ -181,8 +186,19 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.SnowflakeUserKeyPair]: AppConnection.Snowflake,
   [SecretRotation.CloudflareApiToken]: AppConnection.Cloudflare,
   [SecretRotation.CloudflareR2AccessKey]: AppConnection.Cloudflare,
-  [SecretRotation.StripeApiKey]: AppConnection.Stripe
+  [SecretRotation.StripeApiKey]: AppConnection.Stripe,
+  [SecretRotation.GcpServiceAccountKey]: AppConnection.GCP
 };
+
+const SECRET_ROTATION_ADDITIONAL_CONNECTION_MAP: Partial<Record<SecretRotation, AppConnection[]>> =
+  {
+    [SecretRotation.HpIloLocalAccount]: [AppConnection.HpeIloRedFish]
+  };
+
+export const getSecretRotationConnectionApps = (type: SecretRotation): AppConnection[] => [
+  SECRET_ROTATION_CONNECTION_MAP[type],
+  ...(SECRET_ROTATION_ADDITIONAL_CONNECTION_MAP[type] ?? [])
+];
 
 // if a rotation can potentially have downtime due to rotating a single credential set this to false
 export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
@@ -214,7 +230,8 @@ export const IS_ROTATION_DUAL_CREDENTIALS: Record<SecretRotation, boolean> = {
   [SecretRotation.SnowflakeUserKeyPair]: true,
   [SecretRotation.CloudflareApiToken]: true,
   [SecretRotation.CloudflareR2AccessKey]: true,
-  [SecretRotation.StripeApiKey]: true
+  [SecretRotation.StripeApiKey]: true,
+  [SecretRotation.GcpServiceAccountKey]: true
 };
 
 export const getRotateAtLocal = ({ hours, minutes }: TSecretRotationV2["rotateAtUtc"]) => {

@@ -1,7 +1,7 @@
 import { AGENT_VAULT_MAX_REFERENCES_PER_FIELD } from "@app/ee/services/agent-vault/agent-vault-variable-fns";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
-  SECRET_ROTATION_CONNECTION_MAP,
+  getSecretRotationConnectionApps,
   SECRET_ROTATION_NAME_MAP
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
@@ -912,6 +912,10 @@ export const ORGANIZATIONS = {
   },
   LIST_GROUPS: {
     organizationId: "The ID of the organization to list groups for."
+  },
+  GET_PRODUCT_STATS: {
+    secretScanningFindingsCount:
+      "The number of findings across the organization's Secret Scanning projects, in any status. Cached for up to 5 minutes."
   }
 } as const;
 
@@ -1507,6 +1511,10 @@ export const SECRET_IMPORTS = {
 } as const;
 
 export const DASHBOARD = {
+  SECRET_METADATA_SEARCH: {
+    searchLimit: "The candidate limit applied independently to plaintext matches and encrypted metadata candidates.",
+    tags: "The tags attached to the secret, including each tag's ID and slug."
+  },
   SECRET_METADATA_LIST: {
     projectId: "The ID of the project containing the secrets.",
     environment: "The slug of the environment containing the secrets.",
@@ -2901,6 +2909,14 @@ export const AppConnections = {
   ROTATE_CREDENTIALS: (app: AppConnection) => ({
     connectionId: `The ID of the ${APP_CONNECTION_NAME_MAP[app]} Connection to rotate credentials for.`
   }),
+  KEEPER: {
+    LIST_SHARED_FOLDERS: {
+      connectionId: "The ID of the Keeper Connection to list shared folders from.",
+      sharedFolders: "The Keeper shared folders the connection can access, sorted by name.",
+      uid: "The UID of the Keeper shared folder.",
+      name: "The name of the Keeper shared folder. Falls back to the UID when the folder has no name."
+    }
+  },
   CREDENTIALS: {
     PALO_ALTO_NETWORKS: {
       hostname: "The IP address or hostname of the management interface of the firewall or Panorama.",
@@ -3107,6 +3123,15 @@ export const AppConnections = {
       blockedUsers:
         "A comma-separated list of usernames that are blocked from being used in operations like secret rotation (e.g., 'root,admin,ubuntu')."
     },
+    HPE_ILO: {
+      hostname: "The hostname or IP address of the HPE iLO management interface (e.g., 'ilo.example.com').",
+      port: "The HTTPS port of the HPE iLO Redfish API (default: 443).",
+      username: "The iLO local account username used to authenticate with the Redfish API.",
+      password: "The password for the iLO local account.",
+      sslRejectUnauthorized:
+        "Whether or not to reject untrusted SSL certificates (true/false). Set to false for iLO interfaces using self-signed certificates.",
+      sslCertificate: "The CA certificate (PEM format) used to verify the iLO interface's TLS certificate."
+    },
     DBT: {
       apiToken: "The API token used to authenticate with DBT.",
       accountId: "The account ID of your DBT account.",
@@ -3131,6 +3156,10 @@ export const AppConnections = {
     LITELLM: {
       apiKey: "The LiteLLM API key used to authenticate with the LiteLLM instance.",
       instanceUrl: "The base URL of your LiteLLM instance (e.g. https://litellm.example.com)."
+    },
+    KEEPER: {
+      apiKey: "The API key generated for Keeper Commander Service Mode.",
+      instanceUrl: "The base URL of your Keeper Commander Service Mode instance (e.g. https://keeper.company.com)."
     },
     FIREWORKS: {
       apiKey: "The Fireworks API key used to authenticate with the Fireworks API.",
@@ -3422,6 +3451,10 @@ export const SecretSyncs = {
       vaultId: "The ID of the 1Password vault to sync secrets to.",
       valueLabel: "The label of the entry that holds the secret value."
     },
+    KEEPER: {
+      folderUid: "The UID of the Keeper Password Manager shared folder to sync secrets to.",
+      folderName: "The name of the Keeper Password Manager shared folder to sync secrets to."
+    },
     HEROKU: {
       app: "The ID of the Heroku app to sync secrets to.",
       appName: "The name of the Heroku app to sync secrets to."
@@ -3459,6 +3492,12 @@ export const SecretSyncs = {
     },
     CLOUDFLARE_WORKERS: {
       scriptId: "The ID of the Cloudflare Workers script to sync secrets to."
+    },
+    CLOUDFLARE_SECRETS_STORE: {
+      storeId: "The ID of the Cloudflare Secrets Store to sync secrets to.",
+      storeName: "An optional display name for the Cloudflare Secrets Store.",
+      scopes:
+        "The Cloudflare services allowed to use the synced secrets. Applied every time a secret is written, so it replaces scopes set in Cloudflare."
     },
     ZABBIX: {
       scope: "The Zabbix scope that secrets should be synced to.",
@@ -3568,9 +3607,9 @@ export const SecretRotations = {
       projectId: "The ID of the project to create the rotation in.",
       environment: `The slug of the project environment to create the rotation in.`,
       secretPath: `The secret path of the project to create the rotation in.`,
-      connectionId: `The ID of the ${
-        APP_CONNECTION_NAME_MAP[SECRET_ROTATION_CONNECTION_MAP[type]]
-      } Connection to use for rotation.`,
+      connectionId: `The ID of the ${getSecretRotationConnectionApps(type)
+        .map((app) => APP_CONNECTION_NAME_MAP[app])
+        .join(" or ")} Connection to use for rotation.`,
       isAutoRotationEnabled: `Whether secrets should be automatically rotated when the specified rotation interval has elapsed.`,
       rotationInterval: `The interval, in days, to automatically rotate secrets.`,
       rotateAtUtc: `The hours and minutes rotation should occur at in UTC. Defaults to Midnight (00:00) UTC.`
@@ -3690,6 +3729,8 @@ export const SecretRotations = {
     },
     OPEN_ROUTER_API_KEY: {
       name: "The name for the generated OpenRouter API key.",
+      workspaceId:
+        "The optional ID of the OpenRouter workspace to create API keys in. If omitted, OpenRouter creates keys in the account's Default workspace.",
       limit: "The optional spending limit in USD for the generated API key.",
       limitReset: "The type of limit reset for the API key (daily, weekly, monthly, or null for no reset).",
       includeByokInLimit:
@@ -3753,6 +3794,10 @@ export const SecretRotations = {
         "The name for each Stripe API key this rotation creates, up to 80 characters. Infisical appends a timestamp so the old and new key can be told apart. Defaults to 'infisical-managed'.",
       permissions:
         "The permissions granted to the generated Stripe API key. Stripe has no wildcard permission, so this is the full list of what the key may do."
+    },
+    GCP_SERVICE_ACCOUNT_KEY: {
+      serviceAccountEmail:
+        "The email of the GCP service account whose keys will be rotated, e.g. my-app@my-project.iam.gserviceaccount.com. The connection's service account needs the Service Account Key Admin role (roles/iam.serviceAccountKeyAdmin) on it."
     }
   },
   SECRETS_MAPPING: {
@@ -3855,6 +3900,10 @@ export const SecretRotations = {
     },
     STRIPE_API_KEY: {
       apiKey: "The name of the secret that the rotated Stripe API key will be mapped to."
+    },
+    GCP_SERVICE_ACCOUNT_KEY: {
+      serviceAccountKey:
+        "The name of the secret that the rotated service account key (the JSON key file) will be mapped to."
     }
   }
 };
@@ -3863,14 +3912,14 @@ export const SecretScanningDataSources = {
   LIST: (type?: SecretScanningDataSource) => ({
     projectId: `The ID of the project to list ${
       type ? SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type] : "Scanning"
-    } Data Sources from.`
+    } Data Sources from. Defaults to the organization's active Secret Scanning project.`
   }),
   GET_BY_ID: (type: SecretScanningDataSource) => ({
     dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to retrieve.`
   }),
   GET_BY_NAME: (type: SecretScanningDataSource) => ({
     sourceName: `The name of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to retrieve.`,
-    projectId: `The ID of the project the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source is located in.`
+    projectId: `The ID of the project the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source is located in. Defaults to the organization's active Secret Scanning project.`
   }),
   CREATE: (type: SecretScanningDataSource) => {
     const sourceType = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
@@ -3878,7 +3927,7 @@ export const SecretScanningDataSources = {
     return {
       name: `The name of the ${sourceType} Data Source to create. Must be slug-friendly.`,
       description: `An optional description for the ${sourceType} Data Source.`,
-      projectId: `The ID of the project to create the ${sourceType} Data Source in.`,
+      projectId: `The ID of the project to create the ${sourceType} Data Source in. Defaults to the organization's active Secret Scanning project.`,
       connectionId: `The ID of the ${
         APP_CONNECTION_NAME_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]]
       } Connection to use for this Data Source.`,
@@ -3932,7 +3981,7 @@ export const SecretScanningDataSources = {
 
 export const SecretScanningFindings = {
   LIST: {
-    projectId: `The ID of the project to list Secret Scanning Findings from.`
+    projectId: `The ID of the project to list Secret Scanning Findings from. Defaults to the organization's active Secret Scanning project.`
   },
   UPDATE: {
     findingId: "The ID of the Secret Scanning Finding to update.",
@@ -3943,11 +3992,29 @@ export const SecretScanningFindings = {
 
 export const SecretScanningConfigs = {
   GET_BY_PROJECT_ID: {
-    projectId: `The ID of the project to retrieve the Secret Scanning Configuration for.`
+    projectId: `The ID of the project to retrieve the Secret Scanning Configuration for. Defaults to the organization's active Secret Scanning project.`
   },
   UPDATE: {
-    projectId: "The ID of the project to update the Secret Scanning Configuration for.",
+    projectId:
+      "The ID of the project to update the Secret Scanning Configuration for. Defaults to the organization's active Secret Scanning project.",
     content: "The contents of the Secret Scanning Configuration file."
+  }
+};
+
+export const SecretScanningProjects = {
+  GET_ACTIVE: {
+    projectId:
+      "The ID of the organization's active Secret Scanning project, which is the most recently created one. One is created if the organization has none."
+  },
+  GET_INSTANCE: {
+    activeProjectId:
+      "The ID of the organization's active Secret Scanning project, which is the most recently created one. Null if the organization has none.",
+    projects: "Every Secret Scanning project in the organization, most recently created first.",
+    id: "The ID of the Secret Scanning project.",
+    name: "The name of the Secret Scanning project.",
+    slug: "The slug of the Secret Scanning project.",
+    createdAt: "When the Secret Scanning project was created.",
+    isMultiInstance: "Whether the organization has more than one Secret Scanning project."
   }
 };
 
@@ -4403,9 +4470,6 @@ export const AGENT_VAULT = {
     key: "The name services use to refer to the variable, as `{{KEY}}`. Starts with a letter and uses only upper case letters, numbers and underscores.",
     value: "The value the proxy puts in place of each `{{KEY}}`.",
     updateValue: "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value.",
-    isSecret: "Whether the value is hidden once saved. A secret value is only returned by the value endpoint.",
-    listedValue:
-      "The value, for a variable that is not secret. Null for a secret one: read it from the value endpoint.",
     revealedValue: "The variable's value.",
     serviceIds:
       "The IDs of the services in the access bundle that use this variable. A variable in use can't be deleted.",
@@ -4413,8 +4477,7 @@ export const AGENT_VAULT = {
     updatedAt: "When the variable was last changed."
   },
   MEMBER: {
-    memberId: "The ID of the access bundle membership.",
-    createdAt: "When the access bundle was granted.",
+    grantedAt: "When the access bundle was granted.",
     userId: "The ID of the user whose Agent Vault membership this is.",
     identityId: "The ID of the machine identity whose Agent Vault membership this is.",
     groupId: "The ID of the group whose Agent Vault membership this is.",
@@ -4445,6 +4508,7 @@ export const AGENT_VAULT = {
   MEMBERSHIP: {
     role: "The Agent Vault role: admin or member.",
     isActive: "Whether the member can currently reach Agent Vault.",
+    addedAt: "When the member was added to Agent Vault.",
     userIds: "The IDs of the users to act on.",
     machineIdentityIds: "The IDs of the machine identities to act on.",
     groupIds: "The IDs of the groups to act on.",
@@ -4452,6 +4516,8 @@ export const AGENT_VAULT = {
     identifier: "The ID or email address the request named, echoed back so a reply can be matched to it.",
     addSkipped: "The requested members who already had access to Agent Vault and were left as they were.",
     revokeSkipped: "The requested members who did not have access to Agent Vault, so nothing was removed.",
+    updateSkipped:
+      "The requested members who did not have access to Agent Vault or already had the role, so nothing was changed.",
     actorTypeFilter: "List only users, only groups or only machine identities.",
     search: "Match members by name, username or email address.",
     limit: "The maximum number of members to return.",
@@ -4495,44 +4561,28 @@ export const AGENT_VAULT = {
   SESSION_LOGS: {
     chunkId: "The ID of the chunk.",
     proxyId: "The ID of the proxy that uploaded the chunk.",
-    proxyName: "The name of the proxy that uploaded the chunk. If the proxy was deleted, the name it had at the time.",
-    startedAt: "The time of the first record in the chunk.",
     endedAt: "The time of the last record in the chunk.",
-    firstSeq: "The sequence number of the first record in the chunk. Each proxy numbers its own records.",
-    lastSeq: "The sequence number of the last record in the chunk. Each proxy numbers its own records.",
-    recordCount: "The number of records in the chunk.",
-    droppedCount:
-      "The number of requests the proxy couldn't record, for example because too many requests came in at once or session logs were off. They're reported on the next chunk the proxy sends, so they happened before this chunk, but not necessarily right before its first record.",
-    ciphertextBytes: "The size of the encrypted chunk, in bytes.",
-    iv: "The AES-GCM initialization vector for the chunk, as base64.",
+    ciphertextBytes: "The size of the encrypted chunk in bytes.",
     ciphertextSha256:
-      "The SHA-256 digest of the encrypted chunk, as base64 without padding. If the downloaded chunk has a different digest, the chunk was changed after it was uploaded.",
+      "The SHA-256 digest of the encrypted chunk, including its IV, as base64 without padding. The bucket refuses an upload with a different digest.",
+    legacyIv:
+      "Sent only by Infisical CLI versions that can't record session logs. A request that includes it is refused.",
     uploadUrl:
       "The URL to upload the encrypted chunk to with a PUT request. The body must be exactly `ciphertextBytes` bytes.",
-    presignedGetUrl:
-      "The URL to download the chunk from. Null if the chunk is in a bucket session logs no longer use, or if `sessionLogs.storageUnavailable` is set.",
+    presignedGetUrl: "The URL to download the chunk from.",
     expiresInSeconds: "The number of seconds before the URL expires.",
-    chunkCreatedAt:
-      "When the proxy registered the chunk with Infisical. Its upload to the bucket finishes shortly after, so a download in between returns 404.",
     isRecordable: "False if this session's requests can't be recorded.",
-    sessionKey: "The key that decrypts every chunk in this response, as base64. Null if no chunk can be read.",
-    storageUnavailable: "The reason the chunks can't be downloaded right now. Null if they can.",
-    storageUnavailableReason:
-      "`no-connection` if no AWS connection is set for session logs, or `connection-unusable` if Infisical can't use the AWS connection.",
-    storageUnavailableMessage: "The error Infisical got from the AWS connection. Returned only to Agent Vault admins.",
+    sessionKey: "The key that decrypts every chunk in this response, as base64. Null if the response has no chunks.",
     sessionLogs:
-      "Whether session logs are on, the key that decrypts the chunks, and why they can't be downloaded, if they can't.",
+      "Whether session logs are on, whether this session can be recorded, and the key that decrypts the chunks.",
     historyCursor: "The `nextCursor` from the previous response. Leave it out to start from the newest logs.",
-    historyNextCursor: "Pass this as `cursor` to get older logs. Null when there's nothing older.",
-    liveCursor:
-      "Pass this to [the endpoint that tails session logs](/api-reference/endpoints/agent-vault-session-logs/tail) to get new logs as they arrive.",
+    historyNextCursor:
+      "Pass this as `cursor` to get older logs. Null when there's nothing older. A page can have no chunks and still have a `nextCursor`.",
     tailCursor:
-      "The `liveCursor` from [the endpoint that lists session logs](/api-reference/endpoints/agent-vault-session-logs/list), or the `nextCursor` from your last call. Leave it out to start from now.",
-    tailNextCursor: "Pass this as `cursor` on your next call.",
-    tailHasMore: "Whether more logs are ready now. If false, wait a few seconds before calling again.",
-    limit: "How many records to return. Only whole chunks are returned, so a response can have slightly more.",
-    from: "Return only chunks with records at or after this time.",
-    to: "Return only chunks with records at or before this time.",
+      "The `nextCursor` from your last call. Leave it out on the first call to start from the most recent chunks.",
+    tailNextCursor: "Pass this as `cursor` on your next call, a few seconds later.",
+    from: "Return only chunks with records at or after this time. A chunk can also hold earlier records, so filter records by `ts`.",
+    to: "Return only chunks with records at or before this time. A chunk can also hold later records, so filter records by `ts`.",
     enabled: "Whether session logs are on.",
     configEnabled: "Whether session logs are on. Turning them off stops recording but keeps what's already recorded.",
     appConnectionId: "The ID of the AWS connection Infisical uses to write to and read from the bucket.",
@@ -4544,7 +4594,6 @@ export const AGENT_VAULT = {
     corsProbeUrl: "A URL that fails to load in a browser if the bucket's CORS rule doesn't allow Infisical.",
     connectionError:
       "The error Infisical got when it tried to use the AWS connection, for example because AWS refused to let it assume the role. Null if there's no error or no connection.",
-    isStorageFull: "Whether your organization has reached its session log storage limit.",
     hasSessionLogKey: "Whether the proxy already has this session's log key. If true, the key isn't returned again.",
     proxySessionKey:
       "The session's log key, as base64, sent once. Null when session logs are off or the proxy already has it."
@@ -4556,10 +4605,6 @@ export const AGENT_VAULT = {
     ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d.",
     token: "The session token. Returned once, at mint, and never again.",
     expiresAt: "When the session expires, or null when it never does.",
-    recentSessionLogCounts:
-      "How many of the session's requests were recorded in its session log, and how many the proxy couldn't record, over the 24 hours before its most recent recorded request.",
-    recentRecordedCount: "The number of requests recorded in the session log.",
-    recentDroppedCount: "The number of requests the proxy couldn't record in the session log.",
     scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
     status:
       "Filter by session status: `active`, `revoked` or `expired`. Separate several with commas to match any of them.",

@@ -117,8 +117,7 @@ export const parseProjectSlugFromPath = (pathname: string): string | undefined =
 
 const PROJECT_TYPES_WITH_INTERMEDIATE_VIEW = new Set<ProjectType>([
   ProjectType.SecretManager,
-  ProjectType.KMS,
-  ProjectType.SecretScanning
+  ProjectType.KMS
 ]);
 
 export const hasIntermediateProjectsView = (type: ProjectType) =>

@@ -15,8 +15,15 @@ type RecipientOption = {
   principalType: AlertPrincipalType;
   principalId: string;
   label: string;
-  groupLabel: "Users" | "Groups";
+  groupLabel: "Project" | "Users" | "Groups";
 };
+
+const projectMembersOption = (projectId: string): RecipientOption => ({
+  principalType: AlertPrincipalType.ProjectMembers,
+  principalId: projectId,
+  label: "All Project Members",
+  groupLabel: "Project"
+});
 
 const userLabel = (user: { firstName?: string; lastName?: string; username?: string }): string =>
   user.username || `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || "Unknown user";
@@ -41,7 +48,7 @@ const buildOptions = (
 
 const formatOptionLabel = (option: RecipientOption) => (
   <span className="flex items-center gap-2">
-    {option.principalType === AlertPrincipalType.Group ? (
+    {option.principalType !== AlertPrincipalType.User ? (
       <UsersIcon className="size-3.5 text-muted" />
     ) : (
       <UserIcon className="size-3.5 text-muted" />
@@ -149,11 +156,12 @@ const ProjectRecipientSelect = ({
   );
 
   const groupOptions = groups.map((membership) => membership.group);
+  const everyone = projectMembersOption(projectId);
 
   return (
     <RecipientSelect
-      options={buildOptions(eligibleUsers, groupOptions)}
-      labelledOptions={buildOptions(users, groupOptions)}
+      options={[everyone, ...buildOptions(eligibleUsers, groupOptions)]}
+      labelledOptions={[everyone, ...buildOptions(users, groupOptions)]}
       {...props}
     />
   );

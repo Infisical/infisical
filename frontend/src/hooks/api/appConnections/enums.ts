@@ -86,5 +86,7 @@ export enum AppConnection {
   NutanixPrismCentral = "nutanix-prism-central",
   Spacelift = "spacelift",
   Daytona = "daytona",
-  Stripe = "stripe"
+  Stripe = "stripe",
+  Keeper = "keeper",
+  HpeIloRedFish = "hpe-ilo"
 }

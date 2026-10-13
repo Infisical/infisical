@@ -268,7 +268,7 @@ const BillingV2PreviewSchema = z.object({
 // subscription id comes back (the DB mirror catches up via webhook, so the UI refetches overview).
 const BillingV2MutationResultSchema = z.object({ subscriptionId: z.string().optional() });
 
-// Product and plan keys are short catalog identifiers (e.g. "secrets_management", "advanced").
+// Product and plan keys are short catalog identifiers (e.g. "secrets_manager", "advanced").
 const BillingV2KeySchema = z.string().trim().min(1).max(64);
 
 const BillingV2QuantitiesSchema = z.record(z.string().trim(), z.number().int().min(0));

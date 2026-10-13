@@ -72,6 +72,11 @@ import {
   TFireworksApiKeyRotationOption
 } from "./fireworks-api-key-rotation";
 import {
+  TGcpServiceAccountKeyRotation,
+  TGcpServiceAccountKeyRotationGeneratedCredentialsResponse,
+  TGcpServiceAccountKeyRotationOption
+} from "./gcp-service-account-key-rotation";
+import {
   THpIloRotation,
   THpIloRotationGeneratedCredentialsResponse,
   THpIloRotationOption
@@ -175,6 +180,7 @@ export type TSecretRotationV2 = (
   | TCloudflareApiTokenRotation
   | TCloudflareR2AccessKeyRotation
   | TStripeApiKeyRotation
+  | TGcpServiceAccountKeyRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
 };
@@ -205,7 +211,8 @@ export type TSecretRotationV2Option =
   | TSnowflakeUserKeyPairRotationOption
   | TCloudflareApiTokenRotationOption
   | TCloudflareR2AccessKeyRotationOption
-  | TStripeApiKeyRotationOption;
+  | TStripeApiKeyRotationOption
+  | TGcpServiceAccountKeyRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
 
@@ -240,7 +247,8 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TSnowflakeUserKeyPairRotationGeneratedCredentialsResponse
   | TCloudflareApiTokenRotationGeneratedCredentialsResponse
   | TCloudflareR2AccessKeyRotationGeneratedCredentialsResponse
-  | TStripeApiKeyRotationGeneratedCredentialsResponse;
+  | TStripeApiKeyRotationGeneratedCredentialsResponse
+  | TGcpServiceAccountKeyRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
   TSecretRotationV2,
@@ -324,6 +332,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.CloudflareApiToken]: TCloudflareApiTokenRotationOption;
   [SecretRotation.CloudflareR2AccessKey]: TCloudflareR2AccessKeyRotationOption;
   [SecretRotation.StripeApiKey]: TStripeApiKeyRotationOption;
+  [SecretRotation.GcpServiceAccountKey]: TGcpServiceAccountKeyRotationOption;
 };
 
 export type TSecretRotationGeneratedCredentialsResponseMap = {
@@ -356,6 +365,7 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.CloudflareApiToken]: TCloudflareApiTokenRotationGeneratedCredentialsResponse;
   [SecretRotation.CloudflareR2AccessKey]: TCloudflareR2AccessKeyRotationGeneratedCredentialsResponse;
   [SecretRotation.StripeApiKey]: TStripeApiKeyRotationGeneratedCredentialsResponse;
+  [SecretRotation.GcpServiceAccountKey]: TGcpServiceAccountKeyRotationGeneratedCredentialsResponse;
 };
 
 // Unified type for local account reconciliation (Unix/Linux, Windows, and HP iLO)

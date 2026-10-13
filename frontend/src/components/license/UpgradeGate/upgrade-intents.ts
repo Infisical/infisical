@@ -1,5 +1,5 @@
 export const BillingProduct = {
-  SecretsManagement: "secrets_management",
+  SecretsManagement: "secrets_manager",
   CertificateManagement: "cert_management",
   Pam: "pam"
 } as const;

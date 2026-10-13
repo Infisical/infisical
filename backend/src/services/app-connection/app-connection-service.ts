@@ -134,8 +134,11 @@ import { ValidateHCVaultConnectionCredentialsSchema } from "./hc-vault";
 import { hcVaultConnectionService } from "./hc-vault/hc-vault-connection-service";
 import { ValidateHerokuConnectionCredentialsSchema } from "./heroku";
 import { herokuConnectionService } from "./heroku/heroku-connection-service";
+import { ValidateHpeIloConnectionCredentialsSchema } from "./hpe-ilo";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
+import { ValidateKeeperConnectionCredentialsSchema } from "./keeper";
+import { keeperConnectionService } from "./keeper/keeper-connection-service";
 import { ValidateKempLoadMasterConnectionCredentialsSchema } from "./kemp-loadmaster";
 import { kempLoadMasterConnectionService } from "./kemp-loadmaster/kemp-loadmaster-connection-service";
 import { ValidateLaravelForgeConnectionCredentialsSchema } from "./laravel-forge";
@@ -164,6 +167,7 @@ import { oktaConnectionService } from "./okta/okta-connection-service";
 import { ValidateOnaConnectionCredentialsSchema } from "./ona";
 import { onaConnectionService } from "./ona/ona-connection-service";
 import { ValidateOpenRouterConnectionCredentialsSchema } from "./open-router";
+import { openRouterConnectionService } from "./open-router/open-router-connection-service";
 import { ValidateOpenAIConnectionCredentialsSchema } from "./openai";
 import { openaiConnectionService } from "./openai/openai-connection-service";
 import { ValidateOvhConnectionCredentialsSchema } from "./ovh";
@@ -326,7 +330,9 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.PowerDns]: ValidatePowerDnsConnectionCredentialsSchema,
   [AppConnection.Spacelift]: ValidateSpaceliftConnectionCredentialsSchema,
   [AppConnection.Daytona]: ValidateDaytonaConnectionCredentialsSchema,
-  [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema
+  [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema,
+  [AppConnection.Keeper]: ValidateKeeperConnectionCredentialsSchema,
+  [AppConnection.HpeIloRedFish]: ValidateHpeIloConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -1458,6 +1464,7 @@ export const appConnectionServiceFactory = ({
     teamcity: teamcityConnectionService(connectAppConnectionById),
     oci: ociConnectionService(connectAppConnectionById, licenseService),
     onepass: onePassConnectionService(connectAppConnectionById),
+    keeper: keeperConnectionService(connectAppConnectionById),
     cloud66: cloud66ConnectionService(connectAppConnectionById),
     heroku: herokuConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     render: renderConnectionService(connectAppConnectionById),
@@ -1486,6 +1493,7 @@ export const appConnectionServiceFactory = ({
     okta: oktaConnectionService(connectAppConnectionById),
     datadog: datadogConnectionService(connectAppConnectionById),
     openai: openaiConnectionService(connectAppConnectionById),
+    openRouter: openRouterConnectionService(connectAppConnectionById),
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),
     chef: chefConnectionService(connectAppConnectionById, licenseService, gatewayV2Service, gatewayPoolService),
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),

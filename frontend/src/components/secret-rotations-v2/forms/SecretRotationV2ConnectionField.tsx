@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { SingleValue } from "react-select";
 import { subject } from "@casl/ability";
@@ -19,9 +19,13 @@ import {
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
-import { SECRET_ROTATION_CONNECTION_MAP } from "@app/helpers/secretRotationsV2";
+import {
+  getSecretRotationConnectionApps,
+  SECRET_ROTATION_CONNECTION_MAP
+} from "@app/helpers/secretRotationsV2";
 import { usePopUp } from "@app/hooks";
-import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { useListAvailableAppConnectionsForApps } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
 import { TSecretRotationV2Form } from "./schemas";
@@ -36,21 +40,22 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
   const { control, watch, setValue } = useFormContext<TSecretRotationV2Form>();
 
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addConnection"] as const);
+  const [appToCreate, setAppToCreate] = useState<AppConnection | null>(null);
 
   const rotationType = watch("type");
   const environment = watch("environment");
   const secretPath = watch("secretPath");
   const app = SECRET_ROTATION_CONNECTION_MAP[rotationType];
+  const apps = getSecretRotationConnectionApps(rotationType);
 
   const { currentProject } = useProject();
 
-  const { data: availableConnections, isPending } = useListAvailableAppConnections(
-    app,
+  const { connections: availableConnections, isPending } = useListAvailableAppConnectionsForApps(
+    apps,
     currentProject.id
   );
 
   const allowedConnections = useMemo(() => {
-    if (!availableConnections) return [];
     const envSlug = environment?.slug;
     if (!envSlug || !secretPath) return availableConnections;
     return availableConnections.filter((conn) =>
@@ -65,14 +70,15 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
     );
   }, [availableConnections, permission, environment?.slug, secretPath]);
 
-  const connectionName = APP_CONNECTION_MAP[app].name;
+  const connectionLabel =
+    apps.length > 1 ? "Connection" : `${APP_CONNECTION_MAP[app].name} Connection`;
 
   const canCreateConnection = permission.can(
     ProjectPermissionAppConnectionActions.Create,
     ProjectPermissionSub.AppConnections
   );
 
-  const appName = APP_CONNECTION_MAP[app].name;
+  const appNames = apps.map((accepted) => APP_CONNECTION_MAP[accepted].name).join(" or ");
 
   return (
     <>
@@ -83,14 +89,20 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
               htmlFor="secret-rotation-connection"
               tooltip="App Connections can be created from the Organization Settings page."
             >
-              {connectionName} Connection
+              {connectionLabel}
             </FieldLabelWithTooltip>
             <FilterableSelect
               inputId="secret-rotation-connection"
               value={value ?? null}
               onBlur={onBlur}
               onChange={(newValue) => {
-                if ((newValue as SingleValue<{ id: string; name: string }>)?.id === "_create") {
+                const selected = newValue as SingleValue<{
+                  id: string;
+                  name: string;
+                  app?: AppConnection;
+                }>;
+                if (selected?.id?.startsWith("_create")) {
+                  setAppToCreate(selected.app ?? app);
                   handlePopUpOpen("addConnection");
                   localStorage.setItem(
                     "secretRotationFormData",
@@ -107,9 +119,20 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
               }}
               isLoading={isPending}
               options={[
-                ...(canCreateConnection ? [{ id: "_create", name: "Create Connection" }] : []),
+                ...(canCreateConnection
+                  ? apps.map((creatable) => ({
+                      id: `_create:${creatable}`,
+                      name:
+                        apps.length > 1
+                          ? `Create ${APP_CONNECTION_MAP[creatable].name} Connection`
+                          : "Create Connection",
+                      app: creatable
+                    }))
+                  : []),
                 ...allowedConnections
               ]}
+              groupBy={apps.length > 1 ? "app" : null}
+              getGroupHeaderLabel={(groupApp: AppConnection) => APP_CONNECTION_MAP[groupApp].name}
               isDisabled={isUpdate}
               placeholder="Select connection..."
               getOptionLabel={(option) => option.name}
@@ -127,7 +150,7 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
                   <>
                     Check out{" "}
                     <a
-                      href={`https://infisical.com/docs/integrations/app-connections/${app}`}
+                      href={`https://infisical.com/docs/integrations/app-connections/${value?.app ?? app}`}
                       target="_blank"
                       className="underline"
                       rel="noopener noreferrer"
@@ -149,7 +172,7 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
         <Alert variant="warning">
           <InfoIcon />
           <AlertDescription>
-            You do not have access to any {appName} Connections. Contact an admin to create one.
+            You do not have access to any {appNames} Connections. Contact an admin to create one.
           </AlertDescription>
         </Alert>
       )}
@@ -161,7 +184,7 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
         }}
         projectType={currentProject.type}
         projectId={currentProject.id}
-        app={app}
+        app={appToCreate ?? app}
         onComplete={(connection) => {
           if (connection) {
             setValue("connection", connection, { shouldValidate: true, shouldDirty: true });
