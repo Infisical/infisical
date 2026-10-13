@@ -1,11 +1,11 @@
 import { format } from "date-fns";
-import { ChevronDownIcon, ChevronUpIcon, ExternalLinkIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronUpIcon, CopyIcon, ExternalLinkIcon } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   ButtonGroup,
-  CopyButton,
   Detail,
   DetailLabel,
   DetailValue,
@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
   IconButton,
   ProviderIcon,
+  Separator,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -102,7 +103,7 @@ export const FindingDetailSheet = ({
             </SheetHeader>
 
             <div className="grid flex-1 grid-cols-2 content-start gap-4 overflow-y-auto p-4">
-              <Detail className="col-span-2">
+              <Detail>
                 <DetailLabel>File</DetailLabel>
                 <DetailValue>
                   {finding.details.link ? (
@@ -112,8 +113,8 @@ export const FindingDetailSheet = ({
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 hover:underline hover:underline-offset-2"
                     >
-                      {finding.details.file}:{finding.details.startLine}
                       <ExternalLinkIcon className="size-3.5 shrink-0" />
+                      {finding.details.file}:{finding.details.startLine}
                     </a>
                   ) : (
                     `${finding.details.file}:${finding.details.startLine}`
@@ -121,12 +122,10 @@ export const FindingDetailSheet = ({
                 </DetailValue>
               </Detail>
               <Detail>
-                <DetailLabel>Resource</DetailLabel>
-                <DetailValue>{finding.resourceName}</DetailValue>
-              </Detail>
-              <Detail>
-                <DetailLabel>Detected</DetailLabel>
-                <DetailValue>{formatDate(finding.createdAt)}</DetailValue>
+                <DetailLabel>Fingerprint</DetailLabel>
+                <DetailValue>
+                  <span className="text-xs break-all text-muted">{finding.fingerprint}</span>
+                </DetailValue>
               </Detail>
               <Detail>
                 <DetailLabel>Commit</DetailLabel>
@@ -150,21 +149,6 @@ export const FindingDetailSheet = ({
                 <DetailLabel>Committed</DetailLabel>
                 <DetailValue>{formatDate(finding.details.date)}</DetailValue>
               </Detail>
-              <Detail>
-                <DetailLabel>Severity</DetailLabel>
-                <DetailValue>
-                  <span className="capitalize">{finding.severity}</span>
-                </DetailValue>
-              </Detail>
-              <Detail className="col-span-2">
-                <DetailLabel>Fingerprint</DetailLabel>
-                <DetailValue>
-                  <span className="flex items-center gap-1">
-                    <span className="min-w-0 text-xs break-all">{finding.fingerprint}</span>
-                    <CopyButton value={finding.fingerprint} ariaLabel="Copy fingerprint" />
-                  </span>
-                </DetailValue>
-              </Detail>
               {finding.triageComment && (
                 <Detail className="col-span-2">
                   <DetailLabel>Comment</DetailLabel>
@@ -175,62 +159,76 @@ export const FindingDetailSheet = ({
               )}
             </div>
 
+            <Separator />
             <SheetFooter>
-              <ProjectPermissionCan
-                I={ProjectPermissionSecretScanningFindingActions.Update}
-                a={ProjectPermissionSub.SecretScanningFindings}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(finding.fingerprint);
+                  createNotification({ type: "info", text: "Fingerprint copied to clipboard" });
+                }}
               >
-                {(isAllowed) =>
-                  finding.status === SecretScanningFindingStatus.Unresolved ? (
-                    <ButtonGroup>
+                <CopyIcon />
+                Copy Fingerprint
+              </Button>
+              <div className="ml-auto">
+                <ProjectPermissionCan
+                  I={ProjectPermissionSecretScanningFindingActions.Update}
+                  a={ProjectPermissionSub.SecretScanningFindings}
+                >
+                  {(isAllowed) =>
+                    finding.status === SecretScanningFindingStatus.Unresolved ? (
+                      <ButtonGroup>
+                        <Button
+                          variant="success"
+                          size="sm"
+                          isDisabled={!isAllowed}
+                          onClick={() => onChangeStatus(SecretScanningFindingStatus.Resolved)}
+                        >
+                          Mark Resolved
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <IconButton
+                              variant="success"
+                              size="sm"
+                              aria-label="More status options"
+                              isDisabled={!isAllowed}
+                            >
+                              <ChevronDownIcon />
+                            </IconButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() =>
+                                onChangeStatus(SecretScanningFindingStatus.FalsePositive)
+                              }
+                            >
+                              Mark False Positive
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => onChangeStatus(SecretScanningFindingStatus.Ignore)}
+                            >
+                              Ignore
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </ButtonGroup>
+                    ) : (
                       <Button
-                        variant="success"
+                        variant="outline"
                         size="sm"
-                        isDisabled={!isAllowed}
-                        onClick={() => onChangeStatus(SecretScanningFindingStatus.Resolved)}
+                        isDisabled={!isAllowed || isReopening}
+                        isPending={isReopening}
+                        onClick={() => onChangeStatus(SecretScanningFindingStatus.Unresolved)}
                       >
-                        Mark Resolved
+                        Reopen
                       </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <IconButton
-                            variant="success"
-                            size="sm"
-                            aria-label="More status options"
-                            isDisabled={!isAllowed}
-                          >
-                            <ChevronDownIcon />
-                          </IconButton>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() =>
-                              onChangeStatus(SecretScanningFindingStatus.FalsePositive)
-                            }
-                          >
-                            Mark False Positive
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => onChangeStatus(SecretScanningFindingStatus.Ignore)}
-                          >
-                            Ignore
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </ButtonGroup>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      isDisabled={!isAllowed || isReopening}
-                      isPending={isReopening}
-                      onClick={() => onChangeStatus(SecretScanningFindingStatus.Unresolved)}
-                    >
-                      Reopen
-                    </Button>
-                  )
-                }
-              </ProjectPermissionCan>
+                    )
+                  }
+                </ProjectPermissionCan>
+              </div>
             </SheetFooter>
           </>
         )}
