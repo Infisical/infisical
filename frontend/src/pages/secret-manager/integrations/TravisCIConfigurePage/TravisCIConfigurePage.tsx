@@ -26,7 +26,7 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const TravisCIConfigurePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isPending: isLoading } = useCreateIntegration();
 
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
@@ -46,7 +46,6 @@ export const TravisCIConfigurePage = () => {
   );
   const [targetApp, setTargetApp] = useState("");
   const [secretPath, setSecretPath] = useState("/");
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (integrationAuthApps) {
@@ -62,8 +61,6 @@ export const TravisCIConfigurePage = () => {
     try {
       if (!integrationAuth?.id) return;
 
-      setIsLoading(true);
-
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
@@ -74,8 +71,6 @@ export const TravisCIConfigurePage = () => {
         sourceEnvironment: selectedSourceEnvironment,
         secretPath
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",

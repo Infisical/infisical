@@ -21,14 +21,13 @@ import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const WindmillAuthorizePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useSaveIntegrationAccessToken();
+  const { mutateAsync, isPending: isLoading } = useSaveIntegrationAccessToken();
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const [apiKey, setApiKey] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
   const [apiUrl, setApiUrl] = useState<string | null>(null);
   const [apiUrlErrorText, setApiUrlErrorText] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   const isLocalOrPrivateIpAddress = (url: string): boolean => {
     try {
@@ -79,16 +78,12 @@ export const WindmillAuthorizePage = () => {
         }
       }
 
-      setIsLoading(true);
-
       const integrationAuth = await mutateAsync({
         workspaceId: currentProject.id,
         integration: "windmill",
         accessToken: apiKey,
         url: apiUrl ?? undefined
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/windmill/create",

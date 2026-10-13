@@ -20,7 +20,7 @@ import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const TeamcityAuthorizePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useSaveIntegrationAccessToken();
+  const { mutateAsync, isPending: isLoading } = useSaveIntegrationAccessToken();
 
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
@@ -28,7 +28,6 @@ export const TeamcityAuthorizePage = () => {
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
   const [serverUrl, setServerUrl] = useState("");
   const [serverUrlErrorText, setServerUrlErrorText] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleButtonClick = async () => {
     try {
@@ -45,16 +44,12 @@ export const TeamcityAuthorizePage = () => {
         return;
       }
 
-      setIsLoading(true);
-
       const integrationAuth = await mutateAsync({
         workspaceId: currentProject.id,
         integration: "teamcity",
         accessToken: apiKey,
         url: serverUrl
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/teamcity/create",

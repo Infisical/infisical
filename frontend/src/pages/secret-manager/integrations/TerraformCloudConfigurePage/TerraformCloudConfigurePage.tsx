@@ -49,7 +49,7 @@ const variableTypes = [{ name: "env" }, { name: "terraform" }];
 
 export const TerraformCloudConfigurePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isPending: isLoading } = useCreateIntegration();
 
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
@@ -70,7 +70,7 @@ export const TerraformCloudConfigurePage = () => {
   const [secretPath, setSecretPath] = useState("/");
   const [variableType, setVariableType] = useState(variableTypes[0].name);
   const [variableTypeErrorText, setVariableTypeErrorText] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+
   const [initialSyncBehavior, setInitialSyncBehavior] = useState("prefer-source");
 
   useEffect(() => {
@@ -93,8 +93,6 @@ export const TerraformCloudConfigurePage = () => {
         return;
       }
 
-      setIsLoading(true);
-
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
@@ -109,8 +107,6 @@ export const TerraformCloudConfigurePage = () => {
           initialSyncBehavior
         }
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",

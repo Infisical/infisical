@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -49,7 +49,7 @@ type FormData = z.infer<typeof schema>;
 
 export const RenderConfigurePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isPending: isLoading } = useCreateIntegration();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { control, handleSubmit, setValue, watch } = useForm<FormData>({
@@ -76,8 +76,6 @@ export const RenderConfigurePage = () => {
       integrationAuthId: (integrationAuthId as string) ?? ""
     });
 
-  const [isLoading, setIsLoading] = useState(false);
-
   useEffect(() => {
     if (integrationAuthApps) {
       if (integrationAuthApps.length > 0) {
@@ -92,8 +90,6 @@ export const RenderConfigurePage = () => {
     try {
       if (!integrationAuth?.id) return;
 
-      setIsLoading(true);
-
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
@@ -107,8 +103,6 @@ export const RenderConfigurePage = () => {
           shouldAutoRedeploy
         }
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",

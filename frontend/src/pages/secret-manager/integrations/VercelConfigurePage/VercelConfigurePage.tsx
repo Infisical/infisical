@@ -59,7 +59,7 @@ const initialSyncBehaviors = [
 
 export const VercelConfigurePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isPending: isLoading } = useCreateIntegration();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState(
@@ -72,7 +72,6 @@ export const VercelConfigurePage = () => {
   const [targetAppId, setTargetAppId] = useState("");
   const [targetEnvironment, setTargetEnvironment] = useState("");
   const [targetBranch, setTargetBranch] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.VercelConfigurePage.id,
@@ -114,8 +113,6 @@ export const VercelConfigurePage = () => {
     try {
       if (!integrationAuth?.id) return;
 
-      setIsLoading(true);
-
       const targetApp = integrationAuthApps?.find(
         (integrationAuthApp) => integrationAuthApp.appId === targetAppId
       );
@@ -139,7 +136,6 @@ export const VercelConfigurePage = () => {
         }
       });
 
-      setIsLoading(false);
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
@@ -295,10 +291,10 @@ export const VercelConfigurePage = () => {
           <FieldDescription id="VercelConfigurePage-field-3-feedback">
             <Tooltip>
               <TooltipTrigger asChild>
-                <div>
+                <span>
                   <span>Don&#39;t see the project you&#39;re looking for?</span>{" "}
                   <FontAwesomeIcon icon={faCircleInfo} className="text-muted" />
-                </div>
+                </span>
               </TooltipTrigger>
               <TooltipContent className="max-w-md">
                 {

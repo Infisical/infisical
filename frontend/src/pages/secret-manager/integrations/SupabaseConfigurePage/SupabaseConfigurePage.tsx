@@ -26,7 +26,7 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const SupabaseConfigurePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isPending: isLoading } = useCreateIntegration();
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const integrationAuthId = useSearch({
@@ -45,8 +45,6 @@ export const SupabaseConfigurePage = () => {
   const [secretPath, setSecretPath] = useState("/");
   const [targetApp, setTargetApp] = useState("");
 
-  const [isLoading, setIsLoading] = useState(false);
-
   useEffect(() => {
     if (integrationAuthApps) {
       if (integrationAuthApps.length > 0) {
@@ -61,8 +59,6 @@ export const SupabaseConfigurePage = () => {
     try {
       if (!integrationAuth?.id) return;
 
-      setIsLoading(true);
-
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
@@ -73,8 +69,6 @@ export const SupabaseConfigurePage = () => {
         sourceEnvironment: selectedSourceEnvironment,
         secretPath
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",

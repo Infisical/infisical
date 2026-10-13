@@ -16,13 +16,12 @@ import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const SupabaseAuthorizePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useSaveIntegrationAccessToken();
+  const { mutateAsync, isPending: isLoading } = useSaveIntegrationAccessToken();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
   const [apiKey, setApiKey] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleButtonClick = async () => {
     try {
@@ -32,15 +31,11 @@ export const SupabaseAuthorizePage = () => {
         return;
       }
 
-      setIsLoading(true);
-
       const integrationAuth = await mutateAsync({
         workspaceId: currentProject.id,
         integration: "supabase",
         accessToken: apiKey
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/supabase/create",

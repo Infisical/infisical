@@ -18,11 +18,10 @@ export const TravisCIAuthorizePage = () => {
   const navigate = useNavigate();
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
-  const { mutateAsync } = useSaveIntegrationAccessToken();
+  const { mutateAsync, isPending: isLoading } = useSaveIntegrationAccessToken();
 
   const [apiKey, setApiKey] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleButtonClick = async () => {
     try {
@@ -32,15 +31,11 @@ export const TravisCIAuthorizePage = () => {
         return;
       }
 
-      setIsLoading(true);
-
       const integrationAuth = await mutateAsync({
         workspaceId: currentProject.id,
         integration: "travisci",
         accessToken: apiKey
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/travisci/create",

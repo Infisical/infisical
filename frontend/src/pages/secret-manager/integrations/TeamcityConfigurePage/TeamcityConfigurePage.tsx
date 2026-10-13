@@ -31,7 +31,7 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const TeamcityConfigurePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isPending: isLoading } = useCreateIntegration();
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const integrationAuthId = useSearch({
@@ -45,7 +45,6 @@ export const TeamcityConfigurePage = () => {
   const [targetAppId, setTargetAppId] = useState("");
   const [targetBuildConfigId, setTargetBuildConfigId] = useState<string>("");
   const [secretPath, setSecretPath] = useState("/");
-  const [isLoading, setIsLoading] = useState(false);
 
   const { data: integrationAuth, isPending: isIntegrationAuthLoading } = useGetIntegrationAuthById(
     (integrationAuthId as string) ?? ""
@@ -74,8 +73,6 @@ export const TeamcityConfigurePage = () => {
     try {
       if (!integrationAuth?.id) return;
 
-      setIsLoading(true);
-
       const targetEnvironment = targetBuildConfigs?.find(
         (buildConfig) => buildConfig.buildConfigId === targetBuildConfigId
       );
@@ -92,8 +89,6 @@ export const TeamcityConfigurePage = () => {
         targetEnvironmentId: targetEnvironment?.buildConfigId,
         secretPath
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",

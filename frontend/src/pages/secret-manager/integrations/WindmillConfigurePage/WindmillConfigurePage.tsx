@@ -26,7 +26,7 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const WindmillConfigurePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isPending: isLoading } = useCreateIntegration();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
@@ -46,8 +46,6 @@ export const WindmillConfigurePage = () => {
   const [secretPath, setSecretPath] = useState("/");
   const [targetApp, setTargetApp] = useState("");
 
-  const [isLoading, setIsLoading] = useState(false);
-
   useEffect(() => {
     if (integrationAuthApps) {
       if (integrationAuthApps.length > 0) {
@@ -62,8 +60,6 @@ export const WindmillConfigurePage = () => {
     try {
       if (!integrationAuth?.id) return;
 
-      setIsLoading(true);
-
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
@@ -75,8 +71,6 @@ export const WindmillConfigurePage = () => {
         secretPath,
         url: integrationAuth.url ?? undefined
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",

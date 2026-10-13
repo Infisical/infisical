@@ -20,14 +20,13 @@ import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const TerraformCloudAuthorizePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useSaveIntegrationAccessToken();
+  const { mutateAsync, isPending: isLoading } = useSaveIntegrationAccessToken();
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
   const [apiKey, setApiKey] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
   const [workspacesId, setWorkSpacesId] = useState("");
   const [workspacesIdErrorText, setWorkspacesIdErrorText] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleButtonClick = async () => {
     try {
@@ -44,16 +43,12 @@ export const TerraformCloudAuthorizePage = () => {
         return;
       }
 
-      setIsLoading(true);
-
       const integrationAuth = await mutateAsync({
         workspaceId: currentProject.id,
         integration: "terraform-cloud",
         accessId: workspacesId,
         accessToken: apiKey
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/terraform-cloud/create",
