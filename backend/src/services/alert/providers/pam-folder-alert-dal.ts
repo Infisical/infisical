@@ -110,8 +110,22 @@ export const pamFolderAlertDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findFolderNamesByIds = async (folderIds: string[], orgId: string): Promise<{ id: string; name: string }[]> => {
+    if (folderIds.length === 0) return [];
+    try {
+      return (await db(TableName.PamFolder)
+        .join(TableName.Project, `${TableName.PamFolder}.projectId`, `${TableName.Project}.id`)
+        .whereIn(`${TableName.PamFolder}.id`, folderIds)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .select(`${TableName.PamFolder}.id`, `${TableName.PamFolder}.name`)) as { id: string; name: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindPamAlertFolderNamesByIds" });
+    }
+  };
+
   return {
     findFolderById,
+    findFolderNamesByIds,
     findAccessRequestsByIds,
     findAccountNamesByIds,
     findDecisionCommentsByRequestIds,

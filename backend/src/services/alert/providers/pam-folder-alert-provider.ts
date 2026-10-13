@@ -325,6 +325,10 @@ export const pamFolderAlertProviderFactory = ({
     assertResourceInScope,
     assertChannelTypesAllowed,
     recipientPolicy: { allowEmailAddresses: true },
-    resolveProjectId
+    resolveProjectId,
+    getResourceNames: async ({ orgId, resourceIds }) =>
+      new Map(
+        (await pamFolderAlertDAL.findFolderNamesByIds(resourceIds, orgId)).map((folder) => [folder.id, folder.name])
+      )
   };
 };
