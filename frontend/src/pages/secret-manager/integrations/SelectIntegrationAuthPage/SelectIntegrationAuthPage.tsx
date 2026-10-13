@@ -4,8 +4,7 @@ import { useCallback, useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { Button, Card, CardTitle } from "@app/components/v2";
-import { Loader } from "@app/components/v3";
+import { Button, Card, CardDescription, CardHeader, CardTitle, Loader } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -166,18 +165,20 @@ export const SelectIntegrationAuthPage = () => {
       <Helmet>
         <title>Select Connection</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-border-control">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Select an existing connection below or create a new one for your integration."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
-              <img src={logo} height={30} width={30} alt="Integration logo" />
+      <Card className="mb-12 w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <div className="flex flex-row items-center">
+              <div className="flex items-center pb-0.5">
+                <img src={logo} height={30} width={30} alt="Integration logo" />
+              </div>
+              <span className="ml-2.5">Select Connection</span>
             </div>
-            <span className="ml-2.5">Select Connection</span>
-          </div>
-        </CardTitle>
+          </CardTitle>
+          <CardDescription>
+            Select an existing connection below or create a new one for your integration.
+          </CardDescription>
+        </CardHeader>
         <div className="mb-7 flex flex-col items-center">
           {!isLoadingIntegrationAuths && integrationAuths?.length
             ? integrationAuths.map((integrationAuth) => {
@@ -189,13 +190,13 @@ export const SelectIntegrationAuthPage = () => {
 
                 return (
                   <Button
-                    colorSchema="secondary"
                     className="mt-3 w-3/4"
-                    isDisabled={isIntegrationAuthSelectLoading}
+                    disabled={isIntegrationAuthSelectLoading}
                     key={integrationAuth.id}
                     size="sm"
                     type="submit"
                     onClick={() => handleConnectionSelect(integrationAuth)}
+                    variant="outline"
                   >
                     {connectionName}
                   </Button>
@@ -208,11 +209,11 @@ export const SelectIntegrationAuthPage = () => {
             <div className="w-1/5 border-t border-border-emphasis" />
           </div>
           <Button
-            colorSchema="primary"
             className="mt-6 w-3/4"
             size="sm"
             type="submit"
             onClick={handleNewConnection}
+            variant="project"
           >
             Create New Connection
           </Button>

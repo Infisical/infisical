@@ -4,12 +4,17 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardHeader,
   CardTitle,
-  FormControl,
+  Field,
+  FieldLabel,
   Input,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -89,60 +94,83 @@ export const TravisCIConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthApps && targetApp ? (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="max-w-md rounded-md p-8">
-        <CardTitle className="text-center">Travis CI Integration</CardTitle>
-        <FormControl label="Project Environment" className="mt-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Travis CI Integration</CardTitle>
+        </CardHeader>
+        <Field className="mt-4 mb-4">
+          <FieldLabel htmlFor="TravisCIConfigurePage-field-1">Project Environment</FieldLabel>
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-border-strong"
           >
-            {currentProject?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`source-environment-${sourceEnvironment.slug}`}
-              >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
+            <SelectTrigger
+              id="TravisCIConfigurePage-field-1"
+              aria-describedby="TravisCIConfigurePage-field-1-feedback"
+              className="w-full"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {currentProject?.environments.map((sourceEnvironment) => (
+                <SelectItem
+                  value={sourceEnvironment.slug}
+                  key={`source-environment-${sourceEnvironment.slug}`}
+                >
+                  {sourceEnvironment.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
-        </FormControl>
-        <FormControl label="Secrets Path">
+        </Field>
+        <Field className="mb-4">
+          <FieldLabel htmlFor="TravisCIConfigurePage-field-2">Secrets Path</FieldLabel>
           <Input
+            id="TravisCIConfigurePage-field-2"
+            aria-describedby="TravisCIConfigurePage-field-2-feedback"
             value={secretPath}
             onChange={(evt) => setSecretPath(evt.target.value)}
             placeholder="Provide a path, default is /"
           />
-        </FormControl>
-        <FormControl label="Travis CI Project" className="mt-4">
+        </Field>
+        <Field className="mt-4 mb-4">
+          <FieldLabel htmlFor="TravisCIConfigurePage-field-3">Travis CI Project</FieldLabel>
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
-            className="w-full border border-border-strong"
-            isDisabled={integrationAuthApps.length === 0}
+            disabled={integrationAuthApps.length === 0}
           >
-            {integrationAuthApps.length > 0 ? (
-              integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem
-                  value={integrationAuthApp.name}
-                  key={`target-environment-${integrationAuthApp.name}`}
-                >
-                  {integrationAuthApp.name}
+            <SelectTrigger
+              id="TravisCIConfigurePage-field-3"
+              aria-describedby="TravisCIConfigurePage-field-3-feedback"
+              className="w-full"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {integrationAuthApps.length > 0 ? (
+                integrationAuthApps.map((integrationAuthApp) => (
+                  <SelectItem
+                    value={integrationAuthApp.name}
+                    key={`target-environment-${integrationAuthApp.name}`}
+                  >
+                    {integrationAuthApp.name}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="none" key="target-app-none">
+                  No projects found
                 </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-app-none">
-                No projects found
-              </SelectItem>
-            )}
+              )}
+            </SelectContent>
           </Select>
-        </FormControl>
+        </Field>
         <Button
           onClick={handleButtonClick}
-          colorSchema="secondary"
           className="mt-4"
-          isLoading={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
+          isPending={isLoading}
+          disabled={integrationAuthApps.length === 0}
+          variant="project"
         >
           Create Integration
         </Button>

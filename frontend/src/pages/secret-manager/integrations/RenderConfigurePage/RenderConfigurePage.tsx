@@ -15,13 +15,20 @@ import { z } from "zod";
 import {
   Button,
   Card,
+  CardDescription,
+  CardHeader,
   CardTitle,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
+  SecretPathInput,
   Select,
+  SelectContent,
   SelectItem,
-  Switch
-} from "@app/components/v2";
-import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+  SelectTrigger,
+  SelectValue,
+  Toggle
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -126,58 +133,80 @@ export const RenderConfigurePage = () => {
       <Helmet>
         <title>Set Up Render Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-border-control">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Choose which environment or folder in Infisical you want to sync to Render environment variables."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
-              <img src="/images/integrations/Render.png" height={30} width={30} alt="Render logo" />
-            </div>
-            <span className="ml-2.5">Render Integration </span>
-            <a
-              href="https://infisical.com/docs/integrations/cloud/render"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <div className="flex flex-row items-center">
+              <div className="flex items-center pb-0.5">
+                <img
+                  src="/images/integrations/Render.png"
+                  height={30}
+                  width={30}
+                  alt="Render logo"
                 />
               </div>
-            </a>
-          </div>
-        </CardTitle>
+              <span className="ml-2.5">Render Integration </span>
+              <a
+                href="https://infisical.com/docs/integrations/cloud/render"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="text-xxs mb-[0.07rem] ml-1.5"
+                  />
+                </div>
+              </a>
+            </div>
+          </CardTitle>
+          <CardDescription>
+            Choose which environment or folder in Infisical you want to sync to Render environment
+            variables.
+          </CardDescription>
+        </CardHeader>
         <div className="px-6">
           <Controller
             control={control}
             name="selectedSourceEnvironment"
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl
-                label="Project Environment"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
+              <Field className="mb-4" data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="RenderConfigurePage-field-1">Project Environment</FieldLabel>
                 <Select
                   defaultValue={field.value}
-                  {...field}
+                  value={field.value}
+                  name={field.name}
                   onValueChange={(e) => onChange(e)}
-                  className="w-full"
                 >
-                  {currentProject?.environments.map((sourceEnvironment) => (
-                    <SelectItem
-                      value={sourceEnvironment.slug}
-                      key={`source-environment-${sourceEnvironment.slug}`}
-                    >
-                      {sourceEnvironment.name}
-                    </SelectItem>
-                  ))}
+                  <SelectTrigger
+                    id="RenderConfigurePage-field-1"
+                    aria-describedby="RenderConfigurePage-field-1-feedback"
+                    isError={Boolean(error)}
+                    className="w-full"
+                    ref={field.ref}
+                    onBlur={field.onBlur}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currentProject?.environments.map((sourceEnvironment) => (
+                      <SelectItem
+                        value={sourceEnvironment.slug}
+                        key={`source-environment-${sourceEnvironment.slug}`}
+                      >
+                        {sourceEnvironment.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
-              </FormControl>
+                {Boolean(error) && (
+                  <FieldError id="RenderConfigurePage-field-1-feedback">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
           <Controller
@@ -185,13 +214,22 @@ export const RenderConfigurePage = () => {
             defaultValue=""
             name="secretPath"
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="Secrets Path" isError={Boolean(error)} errorText={error?.message}>
+              <Field className="mb-4" data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="RenderConfigurePage-field-2">Secrets Path</FieldLabel>
                 <SecretPathInput
+                  id="RenderConfigurePage-field-2"
+                  aria-describedby="RenderConfigurePage-field-2-feedback"
+                  isError={Boolean(error)}
                   {...field}
                   placeholder="/"
                   environment={selectedSourceEnvironment}
                 />
-              </FormControl>
+                {Boolean(error) && (
+                  <FieldError id="RenderConfigurePage-field-2-feedback">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
           <Controller
@@ -199,35 +237,49 @@ export const RenderConfigurePage = () => {
             name="targetAppId"
             render={({ field: { onChange, ...field }, fieldState: { error } }) => {
               return (
-                <FormControl
-                  label="Render Service"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                >
+                <Field className="mb-4" data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="RenderConfigurePage-field-3">Render Service</FieldLabel>
                   <Select
-                    {...field}
+                    value={field.value}
+                    name={field.name}
                     onValueChange={(e) => {
                       if (e === "") return;
                       onChange(e);
                     }}
-                    className="w-full"
                   >
-                    {integrationAuthApps.length > 0 ? (
-                      integrationAuthApps.map((integrationAuthApp) => (
-                        <SelectItem
-                          value={String(integrationAuthApp.appId as string)}
-                          key={`target-app-${String(integrationAuthApp.appId)}`}
-                        >
-                          {integrationAuthApp.name}
+                    <SelectTrigger
+                      id="RenderConfigurePage-field-3"
+                      aria-describedby="RenderConfigurePage-field-3-feedback"
+                      isError={Boolean(error)}
+                      className="w-full"
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {integrationAuthApps.length > 0 ? (
+                        integrationAuthApps.map((integrationAuthApp) => (
+                          <SelectItem
+                            value={String(integrationAuthApp.appId as string)}
+                            key={`target-app-${String(integrationAuthApp.appId)}`}
+                          >
+                            {integrationAuthApp.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" key="target-app-none">
+                          No services found
                         </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="none" key="target-app-none">
-                        No services found
-                      </SelectItem>
-                    )}
+                      )}
+                    </SelectContent>
                   </Select>
-                </FormControl>
+                  {Boolean(error) && (
+                    <FieldError id="RenderConfigurePage-field-3-feedback">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
               );
             }}
           />
@@ -236,25 +288,27 @@ export const RenderConfigurePage = () => {
               control={control}
               name="shouldAutoRedeploy"
               render={({ field: { onChange, value } }) => (
-                <Switch
-                  id="redeploy-render"
-                  onCheckedChange={(isChecked) => onChange(isChecked)}
-                  isChecked={value}
-                >
-                  Auto-redeploy service upon secret change
-                </Switch>
+                <Field orientation="horizontal">
+                  <FieldLabel htmlFor="redeploy-render">
+                    Auto-redeploy service upon secret change
+                  </FieldLabel>
+                  <Toggle
+                    id="redeploy-render"
+                    onCheckedChange={(isChecked) => onChange(isChecked)}
+                    checked={value}
+                  />
+                </Field>
               )}
             />
           </div>
         </div>
         <Button
-          colorSchema="primary"
-          variant="outline_bg"
           className="mt-4 mr-6 mb-8 ml-auto w-min"
           size="sm"
           type="submit"
-          isLoading={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
+          isPending={isLoading}
+          disabled={integrationAuthApps.length === 0}
+          variant="project"
         >
           Create Integration
         </Button>

@@ -7,7 +7,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import z from "zod";
 
-import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
+import {
+  Button,
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
@@ -68,67 +78,89 @@ export const RundeckAuthorizePage = () => {
       <Helmet>
         <title>Authorize Rundeck Integration</title>
       </Helmet>
-      <Card className="mb-12 max-w-lg rounded-md border border-border-control">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="After adding your URL and auth token, you will be prompted to set up an integration for a particular Infisical project and environment."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
-              <img
-                src="/images/integrations/Rundeck.svg"
-                height={30}
-                width={30}
-                alt="Rundeck logo"
-              />
-            </div>
-            <span className="ml-2.5">Rundeck Integration </span>
-            <a
-              href="https://infisical.com/docs/integrations/cicd/rundeck"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
+      <Card className="mb-12 w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <div className="flex flex-row items-center">
+              <div className="flex items-center pb-0.5">
+                <img
+                  src="/images/integrations/Rundeck.svg"
+                  height={30}
+                  width={30}
+                  alt="Rundeck logo"
                 />
               </div>
-            </a>
-          </div>
-        </CardTitle>
+              <span className="ml-2.5">Rundeck Integration </span>
+              <a
+                href="https://infisical.com/docs/integrations/cicd/rundeck"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="text-xxs mb-[0.07rem] ml-1.5"
+                  />
+                </div>
+              </a>
+            </div>
+          </CardTitle>
+          <CardDescription>
+            After adding your URL and auth token, you will be prompted to set up an integration for
+            a particular Infisical project and environment.
+          </CardDescription>
+        </CardHeader>
         <form onSubmit={handleSubmit(onFormSubmit)} className="px-6 pb-8 text-right">
           <Controller
             control={control}
             name="rundeckURL"
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="URL" errorText={error?.message} isError={Boolean(error)}>
-                <Input {...field} placeholder="https://self-hosted-rundeck.com" />
-              </FormControl>
+              <Field className="mb-4" data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="RundeckAuthorizePage-field-1">URL</FieldLabel>
+                <Input
+                  id="RundeckAuthorizePage-field-1"
+                  aria-describedby="RundeckAuthorizePage-field-1-feedback"
+                  isError={Boolean(error)}
+                  {...field}
+                  placeholder="https://self-hosted-rundeck.com"
+                />
+                {Boolean(error) && (
+                  <FieldError id="RundeckAuthorizePage-field-1-feedback">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
           <Controller
             control={control}
             name="authToken"
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Rundeck Auth Token"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <Input {...field} placeholder="" />
-              </FormControl>
+              <Field className="mb-4" data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="RundeckAuthorizePage-field-2">Rundeck Auth Token</FieldLabel>
+                <Input
+                  id="RundeckAuthorizePage-field-2"
+                  aria-describedby="RundeckAuthorizePage-field-2-feedback"
+                  isError={Boolean(error)}
+                  {...field}
+                  placeholder=""
+                />
+                {Boolean(error) && (
+                  <FieldError id="RundeckAuthorizePage-field-2-feedback">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
           <Button
-            colorSchema="primary"
-            variant="outline_bg"
             className="mt-2 w-min"
             size="sm"
             type="submit"
-            isLoading={isLoading}
+            isPending={isLoading}
+            variant="project"
           >
             Connect to Rundeck
           </Button>
