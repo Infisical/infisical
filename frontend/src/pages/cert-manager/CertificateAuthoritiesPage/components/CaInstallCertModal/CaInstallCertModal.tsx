@@ -122,7 +122,7 @@ const RadioCard = ({ value, icon, name, description, isLocked }: RadioCardProps)
 
   return (
     <FieldLabel htmlFor={id} variant="project">
-      <Field orientation="horizontal" className="items-center gap-4">
+      <Field orientation="horizontal">
         {icon}
         <FieldContent>
           <FieldTitle>
