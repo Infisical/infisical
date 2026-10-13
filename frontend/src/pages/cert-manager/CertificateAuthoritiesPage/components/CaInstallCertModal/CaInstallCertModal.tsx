@@ -11,8 +11,15 @@ import {
   ExternalCertificateAuthoritiesUpgradeIntent,
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
-import { Modal, ModalContent } from "@app/components/v2";
-import { Badge, Button } from "@app/components/v3";
+import {
+  Badge,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from "@app/components/v3";
 import { useSubscription } from "@app/context";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -348,24 +355,10 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
     );
   };
 
-  const getTitle = () => {
-    if (step === Step.ChooseIntegration) {
-      return (
-        <div>
-          <button
-            type="button"
-            className="mb-2 flex items-center gap-1 text-xs text-muted hover:text-label"
-            onClick={goBackToMethodSelection}
-          >
-            <ArrowLeftIcon className="h-3 w-3" />
-            Back
-          </button>
-          <span>Choose a CA Integration</span>
-        </div>
-      );
-    }
-    return "Install Intermediate CA Certificate";
-  };
+  const title =
+    step === Step.ChooseIntegration
+      ? "Choose a CA Integration"
+      : "Install Intermediate CA Certificate";
 
   const getSubTitle = () => {
     if (step === Step.ChooseMethod) {
@@ -379,29 +372,39 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const needsOverflowVisible = step === Step.Form && selectedMethod === SigningMethod.Automated;
 
+  const subTitle = getSubTitle();
+
   return (
     <>
-      <Modal
-        isOpen={popUp?.installCaCert?.isOpen}
+      <Dialog
+        open={popUp?.installCaCert?.isOpen}
         onOpenChange={(isOpen) => {
           if (!isOpen) resetState();
           handlePopUpToggle("installCaCert", isOpen);
         }}
       >
-        {/* z-50 (not the v2 default z-[60]) so the connection pickers' v3 creation dialog
-            (z-50, portaled later) stacks above this modal instead of behind it. */}
-        <ModalContent
-          title={getTitle()}
-          className="z-50 max-w-lg"
-          overlayClassName="z-50"
-          bodyClassName={needsOverflowVisible ? "overflow-visible" : undefined}
-          subTitle={getSubTitle()}
-        >
-          {step === Step.ChooseMethod && renderMethodSelection()}
-          {step === Step.ChooseIntegration && renderIntegrationSelection()}
-          {step === Step.Form && renderFormStep()}
-        </ModalContent>
-      </Modal>
+        <DialogContent className={needsOverflowVisible ? "overflow-visible" : undefined}>
+          <DialogHeader>
+            {step === Step.ChooseIntegration && (
+              <button
+                type="button"
+                className="flex w-fit items-center gap-1 text-xs text-muted hover:text-label"
+                onClick={goBackToMethodSelection}
+              >
+                <ArrowLeftIcon className="h-3 w-3" />
+                Back
+              </button>
+            )}
+            <DialogTitle>{title}</DialogTitle>
+            {subTitle && <DialogDescription>{subTitle}</DialogDescription>}
+          </DialogHeader>
+          <div>
+            {step === Step.ChooseMethod && renderMethodSelection()}
+            {step === Step.ChooseIntegration && renderIntegrationSelection()}
+            {step === Step.Form && renderFormStep()}
+          </div>
+        </DialogContent>
+      </Dialog>
       {upgradeGate}
     </>
   );
