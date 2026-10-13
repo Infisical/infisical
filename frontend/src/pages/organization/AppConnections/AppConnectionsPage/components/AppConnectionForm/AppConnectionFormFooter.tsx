@@ -50,6 +50,9 @@ export const AppConnectionFormFooter = ({
 
   return (
     <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">
+      <Button type="button" variant="ghost" onClick={onCancel} isDisabled={isSubmitting}>
+        Cancel
+      </Button>
       <Button
         type="submit"
         variant={scopeVariant}
@@ -57,9 +60,6 @@ export const AppConnectionFormFooter = ({
         isDisabled={isSubmitDisabled}
       >
         {submitLabel}
-      </Button>
-      <Button type="button" variant="outline" onClick={onCancel} isDisabled={isSubmitting}>
-        Cancel
       </Button>
     </SheetFooter>
   );
