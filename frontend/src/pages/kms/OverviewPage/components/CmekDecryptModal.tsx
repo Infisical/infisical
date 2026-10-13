@@ -7,9 +7,15 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { decodeBase64 } from "@app/components/utilities/cryptography/crypto";
-import { Modal, ModalClose, ModalContent } from "@app/components/v2";
 import {
   Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Field,
   FieldError,
   FieldLabel,
@@ -35,11 +41,13 @@ type Props = {
   cmek: TCmek;
 };
 
-type FormProps = Pick<Props, "cmek">;
+type FormProps = Pick<Props, "cmek"> & {
+  cmekDecrypt: ReturnType<typeof useCmekDecrypt>;
+};
 
-const DecryptForm = ({ cmek }: FormProps) => {
-  const cmekDecrypt = useCmekDecrypt();
+const DecryptForm = ({ cmek, cmekDecrypt }: FormProps) => {
   const fieldId = useId();
+  const { reset: resetDecryptResult } = cmekDecrypt;
   const [shouldDecode, setShouldDecode] = useState(false);
   const [plaintext, setPlaintext] = useState("");
 
@@ -66,6 +74,8 @@ const DecryptForm = ({ cmek }: FormProps) => {
       shouldDecode ? Buffer.from(decodeBase64(data.plaintext)).toString("utf8") : data.plaintext
     );
   };
+
+  useEffect(() => resetDecryptResult, [resetDecryptResult]);
 
   useEffect(() => {
     const text = cmekDecrypt.data?.plaintext;
@@ -117,10 +127,12 @@ const DecryptForm = ({ cmek }: FormProps) => {
           </TooltipContent>
         </Tooltip>
       </Field>
-      <div className="flex flex-wrap items-center gap-4">
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="ghost">{plaintext ? "Close" : "Cancel"}</Button>
+        </DialogClose>
         <Button
           className={plaintext ? "w-44" : undefined}
-          size="sm"
           variant="project"
           onClick={plaintext ? handleCopyToClipboard : undefined}
           type={plaintext ? "button" : "submit"}
@@ -141,28 +153,26 @@ const DecryptForm = ({ cmek }: FormProps) => {
           }
           {plaintext ? copyCiphertext : "Decrypt"}
         </Button>
-        <ModalClose asChild>
-          <Button variant="ghost">{plaintext ? "Close" : "Cancel"}</Button>
-        </ModalClose>
-      </div>
+      </DialogFooter>
     </form>
   );
 };
 
 export const CmekDecryptModal = ({ isOpen, onOpenChange, cmek }: Props) => {
+  const cmekDecrypt = useCmekDecrypt();
+
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        subTitle={
-          <>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent isPending={cmekDecrypt.isPending}>
+        <DialogHeader>
+          <DialogTitle>Decrypt Data</DialogTitle>
+          <DialogDescription>
             Decrypt ciphertext using <span className="font-bold">{cmek?.name}</span>. Returns Base64
             encoded plaintext.
-          </>
-        }
-        title="Decrypt Data"
-      >
-        <DecryptForm cmek={cmek} />
-      </ModalContent>
-    </Modal>
+          </DialogDescription>
+        </DialogHeader>
+        <DecryptForm cmek={cmek} cmekDecrypt={cmekDecrypt} />
+      </DialogContent>
+    </Dialog>
   );
 };
