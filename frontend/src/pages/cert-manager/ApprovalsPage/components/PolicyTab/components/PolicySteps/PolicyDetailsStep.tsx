@@ -2,7 +2,16 @@ import { useMemo } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
 import { TtlFormLabel } from "@app/components/features";
-import { Checkbox, FilterableSelect, FormControl, Input } from "@app/components/v2";
+import { FilterableSelect } from "@app/components/v2";
+import {
+  Checkbox,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  Input
+} from "@app/components/v3";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { useListPkiApplicationProfiles } from "@app/hooks/api/pkiApplications";
 
@@ -44,20 +53,22 @@ export const PolicyDetailsStep = ({ applicationId }: Props) => {
           control={control}
           name="name"
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              label="Policy Name"
-              className="mb-0 flex-1"
-              isRequired
-              isError={Boolean(error)}
-              errorText={error?.message}
-            >
-              <Input
-                {...field}
-                placeholder="Enter policy name"
-                autoComplete="off"
-                name="policy-name"
-              />
-            </FormControl>
+            <Field className="flex-1">
+              <FieldLabel htmlFor="policy-name">
+                Policy Name <span className="text-danger">*</span>
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  {...field}
+                  id="policy-name"
+                  placeholder="Enter policy name"
+                  autoComplete="off"
+                  name="policy-name"
+                  isError={Boolean(error)}
+                />
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
           )}
         />
 
@@ -65,26 +76,28 @@ export const PolicyDetailsStep = ({ applicationId }: Props) => {
           control={control}
           name="maxRequestTtl"
           render={({ field, fieldState: { error } }) => (
-            <FormControl
-              label={<TtlFormLabel label="Max. Request TTL" />}
-              className="mb-0"
-              isError={Boolean(error)}
-              errorText={error?.message}
-              helperText="Maximum time a request can be pending (optional)"
-            >
-              <Input
-                {...field}
-                value={field.value || ""}
-                placeholder="e.g., 7d"
-                onChange={(e) => {
-                  if (!e.target.value || e.target.value === "") {
-                    field.onChange(null);
-                    return;
-                  }
-                  field.onChange(e.target.value);
-                }}
-              />
-            </FormControl>
+            <Field className="w-auto">
+              <TtlFormLabel label="Max. Request TTL" />
+              <FieldContent>
+                <Input
+                  {...field}
+                  value={field.value || ""}
+                  placeholder="e.g., 7d"
+                  isError={Boolean(error)}
+                  onChange={(e) => {
+                    if (!e.target.value || e.target.value === "") {
+                      field.onChange(null);
+                      return;
+                    }
+                    field.onChange(e.target.value);
+                  }}
+                />
+                <FieldDescription isOpen={!error}>
+                  Maximum time a request can be pending (optional)
+                </FieldDescription>
+                <FieldError errors={[error]} />
+              </FieldContent>
+            </Field>
           )}
         />
       </div>
@@ -93,27 +106,31 @@ export const PolicyDetailsStep = ({ applicationId }: Props) => {
         control={control}
         name="conditions.0.profileNames"
         render={({ field: profileField, fieldState: { error } }) => (
-          <FormControl
-            isRequired
-            label="Certificate Profiles"
-            isError={Boolean(error)}
-            errorText={error?.message}
-            helperText="Policy applies to certificates issued from these selected profiles"
-          >
-            <FilterableSelect
-              isMulti
-              isLoading={applicationId ? isAppProfilesLoading : isProfilesLoading}
-              options={profileOptions}
-              value={profileField.value.map((slug) => ({ label: slug, value: slug }))}
-              onChange={(selected) => {
-                const selectedOptions = selected as ProfileOption[];
-                profileField.onChange(selectedOptions.map((opt) => opt.value));
-              }}
-              placeholder="Select certificate profiles..."
-              noOptionsMessage={() => "No profiles found"}
-              maxMenuHeight={150}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel htmlFor="policy-profile-names">
+              Certificate Profiles <span className="text-danger">*</span>
+            </FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                inputId="policy-profile-names"
+                isMulti
+                isLoading={applicationId ? isAppProfilesLoading : isProfilesLoading}
+                options={profileOptions}
+                value={profileField.value.map((slug) => ({ label: slug, value: slug }))}
+                onChange={(selected) => {
+                  const selectedOptions = selected as ProfileOption[];
+                  profileField.onChange(selectedOptions.map((opt) => opt.value));
+                }}
+                placeholder="Select certificate profiles..."
+                noOptionsMessage={() => "No profiles found"}
+                maxMenuHeight={150}
+              />
+              <FieldDescription isOpen={!error}>
+                Policy applies to certificates issued from these selected profiles
+              </FieldDescription>
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
 
@@ -121,21 +138,22 @@ export const PolicyDetailsStep = ({ applicationId }: Props) => {
         control={control}
         name="bypassForMachineIdentities"
         render={({ field: { value, onChange } }) => (
-          <div className="mt-2 items-center">
+          <Field orientation="horizontal" className="mt-2">
             <Checkbox
               id="bypassForMachineIdentities"
+              variant="project"
               isChecked={value}
               onCheckedChange={onChange}
-              checkIndicatorBg="text-project"
-            >
-              <span className="text-sm text-foreground-secondary">
+            />
+            <FieldContent>
+              <FieldLabel htmlFor="bypassForMachineIdentities" className="cursor-pointer">
                 Bypass approval for machine identities
-              </span>
-              <p className="text-xs text-muted">
+              </FieldLabel>
+              <FieldDescription>
                 When enabled, machine identities can issue certificates without requiring approval
-              </p>
-            </Checkbox>
-          </div>
+              </FieldDescription>
+            </FieldContent>
+          </Field>
         )}
       />
     </div>

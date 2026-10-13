@@ -211,7 +211,7 @@ export const identityAwsAuthServiceFactory = ({
           });
 
         if (!isArnAllowed) {
-          logger.error(
+          logger.warn(
             `AWS Auth Login: AWS principal ARN not allowed [principal-arn=${formattedArn}] [raw-arn=${Arn}] [identity-id=${identity.id}]`
           );
 

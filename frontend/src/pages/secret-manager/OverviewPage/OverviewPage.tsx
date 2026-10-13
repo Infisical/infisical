@@ -2106,7 +2106,11 @@ const OverviewPageContent = () => {
       secretKey: key,
       secretValue,
       type,
-      newSecretName
+      newSecretName,
+      secretComment,
+      tagIds: updatedTags?.map((tag) => tag.id),
+      secretMetadata: updatedMetadata,
+      skipMultilineEncoding: updatedSkipMultilineEncoding
     });
 
     if ("approval" in result) {

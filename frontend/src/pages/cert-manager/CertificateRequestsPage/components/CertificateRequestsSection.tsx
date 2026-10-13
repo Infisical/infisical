@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { SearchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { FilterableSelect, Select, SelectItem } from "@app/components/v2";
+import { FilterableSelect } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -26,6 +26,11 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Skeleton,
   Table,
   TableBody,
@@ -359,15 +364,16 @@ export const CertificateRequestsSection = ({
                         status: value === "all" ? undefined : (value as CertificateRequestStatus)
                       }));
                     }}
-                    placeholder="All events"
-                    className="w-full border-border-control bg-surface-hover text-foreground-soft"
-                    position="popper"
-                    dropdownContainerClassName="max-w-none"
                   >
-                    <SelectItem value="all">All events</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="issued">Issued</SelectItem>
-                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="All events" />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      <SelectItem value="all">All events</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="issued">Issued</SelectItem>
+                      <SelectItem value="failed">Failed</SelectItem>
+                    </SelectContent>
                   </Select>
                 </div>
 
