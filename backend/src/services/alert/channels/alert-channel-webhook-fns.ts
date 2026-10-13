@@ -1,16 +1,21 @@
 import crypto from "node:crypto";
 
+import { z } from "zod";
+
+import { BadRequestError } from "@app/lib/errors";
 import { safeRequest } from "@app/lib/validator";
 
 import {
   ALERT_CHANNEL_HTTP_TIMEOUT,
-  ALERT_CHANNEL_REDACTED_VALUE,
   TAlertChannelSendContext,
   TAlertPayload,
   TChannelResult,
-  TWebhookChannelHeader,
+  WEBHOOK_AUTH_SECRET_FIELD_BY_TYPE,
+  WebhookAuthType,
   WebhookChannelConfigSchema
 } from "../alert-channel-types";
+
+type TWebhookChannelConfig = z.infer<typeof WebhookChannelConfigSchema>;
 
 type TAlertWebhookPayload = {
   specversion: "1.0";
@@ -55,58 +60,54 @@ export const buildWebhookPayload = (payload: TAlertPayload): TAlertWebhookPayloa
   }
 });
 
-// Header lists arrive unvalidated on the update path, so only well-formed entries are looked at.
-const isWebhookHeader = (header: unknown): header is TWebhookChannelHeader =>
-  typeof header === "object" &&
-  header !== null &&
-  typeof (header as TWebhookChannelHeader).key === "string" &&
-  typeof (header as TWebhookChannelHeader).value === "string";
-
-export const redactWebhookHeaders = (config: Record<string, unknown>): Record<string, unknown> => {
-  if (!Array.isArray(config.headers)) return config;
-  return {
-    ...config,
-    headers: config.headers.map((header: unknown) =>
-      isWebhookHeader(header) ? { key: header.key, value: ALERT_CHANNEL_REDACTED_VALUE } : header
-    )
-  };
+const normalizeUrl = (url: unknown): string | null => {
+  if (typeof url !== "string") return null;
+  try {
+    return new URL(url).href;
+  } catch {
+    return null;
+  }
 };
 
-export const restoreRedactedWebhookHeaders = (
+export const assertWebhookKeptSecretsAllowed = (
   incomingConfig: Record<string, unknown>,
   storedConfig: Record<string, unknown>
-): Record<string, unknown> => {
-  if (!Array.isArray(incomingConfig.headers)) return incomingConfig;
+) => {
+  const secretField = WEBHOOK_AUTH_SECRET_FIELD_BY_TYPE[incomingConfig.authType as WebhookAuthType];
+  if (!secretField || incomingConfig[secretField] || storedConfig[secretField] == null) return;
 
-  const storedValues = new Map<string, string>();
-  if (Array.isArray(storedConfig.headers)) {
-    storedConfig.headers.forEach((header: unknown) => {
-      if (isWebhookHeader(header)) storedValues.set(header.key.toLowerCase(), header.value);
-    });
+  const incomingUrl = normalizeUrl(incomingConfig.url);
+  if (incomingUrl === null || incomingUrl === normalizeUrl(storedConfig.url)) return;
+
+  throw new BadRequestError({
+    message:
+      "Enter the authentication credentials again because the webhook URL changed. Saved credentials are only sent to the URL they were saved with"
+  });
+};
+
+const buildAuthHeaders = (config: TWebhookChannelConfig): Record<string, string> => {
+  switch (config.authType) {
+    case WebhookAuthType.BEARER:
+      return { Authorization: `Bearer ${config.authCredentials}` };
+    case WebhookAuthType.BASIC:
+      return {
+        Authorization: `Basic ${Buffer.from(`${config.basicUsername}:${config.basicPassword}`).toString("base64")}`
+      };
+    case WebhookAuthType.HEADER:
+      return config.authHeaderName ? { [config.authHeaderName]: config.authHeaderValue ?? "" } : {};
+    default:
+      return {};
   }
-
-  return {
-    ...incomingConfig,
-    headers: incomingConfig.headers.map((header: unknown) => {
-      if (!isWebhookHeader(header) || header.value !== ALERT_CHANNEL_REDACTED_VALUE) return header;
-      const storedValue = storedValues.get(header.key.trim().toLowerCase());
-      return storedValue === undefined ? header : { ...header, value: storedValue };
-    })
-  };
 };
 
 const generateHmacSignature = (data: string, secret: string): string =>
   crypto.createHmac("sha256", secret).update(data).digest("hex");
 
-const triggerWebhook = async (params: {
-  url: string;
-  payload: TAlertWebhookPayload;
-  signingSecret?: string | null;
-  customHeaders?: TWebhookChannelHeader[];
-}): Promise<void> => {
-  const { url, payload, signingSecret, customHeaders } = params;
+const triggerWebhook = async (config: TWebhookChannelConfig, payload: TAlertWebhookPayload): Promise<void> => {
+  const { url, signingSecret } = config;
   const headers: Record<string, string> = {
-    ...Object.fromEntries((customHeaders ?? []).map(({ key, value }) => [key, value])),
+    ...Object.fromEntries((config.headers ?? []).map(({ key, value }) => [key, value])),
+    ...buildAuthHeaders(config),
     "Content-Type": "application/json"
   };
 
@@ -128,11 +129,6 @@ export const sendWebhookNotification = async (ctx: TAlertChannelSendContext): Pr
   const config = WebhookChannelConfigSchema.parse(ctx.config);
   const payload = buildWebhookPayload(ctx.payload);
 
-  await triggerWebhook({
-    url: config.url,
-    payload,
-    signingSecret: config.signingSecret,
-    customHeaders: config.headers
-  });
+  await triggerWebhook(config, payload);
   return { success: true };
 };

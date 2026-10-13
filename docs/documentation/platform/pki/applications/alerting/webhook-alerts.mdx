@@ -16,10 +16,13 @@ A webhook channel on a certificate [alert](/documentation/platform/pki/applicati
     Select **Add Channel** > **Webhook** and enter the **URL** of your endpoint. The URL must use HTTPS.
   </Step>
   <Step>
-    Optionally, enter a **Signing Secret** so your endpoint can [verify the signature](#verify-the-signature) of each request.
+    Optionally, select **Add signing secret** and enter a secret, so your endpoint can [verify the signature](#verify-the-signature) of each request.
   </Step>
   <Step>
-    Optionally, select **Add header** to send [custom headers](#custom-headers) with each request, such as the authorization header your endpoint expects.
+    Optionally, select **Add authentication** and enter the credentials your endpoint expects. See [Authentication](#authentication) for the types you can choose.
+  </Step>
+  <Step>
+    Optionally, select **Add header** to send [custom headers](#custom-headers) with each request.
   </Step>
   <Step>
     Optionally, select **Send test** to send a test notification to the channel.
@@ -29,13 +32,31 @@ A webhook channel on a certificate [alert](/documentation/platform/pki/applicati
   </Step>
 </Steps>
 
+## Authentication
+
+If your endpoint only accepts authenticated requests, add one authentication method to the channel. Infisical sends the credentials in a header on each request:
+
+| Type | What you enter | Header that Infisical sends |
+|------|----------------|-----------------------------|
+| **Bearer token** | A token | `Authorization: Bearer <token>` |
+| **Basic auth** | A username and a password | `Authorization: Basic <base64 of username:password>` |
+| **API key header** | A header name, such as `X-API-Key`, and the key | `<header name>: <key>` |
+
+If your endpoint expects a scheme other than `Bearer` in the `Authorization` header, such as `GenieKey <key>`, select **API key header**, enter `Authorization` as the header name, and enter the full value, including the scheme.
+
+After you save the channel, Infisical doesn't show the token, password, or key again:
+
+- To keep the saved value when you edit the channel, leave the field blank
+- If you change the channel's URL, enter the value again, because Infisical only sends saved credentials to the URL they were saved with
+
 ## Custom headers
 
-Infisical sends every custom header you add on the channel with each request. Use them when your endpoint authenticates callers with a header, such as the HTTP source of an incident management tool that expects an `Authorization: Bearer <token>` header.
+Infisical sends every custom header you add on the channel with each request, such as an `x-env` header that your endpoint uses to route alerts:
 
-A channel can have up to 20 headers, and their names and values can add up to 4,096 characters. Header values are encrypted, and the API returns them as `******` after you save the channel. When you edit the channel, leave a value unchanged to keep it, or enter a new one to replace it.
-
-You can't set the `Content-Type`, `Content-Length`, `Transfer-Encoding`, `Connection`, `Host`, and `x-infisical-signature` headers, because Infisical sets them on every request.
+- Anyone who can view the alert can see custom header values, so put credentials in [authentication](#authentication) instead
+- A channel can have up to 20 custom headers, with up to 4,096 characters for all header names, values, and authentication credentials together
+- You can't add `Content-Type`, `Content-Length`, `Transfer-Encoding`, `Connection`, `Host`, or `x-infisical-signature` as custom headers, because Infisical sets them on every request
+- To send an `Authorization` header, use [authentication](#authentication) instead of a custom header
 
 ## Webhook event types
 

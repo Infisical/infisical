@@ -26,8 +26,10 @@ import {
 
 import { getChannelIcon } from "./channelIcons";
 import { ChannelRecipientsField } from "./ChannelRecipientsField";
-import { ChannelSecretInput } from "./ChannelSecretInput";
+import { ChannelSecretInput, KEEP_PLACEHOLDER } from "./ChannelSecretInput";
+import { WebhookAuthenticationField } from "./WebhookAuthenticationField";
 import { WebhookHeadersField } from "./WebhookHeadersField";
+import { WebhookSigningSecretField } from "./WebhookSigningSecretField";
 
 export type TChannelRecipientsRenderProps = {
   value: TAlertChannelRecipient[];
@@ -45,8 +47,6 @@ type Props = {
   canRemove: boolean;
   renderRecipients?: (props: TChannelRecipientsRenderProps) => ReactElement;
 };
-
-const KEEP_PLACEHOLDER = "•••••••• (leave blank to keep)";
 
 export const ChannelCard = ({
   index,
@@ -223,21 +223,9 @@ export const ChannelCard = ({
               <FieldError errors={[channelErrors?.url]} />
             </FieldContent>
           </Field>
-          <Field>
-            <FieldLabel htmlFor={`channel-${index}-signingSecret`}>
-              Signing secret <span className="text-muted">(optional)</span>
-            </FieldLabel>
-            <FieldContent>
-              <ChannelSecretInput
-                id={`channel-${index}-signingSecret`}
-                placeholder={isExisting && channel?.hasSigningSecret ? KEEP_PLACEHOLDER : ""}
-                isError={Boolean(channelErrors?.signingSecret)}
-                registration={register(`channels.${index}.signingSecret`)}
-              />
-              <FieldError errors={[channelErrors?.signingSecret]} />
-            </FieldContent>
-          </Field>
-          <WebhookHeadersField index={index} isExisting={isExisting} />
+          <WebhookSigningSecretField index={index} />
+          <WebhookAuthenticationField index={index} />
+          <WebhookHeadersField index={index} />
         </>
       )}
 

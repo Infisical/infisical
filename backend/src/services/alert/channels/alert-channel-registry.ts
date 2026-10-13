@@ -9,11 +9,7 @@ import {
 import { sendEmailNotification } from "./alert-channel-email-fns";
 import { PAGERDUTY_MAX_INCIDENTS_PER_RUN, sendPagerDutyNotification } from "./alert-channel-pagerduty-fns";
 import { sendSlackNotification } from "./alert-channel-slack-fns";
-import {
-  redactWebhookHeaders,
-  restoreRedactedWebhookHeaders,
-  sendWebhookNotification
-} from "./alert-channel-webhook-fns";
+import { assertWebhookKeptSecretsAllowed, sendWebhookNotification } from "./alert-channel-webhook-fns";
 
 export const ALERT_CHANNEL_REGISTRY: Record<AlertChannelType, TAlertChannelDefinition> = {
   [AlertChannelType.EMAIL]: {
@@ -33,10 +29,9 @@ export const ALERT_CHANNEL_REGISTRY: Record<AlertChannelType, TAlertChannelDefin
   [AlertChannelType.WEBHOOK]: {
     type: AlertChannelType.WEBHOOK,
     directed: false,
-    secretFields: ["signingSecret"],
+    secretFields: ["signingSecret", "authCredentials", "basicPassword", "authHeaderValue"],
     configSchema: WebhookChannelConfigSchema,
-    redactConfig: redactWebhookHeaders,
-    restoreRedactedConfig: restoreRedactedWebhookHeaders,
+    assertKeptSecretsAllowed: assertWebhookKeptSecretsAllowed,
     send: sendWebhookNotification
   },
   [AlertChannelType.PAGERDUTY]: {

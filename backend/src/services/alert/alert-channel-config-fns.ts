@@ -34,6 +34,8 @@ export const mergeChannelConfigWithStored = (
   const definition = ALERT_CHANNEL_REGISTRY[channelType as AlertChannelType];
   if (!definition) return incomingConfig;
 
+  definition.assertKeptSecretsAllowed?.(incomingConfig, existingConfig);
+
   const merged: Record<string, unknown> = { ...incomingConfig };
   definition.secretFields.forEach((field) => {
     if (!(field in incomingConfig)) {
@@ -43,5 +45,5 @@ export const mergeChannelConfigWithStored = (
     const value = incomingConfig[field];
     if (value === "" || value === null || value === undefined) delete merged[field];
   });
-  return definition.restoreRedactedConfig ? definition.restoreRedactedConfig(merged, existingConfig) : merged;
+  return merged;
 };

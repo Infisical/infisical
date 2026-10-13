@@ -1,8 +1,10 @@
-import { FocusEventHandler, useState } from "react";
+import { useState } from "react";
 import { UseFormRegisterReturn } from "react-hook-form";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@app/components/v3";
+
+export const KEEP_PLACEHOLDER = "•••••••• (leave blank to keep)";
 
 type Props = {
   id: string;
@@ -10,8 +12,6 @@ type Props = {
   isError?: boolean;
   registration: UseFormRegisterReturn;
   ariaLabel?: string;
-  onFocus?: FocusEventHandler<HTMLInputElement>;
-  onBlur?: FocusEventHandler<HTMLInputElement>;
 };
 
 export const ChannelSecretInput = ({
@@ -19,9 +19,7 @@ export const ChannelSecretInput = ({
   placeholder,
   isError,
   registration,
-  ariaLabel,
-  onFocus,
-  onBlur
+  ariaLabel
 }: Props) => {
   const [isRevealed, setIsRevealed] = useState(false);
 
@@ -35,11 +33,6 @@ export const ChannelSecretInput = ({
         autoComplete="off"
         aria-label={ariaLabel}
         aria-invalid={Boolean(isError)}
-        onFocus={onFocus}
-        onBlur={(event) => {
-          registration.onBlur(event);
-          onBlur?.(event);
-        }}
       />
       <InputGroupAddon align="inline-end">
         <InputGroupButton

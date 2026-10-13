@@ -197,7 +197,7 @@ export const alertChannelServiceFactory = ({
     definition.secretFields.forEach((field) => {
       redacted[`has${capitalize(field)}`] = Boolean(config[field]);
     });
-    return definition.redactConfig ? definition.redactConfig(redacted) : redacted;
+    return redacted;
   };
 
   const prepareChannelCreate = async (

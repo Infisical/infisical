@@ -1,6 +1,10 @@
-import { AlertChannelType, TAlert, TAlertChannelInput, TChannelForm } from "./types";
-
-export const ALERT_CHANNEL_REDACTED_VALUE = "******";
+import {
+  AlertChannelType,
+  TAlert,
+  TAlertChannelInput,
+  TChannelForm,
+  WebhookAuthType
+} from "./types";
 
 export const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm => ({
   id: channel.id,
@@ -11,12 +15,52 @@ export const toChannelForm = (channel: TAlert["channels"][number]): TChannelForm
   webhookUrl: "",
   url: (channel.config.url as string) ?? "",
   signingSecret: "",
+  signingSecretEnabled: Boolean(channel.config.hasSigningSecret),
+  authType: channel.config.authType as WebhookAuthType | undefined,
+  authCredentials: "",
+  basicUsername: (channel.config.basicUsername as string) ?? "",
+  basicPassword: "",
+  authHeaderName: (channel.config.authHeaderName as string) ?? "",
+  authHeaderValue: "",
   headers: (channel.config.headers as TChannelForm["headers"]) ?? [],
   integrationKey: "",
   hasWebhookUrl: Boolean(channel.config.hasWebhookUrl),
   hasSigningSecret: Boolean(channel.config.hasSigningSecret),
-  hasIntegrationKey: Boolean(channel.config.hasIntegrationKey)
+  hasAuthCredentials: Boolean(channel.config.hasAuthCredentials),
+  hasBasicPassword: Boolean(channel.config.hasBasicPassword),
+  hasAuthHeaderValue: Boolean(channel.config.hasAuthHeaderValue),
+  hasIntegrationKey: Boolean(channel.config.hasIntegrationKey),
+  savedUrl: channel.config.url as string | undefined
 });
+
+const filled = (fields: Record<string, string | undefined>) =>
+  Object.fromEntries(Object.entries(fields).filter(([, value]) => value));
+
+const toWebhookAuthConfig = (channel: TChannelForm) => {
+  switch (channel.authType) {
+    case WebhookAuthType.Bearer:
+      return filled({ authType: channel.authType, authCredentials: channel.authCredentials });
+    case WebhookAuthType.Basic:
+      return filled({
+        authType: channel.authType,
+        basicUsername: channel.basicUsername,
+        basicPassword: channel.basicPassword
+      });
+    case WebhookAuthType.Header:
+      return filled({
+        authType: channel.authType,
+        authHeaderName: channel.authHeaderName?.trim(),
+        authHeaderValue: channel.authHeaderValue
+      });
+    default:
+      return {};
+  }
+};
+
+const toWebhookSigningSecretConfig = (channel: TChannelForm) => {
+  if (channel.signingSecretEnabled) return filled({ signingSecret: channel.signingSecret });
+  return channel.hasSigningSecret ? { signingSecret: null } : {};
+};
 
 export const toChannelInput = (channel: TChannelForm): TAlertChannelInput => {
   const base: TAlertChannelInput = {
@@ -36,7 +80,8 @@ export const toChannelInput = (channel: TChannelForm): TAlertChannelInput => {
         ...base,
         config: {
           url: channel.url,
-          ...(channel.signingSecret ? { signingSecret: channel.signingSecret } : {}),
+          ...toWebhookSigningSecretConfig(channel),
+          ...toWebhookAuthConfig(channel),
           ...(channel.headers.length ? { headers: channel.headers } : {})
         }
       };
