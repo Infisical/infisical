@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
+import { createdResourceMutationKeys, dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
 
 import { dynamicSecretKeys } from "./queries";
@@ -16,6 +16,7 @@ export const useCreateDynamicSecret = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TCreateDynamicSecretDTO>({
+    mutationKey: createdResourceMutationKeys.dynamicSecret,
     mutationFn: async (dto) => {
       const { data } = await apiRequest.post<{ dynamicSecret: TDynamicSecret }>(
         "/api/v1/dynamic-secrets",

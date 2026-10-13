@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
+import { createdResourceMutationKeys, dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
 import { secretImportKeys } from "./queries";
 import {
@@ -15,6 +15,7 @@ export const useCreateSecretImport = () => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TCreateSecretImportDTO>({
+    mutationKey: createdResourceMutationKeys.secretImport,
     mutationFn: async ({ import: secretImport, environment, isReplication, projectId, path }) => {
       const { data } = await apiRequest.post("/api/v2/secret-imports", {
         import: secretImport,

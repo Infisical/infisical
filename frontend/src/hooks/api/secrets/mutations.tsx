@@ -1,7 +1,7 @@
 import { MutationOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
+import { createdResourceMutationKeys, dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import {
   PendingChanges,
   PendingSecretUpdate
@@ -30,6 +30,7 @@ export const useCreateSecretV3 = ({
 } = {}) => {
   const queryClient = useQueryClient();
   return useMutation<object, object, TCreateSecretsV3DTO>({
+    mutationKey: createdResourceMutationKeys.secret,
     mutationFn: async ({
       secretPath = "/",
       type,
@@ -212,6 +213,7 @@ export const useCreateSecretBatch = ({
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TCreateSecretBatchDTO>({
+    mutationKey: createdResourceMutationKeys.secretBatch,
     mutationFn: async ({ secretPath = "/", projectId, environment, secrets }) => {
       const { data } = await apiRequest.post("/api/v4/secrets/batch", {
         projectId,
@@ -533,6 +535,7 @@ export const useCreateCommit = () => {
       message: string;
     }
   >({
+    mutationKey: createdResourceMutationKeys.commit,
     mutationFn: async ({ projectId, environment, secretPath, pendingChanges, message }) => {
       const { data } = await apiRequest.post("/api/v1/pit/batch/commit", {
         projectId,

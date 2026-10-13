@@ -92,6 +92,8 @@ type Props = {
   isVisible?: boolean;
   activityId: TableRowActivityId;
   onActivityChange: TableRowActivityChangeHandler;
+  isPinned?: boolean;
+  isHighlighted?: boolean;
 };
 
 export const SecretImportTableRow = ({
@@ -109,7 +111,9 @@ export const SecretImportTableRow = ({
   secretImport,
   isVisible,
   activityId,
-  onActivityChange
+  onActivityChange,
+  isPinned,
+  isHighlighted
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
   const [selectedReplicationEnv, setSelectedReplicationEnv] = useState<string>("");
@@ -779,6 +783,7 @@ export const SecretImportTableRow = ({
         onClick={handleRowClick}
         className={twMerge(
           "group hover:z-10",
+          isHighlighted && "row-highlight",
           isExpanded && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
           isDragging && "opacity-50"
         )}
@@ -818,6 +823,7 @@ export const SecretImportTableRow = ({
               </Badge>
               <FolderIcon className="size-3.5 shrink-0 text-folder" />
               <span className="truncate">{importPath}</span>
+              {isPinned && <Badge variant="project">New</Badge>}
             </div>
             {isAccessRevoked && (
               <div

@@ -68,6 +68,8 @@ type Props = {
   onEdit: (honeyToken: TDashboardHoneyToken) => void;
   onRevoke: (honeyToken: TDashboardHoneyToken) => void;
   onViewDetails: (honeyToken: TDashboardHoneyToken) => void;
+  isPinned?: boolean;
+  isHighlighted?: boolean;
 };
 
 export const HoneyTokenTableRow = ({
@@ -77,7 +79,9 @@ export const HoneyTokenTableRow = ({
   getHoneyTokenByName,
   onEdit,
   onRevoke,
-  onViewDetails
+  onViewDetails,
+  isPinned,
+  isHighlighted
 }: Props) => {
   const [isExpanded, setIsExpanded] = useToggle(false);
   const [, isNameCopied, setIsNameCopied] = useTimedReset({ initialState: false });
@@ -245,6 +249,7 @@ export const HoneyTokenTableRow = ({
         onClick={isSingleEnvView ? undefined : setIsExpanded.toggle}
         className={twMerge(
           "group hover:z-10",
+          isHighlighted && "row-highlight",
           isTriggered && !isExpanded && "bg-danger/5 hover:bg-danger/10"
         )}
       >
@@ -296,6 +301,11 @@ export const HoneyTokenTableRow = ({
               >
                 {honeyTokenName}
               </span>
+              {isPinned && (
+                <Badge variant="project" className="ml-2">
+                  New
+                </Badge>
+              )}
               {renderHoneyTokenInlineDetails(singleEnvToken)}
               <div
                 className={twMerge(
@@ -310,7 +320,14 @@ export const HoneyTokenTableRow = ({
               </div>
             </div>
           ) : (
-            <span className={twMerge(isAllRevoked && "text-muted")}>{honeyTokenName}</span>
+            <>
+              <span className={twMerge(isAllRevoked && "text-muted")}>{honeyTokenName}</span>
+              {isPinned && (
+                <Badge variant="project" className="ml-2">
+                  New
+                </Badge>
+              )}
+            </>
           )}
           {!isSingleEnvView && (
             <div

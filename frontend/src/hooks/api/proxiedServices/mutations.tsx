@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
+import { createdResourceMutationKeys, dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
 import { proxiedServiceKeys } from "./queries";
 import {
@@ -21,6 +21,7 @@ export const useCreateProxiedService = () => {
   const queryClient = useQueryClient();
 
   return useMutation<TProxiedService, object, TCreateProxiedServiceDTO>({
+    mutationKey: createdResourceMutationKeys.proxiedService,
     mutationFn: async (dto) => {
       const { data } = await apiRequest.post<{ service: TProxiedService }>(
         "/api/v1/proxied-services",

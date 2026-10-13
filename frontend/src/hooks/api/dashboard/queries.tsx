@@ -117,6 +117,20 @@ export const dashboardKeys = {
     ] as const
 };
 
+// Mutations that create a row on the secrets overview carry one of these keys, so the overview
+// can recognize a create from any flow (sheets, uploads, batch commits) and surface the new row.
+export const createdResourceMutationKeys = {
+  secret: ["created-resource", "secret"],
+  secretBatch: ["created-resource", "secret-batch"],
+  commit: ["created-resource", "commit"],
+  folder: ["created-resource", "folder"],
+  secretImport: ["created-resource", "secret-import"],
+  dynamicSecret: ["created-resource", "dynamic-secret"],
+  secretRotation: ["created-resource", "secret-rotation"],
+  honeyToken: ["created-resource", "honey-token"],
+  proxiedService: ["created-resource", "proxied-service"]
+} as const;
+
 export const fetchSecretMetadata = async (params: TGetSecretMetadataDTO, signal?: AbortSignal) => {
   const { data } = await apiRequest.get<TSecretMetadataPage>(
     "/api/v1/dashboard/accessible-secrets/metadata",

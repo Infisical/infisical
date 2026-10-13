@@ -128,11 +128,11 @@ type Props = {
     metadata?: { key: string; value: string; isEncrypted?: boolean }[];
   }) => void;
   // Called after the user actually creates a secret (non-batch path) so the parent can run the
-  // activation nudge and pin the new rows. The parent owns that state, so this stays a callback.
-  onSecretCreated?: (secretKeys: string[]) => void;
+  // activation nudge. The parent owns the nudge hook + modal state, so this stays a callback.
+  onSecretCreated?: () => void;
   // Opens the share sheet from the success toast. The parent owns the sheet because this form
   // unmounts when the create sheet closes.
-  onShareSecret?: (value: string) => void;
+  onShareSecret?: (secret: { name: string; value: string }) => void;
   // Called when the user opts to bulk-upload secrets instead. The parent owns the import modal,
   // so it swaps popups; when the user pasted multiple KEY=VALUE pairs, the parsed set is passed
   // along so the modal can skip its upload step.
@@ -320,8 +320,10 @@ export const CreateSecretForm = ({
     }
 
     if (updatedEnvs.length) {
-      const shareableValue =
-        secrets.length === 1 && currentProject?.secretSharing ? secrets[0].value : undefined;
+      const shareableSecret =
+        secrets.length === 1 && secrets[0].value && currentProject?.secretSharing
+          ? { name: secrets[0].key, value: secrets[0].value }
+          : undefined;
       const notificationId = createNotification(
         {
           type: "success",
@@ -329,23 +331,24 @@ export const CreateSecretForm = ({
             updatedEnvs.length > 1 ? "environments" : "environment"
           }: ${updatedEnvs.join(", ")}`,
           callToAction:
-            shareableValue && onShareSecret ? (
+            shareableSecret && onShareSecret ? (
               <Button
                 size="xs"
                 variant="outline"
                 onClick={() => {
                   dismissNotification(notificationId);
-                  onShareSecret(shareableValue);
+                  onShareSecret(shareableSecret);
                 }}
               >
                 Share secret
               </Button>
             ) : undefined
         },
-        shareableValue && onShareSecret ? { duration: 8000 } : undefined
+        shareableSecret && onShareSecret ? { duration: 8000 } : undefined
       );
 
-      onSecretCreated?.(secrets.map((secret) => secret.key));
+      // The user just created a secret: let the parent check whether to surface the nudge.
+      onSecretCreated?.();
     }
 
     if (!updatedEnvs.length && !forApprovalEnvs.length) {

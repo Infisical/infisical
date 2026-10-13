@@ -37,12 +37,12 @@ import {
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
+  SecretInput,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TextArea,
   Toggle,
   Tooltip,
   TooltipContent,
@@ -159,6 +159,7 @@ const formatExpiry = (expiresIn: string) => {
 type Props = {
   isPublic: boolean; // whether or not this is a public (non-authenticated) secret sharing form
   value?: string;
+  name?: string;
   allowSecretSharingOutsideOrganization?: boolean;
   maxSharedSecretLifetime?: number;
   maxSharedSecretViewLimit?: number | null;
@@ -167,6 +168,7 @@ type Props = {
 export const ShareSecretForm = ({
   isPublic,
   value,
+  name: defaultName,
   allowSecretSharingOutsideOrganization = true,
   maxSharedSecretLifetime,
   maxSharedSecretViewLimit
@@ -202,6 +204,7 @@ export const ShareSecretForm = ({
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
+      name: defaultName,
       secret: value || "",
       viewLimit: maxSharedSecretViewLimit?.toString() ?? "1",
       shouldLimitView: isViewLimitEnforced,
@@ -373,12 +376,13 @@ export const ShareSecretForm = ({
             render={({ field, fieldState: { error } }) => (
               <Field>
                 <FieldLabel htmlFor="share-secret-value">Secret Value</FieldLabel>
-                <TextArea
+                <SecretInput
                   placeholder="Enter sensitive data to share via an encrypted link"
                   {...field}
                   id="share-secret-value"
-                  disabled={value !== undefined}
-                  aria-invalid={Boolean(error)}
+                  containerClassName="min-h-16 items-start"
+                  isReadOnly={value !== undefined}
+                  isError={Boolean(error)}
                 />
                 {error && <FieldError>{error.message}</FieldError>}
               </Field>
