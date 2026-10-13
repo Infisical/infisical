@@ -1,0 +1,58 @@
+version: v0.166.6
+releasedAt: 2026-10-14T02:27:51+04:00
+sourceTag: v0.166.6
+previousTag: v0.166.5
+impactLevel: low
+summary: Agent Vault upgrades add one startup migration and remove older revoke
+  endpoints for Agent Vault memberships and access bundles.
+requiresDbMigration: true
+breakingChanges:
+  - title: Agent Vault revoke endpoints
+    description: Agent Vault membership and access-bundle revoke operations moved to
+      DELETE endpoints. Older revoke calls can fail after upgrade if your
+      automation still uses the previous route or method.
+    action: Update any Agent Vault revoke automation to use the current DELETE
+      revoke endpoints.
+    confidence: medium
+    evidence:
+      - type: release
+        ref: v0.166.6
+        url: https://github.com/Infisical/infisical/releases/tag/v0.166.6
+        description: Notes breaking revoke endpoint change
+      - type: file
+        ref: docs/api-reference/endpoints/agent-vault-members/revoke.mdx
+        path: docs/api-reference/endpoints/agent-vault-members/revoke.mdx
+        description: Member revoke API docs changed
+      - type: file
+        ref: docs/api-reference/endpoints/agent-vault-access-bundle-members/revoke.mdx
+        path: docs/api-reference/endpoints/agent-vault-access-bundle-members/revoke.mdx
+        description: Access bundle revoke docs changed
+dbSchemaChanges:
+  - title: Agent Vault variable secrecy
+    description: Agent Vault drops the isSecret column and treats every variable as
+      secret. Startup also drops the related analytics view before removing the
+      column.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261009145434_drop-agent-vault-variable-is-secret.ts
+        path: backend/src/db/migrations/20261009145434_drop-agent-vault-variable-is-secret.ts
+        description: Drops analytics view and isSecret column
+      - type: release
+        ref: v0.166.6
+        url: https://github.com/Infisical/infisical/releases/tag/v0.166.6
+        description: Notes every variable becomes secret
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-10-13T23:09:51.650Z
+  sourceRange:
+    from: v0.166.5
+    to: v0.166.6
