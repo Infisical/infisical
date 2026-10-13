@@ -12,7 +12,7 @@ import ProductSelectionStep from "@app/components/auth/ProductSelectionStep";
 import SignupCompleteStep from "@app/components/auth/SignupCompleteStep";
 import { getSignupProduct, SignupProductType } from "@app/components/auth/signupProducts";
 import TeamInviteStep from "@app/components/auth/TeamInviteStep";
-import { ContentLoader } from "@app/components/v2";
+import { PageLoader } from "@app/components/v3";
 import { useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
@@ -159,7 +159,7 @@ export const SignupOnboardingPage = () => {
           />
         );
       default:
-        return <ContentLoader text="Loading your account..." />;
+        return <PageLoader text="Loading your account..." />;
     }
   };
 
