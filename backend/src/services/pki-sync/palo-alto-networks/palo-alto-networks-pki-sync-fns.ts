@@ -455,7 +455,9 @@ export const paloAltoNetworksPkiSyncFactory = ({
     }
     const matches = await certificateDAL.find({
       projectId,
-      $in: { serialNumber: [serial, `0${serial}`, serial.padStart(40, "0")] }
+      $in: {
+        serialNumber: [serial, `0${serial}`, serial.padStart(40, "0")].flatMap((value) => [value, value.toUpperCase()])
+      }
     });
     return matches.length > 0;
   };
@@ -498,7 +500,6 @@ export const paloAltoNetworksPkiSyncFactory = ({
     client,
     config,
     pkiSync,
-    ownedNames,
     plannedUploads,
     existingCertificates,
     keylessNames,
@@ -508,7 +509,6 @@ export const paloAltoNetworksPkiSyncFactory = ({
     client: TPanOsClient;
     config: TPaloAltoNetworksPkiSyncConfig;
     pkiSync: TPkiSyncWithCredentials;
-    ownedNames: Set<string>;
     plannedUploads: TPlannedUpload[];
     existingCertificates: Map<string, string | undefined>;
     keylessNames: Set<string>;
@@ -530,7 +530,6 @@ export const paloAltoNetworksPkiSyncFactory = ({
         if (
           existingCertificates.has(upload.name) &&
           existingCertificates.get(upload.name) !== fingerprint &&
-          !ownedNames.has(upload.name) &&
           !(await isIssuedByInfisical(client, config, pkiSync.projectId, upload.name))
         ) {
           throw new PkiSyncError({
@@ -596,26 +595,29 @@ export const paloAltoNetworksPkiSyncFactory = ({
     const replacedNames = existingSyncRecords
       .map((record) => (record.syncMetadata as Record<string, unknown> | null)?.[REPLACED_NAME_KEY])
       .filter((name): name is string => typeof name === "string");
-    const candidates = new Set(
+    const possibleOrphans = new Set(
       [...existingSyncRecords.map((record) => record.externalIdentifier), ...replacedNames].filter(
-        (name): name is string => !!name && !activeNames.has(name) && existingCertificates.has(name)
+        (name): name is string => !!name
       )
     );
-
     if (
       CERTIFICATE_ID_PLACEHOLDER.test(certificateNameSchema) &&
       !certificateNameSchemaHasFreeTextPlaceholder(certificateNameSchema)
     ) {
       const managedPattern = buildManagedCertNamePattern(certificateNameSchema);
-      const untrackedMatches = [...existingCertificates.keys()].filter(
-        (name) =>
-          managedPattern.test(name) &&
-          !activeNames.has(name) &&
-          !candidates.has(name) &&
-          !name.startsWith(PALO_ALTO_NETWORKS_CA_CERTIFICATE_PREFIX)
-      );
-      for (const name of untrackedMatches) {
-        if (await isIssuedByInfisical(client, config, pkiSync.projectId, name)) candidates.add(name);
+      [...existingCertificates.keys()]
+        .filter((name) => managedPattern.test(name) && !name.startsWith(PALO_ALTO_NETWORKS_CA_CERTIFICATE_PREFIX))
+        .forEach((name) => possibleOrphans.add(name));
+    }
+
+    const candidates = new Set<string>();
+    for (const name of possibleOrphans) {
+      if (
+        !activeNames.has(name) &&
+        existingCertificates.has(name) &&
+        (await isIssuedByInfisical(client, config, pkiSync.projectId, name))
+      ) {
+        candidates.add(name);
       }
     }
 
@@ -721,9 +723,6 @@ export const paloAltoNetworksPkiSyncFactory = ({
         client,
         config,
         pkiSync,
-        ownedNames: new Set(
-          existingSyncRecords.map((record) => record.externalIdentifier).filter((name): name is string => !!name)
-        ),
         plannedUploads,
         existingCertificates,
         keylessNames,
@@ -913,7 +912,8 @@ export const paloAltoNetworksPkiSyncFactory = ({
           deferred.has(certificateId) ||
           reusedNames.has(externalIdentifier) ||
           ownedByOtherSync.has(externalIdentifier) ||
-          !existingCertificates.has(externalIdentifier)
+          !existingCertificates.has(externalIdentifier) ||
+          !(await isIssuedByInfisical(client, config, pkiSync.projectId, externalIdentifier))
         ) {
           // eslint-disable-next-line no-continue
           continue;
