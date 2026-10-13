@@ -599,6 +599,12 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
           `${TableName.AccessApprovalPolicy}.id`
         )
         .where(`${TableName.AccessApprovalPolicyEnvironment}.envId`, "=", envId)
+        .whereNotExists((qb) => {
+          void qb
+            .select(db.raw("1"))
+            .from(TableName.ApprovalPolicies)
+            .whereRaw(`"${TableName.ApprovalPolicies}"."id" = "${TableName.AccessApprovalPolicy}"."id"`);
+        })
         .orderBy("deletedAt", "desc")
         .orderByRaw(`"deletedAt" IS NULL`)
         .select(selectAllTableCols(TableName.AccessApprovalPolicy))
@@ -647,6 +653,12 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
           )
         )
         .whereNull(`${TableName.AccessApprovalPolicy}.deletedAt`)
+        .whereNotExists((qb) => {
+          void qb
+            .select(db.raw("1"))
+            .from(TableName.ApprovalPolicies)
+            .whereRaw(`"${TableName.ApprovalPolicies}"."id" = "${TableName.AccessApprovalPolicy}"."id"`);
+        })
         .where((qb) => {
           if (excludePolicyId) void qb.whereNot(`${TableName.AccessApprovalPolicy}.id`, excludePolicyId);
         })
