@@ -560,7 +560,9 @@ export const runLegacyPolicyMigration = async (
 
     for (const policyId of policyIds) {
       try {
+        logger.info(`${logPrefix}: locking policy [policyId=${policyId}]`);
         counts[await knex.transaction((tx) => migratePolicy(tx, policyId))] += 1;
+        logger.info(`${logPrefix}: policy migrated [policyId=${policyId}]`);
       } catch (error) {
         if ((error as { code?: string })?.code === PG_LOCK_NOT_AVAILABLE) {
           counts.locked += 1;
