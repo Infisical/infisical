@@ -266,7 +266,7 @@ export const pamFolderAlertProviderFactory = ({
     actor
   }: TAlertPermissionInput): Promise<void> => {
     if (!projectId || !resourceId) {
-      throw new BadRequestError({ message: "PAM folder alerts require the PAM project ID and a folder ID" });
+      throw new BadRequestError({ message: "PAM folder alerts require a folder ID" });
     }
 
     await verifyProductMembership(permissionService, projectId, actor);
@@ -283,6 +283,19 @@ export const pamFolderAlertProviderFactory = ({
       ResourcePermissionPamResourceActions.ManagePolicies,
       ResourcePermissionSub.PamResource
     );
+  };
+
+  const resolveProjectId = async ({ orgId, resourceId }: { orgId: string; resourceId?: string | null }) => {
+    if (!resourceId) {
+      throw new BadRequestError({ message: "PAM folder alerts require a folder ID" });
+    }
+    assertValidFolderId(resourceId);
+
+    const folder = await pamFolderAlertDAL.findFolderById(resourceId);
+    if (!folder || folder.orgId !== orgId) {
+      throw new NotFoundError({ message: `PAM folder with ID '${resourceId}' not found` });
+    }
+    return folder.projectId;
   };
 
   const assertChannelTypesAllowed = async ({ orgId, channelTypes }: { orgId: string; channelTypes: string[] }) => {
@@ -311,6 +324,7 @@ export const pamFolderAlertProviderFactory = ({
     assertPermission,
     assertResourceInScope,
     assertChannelTypesAllowed,
-    recipientPolicy: { allowEmailAddresses: true }
+    recipientPolicy: { allowEmailAddresses: true },
+    resolveProjectId
   };
 };

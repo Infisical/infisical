@@ -92,7 +92,6 @@ const RecipientSelect = ({
   const canAddEmail =
     allowEmailAddresses &&
     isValidEmail(email) &&
-    !options.some((option) => option.label.toLowerCase() === email) &&
     !value.some((recipient) => recipient.principalId === email);
   const emailOption: RecipientOption = {
     principalType: AlertPrincipalType.Email,
