@@ -63,7 +63,7 @@ export const FindingDetailSheet = ({
 
   return (
     <Sheet open={Boolean(finding)} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent onOpenAutoFocus={(event) => event.preventDefault()}>
+      <SheetContent size="form" onOpenAutoFocus={(event) => event.preventDefault()}>
         {finding && (
           <>
             <SheetHeader>
