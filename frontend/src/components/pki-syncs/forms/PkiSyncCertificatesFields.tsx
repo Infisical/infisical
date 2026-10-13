@@ -141,7 +141,9 @@ export const PkiSyncCertificatesFields = ({ applicationId, pkiSyncId }: Props) =
         setOrderIds(certificateOrderIds);
       }}
       title={
-        certificateCap === 1 ? "Select a Certificate to Sync" : "Select Certificate Orders to Sync"
+        certificateCap === 1
+          ? "Select a Certificate Order to Sync"
+          : "Select Certificate Orders to Sync"
       }
       subtitle="Selecting a certificate selects its order, so the sync follows every renewal of it."
       saveButtonText="Update Selection"
@@ -170,10 +172,9 @@ export const PkiSyncCertificatesFields = ({ applicationId, pkiSyncId }: Props) =
 
     return (
       <div className="flex flex-col">
-        <p className="text-sm font-medium text-foreground">Certificate</p>
+        <p className="text-sm font-medium text-foreground">Certificate Order</p>
         <p className="mt-0.5 text-xs text-muted">
-          This destination holds one certificate. The order you pick stays synced through every
-          renewal of it.
+          This destination holds one certificate order, which stays synced through every renewal.
         </p>
         <div className="mt-3 flex items-center gap-3">
           {selectedOrderId ? (
@@ -201,7 +202,7 @@ export const PkiSyncCertificatesFields = ({ applicationId, pkiSyncId }: Props) =
                 size="xs"
                 variant="ghost"
                 className="hover:text-danger"
-                aria-label="Remove certificate"
+                aria-label="Remove certificate order"
                 onClick={() => setValue("filters", null, { shouldDirty: true })}
               >
                 <TrashIcon className="size-4" />
@@ -209,7 +210,7 @@ export const PkiSyncCertificatesFields = ({ applicationId, pkiSyncId }: Props) =
             </>
           ) : (
             <>
-              <p className="flex-1 text-sm text-muted">No certificate selected.</p>
+              <p className="flex-1 text-sm text-muted">No certificate order selected.</p>
               <Button
                 type="button"
                 size="sm"
@@ -217,7 +218,7 @@ export const PkiSyncCertificatesFields = ({ applicationId, pkiSyncId }: Props) =
                 className="h-9"
                 onClick={() => setIsPickerOpen(true)}
               >
-                Select Certificate
+                Select Certificate Order
               </Button>
             </>
           )}

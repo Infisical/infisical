@@ -402,12 +402,13 @@ export type TKeyStoreFactory = {
   pgIncrementBy: (key: string, dto: { incr?: number; expiry?: string; tx?: Knex }) => Promise<number>;
   pgGetIntItem: (key: string, prefix?: string) => Promise<number | undefined>;
   // locks
-  acquireLock(
-    resources: string[],
-    duration: number,
-    settings?: Partial<Settings>
-  ): Promise<{ release: () => Promise<ExecutionResult> }>;
+  acquireLock(resources: string[], duration: number, settings?: Partial<Settings>): Promise<TKeyStoreLock>;
   waitTillReady: ({ key, waitingCb, keyCheckCb, waitIteration, delay, jitter }: TWaitTillReady) => Promise<void>;
+};
+
+export type TKeyStoreLock = {
+  release: () => Promise<ExecutionResult>;
+  extend?: (duration: number) => Promise<TKeyStoreLock>;
 };
 
 const pickPrimaryOrSecondaryRedis = (primary: Redis | Cluster, secondaries?: Array<Redis | Cluster>) => {

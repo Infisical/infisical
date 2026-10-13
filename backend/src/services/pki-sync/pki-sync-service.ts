@@ -49,7 +49,9 @@ import { hasAnyPkiSyncFilter, PKI_SYNC_FILTER_KINDS, PKI_SYNC_PREVIEW_PAGE_SIZE 
 import {
   applyPkiSyncCertificateDiff,
   assertPkiSyncCanHoldMatchedCertificates,
+  assertPkiSyncUnlinkAllowed,
   computePkiSyncCertificateDiff,
+  findPkiSyncUnlinkIdsAtDestination,
   TPkiSyncReconcileTarget,
   withPkiSyncFilterLock
 } from "./pki-sync-filter-reconcile-fns";
@@ -58,6 +60,7 @@ import {
   assertPkiSyncCertificateCapsAllowCount,
   assertPkiSyncLicense,
   getPkiSyncProviderCapabilities,
+  getPkiSyncUnlinkAssertion,
   listPkiSyncOptions,
   resolvePkiSyncDestinationConfigUpdate
 } from "./pki-sync-fns";
@@ -96,6 +99,7 @@ import {
   TPkiSyncFilterPreview,
   TPkiSyncFilters,
   TPkiSyncRaw,
+  TPkiSyncRemovalOptions,
   TPreviewPkiSyncFiltersDTO,
   TRemoveCertificatesFromPkiSyncDTO,
   TSearchPkiSyncCertificateOrdersDTO,
@@ -338,8 +342,8 @@ export const pkiSyncServiceFactory = ({
     connection: { id: string; app: AppConnection };
     destinationConfig: Record<string, unknown> | null | undefined;
   }) => {
-    if (connection.app !== AppConnection.LDAP) return;
-    if (!getPkiSyncTargetHost(destinationConfig)) return;
+    if (connection.app !== AppConnection.LDAP && connection.app !== AppConnection.PaloAltoNetworks) return;
+    if (connection.app === AppConnection.LDAP && !getPkiSyncTargetHost(destinationConfig)) return;
 
     await pkiSyncHealthCheckQueue.testTargetHostReachable({
       destination,
@@ -621,16 +625,22 @@ export const pkiSyncServiceFactory = ({
   const $reconcileFilters = async (
     pkiSync: TPkiSyncReconcileTarget,
     filters: TPkiSyncFilters | null | undefined,
-    opts: { auditLogInfo?: AuditLogInfo; writeFilters?: (tx: Knex) => Promise<void> } = {}
+    opts: {
+      auditLogInfo?: AuditLogInfo;
+      writeFilters?: (tx: Knex) => Promise<void>;
+      removalOptions?: TPkiSyncRemovalOptions;
+    } = {}
   ): Promise<{ linked: TPkiSyncCertificateRef[]; unlinked: TPkiSyncCertificateRef[] }> => {
     const diff = await computePkiSyncCertificateDiff(pkiSync, filters, { certificateDAL, certificateSyncDAL });
     assertPkiSyncCanHoldMatchedCertificates(pkiSync, diff.matched.length);
+    await assertPkiSyncUnlinkAllowed(pkiSync, diff, certificateSyncDAL, opts.removalOptions);
     return applyPkiSyncCertificateDiff(
       pkiSync,
       diff,
       { certificateDAL, certificateSyncDAL, pkiSyncQueue, auditLogService, pkiApplicationDAL },
       opts.auditLogInfo,
-      opts.writeFilters
+      opts.writeFilters,
+      opts.removalOptions
     );
   };
 
@@ -809,6 +819,7 @@ export const pkiSyncServiceFactory = ({
       connectionId,
       filters,
       credentials,
+      removalOptions,
       auditLogInfo
     }: Omit<TUpdatePkiSyncDTO, "projectId">,
     actor: OrgServiceActor
@@ -1058,6 +1069,7 @@ export const pkiSyncServiceFactory = ({
 
       await $reconcileFilters(target, filters, {
         auditLogInfo,
+        removalOptions,
         writeFilters: async (tx) => {
           await pkiSyncDAL.updateById(id, update, tx);
         }
@@ -1450,7 +1462,7 @@ export const pkiSyncServiceFactory = ({
   };
 
   const triggerPkiSyncRemoveCertificatesById = async (
-    { id }: Omit<TTriggerPkiSyncRemoveCertificatesByIdDTO, "auditLogInfo" | "projectId">,
+    { id, removalOptions }: Omit<TTriggerPkiSyncRemoveCertificatesByIdDTO, "auditLogInfo" | "projectId">,
     actor: OrgServiceActor
   ) => {
     const pkiSync = await pkiSyncDAL.findById(id);
@@ -1477,7 +1489,7 @@ export const pkiSyncServiceFactory = ({
       actor
     );
 
-    await pkiSyncQueue.queuePkiSyncRemoveCertificatesById({ syncId: id });
+    await pkiSyncQueue.queuePkiSyncRemoveCertificatesById({ syncId: id, removalOptions });
 
     return { message: "PKI sync remove job added to queue successfully" };
   };
@@ -1578,6 +1590,15 @@ export const pkiSyncServiceFactory = ({
       const canRemoveCertificates = Boolean(
         (pkiSync.syncOptions as { canRemoveCertificates?: boolean } | null)?.canRemoveCertificates
       );
+      const toUnlinkAtDestinationCount = getPkiSyncUnlinkAssertion(pkiSync.destination as PkiSync)
+        ? (
+            await findPkiSyncUnlinkIdsAtDestination(
+              pkiSync.id,
+              new Set(diff.toUnlink.map((certificate) => certificate.id)),
+              certificateSyncDAL
+            )
+          ).length
+        : 0;
 
       const permissionFilters = pkiSync.applicationId
         ? await $certificateReadFilters(pkiSync.projectId, pkiSync.applicationId, actor)
@@ -1588,6 +1609,7 @@ export const pkiSyncServiceFactory = ({
           matchedCount: diff.matched.length,
           certificates: diff.matched.slice(offset, offset + limit),
           toUnlink: diff.toUnlink,
+          toUnlinkAtDestinationCount,
           willRemoveFromDestination: canRemoveCertificates && diff.toUnlink.length > 0
         };
       }
@@ -1610,6 +1632,7 @@ export const pkiSyncServiceFactory = ({
         matchedCount,
         certificates,
         toUnlink: diff.toUnlink.filter((certificate) => readableUnlinkIdSet.has(certificate.id)),
+        toUnlinkAtDestinationCount,
         willRemoveFromDestination: canRemoveCertificates && diff.toUnlink.length > 0
       };
     }
@@ -1634,7 +1657,13 @@ export const pkiSyncServiceFactory = ({
     await $assertFilterProfilesInApplication(filters, applicationId);
 
     if (!hasAnyPkiSyncFilter(filters)) {
-      return { matchedCount: 0, certificates: [], toUnlink: [], willRemoveFromDestination: false };
+      return {
+        matchedCount: 0,
+        certificates: [],
+        toUnlink: [],
+        toUnlinkAtDestinationCount: 0,
+        willRemoveFromDestination: false
+      };
     }
 
     const scope = { projectId: application.projectId, applicationId };
@@ -1649,6 +1678,7 @@ export const pkiSyncServiceFactory = ({
       matchedCount,
       certificates,
       toUnlink: [],
+      toUnlinkAtDestinationCount: 0,
       willRemoveFromDestination: false
     };
   };
