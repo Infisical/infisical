@@ -15,10 +15,9 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -28,6 +27,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DeleteConfirmDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -110,7 +110,7 @@ export const OrgRoleTable = () => {
 
     if (isCustomRole && subscription && !subscription?.rbac) {
       handlePopUpOpen("upgradePlan", {
-        text: "Your current plan does not include access to set a custom default organization role. To unlock this feature, please upgrade to Infisical Enterprise plan.",
+        text: "Set a custom role as the default for new organization members.",
         isEnterpriseFeature: true
       });
       return;
@@ -503,22 +503,23 @@ export const OrgRoleTable = () => {
         </CardContent>
       </Card>
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteRole.isOpen}
         title={`Are you sure you want to delete ${
           (popUp?.deleteRole?.data as TOrgRole)?.name || " "
         } role?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
-        deleteKey={(popUp?.deleteRole?.data as TOrgRole)?.slug || ""}
-        onClose={() => handlePopUpClose("deleteRole")}
-        onDeleteApproved={handleRoleDelete}
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
+        confirmKey={(popUp?.deleteRole?.data as TOrgRole)?.slug || ""}
+        onConfirm={handleRoleDelete}
       />
-      <UpgradePlanModal
+      <UpgradeGate
+        intent={{
+          ...CustomRolesUpgradeIntent
+        }}
         paywallKey="organization.org-role"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={popUp.upgradePlan?.data?.text}
-        isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
       />
       <DuplicateOrgRoleModal
         isOpen={popUp.duplicateRole.isOpen}

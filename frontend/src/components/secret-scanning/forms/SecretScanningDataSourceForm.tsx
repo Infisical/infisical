@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { Button } from "@app/components/v2";
+import { Button } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import {
@@ -165,13 +165,14 @@ export const SecretScanningDataSourceForm = ({
       <div className="flex w-full flex-row-reverse justify-between gap-4 pt-4">
         <Button
           onClick={handleNext}
-          isLoading={isSubmitting}
+          type="button"
+          isPending={isSubmitting}
           isDisabled={isSubmitting}
-          colorSchema="secondary"
+          variant="project"
         >
           {isFinalStep ? `${dataSource ? "Update" : "Create"} Data Source` : "Next"}
         </Button>
-        <Button onClick={handlePrev} colorSchema="secondary">
+        <Button type="button" onClick={handlePrev} variant="ghost">
           Back
         </Button>
       </div>

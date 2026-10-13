@@ -90,6 +90,7 @@ export type TUpdateOrgDTO = {
     maxSharedSecretViewLimit: number | null;
     blockDuplicateSecretSyncDestinations: boolean;
     allowCrossProjectSecretSharing: boolean;
+    requireGatewayPools: boolean;
     secretShareBrandConfig: TSecretShareBrandConfig;
   }>;
 } & TOrgPermission;

@@ -263,10 +263,9 @@ export const CreateSecretForm = ({
           metadata:
             editSecret.metadata?.map((entry) => ({
               ...entry,
-              isEncrypted:
-                entry.isEncrypted ??
-                currentProject?.enforceEncryptedSecretManagerSecretMetadata ??
-                false
+              isEncrypted: currentProject?.enforceEncryptedSecretManagerSecretMetadata
+                ? true
+                : (entry.isEncrypted ?? false)
             })) ?? []
         }
       ]
@@ -1159,11 +1158,11 @@ export const CreateSecretForm = ({
                             <Toggle
                               id={`create-secret-${index}-multiline-encoding`}
                               variant="project"
-                              checked={editSecret ? !field.value : field.value}
+                              checked={field.value}
                               disabled={Boolean(editSecret && isEditReadOnly)}
                               onCheckedChange={(checked) => {
                                 markSharedField("skipMultilineEncoding");
-                                field.onChange(editSecret ? !checked : checked);
+                                field.onChange(checked);
                               }}
                             />
                           </Field>

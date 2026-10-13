@@ -2,10 +2,12 @@ import * as React from "react";
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
 
 import { cn } from "../../utils";
+import { OverlayLayerContext, useOverlayLayer } from "../../utils/overlay-layer";
 import { Button } from "../Button";
 import { DIALOG_CONTENT_WIDTH_CLASSNAME } from "../Dialog";
 import { Field, FieldLabel } from "../Field";
 import { Input } from "../Input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip";
 
 type AlertDialogConfirmationContextValue = {
   actionRef: React.MutableRefObject<HTMLButtonElement | null>;
@@ -90,11 +92,17 @@ function AlertDialogOverlay({
 function AlertDialogContent({
   className,
   size = "default",
+  children,
   onOpenAutoFocus,
+  onCloseAutoFocus,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: "default" | "sm";
 }) {
+  const { contextValue, guardDismiss, captureFocusReturn, restoreFocusReturn } =
+    useOverlayLayer(false);
+
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
@@ -107,7 +115,7 @@ function AlertDialogContent({
           className
         )}
         onOpenAutoFocus={(event) => {
-          onOpenAutoFocus?.(event);
+          captureFocusReturn(event, onOpenAutoFocus);
           if (event.defaultPrevented) return;
 
           const inputs = (
@@ -121,8 +129,12 @@ function AlertDialogContent({
 
           if (focusedInput) event.preventDefault();
         }}
+        onCloseAutoFocus={(event) => restoreFocusReturn(event, onCloseAutoFocus)}
+        onEscapeKeyDown={(event) => guardDismiss(event, onEscapeKeyDown)}
         {...props}
-      />
+      >
+        <OverlayLayerContext.Provider value={contextValue}>{children}</OverlayLayerContext.Provider>
+      </AlertDialogPrimitive.Content>
     </AlertDialogPortal>
   );
 }
@@ -174,7 +186,7 @@ function AlertDialogTitle({
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
       className={cn(
-        "font-alliance text-lg font-normal sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2",
+        "line-clamp-2 min-w-0 font-alliance text-lg font-normal [overflow-wrap:anywhere] sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2",
         className
       )}
       {...props}
@@ -205,18 +217,86 @@ function AlertDialogConfirmationLabel({
 }: Omit<React.ComponentProps<typeof FieldLabel>, "children"> & {
   confirmationValue: React.ReactNode;
 }) {
+  const [copyStatus, setCopyStatus] = React.useState("");
+  const [tooltipOpen, setTooltipOpen] = React.useState(false);
+  const copyPending = React.useRef(false);
+  const copyGeneration = React.useRef(0);
+
+  React.useEffect(() => {
+    setCopyStatus("");
+    setTooltipOpen(false);
+    copyGeneration.current += 1;
+    return () => {
+      copyGeneration.current += 1;
+    };
+  }, [confirmationValue]);
+
   return (
-    <FieldLabel
-      data-slot="alert-dialog-confirmation-label"
-      size="sm"
-      className={cn("gap-0", className)}
-      {...props}
-    >
-      <span>
-        Type &quot;<span className="font-medium text-foreground">{confirmationValue}</span>&quot; to
-        confirm.
-      </span>
-    </FieldLabel>
+    <div className="min-w-0 space-y-1">
+      <div className="flex min-w-0 items-baseline gap-1.5">
+        <FieldLabel
+          data-slot="alert-dialog-confirmation-label"
+          size="sm"
+          className={cn("shrink-0 gap-0", className)}
+          {...props}
+        >
+          <span>
+            Type the following to confirm:<span className="sr-only"> {confirmationValue}</span>
+          </span>
+        </FieldLabel>
+        {typeof confirmationValue === "string" ? (
+          <Tooltip open={tooltipOpen} onOpenChange={setTooltipOpen}>
+            <TooltipTrigger asChild>
+              <Button
+                variant="text"
+                className="max-w-full min-w-0 shrink justify-start text-left"
+                aria-label={`Copy confirmation value: ${confirmationValue}`}
+                onClick={async () => {
+                  if (copyPending.current) return;
+                  copyPending.current = true;
+                  setCopyStatus("");
+                  const generation = copyGeneration.current;
+                  try {
+                    await navigator.clipboard.writeText(confirmationValue);
+                    if (generation === copyGeneration.current) {
+                      setCopyStatus("Copied");
+                      setTooltipOpen(true);
+                    }
+                  } catch {
+                    if (generation === copyGeneration.current)
+                      setCopyStatus("Unable to copy. Select and copy the value manually.");
+                  } finally {
+                    copyPending.current = false;
+                  }
+                }}
+              >
+                <span className="truncate font-mono font-medium select-text">
+                  {confirmationValue}
+                </span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {copyStatus.startsWith("Unable to copy")
+                ? "Unable to copy"
+                : copyStatus || "Click to copy"}
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <div className="min-w-0 truncate font-medium">{confirmationValue}</div>
+        )}
+      </div>
+      <div role="status" className="sr-only">
+        {copyStatus}
+      </div>
+      {copyStatus.startsWith("Unable to copy") && typeof confirmationValue === "string" && (
+        <div className="space-y-1">
+          <p className="text-xs text-label">{copyStatus}</p>
+          <div className="max-h-32 overflow-y-auto rounded-md border border-border bg-container p-2 font-mono text-sm [overflow-wrap:anywhere] select-text">
+            {confirmationValue}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -247,7 +327,6 @@ function AlertDialogConfirmationField({
           />
           <Input
             autoComplete="off"
-            autoFocus
             placeholder={confirmationValue}
             {...inputProps}
             id={inputProps?.id ?? inputId}

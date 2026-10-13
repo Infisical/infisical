@@ -316,6 +316,8 @@ const envSchema = z
     ROTATION_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     BDD_NOCK_API_ENABLED: zodStrBool.default("false").optional(),
+
+    OPENAPI_FULL_SPEC: zodStrBool.default("false").optional(),
     ACME_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     ACME_SKIP_UPSTREAM_VALIDATION: zodStrBool.default("false").optional(),
     ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES: zpStr(
@@ -687,10 +689,7 @@ const envSchema = z
     GO_SIDECAR_SPAWN_ENABLED: zodStrBool.default("false"),
 
     /* INTERNAL ----------------------------------------------------------------------------- */
-    INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional()),
-
-    /* Temporary Stripe Whitelisting ----------------------------------------------------------------------------- */
-    WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS: zpStr(z.string().optional())
+    INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())
   })
   .refine(
     (data) => Boolean(data.REDIS_URL) || Boolean(data.REDIS_SENTINEL_HOSTS) || Boolean(data.REDIS_CLUSTER_HOSTS),
@@ -740,6 +739,7 @@ const envSchema = z
     isSecretScanningRunModeEnabled: data.INFISICAL_RUN_MODES.includes(RunMode.SecretScanning),
     isRedisSentinelMode: Boolean(data.REDIS_SENTINEL_HOSTS),
     isBddNockApiEnabled: data.NODE_ENV !== "production" && data.BDD_NOCK_API_ENABLED,
+    isOpenApiFullSpec: data.NODE_ENV !== "production" && data.OPENAPI_FULL_SPEC,
     REDIS_SENTINEL_HOSTS: data.REDIS_SENTINEL_HOSTS?.trim()
       ?.split(",")
       .map((el) => {
@@ -793,10 +793,7 @@ const envSchema = z
       data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID || data.CLIENT_ID_HEROKU,
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET:
-      data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET || data.CLIENT_SECRET_HEROKU,
-    WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS: data.WHITELISTED_STRIPE_APP_CONNECTION_ORG_IDS?.split(",").map((id) =>
-      id.trim()
-    )
+      data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET || data.CLIENT_SECRET_HEROKU
   }));
 
 export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;

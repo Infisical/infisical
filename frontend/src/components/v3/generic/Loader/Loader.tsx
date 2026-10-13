@@ -1,10 +1,9 @@
-import { type ComponentProps, useEffect, useRef } from "react";
+import { type ComponentProps, useEffect, useRef, useSyncExternalStore } from "react";
 import { type DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
-import { useReducedMotion } from "motion/react";
 
 import { cn } from "../../utils";
 
-type LoaderVariant = "neutral" | "default" | "inverse" | "brand";
+type LoaderVariant = "brand" | "inverse";
 
 type LoaderSize = "xs" | "sm" | "md" | "lg";
 
@@ -15,10 +14,8 @@ type LoaderProps = Omit<ComponentProps<"div">, "children"> & {
 };
 
 const animationSources: Record<LoaderVariant, string> = {
-  neutral: "/lotties/infisical_loading_white.json",
-  default: "/lotties/infisical_loading_white.json",
-  inverse: "/lotties/infisical_loading_bw.json",
-  brand: "/lotties/infisical_loading.json"
+  brand: "/lotties/infisical_loading.json",
+  inverse: "/lotties/infisical_loading_bw.json"
 };
 
 // The mark is 1.91:1 rather than square, so the scale is expressed as widths and
@@ -30,14 +27,24 @@ const sizeStyles: Record<LoaderSize, string> = {
   lg: "w-32"
 };
 
+const subscribeToReducedMotion = (onChange: () => void) => {
+  const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  mediaQuery.addEventListener("change", onChange);
+  return () => mediaQuery.removeEventListener("change", onChange);
+};
+
 function Loader({
   className,
   label = "Loading",
   size = "md",
-  variant = "neutral",
+  variant = "brand",
   ...props
 }: LoaderProps) {
-  const prefersReducedMotion = Boolean(useReducedMotion());
+  const prefersReducedMotion = useSyncExternalStore(
+    subscribeToReducedMotion,
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => false
+  );
   const animationRef = useRef<DotLottie | null>(null);
 
   useEffect(() => {
@@ -68,7 +75,7 @@ function Loader({
         src={animationSources[variant]}
         loop
         autoplay={!prefersReducedMotion}
-        className={cn("h-full w-full", variant === "neutral" && "in-data-[theme=light]:invert")}
+        className="h-full w-full"
       />
     </div>
   );

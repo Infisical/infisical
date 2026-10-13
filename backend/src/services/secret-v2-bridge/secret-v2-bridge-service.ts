@@ -23,8 +23,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
-import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
-import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
+import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
@@ -55,7 +54,6 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
-import { TReminderDALFactory } from "../reminder/reminder-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
@@ -77,6 +75,7 @@ import {
 } from "../secret-validation-rule/secret-validation-rule-errors";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TValidateSecretsDTO } from "../secret-validation-rule/secret-validation-rule-types";
+import { createSecretBlindIndexer } from "./secret-blind-index-fns";
 import { secretMetadataServiceFactory } from "./secret-metadata-service";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import {
@@ -168,10 +167,9 @@ type TSecretV2BridgeServiceFactoryDep = {
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "handleSecretReminder" | "removeSecretReminder">;
   secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
-  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "create" | "transaction">;
-  secretApprovalRequestSecretDAL: Pick<
-    TSecretApprovalRequestSecretDALFactory,
-    "insertV2Bridge" | "insertApprovalSecretV2Tags"
+  secretApprovalRequestCreationFns: Pick<
+    TSecretApprovalRequestCreationFnsFactory,
+    "createSecretApprovalRequestV2Bridge"
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   keyStore: Pick<
@@ -186,8 +184,10 @@ type TSecretV2BridgeServiceFactoryDep = {
     | "hashGet"
     | "hashSet"
   >;
-  reminderService: Pick<TReminderServiceFactory, "createReminder" | "getReminder" | "batchCreateReminders">;
-  reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
+  reminderService: Pick<
+    TReminderServiceFactory,
+    "prepareReminder" | "applyReminder" | "createReminder" | "getReminder" | "moveReminders" | "copyReminders"
+  >;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
@@ -211,13 +211,11 @@ export const secretV2BridgeServiceFactory = ({
   secretImportDAL,
   secretVersionTagDAL,
   secretApprovalPolicyService,
-  secretApprovalRequestDAL,
-  secretApprovalRequestSecretDAL,
+  secretApprovalRequestCreationFns,
   kmsService,
   resourceMetadataDAL,
   keyStore,
   reminderService,
-  reminderDAL,
   secretValidationRuleService,
   projectFolderGrantDAL,
   orgDAL
@@ -472,14 +470,14 @@ export const secretV2BridgeServiceFactory = ({
 
     await $validateSecretReferences(projectId, permission, allSecretReferences);
 
-    const { encryptor: secretManagerEncryptor, generateSecretBlindIndex } =
-      await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
-    const secretValueBlindIndex = inputSecretData.secretValue
-      ? await generateSecretBlindIndex(Buffer.from(inputSecretData.secretValue))
-      : undefined;
+    const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService });
+    const blindIndexes = await (inputSecretData.secretValue
+      ? blindIndexer.generateBlindIndexes(Buffer.from(inputSecretData.secretValue))
+      : null);
     const secret = await secretDAL.transaction(async (tx) => {
       const [createdSecret] = await fnSecretBulkInsert({
         folderId,
@@ -495,7 +493,7 @@ export const secretV2BridgeServiceFactory = ({
             encryptedValue: inputSecretData.secretValue
               ? secretManagerEncryptor({ plainText: Buffer.from(inputSecretData.secretValue) }).cipherTextBlob
               : undefined,
-            secretValueBlindIndex,
+            blindIndexes,
             skipMultilineEncoding: inputSecretData.skipMultilineEncoding,
             key: secretName,
             userId: inputSecret.type === SecretType.Personal ? actorId : null,
@@ -766,20 +764,18 @@ export const secretV2BridgeServiceFactory = ({
       await $validateSecretReferences(projectId, permission, allSecretReferences);
     }
 
-    const {
-      encryptor: secretManagerEncryptor,
-      decryptor: secretManagerDecryptor,
-      generateSecretBlindIndex
-    } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsService });
     const encryptedValue =
       typeof secretValue === "string"
         ? {
             encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(secretValue) }).cipherTextBlob,
             references: getAllSecretReferences(secretValue).nestedReferences,
-            secretValueBlindIndex: await generateSecretBlindIndex(Buffer.from(secretValue))
+            blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(secretValue))
           }
         : {};
 
@@ -790,6 +786,23 @@ export const secretV2BridgeServiceFactory = ({
       );
       await $validateSecretReferences(projectId, permission, allSecretReferences);
     }
+
+    // The secret and its reminder are one change: the reminder is checked before anything is written, then
+    // written in the secret's transaction, so either both land or neither does.
+    const preparedReminder = inputSecret.secretReminderRepeatDays
+      ? await reminderService.prepareReminder({
+          actor,
+          actorId,
+          actorOrgId,
+          actorAuthMethod,
+          reminder: {
+            secretId,
+            message: inputSecret.secretReminderNote,
+            repeatDays: inputSecret.secretReminderRepeatDays,
+            recipients: inputSecret.secretReminderRecipients
+          }
+        })
+      : undefined;
 
     const updatedSecret = await secretDAL.transaction(async (tx) => {
       const modifiedSecretsInDB = await fnSecretBulkUpdate({
@@ -847,28 +860,16 @@ export const secretV2BridgeServiceFactory = ({
           secretQueueService,
           encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
           decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
-          generateSecretBlindIndex,
+          blindIndexer,
           tx
         });
       }
 
+      if (preparedReminder) await reminderService.applyReminder(preparedReminder, tx);
+
       await secretDAL.invalidateSecretCacheByProjectId(projectId, tx);
       return modifiedSecretsInDB;
     });
-    if (inputSecret.secretReminderRepeatDays) {
-      await reminderService.createReminder({
-        actor,
-        actorId,
-        actorOrgId,
-        actorAuthMethod,
-        reminder: {
-          secretId: secret.id,
-          message: inputSecret.secretReminderNote,
-          repeatDays: inputSecret.secretReminderRepeatDays,
-          recipients: inputSecret.secretReminderRecipients
-        }
-      });
-    }
 
     if (inputSecret.type === SecretType.Shared) {
       await secretQueueService.syncSecrets({
@@ -2286,19 +2287,22 @@ export const secretV2BridgeServiceFactory = ({
     });
     await $validateSecretReferences(projectId, permission, secretReferences, providedTx);
 
-    const {
-      encryptor: secretManagerEncryptor,
-      decryptor: secretManagerDecryptor,
-      generateSecretBlindIndex
-    } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, providedTx);
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }, providedTx);
+    const blindIndexer = await createSecretBlindIndexer({
+      projectId,
+      orgId: actorOrgId,
+      kmsService,
+      tx: providedTx
+    });
 
     const executeBulkInsert = async (tx: Knex) => {
       const inputSecretsWithBlindIndex = await Promise.all(
         deduplicatedSecrets.map(async (el) => {
           const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
-          const secretValueBlindIndex = el.secretValue
-            ? await generateSecretBlindIndex(Buffer.from(el.secretValue))
-            : null;
+          const blindIndexes = await (el.secretValue
+            ? blindIndexer.generateBlindIndexes(Buffer.from(el.secretValue))
+            : null);
 
           return {
             version: 1,
@@ -2320,7 +2324,7 @@ export const secretV2BridgeServiceFactory = ({
                 : meta.value
             })),
             type: SecretType.Shared,
-            secretValueBlindIndex
+            blindIndexes
           };
         })
       );
@@ -2450,11 +2454,14 @@ export const secretV2BridgeServiceFactory = ({
     );
     const secretPaths = Object.keys(secretsToUpdateGroupByPath);
 
-    const {
-      encryptor: secretManagerEncryptor,
-      decryptor: secretManagerDecryptor,
-      generateSecretBlindIndex
-    } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    const blindIndexer = await createSecretBlindIndexer({
+      projectId,
+      orgId: actorOrgId,
+      kmsService,
+      tx: providedTx
+    });
 
     // Function to execute the bulk update operation
     const executeBulkUpdate = async (tx: Knex) => {
@@ -2695,7 +2702,7 @@ export const secretV2BridgeServiceFactory = ({
                 ? {
                     encryptedValue: secretManagerEncryptor({ plainText: Buffer.from(el.secretValue) }).cipherTextBlob,
                     references: secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences,
-                    secretValueBlindIndex: await generateSecretBlindIndex(Buffer.from(el.secretValue))
+                    blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(el.secretValue))
                   }
                 : {};
 
@@ -2757,7 +2764,7 @@ export const secretV2BridgeServiceFactory = ({
               secretQueueService,
               encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
               decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
-              generateSecretBlindIndex,
+              blindIndexer,
               tx
             });
           }
@@ -2775,9 +2782,9 @@ export const secretV2BridgeServiceFactory = ({
           const inputSecretsForCreate = await Promise.all(
             secretsToCreate.map(async (el) => {
               const references = secretReferencesGroupByInputSecretKey[el.secretKey]?.nestedReferences;
-              const secretValueBlindIndex = el.secretValue
-                ? await generateSecretBlindIndex(Buffer.from(el.secretValue))
-                : null;
+              const blindIndexes = await (el.secretValue
+                ? blindIndexer.generateBlindIndexes(Buffer.from(el.secretValue))
+                : null);
 
               return {
                 version: 1,
@@ -2799,7 +2806,7 @@ export const secretV2BridgeServiceFactory = ({
                     : meta.value
                 })),
                 type: SecretType.Shared,
-                secretValueBlindIndex
+                blindIndexes
               };
             })
           );
@@ -2934,10 +2941,18 @@ export const secretV2BridgeServiceFactory = ({
       }
     });
     const secretsToDeleteSet = new Set(secretsToDelete.map((el) => el.key));
-    if (secretsToDeleteSet.size !== inputSecrets.length)
+    const requestedKeys = inputSecrets.map((el) => el.secretKey);
+    const missingKeys = [...new Set(requestedKeys.filter((key) => !secretsToDeleteSet.has(key)))];
+    if (missingKeys.length)
       throw new NotFoundError({
-        message: `One or more secrets does not exist: ${secretsToDelete.map((el) => el.key).join(", ")}`
+        message: `One or more secrets does not exist: ${missingKeys.join(", ")}`
       });
+    if (secretsToDeleteSet.size !== requestedKeys.length) {
+      const repeatedKeys = [...new Set(requestedKeys.filter((key, index) => requestedKeys.indexOf(key) !== index))];
+      throw new BadRequestError({
+        message: `Each secret can only be deleted once per request: ${repeatedKeys.join(", ")}`
+      });
+    }
     secretsToDelete.forEach((el) => {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionSecretActions.Delete,
@@ -3262,11 +3277,10 @@ export const secretV2BridgeServiceFactory = ({
         resourceMetadataDAL,
         folderCommitService,
         secretApprovalPolicyService,
-        secretApprovalRequestDAL,
-        secretApprovalRequestSecretDAL,
+        secretApprovalRequestCreationFns,
         secretQueueService,
-        reminderDAL,
-        reminderService
+        reminderService,
+        secretValidationRuleService
       })
     );
 
@@ -3952,6 +3966,7 @@ export const secretV2BridgeServiceFactory = ({
     const updatedSecretVersion = await secretVersionDAL.updateById(versionId, {
       encryptedValue,
       secretValueBlindIndex: null,
+      secretValueOrgBlindIndex: null,
       isRedacted: true,
       redactedAt: new Date(),
       redactedByUserId: actorId

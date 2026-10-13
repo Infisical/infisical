@@ -43,7 +43,7 @@ import { useUpdateWsEnvironment } from "@app/hooks/api";
 import { ProjectDeletedEnvActor } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-type PopUpKeys = "updateEnv" | "deleteEnv" | "restoreEnv" | "hardDeleteEnv" | "upgradePlan";
+type PopUpKeys = "updateEnv" | "deleteEnv" | "restoreEnv" | "hardDeleteEnv";
 
 type EnvPayload = { name: string; slug: string; id: string; deleteAfter?: string };
 

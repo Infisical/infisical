@@ -693,7 +693,7 @@ export const microsoftTeamsServiceFactory = ({
 
         const lastArg = args[args.length - 1];
         if (typeof lastArg === "function") {
-          lastArg();
+          (lastArg as () => void)();
         }
 
         return this;

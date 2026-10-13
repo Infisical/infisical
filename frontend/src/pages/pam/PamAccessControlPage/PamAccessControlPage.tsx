@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Shield } from "lucide-react";
 
-import { PageHeader } from "@app/components/v2";
 import { Badge, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { useOrganization, useProject } from "@app/context";
 import {
   useGetWorkspaceUsers,

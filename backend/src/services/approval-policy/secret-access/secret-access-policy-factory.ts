@@ -1,0 +1,109 @@
+import { NotFoundError } from "@app/lib/errors";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+
+import { TApprovalPolicyDALFactory } from "../approval-policy-dal";
+import { ApprovalPolicyType, ApprovalRequestGrantStatus } from "../approval-policy-enums";
+import { TApprovalActor, TApprovalResource } from "../approval-policy-types";
+import { TApprovalRequestGrantsDALFactory } from "../approval-request-dal";
+import {
+  createSecretAccessGrantWithPrivilege,
+  getSecretAccessAllowedSelfApprovals,
+  getSecretAccessRequestData,
+  hasSameAccessCriteria,
+  isSecretAccessBreakGlassEligible,
+  validateSecretAccessConstraints
+} from "./secret-access-policy-fns";
+import { SecretAccessPolicyRequestDataSchema } from "./secret-access-policy-schemas";
+import { TSecretAccessPolicy, TSecretAccessPolicyInputs, TSecretAccessRequestData } from "./secret-access-policy-types";
+
+type TSecretAccessApprovalGlobalResourceDep = {
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findSecretAccessPolicyByEnvIdAndSecretPath">;
+  approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "find" | "create">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create">;
+};
+
+export type TSecretAccessApprovalGlobalResource = ReturnType<typeof secretAccessApprovalGlobalResourceFactory>;
+
+export const secretAccessApprovalGlobalResourceFactory = ({
+  approvalPolicyDAL,
+  approvalRequestGrantsDAL,
+  additionalPrivilegeDAL
+}: TSecretAccessApprovalGlobalResourceDep) =>
+  ({
+    matchPolicy: async (projectId, inputs) => {
+      const policy = await approvalPolicyDAL.findSecretAccessPolicyByEnvIdAndSecretPath({
+        projectId,
+        envId: inputs.envId,
+        secretPath: inputs.secretPath
+      });
+
+      return policy as TSecretAccessPolicy | null;
+    },
+
+    canAccess: async (projectId, actorId, inputs) => {
+      const grants = await approvalRequestGrantsDAL.find({
+        granteeUserId: actorId,
+        type: ApprovalPolicyType.SecretAccess,
+        status: ApprovalRequestGrantStatus.Active,
+        projectId,
+        revokedAt: null
+      });
+
+      const now = new Date();
+
+      return (
+        grants.find(
+          (grant) =>
+            (!grant.expiresAt || new Date(grant.expiresAt) > now) &&
+            hasSameAccessCriteria(SecretAccessPolicyRequestDataSchema.safeParse(grant.attributes).data ?? null, inputs)
+        ) ?? null
+      );
+    },
+
+    validateConstraints: (policy, requestData) =>
+      validateSecretAccessConstraints(policy.constraints.constraints, requestData),
+
+    postApprovalTxRoutine: async (request, tx, breakGlass?: { bypassReason: string }) => {
+      const { requesterId } = request;
+      if (!requesterId) {
+        throw new NotFoundError({ message: "The user who created this access request no longer exists" });
+      }
+
+      const grant = await createSecretAccessGrantWithPrivilege(
+        {
+          projectId: request.projectId,
+          requestId: request.id,
+          granteeUserId: requesterId,
+          data: getSecretAccessRequestData(request),
+          breakGlass
+        },
+        { approvalRequestGrantsDAL, additionalPrivilegeDAL },
+        tx
+      );
+
+      return { grantId: grant.id };
+    },
+
+    isBreakGlassEligible: async ({
+      policy,
+      bypassers,
+      actor,
+      userGroupIds
+    }: {
+      policy: {
+        enforcementLevel: string;
+        constraints?: unknown;
+        allowedSelfApprovals?: boolean;
+      };
+      bypassers: { type: string; id?: string | null }[];
+      actor: Pick<TApprovalActor, "id">;
+      userGroupIds: Set<string>;
+    }) =>
+      isSecretAccessBreakGlassEligible({
+        enforcementLevel: policy.enforcementLevel,
+        allowedSelfApprovals: getSecretAccessAllowedSelfApprovals(policy),
+        bypassers,
+        actorUserId: actor.id,
+        actorGroupIds: userGroupIds
+      })
+  }) satisfies TApprovalResource<TSecretAccessPolicyInputs, TSecretAccessPolicy, TSecretAccessRequestData>;

@@ -12,7 +12,9 @@ export const AgentVaultQuickstartPicker = () => {
   const AGENT_IMAGES = {
     "claude-code": { dark: "claude-code.svg" },
     codex: { light: "OpenAI.png", dark: "OpenAIWhite.png" },
-    opencode: { light: "opencode.svg", dark: "opencode.on-dark.svg" }
+    hermes: { light: "hermes.png", dark: "hermes.on-dark.png" },
+    opencode: { light: "opencode.svg", dark: "opencode.on-dark.svg" },
+    openclaw: { dark: "openclaw.svg" }
   };
 
   const SERVICE_IMAGES = {
@@ -140,7 +142,7 @@ export const AgentVaultQuickstartPicker = () => {
     "vercel",
     "xai",
   ]);
-  const KNOWN_AGENT_IDS = new Set(["claude-code", "codex", "opencode"]);
+  const KNOWN_AGENT_IDS = new Set(["claude-code", "codex", "hermes", "opencode", "openclaw"]);
 
   const SERVICES = [
     { id: "custom", label: "Custom API", chip: "a custom API" },
@@ -188,6 +190,8 @@ export const AgentVaultQuickstartPicker = () => {
     { id: "claude-code", label: "Claude Code", chip: "Claude Code" },
     { id: "codex", label: "Codex", chip: "Codex" },
     { id: "opencode", label: "OpenCode", chip: "OpenCode" },
+    { id: "hermes", label: "Hermes Agent", chip: "Hermes Agent" },
+    { id: "openclaw", label: "OpenClaw", chip: "OpenClaw" },
   ];
 
   const SELECTION_EVENT = "av-quickstart-selection-change";
@@ -527,7 +531,7 @@ export const AgentVaultBranch = ({
     "vercel",
     "xai",
   ]);
-  const KNOWN_AGENT_IDS = new Set(["claude-code", "codex", "opencode"]);
+  const KNOWN_AGENT_IDS = new Set(["claude-code", "codex", "hermes", "opencode", "openclaw"]);
   const [selection, setSelection] = useState({ service: null, agent: null });
 
   useEffect(() => {

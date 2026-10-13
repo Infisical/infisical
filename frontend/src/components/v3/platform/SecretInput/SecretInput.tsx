@@ -35,6 +35,13 @@ const markInvisibleChars = (text: string, chunkKey: number) => {
   return nodes;
 };
 
+// One dot per character, keeping line breaks, so a value being typed shows its length and shape the
+// way a password field does.
+const maskPerCharacter = (content: string) => [
+  Array.from(content, (char) => (char === "\n" ? "\n" : "\u2022")).join(""),
+  <br key="secret-value-mask-linebreak" />
+];
+
 const syntaxHighlight = (
   content?: string | null,
   isVisible?: boolean,
@@ -45,7 +52,8 @@ const syntaxHighlight = (
   hoveredPart?: string,
   isCmdOrCtrlPressed?: boolean,
   onClickSegment?: (segment: string, allSegments: string[]) => void,
-  placeholder?: string
+  placeholder?: string,
+  isMaskedPerCharacter?: boolean
 ) => {
   if (isLoadingValue) return HIDDEN_SECRET_VALUE;
   if (isErrorLoadingValue)
@@ -54,7 +62,7 @@ const syntaxHighlight = (
   if (placeholder && (content === "" || !content)) return placeholder;
   if (content === "") return "EMPTY";
   if (!content) return "EMPTY";
-  if (!isVisible) return HIDDEN_SECRET_VALUE;
+  if (!isVisible) return isMaskedPerCharacter ? maskPerCharacter(content) : HIDDEN_SECRET_VALUE;
 
   let skipNext = false;
   const formattedContent = content.split(REGEX).flatMap((el, i) => {
@@ -141,6 +149,9 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   variant?: SecretInputVariant;
   isVisible?: boolean;
   valueAlwaysHidden?: boolean;
+  // Masks with one dot per character instead of a fixed-length mask, which reveals the value's
+  // length. Meant for a value the user is typing, not a stored one.
+  maskEachCharacter?: boolean;
   isImport?: boolean;
   isReadOnly?: boolean;
   isDisabled?: boolean;
@@ -163,6 +174,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       isVisible,
       isImport,
       valueAlwaysHidden,
+      maskEachCharacter,
       containerClassName,
       onBlur,
       isDisabled,
@@ -246,6 +258,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             className={cn(
               "pointer-events-none whitespace-break-spaces",
               commonClassName,
+              maskEachCharacter && "font-mono",
               !value && "text-muted",
               shouldShowMask && "tracking-normal"
             )}
@@ -262,7 +275,8 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
               hoveredPart,
               isCmdOrCtrlPressed,
               onClickSegment,
-              placeholder
+              placeholder,
+              maskEachCharacter
             )}
           </div>
           <textarea
@@ -273,7 +287,10 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             className={cn(
               "no-scrollbar absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent focus:border-0",
               variant === "default" && "px-2.5 py-1",
-              commonClassName
+              commonClassName,
+              // Monospaced in both layers, so each dot sits over the character it hides and the caret
+              // in the transparent textarea lines up with them.
+              maskEachCharacter && "font-mono"
             )}
             onFocus={(evt) => {
               onFocus?.(evt);

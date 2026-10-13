@@ -148,6 +148,7 @@ I
 (?i)keypairs
 (?i)keystore
 (?i)kubeconfig
+(?i)launchd
 (?i)liveness
 (?i)lookups
 (?i)loopback
@@ -219,6 +220,7 @@ I
 (?i)toolchain
 (?i)toolset
 (?i)tolerations
+(?i)truststore
 (?i)uncontained
 (?i)unconfigured
 (?i)uncredentialed
@@ -350,6 +352,9 @@ I
 (?i)GCP Secret Manager
 (?i)Google Secret Manager
 (?i)Go SDK
+# Keeper and Commander are product names that are also ordinary nouns.
+(?i)Keeper
+(?i)Commander
 
 # PAM is both the product and a lowercase CLI subcommand.
 (?i)PAM

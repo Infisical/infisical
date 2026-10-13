@@ -3,7 +3,6 @@ import { unpackRules } from "@casl/ability/extra";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import axios from "axios";
 
-import { BreadcrumbTypes } from "@app/components/v2";
 import {
   OrgPermissionAdminConsoleAction,
   OrgPermissionSet,
@@ -23,7 +22,6 @@ import {
   roleQueryKeys
 } from "@app/hooks/api/roles/queries";
 import { AgentVaultLayout } from "@app/layouts/AgentVaultLayout";
-import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSelect";
 
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/agent-vault/_agent-vault-layout"
@@ -92,7 +90,7 @@ export const Route = createFileRoute(
     return {
       implicitProjectId: agentVaultProjectId,
       implicitProductType: ProjectType.AgentVault,
-      breadcrumbs: [{ type: BreadcrumbTypes.Component, component: ProjectSelect }]
+      breadcrumbs: []
     };
   }
 });

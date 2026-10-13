@@ -23,7 +23,6 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Spinner } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -50,6 +49,7 @@ import {
   Pagination,
   SelectedActionBar,
   Skeleton,
+  Spinner,
   Table,
   TableBody,
   TableCell,
@@ -419,7 +419,7 @@ export const CmekTable = () => {
                 placeholder="Search keys by name or ID..."
               />
             </InputGroup>
-            {isFetching && <Spinner size="xs" />}
+            {isFetching && <Spinner size="xs" label="Loading keys" />}
           </div>
 
           {!isPending && keys.length === 0 ? (

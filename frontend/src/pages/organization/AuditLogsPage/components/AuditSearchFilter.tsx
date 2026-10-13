@@ -12,6 +12,11 @@ import {
   ActorSuggestion,
   useAuditLogActorSuggestions
 } from "@app/hooks/api/auditLogs/useAuditLogActorSuggestions";
+import {
+  AUDIT_LOG_EVENT_CLASSES,
+  auditLogEventClassToNameMap
+} from "@app/hooks/api/auditLogSettings/constants";
+import { AuditLogEventClass } from "@app/hooks/api/auditLogSettings/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 export interface AppliedFilter {
@@ -36,6 +41,14 @@ const FILTER_PROPERTIES: FilterProperty[] = [
     suggestions: Object.entries(eventToNameMap).map(([value, label]) => ({
       value,
       label: `${value} (${label})`
+    }))
+  },
+  {
+    key: "class",
+    hints: "management, authentication, authorization, data-access",
+    suggestions: AUDIT_LOG_EVENT_CLASSES.map((value) => ({
+      value,
+      label: `${value} (${auditLogEventClassToNameMap[value]})`
     }))
   },
   {
@@ -64,7 +77,7 @@ const FILTER_PROPERTIES: FilterProperty[] = [
 const PROJECT_DEPENDENT_KEYS = new Set(["environment", "secret_path", "secret_key"]);
 
 // Filters available to every product. Anything beyond these is product-specific
-const GENERIC_FILTER_KEYS = ["event", "actor", "actor_id", "source"];
+const GENERIC_FILTER_KEYS = ["event", "class", "actor", "actor_id", "source"];
 
 // Per-product filter keys. Products not listed fall back to the full set (secrets default)
 const PRODUCT_FILTER_KEYS: Partial<Record<ProjectType, string[]>> = {
@@ -210,7 +223,7 @@ export const AuditSearchFilter = ({
 
     if (editingIndex !== null) {
       updated = filters.map((filter, index) => (index === editingIndex ? newFilter : filter));
-    } else if (property === "event") {
+    } else if (property === "event" || property === "class") {
       if (filters.some((filter) => filter.property === property && filter.value === value)) {
         resetQuery();
         focusInput();
@@ -613,6 +626,7 @@ export const appliedFiltersToLogFilter = (
   filters: AppliedFilter[]
 ): {
   eventType: EventType[];
+  eventClass: AuditLogEventClass[];
   userAgentType?: UserAgentType;
   actorType?: ActorType;
   actor?: string;
@@ -621,13 +635,18 @@ export const appliedFiltersToLogFilter = (
   secretPath?: string;
   secretKey?: string;
 } => {
-  const result: ReturnType<typeof appliedFiltersToLogFilter> = { eventType: [] };
+  const result: ReturnType<typeof appliedFiltersToLogFilter> = { eventType: [], eventClass: [] };
 
   filters.forEach(({ property, value }) => {
     switch (property) {
       case "event":
         if (Object.values(EventType).includes(value as EventType)) {
           result.eventType.push(value as EventType);
+        }
+        break;
+      case "class":
+        if (Object.values(AuditLogEventClass).includes(value as AuditLogEventClass)) {
+          result.eventClass.push(value as AuditLogEventClass);
         }
         break;
       case "source":

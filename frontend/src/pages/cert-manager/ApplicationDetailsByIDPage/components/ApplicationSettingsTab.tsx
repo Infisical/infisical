@@ -7,7 +7,10 @@ import { Link, useParams } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
 import { MoreHorizontalIcon, PencilIcon, PlusIcon, Settings2Icon, Trash2Icon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  CertificateApprovalPoliciesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal } from "@app/components/v2";
 import {
@@ -72,16 +75,17 @@ import {
   useGetPkiApplicationPermissions
 } from "@app/hooks/api/pkiApplications";
 import { PolicyModal } from "@app/pages/cert-manager/ApprovalsPage/components/PolicyTab/components/PolicyModal";
+import { CertificateAlertsCard } from "@app/pages/cert-manager/components/CertificateAlerts/CertificateAlertsCard";
+import { CertificateAlertScopeKind } from "@app/pages/cert-manager/components/CertificateAlerts/types";
 import { CreateProfileModal } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/CreateProfileModal";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
-import { ApplicationAlertsCard } from "./ApplicationAlerts/ApplicationAlertsCard";
-import { LegacyApplicationAlertsCard } from "./ApplicationAlerts/LegacyApplicationAlertsCard";
 import {
   ConfigureEnrollmentModal,
   EnrollmentMethod,
   METHOD_LABELS
 } from "./ConfigureEnrollmentModal";
+import { LegacyApplicationAlertsCard } from "./LegacyApplicationAlertsCard";
 
 type Props = { application: TPkiApplication; profiles: TPkiApplicationProfile[] };
 
@@ -232,10 +236,7 @@ const ApplicationPoliciesTable = ({
 };
 
 export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
-  const { orgId, projectId } = useParams({ strict: false }) as {
-    orgId?: string;
-    projectId?: string;
-  };
+  const { orgId } = useParams({ strict: false }) as { orgId?: string };
   const { data: permissionData } = useGetPkiApplicationPermissions(application.id);
   const appAbility = permissionData?.permission;
   const canManageProfileAttachments = Boolean(
@@ -300,16 +301,16 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
 
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "policy",
-    "deletePolicy",
-    "upgradePlan"
+    "deletePolicy"
   ] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   // Creation only; existing policies keep enforcing and their requests can still be approved.
   const handleCreatePolicy = () => {
     if (!subscription.pkiApprovals) {
-      handlePopUpOpen("upgradePlan", {
-        isEnterpriseFeature: true,
-        text: "Certificate approval policies are available on Infisical's Enterprise plan."
+      openUpgradeGate({
+        intent: CertificateApprovalPoliciesUpgradeIntent,
+        paywallKey: "cert-manager.application-settings"
       });
       return;
     }
@@ -486,10 +487,9 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                     <TableRow key={p.profileId}>
                       <TableCell className="font-mono">
                         <Link
-                          to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId"
+                          to="/organizations/$orgId/cert-manager/certificate-profiles/$profileId"
                           params={{
                             orgId: orgId ?? "",
-                            projectId: projectId ?? "",
                             profileId: p.profileId
                           }}
                           search={{ from: "application", applicationName: application.name }}
@@ -618,10 +618,13 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         </CardContent>
       </Card>
 
-      <ApplicationAlertsCard
+      <CertificateAlertsCard
         projectId={application.projectId}
-        applicationId={application.id}
-        applicationName={application.name}
+        scope={{
+          kind: CertificateAlertScopeKind.Application,
+          applicationId: application.id,
+          applicationName: application.name
+        }}
         canCreate={canCreateAlerts}
         canEdit={canEditAlerts}
         canDelete={canDeleteAlerts}
@@ -633,12 +636,7 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
         handlePopUpToggle={handlePopUpToggle}
         applicationId={application.id}
       />
-      <UpgradePlanModal
-        paywallKey="cert-manager.application-settings"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { text: string })?.text}
-      />
+      {upgradeGate}
       <DeleteActionModal
         isOpen={popUp.deletePolicy.isOpen}
         deleteKey="delete"

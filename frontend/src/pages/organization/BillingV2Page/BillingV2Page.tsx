@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
+import { getSafeUpgradeReturnPath } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
+import { PageHeader } from "@app/components/v3/platform";
 import {
   OrgPermissionBillingActions,
   OrgPermissionSubjects,
@@ -16,10 +17,12 @@ import { useDebounce } from "@app/hooks";
 import {
   BillingV2BreakdownScopeKind,
   useAddBillingV2PaymentMethod,
+  useConfirmBillingV2TrialPayment,
   useCreateBillingV2PortalSession,
   useGetBillingV2Catalog,
   useGetBillingV2Organizations,
-  useGetBillingV2Overview
+  useGetBillingV2Overview,
+  useRefreshBillingV2Entitlements
 } from "@app/hooks/api";
 
 import { Overview } from "./components/Overview";
@@ -39,7 +42,7 @@ const ORG_PAGE_SIZE = 10;
 // from the "commit and save" nudge) instead of the default plans view.
 type BillingV2Flow =
   | { type: "sheet"; prodId: string; view?: "commitment" }
-  | { type: "breakdown"; prodId: string };
+  | { type: "breakdown"; prodId: string; dimensionKey?: string };
 
 export const BillingV2Page = () => {
   const { t } = useTranslation();
@@ -83,6 +86,8 @@ export const BillingV2Page = () => {
   const { data: catalog = [] } = useGetBillingV2Catalog(selectedOrgId);
   const createPortalSession = useCreateBillingV2PortalSession();
   const addPaymentMethod = useAddBillingV2PaymentMethod();
+  const confirmTrialPayment = useConfirmBillingV2TrialPayment();
+  const refreshEntitlements = useRefreshBillingV2Entitlements();
 
   // More than one organization means the server decided this caller may switch: an instance admin on
   // self-hosted, where one licence spans every org on the box. Cloud is bounded to the logged-in root
@@ -92,7 +97,29 @@ export const BillingV2Page = () => {
   const showOrgFilter = rootOrgCount > 1;
 
   const [flow, setFlow] = useState<BillingV2Flow | null>(null);
+  const openedUpgradeProduct = useRef(false);
   const [removeProdId, setRemoveProdId] = useState<string | null>(null);
+  const [trialApproval, setTrialApproval] = useState<{ orgId: string; url: string } | null>(null);
+  const trialApprovalUrl = trialApproval?.orgId === selectedOrgId ? trialApproval.url : null;
+  const deepLinkSearch = new URLSearchParams(window.location.search);
+  const upgradeProduct = deepLinkSearch.get("upgradeProduct");
+  const upgradeReturnPath = getSafeUpgradeReturnPath(
+    deepLinkSearch.get("upgradeReturnPath"),
+    window.location.origin
+  );
+
+  useEffect(() => {
+    if (
+      flow ||
+      openedUpgradeProduct.current ||
+      !upgradeProduct ||
+      !catalog.some((product) => product.id === upgradeProduct)
+    ) {
+      return;
+    }
+    openedUpgradeProduct.current = true;
+    setFlow({ type: "sheet", prodId: upgradeProduct });
+  }, [catalog, flow, upgradeProduct]);
 
   // Stripe redirects back with ?checkout=success|canceled; surface the outcome and refresh state.
   useEffect(() => {
@@ -105,7 +132,7 @@ export const BillingV2Page = () => {
         type: "success",
         text: "Subscription started. It may take a moment to appear here."
       });
-      refetch();
+      refreshEntitlements.mutate({ orgId: selectedOrgId });
     } else if (checkout === "canceled") {
       createNotification({ type: "info", text: "Checkout was canceled." });
     }
@@ -132,7 +159,20 @@ export const BillingV2Page = () => {
 
   const removeProd = removeProdId ? catalogById(catalog, removeProdId) : undefined;
 
-  const close = () => setFlow(null);
+  const close = () => {
+    setFlow(null);
+    if (openedUpgradeProduct.current) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("upgradeProduct");
+      url.searchParams.delete("upgradeReturnPath");
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${url.pathname}${url.search}${url.hash}`
+      );
+      openedUpgradeProduct.current = false;
+    }
+  };
 
   const redirectToPortal = () => {
     createPortalSession.mutate(
@@ -163,8 +203,8 @@ export const BillingV2Page = () => {
     setFlow({ type: "sheet", prodId: productId, view: "commitment" });
   };
 
-  const onViewBreakdown = (productId: string) => {
-    setFlow({ type: "breakdown", prodId: productId });
+  const onViewBreakdown = (productId: string, dimensionKey?: string) => {
+    setFlow({ type: "breakdown", prodId: productId, dimensionKey });
   };
 
   const hasActiveSubscription = overview?.subState === "active";
@@ -181,6 +221,45 @@ export const BillingV2Page = () => {
         }
       }
     );
+  };
+
+  const onCompleteTrialPayment = () => {
+    const orgIdAtRequest = selectedOrgId;
+    confirmTrialPayment.mutate(
+      {
+        orgId: orgIdAtRequest,
+        returnPath: window.location.pathname
+      },
+      {
+        onSuccess: (result) => {
+          if (result.outcome === "upgraded") {
+            createNotification({
+              type: "success",
+              text: "Payment confirmed. It may take a moment for your plan to update here."
+            });
+            return;
+          }
+          if (result.outcome === "payment_action_required") {
+            setTrialApproval({ orgId: orgIdAtRequest, url: result.redirectUrl });
+            return;
+          }
+          window.location.href = result.redirectUrl;
+        }
+      }
+    );
+  };
+
+  // One use per link, so another trial still awaiting payment gets a fresh one on the next click.
+  const onOpenTrialApproval = () => {
+    if (!trialApprovalUrl) {
+      return;
+    }
+    window.open(trialApprovalUrl, "_blank", "noopener,noreferrer");
+    setTrialApproval(null);
+    const orgIdAtApproval = selectedOrgId;
+    window.addEventListener("focus", () => refreshEntitlements.mutate({ orgId: orgIdAtApproval }), {
+      once: true
+    });
   };
 
   // Billing name/email and address are edited in the Stripe billing portal.
@@ -239,11 +318,17 @@ export const BillingV2Page = () => {
                 setBreakdownScope("organization");
                 setSelectedOrgId(nextId);
               }}
+              breakdownOrgId={selectedOrgId}
+              breakdownScope={showOrgFilter ? breakdownScope : "organization"}
               onSearchOrgs={setOrgSearch}
               showOrgFilter={showOrgFilter}
               onUpdatePayment={onUpdatePayment}
               onEditDetails={onEditDetails}
               onContact={onContact}
+              onCompleteTrialPayment={onCompleteTrialPayment}
+              isCompletingTrialPayment={confirmTrialPayment.isPending}
+              hasTrialApproval={Boolean(trialApprovalUrl)}
+              onOpenTrialApproval={onOpenTrialApproval}
               onRetry={onRetry}
               canManageBilling={canManageBilling}
             />
@@ -258,10 +343,15 @@ export const BillingV2Page = () => {
           entitlement={overview?.entitlements[flow.prodId]}
           hasActiveSubscription={hasActiveSubscription}
           initialView={flow.view}
-          returnPath={window.location.pathname}
+          returnPath={upgradeReturnPath ?? window.location.pathname}
           renewsOn={overview?.entitlements[flow.prodId]?.renewsOn ?? null}
           selfServe={overview?.selfServe ?? true}
           onClose={close}
+          onEntitlementChanged={() => {
+            if (upgradeReturnPath) {
+              window.location.assign(upgradeReturnPath);
+            }
+          }}
           onRemove={setRemoveProdId}
           onContact={() => {
             close();
@@ -276,6 +366,7 @@ export const BillingV2Page = () => {
           scope={showOrgFilter ? breakdownScope : "organization"}
           prod={catalogById(catalog, flow.prodId)!}
           entitlement={overview?.entitlements[flow.prodId]}
+          initialDimensionKey={flow.dimensionKey}
           onClose={close}
         />
       )}

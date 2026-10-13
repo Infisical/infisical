@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { TriangleAlert } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { OrgPermissionBillingActions, OrgPermissionSubjects } from "@app/context";
 
 // Standalone billing page for offline (air-gapped) licenses. It makes no API calls — the license

@@ -1,0 +1,6 @@
+<Note>
+  We recommend running the proxy on a different machine than the agent. If they run on the same machine, the agent could read the proxy's [state directory](/documentation/platform/agent-vault/proxies#state-directory). That directory contains sensitive values,
+  like the proxy's access token and the private key of its certificate authority.
+
+  We also recommend keeping both machines on the same private network. This is because every request the agent makes goes through the proxy, and a round trip between networks adds latency to every request.
+</Note>

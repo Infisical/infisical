@@ -13,10 +13,10 @@ import {
   FilterableSelect,
   FormControl,
   Select,
-  SelectItem,
-  Spinner
+  SelectItem
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+import { Spinner } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration, useGetIntegrationAuthCircleCIOrganizations } from "@app/hooks/api";

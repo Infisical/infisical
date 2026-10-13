@@ -223,7 +223,7 @@ export const AgentVaultProxiesPage = () => {
   };
 
   return (
-    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
       <Helmet>
         <title>{t("common.head-title", { title: "Proxies" })}</title>
       </Helmet>

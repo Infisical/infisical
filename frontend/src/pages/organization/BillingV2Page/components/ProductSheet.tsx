@@ -50,6 +50,7 @@ import {
   dimCommitManageable,
   dimCommitted,
   fmtMoney,
+  fmtMoneyCents,
   isMeteredCadence,
   unitForCount,
   unitPrice
@@ -97,7 +98,7 @@ const dimPriceLine = (
     variant === "headline"
       ? `/ ${dim.noun} / ${perMonth ? "month" : cadenceWord(cadence)}`
       : `per ${dim.noun} / ${perMonth ? "mo" : cadenceWordShort(cadence)}`;
-  const line: PriceLine = { amount: fmtMoney(amount, 2), unit, metered };
+  const line: PriceLine = { amount: fmtMoneyCents(amount), unit, metered };
   if (metered && dim.included > 0) {
     line.prefix = `First ${dim.included.toLocaleString()} ${unitForCount(dim.noun, dim.included)} included, then`;
   }
@@ -137,7 +138,7 @@ const PlanPricing = ({ plan, cadence }: { plan: BillingV2Plan; cadence: BillingV
   const annual = cad === "annual";
   let headline: PriceLine | null = plan.base
     ? {
-        amount: fmtMoney(annual ? unitPrice(plan.base, cad) / 12 : unitPrice(plan.base, cad)),
+        amount: fmtMoneyCents(annual ? unitPrice(plan.base, cad) / 12 : unitPrice(plan.base, cad)),
         unit: annual ? "/ month" : `/ ${cadenceWord(cad)}`
       }
     : null;
@@ -462,6 +463,7 @@ type ProductSheetProps = {
   // notice points to sales; the sales-led "Contact sales" path stays available.
   selfServe: boolean;
   onClose: () => void;
+  onEntitlementChanged?: () => void;
   onRemove: (prodId: string) => void;
   onContact: (prod: BillingV2CatalogProduct) => void;
 };
@@ -478,6 +480,7 @@ export const ProductSheet = ({
   renewsOn,
   selfServe,
   onClose,
+  onEntitlementChanged,
   onRemove,
   onContact
 }: ProductSheetProps) => {
@@ -552,7 +555,8 @@ export const ProductSheet = ({
       const result = await startTrial.mutateAsync({
         orgId,
         productId: prod.id,
-        plan: trialConfirmTier
+        plan: trialConfirmTier,
+        returnPath
       });
       // Card-first: awaiting_card means no card is on file and the trial is NOT granted yet. Send the
       // customer to the card-setup checkout; completing it grants the trial via webhook.
@@ -572,6 +576,7 @@ export const ProductSheet = ({
         type: "success",
         text: `Your ${prod.name} trial has started.`
       });
+      onEntitlementChanged?.();
       onClose();
     } catch {
       setTrialConfirmTier(null);
@@ -635,7 +640,10 @@ export const ProductSheet = ({
               }
               onStartTrial={() => setTrialConfirmTier(activatePlanObj.tier)}
               onBack={() => setView("plans")}
-              onDone={onClose}
+              onDone={() => {
+                onEntitlementChanged?.();
+                onClose();
+              }}
             />
           )}
 
@@ -649,7 +657,10 @@ export const ProductSheet = ({
               selfServe={selfServe}
               isTrialConversion={entitlement?.trialPlan === upgradePlanObj.tier}
               onBack={() => setView("plans")}
-              onDone={onClose}
+              onDone={() => {
+                onEntitlementChanged?.();
+                onClose();
+              }}
             />
           )}
 

@@ -4,6 +4,10 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info, PencilIcon, Plus, ShieldCheck, Trash2 } from "lucide-react";
 
+import {
+  PostQuantumCertificatesUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
@@ -477,6 +481,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
   ) => {
     const { currentProject } = useProject();
     const { subscription } = useSubscription();
+    const { openUpgradeGate, upgradeGate } = useUpgradeGate();
     const createPolicy = useCreateCertificatePolicy();
     const updatePolicy = useUpdateCertificatePolicy();
 
@@ -967,7 +972,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         await updatePolicy.mutateAsync({ policyId: policy.id, ...transformedData });
       } else {
         if (!currentProject?.id) {
-          throw new Error("Project ID is required for creating a policy");
+          throw new Error("Certificate Manager could not be loaded. Please refresh and try again.");
         }
         const createdPolicy = await createPolicy.mutateAsync({
           projectId: currentProject.id,
@@ -1164,10 +1169,16 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
                 id={`${fieldName}-${alg}`}
                 variant="project"
                 isChecked={isSelected}
-                isDisabled={isPqcGated}
-                onCheckedChange={(checked) =>
-                  toggleAlgorithm(fieldName, key, selected, alg, Boolean(checked))
-                }
+                onCheckedChange={(checked) => {
+                  if (isPqcGated && checked) {
+                    openUpgradeGate({
+                      intent: PostQuantumCertificatesUpgradeIntent,
+                      paywallKey: "cert-manager.policy-algorithm"
+                    });
+                    return;
+                  }
+                  toggleAlgorithm(fieldName, key, selected, alg, Boolean(checked));
+                }}
               />
               <label
                 htmlFor={`${fieldName}-${alg}`}
@@ -1827,6 +1838,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
             </SectionToggle>
           </div>
         )}
+        {upgradeGate}
       </div>
     );
   }

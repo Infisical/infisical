@@ -1,6 +1,6 @@
 import { useFormContext } from "react-hook-form";
 
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 
 import { TSecretScanningDataSourceForm } from "../schemas";
@@ -18,10 +18,16 @@ export const GitHubDataSourceReviewFields = () => {
 
   return (
     <SecretScanningDataSourceConfigReviewSection>
-      {connection && <GenericFieldLabel label="Connection">{connection.name}</GenericFieldLabel>}
-      <GenericFieldLabel label="Scan Repositories">
-        {shouldScanAll ? "All" : includeRepos.join(", ")}
-      </GenericFieldLabel>
+      {connection && (
+        <Detail>
+          <DetailLabel>Connection</DetailLabel>
+          <DetailValue>{connection.name || "None"}</DetailValue>
+        </Detail>
+      )}
+      <Detail>
+        <DetailLabel>Scan Repositories</DetailLabel>
+        <DetailValue>{shouldScanAll ? "All" : includeRepos.join(", ") || "None"}</DetailValue>
+      </Detail>
     </SecretScanningDataSourceConfigReviewSection>
   );
 };

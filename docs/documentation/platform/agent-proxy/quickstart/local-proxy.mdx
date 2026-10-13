@@ -80,7 +80,7 @@ infisical secrets agent-proxy run --projectId=<project-id> --env=dev --path=/cod
 This one command starts the proxy and your agent together, and shuts the proxy down when the agent exits. The agent behaves exactly as if you had launched it directly. In its environment it finds `GITHUB_TOKEN`, set to the fake `ghp_…` placeholder, and uses it like a normal token. Calls to `api.github.com` get the real token swapped in as they pass through; everything else goes out untouched. Meanwhile the agent is sandboxed: it can't read your keyring, your `~/.aws` or `~/.ssh`, or your Infisical token.
 
 <Note>
-  In a directory with an `.infisical.json` (from `infisical init`) you can drop `--projectId`. `--env` and `--path` fall back to environment variables too, so in a configured shell this is just `agent-proxy run -- claude`.
+  In a directory with an `.infisical.yaml` (from `infisical init`) you can drop `--projectId`. `--env` and `--path` fall back to environment variables too, so in a configured shell this is just `agent-proxy run -- claude`.
 </Note>
 
 <Note>

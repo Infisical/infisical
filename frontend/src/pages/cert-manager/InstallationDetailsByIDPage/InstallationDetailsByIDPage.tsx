@@ -27,10 +27,11 @@ import { InstallationCertificatesSection, InstallationDetailsSection } from "./c
 
 const Page = () => {
   const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
-  const { installationId, projectId, orgId } = useParams({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/discovery/installations/$installationId"
+  const { installationId, orgId } = useParams({
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/discovery/installations/$installationId"
   });
 
   const { data: installation, isLoading } = useGetPkiInstallation({ installationId });
@@ -56,8 +57,8 @@ const Page = () => {
       });
       handlePopUpClose("deleteInstallation");
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery",
-        params: { orgId, projectId },
+        to: "/organizations/$orgId/cert-manager/discovery",
+        params: { orgId },
         search: { selectedTab: "installations" }
       });
     } catch {
@@ -74,12 +75,12 @@ const Page = () => {
 
   return (
     <div className="mx-auto flex flex-col justify-between text-foreground-inverse">
-      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           backLink={
             <Link
-              to="/organizations/$orgId/projects/cert-manager/$projectId/discovery"
-              params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+              to="/organizations/$orgId/cert-manager/discovery"
+              params={{ orgId: currentOrg.id }}
               search={{ selectedTab: "installations" }}
             >
               <ChevronLeftIcon size={16} />

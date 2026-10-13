@@ -60,25 +60,30 @@ const toggleThumbVariants = cva(
   )
 );
 
-type ToggleProps = React.ComponentProps<typeof SwitchPrimitive.Root> &
+type ToggleProps = React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Root> &
   VariantProps<typeof toggleVariants> & {
     size?: "sm" | "default";
   };
 
-function Toggle({ className, variant, size = "default", ...props }: ToggleProps) {
-  return (
-    <SwitchPrimitive.Root
-      data-slot="toggle"
-      data-size={size}
-      className={cn(toggleVariants({ variant }), className)}
-      {...props}
-    >
-      <SwitchPrimitive.Thumb
-        data-slot="toggle-thumb"
-        className={cn(toggleThumbVariants(), "border")}
-      />
-    </SwitchPrimitive.Root>
-  );
-}
+const Toggle = React.forwardRef<React.ElementRef<typeof SwitchPrimitive.Root>, ToggleProps>(
+  ({ className, variant, size = "default", ...props }, ref) => {
+    return (
+      <SwitchPrimitive.Root
+        ref={ref}
+        data-slot="toggle"
+        data-size={size}
+        className={cn(toggleVariants({ variant }), className)}
+        {...props}
+      >
+        <SwitchPrimitive.Thumb
+          data-slot="toggle-thumb"
+          className={cn(toggleThumbVariants(), "border")}
+        />
+      </SwitchPrimitive.Root>
+    );
+  }
+);
+
+Toggle.displayName = "Toggle";
 
 export { Toggle };

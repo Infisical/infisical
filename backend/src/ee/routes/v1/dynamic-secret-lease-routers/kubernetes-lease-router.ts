@@ -1,12 +1,11 @@
 import { z } from "zod";
 
-import { DynamicSecretLeasesSchema } from "@app/db/schemas";
 import { ApiDocsTags, DYNAMIC_SECRET_LEASES } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
+import { SanitizedDynamicSecretLeaseSchema, SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerKubernetesDynamicSecretLeaseRouter = async (server: FastifyZodProvider) => {
@@ -44,7 +43,7 @@ export const registerKubernetesDynamicSecretLeaseRouter = async (server: Fastify
       }),
       response: {
         200: z.object({
-          lease: DynamicSecretLeasesSchema,
+          lease: SanitizedDynamicSecretLeaseSchema,
           dynamicSecret: SanitizedDynamicSecretSchema,
           data: z.unknown()
         })

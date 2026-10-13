@@ -36,7 +36,13 @@ folder or account (`PamResourceRole`: Admin/Operator/Connector/Auditor; Operator
 `ViewCredentials`, with no approval rights so credential approval can't be self-served). Shared helpers live in
 `pam/pam-permission.ts` (`verifyProductMembership`, `checkAccountAccess`, `getResourceIdsWithActions`, …) —
 use them instead of re-implementing. Every list/mutation endpoint checks an **action**, not just
-membership. There is **no org-admin fallback**: permission needs project-scoped membership.
+membership. There is **no org-admin fallback**: permission needs project-scoped membership. Instead, a user
+(never a machine identity) holding the org Admin role (the role itself, checked with `hasRole`, not a
+permission) can list every folder
+(`includeNonMemberFolders`, which only the Accounts page sends, adds `callerAccess`) and join one explicitly
+through `POST /pam/folders/:folderId/grant-admin-access`. That writes a real Admin membership, its own audit
+event (`org-admin-accessed-pam-folder`, with the role it replaced) and notifies the folder's admins, so never
+add an implicit fallback instead. A PAM product admin alone cannot join folders.
 
 Gotchas:
 
@@ -138,11 +144,17 @@ live in a process-wide map keyed by the driver's request id rather than on the p
 test compares the login's `sessionInfo` against what was asked for, because Snowflake accepts a warehouse
 or role the credential can't use and silently leaves it unset.
 
-**ClickHouse is brokered over its HTTP interface (8123/8443), never the native protocol on 9000**, so the
-gateway can read the statement as text to block and record it (CLI `packages/pam/handlers/clickhouse/`).
-Only the first megabyte of a request body is inspected, so an account carrying a command-blocking policy
-refuses a body longer than that rather than forward the remainder unread. Databases stand in for schemas, and the explorer grid is read-only for every table
-(`supportsRowEditing`): `is_in_primary_key` is a sorting key, not a unique constraint.
+**ClickHouse is brokered over both its interfaces, HTTP (8123/8443) and the native TCP protocol
+(9000/9440)**, and an account may carry either port or both. One local port serves both: the gateway
+routes a connection by its first byte (CLI `packages/pam/handlers/clickhouse/`). Over HTTP the statement
+is read as text, and only the first megabyte of a request body is inspected, so an account carrying a
+command-blocking policy refuses a longer body rather than forward the remainder unread. Over native the
+statement arrives in its own Query packet; a packet the gateway cannot parse ends the session rather than
+being relayed uninspected. Two consequences worth knowing: **Web Access needs the HTTP port**, because the
+browser client speaks HTTP and nothing translates for it (`webAccessUnavailableReason`), and a native port
+may only be saved against a gateway advertising the `clickhouseNativeProtocol` capability. Databases stand
+in for schemas, and the explorer grid is read-only for every table (`supportsRowEditing`):
+`is_in_primary_key` is a sorting key, not a unique constraint.
 
 ## Approvals
 
@@ -191,7 +203,8 @@ for import into a folder. Type registry is `DISCOVERY_TYPE_CONFIGS`; providers r
 `{ validateConnection, scan }` and never touch the DB — the service owns encryption, staging, and
 fingerprint dedupe. Discovery runs everything **through the gateway** (SSH-exec / port-sweep / WinRM RPCs),
 so `ssh2` is never used on the backend and scans produce no session rows, recordings, or session audits.
-Current types: Active Directory and Unix.
+Current types: Active Directory, Unix, PostgreSQL, and Microsoft SQL Server. `withGatewayV2Proxy` rethrows a callback's
+error as a `BadRequestError` carrying only its message, so a provider maps driver error codes inside the callback.
 
 **Staleness (Windows).** After a completed scan, discovered accounts it no longer finds are reconciled:
 never-imported ones are deleted, imported ones are flagged stale (reappearing self-heals). Only accounts in a

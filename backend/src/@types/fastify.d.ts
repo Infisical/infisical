@@ -13,6 +13,7 @@ import { TAgentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-pro
 import { TAgentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
 import { TAgentVaultSessionLogServiceFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-service";
 import { TAssumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-types";
+import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { TAuditReportServiceFactory } from "@app/ee/services/audit-report/audit-report-service";
@@ -69,8 +70,11 @@ import { TSamlConfigServiceFactory } from "@app/ee/services/saml-config/saml-con
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
+import { TSecretChangeGlobalPolicyBridgeServiceFactory } from "@app/ee/services/secret-change-global-policy-bridge/secret-change-global-policy-bridge-service";
 import { TSecretRotationV2ServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-service";
 import { TSecretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
+import { TSecretScanningV2InstanceServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-instance-service";
+import { TSecretScanningV2ProjectResolverFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-resolver";
 import { TSecretScanningV2ServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-service";
 import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
@@ -168,6 +172,8 @@ import { TReminderServiceFactory } from "@app/services/reminder/reminder-types";
 import { TResourceMetadataServiceFactory } from "@app/services/resource-metadata/resource-metadata-service";
 import { TRoleServiceFactory } from "@app/services/role/role-service";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
+import { TSecretAccessApprovalGlobalPolicyBridgeServiceFactory } from "@app/services/secret-access-approval-global-policy-bridge/secret-access-approval-global-policy-bridge-service";
+import { TSecretAccessApprovalGlobalRequestBridgeServiceFactory } from "@app/services/secret-access-approval-global-request-bridge/secret-access-approval-global-request-bridge-service";
 import { TSecretBlindIndexServiceFactory } from "@app/services/secret-blind-index/secret-blind-index-service";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
 import { TSecretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
@@ -176,6 +182,7 @@ import { TSecretSharingServiceFactory } from "@app/services/secret-sharing/secre
 import { TSecretSyncServiceFactory } from "@app/services/secret-sync/secret-sync-service";
 import { TSecretTagServiceFactory } from "@app/services/secret-tag/secret-tag-service";
 import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
+import { TSecretValueTrackingServiceFactory } from "@app/services/secret-value-tracking/secret-value-tracking-service";
 import { TServiceTokenServiceFactory } from "@app/services/service-token/service-token-service";
 import { TSignerPolicyServiceFactory } from "@app/services/signer/signer-policy-service";
 import { TSignerServiceFactory } from "@app/services/signer/signer-service";
@@ -284,6 +291,7 @@ declare module "fastify" {
     auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor" | "orgId">;
     internalCertManagerProjectId: string;
     internalPamProjectId: string;
+    internalSecretScanningProjectId: string;
     internalAgentVaultProjectId: string;
     ssoConfig: Awaited<ReturnType<TSamlConfigServiceFactory["getSaml"]>>;
     ldapConfig: Awaited<ReturnType<TLdapConfigServiceFactory["getLdapCfg"]>> & {
@@ -315,6 +323,7 @@ declare module "fastify" {
       projectEnv: TProjectEnvServiceFactory;
       projectKey: TProjectKeyServiceFactory;
       secret: TSecretServiceFactory;
+      secretValueTracking: TSecretValueTrackingServiceFactory;
       secretReplication: TSecretReplicationServiceFactory;
       secretTag: TSecretTagServiceFactory;
       secretValidationRule: TSecretValidationRuleServiceFactory;
@@ -345,14 +354,18 @@ declare module "fastify" {
       identitySpiffeAuth: TIdentitySpiffeAuthServiceFactory;
       identityLdapAuth: TIdentityLdapAuthServiceFactory;
       accessApprovalPolicy: TAccessApprovalPolicyServiceFactory;
+      secretAccessApprovalGlobalPolicyBridge: TSecretAccessApprovalGlobalPolicyBridgeServiceFactory;
+      secretAccessApprovalGlobalRequestBridge: TSecretAccessApprovalGlobalRequestBridgeServiceFactory;
       accessApprovalRequest: TAccessApprovalRequestServiceFactory;
       secretApprovalPolicy: TSecretApprovalPolicyServiceFactory;
+      secretChangeGlobalPolicyBridge: TSecretChangeGlobalPolicyBridgeServiceFactory;
       secretApprovalRequest: TSecretApprovalRequestServiceFactory;
       saml: TSamlConfigServiceFactory;
       scim: TScimServiceFactory;
       ldap: TLdapConfigServiceFactory;
       auditLog: TAuditLogServiceFactory;
       auditLogStream: TAuditLogStreamServiceFactory;
+      auditLogSettings: TAuditLogSettingsServiceFactory;
       certificate: TCertificateServiceFactory;
       certificateCleanup: TCertificateCleanupServiceFactory;
       certificateInventoryView: TCertificateInventoryViewServiceFactory;
@@ -368,6 +381,8 @@ declare module "fastify" {
       pkiApplicationEnrollment: TPkiApplicationEnrollmentServiceFactory;
       certManagerProjectResolver: TCertManagerProjectResolverFactory;
       pamProjectResolver: TPamProjectResolverFactory;
+      secretScanningV2Instance: TSecretScanningV2InstanceServiceFactory;
+      secretScanningV2ProjectResolver: TSecretScanningV2ProjectResolverFactory;
       agentVaultProjectResolver: TAgentVaultProjectResolverFactory;
       agentVaultAccessBundle: TAgentVaultAccessBundleServiceFactory;
       agentVaultProxy: TAgentVaultProxyServiceFactory;

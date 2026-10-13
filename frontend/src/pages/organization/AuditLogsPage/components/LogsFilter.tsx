@@ -20,7 +20,7 @@ import {
   Separator
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { isOrgScopedProduct } from "@app/helpers/project";
+import { getProjectDisplayName, isOrgScopedProduct } from "@app/helpers/project";
 import { useScopeVariant } from "@app/hooks";
 import { useGetUserProjects } from "@app/hooks/api";
 import {
@@ -30,13 +30,22 @@ import {
   userAgentTypeToNameMap
 } from "@app/hooks/api/auditLogs/constants";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
+import {
+  AUDIT_LOG_EVENT_CLASSES,
+  auditLogEventClassToNameMap
+} from "@app/hooks/api/auditLogSettings/constants";
+import { AuditLogEventClass } from "@app/hooks/api/auditLogSettings/types";
 import { UserAgentType } from "@app/hooks/api/auth/types";
-import { Project } from "@app/hooks/api/projects/types";
+import { Project, ProjectType } from "@app/hooks/api/projects/types";
 
 import { LogFilterItem } from "./LogFilterItem";
 import { auditLogFilterFormSchema, Presets, TAuditLogFilterFormData } from "./types";
 
 const eventTypes = Object.entries(eventToNameMap).map(([value, label]) => ({ label, value }));
+const eventClasses = AUDIT_LOG_EVENT_CLASSES.map((value) => ({
+  label: auditLogEventClassToNameMap[value],
+  value
+}));
 const userAgentTypes = Object.entries(userAgentTypeToNameMap).map(([value, label]) => ({
   label,
   value
@@ -54,6 +63,7 @@ const getActiveFilterCount = (filter: TAuditLogFilterFormData) => {
     "actor",
     "project",
     "eventType",
+    "eventClass",
     "environment",
     "secretPath",
     "userAgentType",
@@ -79,6 +89,8 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
   const scopeVariant = useScopeVariant();
 
   const workspacesInOrg = workspaces.filter((ws) => ws.orgId === currentOrg?.id);
+  const isCertManagerMultiInstance =
+    workspacesInOrg.filter((ws) => ws.type === ProjectType.CertificateManager).length > 1;
 
   const { control, watch, setValue, handleSubmit, formState } = useForm<TAuditLogFilterFormData>({
     resolver: zodResolver(auditLogFilterFormSchema),
@@ -89,6 +101,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
       secretPath: "",
       actor: presets?.actorId,
       eventType: filter?.eventType || [],
+      eventClass: filter?.eventClass || [],
       userAgentType: null
     },
     values: {
@@ -159,6 +172,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
               onClick={() => {
                 setFilter({
                   eventType: presets?.eventType || [],
+                  eventClass: [],
                   actor: presets?.actorId,
                   userAgentType: null,
                   project: null,
@@ -174,6 +188,36 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <LogFilterItem
+              label="Event Class"
+              tooltipText="Every event type belongs to exactly one class. Combined with an event filter, only events in both are shown."
+              className="sm:col-span-2"
+            >
+              <Controller
+                control={control}
+                name="eventClass"
+                render={({ field }) => (
+                  <Field>
+                    <Combobox
+                      aria-label="Event class"
+                      clearAriaLabel="Clear event classes"
+                      value={eventClasses.filter((eventClass) =>
+                        (field.value ?? []).includes(eventClass.value)
+                      )}
+                      multiple
+                      isClearable
+                      onValueChange={(options) =>
+                        field.onChange(options.map((option) => option.value as AuditLogEventClass))
+                      }
+                      placeholder="All classes"
+                      options={eventClasses}
+                      getOptionValue={(option) => option.value}
+                      getOptionLabel={(option) => option.label}
+                    />
+                  </Field>
+                )}
+              />
+            </LogFilterItem>
             <LogFilterItem label="Events" className="sm:col-span-2">
               <Controller
                 control={control}
@@ -255,7 +299,9 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                           type
                         }))}
                         getOptionValue={(option) => option.id}
-                        getOptionLabel={(option) => option.name}
+                        getOptionLabel={(option) =>
+                          getProjectDisplayName(option, isCertManagerMultiInstance)
+                        }
                         isError={Boolean(error)}
                       />
                       <FieldError errors={[error]} />

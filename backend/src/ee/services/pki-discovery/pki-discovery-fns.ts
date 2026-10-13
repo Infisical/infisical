@@ -198,7 +198,7 @@ export const scanEndpoint = async (
 
     let servername: string | undefined;
     if (sniHostname) {
-      servername = sniHostname;
+      if (!isIpAddress(sniHostname)) servername = sniHostname;
     } else if (!isIpAddress(host)) {
       servername = host;
     }

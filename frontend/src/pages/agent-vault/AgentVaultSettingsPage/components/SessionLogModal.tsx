@@ -56,7 +56,7 @@ const AWS_CONNECTION = APP_CONNECTION_MAP[AppConnection.AWS];
 
 const S3_BUCKET_NAME = /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/;
 
-const buildSchema = (hasSavedBucket: boolean) =>
+const buildSchema = (savedBucket: string | null) =>
   z
     .object({
       enabled: z.boolean(),
@@ -83,7 +83,7 @@ const buildSchema = (hasSavedBucket: boolean) =>
     })
     .superRefine((values, ctx) => {
       const { length } = values.bucket;
-      if (length === 0 && hasSavedBucket) {
+      if (length === 0 && savedBucket) {
         ctx.addIssue({
           code: "custom",
           path: ["bucket"],
@@ -101,6 +101,13 @@ const buildSchema = (hasSavedBucket: boolean) =>
           path: ["bucket"],
           message:
             "Use 3 to 63 lowercase letters, numbers, dots or hyphens, starting and ending with a letter or number"
+        });
+      } else if (values.bucket.endsWith("--x-s3") && values.bucket !== savedBucket) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["bucket"],
+          message:
+            "Session logs need a general purpose S3 bucket. Directory buckets (names ending in --x-s3) aren't supported."
         });
       }
     });
@@ -143,7 +150,7 @@ export const SessionLogModal = ({
     setValue,
     watch,
     formState: { isSubmitting, isDirty }
-  } = useForm<FormData>({ resolver: zodResolver(buildSchema(Boolean(settings?.bucket))) });
+  } = useForm<FormData>({ resolver: zodResolver(buildSchema(settings?.bucket ?? null)) });
 
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
     useDiscardChangesGuard({ isDirty, onDiscard: () => onOpenChange(false) });
@@ -417,9 +424,9 @@ export const SessionLogModal = ({
                   <AlertDescription>
                     <p>
                       Everything already recorded stays in{" "}
-                      <span className="font-mono">{settings?.bucket}</span>, where Infisical can no
-                      longer read it. To rotate credentials, update the AWS connection instead of
-                      moving the bucket.
+                      <span className="font-mono">{settings?.bucket}</span> and won&apos;t show in
+                      Infisical until you switch back to it. To rotate credentials, update the AWS
+                      connection instead of moving the bucket.
                     </p>
                     {onEditCredentials && (
                       <AlertAction>
@@ -443,14 +450,14 @@ export const SessionLogModal = ({
                     {settings?.keyPrefix ? (
                       <p>
                         Logs already recorded stay under{" "}
-                        <span className="font-mono">{settings.keyPrefix}/</span>. Keep your AWS
-                        policy allowing that prefix, or Infisical can&apos;t read them.
+                        <span className="font-mono">{settings.keyPrefix}/</span> and won&apos;t show
+                        in Infisical until you switch back to that prefix.
                       </p>
                     ) : (
                       <p>
                         Logs already recorded stay at the top level of{" "}
-                        <span className="font-mono">{settings?.bucket}</span>. Keep your AWS policy
-                        allowing the whole bucket, or Infisical can&apos;t read them.
+                        <span className="font-mono">{settings?.bucket}</span> and won&apos;t show in
+                        Infisical until you remove the prefix again.
                       </p>
                     )}
                   </AlertDescription>

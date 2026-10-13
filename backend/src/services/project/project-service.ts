@@ -16,6 +16,7 @@ import {
   TProjectEnvironments,
   TProjects
 } from "@app/db/schemas";
+import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionActions,
@@ -27,6 +28,7 @@ import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/servi
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
+  ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionMemberActions,
@@ -86,6 +88,7 @@ import { TProjectMembershipDALFactory } from "../project-membership/project-memb
 import { getPredefinedRoles } from "../project-role/project-role-fns";
 import { TRoleDALFactory } from "../role/role-dal";
 import { ROOT_FOLDER_NAME, TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretValueTrackingServiceFactory } from "../secret-value-tracking/secret-value-tracking-service";
 import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal";
 import { validateSlackChannelsField } from "../slack/slack-auth-validators";
 import { TSlackIntegrationDALFactory } from "../slack/slack-integration-dal";
@@ -135,6 +138,7 @@ export const DEFAULT_PROJECT_ENVS = [
 type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
   projectQueue: TProjectQueueFactory;
+  secretValueTrackingService: Pick<TSecretValueTrackingServiceFactory, "enableForProject" | "getProjectStatus">;
   userDAL: TUserDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "insertMany" | "findByProjectId">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "insertMany" | "find">;
@@ -203,8 +207,7 @@ export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
 
 // Cosmetic overrides for requestProjectAccess; unlisted types fall back to the raw type/name.
 const PROJECT_ACCESS_REQUEST_URL_SLUGS: Partial<Record<ProjectType, string>> = {
-  [ProjectType.SecretManager]: "secret-management",
-  [ProjectType.CertificateManager]: "cert-manager"
+  [ProjectType.SecretManager]: "secret-management"
 };
 
 const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
@@ -216,6 +219,7 @@ const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>
 export const projectServiceFactory = ({
   projectDAL,
   projectQueue,
+  secretValueTrackingService,
   permissionService,
   orgDAL,
   userDAL,
@@ -289,12 +293,14 @@ export const projectServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
     }
 
+    // Read before the transaction: a plan cache miss queries on its own connection.
+    const plan = await licenseService.getPlan(organization.id);
+
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
 
       // Check workspace limit inside the transaction after acquiring the lock
       // We count directly from the database to get the accurate count, not the cached plan value
-      const plan = await licenseService.getPlan(organization.id);
       if (plan.workspaceLimit !== null && type === ProjectType.SecretManager) {
         const currentProjectCount = await projectDAL.countOfBillableOrgProjects(organization.id, tx);
         if (currentProjectCount >= plan.workspaceLimit) {
@@ -688,7 +694,7 @@ export const projectServiceFactory = ({
       // Skip this if the creator was already added via template with their configured roles
       if (actor === ActorType.USER && !creatorAddedViaTemplate) {
         // Find public key of user
-        const user = await userDAL.findUserEncKeyByUserId(actorId);
+        const user = await userDAL.findUserEncKeyByUserId(actorId, tx);
 
         if (!user) {
           throw new Error("User not found");
@@ -1016,11 +1022,10 @@ export const projectServiceFactory = ({
     }
 
     if (update.auditLogsRetentionDays !== undefined) {
-      if (!hasRole(ProjectMembershipRole.Admin)) {
-        throw new ForbiddenRequestError({
-          message: "Only project admins can update the audit logs retention period"
-        });
-      }
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAuditLogsActions.Edit,
+        ProjectPermissionSub.AuditLogs
+      );
 
       if (appCfg.isCloud) {
         throw new BadRequestError({
@@ -1037,7 +1042,7 @@ export const projectServiceFactory = ({
         });
       }
 
-      if (update.auditLogsRetentionDays > plan.auditLogsRetentionDays) {
+      if (!isWithinPlanAuditLogRetention(update.auditLogsRetentionDays, plan)) {
         throw new BadRequestError({
           message: `Failed to update the audit logs retention period because your current plan allows a maximum of ${plan.auditLogsRetentionDays} days. Upgrade your plan to increase this limit.`
         });
@@ -1178,7 +1183,7 @@ export const projectServiceFactory = ({
       });
     }
 
-    const { hasRole } = await permissionService.getProjectPermission({
+    const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId,
@@ -1186,15 +1191,13 @@ export const projectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-
-    if (!hasRole(ProjectMembershipRole.Admin)) {
-      throw new ForbiddenRequestError({
-        message: "Insufficient privileges, only admins are allowed to take this action"
-      });
-    }
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAuditLogsActions.Edit,
+      ProjectPermissionSub.AuditLogs
+    );
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.auditLogs || auditLogsRetentionDays > plan.auditLogsRetentionDays) {
+    if (!plan.auditLogs || !isWithinPlanAuditLogRetention(auditLogsRetentionDays, plan)) {
       throw new BadRequestError({
         message: "Failed to update audit logs retention due to plan limit reached. Upgrade plan to increase."
       });
@@ -2300,6 +2303,7 @@ export const projectServiceFactory = ({
     const encodedRequesterEmail = encodeURIComponent(userDetails.email ?? "");
 
     const orgScopedProductPath: Partial<Record<ProjectType, string>> = {
+      [ProjectType.CertificateManager]: "cert-manager",
       [ProjectType.PAM]: "pam",
       [ProjectType.AgentVault]: "agent-vault"
     };
@@ -2358,55 +2362,11 @@ export const projectServiceFactory = ({
     return { requests };
   };
 
-  const enableSecretBlindIndex = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    projectId
-  }: TEnableSecretBlindIndexDTO) => {
-    const project = await projectDAL.findById(projectId);
-    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+  const enableSecretBlindIndex = async (dto: TEnableSecretBlindIndexDTO) =>
+    secretValueTrackingService.enableForProject(dto);
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: project.id,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
-
-    if (project.secretBlindIndexEnabled) {
-      throw new BadRequestError({ message: "Secret blind indexing is already enabled for this project" });
-    }
-
-    await projectQueue.startSecretBlindIndexMigration(project.id);
-  };
-
-  const getSecretBlindIndexMigrationStatus = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    projectId
-  }: TEnableSecretBlindIndexDTO) => {
-    const project = await projectDAL.findById(projectId);
-    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: project.id,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
-
-    return projectQueue.getJobState(project.id);
-  };
+  const getSecretBlindIndexMigrationStatus = async (dto: TEnableSecretBlindIndexDTO) =>
+    secretValueTrackingService.getProjectStatus(dto);
 
   return {
     createProject,

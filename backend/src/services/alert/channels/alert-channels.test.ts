@@ -267,6 +267,54 @@ describe("sendEmailNotification (directed)", () => {
     expect(sentTo).toEqual(["external@example.com"]);
   });
 
+  test("lists at most 50 items and counts the rest so a large run renders quickly", async () => {
+    let substitutions: { items: unknown[]; remainingCount: number } | undefined;
+    const payload = samplePayload();
+    payload.items = Array.from({ length: 120 }, (_, index) => ({
+      id: `cert-${index}`,
+      title: `cert-${index}.example.com`
+    }));
+    const ctx = {
+      ...baseCtx(),
+      payload,
+      config: {},
+      recipient: { email: "user@example.com" },
+      deps: {
+        smtpService: {
+          sendMail: async (opts: { substitutions: object }) => {
+            substitutions = opts.substitutions as { items: unknown[]; remainingCount: number };
+          }
+        }
+      }
+    };
+
+    await sendEmailNotification(ctx);
+
+    expect(substitutions?.items).toHaveLength(50);
+    expect(substitutions?.remainingCount).toBe(70);
+  });
+
+  test("shows every item and no remainder when the run is small", async () => {
+    let substitutions: { items: unknown[]; remainingCount: number } | undefined;
+    const ctx = {
+      ...baseCtx(),
+      config: {},
+      recipient: { email: "user@example.com" },
+      deps: {
+        smtpService: {
+          sendMail: async (opts: { substitutions: object }) => {
+            substitutions = opts.substitutions as { items: unknown[]; remainingCount: number };
+          }
+        }
+      }
+    };
+
+    await sendEmailNotification(ctx);
+
+    expect(substitutions?.items).toHaveLength(2);
+    expect(substitutions?.remainingCount).toBe(0);
+  });
+
   test("fails when there is no recipient", async () => {
     const result = await sendEmailNotification({ ...baseCtx(), config: {} });
     expect(result.success).toBe(false);

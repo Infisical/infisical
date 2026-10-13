@@ -17,7 +17,7 @@ export interface SmbRpcConfig {
   domain?: string;
 }
 
-const SMB3_SECURITY_OPTIONS = ["--option=client min protocol=SMB3", "--option=client smb encrypt=required"];
+const SMB3_SECURITY_OPTIONS = ["--option=client min protocol=SMB3_00", "--option=client smb encrypt=required"];
 
 /**
  * Validate host to prevent command injection

@@ -237,7 +237,8 @@ export enum ProjectPermissionSecretEventActions {
 }
 
 export enum ProjectPermissionAuditLogsActions {
-  Read = "read"
+  Read = "read",
+  Edit = "edit"
 }
 
 export enum ProjectPermissionInsightsActions {

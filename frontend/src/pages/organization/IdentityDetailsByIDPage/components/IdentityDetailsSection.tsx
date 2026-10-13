@@ -2,7 +2,6 @@ import { format } from "date-fns";
 import { BanIcon, CheckIcon, ClipboardListIcon, PencilIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Tooltip } from "@app/components/v2";
 import {
   Badge,
   ButtonGroup,
@@ -18,7 +17,10 @@ import {
   DetailValue,
   IconButton,
   OrgIcon,
-  SubOrgIcon
+  SubOrgIcon,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useTimedReset } from "@app/hooks";
@@ -89,18 +91,21 @@ export const IdentityDetailsSection = ({
             <DetailLabel>ID</DetailLabel>
             <DetailValue className="flex items-center gap-x-1">
               {data.identity.id}
-              <Tooltip content="Copy machine identity ID to clipboard">
-                <IconButton
-                  onClick={() => {
-                    navigator.clipboard.writeText(data.identity.id);
-                    setCopyTextId("Copied");
-                  }}
-                  variant="ghost"
-                  size="xs"
-                >
-                  {/* TODO(scott): color this should be a button variant and create re-usable copy button */}
-                  {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
-                </IconButton>
+              <Tooltip hoverable delayDuration={50}>
+                <TooltipTrigger asChild>
+                  <IconButton
+                    onClick={() => {
+                      navigator.clipboard.writeText(data.identity.id);
+                      setCopyTextId("Copied");
+                    }}
+                    variant="ghost"
+                    size="xs"
+                  >
+                    {/* TODO(scott): color this should be a button variant and create re-usable copy button */}
+                    {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
+                  </IconButton>
+                </TooltipTrigger>
+                <TooltipContent>Copy machine identity ID to clipboard</TooltipContent>
               </Tooltip>
             </DetailValue>
           </Detail>

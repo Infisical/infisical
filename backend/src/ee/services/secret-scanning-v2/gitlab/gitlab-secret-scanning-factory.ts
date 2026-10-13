@@ -3,10 +3,7 @@ import { join } from "path";
 
 import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
-import {
-  SecretScanningFindingSeverity,
-  SecretScanningResource
-} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import { SecretScanningFindingSeverity } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
   assertProviderRepositorySizeWithinLimit,
   cloneRepository,
@@ -214,8 +211,7 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
       return [
         {
           name: project.pathWithNamespace,
-          externalId: project.id.toString(),
-          type: SecretScanningResource.Project
+          externalId: project.id.toString()
         }
       ];
     }
@@ -237,8 +233,7 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
 
     return filteredProjects.map(({ id, pathWithNamespace }) => ({
       name: pathWithNamespace,
-      externalId: id.toString(),
-      type: SecretScanningResource.Project
+      externalId: id.toString()
     }));
   };
 
@@ -308,8 +303,7 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
   > = ({ project }) => {
     return {
       name: project.path_with_namespace,
-      externalId: project.id.toString(),
-      type: SecretScanningResource.Project
+      externalId: project.id.toString()
     };
   };
 

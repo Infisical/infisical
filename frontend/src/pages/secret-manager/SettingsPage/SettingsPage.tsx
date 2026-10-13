@@ -2,8 +2,8 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
 
-import { PageHeader } from "@app/components/v2";
 import { LookingForOrgPageLink } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject } from "@app/context";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
@@ -94,7 +94,7 @@ export const SettingsPage = () => {
         >
           <LookingForOrgPageLink page="settings" />
         </PageHeader>
-        <div className="grow rounded-br-md rounded-bl-md py-5 outline-hidden xl:overflow-x-hidden xl:py-0">
+        <div className="grow rounded-br-md rounded-bl-md pb-5 outline-hidden xl:overflow-x-hidden xl:pb-0">
           {ActiveTabComponent ? <ActiveTabComponent /> : null}
         </div>
       </div>

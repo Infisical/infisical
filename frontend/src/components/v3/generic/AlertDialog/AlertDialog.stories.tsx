@@ -395,3 +395,31 @@ export const TypedConfirmation: Story = {
   },
   render: () => <TypedConfirmationStory />
 };
+
+export const LongConfirmation: Story = {
+  name: "Example: Long Confirmation",
+  render: () => {
+    const value = "AWS_REGION_PRODUCTION_PRIMARY_CLUSTER_".repeat(6);
+    return (
+      <AlertDialog confirmationValue={value}>
+        <AlertDialogTrigger asChild>
+          <Button variant="danger">Delete secret</Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete {value}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the secret from this environment. This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogConfirmationField />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="danger">Delete secret</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    );
+  }
+};

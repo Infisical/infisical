@@ -276,7 +276,7 @@ export const auditLogStreamOutboxServiceFactory = ({
             const error = result.reason as Error;
             const errorMessage = error?.message ?? "Unknown error";
             const errorType = error?.name ?? "UnknownError";
-            logger.error(
+            logger.warn(
               { errorType },
               `audit-log-stream-outbox: batch delivery failed [streamId=${streamId}] [orgId=${orgId}] [provider=${provider}] [chunkSize=${chunk.length}]: ${errorMessage}`
             );

@@ -1,7 +1,10 @@
 import { z } from "zod";
 
+import { CertSource } from "@app/hooks/api/certificates/enums";
+
 export enum AlertResourceType {
-  IdentityAuthentication = "identity.authentication"
+  IdentityAuthentication = "identity.authentication",
+  SecretReminder = "secret.reminder"
 }
 
 export enum AlertEventType {
@@ -19,7 +22,8 @@ export enum AlertChannelType {
 export enum AlertPrincipalType {
   User = "user",
   Group = "group",
-  Email = "email"
+  Email = "email",
+  ProjectMembers = "project-members"
 }
 
 export enum AlertRunStatus {
@@ -29,22 +33,41 @@ export enum AlertRunStatus {
 }
 
 export enum CertificateAlertResourceType {
-  Application = "cert-manager.application"
+  Application = "cert-manager.application",
+  CertificateManager = "cert-manager",
+  Signer = "cert-manager.signer"
 }
 
-export enum CertificateAlertEventType {
+export enum CertificateApplicationAlertEventType {
   Expiry = "cert-manager.application.certificate.expiry",
   Issuance = "cert-manager.application.certificate.issuance",
   Renewal = "cert-manager.application.certificate.renewal",
   Revocation = "cert-manager.application.certificate.revocation"
 }
 
+export enum SignerAlertEventType {
+  CertificateExpiry = "cert-manager.signer.certificate.expiry"
+}
+
+export type TCertificateAlertEventType =
+  | CertificateApplicationAlertEventType
+  | SignerAlertEventType;
+
+export enum CertificateManagerAlertEventType {
+  Expiry = "cert-manager.certificate.expiry",
+  Issuance = "cert-manager.certificate.issuance",
+  Renewal = "cert-manager.certificate.renewal",
+  Revocation = "cert-manager.certificate.revocation"
+}
+
 export const MIN_ALERT_BEFORE_DAYS = 1;
 export const MAX_ALERT_BEFORE_DAYS = 90;
 export const MAX_CERTIFICATE_ALERT_BEFORE_DAYS = 365;
+export const MAX_CERTIFICATE_ALERT_FILTER_IDS = 100;
 
 export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
-  [AlertResourceType.IdentityAuthentication]: "Machine Identity Authentication"
+  [AlertResourceType.IdentityAuthentication]: "Machine Identity Authentication",
+  [AlertResourceType.SecretReminder]: "Secret Reminder"
 };
 
 export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
@@ -80,6 +103,8 @@ export type TAlertChannelEmbedded = {
   recipients: TAlertChannelRecipient[];
 };
 
+export type TAlertFilterValue = { id: string; name: string | null };
+
 export type TAlert = {
   id: string;
   name: string;
@@ -87,11 +112,18 @@ export type TAlert = {
   resourceType: string;
   resourceId: string | null;
   eventType: string;
-  condition: { alertBefore?: string; dailyReminder?: boolean } | null;
+  condition: {
+    alertBefore?: string;
+    dailyReminder?: boolean;
+    applicationIds?: string[];
+    profileIds?: string[];
+    sources?: CertSource[];
+  } | null;
   enabled: boolean;
   orgId: string;
   projectId: string | null;
   resourceName: string | null;
+  filters?: Record<string, TAlertFilterValue[]>;
   channels: TAlertChannelEmbedded[];
   lastRun: { timestamp: string; status: AlertRunStatus } | null;
   createdAt: string;
@@ -214,6 +246,9 @@ export const channelFormSchema = z
   });
 
 export type TChannelForm = z.infer<typeof channelFormSchema>;
+
+// The part of an alert form the shared channel fields read and write.
+export type TChannelsForm = { channels: TChannelForm[] };
 
 const alertFormBaseSchema = z.object({
   name: z.string().min(1, "Name is required").max(255),

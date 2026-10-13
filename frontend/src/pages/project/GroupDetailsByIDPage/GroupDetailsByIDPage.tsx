@@ -129,7 +129,7 @@ const Page = () => {
   const backLinkLabel = isCertManager ? "Groups" : "Project Groups";
 
   return (
-    <div className="@container mx-auto flex max-w-8xl flex-col gap-8">
+    <div className="@container mx-auto flex max-w-8xl flex-col">
       {groupMembership ? (
         <>
           <PageHeader
@@ -190,7 +190,7 @@ const Page = () => {
           </div>
         </>
       ) : (
-        <>
+        <div className="flex flex-col gap-8">
           <Link
             {...backLinkProps}
             className="flex w-fit items-center gap-1 text-sm text-muted transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
@@ -207,7 +207,7 @@ const Page = () => {
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
-        </>
+        </div>
       )}
       <DeleteConfirmDialog
         isOpen={popUp.deleteGroup.isOpen}
@@ -227,10 +227,14 @@ const Page = () => {
 
 export const GroupDetailsByIDPage = () => {
   const { t } = useTranslation();
+  const { currentProject } = useProject();
+  const isCertManager = currentProject.type === ProjectType.CertificateManager;
   return (
     <>
       <Helmet>
-        <title>{t("common.head-title", { title: "Project Group" })}</title>
+        <title>
+          {t("common.head-title", { title: isCertManager ? "Group" : "Project Group" })}
+        </title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <ProjectPermissionCan

@@ -82,16 +82,13 @@ type SelectTriggerProps = React.ComponentProps<typeof SelectPrimitive.Trigger> &
     isError?: boolean;
   };
 
-function SelectTrigger({
-  className,
-  size = "default",
-  variant = "default",
-  isError,
-  children,
-  ...props
-}: SelectTriggerProps) {
+const SelectTrigger = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Trigger>,
+  SelectTriggerProps
+>(({ className, size = "default", variant = "default", isError, children, ...props }, ref) => {
   return (
     <SelectPrimitive.Trigger
+      ref={ref}
       data-slot="select-trigger"
       data-size={size}
       data-variant={variant}
@@ -105,7 +102,8 @@ function SelectTrigger({
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );
-}
+});
+SelectTrigger.displayName = "SelectTrigger";
 
 function SelectContent({
   className,
@@ -113,10 +111,13 @@ function SelectContent({
   position = "item-aligned",
   align = "center",
   collisionPadding = 8,
+  portalContainer,
   ...props
-}: React.ComponentProps<typeof SelectPrimitive.Content>) {
+}: React.ComponentProps<typeof SelectPrimitive.Content> & {
+  portalContainer?: React.ComponentProps<typeof SelectPrimitive.Portal>["container"];
+}) {
   return (
-    <SelectPrimitive.Portal>
+    <SelectPrimitive.Portal container={portalContainer}>
       <SelectPrimitive.Content
         data-slot="select-content"
         data-align-trigger={position === "item-aligned"}

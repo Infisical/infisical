@@ -14,9 +14,14 @@ import {
   SortDirection
 } from "@app/db/schemas";
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
+import { MAX_PROJECT_AUDIT_LOG_RETENTION_DAYS } from "@app/ee/services/audit-log/audit-log-retention-fns";
+import {
+  AuditLogSettingsResponseSchema,
+  updateAuditLogSettingsBodySchema
+} from "@app/ee/services/audit-log/audit-log-settings-schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { InfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-types";
-import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
+import { ApiDocsTags, AUDIT_LOG_SETTINGS, FOLDERS, PROJECTS } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { re2Validator } from "@app/lib/zod";
 import { JobState } from "@app/queue/queue-service";
@@ -542,7 +547,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .optional()
           .describe(PROJECTS.UPDATE.secretDetectionIgnoreValues),
         pitVersionLimit: z.number().min(1).max(100).optional(),
-        auditLogsRetentionDays: z.number().min(1).max(365).optional().describe(PROJECTS.UPDATE.auditLogsRetentionDays)
+        auditLogsRetentionDays: z
+          .number()
+          .int()
+          .min(1)
+          .max(365)
+          .optional()
+          .describe(PROJECTS.UPDATE.auditLogsRetentionDays)
       }),
       response: {
         200: z.object({
@@ -585,6 +596,21 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           metadata: req.body
         }
       });
+
+      if (req.body.auditLogsRetentionDays !== undefined) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.params.projectId,
+          event: {
+            type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
+            metadata: {
+              scope: "project",
+              auditLogsRetentionDays: req.body.auditLogsRetentionDays
+            }
+          }
+        });
+      }
 
       return {
         project
@@ -681,7 +707,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim()
       }),
       body: z.object({
-        auditLogsRetentionDays: z.number().min(0)
+        auditLogsRetentionDays: z.number().int().min(0).max(MAX_PROJECT_AUDIT_LOG_RETENTION_DAYS)
       }),
       response: {
         200: z.object({
@@ -709,8 +735,11 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         orgId: req.permission.orgId,
         projectId: project.id,
         event: {
-          type: EventType.UPDATE_PROJECT,
-          metadata: req.body
+          type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
+          metadata: {
+            scope: "project",
+            auditLogsRetentionDays: req.body.auditLogsRetentionDays
+          }
         }
       });
 
@@ -718,6 +747,84 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         message: "Successfully updated project's audit logs retention period",
         project
       };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/audit-log-settings",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "getProjectAuditLogSettings",
+      tags: [ApiDocsTags.AuditLogs],
+      description: "Get which audit log event classes the project records",
+      params: z.object({
+        projectId: z.string().uuid().describe(AUDIT_LOG_SETTINGS.GET_PROJECT.projectId)
+      }),
+      response: {
+        200: AuditLogSettingsResponseSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const auditLogSettings = await server.services.auditLogSettings.getProjectSettings({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId
+      });
+      return { auditLogSettings };
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/:projectId/audit-log-settings",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "updateProjectAuditLogSettings",
+      tags: [ApiDocsTags.AuditLogs],
+      description: "Update which audit log event classes the project records. Requires the project admin role.",
+      params: z.object({
+        projectId: z.string().uuid().describe(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.projectId)
+      }),
+      body: updateAuditLogSettingsBodySchema(AUDIT_LOG_SETTINGS.UPDATE_PROJECT.isEnabled),
+      response: {
+        200: AuditLogSettingsResponseSchema
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const auditLogSettings = await server.services.auditLogSettings.updateProjectSettings({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        eventClasses: req.body.eventClasses
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        event: {
+          type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
+          metadata: {
+            scope: "project",
+            eventClasses: req.body.eventClasses
+          }
+        }
+      });
+
+      return { auditLogSettings };
     }
   });
 
@@ -1049,6 +1156,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         projectId: z.string().trim()
       }),
+      querystring: z.object({
+        environment: slugSchema({ field: "Environment slug" }).optional().describe(FOLDERS.LIST.environment)
+      }),
       response: {
         200: z.record(
           ProjectEnvironmentsSchema.extend({ folders: SecretFoldersSchema.extend({ path: z.string() }).array() })
@@ -1059,7 +1169,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const environmentsFolders = await server.services.folder.getProjectEnvironmentsFolders(
         req.params.projectId,
-        req.permission
+        req.permission,
+        req.query.environment
       );
 
       return environmentsFolders;

@@ -73,7 +73,7 @@ export type TApprovalPolicyBypasserInput =
 
 export type TAccessApprovalRequest = {
   id: string;
-  policyId: string;
+  policyId: string | null;
   privilegeId: string | null;
   requestedByUserId: string;
   requestedByUser: {
@@ -108,7 +108,7 @@ export type TAccessApprovalRequest = {
   // Set when the request was approved via break-glass without the required reviews.
   bypassReason?: string | null;
   policy: {
-    id: string;
+    id: string | null;
     name: string;
     approvals: number;
     approvers: {
@@ -199,13 +199,6 @@ export type TCreateAccessRequestDTO = {
   projectSlug: string;
   note?: string;
 } & Omit<TProjectUserPrivilege, "id" | "createdAt" | "updatedAt" | "slug" | "projectMembershipId">;
-
-export type TUpdateAccessRequestDTO = {
-  requestId: string;
-  editNote: string;
-  temporaryRange: string;
-  projectSlug: string;
-};
 
 export type TGetAccessApprovalRequestsDTO = {
   projectSlug: string;

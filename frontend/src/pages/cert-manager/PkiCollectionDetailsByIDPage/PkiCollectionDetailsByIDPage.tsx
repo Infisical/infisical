@@ -63,10 +63,9 @@ export const PkiCollectionPage = () => {
     });
     handlePopUpClose("deletePkiCollection");
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/policies",
+      to: "/organizations/$orgId/cert-manager/policies",
       params: {
-        orgId: currentOrg.id,
-        projectId: params.projectId
+        orgId: currentOrg.id
       }
     });
   };
@@ -74,14 +73,13 @@ export const PkiCollectionPage = () => {
   return (
     <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
       {data && (
-        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+        <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <PageHeader
             backLink={
               <Link
-                to="/organizations/$orgId/projects/cert-manager/$projectId/policies"
+                to="/organizations/$orgId/cert-manager/policies"
                 params={{
-                  orgId: currentOrg.id,
-                  projectId: params.projectId
+                  orgId: currentOrg.id
                 }}
               >
                 <FontAwesomeIcon icon={faChevronLeft} />

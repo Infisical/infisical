@@ -175,6 +175,28 @@ export type TCommitBatch = {
   prefixDigest: string;
 };
 
+/**
+ * An empty repository has an unborn HEAD, which `git rev-list HEAD` cannot resolve and then reports
+ * as an argument-order error, so history is only enumerated or scanned once this returns true.
+ */
+export const repositoryHasCommits = async (repoPath: string) => {
+  try {
+    await execFileBounded("git", ["rev-parse", "--verify", "--quiet", "HEAD"], {
+      phase: SecretScanningExecPhase.Enumerate,
+      cwd: repoPath,
+      timeoutMs: SECRET_SCANNING_COMMIT_ENUMERATION_TIMEOUT,
+      env: GIT_PROCESS_ENV
+    });
+
+    return true;
+  } catch (error) {
+    // --quiet exits 1 when HEAD does not point at a commit; anything else is a real failure
+    if (error instanceof SecretScanningExecError && error.exitCode === 1) return false;
+
+    throw error;
+  }
+};
+
 const COMMIT_LOG_OPTS = COMMIT_LIST_ARGS.slice(1).join(" ");
 
 const buildCommitBatchLogOpts = ({ skip, maxCount }: TCommitBatch) =>

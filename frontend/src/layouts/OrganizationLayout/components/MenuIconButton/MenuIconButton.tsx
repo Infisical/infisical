@@ -1,8 +1,16 @@
-import { ComponentPropsWithRef, ElementType, useRef } from "react";
+import { ComponentPropsWithRef, ElementType, ReactNode, useRef } from "react";
 import { DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { twMerge } from "tailwind-merge";
 
-import { MenuItemProps } from "@app/components/v2";
+type MenuIconButtonProps<T extends ElementType> = ComponentPropsWithRef<T> & {
+  as?: T;
+  icon?: string;
+  isDisabled?: boolean;
+  isSelected?: boolean;
+  description?: ReactNode;
+  inputRef?: ComponentPropsWithRef<T>["ref"];
+  lottieIconMode?: "reverse" | "forward";
+};
 
 export const MenuIconButton = <T extends ElementType = "button">({
   children,
@@ -16,8 +24,7 @@ export const MenuIconButton = <T extends ElementType = "button">({
   inputRef,
   lottieIconMode = "forward",
   ...props
-}: MenuItemProps<T> &
-  ComponentPropsWithRef<T> & { lottieIconMode?: "reverse" | "forward" }): JSX.Element => {
+}: MenuIconButtonProps<T>): JSX.Element => {
   const iconRef = useRef<DotLottie | null>(null);
   return (
     <div className={!isSelected ? "hover:px-1" : ""}>

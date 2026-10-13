@@ -65,7 +65,6 @@ import { SecretOverrideRow } from "./SecretOverrideRow";
 export type SecretTableRowProps = {
   secretKey: string;
   secretPath: string;
-  tableWidth: number;
   environments: { name: string; slug: string }[];
   isSelected: boolean;
   onToggleSecretSelect: (key: string, isShiftKey: boolean) => void;
@@ -115,6 +114,7 @@ export type SecretTableRowProps = {
     source: { id: string; name: string; path: string; isValueHidden: boolean };
     environmentSlug: string;
   }) => void;
+  onAccessInsightsUpgrade: (onGranted: () => void) => void;
   activityId: TableRowActivityId;
   onActivityChange: TableRowActivityChangeHandler;
 };
@@ -128,7 +128,6 @@ type ExpandedTableSort = {
 
 export const SecretTableRow = ({
   secretKey,
-  tableWidth,
   environments = [],
   secretPath,
   getSecretByKey,
@@ -145,6 +144,7 @@ export const SecretTableRow = ({
   onBatchRevert,
   isSelectionDisabled,
   onCopySecret,
+  onAccessInsightsUpgrade,
   activityId,
   onActivityChange
 }: SecretTableRowProps) => {
@@ -440,6 +440,7 @@ export const SecretTableRow = ({
                     })
                 : undefined
             }
+            onAccessInsightsUpgrade={onAccessInsightsUpgrade}
             onExpandedChange={setIsSingleEnvBaseActive}
           />
         ) : (
@@ -452,34 +453,14 @@ export const SecretTableRow = ({
             )}
           >
             <div
-              style={isFormExpanded ? { minWidth: tableWidth, maxWidth: tableWidth } : undefined}
               className={twMerge(
-                isFormExpanded && "sticky left-0 flex min-h-10 items-center bg-container-hover"
+                isFormExpanded &&
+                  "sticky left-0 flex min-h-10 max-w-(--overview-table-width) min-w-(--overview-table-width) items-center bg-container-hover"
               )}
             >
               {isFormExpanded && (
-                <div className="flex w-10 shrink-0 items-center justify-center [&>svg]:size-4">
-                  <Checkbox
-                    variant="project"
-                    id={`checkbox-${secretKey}`}
-                    isChecked={isSelected}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleSecretSelect(secretKey, e.shiftKey);
-                    }}
-                    className={twMerge(
-                      "hidden",
-                      !isSelectionDisabled && "group-hover:flex",
-                      isSelected && "flex"
-                    )}
-                  />
-                  <ChevronDownIcon
-                    className={twMerge(
-                      "block",
-                      !isSelectionDisabled && "group-hover:!hidden",
-                      isSelected && "!hidden"
-                    )}
-                  />
+                <div className="flex w-10 shrink-0 cursor-pointer items-center justify-center [&>svg]:size-4">
+                  <ChevronDownIcon />
                 </div>
               )}
               <div
@@ -636,11 +617,11 @@ export const SecretTableRow = ({
           )}
         >
           <TableCell>
-            <GitBranchIcon className="text-override" />
+            <GitBranchIcon className="text-override-foreground" />
           </TableCell>
           <TableCell
             className={twMerge(
-              "border-r text-override",
+              "border-r text-override-foreground",
               singleEnvHasOverride && "border-l border-l-override"
             )}
           >
@@ -698,16 +679,10 @@ export const SecretTableRow = ({
           className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
         >
           <TableCell colSpan={totalCols} className="border-0 p-0">
-            <div
-              style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 border-y border-border bg-container"
-            >
+            <div className="@container sticky left-0 max-w-(--overview-table-width) min-w-(--overview-table-width) border-y border-border bg-container">
               <Table
                 className="w-full min-w-[600px] table-fixed"
-                containerClassName={twMerge(
-                  "rounded-none border-0",
-                  tableWidth >= 600 && "overflow-hidden"
-                )}
+                containerClassName="rounded-none border-0 @min-[600px]:overflow-hidden"
               >
                 <colgroup>
                   <col className="w-10" />
@@ -870,6 +845,7 @@ export const SecretTableRow = ({
                                       })
                                   : undefined
                               }
+                              onAccessInsightsUpgrade={onAccessInsightsUpgrade}
                             />
                           </TableCell>
                         </TableRow>

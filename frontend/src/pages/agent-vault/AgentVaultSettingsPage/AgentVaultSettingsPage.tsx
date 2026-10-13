@@ -16,7 +16,7 @@ export const AgentVaultSettingsPage = () => {
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
   return (
-    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
       <Helmet>
         <title>{t("common.head-title", { title: "Settings" })}</title>
       </Helmet>
@@ -28,10 +28,10 @@ export const AgentVaultSettingsPage = () => {
         description="Configure session logs and the connections Agent Vault uses."
       />
       {isAdmin ? (
-        <>
+        <div className="flex flex-col gap-8">
           <SessionLogAlerts />
           <SessionLogSection />
-        </>
+        </div>
       ) : (
         <AccessRestrictedDialog />
       )}

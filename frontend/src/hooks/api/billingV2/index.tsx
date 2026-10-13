@@ -4,6 +4,7 @@ export {
   useCancelBillingV2Subscription,
   useCancelBillingV2Trial,
   useChangeBillingV2Commitment,
+  useConfirmBillingV2TrialPayment,
   useCreateBillingV2PortalSession,
   usePreviewBillingV2Change,
   useRefreshBillingV2Entitlements,
@@ -45,4 +46,4 @@ export type {
   BillingV2UpgradeResult,
   BillingV2UsageBreakdown
 } from "./types";
-export { BillingV2BreakdownDimension } from "./types";
+export { BillingV2BreakdownDimension, BillingV2ErrorCode } from "./types";

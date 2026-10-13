@@ -1,4 +1,5 @@
 export {
+  createSecretValueBlindIndexer,
   deriveSecretValueBlindIndexKey,
   generateSecretValueBlindIndex,
   generateSecretValueBlindIndexFromKmsKey

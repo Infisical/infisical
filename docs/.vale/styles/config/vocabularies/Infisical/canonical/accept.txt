@@ -199,6 +199,7 @@ Fly.io
 DigitalOcean
 Cloudflare
 Cloudflare Pages
+Cloudflare Secrets Store
 Cloudflare Workers
 Windmill
 Humanitec
@@ -252,6 +253,7 @@ Daytona
 DBT
 Ab Initio
 Initio
+Keeper Password Manager
 
 # --- Identity ---
 Okta
@@ -308,6 +310,10 @@ Kemp
 LoadMaster
 NetScaler
 Citrix
+Palo Alto Networks
+Alto
+PAN-OS
+Panorama
 F5
 BIG-IP
 iControl
@@ -315,7 +321,9 @@ Dell
 PowerEdge
 iDRAC
 HP
+HPE
 iLO
+Redfish
 Patroni
 
 # --- Databases ---
@@ -353,6 +361,7 @@ DeepSeek
 Gemini
 Grok
 Groq
+Hermes
 Hermes Agent
 Mistral
 OpenClaw

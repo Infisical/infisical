@@ -20,7 +20,7 @@ export const InventoryPage = () => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const searchParams = useSearch({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/inventory"
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/inventory"
   });
 
   const dashboardFilters = useMemo<FilterRule[]>(() => {
@@ -96,7 +96,7 @@ export const InventoryPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "Inventory" })}</title>
       </Helmet>
-      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}
           title="Inventory"

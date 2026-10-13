@@ -7,7 +7,6 @@ import {
   HourglassIcon,
   InfoIcon,
   ShieldAlertIcon,
-  SquarePenIcon,
   TimerIcon,
   TriangleAlertIcon,
   UserIcon,
@@ -40,7 +39,6 @@ import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-  IconButton,
   Input,
   Item,
   ItemActions,
@@ -101,7 +99,6 @@ import {
   getActionLabelsForSubject,
   PROJECT_PERMISSION_OBJECT
 } from "@app/pages/project/RoleDetailsBySlugPage/components/ProjectRoleModifySection.utils";
-import { EditAccessRequestModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/EditAccessRequestModal";
 
 import { getAccessDurationLabel } from "../AccessApprovalRequest.utils";
 
@@ -180,8 +177,7 @@ export const ReviewAccessRequestModal = ({
   projectSlug,
   canBypass,
   policies = [],
-  members = [],
-  onUpdate
+  members = []
 }: {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -195,7 +191,6 @@ export const ReviewAccessRequestModal = ({
   canBypass: boolean;
   policies: TAccessApprovalPolicy[];
   members: TWorkspaceUser[];
-  onUpdate: (request: TAccessApprovalRequest) => void;
 }) => {
   const [isLoading, setIsLoading] = useState<"approved" | "rejected" | "revoked" | null>(null);
   const [bypassApproval, setBypassApproval] = useState(false);
@@ -207,10 +202,7 @@ export const ReviewAccessRequestModal = ({
   const { user } = useUser();
   const { permission } = useProjectPermission();
 
-  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp([
-    "editRequest",
-    "revokeConfirm"
-  ] as const);
+  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["revokeConfirm"] as const);
 
   const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
 
@@ -804,32 +796,6 @@ export const ReviewAccessRequestModal = ({
                       {getAccessDurationLabel(
                         accessDetails.temporaryAccess.isTemporary,
                         accessDetails.temporaryAccess.temporaryRange
-                      )}
-                      {request.isApprover && request.status === ApprovalStatus.PENDING && (
-                        <>
-                          <EditAccessRequestModal
-                            isOpen={popUp.editRequest.isOpen}
-                            onOpenChange={(open) => handlePopUpToggle("editRequest", open)}
-                            accessRequest={request}
-                            onComplete={onUpdate}
-                            projectSlug={projectSlug}
-                          />
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <IconButton
-                                onClick={() => handlePopUpOpen("editRequest")}
-                                variant="ghost"
-                                size="xs"
-                                tabIndex={-1}
-                                aria-label="Edit access duration"
-                                className="-my-1"
-                              >
-                                <SquarePenIcon />
-                              </IconButton>
-                            </TooltipTrigger>
-                            <TooltipContent>Edit Access Duration</TooltipContent>
-                          </Tooltip>
-                        </>
                       )}
                     </div>
                   </DetailValue>

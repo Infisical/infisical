@@ -1,0 +1,275 @@
+---
+title: "Connect your own agent to Agent Vault"
+sidebarTitle: "Your own agent"
+description: "Launch your custom agent with Agent Vault so it can make authenticated API calls without needing an actual token."
+---
+
+import SeparateMachinesNote from "/snippets/agent-vault/SeparateMachinesNote.mdx";
+
+If you have a custom agent harness that you start from code rather than a CLI, you can connect it to Agent Vault via the Infisical API. The agent's HTTP client sends each request through an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) with a [session](/documentation/platform/agent-vault/sessions) token, and the proxy attaches the real credential before forwarding the request to the API.
+
+## Prerequisites
+
+- An Infisical organization where you're an [Agent Vault admin](/documentation/platform/agent-vault/access-control#product-membership)
+- The [Infisical CLI](/cli/install) installed on the machine that will run the proxy
+- The API keys your agent uses, such as its model provider's key
+
+<SeparateMachinesNote />
+
+## Step 1: Set up Agent Vault
+
+### Create an access bundle
+
+First, create an [access bundle](/documentation/platform/agent-vault/access-bundles) that holds a [service](/documentation/platform/agent-vault/services) for each API your agent calls.
+
+<Steps>
+  <Step>
+    In Infisical, open **Agent Vault** from the product switcher and go to **Access Bundles**.
+  </Step>
+  <Step>
+    Select **Create Access Bundle**. Give the access bundle a **Name**, such as `my-agent`, then select **Create Access Bundle**.
+  </Step>
+  <Step>
+    Select the access bundle you just created, then select **Add Service**.
+  </Step>
+  <Step>
+    On the **Choose a template** panel, pick the template for the API, or select **Custom** and enter the API's host.
+  </Step>
+  <Step>
+    On the **Credential** step, paste the real API key.
+
+    <Note>
+      If the API expects the key somewhere other than a header, such as in the URL, [add a substitution](/documentation/platform/agent-vault/services#add-a-substitution) instead. Note the placeholder you enter in **Replace**, because your agent sends it in [Step 3](#step-3-replace-the-api-keys-with-placeholders).
+    </Note>
+  </Step>
+  <Step>
+    Select **Add Service**. Repeat from the third step for each remaining API.
+  </Step>
+</Steps>
+
+### Enroll a proxy
+
+Next, enroll a proxy. Every request your agent makes goes through the proxy, which attaches the real credential from the access bundle before forwarding the request to the API.
+
+<Steps>
+  <Step>
+    Go to **Proxies** and select **Create Proxy**.
+  </Step>
+  <Step>
+    Give the proxy a **Name**, then select **Create**.
+  </Step>
+  <Step>
+    In the **Enrollment Token** dialog, copy the command from the **CLI** tab, or from the **Docker** or **systemd** tab to keep the proxy running after you close the terminal. The enrollment token expires in an hour.
+  </Step>
+  <Step>
+    Run the command on the machine that will run the proxy.
+  </Step>
+</Steps>
+
+The proxy listens on port `17323`. Make sure the agent's machine can reach that port, and note the proxy machine's address.
+
+### Create a session
+
+Finally, create a session. The session token is the only credential your agent has.
+
+<Steps>
+  <Step>
+    Go to **Sessions** and select **Create Session**.
+  </Step>
+  <Step>
+    Pick the access bundle you created, set a duration under **Expires**, then select **Create Session**.
+  </Step>
+  <Step>
+    Copy the session token from the command in the dialog. It's the value after `--session-token`. The token appears once and can't be retrieved again.
+  </Step>
+</Steps>
+
+<Tip>
+  You can also [create sessions from your own code](/documentation/platform/agent-vault/sessions-api) instead of in the Infisical UI.
+</Tip>
+
+## Step 2: Download the proxy's certificate
+
+The proxy decrypts each HTTPS request to attach the credential, so the agent has to trust the proxy's certificate authority. On the agent's machine, download the certificate from the proxy:
+
+```bash
+curl -fsS http://<proxy-host>:17323/_agent-vault/ca | jq -er .certificate > ca.pem
+```
+
+The certificate travels over plain HTTP, so check that it came from your proxy before you trust it. Print its fingerprint:
+
+```bash
+openssl x509 -in ca.pem -noout -fingerprint -sha256
+```
+
+Compare the colon-separated value with the proxy's fingerprint on the **Proxies** page in Agent Vault. The **Certificate Authority** column shows the start of the fingerprint, and hovering over it shows the full value. If the values don't match, don't use the file.
+
+Store `ca.pem` where the agent can read it. The certificate isn't secret, so you can add it to the agent's container image. If you [re-enroll the proxy](/documentation/platform/agent-vault/proxies#re-enroll-a-proxy), download the certificate again.
+
+## Step 3: Replace the API keys with placeholders
+
+Delete the real API keys from the agent's code and configuration. Most SDKs refuse to start without a key, so pass a placeholder value instead, such as `agent-vault`. The proxy replaces the placeholder with the real credential:
+
+- **If the service uses Bearer or Basic credentials:** the proxy replaces the header that carries the key, so any placeholder works
+- **If the service uses a [substitution](/documentation/platform/agent-vault/services#substitutions):** use the exact placeholder you entered in [Step 1](#create-an-access-bundle)
+
+## Step 4: Send requests through the proxy
+
+Set the proxy and the certificate in the agent's HTTP client. The proxy URL has the session token as its password:
+
+```text
+http://x-agent-vault:<session-token>@<proxy-host>:17323
+```
+
+<Tabs>
+  <Tab title="Environment variables">
+    Most HTTP clients read the proxy and the certificate from environment variables, so if you set these variables for the agent's process, you don't need to change its code:
+
+    ```bash
+    export HTTPS_PROXY=http://x-agent-vault:<session-token>@<proxy-host>:17323
+    export HTTP_PROXY=http://x-agent-vault:<session-token>@<proxy-host>:17323
+    export NO_PROXY=localhost,127.0.0.1
+    # Trust the proxy's certificate
+    export SSL_CERT_FILE=/path/to/ca.pem
+    export REQUESTS_CA_BUNDLE=/path/to/ca.pem
+    export NODE_EXTRA_CA_CERTS=/path/to/ca.pem
+    # Node.js 24 or later: make the built-in fetch read HTTPS_PROXY
+    export NODE_USE_ENV_PROXY=1
+    ```
+
+    Clients that read `SSL_CERT_FILE` or `REQUESTS_CA_BUNDLE` trust only the certificates in that file. If the agent calls an HTTPS host in `NO_PROXY`, add your system's certificates to `ca.pem`, such as with `cat /etc/ssl/certs/ca-certificates.crt >> ca.pem` on Debian or Ubuntu.
+  </Tab>
+  <Tab title="Python">
+    With the Anthropic SDK, pass a `DefaultHttpxClient` with the proxy and the certificate. The OpenAI SDK takes the same client, as `openai.DefaultHttpxClient`:
+
+    ```python
+    import ssl
+
+    import anthropic
+
+    PROXY_URL = "http://x-agent-vault:<session-token>@<proxy-host>:17323"
+
+    tls = ssl.create_default_context()
+    tls.load_verify_locations("/path/to/ca.pem")
+
+    client = anthropic.Anthropic(
+        api_key="agent-vault",
+        http_client=anthropic.DefaultHttpxClient(proxy=PROXY_URL, verify=tls),
+    )
+    ```
+
+    With [`requests`](https://requests.readthedocs.io/), set the proxy and the certificate on a session:
+
+    ```python
+    import requests
+
+    PROXY_URL = "http://x-agent-vault:<session-token>@<proxy-host>:17323"
+
+    session = requests.Session()
+    session.proxies = {"http": PROXY_URL, "https": PROXY_URL}
+    session.verify = "/path/to/ca.pem"
+    ```
+
+    Setting `session.verify` replaces the certificates that `requests` trusts, which works because every request from the session goes through the proxy.
+  </Tab>
+  <Tab title="Node.js">
+    With [`undici`](https://undici.nodejs.org/), pass a `ProxyAgent` as the dispatcher:
+
+    ```javascript
+    import { readFileSync } from "node:fs";
+    import { rootCertificates } from "node:tls";
+    import { ProxyAgent, fetch } from "undici";
+
+    const dispatcher = new ProxyAgent({
+      uri: "http://x-agent-vault:<session-token>@<proxy-host>:17323",
+      requestTls: {
+        ca: [...rootCertificates, readFileSync("/path/to/ca.pem", "utf8")],
+      },
+    });
+
+    const response = await fetch("https://api.github.com/user", { dispatcher });
+    ```
+
+    To use the dispatcher for every `fetch` call in the process, including calls inside SDKs, pass it to `setGlobalDispatcher` from `undici`.
+  </Tab>
+  <Tab title="Go">
+    Set the proxy and the certificate on the `http.Transport`:
+
+    ```go
+    caPEM, err := os.ReadFile("/path/to/ca.pem")
+    if err != nil {
+        log.Fatal(err)
+    }
+    roots, err := x509.SystemCertPool()
+    if err != nil {
+        log.Fatal(err)
+    }
+    roots.AppendCertsFromPEM(caPEM)
+
+    proxyURL, _ := url.Parse("http://x-agent-vault:<session-token>@<proxy-host>:17323")
+
+    client := &http.Client{
+        Transport: &http.Transport{
+            Proxy:           http.ProxyURL(proxyURL),
+            TLSClientConfig: &tls.Config{RootCAs: roots},
+        },
+    }
+    ```
+  </Tab>
+</Tabs>
+
+Keep the session token out of logs. Anyone who can reach the proxy with the token can call every API in the session's access bundle until the session expires or you [revoke it](/documentation/platform/agent-vault/sessions#revoke-a-session).
+
+<Note>
+  The proxy only supports HTTP/1.1, so WebSocket connections and clients that only speak HTTP/2, such as gRPC clients, fail through the proxy. If an API offers both, configure the agent to use its plain HTTPS requests. Many SDKs fall back to HTTPS when a WebSocket connection fails.
+</Note>
+
+## Step 5: Verify it works
+
+Make a request from the agent to an API in the session's access bundle. For example, if the bundle has a GitHub service, request `https://api.github.com/user`. GitHub returns the account that the service's token belongs to, even though the agent doesn't have a GitHub token.
+
+If you've [set up session logs](/documentation/platform/agent-vault/session-logs#setting-up-session-logs), [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to check which requests the agent made. Requests that got a credential have the outcome **Brokered**.
+
+<Check>
+  Your agent now calls APIs through the proxy. The only credential the agent has is the session token, and if you revoke the session, the proxy stops attaching credentials to the agent's requests.
+</Check>
+
+## Replace the session token
+
+The session token is part of the proxy URL, so when you give the agent a new session, create a new HTTP client with the new token. If the agent reads the environment variables, restart it with the new values.
+
+To replace sessions automatically, such as for a process that runs for days, [create sessions with the API](/documentation/platform/agent-vault/sessions-api#choose-how-long-a-session-lasts).
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Requests fail with a 407 from the proxy">
+    For HTTPS requests, the client reports a failed tunnel, such as `CONNECT tunnel failed, response 407`. The request reached the proxy without the session token. Check that the proxy URL includes `x-agent-vault:<session-token>@`.
+  </Accordion>
+  <Accordion title="Requests fail with a 403 from the proxy">
+    If the client reports a failed tunnel, such as `CONNECT tunnel failed, response 403` or `Tunnel connection failed: 403 Forbidden`, the session expired or was revoked. Create a new session and [replace the session token](#replace-the-session-token).
+  </Accordion>
+  <Accordion title="The API returns an authentication error">
+    The request reached the API without the real credential. Check that a service in the session's access bundle covers the host, and that the service's credential is correct. If the service uses a substitution, check that the agent sends the exact placeholder in **Replace**.
+  </Accordion>
+  <Accordion title="Requests fail with a certificate error">
+    The agent doesn't trust the proxy's certificate. Check that the client loads `ca.pem`, and download the certificate again if you re-enrolled the proxy.
+  </Accordion>
+  <Accordion title="Requests reach the API without the proxy">
+    If the API rejects the placeholder key and the request doesn't appear in the session logs, the agent's requests skip the proxy. Check that the host isn't in `NO_PROXY`, and that the HTTP client reads the proxy setting:
+
+    - The built-in `fetch` in Node.js ignores `HTTPS_PROXY` unless you set `NODE_USE_ENV_PROXY=1` (Node.js 24 or later)
+    - For a client that ignores `HTTPS_PROXY`, set the proxy in code, as the [examples in Step 4](#step-4-send-requests-through-the-proxy) show
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Create sessions with the API" icon="key-round" href="/documentation/platform/agent-vault/sessions-api">
+    Create a session for each agent run from your own code.
+  </Card>
+  <Card title="Services" icon="plug" href="/documentation/platform/agent-vault/services">
+    Limit the methods and paths an agent can use, and replace placeholders with real values.
+  </Card>
+</CardGroup>

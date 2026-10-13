@@ -5,8 +5,7 @@ import { SecretType, TSecretFolders, TSecretsV2, TSecretsV2Insert, TSecretsV2Upd
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
-import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
-import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
+import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -22,10 +21,11 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
-import { TReminderDALFactory } from "../reminder/reminder-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
+import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
+import { TSecretValueBlindIndexes } from "./secret-blind-index-fns";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
@@ -193,12 +193,12 @@ export type TFnSecretBulkInsert = {
   tx?: Knex;
   commitChanges?: TCommitResourceChangeDTO[];
   inputSecrets: Array<
-    Omit<TSecretsV2Insert, "folderId" | "metadata"> & {
+    Omit<TSecretsV2Insert, "folderId" | "metadata" | "secretValueBlindIndex" | "secretValueOrgBlindIndex"> & {
       tagIds?: string[];
       references: TSecretReference[];
       secretMetadata?: { key: string; value?: string | null; encryptedValue?: Buffer | null }[];
       parentSecretVersionId?: string;
-      secretValueBlindIndex?: string | null;
+      blindIndexes: TSecretValueBlindIndexes | null;
     }
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
@@ -214,15 +214,15 @@ export type TFnSecretBulkInsert = {
 };
 
 type TRequireReferenceIfValue =
-  | (Omit<TSecretsV2Update, "encryptedValue" | "metadata"> & {
+  | (Omit<TSecretsV2Update, "encryptedValue" | "metadata" | "secretValueBlindIndex" | "secretValueOrgBlindIndex"> & {
       encryptedValue: Buffer | null;
       references: TSecretReference[];
-      secretValueBlindIndex?: string | null;
+      blindIndexes: TSecretValueBlindIndexes | null;
     })
-  | (Omit<TSecretsV2Update, "encryptedValue" | "metadata"> & {
+  | (Omit<TSecretsV2Update, "encryptedValue" | "metadata" | "secretValueBlindIndex" | "secretValueOrgBlindIndex"> & {
       encryptedValue?: never;
       references?: never;
-      secretValueBlindIndex?: never;
+      blindIndexes?: never;
     });
 
 export type TFnSecretBulkUpdate = {
@@ -306,14 +306,13 @@ export type TFnSecretMove = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
-  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "create">;
-  secretApprovalRequestSecretDAL: Pick<
-    TSecretApprovalRequestSecretDALFactory,
-    "insertV2Bridge" | "insertApprovalSecretV2Tags"
+  secretApprovalRequestCreationFns: Pick<
+    TSecretApprovalRequestCreationFnsFactory,
+    "createSecretApprovalRequestV2Bridge"
   >;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
-  reminderDAL: Pick<TReminderDALFactory, "findSecretReminders" | "delete">;
-  reminderService: Pick<TReminderServiceFactory, "batchCreateReminders">;
+  reminderService: Pick<TReminderServiceFactory, "moveReminders" | "copyReminders">;
+  secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
 };
 
 export type TFnSecretMoveResult = {
@@ -361,7 +360,7 @@ export type TCreateSecretReminderDTO = {
 
 export type TRemoveSecretReminderDTO = {
   secretId: string;
-  repeatDays: number;
+  repeatDays?: number;
   projectId: string;
 };
 

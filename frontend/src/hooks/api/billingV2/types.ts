@@ -28,7 +28,8 @@ export type BillingV2Deprecation = {
   daysLeft: number | null;
 };
 
-// A single purchasable (or sales-led) plan of a product. The free tier is implicit and never listed.
+// A single product plan. Purchasable and sales-led plans are listed in product.plans; an optional
+// free plan is exposed separately as product.baselinePlan for comparison only.
 export type BillingV2Plan = {
   tier: string;
   name: string;
@@ -62,6 +63,7 @@ export type BillingV2CatalogProduct = {
   deprecation?: BillingV2Deprecation;
   // Sort key across products; the product list renders in this order.
   displayOrder?: number;
+  baselinePlan?: BillingV2Plan;
   plans: BillingV2Plan[];
   includes?: string[];
   compare?: BillingV2CompareRow[];
@@ -143,6 +145,10 @@ export type BillingV2Entitlement = {
   trialPlanName?: string;
   trialPlanEndsAt?: string | null;
   trialPlanDaysLeft?: number | null;
+  // Formatted grace deadline while the trial's conversion charge waits on the customer's bank. The
+  // product stays trialing and usable until then, even though trialEndsAt has passed.
+  trialPaymentDueAt?: string | null;
+  trialPlanPaymentDueAt?: string | null;
   // Formatted date this product's soonest line renews (each product bills on its own cycle); null when
   // the product has no dated line.
   renewsOn?: string | null;
@@ -168,6 +174,9 @@ export type BillingV2Trial = {
   planTier: string | null;
   basePlanTier: string | null;
   outcome: BillingV2TrialOutcome | string;
+  // Why the trial ended (e.g. payment_not_completed). endedDetail is a machine code only when outcome
+  // is "reverted"; on "canceled" it is free text, so never map it outside that case.
+  endedReason: string | null;
   endedDetail: string | null;
   endedAt: string | null;
   endedDaysAgo: number | null;
@@ -213,6 +222,8 @@ export type BillingV2Overview = {
   entitlements: Record<string, BillingV2Entitlement>;
   trialedProductKeys: string[];
   trials: BillingV2Trial[];
+  trialPaymentDue: { dueAt: string; productKeys: string[] } | null;
+  paymentAlert: { state: "needs_action" | "failed"; actionUrl: string } | null;
   // Mutating billing actions are frozen server-side; the UI disables purchase/commit/remove controls.
   checkoutFrozen: boolean;
   // false for an enterprise-managed org: render the self-serve billing UI but disable its controls
@@ -220,9 +231,12 @@ export type BillingV2Overview = {
   selfServe: boolean;
 };
 
+// payment_action_required: the bank wants the customer to approve the charge on the Stripe invoice at
+// paymentUrl, which has no return URL, so open it in a new tab rather than redirecting.
 export type BillingV2CheckoutResult = {
-  outcome: "checkout_created" | "subscription_updated";
+  outcome: "checkout_created" | "subscription_updated" | "payment_action_required";
   checkoutUrl?: string;
+  paymentUrl?: string;
   subscriptionId?: string;
 };
 
@@ -272,10 +286,9 @@ export type BillingV2Preview = {
 };
 
 export type BillingV2MutationResult = {
-  // checkout_created is returned when committing on a trialing org with no card created the
-  // subscription and it needs hosted checkout (checkoutUrl); otherwise subscription_updated.
-  outcome?: "checkout_created" | "subscription_updated";
+  outcome?: "checkout_created" | "subscription_updated" | "payment_action_required";
   checkoutUrl?: string;
+  paymentUrl?: string;
   subscriptionId?: string;
 };
 
@@ -311,7 +324,8 @@ export type TUpgradeBillingV2ProductDTO = {
 };
 
 export type BillingV2UpgradeResult = {
-  outcome: "upgraded";
+  outcome: "upgraded" | "payment_action_required";
+  paymentUrl?: string;
   subscriptionId?: string;
   fromPlanKey?: string;
   toPlanKey?: string;
@@ -336,6 +350,7 @@ export type TStartBillingV2TrialDTO = {
   orgId: string;
   productId: string;
   plan: string;
+  returnPath?: string;
 };
 
 export type TCancelBillingV2TrialDTO = {
@@ -354,6 +369,21 @@ export type BillingV2TrialResult = {
 export type BillingV2TrialCancelResult = {
   outcome: "trial_completed";
 };
+
+export type TConfirmBillingV2TrialPaymentDTO = {
+  orgId: string;
+  returnPath?: string;
+};
+
+export type BillingV2ConfirmTrialPaymentResult =
+  | { outcome: "checkout_created" | "payment_action_required"; redirectUrl: string }
+  | { outcome: "upgraded" };
+
+// License-server machine codes the billing UI branches on (read from the error's details.code).
+export const BillingV2ErrorCode = {
+  PaymentActionRequired: "payment_action_required",
+  NoTrialAwaitingPayment: "no_trial_awaiting_payment"
+} as const;
 
 export type TBillingV2LifecycleDTO = {
   orgId: string;

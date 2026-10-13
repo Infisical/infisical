@@ -89,27 +89,12 @@ tables:
       - accessBundleId
       - createdAt
 
-  - name: agent_vault_session_log_chunks
-    source: public.agent_vault_session_log_chunks
-    columns:
-      - id
-      - sessionId
-      - projectId
-      - proxyId
-      - startedAt
-      - endedAt
-      - recordCount
-      - droppedCount
-      - ciphertextBytes
-      - createdAt
-
   - name: agent_vault_session_log_configs
     source: public.agent_vault_session_log_configs
     columns:
       - id
       - projectId
       - enabled
-      - storedChunkCount
       - createdAt
       - updatedAt
 
@@ -131,7 +116,6 @@ tables:
     columns:
       - id
       - accessBundleId
-      - isSecret
       - createdAt
       - updatedAt
 
@@ -777,6 +761,7 @@ tables:
       - parentOrgId
       - rootOrgId
       - blockDuplicateSecretSyncDestinations
+      - requireGatewayPools
 
   - name: pam_accounts
     source: public.pam_accounts
@@ -1153,17 +1138,17 @@ tables:
     source: public.secret_scanning_findings
     columns:
       - id
-      - dataSourceName
-      - dataSourceType
-      - resourceName
-      - resourceType
+      - resourceId
       - rule
       - severity
+      - confidence
       - status
-      - remarks
+      - triageComment
+      - triagedByUserId
+      - triagedAt
+      - resolvedAt
       - fingerprint
       - details
-      - projectId
       - scanId
       - createdAt
       - updatedAt
@@ -1194,7 +1179,6 @@ tables:
       - id
       - externalId
       - name
-      - type
       - dataSourceId
       - createdAt
       - updatedAt
