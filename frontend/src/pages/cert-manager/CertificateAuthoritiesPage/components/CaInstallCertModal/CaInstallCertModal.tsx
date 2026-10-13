@@ -129,7 +129,7 @@ const RadioCard = ({
     className={`flex items-center gap-4 rounded-md border px-4 py-4 text-left transition-colors ${
       isSelected
         ? "border-project/50 bg-project/5"
-        : "border-border-control bg-surface-hover hover:bg-surface-active"
+        : "border-border bg-transparent hover:bg-container-hover"
     } ${className ?? ""}`}
   >
     {icon}
