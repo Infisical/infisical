@@ -15,7 +15,14 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  FieldTitle,
+  RadioGroup,
+  RadioGroupItem
 } from "@app/components/v3";
 import { useSubscription } from "@app/context";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -103,53 +110,32 @@ enum Step {
 }
 
 type RadioCardProps = {
-  isSelected: boolean;
-  onClick: () => void;
+  value: string;
   icon?: React.ReactNode;
   name: string;
   description: string;
-  badge?: string;
   isLocked?: boolean;
-  className?: string;
 };
 
-const RadioCard = ({
-  isSelected,
-  onClick,
-  icon,
-  name,
-  description,
-  badge,
-  isLocked,
-  className
-}: RadioCardProps) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={`flex items-center gap-4 rounded-md border px-4 py-4 text-left transition-colors ${
-      isSelected
-        ? "border-project/50 bg-project/5"
-        : "border-border bg-transparent hover:bg-container-hover"
-    } ${className ?? ""}`}
-  >
-    {icon}
-    <div className="flex-1">
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-foreground">{name}</span>
-        {badge && <Badge variant="neutral">{badge}</Badge>}
-        {isLocked && <Badge variant="info">Enterprise</Badge>}
-      </div>
-      <p className="mt-0.5 text-xs text-muted">{description}</p>
-    </div>
-    <div
-      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-        isSelected ? "border-none bg-project/30" : "border-border-strong"
-      }`}
-    >
-      {isSelected && <div className="h-2 w-2 rounded-full bg-label" />}
-    </div>
-  </button>
-);
+const RadioCard = ({ value, icon, name, description, isLocked }: RadioCardProps) => {
+  const id = `ca-install-option-${value}`;
+
+  return (
+    <FieldLabel htmlFor={id} variant="project">
+      <Field orientation="horizontal" className="items-center gap-4">
+        {icon}
+        <FieldContent>
+          <FieldTitle>
+            {name}
+            {isLocked && <Badge variant="info">Enterprise</Badge>}
+          </FieldTitle>
+          <FieldDescription>{description}</FieldDescription>
+        </FieldContent>
+        <RadioGroupItem id={id} value={value} />
+      </Field>
+    </FieldLabel>
+  );
+};
 
 export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
   const popupData = popUp?.installCaCert?.data as { caId: string } | undefined;
@@ -232,22 +218,27 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const renderMethodSelection = () => (
     <>
-      <DialogBody className="flex flex-col gap-3">
-        {SIGNING_METHOD_OPTIONS.map((option) => (
-          <RadioCard
-            key={option.value}
-            isSelected={selectedMethod === option.value}
-            isLocked={lockedMethods[option.value]}
-            onClick={() => handleSelectMethod(option.value)}
-            icon={
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-active">
-                <option.icon className="h-5 w-5 text-label" />
-              </div>
-            }
-            name={option.name}
-            description={option.description}
-          />
-        ))}
+      <DialogBody>
+        <RadioGroup
+          aria-label="Signing method"
+          value={selectedMethod ?? ""}
+          onValueChange={(value) => handleSelectMethod(value as SigningMethod)}
+        >
+          {SIGNING_METHOD_OPTIONS.map((option) => (
+            <RadioCard
+              key={option.value}
+              value={option.value}
+              isLocked={lockedMethods[option.value]}
+              icon={
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-active">
+                  <option.icon className="h-5 w-5 text-label" />
+                </div>
+              }
+              name={option.name}
+              description={option.description}
+            />
+          ))}
+        </RadioGroup>
       </DialogBody>
       <DialogFooter>
         <DialogClose asChild>
@@ -263,26 +254,30 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const renderIntegrationSelection = () => (
     <>
-      <DialogBody className="flex flex-col gap-2">
-        {INTEGRATIONS.map((integration) => (
-          <RadioCard
-            key={integration.id}
-            isSelected={selectedIntegration === integration.id}
-            onClick={() => setSelectedIntegration(integration.id)}
-            icon={
-              integration.image ? (
-                <img
-                  src={integration.image}
-                  alt={`${integration.name} logo`}
-                  className="h-8 w-8 rounded-md bg-surface-recessed object-contain p-1"
-                />
-              ) : undefined
-            }
-            name={integration.name}
-            description={integration.description}
-            className="py-3"
-          />
-        ))}
+      <DialogBody>
+        <RadioGroup
+          aria-label="CA integration"
+          value={selectedIntegration ?? ""}
+          onValueChange={setSelectedIntegration}
+        >
+          {INTEGRATIONS.map((integration) => (
+            <RadioCard
+              key={integration.id}
+              value={integration.id}
+              icon={
+                integration.image ? (
+                  <img
+                    src={integration.image}
+                    alt={`${integration.name} logo`}
+                    className="h-8 w-8 rounded-md bg-surface-recessed object-contain p-1"
+                  />
+                ) : undefined
+              }
+              name={integration.name}
+              description={integration.description}
+            />
+          ))}
+        </RadioGroup>
       </DialogBody>
       <DialogFooter>
         <Button variant="ghost" onClick={goBackToMethodSelection}>
