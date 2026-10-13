@@ -232,7 +232,6 @@ describe("project access insights audit log store", () => {
   } as OrgServiceActor;
 
   const buildProjectService = ({ withClickHouse }: { withClickHouse: boolean }) => {
-    const cachedKeys: string[] = [];
     const postgres = {
       countByDateAndActor: vi.fn(async () => []),
       countByAuthMethod: vi.fn(async () => [])
@@ -272,12 +271,9 @@ describe("project access insights audit log store", () => {
       } as TInsightsServiceFactoryDep["licenseService"],
       keyStore: {
         getItem: async () => null,
-        setItemWithExpiry: async (key: string) => {
-          cachedKeys.push(key);
-          return "OK";
-        },
+        setItemWithExpiry: async () => "OK",
         ttl: async () => -2
-      } as unknown as TInsightsServiceFactoryDep["keyStore"],
+      },
       orgDAL: {
         countSecretManagerProjectMembers: unreachable("orgDAL.countSecretManagerProjectMembers"),
         findById: unreachable("orgDAL.findById")
@@ -295,7 +291,7 @@ describe("project access insights audit log store", () => {
       }
     });
 
-    return { service, postgres, clickhouse, cachedKeys };
+    return { service, postgres, clickhouse };
   };
 
   beforeEach(() => {
@@ -353,16 +349,5 @@ describe("project access insights audit log store", () => {
       { method: "Universal Auth", count: 4 },
       { method: "Email", count: 2 }
     ]);
-  });
-
-  test("caches each store's counts under its own key", async () => {
-    const { service, cachedKeys } = buildProjectService({ withClickHouse: true });
-    await service.getAccessVolume({ projectId: PROJECT_ID }, projectActor);
-
-    appConfig.CLICKHOUSE_AUDIT_LOG_ENABLED = true;
-    await service.getAccessVolume({ projectId: PROJECT_ID }, projectActor);
-
-    expect(cachedKeys).toHaveLength(2);
-    expect(new Set(cachedKeys).size).toBe(2);
   });
 });

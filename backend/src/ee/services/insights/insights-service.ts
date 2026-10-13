@@ -272,11 +272,7 @@ export const insightsServiceFactory = ({
     await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
     const clickhouseDAL = $getClickHouseAuditLogDAL();
-    // The store is part of the key so switching it never serves counts cached from the other one.
-    const cacheKey = KeyStorePrefixes.InsightsCache(
-      dto.projectId,
-      `access-volume:${clickhouseDAL ? "clickhouse" : "postgres"}`
-    );
+    const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, "access-volume");
     return withCache({
       keyStore,
       key: cacheKey,
@@ -334,10 +330,7 @@ export const insightsServiceFactory = ({
     await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
 
     const clickhouseDAL = $getClickHouseAuditLogDAL();
-    const cacheKey = KeyStorePrefixes.InsightsCache(
-      dto.projectId,
-      `auth-methods:${dto.days}:${clickhouseDAL ? "clickhouse" : "postgres"}`
-    );
+    const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `auth-methods:${dto.days}`);
     return withCache({
       keyStore,
       key: cacheKey,
