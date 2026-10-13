@@ -1,15 +1,28 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCheck, faCopy, faDownload } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import FileSaver from "file-saver";
+import { DownloadIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { FormControl, IconButton, TextArea, Tooltip } from "@app/components/v2";
-import { Button, DialogBody, DialogClose, DialogFooter } from "@app/components/v3";
-import { useTimedReset } from "@app/hooks";
+import {
+  Button,
+  CopyButton,
+  DialogBody,
+  DialogClose,
+  DialogFooter,
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  IconButton,
+  ScrollableContent,
+  TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useGetCaCsr, useImportCaCertificate } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -26,10 +39,6 @@ type Props = {
 };
 
 export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
-  const [copyTextCaCsr, isCopyingCaCsr, setCopyTextCaCsr] = useTimedReset<string>({
-    initialState: "Copy to clipboard"
-  });
-
   const {
     control,
     handleSubmit,
@@ -72,79 +81,82 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
   return (
     <form className="contents" onSubmit={handleSubmit(onFormSubmit)}>
       <DialogBody>
-        {csr && (
-          <>
-            <div className="my-4 flex items-center justify-between">
-              <h2>CSR for this CA</h2>
-              <div className="flex">
-                <Tooltip content={copyTextCaCsr}>
-                  <IconButton
-                    ariaLabel="copy icon"
-                    colorSchema="secondary"
-                    className="group relative"
-                    onClick={() => {
-                      navigator.clipboard.writeText(csr);
-                      setCopyTextCaCsr("Copied");
-                    }}
-                  >
-                    <FontAwesomeIcon icon={isCopyingCaCsr ? faCheck : faCopy} />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip content="Download">
-                  <IconButton
-                    ariaLabel="copy icon"
-                    colorSchema="secondary"
-                    className="group relative ml-2"
-                    onClick={() => {
-                      downloadTxtFile("csr.pem", csr);
-                    }}
-                  >
-                    <FontAwesomeIcon icon={faDownload} />
-                  </IconButton>
-                </Tooltip>
+        <FieldGroup>
+          {csr && (
+            <Field>
+              <div className="flex items-center justify-between">
+                <FieldLabel>Certificate Signing Request</FieldLabel>
+                <div className="flex items-center gap-1">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <CopyButton value={csr} ariaLabel="Copy CSR" />
+                    </TooltipTrigger>
+                    <TooltipContent>Copy CSR</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <IconButton
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        aria-label="Download CSR"
+                        onClick={() => downloadTxtFile("csr.pem", csr)}
+                      >
+                        <DownloadIcon />
+                      </IconButton>
+                    </TooltipTrigger>
+                    <TooltipContent>Download CSR</TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
-            </div>
-            <div className="mb-8 flex items-center justify-between rounded-md bg-foreground-inverse/[0.07] p-2 text-base text-muted-cool">
-              <p className="mr-4 break-all whitespace-pre-wrap">{csr}</p>
-            </div>
-          </>
-        )}
-        <Controller
-          control={control}
-          name="certificate"
-          render={({ field, fieldState: { error } }) => (
-            <FormControl
-              label="Certificate Body"
-              errorText={error?.message}
-              isError={Boolean(error)}
-            >
-              <TextArea
-                {...field}
-                placeholder="PEM-encoded certificate..."
-                reSize="none"
-                className="h-48"
-              />
-            </FormControl>
+              <ScrollableContent
+                aria-label="Certificate signing request"
+                size="sm"
+                edgeBehavior="fade"
+                outline={false}
+                containerClassName="rounded-md border border-border bg-container"
+              >
+                <pre className="p-3 font-mono text-[11px] leading-relaxed break-all whitespace-pre-wrap text-foreground">
+                  {csr}
+                </pre>
+              </ScrollableContent>
+            </Field>
           )}
-        />
-        <Controller
-          control={control}
-          name="certificateChain"
-          render={({ field, fieldState: { error } }) => (
-            <FormControl
-              label="Certificate Chain"
-              errorText={error?.message}
-              isError={Boolean(error)}
-            >
-              <TextArea
-                {...field}
-                placeholder="PEM-encoded certificate chain..."
-                reSize="none"
-                className="h-48"
-              />
-            </FormControl>
-          )}
-        />
+          <Controller
+            control={control}
+            name="certificate"
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="ca-install-certificate">Certificate Body</FieldLabel>
+                <TextArea
+                  {...field}
+                  id="ca-install-certificate"
+                  placeholder="PEM-encoded certificate..."
+                  className="h-32 resize-none font-mono text-xs"
+                  isError={Boolean(error)}
+                />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name="certificateChain"
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="ca-install-certificate-chain">Certificate Chain</FieldLabel>
+                <TextArea
+                  {...field}
+                  id="ca-install-certificate-chain"
+                  placeholder="PEM-encoded certificate chain..."
+                  className="h-32 resize-none font-mono text-xs"
+                  isError={Boolean(error)}
+                />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+        </FieldGroup>
       </DialogBody>
       <DialogFooter>
         <DialogClose asChild>

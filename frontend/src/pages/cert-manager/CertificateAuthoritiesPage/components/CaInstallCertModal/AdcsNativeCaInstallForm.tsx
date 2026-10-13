@@ -3,7 +3,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { FormControl, Input, Select, SelectItem } from "@app/components/v2";
 import {
   Button,
   Combobox,
@@ -11,8 +10,15 @@ import {
   DialogClose,
   DialogFooter,
   Field,
+  FieldDescription,
   FieldError,
-  FieldLabel
+  FieldLabel,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
@@ -156,7 +162,10 @@ export const AdcsNativeCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
           render={({ field: { onChange, value, ...field }, fieldState: { error } }) => {
             if (isTemplatesLoading && !!selectedConnectionId) {
               return (
-                <FormControl label="Certificate Template" isRequired>
+                <Field className="mb-4">
+                  <FieldLabel>
+                    Certificate Template <span className="text-danger">*</span>
+                  </FieldLabel>
                   <Combobox
                     isLoading
                     isDisabled
@@ -169,17 +178,15 @@ export const AdcsNativeCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
                     getOptionValue={() => ""}
                     placeholder="Loading templates..."
                   />
-                </FormControl>
+                </Field>
               );
             }
             if (templates.length > 0) {
               return (
-                <FormControl
-                  label="Certificate Template"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  isRequired
-                >
+                <Field className="mb-4">
+                  <FieldLabel>
+                    Certificate Template <span className="text-danger">*</span>
+                  </FieldLabel>
                   <Combobox
                     isDisabled={!selectedConnectionId}
                     modal
@@ -191,19 +198,27 @@ export const AdcsNativeCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
                     getOptionLabel={(option) => option.label}
                     getOptionValue={(option) => option.value}
                   />
-                </FormControl>
+                  <FieldError errors={[error]} />
+                </Field>
               );
             }
             return (
-              <FormControl
-                label="Certificate Template"
-                errorText={error?.message}
-                isError={Boolean(error)}
-                isRequired
-                helperText="Enter the subordinate CA template name (e.g. SubCA)."
-              >
-                <Input {...field} value={value} onChange={onChange} placeholder="SubCA" />
-              </FormControl>
+              <Field className="mb-4">
+                <FieldLabel>
+                  Certificate Template <span className="text-danger">*</span>
+                </FieldLabel>
+                <Input
+                  {...field}
+                  isError={Boolean(error)}
+                  value={value}
+                  onChange={onChange}
+                  placeholder="SubCA"
+                />
+                <FieldDescription>
+                  Enter the subordinate CA template name (e.g. SubCA).
+                </FieldDescription>
+                <FieldError errors={[error]} />
+              </Field>
             );
           }}
         />
@@ -211,15 +226,22 @@ export const AdcsNativeCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
           control={control}
           name="maxPathLength"
           render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-            <FormControl label="Path Length" errorText={error?.message} isError={Boolean(error)}>
-              <Select {...field} onValueChange={onChange} className="w-full">
-                {[-1, 0, 1, 2, 3].map((value) => (
-                  <SelectItem value={String(value)} key={`ca-path-length-${value}`}>
-                    {String(value)}
-                  </SelectItem>
-                ))}
+            <Field className="mb-4">
+              <FieldLabel>Path Length</FieldLabel>
+              <Select value={field.value} onValueChange={onChange}>
+                <SelectTrigger className="w-full" isError={Boolean(error)}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {[-1, 0, 1, 2, 3].map((value) => (
+                    <SelectItem value={String(value)} key={`ca-path-length-${value}`}>
+                      {String(value)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
-            </FormControl>
+              <FieldError errors={[error]} />
+            </Field>
           )}
         />
       </DialogBody>
