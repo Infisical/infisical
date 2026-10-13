@@ -180,6 +180,7 @@ type Props = {
   onCopySecret?: () => void;
   onAccessInsightsUpgrade: (onGranted: () => void) => void;
   onExpandedChange?: (isExpanded: boolean) => void;
+  isNew?: boolean;
 };
 
 export const SecretEditTableRow = ({
@@ -220,7 +221,8 @@ export const SecretEditTableRow = ({
   revokedProjectFolderGrant,
   onCopySecret,
   onAccessInsightsUpgrade,
-  onExpandedChange
+  onExpandedChange,
+  isNew
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
@@ -1963,7 +1965,14 @@ export const SecretEditTableRow = ({
             isOverride && "border-l border-b-border/50 border-l-override"
           )}
         >
-          {nameInput}
+          {isNew ? (
+            <div className="flex min-w-0 items-center gap-2">
+              {nameInput}
+              <Badge variant="project">New</Badge>
+            </div>
+          ) : (
+            nameInput
+          )}
         </TableCell>
         <TableCell
           className={twMerge("relative w-full max-w-0", isOverride && "border-b-border/50")}

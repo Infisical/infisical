@@ -231,6 +231,7 @@ import {
   useSecretRotationOverview
 } from "@app/hooks/utils";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
+import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
 
@@ -1001,8 +1002,65 @@ const OverviewPageContent = () => {
     (isPlaceholderData && !overview?.totalCount) ||
     showDelayedOverviewSkeleton;
 
+  // Secrets the user just created stay pinned to the top of the table until they leave this
+  // folder, so the active sort or pagination can't move a new row out of view.
+  const [pinnedSecretKeys, setPinnedSecretKeys] = useState<string[]>([]);
+  const [highlightedSecretKeys, setHighlightedSecretKeys] = useState<string[]>([]);
+
+  useEffect(() => {
+    setPinnedSecretKeys([]);
+    setHighlightedSecretKeys([]);
+  }, [secretPath, projectId]);
+
+  const { data: pinnedOverview } = useGetProjectSecretsOverview(
+    {
+      ...overviewQueryParams,
+      orderBy: DashboardSecretsOrderBy.CreatedAt,
+      orderDirection: OrderByDirection.DESC,
+      sortEnvironment: undefined,
+      includeSecrets: true,
+      includeFolders: false,
+      includeDynamicSecrets: false,
+      includeImports: false,
+      includeSecretRotations: false,
+      includeHoneyTokens: false,
+      includeProxiedServices: false,
+      limit: Math.min(pinnedSecretKeys.length + 10, 100),
+      offset: 0
+    },
+    { enabled: isProjectV3 && pinnedSecretKeys.length > 0 }
+  );
+
+  const pageSecrets = overview?.secrets;
+  const secrets = useMemo(() => {
+    const pinnedSecrets = pinnedSecretKeys.length
+      ? (pinnedOverview?.secrets ?? [])
+          .filter((secret) => pinnedSecretKeys.includes(secret.key))
+          .sort((a, b) => pinnedSecretKeys.indexOf(a.key) - pinnedSecretKeys.indexOf(b.key))
+      : [];
+    if (!pinnedSecrets.length) return pageSecrets;
+    const pinnedKeys = new Set(pinnedSecrets.map((secret) => secret.key));
+    return [
+      ...pinnedSecrets,
+      ...(pageSecrets ?? []).filter((secret) => !pinnedKeys.has(secret.key))
+    ];
+  }, [pageSecrets, pinnedOverview?.secrets, pinnedSecretKeys]);
+
+  // The new row only renders once the pinned query resolves, so scroll and start the highlight
+  // timer from that point rather than from when the secret was created.
+  const highlightedRowKey = highlightedSecretKeys.find((key) =>
+    secrets?.some((secret) => secret.key === key)
+  );
+  useEffect(() => {
+    if (!highlightedRowKey) return undefined;
+    document
+      .querySelector(`[data-secret-key="${CSS.escape(highlightedRowKey)}"]`)
+      ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    const timeout = setTimeout(() => setHighlightedSecretKeys([]), 2500);
+    return () => clearTimeout(timeout);
+  }, [highlightedRowKey]);
+
   const {
-    secrets,
     folders,
     dynamicSecrets,
     secretRotations,
@@ -1259,7 +1317,8 @@ const OverviewPageContent = () => {
     "confirmDisableBatchMode",
     "editHoneyToken",
     "revokeHoneyToken",
-    "createEnvironment"
+    "createEnvironment",
+    "createSharedSecret"
   ] as const);
   const { openUpgradeGate: openSharedUpgradeGate, upgradeGate } = useUpgradeGate();
   const [commitHistoryEnv, setCommitHistoryEnv] = useState<{ slug: string; name: string } | null>(
@@ -3836,6 +3895,8 @@ const OverviewPageContent = () => {
                             }
                             activityId={getTableRowActivityId("secret", key)}
                             onActivityChange={handleTableRowActivityChange}
+                            isPinned={pinnedSecretKeys.includes(key)}
+                            isHighlighted={highlightedSecretKeys.includes(key)}
                           />
                         ))}
                         {tableView === "table" && (
@@ -3969,7 +4030,15 @@ const OverviewPageContent = () => {
             defaultSelectedEnvs={filteredEnvs}
             onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
             isBatchMode={isBatchModeActive}
-            onSecretCreated={checkSecretsActivation}
+            onSecretCreated={(secretKeys) => {
+              checkSecretsActivation();
+              setPinnedSecretKeys((prev) => [
+                ...secretKeys,
+                ...prev.filter((key) => !secretKeys.includes(key))
+              ]);
+              setHighlightedSecretKeys(secretKeys);
+            }}
+            onShareSecret={(value) => handlePopUpOpen("createSharedSecret", { value })}
             onUploadSecrets={(env) => {
               setImportParsedSecrets(env ?? null);
               handlePopUpClose("addSecretsInAllEnvs");
@@ -3995,6 +4064,7 @@ const OverviewPageContent = () => {
           />
         </SheetContent>
       </Sheet>
+      <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <Dialog
         open={popUp.addFolder.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addFolder", isOpen)}

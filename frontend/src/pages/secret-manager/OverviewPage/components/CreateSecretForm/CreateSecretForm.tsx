@@ -14,7 +14,7 @@ import {
 import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
-import { createNotification } from "@app/components/notifications";
+import { createNotification, dismissNotification } from "@app/components/notifications";
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
 import {
   Accordion,
@@ -128,8 +128,11 @@ type Props = {
     metadata?: { key: string; value: string; isEncrypted?: boolean }[];
   }) => void;
   // Called after the user actually creates a secret (non-batch path) so the parent can run the
-  // activation nudge. The parent owns the nudge hook + modal state, so this stays a callback.
-  onSecretCreated?: () => void;
+  // activation nudge and pin the new rows. The parent owns that state, so this stays a callback.
+  onSecretCreated?: (secretKeys: string[]) => void;
+  // Opens the share sheet from the success toast. The parent owns the sheet because this form
+  // unmounts when the create sheet closes.
+  onShareSecret?: (value: string) => void;
   // Called when the user opts to bulk-upload secrets instead. The parent owns the import modal,
   // so it swaps popups; when the user pasted multiple KEY=VALUE pairs, the parsed set is passed
   // along so the modal can skip its upload step.
@@ -143,6 +146,7 @@ export const CreateSecretForm = ({
   isBatchMode,
   onBatchSecretCreate,
   onSecretCreated,
+  onShareSecret,
   onUploadSecrets
 }: Props) => {
   const { currentProject, projectId } = useProject();
@@ -316,15 +320,32 @@ export const CreateSecretForm = ({
     }
 
     if (updatedEnvs.length) {
-      createNotification({
-        type: "success",
-        text: `Secrets created in ${
-          updatedEnvs.length > 1 ? "environments" : "environment"
-        }: ${updatedEnvs.join(", ")}`
-      });
+      const shareableValue =
+        secrets.length === 1 && currentProject?.secretSharing ? secrets[0].value : undefined;
+      const notificationId = createNotification(
+        {
+          type: "success",
+          text: `Secrets created in ${
+            updatedEnvs.length > 1 ? "environments" : "environment"
+          }: ${updatedEnvs.join(", ")}`,
+          callToAction:
+            shareableValue && onShareSecret ? (
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => {
+                  dismissNotification(notificationId);
+                  onShareSecret(shareableValue);
+                }}
+              >
+                Share secret
+              </Button>
+            ) : undefined
+        },
+        shareableValue && onShareSecret ? { duration: 8000 } : undefined
+      );
 
-      // The user just created a secret: let the parent check whether to surface the nudge.
-      onSecretCreated?.();
+      onSecretCreated?.(secrets.map((secret) => secret.key));
     }
 
     if (!updatedEnvs.length && !forApprovalEnvs.length) {
