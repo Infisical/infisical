@@ -334,6 +334,7 @@ describe("alert service", () => {
       name: "expiry",
       resourceType: RESOURCE_TYPE,
       resourceId: "resource-1",
+      resourceName: "Resource One",
       eventType: "test.resource.expiration"
     };
 
@@ -344,6 +345,7 @@ describe("alert service", () => {
         name: "expiry",
         resourceType: RESOURCE_TYPE,
         resourceId: "resource-1",
+        resourceName: "Resource One",
         eventType: "test.resource.expiration"
       }
     });
@@ -353,6 +355,8 @@ describe("alert service", () => {
         alertId: "alert-1",
         name: "expiry",
         resourceType: RESOURCE_TYPE,
+        resourceId: "resource-1",
+        resourceName: "Resource One",
         eventType: "test.resource.expiration"
       }
     });
@@ -362,13 +366,21 @@ describe("alert service", () => {
         alertId: "alert-1",
         name: "expiry",
         resourceType: RESOURCE_TYPE,
+        resourceId: "resource-1",
+        resourceName: "Resource One",
         eventType: "test.resource.expiration"
       }
     });
     expect(
       service.getAuditEvent({
         action: AlertAuditAction.TestChannel,
-        test: { resourceType: RESOURCE_TYPE, resourceId: "resource-1", channelType: "slack", success: true }
+        test: {
+          resourceType: RESOURCE_TYPE,
+          resourceId: "resource-1",
+          resourceName: null,
+          channelType: "slack",
+          success: true
+        }
       })
     ).toEqual({
       type: "test-alert-channel",
@@ -377,6 +389,7 @@ describe("alert service", () => {
         channelType: "slack",
         resourceType: RESOURCE_TYPE,
         resourceId: "resource-1",
+        resourceName: null,
         success: true,
         deliveredTo: undefined,
         error: undefined

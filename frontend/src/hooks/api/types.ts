@@ -42,7 +42,8 @@ export enum ApiErrorTypes {
   BadRequestError = "BadRequest",
   UnauthorizedError = "UnauthorizedError",
   ForbiddenError = "PermissionDenied",
-  CustomForbiddenError = "ForbiddenError"
+  CustomForbiddenError = "ForbiddenError",
+  RateLimitError = "RateLimitExceeded"
 }
 
 export type TApiErrors =

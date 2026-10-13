@@ -15,7 +15,7 @@ import {
 } from "@app/db/schemas";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getCommitterIds, shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
+import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import {
   InternalMetadataType,
   TInternalMetadata
@@ -23,7 +23,6 @@ import {
 import { BadRequestError, NotFoundError, throwIfAnySettledClientClosed } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { ActorType } from "../auth/auth-type";
 import { CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
@@ -1622,8 +1621,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     resourceMetadataDAL,
     folderCommitService,
     secretApprovalPolicyService,
-    secretApprovalRequestDAL,
-    secretApprovalRequestSecretDAL,
+    secretApprovalRequestCreationFns,
     secretQueueService,
     reminderService,
     secretValidationRuleService
@@ -1852,7 +1850,8 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
   const destinationFolderPolicy = await secretApprovalPolicyService.getSecretApprovalPolicy(
     projectId,
     destinationFolder.environment.slug,
-    destinationFolder.path
+    destinationFolder.path,
+    tx
   );
 
   let destinationSecretIdByKey: Record<string, string | undefined> = {};
@@ -1863,18 +1862,6 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(
       destinationFolder.id,
       localSecretsIds,
-      tx
-    );
-
-    const approvalRequestDoc = await secretApprovalRequestDAL.create(
-      {
-        folderId: destinationFolder.id,
-        slug: alphaNumericNanoId(),
-        policyId: destinationFolderPolicy.id,
-        status: "open",
-        hasMerged: false,
-        ...getCommitterIds(actor, actorId)
-      },
       tx
     );
 
@@ -1897,30 +1884,22 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
             }
           : {}),
         op: operation,
-        requestId: approvalRequestDoc.id,
         metadata: doc.metadata,
         key: doc.key,
         encryptedValue: doc.encryptedValue,
         encryptedComment: doc.encryptedComment,
         skipMultilineEncoding: doc.skipMultilineEncoding,
+        tagIds: doc.tags.map((tag) => tag.id),
         // except create operation other two needs the secret id and version id
         ...(operation !== SecretOperations.Create
           ? { secretId: localSecret.id, secretVersion: latestSecretVersions[localSecret.id].id }
           : {})
       };
     });
-    const approvalCommits = await secretApprovalRequestSecretDAL.insertV2Bridge(commits, tx);
-
-    const approvalCommitsGroupedByKey = groupBy(approvalCommits, (i) => i.key);
-    const approvalSecretTags = secretsToApplyAtDestination.flatMap((doc) =>
-      doc.tags.map((tag) => ({
-        secretId: approvalCommitsGroupedByKey[doc.key][0].id,
-        tagId: tag.id
-      }))
+    await secretApprovalRequestCreationFns.createSecretApprovalRequestV2Bridge(
+      { policy: destinationFolderPolicy, folderId: destinationFolder.id, actor, actorId, commits },
+      tx
     );
-    if (approvalSecretTags.length) {
-      await secretApprovalRequestSecretDAL.insertApprovalSecretV2Tags(approvalSecretTags, tx);
-    }
   } else {
     // apply changes directly
     let createdSecrets: { id: string; key: string }[] = [];
@@ -2047,17 +2026,6 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     // if secret approval policy exists for source, we create the secret approval request
     const localSecretsIds = decryptedSourceSecrets.map(({ id }) => id);
     const latestSecretVersions = await secretVersionDAL.findLatestVersionMany(sourceFolder.id, localSecretsIds, tx);
-    const approvalRequestDoc = await secretApprovalRequestDAL.create(
-      {
-        folderId: sourceFolder.id,
-        slug: alphaNumericNanoId(),
-        policyId: sourceFolderPolicy.id,
-        status: "open",
-        hasMerged: false,
-        ...getCommitterIds(actor, actorId)
-      },
-      tx
-    );
 
     const commits = locallyDeletedSecrets.map((doc) => {
       const { operation } = doc;
@@ -2065,7 +2033,6 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
 
       return {
         op: operation,
-        requestId: approvalRequestDoc.id,
         metadata: doc.metadata,
         key: doc.key,
         encryptedComment: doc.encryptedComment,
@@ -2076,7 +2043,10 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
       };
     });
 
-    await secretApprovalRequestSecretDAL.insertV2Bridge(commits, tx);
+    await secretApprovalRequestCreationFns.createSecretApprovalRequestV2Bridge(
+      { policy: sourceFolderPolicy, folderId: sourceFolder.id, actor, actorId, commits },
+      tx
+    );
   } else {
     // if no secret approval policy is present, we delete directly.
     await secretDAL.delete(

@@ -96,7 +96,6 @@ import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
 import { SessionCreatedDialog } from "./components/SessionCreatedDialog";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
-import { SessionLogLossIndicator } from "./components/SessionLogLossIndicator";
 import { SESSION_STATUS_PRESENTATION, SessionStatusBadge } from "./components/SessionStatusBadge";
 
 const STATUS_OPTIONS = [
@@ -193,18 +192,6 @@ export const AgentVaultSessionsPage = () => {
       />
 
       <div className="flex flex-col gap-8">
-        {sessionLogHealth?.isStorageFull &&
-          sessionLogSettings &&
-          areAgentVaultSessionLogsOn(sessionLogSettings) && (
-            <Alert variant="danger">
-              <CircleAlertIcon />
-              <AlertDescription>
-                Session logs have reached their limit for this organization. Contact Infisical
-                support.
-              </AlertDescription>
-            </Alert>
-          )}
-
         {sessionLogHealth?.connectionError &&
           sessionLogSettings &&
           areAgentVaultSessionLogsOn(sessionLogSettings) &&
@@ -268,7 +255,7 @@ export const AgentVaultSessionsPage = () => {
             </Alert>
           )}
 
-        {isAdmin && <SessionLogReadAccessAlert />}
+        {isAdmin && !sessionLogHealth?.connectionError && <SessionLogReadAccessAlert />}
 
         <Card>
           <CardHeader>
@@ -452,17 +439,8 @@ export const AgentVaultSessionsPage = () => {
                           />
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="text-sm">
-                              {format(new Date(session.createdAt), "MMM d, yyyy")}
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {format(new Date(session.createdAt), "MMM d, yyyy h:mm a")}
-                          </TooltipContent>
-                        </Tooltip>
+                      <TableCell className="whitespace-nowrap">
+                        {format(new Date(session.createdAt), "MMM d, yyyy h:mm a")}
                       </TableCell>
                       <TableCell>
                         <SessionExpiry expiresAt={session.expiresAt} />
@@ -472,7 +450,6 @@ export const AgentVaultSessionsPage = () => {
                       </TableCell>
                       <TableCell variant="action">
                         <div className="flex items-center justify-end gap-1">
-                          <SessionLogLossIndicator counts={session.recentSessionLogCounts} />
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <IconButton

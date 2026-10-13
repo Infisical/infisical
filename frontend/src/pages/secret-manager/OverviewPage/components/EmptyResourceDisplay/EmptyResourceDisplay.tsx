@@ -1,4 +1,4 @@
-import { FolderPlusIcon, LayersIcon, PlusIcon, SearchIcon } from "lucide-react";
+import { FolderPlusIcon, GlobeIcon, LayersIcon, PlusIcon, SearchIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -16,9 +16,19 @@ type Props = {
   isFiltered?: boolean;
   variant?: "secrets" | "no-environments";
   onAddEnvironment?: () => void;
+  hasSearch?: boolean;
+  onSearchAllFolders?: () => void;
+  isTableRow?: boolean;
 };
 
-export function EmptyResourceDisplay({ isFiltered, variant = "secrets", onAddEnvironment }: Props) {
+export function EmptyResourceDisplay({
+  isFiltered,
+  variant = "secrets",
+  onAddEnvironment,
+  hasSearch,
+  onSearchAllFolders,
+  isTableRow
+}: Props) {
   if (variant === "no-environments") {
     return (
       <Empty className="border">
@@ -49,23 +59,35 @@ export function EmptyResourceDisplay({ isFiltered, variant = "secrets", onAddEnv
     );
   }
 
-  const { title, description } = isFiltered
-    ? {
-        title: "No resources match your search",
-        description: "Adjust your search and try again"
-      }
-    : {
-        title: "This project doesn't have any secrets",
-        description: "Add some secrets to get started"
-      };
+  let title = "This project doesn't have any secrets";
+  let description = "Add some secrets to get started";
+
+  if (isFiltered && hasSearch) {
+    title = "No matches in this folder";
+    description = "Try another search, or look across every folder in this project.";
+  } else if (isFiltered) {
+    title = "No resources match these filters";
+    description = "Adjust or clear your filters and try again.";
+  }
 
   return (
-    <Empty className="border">
+    <Empty
+      variant={isTableRow ? "unstyled" : "default"}
+      className={isTableRow ? "h-full" : "border"}
+    >
       <EmptyHeader>
         <EmptyMedia variant="icon">{isFiltered ? <SearchIcon /> : <FolderPlusIcon />}</EmptyMedia>
         <EmptyTitle>{title}</EmptyTitle>
         <EmptyDescription>{description}</EmptyDescription>
       </EmptyHeader>
+      {hasSearch && onSearchAllFolders && (
+        <EmptyContent>
+          <Button variant="outline" size="xs" onClick={onSearchAllFolders}>
+            <GlobeIcon />
+            Search All Folders
+          </Button>
+        </EmptyContent>
+      )}
     </Empty>
   );
 }

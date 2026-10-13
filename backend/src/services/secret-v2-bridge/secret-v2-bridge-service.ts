@@ -23,8 +23,7 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
-import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
-import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
+import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
@@ -168,10 +167,9 @@ type TSecretV2BridgeServiceFactoryDep = {
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "handleSecretReminder" | "removeSecretReminder">;
   secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
-  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "create" | "transaction">;
-  secretApprovalRequestSecretDAL: Pick<
-    TSecretApprovalRequestSecretDALFactory,
-    "insertV2Bridge" | "insertApprovalSecretV2Tags"
+  secretApprovalRequestCreationFns: Pick<
+    TSecretApprovalRequestCreationFnsFactory,
+    "createSecretApprovalRequestV2Bridge"
   >;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   keyStore: Pick<
@@ -213,8 +211,7 @@ export const secretV2BridgeServiceFactory = ({
   secretImportDAL,
   secretVersionTagDAL,
   secretApprovalPolicyService,
-  secretApprovalRequestDAL,
-  secretApprovalRequestSecretDAL,
+  secretApprovalRequestCreationFns,
   kmsService,
   resourceMetadataDAL,
   keyStore,
@@ -2944,10 +2941,18 @@ export const secretV2BridgeServiceFactory = ({
       }
     });
     const secretsToDeleteSet = new Set(secretsToDelete.map((el) => el.key));
-    if (secretsToDeleteSet.size !== inputSecrets.length)
+    const requestedKeys = inputSecrets.map((el) => el.secretKey);
+    const missingKeys = [...new Set(requestedKeys.filter((key) => !secretsToDeleteSet.has(key)))];
+    if (missingKeys.length)
       throw new NotFoundError({
-        message: `One or more secrets does not exist: ${secretsToDelete.map((el) => el.key).join(", ")}`
+        message: `One or more secrets does not exist: ${missingKeys.join(", ")}`
       });
+    if (secretsToDeleteSet.size !== requestedKeys.length) {
+      const repeatedKeys = [...new Set(requestedKeys.filter((key, index) => requestedKeys.indexOf(key) !== index))];
+      throw new BadRequestError({
+        message: `Each secret can only be deleted once per request: ${repeatedKeys.join(", ")}`
+      });
+    }
     secretsToDelete.forEach((el) => {
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionSecretActions.Delete,
@@ -3272,8 +3277,7 @@ export const secretV2BridgeServiceFactory = ({
         resourceMetadataDAL,
         folderCommitService,
         secretApprovalPolicyService,
-        secretApprovalRequestDAL,
-        secretApprovalRequestSecretDAL,
+        secretApprovalRequestCreationFns,
         secretQueueService,
         reminderService,
         secretValidationRuleService

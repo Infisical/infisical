@@ -167,6 +167,7 @@ import { oktaConnectionService } from "./okta/okta-connection-service";
 import { ValidateOnaConnectionCredentialsSchema } from "./ona";
 import { onaConnectionService } from "./ona/ona-connection-service";
 import { ValidateOpenRouterConnectionCredentialsSchema } from "./open-router";
+import { openRouterConnectionService } from "./open-router/open-router-connection-service";
 import { ValidateOpenAIConnectionCredentialsSchema } from "./openai";
 import { openaiConnectionService } from "./openai/openai-connection-service";
 import { ValidateOvhConnectionCredentialsSchema } from "./ovh";
@@ -1487,6 +1488,7 @@ export const appConnectionServiceFactory = ({
     okta: oktaConnectionService(connectAppConnectionById),
     datadog: datadogConnectionService(connectAppConnectionById),
     openai: openaiConnectionService(connectAppConnectionById),
+    openRouter: openRouterConnectionService(connectAppConnectionById),
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),
     chef: chefConnectionService(connectAppConnectionById, licenseService, gatewayV2Service, gatewayPoolService),
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),

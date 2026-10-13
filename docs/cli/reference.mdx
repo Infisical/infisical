@@ -184,6 +184,8 @@ Manage certificates with the Infisical Agent. [infisical cert-manager agent](/cl
 
 Run the Infisical Agent in [certificate management mode](/documentation/platform/pki/reference/infisical-agent). The agent authenticates as a machine identity, requests the certificates in its configuration, writes them to disk, and renews them before they expire. It runs until it gets `SIGINT`, `SIGTERM`, or `SIGQUIT`.
 
+On restart, the agent reuses each certificate it already issued instead of requesting a new one. It tracks each certificate in a hidden state file next to it, named `.<certificate-file>.infisical-agent-state.json`. The agent issues a new certificate if that file is missing, the certificate files changed on disk, or the certificate's configuration changed. Certificates configured with `certificate-id`, `csr`, or `csr-path` aren't reused.
+
 The configuration can't include secret templates. To render secrets as well, use [infisical agent](/cli/reference#agent). To pass the configuration without a file, set `INFISICAL_AGENT_CONFIG_BASE64` to the base64-encoded YAML.
 
 </CLICommand>
