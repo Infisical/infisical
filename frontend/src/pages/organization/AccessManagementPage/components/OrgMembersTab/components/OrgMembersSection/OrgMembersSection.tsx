@@ -6,7 +6,6 @@ import { EmailServiceSetupModal } from "@app/components/auth/EmailServiceSetupMo
 import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Tooltip } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -17,8 +16,12 @@ import {
   CardHeader,
   CardTitle,
   DocumentationLinkBadge,
-  SelectedActionBar
+  SelectedActionBar,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
+import { DeleteConfirmDialog } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionMemberActions,
@@ -210,76 +213,86 @@ export const OrgMembersSection = () => {
         setCompleteInviteLinks={setCompleteInviteLinks}
       />
       <AddSubOrgMemberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.removeMember.isOpen}
         title={`Are you sure you want to remove member with username ${
           (popUp?.removeMember?.data as { username: string })?.username || ""
         }?`}
-        onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onRemoveMemberSubmit(
             (popUp?.removeMember?.data as { orgMembershipId: string })?.orgMembershipId
           )
         }
       />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deactivateMember.isOpen}
         title={`Are you sure you want to deactivate member with username ${
           (popUp?.deactivateMember?.data as { username: string })?.username || ""
         }?`}
-        onChange={(isOpen) => handlePopUpToggle("deactivateMember", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deactivateMember", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onDeactivateMemberSubmit(
             (popUp?.deactivateMember?.data as { orgMembershipId: string })?.orgMembershipId
           )
         }
-        buttonText="Deactivate"
+        confirmLabel="Deactivate"
       />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.removeMembers.isOpen}
         title="Are you sure you want to remove the following members?"
-        onChange={(isOpen) => handlePopUpToggle("removeMembers", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("removeMembers", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           handleRemoveMembers(popUp.removeMembers.data.selectedOrgMemberships as OrgUser[])
         }
-        buttonText="Remove"
+        confirmLabel="Remove"
       >
-        <div className="mt-4 text-sm text-muted">The following members will be removed:</div>
-        <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-border-control bg-danger/10 p-4 pl-8 text-sm text-danger">
-          <ul className="list-disc">
-            {(popUp.removeMembers.data?.selectedOrgMemberships as OrgUser[])?.map((member) => {
-              const email = member.user.email ?? member.user.username ?? member.inviteEmail;
-              return (
-                <li key={member.id}>
-                  <div className="flex items-center">
-                    <p className={userId === member.user.id ? "line-through" : ""}>
-                      {member.user.firstName || member.user.lastName ? (
-                        <>
-                          {`${`${member.user.firstName ?? ""} ${member.user.lastName ?? ""}`.trim()} `}
-                          (<span className="break-all">{email}</span>)
-                        </>
-                      ) : (
-                        <span className="break-all">{email}</span>
-                      )}{" "}
-                    </p>
-                    {userId === member.user.id && (
-                      <Tooltip content="You cannot remove yourself from this organization">
-                        <Badge variant="danger" className="ml-2">
-                          <BanIcon />
-                          Ignored
-                        </Badge>
-                      </Tooltip>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+        <div className="text-sm text-muted">
+          The following members will be removed:
+          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-border-control bg-danger/10 p-4 pl-8 text-sm text-danger">
+            <ul className="list-disc">
+              {(popUp.removeMembers.data?.selectedOrgMemberships as OrgUser[])?.map((member) => {
+                const email = member.user.email ?? member.user.username ?? member.inviteEmail;
+                return (
+                  <li key={member.id}>
+                    <div className="flex items-center">
+                      <p className={userId === member.user.id ? "line-through" : ""}>
+                        {member.user.firstName || member.user.lastName ? (
+                          <>
+                            {`${`${member.user.firstName ?? ""} ${member.user.lastName ?? ""}`.trim()} `}
+                            (<span className="break-all">{email}</span>)
+                          </>
+                        ) : (
+                          <span className="break-all">{email}</span>
+                        )}{" "}
+                      </p>
+                      {userId === member.user.id && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="danger" className="ml-2">
+                              <BanIcon />
+                              Ignored
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            You cannot remove yourself from this organization
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </div>
-      </DeleteActionModal>
+      </DeleteConfirmDialog>
       <UpgradeGate
         paywallKey="organization.org-members"
         isOpen={popUp.upgradePlan.isOpen}
