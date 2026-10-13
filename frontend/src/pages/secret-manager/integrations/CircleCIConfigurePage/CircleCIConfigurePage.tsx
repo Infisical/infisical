@@ -9,14 +9,21 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Card,
+  CardDescription,
+  CardHeader,
   CardTitle,
-  FilterableSelect,
-  FormControl,
+  Combobox,
+  Field,
+  FieldError,
+  FieldLabel,
+  SecretPathInput,
   Select,
-  SelectItem
-} from "@app/components/v2";
-import { SecretPathInput } from "@app/components/v2/SecretPathInput";
-import { Spinner } from "@app/components/v3";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Spinner
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration, useGetIntegrationAuthCircleCIOrganizations } from "@app/hooks/api";
@@ -125,83 +132,97 @@ export const CircleCIConfigurePage = () => {
       onSubmit={handleSubmit(onSubmit)}
       className="flex h-full w-full items-center justify-center"
     >
-      <Card className="max-w-lg rounded-md p-8 pt-4">
-        <CardTitle
-          className="w-full px-0 text-left text-xl"
-          subTitle="Choose which environment or folder in Infisical you want to sync to CircleCI."
-        >
-          <div className="flex w-full flex-row items-center justify-between">
-            <div className="flex flex-row items-center gap-1.5">
-              <img
-                src="/images/integrations/CircleCI.png"
-                height={30}
-                width={30}
-                alt="CircleCI logo"
-              />
-
-              <span className="">CircleCI Context Integration </span>
-            </div>
-
-            <a
-              href="https://infisical.com/docs/integrations/cicd/circleci"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 flex cursor-pointer flex-row items-center gap-0.5 rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <div className="flex w-full flex-row items-center justify-between">
+              <div className="flex flex-row items-center gap-1.5">
+                <img
+                  src="/images/integrations/CircleCI.png"
+                  height={30}
+                  width={30}
+                  alt="CircleCI logo"
                 />
+
+                <span className="">CircleCI Context Integration </span>
               </div>
-            </a>
-          </div>
-        </CardTitle>
+
+              <a
+                href="https://infisical.com/docs/integrations/cicd/circleci"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <div className="mb-1 ml-2 flex cursor-pointer flex-row items-center gap-0.5 rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="text-xxs mb-[0.07rem] ml-1.5"
+                  />
+                </div>
+              </a>
+            </div>
+          </CardTitle>
+          <CardDescription>
+            Choose which environment or folder in Infisical you want to sync to CircleCI.
+          </CardDescription>
+        </CardHeader>
         <Controller
           control={control}
           name="sourceEnvironment"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error)}
-              label="Project Environment"
-            >
-              <FilterableSelect
+            <Field className="mb-4" data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="circleci-sourceenvironment">Project Environment</FieldLabel>
+              <Combobox
+                isClearable={false}
                 getOptionValue={(option) => option.slug}
                 value={value}
                 getOptionLabel={(option) => option.name}
-                onChange={onChange}
+                onValueChange={onChange}
                 options={currentProject?.environments}
                 placeholder="Select a project environment"
                 isDisabled={!currentProject?.environments.length}
+                id="circleci-sourceenvironment"
+                isError={Boolean(error)}
+                aria-describedby={error ? "circleci-sourceenvironment-error" : undefined}
               />
-            </FormControl>
+              {Boolean(error) && (
+                <FieldError id="circleci-sourceenvironment-error">{error?.message}</FieldError>
+              )}
+            </Field>
           )}
         />
         <Controller
           control={control}
           name="secretPath"
           render={({ field, fieldState: { error } }) => (
-            <FormControl label="Secrets Path" errorText={error?.message} isError={Boolean(error)}>
-              <SecretPathInput {...field} environment={selectedEnvironment.slug} />
-            </FormControl>
+            <Field className="mb-4" data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="circleci-secretpath">Secrets Path</FieldLabel>
+              <SecretPathInput
+                {...field}
+                environment={selectedEnvironment.slug}
+                id="circleci-secretpath"
+                isError={Boolean(error)}
+                aria-describedby={error ? "circleci-secretpath-error" : undefined}
+              />
+              {Boolean(error) && (
+                <FieldError id="circleci-secretpath-error">{error?.message}</FieldError>
+              )}
+            </Field>
           )}
         />
         <Controller
           control={control}
           name="targetOrg"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error)}
-              label="CircleCI Organization"
-            >
-              <FilterableSelect
+            <Field className="mb-4" data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="circleci-targetorg">CircleCI Organization</FieldLabel>
+              <Combobox
+                isClearable={false}
                 getOptionValue={(option) => option.slug}
                 value={value}
                 getOptionLabel={(option) => option.name}
-                onChange={(e) => {
+                onValueChange={(e) => {
                   setValue("targetProject", {
                     name: "",
                     id: ""
@@ -220,26 +241,45 @@ export const CircleCIConfigurePage = () => {
                     : "No organizations found..."
                 }
                 isDisabled={!circleCIOrganizations?.length}
+                id="circleci-targetorg"
+                isError={Boolean(error)}
+                aria-describedby={error ? "circleci-targetorg-error" : undefined}
               />
-            </FormControl>
+              {Boolean(error) && (
+                <FieldError id="circleci-targetorg-error">{error?.message}</FieldError>
+              )}
+            </Field>
           )}
         />
         <Controller
           control={control}
           name="scope"
           render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-            <FormControl label="Scope" errorText={error?.message} isError={Boolean(error)}>
+            <Field className="mb-4" data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="circleci-scope">Scope</FieldLabel>
               <Select
                 defaultValue={field.value}
                 onValueChange={(e) => {
                   onChange(e);
                 }}
-                className="w-full border border-border-strong"
               >
-                <SelectItem value={CircleCiScope.Project}>Project</SelectItem>
-                <SelectItem value={CircleCiScope.Context}>Context</SelectItem>
+                <SelectTrigger
+                  className="w-full"
+                  id="circleci-scope"
+                  isError={Boolean(error)}
+                  aria-describedby={error ? "circleci-scope-error" : undefined}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={CircleCiScope.Project}>Project</SelectItem>
+                  <SelectItem value={CircleCiScope.Context}>Context</SelectItem>
+                </SelectContent>
               </Select>
-            </FormControl>
+              {Boolean(error) && (
+                <FieldError id="circleci-scope-error">{error?.message}</FieldError>
+              )}
+            </Field>
           )}
         />
         {selectedScope === CircleCiScope.Context && selectedOrganizationEntry && (
@@ -247,16 +287,14 @@ export const CircleCIConfigurePage = () => {
             control={control}
             name="targetContext"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error)}
-                label="CircleCI Context"
-              >
-                <FilterableSelect
+              <Field className="mb-4" data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="circleci-targetcontext">CircleCI Context</FieldLabel>
+                <Combobox
+                  isClearable={false}
                   value={value}
                   getOptionValue={(option) => option.id!}
                   getOptionLabel={(option) => option.name}
-                  onChange={onChange}
+                  onValueChange={onChange}
                   options={selectedOrganizationEntry?.contexts}
                   placeholder={
                     selectedOrganizationEntry.contexts?.length
@@ -264,8 +302,14 @@ export const CircleCIConfigurePage = () => {
                       : "No contexts found..."
                   }
                   isDisabled={!selectedOrganizationEntry.contexts?.length}
+                  id="circleci-targetcontext"
+                  isError={Boolean(error)}
+                  aria-describedby={error ? "circleci-targetcontext-error" : undefined}
                 />
-              </FormControl>
+                {Boolean(error) && (
+                  <FieldError id="circleci-targetcontext-error">{error?.message}</FieldError>
+                )}
+              </Field>
             )}
           />
         )}
@@ -274,16 +318,14 @@ export const CircleCIConfigurePage = () => {
             control={control}
             name="targetProject"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error)}
-                label="CircleCI Project"
-              >
-                <FilterableSelect
+              <Field className="mb-4" data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="circleci-targetproject">CircleCI Project</FieldLabel>
+                <Combobox
+                  isClearable={false}
                   value={value}
                   getOptionValue={(option) => option.id!}
                   getOptionLabel={(option) => option.name}
-                  onChange={onChange}
+                  onValueChange={onChange}
                   options={selectedOrganizationEntry?.projects}
                   placeholder={
                     selectedOrganizationEntry.projects?.length
@@ -291,17 +333,23 @@ export const CircleCIConfigurePage = () => {
                       : "No projects found..."
                   }
                   isDisabled={!selectedOrganizationEntry.projects?.length}
+                  id="circleci-targetproject"
+                  isError={Boolean(error)}
+                  aria-describedby={error ? "circleci-targetproject-error" : undefined}
                 />
-              </FormControl>
+                {Boolean(error) && (
+                  <FieldError id="circleci-targetproject-error">{error?.message}</FieldError>
+                )}
+              </Field>
             )}
           />
         )}
         <Button
           type="submit"
-          colorSchema="primary"
           className="mt-4"
-          isLoading={isCreatingIntegration}
+          isPending={isCreatingIntegration}
           isDisabled={isCreatingIntegration}
+          variant="project"
         >
           Create Integration
         </Button>

@@ -8,16 +8,22 @@ import { motion } from "motion/react";
 import {
   Button,
   Card,
+  CardDescription,
+  CardHeader,
   CardTitle,
-  FormControl,
+  Field,
+  FieldLabel,
   Input,
   Select,
+  SelectContent,
   SelectItem,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
-} from "@app/components/v2";
+  SelectTrigger,
+  SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -137,45 +143,45 @@ export const ChecklyConfigurePage = () => {
       <Helmet>
         <title>Set Up Checkly Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-border-control p-0">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Choose which environment in Infisical you want to sync to Checkly environment variables."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center pb-0.5">
-              <img
-                src="/images/integrations/Checkly.png"
-                height={30}
-                width={30}
-                alt="Checkly logo"
-              />
-            </div>
-            <span className="ml-2.5">Checkly Integration </span>
-            <a
-              href="https://infisical.com/docs/integrations/cloud/checkly"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <div className="flex flex-row items-center">
+              <div className="flex items-center pb-0.5">
+                <img
+                  src="/images/integrations/Checkly.png"
+                  height={30}
+                  width={30}
+                  alt="Checkly logo"
                 />
               </div>
-            </a>
-          </div>
-        </CardTitle>
-        <Tabs defaultValue={TabSections.Connection} className="px-6">
-          <TabList>
-            <div className="flex w-full flex-row border-b border-border-control">
-              <Tab value={TabSections.Connection}>Connection</Tab>
-              <Tab value={TabSections.Options}>Options</Tab>
+              <span className="ml-2.5">Checkly Integration </span>
+              <a
+                href="https://infisical.com/docs/integrations/cloud/checkly"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="text-xxs mb-[0.07rem] ml-1.5"
+                  />
+                </div>
+              </a>
             </div>
-          </TabList>
-          <TabPanel value={TabSections.Connection}>
+          </CardTitle>
+          <CardDescription>
+            Choose which environment in Infisical you want to sync to Checkly environment variables.
+          </CardDescription>
+        </CardHeader>
+        <Tabs defaultValue={TabSections.Connection} className="px-6">
+          <TabsList variant="project">
+            <TabsTrigger value={TabSections.Connection}>Connection</TabsTrigger>
+            <TabsTrigger value={TabSections.Options}>Options</TabsTrigger>
+          </TabsList>
+          <TabsContent value={TabSections.Connection}>
             <motion.div
               key="panel-1"
               transition={{ duration: 0.15 }}
@@ -183,77 +189,95 @@ export const ChecklyConfigurePage = () => {
               animate={{ opacity: 1, translateX: 0 }}
               exit={{ opacity: 0, translateX: 30 }}
             >
-              <FormControl label="Infisical Project Environment">
+              <Field className="mb-4" data-invalid={false}>
+                <FieldLabel htmlFor="checkly-infisical-project-environment">
+                  Infisical Project Environment
+                </FieldLabel>
                 <Select
                   value={selectedSourceEnvironment}
                   onValueChange={(val) => setSelectedSourceEnvironment(val)}
-                  className="w-full border border-border-strong"
                 >
-                  {workspace?.environments.map((sourceEnvironment) => (
-                    <SelectItem
-                      value={sourceEnvironment.slug}
-                      key={`source-environment-${sourceEnvironment.slug}`}
-                    >
-                      {sourceEnvironment.name}
-                    </SelectItem>
-                  ))}
+                  <SelectTrigger className="w-full" id="checkly-infisical-project-environment">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workspace?.environments.map((sourceEnvironment) => (
+                      <SelectItem
+                        value={sourceEnvironment.slug}
+                        key={`source-environment-${sourceEnvironment.slug}`}
+                      >
+                        {sourceEnvironment.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
-              </FormControl>
-              <FormControl label="Secrets Path">
+              </Field>
+              <Field className="mb-4" data-invalid={false}>
+                <FieldLabel htmlFor="checkly-secrets-path">Secrets Path</FieldLabel>
                 <Input
                   value={secretPath}
                   onChange={(evt) => setSecretPath(evt.target.value)}
                   placeholder="Provide a path, default is /"
+                  id="checkly-secrets-path"
                 />
-              </FormControl>
-              <FormControl label="Checkly Account">
+              </Field>
+              <Field className="mb-4" data-invalid={false}>
+                <FieldLabel htmlFor="checkly-checkly-account">Checkly Account</FieldLabel>
                 <Select
                   value={targetAppId}
                   onValueChange={(val) => setTargetAppId(val)}
-                  className="w-full border border-border-strong"
-                  isDisabled={integrationAuthApps.length === 0}
+                  disabled={integrationAuthApps.length === 0}
                 >
-                  {integrationAuthApps.length > 0 ? (
-                    integrationAuthApps.map((integrationAuthApp) => (
-                      <SelectItem
-                        value={integrationAuthApp.appId as string}
-                        key={`target-app-${integrationAuthApp.appId as string}`}
-                      >
-                        {integrationAuthApp.name}
+                  <SelectTrigger className="w-full" id="checkly-checkly-account">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {integrationAuthApps.length > 0 ? (
+                      integrationAuthApps.map((integrationAuthApp) => (
+                        <SelectItem
+                          value={integrationAuthApp.appId as string}
+                          key={`target-app-${integrationAuthApp.appId as string}`}
+                        >
+                          {integrationAuthApp.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" key="target-app-none">
+                        No apps found
                       </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" key="target-app-none">
-                      No apps found
-                    </SelectItem>
-                  )}
+                    )}
+                  </SelectContent>
                 </Select>
-              </FormControl>
-              <FormControl label="Checkly Group (Optional)">
-                <Select
-                  value={targetGroupId}
-                  onValueChange={(val) => setTargetGroupId(val)}
-                  className="w-full border border-border-strong"
-                >
-                  {integrationAuthGroups.length > 0 ? (
-                    integrationAuthGroups.map((integrationAuthGroup) => (
-                      <SelectItem
-                        value={String(integrationAuthGroup.groupId)}
-                        key={`target-group-${String(integrationAuthGroup.groupId)}`}
-                      >
-                        {integrationAuthGroup.name}
+              </Field>
+              <Field className="mb-4" data-invalid={false}>
+                <FieldLabel htmlFor="checkly-checkly-group-optional-">
+                  Checkly Group (Optional)
+                </FieldLabel>
+                <Select value={targetGroupId} onValueChange={(val) => setTargetGroupId(val)}>
+                  <SelectTrigger className="w-full" id="checkly-checkly-group-optional-">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {integrationAuthGroups.length > 0 ? (
+                      integrationAuthGroups.map((integrationAuthGroup) => (
+                        <SelectItem
+                          value={String(integrationAuthGroup.groupId)}
+                          key={`target-group-${String(integrationAuthGroup.groupId)}`}
+                        >
+                          {integrationAuthGroup.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" key="target-group-none">
+                        No groups found
                       </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" key="target-group-none">
-                      No groups found
-                    </SelectItem>
-                  )}
+                    )}
+                  </SelectContent>
                 </Select>
-              </FormControl>
+              </Field>
             </motion.div>
-          </TabPanel>
-          <TabPanel value={TabSections.Options}>
+          </TabsContent>
+          <TabsContent value={TabSections.Options}>
             <motion.div
               key="panel-1"
               transition={{ duration: 0.15 }}
@@ -261,23 +285,25 @@ export const ChecklyConfigurePage = () => {
               animate={{ opacity: 1, translateX: 0 }}
               exit={{ opacity: 0, translateX: 30 }}
             >
-              <FormControl label="Append Secret Names with..." className="pb-39">
+              <Field className="mb-4 pb-39" data-invalid={false}>
+                <FieldLabel htmlFor="checkly-append-secret-names-with-">
+                  Append Secret Names with...
+                </FieldLabel>
                 <Input
                   value={secretSuffix}
                   onChange={(evt) => setSecretSuffix(evt.target.value)}
                   placeholder="Provide a suffix for secret names, default is no suffix"
+                  id="checkly-append-secret-names-with-"
                 />
-              </FormControl>
+              </Field>
             </motion.div>
-          </TabPanel>
+          </TabsContent>
         </Tabs>
         <Button
           onClick={handleButtonClick}
-          colorSchema="secondary"
-          variant="outline_bg"
           className="mr-6 mb-6 ml-auto"
-          isFullWidth={false}
-          isLoading={isLoading}
+          isPending={isLoading}
+          variant="project"
         >
           Create Integration
         </Button>

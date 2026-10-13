@@ -11,20 +11,28 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { motion } from "motion/react";
 
 import {
+  Badge,
   Button,
   Card,
+  CardDescription,
+  CardHeader,
   CardTitle,
-  FormControl,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
+  ProviderIcon,
   Select,
+  SelectContent,
   SelectItem,
-  Switch,
-  Tab,
-  TabList,
-  TabPanel,
-  Tabs
-} from "@app/components/v2";
-import { Badge, ProviderIcon } from "@app/components/v3";
+  SelectTrigger,
+  SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Toggle
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -175,40 +183,46 @@ export const AWSParameterStoreConfigurePage = () => {
       <Helmet>
         <title>Set Up AWS Parameter Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-border-control">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Choose which environment in Infisical you want to sync to secerts in AWS Parameter Store."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center">
-              <ProviderIcon icon="Amazon Web Services.png" height={35} width={35} alt="AWS logo" />
-            </div>
-            <span className="ml-1.5">AWS Parameter Store Integration </span>
-            <a
-              href="https://infisical.com/docs/integrations/cloud/aws-parameter-store"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <div className="flex flex-row items-center">
+              <div className="flex items-center">
+                <ProviderIcon
+                  icon="Amazon Web Services.png"
+                  height={35}
+                  width={35}
+                  alt="AWS logo"
                 />
               </div>
-            </a>
-          </div>
-        </CardTitle>
-        <Tabs defaultValue={TabSections.Connection} className="px-6">
-          <TabList>
-            <div className="flex w-full flex-row border-b border-border-control">
-              <Tab value={TabSections.Connection}>Connection</Tab>
-              <Tab value={TabSections.Options}>Options</Tab>
+              <span className="ml-1.5">AWS Parameter Store Integration </span>
+              <a
+                href="https://infisical.com/docs/integrations/cloud/aws-parameter-store"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="text-xxs mb-[0.07rem] ml-1.5"
+                  />
+                </div>
+              </a>
             </div>
-          </TabList>
-          <TabPanel value={TabSections.Connection}>
+          </CardTitle>
+          <CardDescription>
+            Choose which environment in Infisical you want to sync to secerts in AWS Parameter
+            Store.
+          </CardDescription>
+        </CardHeader>
+        <Tabs defaultValue={TabSections.Connection} className="px-6">
+          <TabsList variant="project">
+            <TabsTrigger value={TabSections.Connection}>Connection</TabsTrigger>
+            <TabsTrigger value={TabSections.Options}>Options</TabsTrigger>
+          </TabsList>
+          <TabsContent value={TabSections.Connection}>
             <motion.div
               key="panel-1"
               transition={{ duration: 0.15 }}
@@ -216,57 +230,80 @@ export const AWSParameterStoreConfigurePage = () => {
               animate={{ opacity: 1, translateX: 0 }}
               exit={{ opacity: 0, translateX: 30 }}
             >
-              <FormControl label="Project Environment">
+              <Field className="mb-4" data-invalid={false}>
+                <FieldLabel htmlFor="awsparameterstore-project-environment">
+                  Project Environment
+                </FieldLabel>
                 <Select
                   value={selectedSourceEnvironment}
                   onValueChange={(val) => setSelectedSourceEnvironment(val)}
-                  className="w-full border border-border-strong"
                 >
-                  {currentProject?.environments.map((sourceEnvironment) => (
-                    <SelectItem
-                      value={sourceEnvironment.slug}
-                      key={`flyio-environment-${sourceEnvironment.slug}`}
-                    >
-                      {sourceEnvironment.name}
-                    </SelectItem>
-                  ))}
+                  <SelectTrigger className="w-full" id="awsparameterstore-project-environment">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currentProject?.environments.map((sourceEnvironment) => (
+                      <SelectItem
+                        value={sourceEnvironment.slug}
+                        key={`flyio-environment-${sourceEnvironment.slug}`}
+                      >
+                        {sourceEnvironment.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
-              </FormControl>
-              <FormControl label="Secrets Path">
+              </Field>
+              <Field className="mb-4" data-invalid={false}>
+                <FieldLabel htmlFor="awsparameterstore-secrets-path">Secrets Path</FieldLabel>
                 <Input
                   value={secretPath}
                   onChange={(evt) => setSecretPath(evt.target.value)}
                   placeholder="Provide a path, default is /"
+                  id="awsparameterstore-secrets-path"
                 />
-              </FormControl>
-              <FormControl label="AWS Region">
+              </Field>
+              <Field className="mb-4" data-invalid={false}>
+                <FieldLabel htmlFor="awsparameterstore-aws-region">AWS Region</FieldLabel>
                 <Select
                   value={selectedAWSRegion}
                   onValueChange={(val) => {
                     setSelectedAWSRegion(val);
                     setKmsKeyId("");
                   }}
-                  className="w-full border border-border-strong"
                 >
-                  {awsRegions.map((awsRegion) => (
-                    <SelectItem value={awsRegion.slug} key={`aws-environment-${awsRegion.slug}`}>
-                      {awsRegion.name} <Badge variant="neutral">{awsRegion.slug}</Badge>
-                    </SelectItem>
-                  ))}
+                  <SelectTrigger className="w-full" id="awsparameterstore-aws-region">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {awsRegions.map((awsRegion) => (
+                      <SelectItem value={awsRegion.slug} key={`aws-environment-${awsRegion.slug}`}>
+                        {awsRegion.name} <Badge variant="neutral">{awsRegion.slug}</Badge>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
-              </FormControl>
-              <FormControl label="Path" errorText={pathErrorText} isError={pathErrorText !== ""}>
+              </Field>
+              <Field className="mb-4" data-invalid={pathErrorText !== ""}>
+                <FieldLabel htmlFor="awsparameterstore-path">Path</FieldLabel>
                 <Input
                   placeholder={`/${currentProject.name
                     .toLowerCase()
                     .replace(/ /g, "-")}/${selectedSourceEnvironment}/`}
                   value={path}
                   onChange={(e) => setPath(e.target.value)}
+                  id="awsparameterstore-path"
+                  isError={pathErrorText !== ""}
+                  aria-describedby={
+                    pathErrorText !== "" ? "awsparameterstore-path-error" : undefined
+                  }
                 />
-              </FormControl>
+                {pathErrorText !== "" && (
+                  <FieldError id="awsparameterstore-path-error">{pathErrorText}</FieldError>
+                )}
+              </Field>
             </motion.div>
-          </TabPanel>
-          <TabPanel value={TabSections.Options}>
+          </TabsContent>
+          <TabsContent value={TabSections.Options}>
             <motion.div
               key="panel-1"
               transition={{ duration: 0.15 }}
@@ -275,71 +312,89 @@ export const AWSParameterStoreConfigurePage = () => {
               exit={{ opacity: 0, translateX: 30 }}
             >
               <div className="mt-2 ml-1">
-                <Switch
-                  id="delete-aws"
-                  onCheckedChange={setShouldDisableDelete}
-                  isChecked={shouldDisableDelete}
-                >
-                  Disable deleting secrets in AWS Parameter Store
-                </Switch>
+                <Field orientation="horizontal">
+                  <FieldLabel htmlFor="delete-aws">
+                    Disable deleting secrets in AWS Parameter Store
+                  </FieldLabel>
+                  <Toggle
+                    id="delete-aws"
+                    onCheckedChange={setShouldDisableDelete}
+                    checked={shouldDisableDelete}
+                    variant="project"
+                  />
+                </Field>
               </div>
               <div className="mt-4 ml-1">
-                <Switch id="tag-aws" onCheckedChange={setShouldTag} isChecked={shouldTag}>
-                  Tag in AWS Parameter Store
-                </Switch>
+                <Field orientation="horizontal">
+                  <FieldLabel htmlFor="tag-aws">Tag in AWS Parameter Store</FieldLabel>
+                  <Toggle
+                    id="tag-aws"
+                    onCheckedChange={setShouldTag}
+                    checked={shouldTag}
+                    variant="project"
+                  />
+                </Field>
               </div>
               {shouldTag && (
                 <div className="mt-4">
-                  <FormControl label="Tag Key">
+                  <Field className="mb-4" data-invalid={false}>
+                    <FieldLabel htmlFor="awsparameterstore-tag-key">Tag Key</FieldLabel>
                     <Input
                       placeholder="managed-by"
                       value={tagKey}
                       onChange={(e) => setTagKey(e.target.value)}
+                      id="awsparameterstore-tag-key"
                     />
-                  </FormControl>
-                  <FormControl label="Tag Value">
+                  </Field>
+                  <Field className="mb-4" data-invalid={false}>
+                    <FieldLabel htmlFor="awsparameterstore-tag-value">Tag Value</FieldLabel>
                     <Input
                       placeholder="infisical"
                       value={tagValue}
                       onChange={(e) => setTagValue(e.target.value)}
+                      id="awsparameterstore-tag-value"
                     />
-                  </FormControl>
+                  </Field>
                 </div>
               )}
-              <FormControl label="Encryption Key" className="mt-4">
+              <Field className="mt-4 mb-4" data-invalid={false}>
+                <FieldLabel htmlFor="awsparameterstore-encryption-key">Encryption Key</FieldLabel>
                 <Select
                   value={kmsKeyId}
                   onValueChange={(e) => {
                     setKmsKeyId(e);
                   }}
-                  className="w-full border border-border-strong"
                 >
-                  {integrationAuthAwsKmsKeys?.length ? (
-                    integrationAuthAwsKmsKeys.map((key) => {
-                      return (
-                        <SelectItem
-                          value={key.id as string}
-                          key={`repo-id-${key.id}`}
-                          className="w-[28.4rem] text-sm"
-                        >
-                          {key.alias}
-                        </SelectItem>
-                      );
-                    })
-                  ) : (
-                    <div />
-                  )}
+                  <SelectTrigger className="w-full" id="awsparameterstore-encryption-key">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {integrationAuthAwsKmsKeys?.length ? (
+                      integrationAuthAwsKmsKeys.map((key) => {
+                        return (
+                          <SelectItem
+                            value={key.id as string}
+                            key={`repo-id-${key.id}`}
+                            className="w-[28.4rem] text-sm"
+                          >
+                            {key.alias}
+                          </SelectItem>
+                        );
+                      })
+                    ) : (
+                      <div />
+                    )}
+                  </SelectContent>
                 </Select>
-              </FormControl>
+              </Field>
             </motion.div>
-          </TabPanel>
+          </TabsContent>
         </Tabs>
         <Button
           onClick={handleButtonClick}
-          colorSchema="secondary"
-          variant="outline_bg"
           className="mt-2 mr-6 mb-6 ml-auto"
-          isLoading={isLoading}
+          isPending={isLoading}
+          variant="project"
         >
           Create Integration
         </Button>

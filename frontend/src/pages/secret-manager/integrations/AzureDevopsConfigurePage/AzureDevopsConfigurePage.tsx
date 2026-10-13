@@ -7,12 +7,18 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardDescription,
+  CardHeader,
   CardTitle,
-  FormControl,
+  Field,
+  FieldLabel,
   Input,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -103,89 +109,102 @@ export const AzureDevopsConfigurePage = () => {
       <Helmet>
         <title>Set Up Azure DevOps Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-border-control">
-        <CardTitle
-          className="px-6 text-left text-xl"
-          subTitle="Choose which environment in Infisical you want to sync to secrets in Azure DevOps."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center">
-              <img
-                src="/images/integrations/Microsoft Azure.png"
-                height={35}
-                width={35}
-                alt="Azure DevOps logo"
-              />
-            </div>
-            <span className="ml-1.5">Azure DevOps Integration </span>
-            <a
-              href="https://infisical.com/docs/integrations/cloud/azure-devops"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <div className="flex flex-row items-center">
+              <div className="flex items-center">
+                <img
+                  src="/images/integrations/Microsoft Azure.png"
+                  height={35}
+                  width={35}
+                  alt="Azure DevOps logo"
                 />
               </div>
-            </a>
-          </div>
-        </CardTitle>
-        <FormControl label="Project Environment" className="mt-4 px-6">
+              <span className="ml-1.5">Azure DevOps Integration </span>
+              <a
+                href="https://infisical.com/docs/integrations/cloud/azure-devops"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="text-xxs mb-[0.07rem] ml-1.5"
+                  />
+                </div>
+              </a>
+            </div>
+          </CardTitle>
+          <CardDescription>
+            Choose which environment in Infisical you want to sync to secrets in Azure DevOps.
+          </CardDescription>
+        </CardHeader>
+        <Field className="mt-4 mb-4 px-6" data-invalid={false}>
+          <FieldLabel htmlFor="azuredevops-project-environment">Project Environment</FieldLabel>
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-border-strong"
           >
-            {workspace?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`source-environment-${sourceEnvironment.slug}`}
-              >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
+            <SelectTrigger className="w-full" id="azuredevops-project-environment">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {workspace?.environments.map((sourceEnvironment) => (
+                <SelectItem
+                  value={sourceEnvironment.slug}
+                  key={`source-environment-${sourceEnvironment.slug}`}
+                >
+                  {sourceEnvironment.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
-        </FormControl>
-        <FormControl className="px-6" label="Secrets Path">
+        </Field>
+        <Field className="mb-4 px-6" data-invalid={false}>
+          <FieldLabel htmlFor="azuredevops-secrets-path">Secrets Path</FieldLabel>
           <Input
             value={secretPath}
             onChange={(evt) => setSecretPath(evt.target.value)}
             placeholder="Provide a path, default is /"
+            id="azuredevops-secrets-path"
           />
-        </FormControl>
-        <FormControl label="Azure DevOps Project" className="px-6">
+        </Field>
+        <Field className="mb-4 px-6" data-invalid={false}>
+          <FieldLabel htmlFor="azuredevops-azure-devops-project">Azure DevOps Project</FieldLabel>
           <Select
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
-            className="w-full border border-border-strong"
-            isDisabled={integrationAuthApps.length === 0}
+            disabled={integrationAuthApps.length === 0}
           >
-            {integrationAuthApps.length > 0 ? (
-              integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem
-                  value={integrationAuthApp.name}
-                  key={`target-environment-${integrationAuthApp.name}`}
-                >
-                  {integrationAuthApp.name}
+            <SelectTrigger className="w-full" id="azuredevops-azure-devops-project">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {integrationAuthApps.length > 0 ? (
+                integrationAuthApps.map((integrationAuthApp) => (
+                  <SelectItem
+                    value={integrationAuthApp.name}
+                    key={`target-environment-${integrationAuthApp.name}`}
+                  >
+                    {integrationAuthApp.name}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="none" key="target-app-none">
+                  No projects found
                 </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-app-none">
-                No projects found
-              </SelectItem>
-            )}
+              )}
+            </SelectContent>
           </Select>
-        </FormControl>
+        </Field>
         <Button
           onClick={handleButtonClick}
-          colorSchema="primary"
-          variant="outline_bg"
           className="mt-2 mr-6 mb-6 ml-auto w-min"
-          isLoading={isLoading}
+          isPending={isLoading}
+          variant="project"
         >
           Create Integration
         </Button>

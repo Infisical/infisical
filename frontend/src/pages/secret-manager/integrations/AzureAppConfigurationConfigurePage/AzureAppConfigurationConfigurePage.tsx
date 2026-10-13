@@ -11,15 +11,21 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Card,
+  CardDescription,
+  CardHeader,
   CardTitle,
-  FormControl,
-  FormLabel,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
+  SecretPathInput,
   Select,
+  SelectContent,
   SelectItem,
-  Switch
-} from "@app/components/v2";
-import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+  SelectTrigger,
+  SelectValue,
+  Toggle
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -153,66 +159,82 @@ export const AzureAppConfigurationConfigurePage = () => {
       <Helmet>
         <title>Set Up Azure App Configuration Integration</title>
       </Helmet>
-      <Card className="max-w-lg rounded-md border border-border-control">
-        <CardTitle
-          className="text-left text-xl"
-          subTitle="Choose which environment in Infisical you want to sync to your Azure App Configuration."
-        >
-          <div className="flex flex-row items-center">
-            <div className="flex items-center">
-              <img
-                src="/images/integrations/Microsoft Azure.png"
-                height={35}
-                width={35}
-                alt="Azure logo"
-              />
-            </div>
-            <span className="ml-1.5">Azure App Configuration</span>
-            <a
-              href="https://infisical.com/docs/integrations/cloud/azure-app-configuration"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                Docs
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="text-xxs mb-[0.07rem] ml-1.5"
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>
+            <div className="flex flex-row items-center">
+              <div className="flex items-center">
+                <img
+                  src="/images/integrations/Microsoft Azure.png"
+                  height={35}
+                  width={35}
+                  alt="Azure logo"
                 />
               </div>
-            </a>
-          </div>
-        </CardTitle>
+              <span className="ml-1.5">Azure App Configuration</span>
+              <a
+                href="https://infisical.com/docs/integrations/cloud/azure-app-configuration"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  Docs
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="text-xxs mb-[0.07rem] ml-1.5"
+                  />
+                </div>
+              </a>
+            </div>
+          </CardTitle>
+          <CardDescription>
+            Choose which environment in Infisical you want to sync to your Azure App Configuration.
+          </CardDescription>
+        </CardHeader>
         <div className="px-6">
           <div className="">
             <Controller
               control={control}
               name="sourceEnvironment"
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Project Environment"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                >
+                <Field className="mb-4" data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="azureappconfiguration-sourceenvironment">
+                    Project Environment
+                  </FieldLabel>
                   <Select
-                    className="w-full border border-border-strong"
-                    dropdownContainerClassName="max-w-full"
                     value={field.value}
                     onValueChange={(val) => {
                       field.onChange(val);
                     }}
                   >
-                    {workspace?.environments.map((sourceEnvironment) => (
-                      <SelectItem
-                        value={sourceEnvironment.slug}
-                        key={`source-environment-${sourceEnvironment.slug}`}
-                      >
-                        {sourceEnvironment.name}
-                      </SelectItem>
-                    ))}
+                    <SelectTrigger
+                      className="w-full"
+                      id="azureappconfiguration-sourceenvironment"
+                      isError={Boolean(error)}
+                      aria-describedby={
+                        error ? "azureappconfiguration-sourceenvironment-error" : undefined
+                      }
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {workspace?.environments.map((sourceEnvironment) => (
+                        <SelectItem
+                          value={sourceEnvironment.slug}
+                          key={`source-environment-${sourceEnvironment.slug}`}
+                        >
+                          {sourceEnvironment.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
-                </FormControl>
+                  {Boolean(error) && (
+                    <FieldError id="azureappconfiguration-sourceenvironment-error">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
               )}
             />
 
@@ -221,13 +243,15 @@ export const AzureAppConfigurationConfigurePage = () => {
                 control={control}
                 name="useLabels"
                 render={({ field: { onChange, value } }) => (
-                  <Switch
-                    id="use-environment-labels"
-                    onCheckedChange={(isChecked) => onChange(isChecked)}
-                    isChecked={value}
-                  >
-                    <FormLabel label="Use Labels" />
-                  </Switch>
+                  <Field orientation="horizontal">
+                    <FieldLabel htmlFor="use-environment-labels">Use Labels</FieldLabel>
+                    <Toggle
+                      id="use-environment-labels"
+                      onCheckedChange={(isChecked) => onChange(isChecked)}
+                      checked={value}
+                      variant="project"
+                    />
+                  </Field>
                 )}
               />
 
@@ -236,14 +260,22 @@ export const AzureAppConfigurationConfigurePage = () => {
                   control={control}
                   name="azureLabel"
                   render={({ field, fieldState: { error } }) => (
-                    <FormControl
-                      className=""
-                      // label="Label"
-                      errorText={error?.message}
-                      isError={Boolean(error)}
-                    >
-                      <Input {...field} placeholder="pre-prod" />
-                    </FormControl>
+                    <Field className="mb-4" data-invalid={Boolean(error)}>
+                      <Input
+                        {...field}
+                        placeholder="pre-prod"
+                        id="azureappconfiguration-azurelabel"
+                        isError={Boolean(error)}
+                        aria-describedby={
+                          error ? "azureappconfiguration-azurelabel-error" : undefined
+                        }
+                      />
+                      {Boolean(error) && (
+                        <FieldError id="azureappconfiguration-azurelabel-error">
+                          {error?.message}
+                        </FieldError>
+                      )}
+                    </Field>
                   )}
                 />
               )}
@@ -253,72 +285,110 @@ export const AzureAppConfigurationConfigurePage = () => {
             control={control}
             name="secretPath"
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="Secrets Path" errorText={error?.message} isError={Boolean(error)}>
-                <SecretPathInput {...field} environment={selectedEnvironment} />
-              </FormControl>
+              <Field className="mb-4" data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="azureappconfiguration-secretpath">Secrets Path</FieldLabel>
+                <SecretPathInput
+                  {...field}
+                  environment={selectedEnvironment}
+                  id="azureappconfiguration-secretpath"
+                  isError={Boolean(error)}
+                  aria-describedby={error ? "azureappconfiguration-secretpath-error" : undefined}
+                />
+                {Boolean(error) && (
+                  <FieldError id="azureappconfiguration-secretpath-error">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
           <Controller
             control={control}
             name="baseUrl"
             render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Azure App Configuration URL"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
+              <Field className="mb-4" data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="azureappconfiguration-baseurl">
+                  Azure App Configuration URL
+                </FieldLabel>
                 <Input
                   placeholder="https://infisical-configuration-integration-test.azconfig.io"
                   {...field}
+                  id="azureappconfiguration-baseurl"
+                  isError={Boolean(error)}
+                  aria-describedby={error ? "azureappconfiguration-baseurl-error" : undefined}
                 />
-              </FormControl>
+                {Boolean(error) && (
+                  <FieldError id="azureappconfiguration-baseurl-error">{error?.message}</FieldError>
+                )}
+              </Field>
             )}
           />
           <Controller
             control={control}
             name="secretPrefix"
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="Key Prefix" errorText={error?.message} isError={Boolean(error)}>
-                <Input {...field} />
-              </FormControl>
+              <Field className="mb-4" data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="azureappconfiguration-secretprefix">Key Prefix</FieldLabel>
+                <Input
+                  {...field}
+                  id="azureappconfiguration-secretprefix"
+                  isError={Boolean(error)}
+                  aria-describedby={error ? "azureappconfiguration-secretprefix-error" : undefined}
+                />
+                {Boolean(error) && (
+                  <FieldError id="azureappconfiguration-secretprefix-error">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
           <Controller
             control={control}
             name="initialSyncBehavior"
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl
-                label="Initial Sync Behavior"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <Select
-                  defaultValue={field.value}
-                  onValueChange={(e) => onChange(e)}
-                  className="w-full border border-border-strong"
-                  dropdownContainerClassName="max-w-full"
-                >
-                  {initialSyncBehaviors.map((b) => {
-                    return (
-                      <SelectItem
-                        value={b.value}
-                        key={`sync-behavior-${b.value}`}
-                        className="w-full"
-                      >
-                        {b.label}
-                      </SelectItem>
-                    );
-                  })}
+              <Field className="mb-4" data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="azureappconfiguration-initialsyncbehavior">
+                  Initial Sync Behavior
+                </FieldLabel>
+                <Select defaultValue={field.value} onValueChange={(e) => onChange(e)}>
+                  <SelectTrigger
+                    className="w-full"
+                    id="azureappconfiguration-initialsyncbehavior"
+                    isError={Boolean(error)}
+                    aria-describedby={
+                      error ? "azureappconfiguration-initialsyncbehavior-error" : undefined
+                    }
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {initialSyncBehaviors.map((b) => {
+                      return (
+                        <SelectItem
+                          value={b.value}
+                          key={`sync-behavior-${b.value}`}
+                          className="w-full"
+                        >
+                          {b.label}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
                 </Select>
-              </FormControl>
+                {Boolean(error) && (
+                  <FieldError id="azureappconfiguration-initialsyncbehavior-error">
+                    {error?.message}
+                  </FieldError>
+                )}
+              </Field>
             )}
           />
           <Button
             type="submit"
-            colorSchema="secondary"
-            variant="outline_bg"
             className="mt-4 mb-6 ml-auto"
-            isLoading={isSubmitting}
+            isPending={isSubmitting}
+            variant="project"
           >
             Create Integration
           </Button>

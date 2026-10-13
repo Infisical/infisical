@@ -6,8 +6,18 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Card, CardTitle, FilterableSelect, FormControl, Input } from "@app/components/v2";
-import { Spinner } from "@app/components/v3";
+import {
+  Button,
+  Card,
+  CardHeader,
+  CardTitle,
+  Combobox,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
+  Spinner
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -184,59 +194,67 @@ export const BitbucketConfigurePage = () => {
       onSubmit={handleSubmit(onSubmit)}
       className="flex h-full w-full items-center justify-center"
     >
-      <Card className="max-w-md rounded-md p-8 pt-4">
-        <CardTitle className="text-center">
-          <SiBitbucket size="1.2rem" className="mr-2 mb-1 inline-block" />
-          Bitbucket Integration
-        </CardTitle>
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>
+            <SiBitbucket size="1.2rem" className="mr-2 mb-1 inline-block" />
+            Bitbucket Integration
+          </CardTitle>
+        </CardHeader>
         <Controller
           control={control}
           name="sourceEnvironment"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error)}
-              label="Project Environment"
-            >
-              <FilterableSelect
+            <Field className="mb-4" data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="bitbucket-sourceenvironment">Project Environment</FieldLabel>
+              <Combobox
+                isClearable={false}
                 getOptionValue={(option) => option.slug}
                 value={value}
                 getOptionLabel={(option) => option.name}
-                onChange={onChange}
+                onValueChange={onChange}
                 options={currentProject?.environments}
                 placeholder="Select a project environment"
                 isDisabled={!currentProject?.environments.length}
+                id="bitbucket-sourceenvironment"
+                isError={Boolean(error)}
+                aria-describedby={error ? "bitbucket-sourceenvironment-error" : undefined}
               />
-            </FormControl>
+              {Boolean(error) && (
+                <FieldError id="bitbucket-sourceenvironment-error">{error?.message}</FieldError>
+              )}
+            </Field>
           )}
         />
         <Controller
           control={control}
           name="secretPath"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error)} label="Secrets Path">
+            <Field className="mb-4" data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="bitbucket-secretpath">Secrets Path</FieldLabel>
               <Input
                 value={value}
                 onChange={onChange}
                 placeholder='Provide a path (defaults to "/")'
+                id="bitbucket-secretpath"
+                isError={Boolean(error)}
+                aria-describedby={error ? "bitbucket-secretpath-error" : undefined}
               />
-            </FormControl>
+            </Field>
           )}
         />
         <Controller
           control={control}
           name="targetWorkspace"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error)}
-              label="Bitbucket Workspace"
-            >
-              <FilterableSelect
+            <Field className="mb-4" data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="bitbucket-targetworkspace">Bitbucket Workspace</FieldLabel>
+              <Combobox
+                isClearable={false}
                 getOptionValue={(option) => option.slug}
                 value={value}
                 getOptionLabel={(option) => option.name}
-                onChange={(option) => {
+                onValueChange={(option) => {
                   onChange(option);
                   setValue("targetRepo", null);
                   setValue("targetEnvironment", null);
@@ -247,20 +265,28 @@ export const BitbucketConfigurePage = () => {
                 }
                 isLoading={isBitbucketWorkspacesLoading}
                 isDisabled={!bitbucketWorkspaces?.length || isBitbucketWorkspacesLoading}
+                id="bitbucket-targetworkspace"
+                isError={Boolean(error)}
+                aria-describedby={error ? "bitbucket-targetworkspace-error" : undefined}
               />
-            </FormControl>
+              {Boolean(error) && (
+                <FieldError id="bitbucket-targetworkspace-error">{error?.message}</FieldError>
+              )}
+            </Field>
           )}
         />
         <Controller
           control={control}
           name="targetRepo"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl errorText={error?.message} isError={Boolean(error)} label="Bitbucket Repo">
-              <FilterableSelect
+            <Field className="mb-4" data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="bitbucket-targetrepo">Bitbucket Repo</FieldLabel>
+              <Combobox
+                isClearable={false}
                 getOptionValue={(option) => option.appId!}
                 value={value}
                 getOptionLabel={(option) => option.name}
-                onChange={(option) => {
+                onValueChange={(option) => {
                   onChange(option);
                   setValue("targetEnvironment", null);
                 }}
@@ -270,41 +296,54 @@ export const BitbucketConfigurePage = () => {
                 }
                 isLoading={isBitbucketReposLoading}
                 isDisabled={!bitbucketRepos?.length || isBitbucketReposLoading}
+                id="bitbucket-targetrepo"
+                isError={Boolean(error)}
+                aria-describedby={error ? "bitbucket-targetrepo-error" : undefined}
               />
-            </FormControl>
+              {Boolean(error) && (
+                <FieldError id="bitbucket-targetrepo-error">{error?.message}</FieldError>
+              )}
+            </Field>
           )}
         />
         <Controller
           control={control}
           name="scope"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl errorText={error?.message} isError={Boolean(error)} label="Scope">
-              <FilterableSelect
+            <Field className="mb-4" data-invalid={Boolean(error)}>
+              <FieldLabel htmlFor="bitbucket-scope">Scope</FieldLabel>
+              <Combobox
+                isClearable={false}
                 value={value}
                 getOptionValue={(option) => option.value}
                 getOptionLabel={(option) => option.label}
-                onChange={onChange}
+                onValueChange={onChange}
                 options={ScopeOptions}
+                id="bitbucket-scope"
+                isError={Boolean(error)}
+                aria-describedby={error ? "bitbucket-scope-error" : undefined}
               />
-            </FormControl>
+              {Boolean(error) && (
+                <FieldError id="bitbucket-scope-error">{error?.message}</FieldError>
+              )}
+            </Field>
           )}
         />
-
         {scope?.value === BitbucketScope.Env && (
           <Controller
             control={control}
             name="targetEnvironment"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <FormControl
-                errorText={error?.message}
-                isError={Boolean(error)}
-                label="Bitbucket Deployment Environment"
-              >
-                <FilterableSelect
+              <Field className="mb-4" data-invalid={Boolean(error)}>
+                <FieldLabel htmlFor="bitbucket-targetenvironment">
+                  Bitbucket Deployment Environment
+                </FieldLabel>
+                <Combobox
+                  isClearable={false}
                   getOptionValue={(option) => option.uuid}
                   value={value}
                   getOptionLabel={(option) => option.name}
-                  onChange={onChange}
+                  onValueChange={onChange}
                   options={bitbucketEnvironments}
                   placeholder={
                     bitbucketEnvironments?.length
@@ -313,17 +352,23 @@ export const BitbucketConfigurePage = () => {
                   }
                   isLoading={isBitbucketEnvironmentsLoading && Boolean(bitbucketRepo)}
                   isDisabled={!bitbucketEnvironments?.length || isBitbucketEnvironmentsLoading}
+                  id="bitbucket-targetenvironment"
+                  isError={Boolean(error)}
+                  aria-describedby={error ? "bitbucket-targetenvironment-error" : undefined}
                 />
-              </FormControl>
+                {Boolean(error) && (
+                  <FieldError id="bitbucket-targetenvironment-error">{error?.message}</FieldError>
+                )}
+              </Field>
             )}
           />
         )}
         <Button
           type="submit"
-          colorSchema="primary"
           className="mt-4"
-          isLoading={createIntegration.isPending}
+          isPending={createIntegration.isPending}
           isDisabled={createIntegration.isPending || !bitbucketRepos?.length}
+          variant="project"
         >
           Create Integration
         </Button>
