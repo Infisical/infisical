@@ -25,10 +25,32 @@ export enum WebhookAuthType {
   Header = "header"
 }
 
-export const WEBHOOK_AUTH_TYPE_LABELS: Record<WebhookAuthType, string> = {
-  [WebhookAuthType.Bearer]: "Bearer token",
-  [WebhookAuthType.Basic]: "Basic auth",
-  [WebhookAuthType.Header]: "API key header"
+export const WEBHOOK_AUTH_FIELDS: Record<
+  WebhookAuthType,
+  {
+    label: string;
+    name?: { field: "basicUsername" | "authHeaderName"; label: string; placeholder: string };
+    secret: {
+      field: "authCredentials" | "basicPassword" | "authHeaderValue";
+      label: string;
+      hasSaved: "hasAuthCredentials" | "hasBasicPassword" | "hasAuthHeaderValue";
+    };
+  }
+> = {
+  [WebhookAuthType.Bearer]: {
+    label: "Bearer token",
+    secret: { field: "authCredentials", label: "Token", hasSaved: "hasAuthCredentials" }
+  },
+  [WebhookAuthType.Basic]: {
+    label: "Basic auth",
+    name: { field: "basicUsername", label: "Username", placeholder: "Username" },
+    secret: { field: "basicPassword", label: "Password", hasSaved: "hasBasicPassword" }
+  },
+  [WebhookAuthType.Header]: {
+    label: "API key header",
+    name: { field: "authHeaderName", label: "Header name", placeholder: "X-API-Key" },
+    secret: { field: "authHeaderValue", label: "API key", hasSaved: "hasAuthHeaderValue" }
+  }
 };
 
 export enum AlertPrincipalType {
@@ -195,7 +217,7 @@ export type TUpdateAlertDTO = {
   channels?: TAlertChannelInput[];
 };
 
-export const normalizeWebhookUrl = (url?: string) => {
+const normalizeWebhookUrl = (url?: string) => {
   try {
     return new URL(url ?? "").href;
   } catch {
@@ -268,44 +290,27 @@ export const channelFormSchema = z
           });
         }
         break;
-      case AlertChannelType.Webhook:
-        if (!channel.url) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["url"], message: "URL is required" });
-        }
-        {
-          const require = (field: keyof typeof channel, message: string, isSaved?: boolean) => {
-            if (channel[field] || (isSaved && !isNew)) return;
-            ctx.addIssue({ code: z.ZodIssueCode.custom, path: [field], message });
-          };
-          const isSentSecretSaved = (hasValue?: boolean) =>
-            hasValue && !isWebhookUrlChanged(channel);
+      case AlertChannelType.Webhook: {
+        const requireField = (field: keyof typeof channel, message: string, isSaved?: boolean) => {
+          if (channel[field] || (isSaved && !isNew)) return;
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: [field], message });
+        };
 
-          if (channel.signingSecretEnabled) {
-            require("signingSecret", "Signing secret is required", channel.hasSigningSecret);
-          }
-          switch (channel.authType) {
-            case WebhookAuthType.Bearer:
-              require("authCredentials", "Token is required", isSentSecretSaved(
-                channel.hasAuthCredentials
-              ));
-              break;
-            case WebhookAuthType.Basic:
-              require("basicUsername", "Username is required");
-              require("basicPassword", "Password is required", isSentSecretSaved(
-                channel.hasBasicPassword
-              ));
-              break;
-            case WebhookAuthType.Header:
-              require("authHeaderName", "Header name is required");
-              require("authHeaderValue", "API key is required", isSentSecretSaved(
-                channel.hasAuthHeaderValue
-              ));
-              break;
-            default:
-              break;
-          }
+        requireField("url", "URL is required");
+        if (channel.signingSecretEnabled) {
+          requireField("signingSecret", "Signing secret is required", channel.hasSigningSecret);
+        }
+        if (channel.authType) {
+          const { name, secret } = WEBHOOK_AUTH_FIELDS[channel.authType];
+          if (name) requireField(name.field, `${name.label} is required`);
+          requireField(
+            secret.field,
+            `${secret.label} is required`,
+            channel[secret.hasSaved] && !isWebhookUrlChanged(channel)
+          );
         }
         break;
+      }
       case AlertChannelType.PagerDuty:
         if ((isNew || !channel.hasIntegrationKey) && !channel.integrationKey) {
           ctx.addIssue({

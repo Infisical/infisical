@@ -4,6 +4,7 @@ import {
   PagerDutyChannelConfigSchema,
   SlackChannelConfigSchema,
   TAlertChannelDefinition,
+  WEBHOOK_AUTH_SECRET_FIELD_BY_TYPE,
   WebhookChannelConfigSchema
 } from "../alert-channel-types";
 import { sendEmailNotification } from "./alert-channel-email-fns";
@@ -29,7 +30,7 @@ export const ALERT_CHANNEL_REGISTRY: Record<AlertChannelType, TAlertChannelDefin
   [AlertChannelType.WEBHOOK]: {
     type: AlertChannelType.WEBHOOK,
     directed: false,
-    secretFields: ["signingSecret", "authCredentials", "basicPassword", "authHeaderValue"],
+    secretFields: ["signingSecret", ...Object.values(WEBHOOK_AUTH_SECRET_FIELD_BY_TYPE)],
     configSchema: WebhookChannelConfigSchema,
     assertKeptSecretsAllowed: assertWebhookKeptSecretsAllowed,
     send: sendWebhookNotification

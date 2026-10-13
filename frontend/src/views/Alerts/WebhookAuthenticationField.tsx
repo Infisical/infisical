@@ -18,7 +18,7 @@ import {
 import {
   isWebhookUrlChanged,
   TChannelsForm,
-  WEBHOOK_AUTH_TYPE_LABELS,
+  WEBHOOK_AUTH_FIELDS,
   WebhookAuthType
 } from "@app/hooks/api/alerts";
 
@@ -26,37 +26,6 @@ import { ChannelSecretInput, KEEP_PLACEHOLDER } from "./ChannelSecretInput";
 
 type Props = {
   index: number;
-};
-
-type TAuthFields = {
-  name?: {
-    field: "basicUsername" | "authHeaderName";
-    label: string;
-    placeholder: string;
-  };
-  secret: "authCredentials" | "basicPassword" | "authHeaderValue";
-  secretLabel: string;
-  hasSecret: "hasAuthCredentials" | "hasBasicPassword" | "hasAuthHeaderValue";
-};
-
-const AUTH_FIELDS: Record<WebhookAuthType, TAuthFields> = {
-  [WebhookAuthType.Bearer]: {
-    secret: "authCredentials",
-    secretLabel: "Token",
-    hasSecret: "hasAuthCredentials"
-  },
-  [WebhookAuthType.Basic]: {
-    name: { field: "basicUsername", label: "Username", placeholder: "Username" },
-    secret: "basicPassword",
-    secretLabel: "Password",
-    hasSecret: "hasBasicPassword"
-  },
-  [WebhookAuthType.Header]: {
-    name: { field: "authHeaderName", label: "Header name", placeholder: "X-API-Key" },
-    secret: "authHeaderValue",
-    secretLabel: "API key",
-    hasSecret: "hasAuthHeaderValue"
-  }
 };
 
 export const WebhookAuthenticationField = ({ index }: Props) => {
@@ -99,9 +68,9 @@ export const WebhookAuthenticationField = ({ index }: Props) => {
     );
   }
 
-  const fields = AUTH_FIELDS[authType];
+  const { name, secret } = WEBHOOK_AUTH_FIELDS[authType];
   const isUrlChanged = isWebhookUrlChanged(channel);
-  const hasSavedSecret = Boolean(channel.id && channel[fields.hasSecret]);
+  const hasSavedSecret = Boolean(channel.id && channel[secret.hasSaved]);
 
   return (
     <Field>
@@ -120,7 +89,7 @@ export const WebhookAuthenticationField = ({ index }: Props) => {
                   <SelectContent position="popper">
                     {Object.values(WebhookAuthType).map((type) => (
                       <SelectItem key={type} value={type}>
-                        {WEBHOOK_AUTH_TYPE_LABELS[type]}
+                        {WEBHOOK_AUTH_FIELDS[type].label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -136,36 +105,34 @@ export const WebhookAuthenticationField = ({ index }: Props) => {
             </IconButton>
           </div>
           <div className="flex items-start gap-2">
-            {fields.name && (
+            {name && (
               <Field className="w-2/5">
                 <Input
-                  key={fields.name.field}
-                  aria-label={fields.name.label}
-                  placeholder={fields.name.placeholder}
-                  isError={Boolean(channelErrors?.[fields.name.field])}
-                  {...register(`channels.${index}.${fields.name.field}`)}
+                  key={name.field}
+                  aria-label={name.label}
+                  placeholder={name.placeholder}
+                  isError={Boolean(channelErrors?.[name.field])}
+                  {...register(`channels.${index}.${name.field}`)}
                 />
-                <FieldError errors={[channelErrors?.[fields.name.field]]} />
+                <FieldError errors={[channelErrors?.[name.field]]} />
               </Field>
             )}
             <Field className="grow">
               <ChannelSecretInput
-                key={fields.secret}
-                id={`channel-${index}-${fields.secret}`}
-                ariaLabel={fields.secretLabel}
-                placeholder={
-                  hasSavedSecret && !isUrlChanged ? KEEP_PLACEHOLDER : fields.secretLabel
-                }
-                isError={Boolean(channelErrors?.[fields.secret])}
-                registration={register(`channels.${index}.${fields.secret}`)}
+                key={secret.field}
+                id={`channel-${index}-${secret.field}`}
+                ariaLabel={secret.label}
+                placeholder={hasSavedSecret && !isUrlChanged ? KEEP_PLACEHOLDER : secret.label}
+                isError={Boolean(channelErrors?.[secret.field])}
+                registration={register(`channels.${index}.${secret.field}`)}
               />
-              <FieldError errors={[channelErrors?.[fields.secret]]} />
+              <FieldError errors={[channelErrors?.[secret.field]]} />
             </Field>
           </div>
           {hasSavedSecret && isUrlChanged && (
             <p className="text-xs text-muted">
-              The URL changed, so enter the {fields.secretLabel.toLowerCase()} again. Saved
-              credentials are only sent to the URL they were saved with.
+              The URL changed, so enter the {secret.label.toLowerCase()} again. Saved credentials
+              are only sent to the URL they were saved with.
             </p>
           )}
         </div>

@@ -3,6 +3,7 @@ import {
   TAlert,
   TAlertChannelInput,
   TChannelForm,
+  WEBHOOK_AUTH_FIELDS,
   WebhookAuthType
 } from "./types";
 
@@ -37,24 +38,13 @@ const filled = (fields: Record<string, string | undefined>) =>
   Object.fromEntries(Object.entries(fields).filter(([, value]) => value));
 
 const toWebhookAuthConfig = (channel: TChannelForm) => {
-  switch (channel.authType) {
-    case WebhookAuthType.Bearer:
-      return filled({ authType: channel.authType, authCredentials: channel.authCredentials });
-    case WebhookAuthType.Basic:
-      return filled({
-        authType: channel.authType,
-        basicUsername: channel.basicUsername,
-        basicPassword: channel.basicPassword
-      });
-    case WebhookAuthType.Header:
-      return filled({
-        authType: channel.authType,
-        authHeaderName: channel.authHeaderName?.trim(),
-        authHeaderValue: channel.authHeaderValue
-      });
-    default:
-      return {};
-  }
+  if (!channel.authType) return {};
+  const { name, secret } = WEBHOOK_AUTH_FIELDS[channel.authType];
+  return filled({
+    authType: channel.authType,
+    ...(name ? { [name.field]: channel[name.field] } : {}),
+    [secret.field]: channel[secret.field]
+  });
 };
 
 const toWebhookSigningSecretConfig = (channel: TChannelForm) => {

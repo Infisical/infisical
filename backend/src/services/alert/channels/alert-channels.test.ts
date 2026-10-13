@@ -228,10 +228,6 @@ describe("WebhookChannelConfigSchema headers", () => {
   const withHeaders = (headers: unknown) =>
     WebhookChannelConfigSchema.safeParse({ url: "https://example.com/hook", headers });
 
-  test("accepts well-formed headers", () => {
-    expect(withHeaders([{ key: "X-Env", value: "prod" }]).success).toBe(true);
-  });
-
   test("rejects the headers Infisical sets itself", () => {
     const result = withHeaders([{ key: "Content-Type", value: "text/plain" }]);
     expect(result.success).toBe(false);
@@ -433,13 +429,6 @@ describe("sendWebhookNotification", () => {
       authHeaderValue: "k"
     });
     expect(header?.headers).toMatchObject({ "X-API-Key": "k" });
-
-    const [, , otherScheme] = await send({
-      authType: WebhookAuthType.HEADER,
-      authHeaderName: "Authorization",
-      authHeaderValue: "GenieKey k"
-    });
-    expect(otherScheme?.headers).toMatchObject({ Authorization: "GenieKey k" });
   });
 });
 

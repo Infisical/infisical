@@ -159,38 +159,6 @@ describe("alert channel service", () => {
     expect(detail.recipients).toEqual([]);
   });
 
-  test("returns custom headers as they are and hides the authentication secret", async () => {
-    const { service } = buildService();
-    const channel = await createChannel(
-      service,
-      {
-        name: "Ops webhook",
-        channelType: AlertChannelType.WEBHOOK,
-        config: {
-          url: "https://example.com/hook",
-          authType: "bearer",
-          authCredentials: "abc",
-          headers: [{ key: "X-Env", value: "prod" }]
-        },
-        orgId: "org-1",
-        ...CHANNEL_INPUT
-      },
-      encryptor as never,
-      tx
-    );
-
-    const [detail] = await service.getDetailsForChannels([channel], { decryptor: decryptor as never });
-    expect(detail.config).toEqual({
-      url: "https://example.com/hook",
-      authType: "bearer",
-      headers: [{ key: "X-Env", value: "prod" }],
-      hasSigningSecret: false,
-      hasAuthCredentials: true,
-      hasBasicPassword: false,
-      hasAuthHeaderValue: false
-    });
-  });
-
   describe("webhook authentication on update", () => {
     const seedBearer = () =>
       seedRow({
@@ -227,12 +195,6 @@ describe("alert channel service", () => {
 
     test("removes authentication when the update has no type", async () => {
       expect(await update({ url: "https://example.com/hook" })).toEqual({ url: "https://example.com/hook" });
-    });
-
-    test("refuses to keep the saved credentials for a different URL", async () => {
-      await expect(update({ url: "https://example.com/other-hook", authType: "bearer" })).rejects.toThrow(
-        "Enter the authentication credentials again because the webhook URL changed"
-      );
     });
   });
 

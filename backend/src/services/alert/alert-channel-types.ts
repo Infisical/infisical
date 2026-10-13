@@ -86,7 +86,7 @@ export type TAlertChannelDefinition = {
 
 export const EmailChannelConfigSchema = z.object({}).strip();
 
-export const WEBHOOK_MAX_HEADERS = 20;
+const WEBHOOK_MAX_HEADERS = 20;
 
 export const WEBHOOK_MAX_HEADERS_LENGTH = 4096;
 
@@ -101,6 +101,8 @@ const WEBHOOK_AUTH_FIELDS_BY_TYPE: Record<WebhookAuthType, string[]> = {
   [WebhookAuthType.BASIC]: ["basicUsername", "basicPassword"],
   [WebhookAuthType.HEADER]: ["authHeaderName", "authHeaderValue"]
 };
+
+const WEBHOOK_AUTH_FIELDS = Object.values(WEBHOOK_AUTH_FIELDS_BY_TYPE).flat();
 
 export const WEBHOOK_AUTH_SECRET_FIELD_BY_TYPE: Record<WebhookAuthType, string> = {
   [WebhookAuthType.BEARER]: "authCredentials",
@@ -149,7 +151,7 @@ const headerValueSchema = (label: string) =>
     .max(4096, `${label} cannot be longer than 4096 characters`)
     .refine((value) => httpHeaderValueRegex.test(value), `${label} ${UNSENDABLE_CHARACTER_MESSAGE}`);
 
-export const WebhookChannelHeaderSchema = z
+const WebhookChannelHeaderSchema = z
   .object({
     key: headerNameSchema([...WEBHOOK_RESERVED_HEADERS, "authorization"]),
     value: z
@@ -161,8 +163,6 @@ export const WebhookChannelHeaderSchema = z
     (header) => httpHeaderValueRegex.test(header.value),
     (header) => ({ message: `Header '${header.key}' ${UNSENDABLE_CHARACTER_MESSAGE}`, path: ["value"] })
   );
-
-export type TWebhookChannelHeader = z.infer<typeof WebhookChannelHeaderSchema>;
 
 export const WebhookChannelConfigSchema = z
   .object({
@@ -243,9 +243,7 @@ export const WebhookChannelConfigSchema = z
   .transform((config) => {
     const kept = new Set(config.authType ? WEBHOOK_AUTH_FIELDS_BY_TYPE[config.authType] : []);
     return Object.fromEntries(
-      Object.entries(config).filter(
-        ([field]) => kept.has(field) || !Object.values(WEBHOOK_AUTH_FIELDS_BY_TYPE).flat().includes(field)
-      )
+      Object.entries(config).filter(([field]) => kept.has(field) || !WEBHOOK_AUTH_FIELDS.includes(field))
     ) as typeof config;
   });
 
