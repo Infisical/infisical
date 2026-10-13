@@ -236,10 +236,7 @@ const ApplicationPoliciesTable = ({
 };
 
 export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
-  const { orgId, projectId } = useParams({ strict: false }) as {
-    orgId?: string;
-    projectId?: string;
-  };
+  const { orgId } = useParams({ strict: false }) as { orgId?: string };
   const { data: permissionData } = useGetPkiApplicationPermissions(application.id);
   const appAbility = permissionData?.permission;
   const canManageProfileAttachments = Boolean(
@@ -490,10 +487,9 @@ export const ApplicationSettingsTab = ({ application, profiles }: Props) => {
                     <TableRow key={p.profileId}>
                       <TableCell className="font-mono">
                         <Link
-                          to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles/$profileId"
+                          to="/organizations/$orgId/cert-manager/certificate-profiles/$profileId"
                           params={{
                             orgId: orgId ?? "",
-                            projectId: projectId ?? "",
                             profileId: p.profileId
                           }}
                           search={{ from: "application", applicationName: application.name }}
