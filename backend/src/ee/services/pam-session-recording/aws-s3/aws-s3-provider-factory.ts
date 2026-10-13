@@ -1,3 +1,5 @@
+import type { Agent } from "node:https";
+
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -32,13 +34,13 @@ export const PAM_RECORDING_CONNECTION_APPS = [AppConnection.AWS, AppConnection.S
 export const resolveS3RecordingAccess = async (
   appConnection: TAppConnection,
   region: string | undefined
-): Promise<Pick<TPamRecordingResolvedConfig, "region" | "endpoint" | "httpsAgent" | "awsCredentials">> => {
+): Promise<Pick<TPamRecordingResolvedConfig, "region" | "endpoint" | "getHttpsAgent" | "awsCredentials">> => {
   if (appConnection.app === AppConnection.S3Compatible) {
     const s3Config = await getS3CompatibleConnectionConfig(appConnection);
     return {
       region: s3Config.region,
       endpoint: s3Config.endpoint,
-      httpsAgent: s3Config.httpsAgent,
+      getHttpsAgent: s3Config.getHttpsAgent,
       awsCredentials: s3Config.credentials
     };
   }
@@ -57,14 +59,14 @@ export const resolveS3RecordingAccess = async (
   return { region, awsCredentials: awsConfig.credentials };
 };
 
-const buildClient = (config: TPamRecordingResolvedConfig) => {
+const buildClient = (config: TPamRecordingResolvedConfig, httpsAgent?: Agent) => {
   if (!config.region || !config.awsCredentials) {
     throw new BadRequestError({ message: "S3 storage backend requires region and credentials" });
   }
   return createS3Client({
     region: config.region,
     endpoint: config.endpoint,
-    httpsAgent: config.httpsAgent,
+    httpsAgent,
     credentials: config.awsCredentials
   });
 };
@@ -74,7 +76,7 @@ export const AwsS3RecordingStorageProvider: TPamRecordingStorageProvider = () =>
     if (!config.bucket) {
       throw new BadRequestError({ message: "Bucket is required for S3 storage backend" });
     }
-    const client = buildClient(config);
+    const client = buildClient(config, await config.getHttpsAgent?.());
     try {
       await client.send(new HeadBucketCommand({ Bucket: config.bucket }));
     } catch (err) {
@@ -158,7 +160,7 @@ export const AwsS3RecordingStorageProvider: TPamRecordingStorageProvider = () =>
 
   deleteSession: async ({ config, projectId, sessionId }) => {
     if (!config.bucket) throw new BadRequestError({ message: "Bucket is required" });
-    const client = buildClient(config);
+    const client = buildClient(config, await config.getHttpsAgent?.());
 
     const prefix = `${normalizeKeyPrefix(config.keyPrefix)}${projectId}/${sessionId}/`;
 

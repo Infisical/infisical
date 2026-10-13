@@ -11,5 +11,6 @@ export type TS3CompatibleConnection = TRootAppConnection & { app: AppConnection.
     endpoint: string;
     accessKeyId: string;
     secretAccessKey: string;
+    region?: string;
   };
 };

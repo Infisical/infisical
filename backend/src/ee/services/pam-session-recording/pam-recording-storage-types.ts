@@ -13,7 +13,7 @@ export type TPamRecordingResolvedConfig = {
   bucket?: string;
   region?: string;
   endpoint?: string;
-  httpsAgent?: Agent;
+  getHttpsAgent?: () => Promise<Agent | undefined>;
   keyPrefix?: string | null;
 
   awsCredentials?: {

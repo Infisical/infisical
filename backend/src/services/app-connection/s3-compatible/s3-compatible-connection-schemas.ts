@@ -19,8 +19,9 @@ const OCI_HOSTNAME = new RE2(
   /^[a-z0-9-]+\.compat\.objectstorage\.([a-z0-9-]+)\.(?:oraclecloud\.com|oci\.customer-oci\.com)$/
 );
 const STORAGE_HOSTNAME = new RE2(/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?$/);
-// S3-compatible servers on custom hostnames, such as MinIO, accept this region by default
-const CUSTOM_HOSTNAME_SIGNING_REGION = "us-east-1";
+const SIGNING_REGION = new RE2(/^[a-zA-Z0-9_-]+$/);
+// MinIO and most other S3-compatible servers accept this region unless configured otherwise
+const DEFAULT_CUSTOM_HOSTNAME_REGION = "us-east-1";
 
 const isStorageHostname = (hostname: string) => {
   try {
@@ -82,7 +83,11 @@ const parseEndpointUrl = (endpoint: string) => {
   }
 };
 
-export const parseS3CompatibleEndpoint = (endpoint: string, allowedStorageHostnames: string[]) => {
+export const parseS3CompatibleEndpoint = (
+  endpoint: string,
+  allowedStorageHostnames: string[],
+  customHostRegion?: string
+) => {
   const url = parseEndpointUrl(endpoint);
   if (!url) return null;
 
@@ -94,7 +99,11 @@ export const parseS3CompatibleEndpoint = (endpoint: string, allowedStorageHostna
   }
 
   if (allowedStorageHostnames.includes(url.host)) {
-    return { provider: S3CompatibleProvider.Custom, region: CUSTOM_HOSTNAME_SIGNING_REGION, origin: url.origin };
+    return {
+      provider: S3CompatibleProvider.Custom,
+      region: customHostRegion ?? DEFAULT_CUSTOM_HOSTNAME_REGION,
+      origin: url.origin
+    };
   }
   return null;
 };
@@ -124,7 +133,17 @@ export const S3CompatibleConnectionAccessKeyCredentialsSchema = z.object({
     .trim()
     .min(1, "Secret Access Key required")
     .max(256, "Secret Access Key cannot exceed 256 characters")
-    .describe(AppConnections.CREDENTIALS.S3_COMPATIBLE.secretAccessKey)
+    .describe(AppConnections.CREDENTIALS.S3_COMPATIBLE.secretAccessKey),
+  region: z
+    .string()
+    .trim()
+    .max(64, "Region cannot exceed 64 characters")
+    .refine(
+      (region) => SIGNING_REGION.test(region),
+      "Region can only contain letters, numbers, hyphens and underscores"
+    )
+    .optional()
+    .describe(AppConnections.CREDENTIALS.S3_COMPATIBLE.region)
 });
 
 const BaseS3CompatibleConnectionSchema = BaseAppConnectionSchema.extend({
@@ -139,7 +158,11 @@ export const S3CompatibleConnectionSchema = BaseS3CompatibleConnectionSchema.ext
 export const SanitizedS3CompatibleConnectionSchema = z.discriminatedUnion("method", [
   BaseS3CompatibleConnectionSchema.extend({
     method: z.literal(S3CompatibleConnectionMethod.AccessKey),
-    credentials: S3CompatibleConnectionAccessKeyCredentialsSchema.pick({ endpoint: true, accessKeyId: true })
+    credentials: S3CompatibleConnectionAccessKeyCredentialsSchema.pick({
+      endpoint: true,
+      accessKeyId: true,
+      region: true
+    })
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.S3Compatible]} (Access Key)` }))
 ]);
 

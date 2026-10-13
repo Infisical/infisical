@@ -25,13 +25,19 @@ export const getS3CompatibleConnectionListItem = () => {
   };
 };
 
+const buildCustomHostAgent = async (origin: string, host: string) =>
+  (await buildSsrfSafeAgent(origin).catch((error: NodeJS.ErrnoException) => {
+    if (error.code !== "ENOTFOUND" && error.code !== "EAI_AGAIN") throw error;
+    throw new BadRequestError({ message: `Could not resolve ${host}. Verify the hostname and try again.` });
+  })) as Agent | undefined;
+
 export const getS3CompatibleConnectionConfig = async ({
   credentials
 }: {
   credentials: TS3CompatibleConnectionConfig["credentials"];
 }) => {
   const { allowedStorageHostnames } = await getServerCfg();
-  const parsed = parseS3CompatibleEndpoint(credentials.endpoint, allowedStorageHostnames ?? []);
+  const parsed = parseS3CompatibleEndpoint(credentials.endpoint, allowedStorageHostnames ?? [], credentials.region);
   if (!parsed) {
     throw new BadRequestError({ message: S3_COMPATIBLE_ENDPOINT_ERROR });
   }
@@ -41,30 +47,24 @@ export const getS3CompatibleConnectionConfig = async ({
       ? new URL(parsed.origin).host
       : S3_COMPATIBLE_PROVIDER_MAP[parsed.provider].name;
 
-  const httpsAgent =
-    parsed.provider === S3CompatibleProvider.Custom
-      ? ((await buildSsrfSafeAgent(parsed.origin).catch((error: NodeJS.ErrnoException) => {
-          if (error.code !== "ENOTFOUND" && error.code !== "EAI_AGAIN") throw error;
-          throw new BadRequestError({
-            message: `Could not resolve ${providerName}. Verify the hostname and try again.`
-          });
-        })) as Agent | undefined)
-      : undefined;
-
   return {
     providerName,
     region: parsed.region,
     endpoint: parsed.provider === S3CompatibleProvider.AwsS3 ? undefined : parsed.origin,
-    httpsAgent,
+    getHttpsAgent:
+      parsed.provider === S3CompatibleProvider.Custom
+        ? () => buildCustomHostAgent(parsed.origin, providerName)
+        : undefined,
     credentials: { accessKeyId: credentials.accessKeyId, secretAccessKey: credentials.secretAccessKey }
   };
 };
 
 export const validateS3CompatibleConnectionCredentials = async (config: TS3CompatibleConnectionConfig) => {
-  const { providerName, ...clientConfig } = await getS3CompatibleConnectionConfig(config);
+  const { providerName, getHttpsAgent, ...clientConfig } = await getS3CompatibleConnectionConfig(config);
+  const httpsAgent = await getHttpsAgent?.();
 
   try {
-    await createS3Client(clientConfig).send(new ListBucketsCommand({}));
+    await createS3Client({ ...clientConfig, httpsAgent }).send(new ListBucketsCommand({}));
   } catch (error) {
     // keys scoped to a bucket can't list buckets, but an AccessDenied still means the key authenticated
     if (error instanceof S3ServiceException && error.name === "AccessDenied") return config.credentials;

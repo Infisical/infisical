@@ -59,7 +59,17 @@ const buildFormSchema = (allowedStorageHostnames: string[]) =>
             "Enter the S3 API endpoint of a supported provider, without the bucket name"
           ),
         accessKeyId: z.string().trim().min(1, "Access Key ID required"),
-        secretAccessKey: z.string().trim().min(1, "Secret Access Key required")
+        secretAccessKey: z.string().trim().min(1, "Secret Access Key required"),
+        region: z
+          .string()
+          .trim()
+          .max(64, "Region cannot exceed 64 characters")
+          .regex(
+            /^[a-zA-Z0-9_-]*$/,
+            "Region can only contain letters, numbers, hyphens and underscores"
+          )
+          .optional()
+          .transform((region) => region || undefined)
       })
     })
   ]);
@@ -98,7 +108,12 @@ export const S3CompatibleConnectionForm = ({ appConnection, onSubmit }: Props) =
     }
   });
 
-  const { handleSubmit, control } = form;
+  const { handleSubmit, control, watch } = form;
+  const endpointHost = getS3CompatibleProviderName(
+    watch("credentials.endpoint") ?? "",
+    allowedStorageHostnames
+  );
+  const isCustomHost = Boolean(endpointHost && allowedStorageHostnames.includes(endpointHost));
 
   return (
     <FormProvider {...form}>
@@ -161,6 +176,31 @@ export const S3CompatibleConnectionForm = ({ appConnection, onSubmit }: Props) =
             </Field>
           )}
         />
+        {isCustomHost && (
+          <Controller
+            name="credentials.region"
+            control={control}
+            shouldUnregister
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel htmlFor="region">
+                  Region <span className="text-muted">(optional)</span>
+                </FieldLabel>
+                <Input
+                  id="region"
+                  value={value ?? ""}
+                  onChange={(e) => onChange(e.target.value)}
+                  placeholder="us-east-1"
+                  isError={Boolean(error?.message)}
+                />
+                <FieldDescription>
+                  Leave blank unless your server expects a region other than us-east-1.
+                </FieldDescription>
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+        )}
         <Controller
           name="credentials.accessKeyId"
           control={control}
