@@ -290,11 +290,7 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
         )}
       </DialogBody>
       <DialogFooter>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => handlePopUpToggle("identity", false)}
-        >
+        <Button type="button" variant="ghost" onClick={() => handlePopUpToggle("identity", false)}>
           Cancel
         </Button>
         <Button
