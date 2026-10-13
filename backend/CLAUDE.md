@@ -535,8 +535,9 @@ line by returning `adoptedFromUsername: null` for the yield, and the caller keys
 it.
 
 That trail is best-effort, not guaranteed. `audit-log-queue.ts` drops every entry at push time when
-`plan.auditLogsRetentionDays` is falsy, which is the default for a self-hosted instance with no
+`plan.auditLogsRetentionDays` is 0, which is the default for a self-hosted instance with no
 audit-log entitlement, so on those deployments only the `logger.info` line survives an adoption.
+(`null` is the License Server's "No limit" and keeps everything; see `audit-log-retention-fns.ts`.)
 Do not special-case this event past the retention gate; treat the application log as the floor and
 the audit event as the addition for licensed instances.
 
