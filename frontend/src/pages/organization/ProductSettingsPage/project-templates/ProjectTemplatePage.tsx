@@ -85,7 +85,7 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
               </>
             }
           >
-            {!isInfisicalTemplate && (
+            {matchingProjectTemplate && !isInfisicalTemplate && (
               <>
                 <OrgPermissionCan
                   I={OrgPermissionActions.Edit}
