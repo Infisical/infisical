@@ -1,31 +1,36 @@
 import { useCallback } from "react";
-import {
-  faCheck,
-  faCopy,
-  faEllipsisV,
-  faExpand,
-  faInfoCircle
-} from "@fortawesome/free-solid-svg-icons";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
-import { AlertTriangleIcon, BanIcon, ScanTextIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  BanIcon,
+  CheckIcon,
+  CopyIcon,
+  EllipsisVerticalIcon,
+  InfoIcon,
+  ScanIcon,
+  ScanTextIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretScanningScanStatusBadge } from "@app/components/secret-scanning";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  Td,
+  TableCell,
+  TableRow,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
   ProjectPermissionSecretScanningDataSourceActions,
@@ -119,19 +124,19 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
   const resourceDetails = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
 
   return (
-    <Tr
+    <TableRow
       className={twMerge(
-        "group h-10 transition-colors duration-100 hover:bg-surface-hover",
+        "group",
         lastScanStatus === SecretScanningScanStatus.Failed && "bg-danger/5 hover:bg-danger/10"
       )}
       key={`resource-${id}`}
     >
-      <Td className="max-w-0 min-w-32!">
+      <TableCell isTruncatable className="min-w-32">
         <div className="flex w-full items-center">
           <p className="truncate">{name}</p>
         </div>
-      </Td>
-      <Td>
+      </TableCell>
+      <TableCell>
         {/* eslint-disable-next-line no-nested-ternary */}
         {lastScanStatus?.match(/queued|scanning/) ? (
           <Badge variant="neutral">
@@ -174,8 +179,8 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
         ) : (
           <span className="text-muted">No findings</span>
         )}
-      </Td>
-      <Td className="whitespace-nowrap">
+      </TableCell>
+      <TableCell>
         {/* eslint-disable-next-line no-nested-ternary */}
         {lastScanStatus?.match(/queued|scanning|failed/) ? (
           <SecretScanningScanStatusBadge
@@ -188,77 +193,73 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
         ) : (
           <span className="text-muted">No scans</span>
         )}
-      </Td>
-      <Td>
+      </TableCell>
+      <TableCell variant="action">
         <div className="flex items-center justify-end gap-2">
           {!isActive && (
-            <Tooltip
-              className="text-xs"
-              content={`This ${resourceDetails.singularNoun} will not be scanned due to exclusion in Data Source configuration.`}
-            >
-              <Badge className="ml-auto" variant="neutral">
-                <BanIcon />
-                Inactive
-              </Badge>
+            <Tooltip hoverable delayDuration={50}>
+              <TooltipTrigger asChild>
+                <Badge className="ml-auto" variant="neutral">
+                  <BanIcon />
+                  Inactive
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">
+                This {resourceDetails.singularNoun} will not be scanned due to exclusion in Data
+                Source configuration.
+              </TooltipContent>
             </Tooltip>
           )}
-          <Tooltip className="max-w-sm text-center" content="Options">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <IconButton
-                  ariaLabel="Options"
-                  colorSchema="secondary"
-                  className="w-6"
-                  variant="plain"
-                >
-                  <FontAwesomeIcon icon={faEllipsisV} />
-                </IconButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent sideOffset={2} align="end">
-                <DropdownMenuItem
-                  icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCopyId(id);
-                  }}
-                >
-                  Copy Resource ID
-                </DropdownMenuItem>
-                <ProjectPermissionCan
-                  I={ProjectPermissionSecretScanningDataSourceActions.TriggerScans}
-                  a={ProjectPermissionSub.SecretScanningDataSources}
-                >
-                  {(isAllowed) => (
-                    <DropdownMenuItem
-                      isDisabled={!isAllowed || !isActive}
-                      icon={<FontAwesomeIcon icon={faExpand} />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleTriggerScan();
-                      }}
-                    >
-                      <Tooltip
-                        position="left"
-                        sideOffset={42}
-                        content={`Manually trigger a scan for this ${resourceDetails.singularNoun}.`}
+          <DropdownMenu>
+            <Tooltip hoverable delayDuration={50}>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <IconButton aria-label="Options" variant="ghost" size="xs">
+                    <EllipsisVerticalIcon />
+                  </IconButton>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Options</TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent sideOffset={2} align="end">
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCopyId(id);
+                }}
+              >
+                {isIdCopied ? <CheckIcon /> : <CopyIcon />}
+                Copy Resource ID
+              </DropdownMenuItem>
+              <ProjectPermissionCan
+                I={ProjectPermissionSecretScanningDataSourceActions.TriggerScans}
+                a={ProjectPermissionSub.SecretScanningDataSources}
+              >
+                {(isAllowed) => (
+                  <Tooltip hoverable delayDuration={50}>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuItem
+                        isDisabled={!isAllowed || !isActive}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleTriggerScan();
+                        }}
                       >
-                        <div className="flex h-full w-full items-center justify-between gap-1">
-                          <span>Trigger Scan</span>
-                          <FontAwesomeIcon
-                            className="text-label-secondary"
-                            size="sm"
-                            icon={faInfoCircle}
-                          />
-                        </div>
-                      </Tooltip>
-                    </DropdownMenuItem>
-                  )}
-                </ProjectPermissionCan>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </Tooltip>
+                        <ScanIcon />
+                        Trigger Scan
+                        <InfoIcon className="ml-auto text-muted" />
+                      </DropdownMenuItem>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">
+                      Manually trigger a scan for this {resourceDetails.singularNoun}.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </ProjectPermissionCan>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      </Td>
-    </Tr>
+      </TableCell>
+    </TableRow>
   );
 };

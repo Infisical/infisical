@@ -1,6 +1,6 @@
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button } from "@app/components/v2";
+import { Button } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import {
@@ -52,10 +52,10 @@ export const SecretScanningResourceSection = ({ dataSource }: Props) => {
         >
           {(isAllowed) => (
             <Button
-              colorSchema="secondary"
+              variant="outline"
               onClick={handleTriggerScan}
-              isDisabled={!isAllowed || triggerDataSourceScan.isPending}
-              isLoading={triggerDataSourceScan.isPending}
+              isDisabled={!isAllowed}
+              isPending={triggerDataSourceScan.isPending}
             >
               Scan {resourceDetails.pluralTitle}
             </Button>

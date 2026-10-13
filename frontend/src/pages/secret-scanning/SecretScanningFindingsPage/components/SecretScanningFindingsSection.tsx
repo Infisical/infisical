@@ -1,5 +1,4 @@
-import { ContentLoader } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import { DocumentationLinkBadge, PageLoader } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useListSecretScanningFindings } from "@app/hooks/api/secretScanningV2";
 
@@ -15,7 +14,12 @@ export const SecretScanningFindingsSection = () => {
     }
   );
 
-  if (isFindingsPending) return <ContentLoader />;
+  if (isFindingsPending)
+    return (
+      <div className="h-screen w-full">
+        <PageLoader />
+      </div>
+    );
 
   return (
     <div className="w-full rounded-lg border border-border-control bg-surface-base p-4">

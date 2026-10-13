@@ -4,8 +4,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, FormControl, TextArea } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import { Button, DocumentationLinkBadge, Field, FieldError, TextArea } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningConfigActions } from "@app/context/ProjectPermissionContext/types";
 import {
@@ -68,17 +67,20 @@ export const SecretScanningConfigForm = ({ config }: Props) => {
               <Controller
                 defaultValue=""
                 render={({ field, fieldState: { error } }) => (
-                  <FormControl isError={Boolean(error)} errorText={error?.message}>
+                  <Field className="mb-4">
                     <TextArea
                       placeholder={
                         "[extend]\n\nuseDefault = true\n\n# See docs for configuration guide"
                       }
+                      aria-label="Project configuration"
                       {...field}
                       rows={3}
-                      className="min-h-144 thin-scrollbar w-full resize-none! resize-y!"
-                      isDisabled={!isAllowed}
+                      className="min-h-144 resize-y"
+                      isError={Boolean(error)}
+                      disabled={!isAllowed}
                     />
-                  </FormControl>
+                    <FieldError errors={[error]} />
+                  </Field>
                 )}
                 control={control}
                 name="content"
@@ -91,11 +93,10 @@ export const SecretScanningConfigForm = ({ config }: Props) => {
           >
             {(isAllowed) => (
               <Button
-                colorSchema="secondary"
+                variant="outline"
                 type="submit"
-                className="w-min"
-                isLoading={updateConfig.isPending}
-                isDisabled={updateConfig.isPending || !isAllowed || !isDirty}
+                isPending={updateConfig.isPending}
+                isDisabled={!isAllowed || !isDirty}
               >
                 Save
               </Button>

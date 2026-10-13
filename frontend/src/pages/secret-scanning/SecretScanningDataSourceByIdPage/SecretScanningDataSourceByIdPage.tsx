@@ -1,11 +1,17 @@
 import { Helmet } from "react-helmet";
-import { faBan, faChevronLeft } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useParams } from "@tanstack/react-router";
+import { BanIcon, ChevronLeftIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, ContentLoader, EmptyState } from "@app/components/v2";
-import { ProviderIcon } from "@app/components/v3";
+import {
+  Button,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  PageLoader,
+  ProviderIcon
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
@@ -35,8 +41,8 @@ const PageContent = () => {
 
   if (isPending) {
     return (
-      <div className="flex h-full w-full items-center justify-center">
-        <ContentLoader />
+      <div className="h-screen w-full">
+        <PageLoader />
       </div>
     );
   }
@@ -46,11 +52,16 @@ const PageContent = () => {
   if (!dataSource) {
     return (
       <div className="flex h-full w-full items-center justify-center px-20">
-        <EmptyState
-          className="max-w-2xl rounded-md text-center"
-          icon={faBan}
-          title={`Could not find ${details.name ?? "Secret Scanning"} Data Source with ID ${dataSourceId}`}
-        />
+        <Empty className="max-w-2xl">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <BanIcon />
+            </EmptyMedia>
+            <EmptyTitle>
+              Could not find {details.name ?? "Secret Scanning"} Data Source with ID {dataSourceId}
+            </EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       </div>
     );
   }
@@ -61,7 +72,6 @@ const PageContent = () => {
         <Button
           variant="link"
           type="submit"
-          leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
           onClick={() => {
             navigate({
               to: "/organizations/$orgId/projects/secret-scanning/$projectId/data-sources",
@@ -72,6 +82,7 @@ const PageContent = () => {
             });
           }}
         >
+          <ChevronLeftIcon />
           Data Sources
         </Button>
         <div className="mb-6 flex w-full items-center gap-3">

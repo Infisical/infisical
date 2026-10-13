@@ -1,25 +1,29 @@
 import { useCallback } from "react";
-import { faCheck, faCopy, faEllipsisV } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
+import { CheckIcon, CopyIcon, EllipsisVerticalIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   Button,
   Checkbox,
+  Detail,
+  DetailLabel,
+  DetailValue,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  GenericFieldLabel,
   IconButton,
-  Td,
+  ProviderIcon,
+  TableCell,
+  TableRow,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge, ProviderIcon } from "@app/components/v3";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSub
@@ -84,24 +88,19 @@ export const SecretScanningFindingRow = ({
 
   return (
     <>
-      <Tr
-        onClick={setIsExpanded.toggle}
-        className={twMerge(
-          "group h-10 cursor-pointer transition-colors duration-100 hover:bg-surface-hover"
-        )}
-        key={`resource-${id}`}
-      >
-        <Td className="pr-0">
+      <TableRow onClick={setIsExpanded.toggle} className="group" key={`resource-${id}`}>
+        <TableCell className="pr-0">
           <Checkbox
             id={`checkbox-${id}`}
+            aria-label={`Select finding ${rule} in ${resourceName}`}
             isChecked={isSelected}
             onCheckedChange={() => onToggleSelect(!isSelected)}
             onClick={(e) => {
               e.stopPropagation();
             }}
           />
-        </Td>
-        <Td className="max-w-0 min-w-16!">
+        </TableCell>
+        <TableCell isTruncatable className="min-w-16">
           <div className="flex w-full items-center">
             <ProviderIcon
               alt={`${sourceDetails.name} Data Source`}
@@ -110,99 +109,146 @@ export const SecretScanningFindingRow = ({
             />
             <p className="ml-2 truncate">{sourceDetails.name}</p>
           </div>
-        </Td>
-        <Td>
+        </TableCell>
+        <TableCell>
           <div className="flex items-center gap-1 whitespace-nowrap">
             <p>{format(createdAt, "MMM dd yyyy")}</p>
             <p className="text-label">{format(createdAt, "h:mm aa")}</p>
           </div>
-        </Td>
-        <Td className="max-w-0 min-w-32!">
+        </TableCell>
+        <TableCell isTruncatable className="min-w-32">
           <div className="w-full items-center">
             <p className="truncate">{resourceName}</p>
             <p className="truncate text-xs text-muted">{dataSourceName}</p>
           </div>
-        </Td>
-        <Td className="whitespace-nowrap">{rule}</Td>
-        <Td className="whitespace-nowrap">
-          <Tooltip position="left" content={triageComment}>
-            <Badge variant={SECRET_SCANNING_FINDING_STATUS_MAP[status].variant}>
-              <StatusIcon />
-              <span className="capitalize">{status.replace("-", " ")}</span>
-            </Badge>
+        </TableCell>
+        <TableCell>{rule}</TableCell>
+        <TableCell>
+          <Tooltip hoverable delayDuration={50} open={triageComment ? undefined : false}>
+            <TooltipTrigger asChild>
+              <Badge variant={SECRET_SCANNING_FINDING_STATUS_MAP[status].variant}>
+                <StatusIcon />
+                <span className="capitalize">{status.replace("-", " ")}</span>
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="left" className="max-w-sm">
+              {triageComment}
+            </TooltipContent>
           </Tooltip>
-        </Td>
-        <Td>
-          <Tooltip className="max-w-sm text-center" content="Options">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <IconButton
-                  ariaLabel="Options"
-                  colorSchema="secondary"
-                  className="w-6"
-                  variant="plain"
-                >
-                  <FontAwesomeIcon icon={faEllipsisV} />
-                </IconButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent sideOffset={2} align="end">
-                <DropdownMenuItem
-                  icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCopyId(id);
-                  }}
-                >
-                  Copy Finding ID
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </Tooltip>
-        </Td>
-      </Tr>
-      <Tr>
-        <Td colSpan={7} className="border-none! p-0">
+        </TableCell>
+        <TableCell variant="action">
+          <DropdownMenu>
+            <Tooltip hoverable delayDuration={50}>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <IconButton aria-label="Options" variant="ghost" size="xs">
+                    <EllipsisVerticalIcon />
+                  </IconButton>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Options</TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent sideOffset={2} align="end">
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCopyId(id);
+                }}
+              >
+                {isIdCopied ? <CheckIcon /> : <CopyIcon />}
+                Copy Finding ID
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </TableCell>
+      </TableRow>
+      <TableRow className="hover:bg-transparent">
+        <TableCell colSpan={7} className="h-auto max-w-0 border-none! p-0 whitespace-normal">
           <div
             className={`w-full bg-surface-base/75 transition-all duration-500 ${
               isExpanded ? "max-h-200 overflow-y-auto opacity-100" : "max-h-0 overflow-hidden"
             }`}
           >
             <div className="grid gap-4 p-4 2xl:grid-cols-6">
-              <GenericFieldLabel truncate className="col-span-full" label="Description">
-                {details.description}
-              </GenericFieldLabel>
-              <GenericFieldLabel truncate label="Date">
-                {format(details.date, "MMM dd yyyy h:mm aa")}
-              </GenericFieldLabel>
-              <GenericFieldLabel truncate label="Author">
-                {details.author}
-              </GenericFieldLabel>
-              <GenericFieldLabel className="col-span-4" truncate label="Email">
-                {details.email}
-              </GenericFieldLabel>
-              <GenericFieldLabel truncate className="col-span-full" label="File">
-                {details.file}
-              </GenericFieldLabel>
-              <GenericFieldLabel truncate className="col-span-full" label="Commit">
-                {details.commit}
-              </GenericFieldLabel>
-              <GenericFieldLabel className="col-span-full" label="Commit Message">
-                <div className="max-h-48 overflow-y-auto">{details.message}</div>
-              </GenericFieldLabel>
-              <GenericFieldLabel label="Start Line">{details.startLine}</GenericFieldLabel>
-              <GenericFieldLabel label="End Line">{details.endLine}</GenericFieldLabel>
-              <GenericFieldLabel label="Start Column">{details.startColumn}</GenericFieldLabel>
-              <GenericFieldLabel label="End Column">{details.endColumn}</GenericFieldLabel>
-              <GenericFieldLabel className="col-span-full" label="Link">
-                <a
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="cursor-pointer text-label underline underline-offset-2 hover:text-foreground"
-                  href={details.link}
-                >
-                  {details.link}
-                </a>
-              </GenericFieldLabel>
+              <Detail className="col-span-full">
+                <DetailLabel>Description</DetailLabel>
+                <DetailValue className="truncate">
+                  {details.description || <span className="text-muted italic">None</span>}
+                </DetailValue>
+              </Detail>
+              <Detail>
+                <DetailLabel>Date</DetailLabel>
+                <DetailValue className="truncate">
+                  {format(details.date, "MMM dd yyyy h:mm aa")}
+                </DetailValue>
+              </Detail>
+              <Detail>
+                <DetailLabel>Author</DetailLabel>
+                <DetailValue className="truncate">
+                  {details.author || <span className="text-muted italic">None</span>}
+                </DetailValue>
+              </Detail>
+              <Detail className="col-span-4">
+                <DetailLabel>Email</DetailLabel>
+                <DetailValue className="truncate">
+                  {details.email || <span className="text-muted italic">None</span>}
+                </DetailValue>
+              </Detail>
+              <Detail className="col-span-full">
+                <DetailLabel>File</DetailLabel>
+                <DetailValue className="truncate">
+                  {details.file || <span className="text-muted italic">None</span>}
+                </DetailValue>
+              </Detail>
+              <Detail className="col-span-full">
+                <DetailLabel>Commit</DetailLabel>
+                <DetailValue className="truncate">
+                  {details.commit || <span className="text-muted italic">None</span>}
+                </DetailValue>
+              </Detail>
+              <Detail className="col-span-full">
+                <DetailLabel>Commit Message</DetailLabel>
+                <DetailValue>
+                  <div className="max-h-48 overflow-y-auto">{details.message}</div>
+                </DetailValue>
+              </Detail>
+              <Detail>
+                <DetailLabel>Start Line</DetailLabel>
+                <DetailValue>
+                  {details.startLine || <span className="text-muted italic">None</span>}
+                </DetailValue>
+              </Detail>
+              <Detail>
+                <DetailLabel>End Line</DetailLabel>
+                <DetailValue>
+                  {details.endLine || <span className="text-muted italic">None</span>}
+                </DetailValue>
+              </Detail>
+              <Detail>
+                <DetailLabel>Start Column</DetailLabel>
+                <DetailValue>
+                  {details.startColumn || <span className="text-muted italic">None</span>}
+                </DetailValue>
+              </Detail>
+              <Detail>
+                <DetailLabel>End Column</DetailLabel>
+                <DetailValue>
+                  {details.endColumn || <span className="text-muted italic">None</span>}
+                </DetailValue>
+              </Detail>
+              <Detail className="col-span-full">
+                <DetailLabel>Link</DetailLabel>
+                <DetailValue>
+                  <a
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="cursor-pointer text-label underline underline-offset-2 hover:text-foreground"
+                    href={details.link}
+                  >
+                    {details.link}
+                  </a>
+                </DetailValue>
+              </Detail>
               <div className="col-span-full flex items-center border-t border-border-strong" />
               <ProjectPermissionCan
                 I={ProjectPermissionSecretScanningFindingActions.Update}
@@ -211,30 +257,31 @@ export const SecretScanningFindingRow = ({
                 {(isAllowed) => (
                   <Button
                     onClick={() => onUpdate(finding)}
-                    colorSchema="secondary"
+                    variant="outline"
                     isDisabled={!isAllowed}
-                    leftIcon={
-                      <StatusIcon
-                        className={twMerge(
-                          "size-4",
-                          SECRET_SCANNING_FINDING_STATUS_MAP[status].className
-                        )}
-                      />
-                    }
                   >
+                    <StatusIcon
+                      className={twMerge(
+                        "size-4",
+                        SECRET_SCANNING_FINDING_STATUS_MAP[status].className
+                      )}
+                    />
                     Update Status
                   </Button>
                 )}
               </ProjectPermissionCan>
               {Boolean(triageComment) && (
-                <GenericFieldLabel className="col-span-3" label="Remarks">
-                  {triageComment}
-                </GenericFieldLabel>
+                <Detail className="col-span-3">
+                  <DetailLabel>Remarks</DetailLabel>
+                  <DetailValue>
+                    {triageComment || <span className="text-muted italic">None</span>}
+                  </DetailValue>
+                </Detail>
               )}
             </div>
           </div>
-        </Td>
-      </Tr>
+        </TableCell>
+      </TableRow>
     </>
   );
 };

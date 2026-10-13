@@ -1,14 +1,6 @@
 import { useMemo, useState } from "react";
-import {
-  faArrowDown,
-  faArrowUp,
-  faCheckCircle,
-  faFilter,
-  faMagnifyingGlass,
-  faSearch
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useSearch } from "@tanstack/react-router";
+import { ChevronDownIcon, FilterIcon, SearchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -16,22 +8,27 @@ import {
   Button,
   Checkbox,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-  EmptyState,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
   IconButton,
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination,
+  ProviderIcon,
   Table,
-  TableContainer,
-  TBody,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
-import { ProviderIcon } from "@app/components/v3";
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionSecretScanningFindingActions,
@@ -186,36 +183,42 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
     setOrderDirection(OrderByDirection.ASC);
   };
 
-  const getClassName = (col: FindingsOrderBy) =>
-    twMerge("ml-2", orderBy === col ? "" : "opacity-30");
+  const getSortDirection = (col: FindingsOrderBy) => {
+    if (orderBy !== col) return "none" as const;
+    return orderDirection === OrderByDirection.ASC
+      ? ("ascending" as const)
+      : ("descending" as const);
+  };
 
-  const getColSortIcon = (col: FindingsOrderBy) =>
-    orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
+  const getSortIconClassName = (col: FindingsOrderBy) =>
+    twMerge(
+      "transition-transform",
+      orderDirection === OrderByDirection.DESC && orderBy === col && "rotate-180",
+      orderBy !== col && "opacity-30"
+    );
 
   const isTableFiltered = Boolean(filters.dataSourceTypes.length || filters.status.length);
 
   return (
     <div>
       <div className="flex gap-2">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search findings..."
-          className="flex-1"
-        />
+        <InputGroup className="flex-1">
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search findings..."
+          />
+        </InputGroup>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton
-              ariaLabel="Filter findings"
-              variant="plain"
-              size="sm"
-              className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-border-control bg-surface-raised p-0 transition-all hover:border-project/60 hover:bg-project/10",
-                isTableFiltered && "border-project/50 text-project"
-              )}
+              aria-label="Filter findings"
+              variant={isTableFiltered ? "project" : "outline"}
             >
-              <FontAwesomeIcon icon={faFilter} />
+              <FilterIcon />
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
@@ -224,7 +227,8 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
               const { Icon } = SECRET_SCANNING_FINDING_STATUS_MAP[status];
 
               return (
-                <DropdownMenuItem
+                <DropdownMenuCheckboxItem
+                  checked={filters.status.includes(status)}
                   onClick={(e) => {
                     e.preventDefault();
                     setFilters((prev) => ({
@@ -235,23 +239,15 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
                     }));
                   }}
                   key={status}
-                  icon={
-                    filters.status.includes(status) && (
-                      <FontAwesomeIcon className="text-project" icon={faCheckCircle} />
-                    )
-                  }
-                  iconPos="right"
                 >
-                  <div className="flex items-center gap-2">
-                    <Icon
-                      className={twMerge(
-                        SECRET_SCANNING_FINDING_STATUS_MAP[status].className,
-                        "size-3.5"
-                      )}
-                    />
-                    <span className="capitalize">{status.replace("-", " ")}</span>
-                  </div>
-                </DropdownMenuItem>
+                  <Icon
+                    className={twMerge(
+                      SECRET_SCANNING_FINDING_STATUS_MAP[status].className,
+                      "size-3.5"
+                    )}
+                  />
+                  <span className="capitalize">{status.replace("-", " ")}</span>
+                </DropdownMenuCheckboxItem>
               );
             })}
             <DropdownMenuLabel>Platform</DropdownMenuLabel>
@@ -260,7 +256,8 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
                 const { name, image } = SECRET_SCANNING_DATA_SOURCE_MAP[type];
 
                 return (
-                  <DropdownMenuItem
+                  <DropdownMenuCheckboxItem
+                    checked={filters.dataSourceTypes.includes(type)}
                     onClick={(e) => {
                       e.preventDefault();
                       setFilters((prev) => ({
@@ -271,18 +268,10 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
                       }));
                     }}
                     key={type}
-                    icon={
-                      filters.dataSourceTypes.includes(type) && (
-                        <FontAwesomeIcon className="text-project" icon={faCheckCircle} />
-                      )
-                    }
-                    iconPos="right"
                   >
-                    <div className="flex items-center gap-2">
-                      <ProviderIcon alt={`${name} integration`} icon={image} className="h-4 w-4" />
-                      <span>{name}</span>
-                    </div>
-                  </DropdownMenuItem>
+                    <ProviderIcon alt={`${name} integration`} icon={image} className="h-4 w-4" />
+                    {name}
+                  </DropdownMenuCheckboxItem>
                 );
               })
             ) : (
@@ -291,133 +280,121 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="">
-                <Checkbox
-                  id="checkbox-select-all"
-                  isChecked={
-                    currentPageDataIds.length > 0 &&
-                    currentPageDataIds.every((id) => selectedRows.includes(id))
-                  }
-                  onCheckedChange={() => {
-                    const allCurrentlySelectedOnPage =
-                      currentPageDataIds.length > 0 &&
-                      currentPageDataIds.every((id) => selectedRows.includes(id));
+      <div className="mt-4">
+        {filteredFindings.length ? (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>
+                    <Checkbox
+                      id="checkbox-select-all"
+                      aria-label="Select all findings on this page"
+                      isChecked={
+                        currentPageDataIds.length > 0 &&
+                        currentPageDataIds.every((id) => selectedRows.includes(id))
+                      }
+                      onCheckedChange={() => {
+                        const allCurrentlySelectedOnPage =
+                          currentPageDataIds.length > 0 &&
+                          currentPageDataIds.every((id) => selectedRows.includes(id));
 
-                    if (allCurrentlySelectedOnPage) {
-                      // Deselect all on current page
-                      setSelectedRows((prev) =>
-                        prev.filter((rowId) => !currentPageDataIds.includes(rowId))
-                      );
-                    } else {
-                      // Select all on current page
-                      setSelectedRows((prev) => {
-                        const newSelectedRows = new Set(prev);
-                        currentPageDataIds.forEach((id) => newSelectedRows.add(id));
-                        return Array.from(newSelectedRows);
-                      });
+                        if (allCurrentlySelectedOnPage) {
+                          // Deselect all on current page
+                          setSelectedRows((prev) =>
+                            prev.filter((rowId) => !currentPageDataIds.includes(rowId))
+                          );
+                        } else {
+                          // Select all on current page
+                          setSelectedRows((prev) => {
+                            const newSelectedRows = new Set(prev);
+                            currentPageDataIds.forEach((id) => newSelectedRows.add(id));
+                            return Array.from(newSelectedRows);
+                          });
+                        }
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    />
+                  </TableHead>
+                  <TableHead className="min-w-40">Platform</TableHead>
+                  <TableHead
+                    className="w-1/4"
+                    sortDirection={getSortDirection(FindingsOrderBy.Timestamp)}
+                    onSortChange={() => handleSort(FindingsOrderBy.Timestamp)}
+                  >
+                    Timestamp
+                    <ChevronDownIcon className={getSortIconClassName(FindingsOrderBy.Timestamp)} />
+                  </TableHead>
+                  <TableHead
+                    className="w-1/3"
+                    sortDirection={getSortDirection(FindingsOrderBy.ResourceName)}
+                    onSortChange={() => handleSort(FindingsOrderBy.ResourceName)}
+                  >
+                    Resource Name
+                    <ChevronDownIcon
+                      className={getSortIconClassName(FindingsOrderBy.ResourceName)}
+                    />
+                  </TableHead>
+                  <TableHead
+                    className="w-1/4"
+                    sortDirection={getSortDirection(FindingsOrderBy.Rule)}
+                    onSortChange={() => handleSort(FindingsOrderBy.Rule)}
+                  >
+                    Rule
+                    <ChevronDownIcon className={getSortIconClassName(FindingsOrderBy.Rule)} />
+                  </TableHead>
+                  <TableHead
+                    className="w-1/4"
+                    sortDirection={getSortDirection(FindingsOrderBy.Status)}
+                    onSortChange={() => handleSort(FindingsOrderBy.Status)}
+                  >
+                    Status
+                    <ChevronDownIcon className={getSortIconClassName(FindingsOrderBy.Status)} />
+                  </TableHead>
+                  <TableHead variant="action" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {currentPageData.map((finding) => (
+                  <SecretScanningFindingRow
+                    isSelected={selectedRows.includes(finding.id)}
+                    onToggleSelect={(v) =>
+                      v
+                        ? setSelectedRows((sr) => [...sr, finding.id])
+                        : setSelectedRows((sr) => sr.filter((r) => r !== finding.id))
                     }
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
-                />
-              </Th>
-              <Th className="min-w-40">Platform</Th>
-              <Th className="w-1/4">
-                <div className="flex items-center">
-                  Timestamp
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(FindingsOrderBy.Timestamp)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(FindingsOrderBy.Timestamp)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(FindingsOrderBy.Timestamp)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/3 whitespace-nowrap">
-                <div className="flex items-center">
-                  Resource Name
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(FindingsOrderBy.ResourceName)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(FindingsOrderBy.ResourceName)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(FindingsOrderBy.ResourceName)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/4">
-                <div className="flex items-center">
-                  Rule
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(FindingsOrderBy.Rule)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(FindingsOrderBy.Rule)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(FindingsOrderBy.Rule)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/4">
-                <div className="flex items-center">
-                  Status
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(FindingsOrderBy.Status)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(FindingsOrderBy.Status)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(FindingsOrderBy.Status)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {currentPageData.map((finding) => (
-              <SecretScanningFindingRow
-                isSelected={selectedRows.includes(finding.id)}
-                onToggleSelect={(v) =>
-                  v
-                    ? setSelectedRows((sr) => [...sr, finding.id])
-                    : setSelectedRows((sr) => sr.filter((r) => r !== finding.id))
-                }
-                key={finding.id}
-                finding={finding}
-                onUpdate={() => handlePopUpOpen("updateFinding", [finding])}
-              />
-            ))}
-          </TBody>
-        </Table>
-        {Boolean(filteredFindings.length) && (
-          <Pagination
-            count={filteredFindings.length}
-            page={page}
-            perPage={perPage}
-            onChangePage={setPage}
-            onChangePerPage={setPerPage}
-          />
+                    key={finding.id}
+                    finding={finding}
+                    onUpdate={() => handlePopUpOpen("updateFinding", [finding])}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+            <Pagination
+              count={filteredFindings.length}
+              page={page}
+              perPage={perPage}
+              onChangePage={setPage}
+              onChangePerPage={setPerPage}
+            />
+          </>
+        ) : (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <SearchIcon />
+              </EmptyMedia>
+              <EmptyTitle>
+                {findings.length
+                  ? "No findings match search..."
+                  : "This project has not uncovered any secret leaks"}
+              </EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         )}
-        {!filteredFindings?.length && (
-          <EmptyState
-            title={
-              findings.length
-                ? "No findings match search..."
-                : "This project has not uncovered any secret leaks"
-            }
-            icon={faSearch}
-          />
-        )}
-      </TableContainer>
+      </div>
       <SecretScanningUpdateFindingModal
         isOpen={popUp.updateFinding.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("updateFinding", isOpen)}
@@ -443,7 +420,7 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
                       findings.filter((f) => selectedRows.includes(f.id))
                     )
                   }
-                  colorSchema="secondary"
+                  variant="outline"
                   isDisabled={!isAllowed}
                 >
                   Update Status

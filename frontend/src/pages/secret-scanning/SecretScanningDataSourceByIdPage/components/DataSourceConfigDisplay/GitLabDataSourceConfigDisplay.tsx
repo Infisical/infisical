@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import {
   GitLabDataSourceScope,
   TGitLabDataSource
@@ -15,10 +15,14 @@ export const GitLabDataSourceConfigDisplay = ({ dataSource }: Props) => {
     const { projectName, projectId } = config;
     return (
       <>
-        <GenericFieldLabel label="Scope" className="capitalize">
-          {config.scope}
-        </GenericFieldLabel>
-        <GenericFieldLabel label="Project">{projectName || projectId}</GenericFieldLabel>
+        <Detail>
+          <DetailLabel>Scope</DetailLabel>
+          <DetailValue className="capitalize">{config.scope}</DetailValue>
+        </Detail>
+        <Detail>
+          <DetailLabel>Project</DetailLabel>
+          <DetailValue>{projectName || projectId}</DetailValue>
+        </Detail>
       </>
     );
   }
@@ -29,13 +33,22 @@ export const GitLabDataSourceConfigDisplay = ({ dataSource }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Scope" className="capitalize">
-        {config.scope}
-      </GenericFieldLabel>
-      <GenericFieldLabel label="Group">{groupName || groupId}</GenericFieldLabel>
-      <GenericFieldLabel label="Scan Projects">
-        {includeProjects.includes("*") ? "All" : includeProjects.join(", ")}
-      </GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Scope</DetailLabel>
+        <DetailValue className="capitalize">{config.scope}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Group</DetailLabel>
+        <DetailValue>{groupName || groupId}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Scan Projects</DetailLabel>
+        <DetailValue>
+          {includeProjects.includes("*")
+            ? "All"
+            : includeProjects.join(", ") || <span className="text-muted italic">None</span>}
+        </DetailValue>
+      </Detail>
     </>
   );
 };

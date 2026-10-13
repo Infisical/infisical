@@ -1,36 +1,41 @@
 import { useCallback } from "react";
-import {
-  faCheck,
-  faCopy,
-  faEdit,
-  faEllipsisV,
-  faExpand,
-  faInfoCircle,
-  faPlugCircleXmark,
-  faToggleOff,
-  faToggleOn,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faPlugCircleXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
-import { AlertTriangleIcon, BanIcon, ScanTextIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  BanIcon,
+  CheckIcon,
+  CopyIcon,
+  EllipsisVerticalIcon,
+  InfoIcon,
+  PencilIcon,
+  ScanIcon,
+  ScanTextIcon,
+  ToggleLeftIcon,
+  ToggleRightIcon,
+  TrashIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretScanningScanStatusBadge } from "@app/components/secret-scanning";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  Td,
+  ProviderIcon,
+  TableCell,
+  TableRow,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge, ProviderIcon } from "@app/components/v3";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
@@ -97,7 +102,7 @@ export const SecretScanningDataSourceRow = ({
   const autoScanDescription = RESOURCE_DESCRIPTION_HELPER[type];
 
   return (
-    <Tr
+    <TableRow
       onClick={() =>
         navigate({
           to: ROUTE_PATHS.SecretScanning.DataSourceByIdPage.path,
@@ -110,12 +115,12 @@ export const SecretScanningDataSourceRow = ({
         })
       }
       className={twMerge(
-        "group h-10 cursor-pointer transition-colors duration-100 hover:bg-surface-hover",
+        "group",
         lastScanStatus === SecretScanningScanStatus.Failed && "bg-danger/5 hover:bg-danger/10"
       )}
       key={`data-source-${id}`}
     >
-      <Td className="max-w-0 min-w-32!">
+      <TableCell isTruncatable className="min-w-32">
         <div className="flex w-full items-center">
           <ProviderIcon
             alt={`${sourceDetails.name} Data Source`}
@@ -124,18 +129,21 @@ export const SecretScanningDataSourceRow = ({
           />
           <p className="ml-2 truncate">{sourceDetails.name}</p>
         </div>
-      </Td>
-      <Td className="max-w-0 min-w-32!">
+      </TableCell>
+      <TableCell isTruncatable className="min-w-32">
         <div className="flex w-full items-center">
           <p className="truncate">{name}</p>
           {description && (
-            <Tooltip content={description}>
-              <FontAwesomeIcon icon={faInfoCircle} size="xs" className="ml-1 text-muted" />
+            <Tooltip hoverable delayDuration={50}>
+              <TooltipTrigger asChild>
+                <InfoIcon className="ml-1 size-3 shrink-0 text-muted" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">{description}</TooltipContent>
             </Tooltip>
           )}
         </div>
-      </Td>
-      <Td>
+      </TableCell>
+      <TableCell>
         {/* eslint-disable-next-line no-nested-ternary */}
         {lastScanStatus?.match(/queued|scanning/) ? (
           <Badge variant="neutral">
@@ -179,8 +187,8 @@ export const SecretScanningDataSourceRow = ({
         ) : (
           <span className="text-muted">No findings</span>
         )}
-      </Td>
-      <Td>
+      </TableCell>
+      <TableCell>
         <div className="flex w-full items-center gap-1">
           {/* eslint-disable-next-line no-nested-ternary */}
           {lastScanStatus?.match(/queued|scanning|failed/) ? (
@@ -195,142 +203,143 @@ export const SecretScanningDataSourceRow = ({
             <span className="text-muted">No scans</span>
           )}
           {!isAutoScanEnabled && !isDisconnected && (
-            <Tooltip
-              className="text-xs"
-              content={`Auto-Scan is disabled. Scans will not be automatically triggered when a ${autoScanDescription.verb} occurs to ${autoScanDescription.pluralNoun} associated with this data source`}
-            >
-              <Badge className="ml-auto" variant="neutral">
-                <BanIcon />
-                Auto-Scan Disabled
-              </Badge>
+            <Tooltip hoverable delayDuration={50}>
+              <TooltipTrigger asChild>
+                <Badge className="ml-auto" variant="neutral">
+                  <BanIcon />
+                  Auto-Scan Disabled
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">
+                Auto-Scan is disabled. Scans will not be automatically triggered when a{" "}
+                {autoScanDescription.verb} occurs to {autoScanDescription.pluralNoun} associated
+                with this data source
+              </TooltipContent>
             </Tooltip>
           )}
           {isDisconnected && (
-            <Tooltip
-              className="text-xs"
-              content="The external data source has been removed and can no longer be scanned. Delete this data source and re-initialize the connection."
-            >
-              <div className="ml-auto">
-                <Badge
-                  variant="danger"
-                  className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
-                >
-                  <FontAwesomeIcon icon={faPlugCircleXmark} />
-                  <span>Disconnected</span>
-                </Badge>
-              </div>
+            <Tooltip hoverable delayDuration={50}>
+              <TooltipTrigger asChild>
+                <div className="ml-auto">
+                  <Badge
+                    variant="danger"
+                    className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
+                  >
+                    <FontAwesomeIcon icon={faPlugCircleXmark} />
+                    <span>Disconnected</span>
+                  </Badge>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">
+                The external data source has been removed and can no longer be scanned. Delete this
+                data source and re-initialize the connection.
+              </TooltipContent>
             </Tooltip>
           )}
         </div>
-      </Td>
-      <Td>
-        <Tooltip className="max-w-sm text-center" content="Options">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <IconButton
-                ariaLabel="Options"
-                colorSchema="secondary"
-                className="w-6"
-                variant="plain"
-              >
-                <FontAwesomeIcon icon={faEllipsisV} />
-              </IconButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent sideOffset={2} align="end">
-              <DropdownMenuItem
-                icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCopyId();
-                }}
-              >
-                Copy Data Source ID
-              </DropdownMenuItem>
-              <ProjectPermissionCan
-                I={ProjectPermissionSecretScanningDataSourceActions.TriggerScans}
-                a={ProjectPermissionSub.SecretScanningDataSources}
-              >
-                {(isAllowed: boolean) => (
-                  <DropdownMenuItem
-                    icon={<FontAwesomeIcon icon={faExpand} />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTriggerScan(dataSource);
-                    }}
-                    isDisabled={!isAllowed}
-                  >
-                    <Tooltip
-                      position="left"
-                      sideOffset={42}
-                      content={`Manually trigger a scan for this ${sourceDetails.name} data source.`}
+      </TableCell>
+      <TableCell variant="action">
+        <DropdownMenu>
+          <Tooltip hoverable delayDuration={50}>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <IconButton aria-label="Options" variant="ghost" size="xs">
+                  <EllipsisVerticalIcon />
+                </IconButton>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Options</TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent sideOffset={2} align="end">
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCopyId();
+              }}
+            >
+              {isIdCopied ? <CheckIcon /> : <CopyIcon />}
+              Copy Data Source ID
+            </DropdownMenuItem>
+            <ProjectPermissionCan
+              I={ProjectPermissionSecretScanningDataSourceActions.TriggerScans}
+              a={ProjectPermissionSub.SecretScanningDataSources}
+            >
+              {(isAllowed: boolean) => (
+                <Tooltip hoverable delayDuration={50}>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTriggerScan(dataSource);
+                      }}
+                      isDisabled={!isAllowed}
                     >
-                      <div className="flex h-full w-full items-center justify-between gap-1">
-                        <span>Trigger Scan</span>
-                        <FontAwesomeIcon
-                          className="text-label-secondary"
-                          size="sm"
-                          icon={faInfoCircle}
-                        />
-                      </div>
-                    </Tooltip>
-                  </DropdownMenuItem>
-                )}
-              </ProjectPermissionCan>
-              <ProjectPermissionCan
-                I={ProjectPermissionSecretScanningDataSourceActions.Edit}
-                a={ProjectPermissionSub.SecretScanningDataSources}
-              >
-                {(isAllowed: boolean) => (
-                  <DropdownMenuItem
-                    isDisabled={!isAllowed}
-                    icon={<FontAwesomeIcon icon={isAutoScanEnabled ? faToggleOff : faToggleOn} />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleEnableAutoScan(dataSource);
-                    }}
-                  >
-                    {isAutoScanEnabled ? "Disable" : "Enable"} Auto-Scan
-                  </DropdownMenuItem>
-                )}
-              </ProjectPermissionCan>
-              <ProjectPermissionCan
-                I={ProjectPermissionSecretScanningDataSourceActions.Edit}
-                a={ProjectPermissionSub.SecretScanningDataSources}
-              >
-                {(isAllowed: boolean) => (
-                  <DropdownMenuItem
-                    isDisabled={!isAllowed}
-                    icon={<FontAwesomeIcon icon={faEdit} />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit(dataSource);
-                    }}
-                  >
-                    Edit Data Source
-                  </DropdownMenuItem>
-                )}
-              </ProjectPermissionCan>
-              <ProjectPermissionCan
-                I={ProjectPermissionSecretScanningDataSourceActions.Delete}
-                a={ProjectPermissionSub.SecretScanningDataSources}
-              >
-                {(isAllowed: boolean) => (
-                  <DropdownMenuItem
-                    isDisabled={!isAllowed}
-                    icon={<FontAwesomeIcon icon={faTrash} />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(dataSource);
-                    }}
-                  >
-                    Delete Data Source
-                  </DropdownMenuItem>
-                )}
-              </ProjectPermissionCan>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </Tooltip>
-      </Td>
-    </Tr>
+                      <ScanIcon />
+                      Trigger Scan
+                      <InfoIcon className="ml-auto text-muted" />
+                    </DropdownMenuItem>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    Manually trigger a scan for this {sourceDetails.name} data source.
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </ProjectPermissionCan>
+            <ProjectPermissionCan
+              I={ProjectPermissionSecretScanningDataSourceActions.Edit}
+              a={ProjectPermissionSub.SecretScanningDataSources}
+            >
+              {(isAllowed: boolean) => (
+                <DropdownMenuItem
+                  isDisabled={!isAllowed}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleEnableAutoScan(dataSource);
+                  }}
+                >
+                  {isAutoScanEnabled ? <ToggleLeftIcon /> : <ToggleRightIcon />}
+                  {isAutoScanEnabled ? "Disable" : "Enable"} Auto-Scan
+                </DropdownMenuItem>
+              )}
+            </ProjectPermissionCan>
+            <ProjectPermissionCan
+              I={ProjectPermissionSecretScanningDataSourceActions.Edit}
+              a={ProjectPermissionSub.SecretScanningDataSources}
+            >
+              {(isAllowed: boolean) => (
+                <DropdownMenuItem
+                  isDisabled={!isAllowed}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(dataSource);
+                  }}
+                >
+                  <PencilIcon />
+                  Edit Data Source
+                </DropdownMenuItem>
+              )}
+            </ProjectPermissionCan>
+            <ProjectPermissionCan
+              I={ProjectPermissionSecretScanningDataSourceActions.Delete}
+              a={ProjectPermissionSub.SecretScanningDataSources}
+            >
+              {(isAllowed: boolean) => (
+                <DropdownMenuItem
+                  variant="danger"
+                  isDisabled={!isAllowed}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(dataSource);
+                  }}
+                >
+                  <TrashIcon />
+                  Delete Data Source
+                </DropdownMenuItem>
+              )}
+            </ProjectPermissionCan>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
   );
 };

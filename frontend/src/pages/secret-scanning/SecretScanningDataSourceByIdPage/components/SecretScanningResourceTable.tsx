@@ -1,37 +1,39 @@
 import { useMemo, useState } from "react";
 import {
-  faArrowDown,
-  faArrowUp,
-  faBan,
-  faBullseye,
-  faCheckCircle,
-  faFilter,
-  faInfoCircle,
-  faMagnifyingGlass,
-  faSearch
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+  BanIcon,
+  ChevronDownIcon,
+  FilterIcon,
+  InfoIcon,
+  SearchIcon,
+  TargetIcon
+} from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-  EmptyState,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
   IconButton,
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Th,
-  THead,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableSkeletonRows,
   Tooltip,
-  Tr
-} from "@app/components/v2";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import { RESOURCE_DESCRIPTION_HELPER } from "@app/helpers/secretScanningV2";
@@ -190,11 +192,19 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
     setOrderDirection(OrderByDirection.ASC);
   };
 
-  const getClassName = (col: ResourcesOrderBy) =>
-    twMerge("ml-2", orderBy === col ? "" : "opacity-30");
+  const getSortDirection = (col: ResourcesOrderBy) => {
+    if (orderBy !== col) return "none" as const;
+    return orderDirection === OrderByDirection.ASC
+      ? ("ascending" as const)
+      : ("descending" as const);
+  };
 
-  const getColSortIcon = (col: ResourcesOrderBy) =>
-    orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
+  const getSortIconClassName = (col: ResourcesOrderBy) =>
+    twMerge(
+      "transition-transform",
+      orderDirection === OrderByDirection.DESC && orderBy === col && "rotate-180",
+      orderBy !== col && "opacity-30"
+    );
 
   const resourceDetails = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
 
@@ -203,38 +213,41 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
   return (
     <div>
       <div className="flex gap-2">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder={`Search ${resourceDetails.pluralNoun}...`}
-          className="flex-1"
-        />
+        <InputGroup className="flex-1">
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`Search ${resourceDetails.pluralNoun}...`}
+          />
+        </InputGroup>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton
-              ariaLabel="Filter data sources"
-              variant="plain"
-              size="sm"
-              className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-border-control bg-surface-raised p-0 transition-all hover:border-project/60 hover:bg-project/10",
-                isTableFiltered && "border-project/50 text-project"
-              )}
+              aria-label="Filter data sources"
+              variant={isTableFiltered ? "project" : "outline"}
             >
-              <FontAwesomeIcon icon={faFilter} />
+              <FilterIcon />
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
             <DropdownMenuLabel className="flex w-full items-center justify-between">
               Status
-              <Tooltip
-                content={`Inactive ${resourceDetails.pluralNoun} will not be scanned due to exclusion in Data Source configuration.`}
-              >
-                <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
+              <Tooltip hoverable delayDuration={50}>
+                <TooltipTrigger asChild>
+                  <InfoIcon className="size-3.5 text-muted" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  Inactive {resourceDetails.pluralNoun} will not be scanned due to exclusion in Data
+                  Source configuration.
+                </TooltipContent>
               </Tooltip>
             </DropdownMenuLabel>
             {Object.values(ResourceStatus).map((status) => (
-              <DropdownMenuItem
+              <DropdownMenuCheckboxItem
+                checked={filters.status.includes(status)}
                 onClick={(e) => {
                   e.preventDefault();
                   setFilters((prev) => ({
@@ -245,110 +258,103 @@ export const SecretScanningResourcesTable = ({ dataSource }: Props) => {
                   }));
                 }}
                 key={status}
-                icon={
-                  filters.status.includes(status) && (
-                    <FontAwesomeIcon className="text-project" icon={faCheckCircle} />
-                  )
-                }
-                iconPos="right"
               >
-                <div className="flex items-center gap-2">
-                  <FontAwesomeIcon
-                    icon={status === ResourceStatus.Active ? faBullseye : faBan}
-                    className={status === ResourceStatus.Active ? "text-project" : "text-muted"}
-                  />
-                  <span className="capitalize">{status.replace("-", " ")}</span>
-                </div>
-              </DropdownMenuItem>
+                {status === ResourceStatus.Active ? (
+                  <TargetIcon className="text-project" />
+                ) : (
+                  <BanIcon className="text-muted" />
+                )}
+                <span className="capitalize">{status.replace("-", " ")}</span>
+              </DropdownMenuCheckboxItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="w-1/2">
-                <div className="flex items-center">
-                  Name
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(ResourcesOrderBy.Name)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(ResourcesOrderBy.Name)}
+      <div className="mt-4">
+        {/* eslint-disable-next-line no-nested-ternary */}
+        {!canReadResources ? (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <BanIcon />
+              </EmptyMedia>
+              <EmptyTitle>
+                You do not have permission to view data source {resourceDetails.pluralNoun}
+              </EmptyTitle>
+            </EmptyHeader>
+          </Empty>
+        ) : isResourcesPending || filteredResources.length ? (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead
+                    className="w-1/2"
+                    sortDirection={getSortDirection(ResourcesOrderBy.Name)}
+                    onSortChange={() => handleSort(ResourcesOrderBy.Name)}
                   >
-                    <FontAwesomeIcon icon={getColSortIcon(ResourcesOrderBy.Name)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/4">
-                <div className="flex items-center">
-                  Findings
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(ResourcesOrderBy.Findings)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(ResourcesOrderBy.Findings)}
+                    Name
+                    <ChevronDownIcon className={getSortIconClassName(ResourcesOrderBy.Name)} />
+                  </TableHead>
+                  <TableHead
+                    className="w-1/4"
+                    sortDirection={getSortDirection(ResourcesOrderBy.Findings)}
+                    onSortChange={() => handleSort(ResourcesOrderBy.Findings)}
                   >
-                    <FontAwesomeIcon icon={getColSortIcon(ResourcesOrderBy.Findings)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/4 whitespace-nowrap">
-                <div className="flex items-center">
-                  Last Scan
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(ResourcesOrderBy.LastScanned)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(ResourcesOrderBy.LastScanned)}
+                    Findings
+                    <ChevronDownIcon className={getSortIconClassName(ResourcesOrderBy.Findings)} />
+                  </TableHead>
+                  <TableHead
+                    className="w-1/4"
+                    sortDirection={getSortDirection(ResourcesOrderBy.LastScanned)}
+                    onSortChange={() => handleSort(ResourcesOrderBy.LastScanned)}
                   >
-                    <FontAwesomeIcon icon={getColSortIcon(ResourcesOrderBy.LastScanned)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {canReadResources && isResourcesPending && (
-              <TableSkeleton columns={4} innerKey="resource" />
-            )}
-            {filteredResources.slice(offset, perPage * page).map((resource) => (
-              <SecretScanningResourceRow
-                key={resource.id}
-                resource={resource}
-                dataSource={dataSource}
+                    Last Scan
+                    <ChevronDownIcon
+                      className={getSortIconClassName(ResourcesOrderBy.LastScanned)}
+                    />
+                  </TableHead>
+                  <TableHead variant="action" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isResourcesPending && <TableSkeletonRows columns={4} />}
+                {filteredResources.slice(offset, perPage * page).map((resource) => (
+                  <SecretScanningResourceRow
+                    key={resource.id}
+                    resource={resource}
+                    dataSource={dataSource}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+            {Boolean(filteredResources.length) && (
+              <Pagination
+                count={filteredResources.length}
+                page={page}
+                perPage={perPage}
+                onChangePage={setPage}
+                onChangePerPage={setPerPage}
               />
-            ))}
-          </TBody>
-        </Table>
-        {!canReadResources && (
-          <EmptyState
-            icon={faBan}
-            title={`You do not have permission to view data source ${resourceDetails.pluralNoun}`}
-          />
+            )}
+          </>
+        ) : (
+          <Empty className="border">
+            <EmptyHeader>
+              {Boolean(resources.length) && (
+                <EmptyMedia variant="icon">
+                  <SearchIcon />
+                </EmptyMedia>
+              )}
+              <EmptyTitle>
+                {resources.length
+                  ? "No resources match search..."
+                  : `This data source has no ${resourceDetails.pluralNoun} associated with it.`}
+              </EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         )}
-        {Boolean(filteredResources.length) && (
-          <Pagination
-            count={filteredResources.length}
-            page={page}
-            perPage={perPage}
-            onChangePage={setPage}
-            onChangePerPage={setPerPage}
-          />
-        )}
-        {!isResourcesPending && !filteredResources?.length && (
-          <EmptyState
-            title={
-              resources.length
-                ? "No resources match search..."
-                : `This data source has no ${resourceDetails.pluralNoun} associated with it.`
-            }
-            icon={resources.length ? faSearch : undefined}
-          />
-        )}
-      </TableContainer>
+      </div>
     </div>
   );
 };

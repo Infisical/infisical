@@ -1,24 +1,26 @@
 import { useCallback } from "react";
-import { faCheck, faCopy, faEllipsisV } from "@fortawesome/free-solid-svg-icons";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { AlertTriangleIcon, CheckIcon } from "lucide-react";
+import { AlertTriangleIcon, CheckIcon, CopyIcon, EllipsisVerticalIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { SecretScanningScanStatusBadge } from "@app/components/secret-scanning";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  Td,
+  TableCell,
+  TableRow,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useToggle } from "@app/hooks";
 import {
@@ -65,28 +67,28 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
   }, [isIdCopied]);
 
   return (
-    <Tr
+    <TableRow
       className={twMerge(
-        "group h-10 transition-colors duration-100 hover:bg-surface-hover",
+        "group",
         status === SecretScanningScanStatus.Failed && "bg-danger/5 hover:bg-danger/10"
       )}
       key={`scan-${id}`}
     >
-      <Td>
+      <TableCell>
         <p>
           {format(createdAt, "MMM dd yyyy")}{" "}
           <span className="text-label">{format(createdAt, "h:mm aa")}</span>
         </p>
-      </Td>
-      <Td className="max-w-0 min-w-32!">
+      </TableCell>
+      <TableCell isTruncatable className="min-w-32">
         <div className="flex flex-col">
           <p className="truncate">{resourceName}</p>
         </div>
-      </Td>
-      <Td className="whitespace-nowrap">
+      </TableCell>
+      <TableCell>
         {type === SecretScanningScanType.Historical ? "Historical Scan" : "Realtime Scan"}
-      </Td>
-      <Td>
+      </TableCell>
+      <TableCell>
         {
           // eslint-disable-next-line no-nested-ternary
           status?.match(/queued|scanning|failed/) ? (
@@ -127,34 +129,32 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
             </Badge>
           )
         }
-      </Td>
-      <Td>
-        <Tooltip className="max-w-sm text-center" content="Options">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <IconButton
-                ariaLabel="Options"
-                colorSchema="secondary"
-                className="w-6"
-                variant="plain"
-              >
-                <FontAwesomeIcon icon={faEllipsisV} />
-              </IconButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent sideOffset={2} align="end">
-              <DropdownMenuItem
-                icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCopyId();
-                }}
-              >
-                Copy Scan ID
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </Tooltip>
-      </Td>
-    </Tr>
+      </TableCell>
+      <TableCell variant="action">
+        <DropdownMenu>
+          <Tooltip hoverable delayDuration={50}>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <IconButton aria-label="Options" variant="ghost" size="xs">
+                  <EllipsisVerticalIcon />
+                </IconButton>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Options</TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent sideOffset={2} align="end">
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCopyId();
+              }}
+            >
+              {isIdCopied ? <CheckIcon /> : <CopyIcon />}
+              Copy Scan ID
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
   );
 };

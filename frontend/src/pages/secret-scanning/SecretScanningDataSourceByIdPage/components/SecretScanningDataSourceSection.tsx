@@ -1,12 +1,17 @@
-import { faEdit } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { BanIcon, CheckIcon, UnplugIcon } from "lucide-react";
+import { BanIcon, CheckIcon, PencilIcon, UnplugIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { EditSecretScanningDataSourceModal } from "@app/components/secret-scanning";
-import { GenericFieldLabel } from "@app/components/secret-syncs";
-import { IconButton, Tooltip } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import {
+  Badge,
+  Detail,
+  DetailLabel,
+  DetailValue,
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
@@ -30,16 +35,19 @@ export const SecretScanningDataSourceSection = ({ dataSource }: Props) => {
           <div className="mr-2 flex flex-1 items-center justify-between">
             <h3 className="font-normal text-foreground">Details</h3>
             {isDisconnected && (
-              <Tooltip
-                className="text-xs"
-                content="The external data source has been removed and can no longer be scanned. Delete this data source and re-initialize the connection."
-              >
-                <div className="ml-auto">
-                  <Badge variant="danger">
-                    <UnplugIcon />
-                    Disconnected
-                  </Badge>
-                </div>
+              <Tooltip hoverable delayDuration={50}>
+                <TooltipTrigger asChild>
+                  <div className="ml-auto">
+                    <Badge variant="danger">
+                      <UnplugIcon />
+                      Disconnected
+                    </Badge>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  The external data source has been removed and can no longer be scanned. Delete
+                  this data source and re-initialize the connection.
+                </TooltipContent>
               </Tooltip>
             )}
           </div>
@@ -49,38 +57,52 @@ export const SecretScanningDataSourceSection = ({ dataSource }: Props) => {
           >
             {(isAllowed) => (
               <IconButton
-                variant="plain"
-                colorSchema="secondary"
+                variant="ghost"
+                size="xs"
                 isDisabled={!isAllowed}
-                ariaLabel="Edit data source"
+                aria-label="Edit data source"
                 onClick={() => handlePopUpOpen("editDataSource")}
               >
-                <FontAwesomeIcon icon={faEdit} />
+                <PencilIcon />
               </IconButton>
             )}
           </ProjectPermissionCan>
         </div>
         <div>
           <div className="space-y-3">
-            <GenericFieldLabel label="Name">{name}</GenericFieldLabel>
-            <GenericFieldLabel label="Description">{description}</GenericFieldLabel>
+            <Detail>
+              <DetailLabel>Name</DetailLabel>
+              <DetailValue>{name}</DetailValue>
+            </Detail>
+            <Detail>
+              <DetailLabel>Description</DetailLabel>
+              <DetailValue>
+                {description || <span className="text-muted italic">None</span>}
+              </DetailValue>
+            </Detail>
             {connection && (
-              <GenericFieldLabel label="Connection">{connection.name}</GenericFieldLabel>
+              <Detail>
+                <DetailLabel>Connection</DetailLabel>
+                <DetailValue>{connection.name}</DetailValue>
+              </Detail>
             )}
             <DataSourceConfigDisplay dataSource={dataSource} />
-            <GenericFieldLabel label="Auto-Scan">
-              {isAutoScanEnabled ? (
-                <Badge variant="success">
-                  <CheckIcon />
-                  Enabled
-                </Badge>
-              ) : (
-                <Badge variant="neutral">
-                  <BanIcon />
-                  Disabled
-                </Badge>
-              )}
-            </GenericFieldLabel>
+            <Detail>
+              <DetailLabel>Auto-Scan</DetailLabel>
+              <DetailValue>
+                {isAutoScanEnabled ? (
+                  <Badge variant="success">
+                    <CheckIcon />
+                    Enabled
+                  </Badge>
+                ) : (
+                  <Badge variant="neutral">
+                    <BanIcon />
+                    Disabled
+                  </Badge>
+                )}
+              </DetailValue>
+            </Detail>
           </div>
         </div>
       </div>

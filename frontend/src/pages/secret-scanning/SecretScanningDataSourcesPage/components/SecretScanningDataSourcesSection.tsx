@@ -1,11 +1,9 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PlusIcon } from "lucide-react";
 
 import { SecretScanningUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretScanningDataSourceModal } from "@app/components/secret-scanning";
-import { Button, Spinner } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
+import { Button, DocumentationLinkBadge, Spinner } from "@app/components/v3";
 import { ProjectPermissionSub, useProject, useSubscription } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
@@ -55,9 +53,8 @@ export const SecretScanningDataSourcesSection = () => {
           >
             {(isAllowed) => (
               <Button
-                colorSchema="secondary"
+                variant="outline"
                 type="submit"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => {
                   if (!subscription.secretScanning) {
                     handlePopUpOpen("upgradePlan", {
@@ -70,6 +67,7 @@ export const SecretScanningDataSourcesSection = () => {
                 }}
                 isDisabled={!isAllowed}
               >
+                <PlusIcon />
                 Add Data Source
               </Button>
             )}

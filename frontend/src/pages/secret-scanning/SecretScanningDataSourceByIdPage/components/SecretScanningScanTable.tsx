@@ -1,35 +1,30 @@
 import { useMemo, useState } from "react";
-import {
-  faArrowDown,
-  faArrowUp,
-  faBan,
-  faCheckCircle,
-  faExpand,
-  faFilter,
-  faMagnifyingGlass,
-  faSearch
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { BanIcon, ChevronDownIcon, FilterIcon, ScanIcon, SearchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-  EmptyState,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
   IconButton,
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableSkeletonRows
+} from "@app/components/v3";
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import { RESOURCE_DESCRIPTION_HELPER } from "@app/helpers/secretScanningV2";
@@ -151,10 +146,19 @@ export const SecretScanningScanTable = ({ dataSource }: Props) => {
     setOrderDirection(OrderByDirection.ASC);
   };
 
-  const getClassName = (col: ScansOrderBy) => twMerge("ml-2", orderBy === col ? "" : "opacity-30");
+  const getSortDirection = (col: ScansOrderBy) => {
+    if (orderBy !== col) return "none" as const;
+    return orderDirection === OrderByDirection.ASC
+      ? ("ascending" as const)
+      : ("descending" as const);
+  };
 
-  const getColSortIcon = (col: ScansOrderBy) =>
-    orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
+  const getSortIconClassName = (col: ScansOrderBy) =>
+    twMerge(
+      "transition-transform",
+      orderDirection === OrderByDirection.DESC && orderBy === col && "rotate-180",
+      orderBy !== col && "opacity-30"
+    );
 
   const isTableFiltered = Boolean(filters.resourceNames.length);
 
@@ -163,25 +167,23 @@ export const SecretScanningScanTable = ({ dataSource }: Props) => {
   return (
     <div>
       <div className="flex gap-2">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search scans..."
-          className="flex-1"
-        />
+        <InputGroup className="flex-1">
+          <InputGroupAddon>
+            <SearchIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search scans..."
+          />
+        </InputGroup>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton
-              ariaLabel="Filter data sources"
-              variant="plain"
-              size="sm"
-              className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-border-control bg-surface-raised p-0 transition-all hover:border-project/60 hover:bg-project/10",
-                isTableFiltered && "border-project/50 text-project"
-              )}
+              aria-label="Filter data sources"
+              variant={isTableFiltered ? "project" : "outline"}
             >
-              <FontAwesomeIcon icon={faFilter} />
+              <FilterIcon />
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
@@ -189,7 +191,8 @@ export const SecretScanningScanTable = ({ dataSource }: Props) => {
             {scans.length ? (
               [...new Set(scans.map(({ resourceName }) => resourceName))].map((resourceName) => {
                 return (
-                  <DropdownMenuItem
+                  <DropdownMenuCheckboxItem
+                    checked={filters.resourceNames.includes(resourceName)}
                     onClick={(e) => {
                       e.preventDefault();
                       setFilters((prev) => ({
@@ -200,15 +203,9 @@ export const SecretScanningScanTable = ({ dataSource }: Props) => {
                       }));
                     }}
                     key={resourceName}
-                    icon={
-                      filters.resourceNames.includes(resourceName) && (
-                        <FontAwesomeIcon className="text-project" icon={faCheckCircle} />
-                      )
-                    }
-                    iconPos="right"
                   >
                     {resourceName}
-                  </DropdownMenuItem>
+                  </DropdownMenuCheckboxItem>
                 );
               })
             ) : (
@@ -217,83 +214,80 @@ export const SecretScanningScanTable = ({ dataSource }: Props) => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="w-1/4 whitespace-nowrap">
-                <div className="flex items-center">
-                  Timestamp
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(ScansOrderBy.Timestamp)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(ScansOrderBy.Timestamp)}
+      <div className="mt-4">
+        {/* eslint-disable-next-line no-nested-ternary */}
+        {!canReadScans ? (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <BanIcon />
+              </EmptyMedia>
+              <EmptyTitle>You do not have permission to view data source scans</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
+        ) : isScansPending || filteredResources.length ? (
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead
+                    className="w-1/4"
+                    sortDirection={getSortDirection(ScansOrderBy.Timestamp)}
+                    onSortChange={() => handleSort(ScansOrderBy.Timestamp)}
                   >
-                    <FontAwesomeIcon icon={getColSortIcon(ScansOrderBy.Timestamp)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/2">
-                <div className="flex items-center">
-                  Name
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(ScansOrderBy.ResourceName)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(ScansOrderBy.ResourceName)}
+                    Timestamp
+                    <ChevronDownIcon className={getSortIconClassName(ScansOrderBy.Timestamp)} />
+                  </TableHead>
+                  <TableHead
+                    className="w-1/2"
+                    sortDirection={getSortDirection(ScansOrderBy.ResourceName)}
+                    onSortChange={() => handleSort(ScansOrderBy.ResourceName)}
                   >
-                    <FontAwesomeIcon icon={getColSortIcon(ScansOrderBy.ResourceName)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-20">Type</Th>
-              <Th className="w-1/5 whitespace-nowrap">
-                <div className="flex items-center">
-                  Findings
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(ScansOrderBy.Findings)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(ScansOrderBy.Findings)}
+                    Name
+                    <ChevronDownIcon className={getSortIconClassName(ScansOrderBy.ResourceName)} />
+                  </TableHead>
+                  <TableHead className="w-20">Type</TableHead>
+                  <TableHead
+                    className="w-1/5"
+                    sortDirection={getSortDirection(ScansOrderBy.Findings)}
+                    onSortChange={() => handleSort(ScansOrderBy.Findings)}
                   >
-                    <FontAwesomeIcon icon={getColSortIcon(ScansOrderBy.Findings)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {canReadScans && isScansPending && <TableSkeleton columns={5} innerKey="resource" />}
-            {filteredResources.slice(offset, perPage * page).map((scan) => (
-              <SecretScanningScanRow key={scan.id} scan={scan} />
-            ))}
-          </TBody>
-        </Table>
-        {!canReadScans && (
-          <EmptyState icon={faBan} title="You do not have permission to view data source scans" />
+                    Findings
+                    <ChevronDownIcon className={getSortIconClassName(ScansOrderBy.Findings)} />
+                  </TableHead>
+                  <TableHead variant="action" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isScansPending && <TableSkeletonRows columns={5} />}
+                {filteredResources.slice(offset, perPage * page).map((scan) => (
+                  <SecretScanningScanRow key={scan.id} scan={scan} />
+                ))}
+              </TableBody>
+            </Table>
+            {Boolean(filteredResources.length) && (
+              <Pagination
+                count={filteredResources.length}
+                page={page}
+                perPage={perPage}
+                onChangePage={setPage}
+                onChangePerPage={setPerPage}
+              />
+            )}
+          </>
+        ) : (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">{scans.length ? <SearchIcon /> : <ScanIcon />}</EmptyMedia>
+              <EmptyTitle>
+                {scans.length
+                  ? "No scans match search..."
+                  : "This data source has no scans associated with it."}
+              </EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         )}
-        {Boolean(filteredResources.length) && (
-          <Pagination
-            count={filteredResources.length}
-            page={page}
-            perPage={perPage}
-            onChangePage={setPage}
-            onChangePerPage={setPerPage}
-          />
-        )}
-        {!isScansPending && !filteredResources?.length && (
-          <EmptyState
-            title={
-              scans.length
-                ? "No scans match search..."
-                : "This data source has no scans associated with it."
-            }
-            icon={scans.length ? faSearch : faExpand}
-          />
-        )}
-      </TableContainer>
+      </div>
     </div>
   );
 };
