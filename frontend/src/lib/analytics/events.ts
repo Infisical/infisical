@@ -7,7 +7,8 @@ export const AnalyticsEvent = {
   SecretsAddResourceMenuOpened: "Secrets Add Resource Menu Opened",
   SecretsAddResourceActionSelected: "Secrets Add Resource Action Selected",
   ThemePreferenceChanged: "Theme Preference Changed",
-  SignupFlowCompleted: "Signup Flow Completed"
+  SignupFlowCompleted: "Signup Flow Completed",
+  BillingCancellationReasonSubmitted: "Billing Cancellation Reason Submitted"
 } as const;
 
 type PaywallProperties = {
@@ -67,6 +68,14 @@ type SecretsAddResourceActionSelectedProperties = {
   environmentMode: SecretsAddResourceEnvironmentMode;
 };
 
+export type BillingCancellationAction = "remove_product" | "cancel_subscription" | "cancel_trial";
+
+type BillingCancellationReasonSubmittedProperties = {
+  action: BillingCancellationAction;
+  productId: string;
+  reason: string;
+};
+
 export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.PaywallViewed]: PaywallProperties;
   [AnalyticsEvent.PaywallUpgradeClicked]: PaywallProperties;
@@ -75,6 +84,7 @@ export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.FolderAccessGrantSheetOpened]: FolderAccessGrantSheetOpenedProperties;
   [AnalyticsEvent.SecretsAddResourceMenuOpened]: SecretsAddResourceMenuOpenedProperties;
   [AnalyticsEvent.SecretsAddResourceActionSelected]: SecretsAddResourceActionSelectedProperties;
+  [AnalyticsEvent.BillingCancellationReasonSubmitted]: BillingCancellationReasonSubmittedProperties;
 };
 
 export type OrganizationAnalyticsEvent = keyof OrganizationAnalyticsEventMap;
