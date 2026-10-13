@@ -463,8 +463,12 @@ export const SelectOrgPage = () => {
           email={user.email as string}
           successCallback={() => {
             if (mfaOrgInfo.current) {
-              handleSelectOrganization(mfaOrgInfo.current.rootOrg, mfaOrgInfo.current.subOrgId);
+              return handleSelectOrganization(
+                mfaOrgInfo.current.rootOrg,
+                mfaOrgInfo.current.subOrgId
+              );
             }
+            return undefined;
           }}
           method={requiredMfaMethod as MfaMethod}
           onChangeAccount={handleLogout}
