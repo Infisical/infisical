@@ -831,11 +831,9 @@ export const CreateSecretForm = ({
                             <Toggle
                               id={`create-secret-${index}-multiline-encoding`}
                               variant="project"
-                              checked={editSecret ? !field.value : field.value}
+                              checked={field.value}
                               disabled={Boolean(editSecret && isEditReadOnly)}
-                              onCheckedChange={(checked) =>
-                                field.onChange(editSecret ? !checked : checked)
-                              }
+                              onCheckedChange={field.onChange}
                             />
                           </Field>
                         )}
