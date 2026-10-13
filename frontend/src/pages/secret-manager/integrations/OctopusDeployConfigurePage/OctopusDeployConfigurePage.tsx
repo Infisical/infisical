@@ -269,7 +269,7 @@ export const OctopusDeployConfigurePage = () => {
             control={control}
             name="targetResource"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <Field className="mb-4 capitalize" data-invalid={Boolean(error)}>
+              <Field className="mb-4" data-invalid={Boolean(error)}>
                 <FieldLabel htmlFor="OctopusDeployConfigurePage-field-4">{`Octopus Deploy ${currentScope}`}</FieldLabel>
                 <Combobox
                   id="OctopusDeployConfigurePage-field-4"

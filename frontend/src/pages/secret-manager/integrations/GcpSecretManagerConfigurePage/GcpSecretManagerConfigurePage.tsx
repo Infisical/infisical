@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogFooter,
@@ -517,12 +518,19 @@ export const GcpSecretManagerConfigurePage = () => {
           <DialogHeader>
             <DialogTitle>Heads Up</DialogTitle>
           </DialogHeader>
-          <p>You&apos;re about to overwrite any existing secrets in GCP Secret Manager.</p>
-          <p className="mt-4">
-            To avoid this behavior, you may consider adding a secret prefix/suffix or enabling
-            labeling in the options tab.
-          </p>
+          <DialogBody>
+            <p>You&apos;re about to overwrite any existing secrets in GCP Secret Manager.</p>
+            <p className="mt-4">
+              To avoid this behavior, you may consider adding a secret prefix/suffix or enabling
+              labeling in the options tab.
+            </p>
+          </DialogBody>
           <DialogFooter>
+            <DialogClose asChild>
+              <Button onClick={() => handlePopUpClose("confirmIntegration")} variant="ghost">
+                Cancel
+              </Button>
+            </DialogClose>
             <Button
               onClick={() => onFormSubmit(popUp.confirmIntegration?.data as FormData)}
               variant="project"
@@ -530,11 +538,6 @@ export const GcpSecretManagerConfigurePage = () => {
             >
               Continue Anyway
             </Button>
-            <DialogClose asChild>
-              <Button onClick={() => handlePopUpClose("confirmIntegration")} variant="ghost">
-                Cancel
-              </Button>
-            </DialogClose>
           </DialogFooter>
         </DialogContent>
       </Dialog>
