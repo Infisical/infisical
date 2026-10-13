@@ -533,13 +533,11 @@
                 ]
               },
               {
-                "group": "Applications",
+                "group": "Managing certificates",
                 "pages": [
                   "documentation/platform/pki/applications/overview",
                   "documentation/platform/pki/settings/policies",
                   "documentation/platform/pki/settings/profiles",
-                  "documentation/platform/pki/applications/certificates",
-                  "documentation/platform/pki/applications/certificate-renewal",
                   {
                     "group": "Enrollment methods",
                     "root": "documentation/platform/pki/applications/enrollment-methods/overview",
@@ -577,8 +575,8 @@
                       }
                     ]
                   },
+                  "documentation/platform/pki/applications/certificates",
                   "documentation/platform/pki/applications/approvals",
-                  "documentation/platform/pki/applications/alerting/overview",
                   {
                     "group": "Certificate syncs",
                     "root": "documentation/platform/pki/applications/certificate-syncs/overview",
@@ -597,7 +595,8 @@
                       "documentation/platform/pki/applications/certificate-syncs/nutanix-prism-central",
                       "documentation/platform/pki/applications/certificate-syncs/gcp-certificate-manager"
                     ]
-                  }
+                  },
+                  "documentation/platform/pki/applications/certificate-renewal"
                 ]
               },
               {
@@ -612,6 +611,7 @@
                     ]
                   },
                   "documentation/platform/pki/settings/alerts",
+                  "documentation/platform/pki/applications/alerting/overview",
                   {
                     "group": "Alert channels",
                     "pages": [
