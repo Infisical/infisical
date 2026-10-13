@@ -116,23 +116,19 @@ export const FindingDetailSheet = ({
                       href={finding.details.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 font-mono hover:underline hover:underline-offset-2"
+                      className="inline-flex items-center gap-1.5 hover:underline hover:underline-offset-2"
                     >
                       {finding.details.file}:{finding.details.startLine}
                       <ExternalLinkIcon className="size-3.5 shrink-0" />
                     </a>
                   ) : (
-                    <span className="font-mono">
-                      {finding.details.file}:{finding.details.startLine}
-                    </span>
+                    `${finding.details.file}:${finding.details.startLine}`
                   )}
                 </DetailValue>
               </Detail>
               <Detail>
                 <DetailLabel>Resource</DetailLabel>
-                <DetailValue>
-                  <span className="font-mono">{finding.resourceName}</span>
-                </DetailValue>
+                <DetailValue>{finding.resourceName}</DetailValue>
               </Detail>
               <Detail>
                 <DetailLabel>Detected</DetailLabel>
@@ -141,7 +137,7 @@ export const FindingDetailSheet = ({
               <Detail>
                 <DetailLabel>Commit</DetailLabel>
                 <DetailValue>
-                  <span className="font-mono">{finding.details.commit.slice(0, 7)}</span>
+                  {finding.details.commit.slice(0, 7)}
                   {finding.details.message && (
                     <p className="line-clamp-3 text-xs text-muted">{finding.details.message}</p>
                   )}
@@ -170,9 +166,7 @@ export const FindingDetailSheet = ({
                 <DetailLabel>Fingerprint</DetailLabel>
                 <DetailValue>
                   <span className="flex items-center gap-1">
-                    <span className="min-w-0 font-mono text-xs break-all">
-                      {finding.fingerprint}
-                    </span>
+                    <span className="min-w-0 text-xs break-all">{finding.fingerprint}</span>
                     <CopyButton value={finding.fingerprint} ariaLabel="Copy fingerprint" />
                   </span>
                 </DetailValue>

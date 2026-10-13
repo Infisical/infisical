@@ -105,7 +105,7 @@ const ResourceFilter = ({ dataSource, value, onChange }: ResourceFilterProps) =>
           <DropdownMenuSeparator />
           {resources.map((resource) => (
             <DropdownMenuRadioItem key={resource.id} value={resource.id}>
-              <span className="truncate font-mono">{resource.name}</span>
+              <span className="truncate">{resource.name}</span>
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
@@ -420,8 +420,8 @@ export const SecretScanningFindingsTable = ({
                     onCheckedChange={() => setSelectedIds(isPageSelected ? [] : pageIds)}
                   />
                 </TableHead>
-                {renderSortableHead(SecretScanningFindingOrderBy.Rule, "Rule")}
                 {renderSortableHead(SecretScanningFindingOrderBy.ResourceName, resourceLabel)}
+                {renderSortableHead(SecretScanningFindingOrderBy.Rule, "Rule")}
                 {renderSortableHead(SecretScanningFindingOrderBy.Author, "Author")}
                 {renderSortableHead(SecretScanningFindingOrderBy.CreatedAt, "Detected", "w-36")}
                 {renderSortableHead(SecretScanningFindingOrderBy.Status, "Status", "w-36")}
@@ -466,24 +466,22 @@ export const SecretScanningFindingsTable = ({
                         />
                       </TableCell>
                       <TableCell isTruncatable>
-                        <p className="truncate font-mono">{finding.rule}</p>
-                        <p className="truncate font-mono text-xs text-muted">
-                          {finding.details.file}:{finding.details.startLine}
-                        </p>
-                      </TableCell>
-                      <TableCell isTruncatable>
-                        <p className="truncate font-mono">{finding.resourceName}</p>
-                        {!isScoped && (
-                          <p className="flex items-center gap-1.5 truncate text-xs text-muted">
+                        <p className="flex items-center gap-1.5 truncate">
+                          {!isScoped && (
                             <ProviderIcon
-                              alt={`${source.name} data source`}
+                              alt={`${source.name} data source ${finding.dataSourceName}`}
+                              title={finding.dataSourceName}
                               icon={source.image}
                               className="size-3.5"
                             />
-                            {finding.dataSourceName}
-                          </p>
-                        )}
+                          )}
+                          {finding.resourceName}
+                        </p>
+                        <p className="truncate text-xs text-muted">
+                          {finding.details.file}:{finding.details.startLine}
+                        </p>
                       </TableCell>
+                      <TableCell isTruncatable>{finding.rule}</TableCell>
                       <TableCell isTruncatable>{finding.details.author}</TableCell>
                       <TableCell>
                         {formatDistanceToNowStrict(new Date(finding.createdAt), {
