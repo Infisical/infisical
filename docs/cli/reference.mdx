@@ -1135,6 +1135,10 @@ Without `--token-only`, the command prints the token's name, project, access, sc
 
 Manage secrets from the command line. The `sm` commands inject secrets into a process, export them to a file, read and write them, lease credentials from [dynamic secrets](/documentation/platform/dynamic-secrets/overview), and run the [Agent Proxy](/documentation/platform/agent-proxy/overview).
 
+<Note>
+If `infisical --version` prints 0.43.145 or earlier, your CLI doesn't have `sm`. [Upgrade the CLI](/cli/upgrade), or run the commands without `sm`, such as `infisical run` instead of `infisical sm run`. For the Agent Proxy, use `infisical secrets agent-proxy` instead of `infisical sm agent-proxy`.
+</Note>
+
 </CLICommand>
 
 <CLICommand
