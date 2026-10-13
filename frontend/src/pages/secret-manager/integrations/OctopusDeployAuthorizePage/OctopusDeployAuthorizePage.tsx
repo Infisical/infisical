@@ -152,7 +152,7 @@ export const OctopusDeployAuthorizePage = () => {
           type="submit"
           className="mt-2 mr-6 mb-6 ml-auto w-min"
           isPending={isPending}
-          disabled={isPending}
+          isDisabled={isPending}
           variant="project"
         >
           Connect to Octopus Deploy

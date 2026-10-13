@@ -491,7 +491,7 @@ export const GcpSecretManagerConfigurePage = () => {
           size="sm"
           type="submit"
           isPending={isLoading}
-          disabled={integrationAuthApps.length === 0}
+          isDisabled={integrationAuthApps.length === 0}
           variant="project"
         >
           Create Integration

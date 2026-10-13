@@ -21,11 +21,10 @@ import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 export const QoveryAuthorizePage = () => {
   const navigate = useNavigate();
   const { currentProject } = useProject();
-  const { mutateAsync } = useSaveIntegrationAccessToken();
+  const { mutateAsync, isPending: isLoading } = useSaveIntegrationAccessToken();
   const { currentOrg } = useOrganization();
   const [accessToken, setAccessToken] = useState("");
   const [accessTokenErrorText, setAccessTokenErrorText] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleButtonClick = async () => {
     try {
@@ -35,15 +34,11 @@ export const QoveryAuthorizePage = () => {
         return;
       }
 
-      setIsLoading(true);
-
       const integrationAuth = await mutateAsync({
         workspaceId: currentProject.id,
         integration: "qovery",
         accessToken
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/qovery/create",
@@ -99,7 +94,7 @@ export const QoveryAuthorizePage = () => {
             particular Infisical project and environment.
           </CardDescription>
         </CardHeader>
-        <Field className="mx-6 mb-4" data-invalid={accessTokenErrorText !== ""}>
+        <Field className="mb-4" data-invalid={accessTokenErrorText !== ""}>
           <FieldLabel htmlFor="QoveryAuthorizePage-field-1">Qovery API token</FieldLabel>
           <Input
             id="QoveryAuthorizePage-field-1"

@@ -58,22 +58,11 @@ enum TabSections {
  * Do we even need to get organizations?
  */
 
-/**
- * Follow the logic:
- * - Access token
- * -> Get organizations (orgId) - select an organization
- * -> Get projects belonging to the organization - select project
- * -> Get environments belonging to the project - select environmnet
- * -> Get qovery scopes / application (this is the application to sync to)
- *
- * Do we even need to get organizations?
- */
-
 export const QoveryConfigurePage = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isPending: isLoading } = useCreateIntegration();
 
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.QoveryConfigurePage.id,
@@ -112,8 +101,6 @@ export const QoveryConfigurePage = () => {
       scope: scope as "job" | "application" | "container"
     });
   const [targetAppId, setTargetAppId] = useState("");
-
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (integrationAuthApps) {
@@ -159,8 +146,6 @@ export const QoveryConfigurePage = () => {
     try {
       if (!integrationAuth?.id) return;
 
-      setIsLoading(true);
-
       const targetOrg = integrationAuthOrgs?.find(
         (integrationAuthOrg) => integrationAuthOrg.orgId === targetOrgId
       )?.name;
@@ -189,8 +174,6 @@ export const QoveryConfigurePage = () => {
         owner: targetOrg,
         secretPath
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",

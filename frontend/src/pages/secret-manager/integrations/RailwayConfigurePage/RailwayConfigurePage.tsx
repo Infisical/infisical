@@ -28,7 +28,7 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const RailwayConfigurePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isPending: isLoading } = useCreateIntegration();
 
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
@@ -40,7 +40,6 @@ export const RailwayConfigurePage = () => {
     currentProject.environments[0].slug
   );
   const [secretPath, setSecretPath] = useState("/");
-  const [isLoading, setIsLoading] = useState(false);
 
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.RailwayConfigurePage.id,
@@ -81,8 +80,6 @@ export const RailwayConfigurePage = () => {
 
   const handleButtonClick = async () => {
     try {
-      setIsLoading(true);
-
       if (!integrationAuth?.id) return;
 
       const targetApp = integrationAuthApps?.find(
@@ -110,8 +107,6 @@ export const RailwayConfigurePage = () => {
         targetServiceId: targetService?.serviceId,
         secretPath
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
@@ -273,7 +268,7 @@ export const RailwayConfigurePage = () => {
           onClick={handleButtonClick}
           className="mt-4"
           isPending={isLoading}
-          disabled={integrationAuthApps.length === 0}
+          isDisabled={integrationAuthApps.length === 0}
           variant="project"
         >
           Create Integration

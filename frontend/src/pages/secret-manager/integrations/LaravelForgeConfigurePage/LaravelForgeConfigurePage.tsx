@@ -26,7 +26,7 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const LaravelForgeConfigurePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isPending: isLoading } = useCreateIntegration();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const integrationAuthId = useSearch({
@@ -44,7 +44,6 @@ export const LaravelForgeConfigurePage = () => {
   );
   const [targetApp, setTargetApp] = useState("");
   const [secretPath, setSecretPath] = useState("/");
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (integrationAuthApps) {
@@ -60,8 +59,6 @@ export const LaravelForgeConfigurePage = () => {
     try {
       if (!integrationAuth?.id) return;
 
-      setIsLoading(true);
-
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
@@ -73,8 +70,6 @@ export const LaravelForgeConfigurePage = () => {
         sourceEnvironment: selectedSourceEnvironment,
         secretPath
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
@@ -168,7 +163,7 @@ export const LaravelForgeConfigurePage = () => {
           onClick={handleButtonClick}
           className="mt-4"
           isPending={isLoading}
-          disabled={integrationAuthApps.length === 0}
+          isDisabled={integrationAuthApps.length === 0}
           variant="project"
         >
           Create Integration

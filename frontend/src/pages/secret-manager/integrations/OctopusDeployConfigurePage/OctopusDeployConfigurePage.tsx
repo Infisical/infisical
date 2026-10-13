@@ -517,7 +517,7 @@ export const OctopusDeployConfigurePage = () => {
           type="submit"
           className="mt-4"
           isPending={createIntegration.isPending}
-          disabled={createIntegration.isPending || !octopusDeployResources?.length}
+          isDisabled={createIntegration.isPending || !octopusDeployResources?.length}
           variant="project"
         >
           Create Integration

@@ -27,7 +27,7 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 export const NorthflankConfigurePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isPending: isLoading } = useCreateIntegration();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState(
@@ -36,8 +36,6 @@ export const NorthflankConfigurePage = () => {
   const [secretPath, setSecretPath] = useState("/");
   const [targetAppId, setTargetAppId] = useState("");
   const [targetSecretGroupId, setTargetSecretGroupId] = useState<string>("");
-
-  const [isLoading, setIsLoading] = useState(false);
 
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.NorthflankConfigurePage.id,
@@ -81,8 +79,6 @@ export const NorthflankConfigurePage = () => {
     try {
       if (!integrationAuth?.id) return;
 
-      setIsLoading(true);
-
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
@@ -94,8 +90,6 @@ export const NorthflankConfigurePage = () => {
         targetServiceId: targetSecretGroupId,
         secretPath
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
@@ -223,7 +217,7 @@ export const NorthflankConfigurePage = () => {
           onClick={handleButtonClick}
           className="mt-4"
           isPending={isLoading}
-          disabled={integrationAuthApps.length === 0 || integrationAuthSecretGroups?.length === 0}
+          isDisabled={integrationAuthApps.length === 0 || integrationAuthSecretGroups?.length === 0}
           variant="project"
         >
           Create Integration

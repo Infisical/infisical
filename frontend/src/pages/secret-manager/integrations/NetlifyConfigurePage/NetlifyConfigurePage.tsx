@@ -33,7 +33,7 @@ const netlifyEnvironments = [
 
 export const NetlifyConfigurePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isPending: isLoading } = useCreateIntegration();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const integrationAuthId = useSearch({
@@ -52,7 +52,6 @@ export const NetlifyConfigurePage = () => {
   const [targetApp, setTargetApp] = useState("");
   const [targetEnvironment, setTargetEnvironment] = useState(netlifyEnvironments[0].slug);
   const [secretPath, setSecretPath] = useState("/");
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (integrationAuthApps) {
@@ -66,8 +65,6 @@ export const NetlifyConfigurePage = () => {
 
   const handleButtonClick = async () => {
     try {
-      setIsLoading(true);
-
       if (!integrationAuth?.id) return;
 
       await mutateAsync({
@@ -82,7 +79,6 @@ export const NetlifyConfigurePage = () => {
         secretPath
       });
 
-      setIsLoading(false);
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
@@ -201,7 +197,7 @@ export const NetlifyConfigurePage = () => {
           onClick={handleButtonClick}
           className="mt-4"
           isPending={isLoading}
-          disabled={integrationAuthApps.length === 0}
+          isDisabled={integrationAuthApps.length === 0}
           variant="project"
         >
           Create Integration

@@ -16,14 +16,13 @@ import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const LaravelForgeAuthorizePage = () => {
   const navigate = useNavigate();
-  const { mutateAsync } = useSaveIntegrationAccessToken();
+  const { mutateAsync, isPending: isLoading } = useSaveIntegrationAccessToken();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const [apiKey, setApiKey] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
   const [serverId, setServerId] = useState("");
   const [serverIdErrorText, setServerIdErrorText] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleButtonClick = async () => {
     try {
@@ -40,16 +39,12 @@ export const LaravelForgeAuthorizePage = () => {
         return;
       }
 
-      setIsLoading(true);
-
       const integrationAuth = await mutateAsync({
         workspaceId: currentProject.id,
         integration: "laravel-forge",
         accessId: serverId,
         accessToken: apiKey
       });
-
-      setIsLoading(false);
 
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/laravel-forge/create",

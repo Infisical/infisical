@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
@@ -66,7 +66,7 @@ export const HerokuConfigurePage = () => {
 
   const selectedSourceEnvironment = watch("selectedSourceEnvironment");
 
-  const { mutateAsync } = useCreateIntegration();
+  const { mutateAsync, isPending: isLoading } = useCreateIntegration();
   // const { mutateAsync: mutateAsyncEnv } = useCreateWsEnvironment();
 
   const integrationAuthId = useSearch({
@@ -79,8 +79,6 @@ export const HerokuConfigurePage = () => {
     useGetIntegrationAuthApps({
       integrationAuthId: (integrationAuthId as string) ?? ""
     });
-
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (integrationAuthApps) {
@@ -96,8 +94,6 @@ export const HerokuConfigurePage = () => {
     try {
       if (!integrationAuth?.id) return;
 
-      setIsLoading(true);
-
       await mutateAsync({
         integrationAuthId: integrationAuth?.id,
         isActive: true,
@@ -109,7 +105,6 @@ export const HerokuConfigurePage = () => {
         }
       });
 
-      setIsLoading(false);
       navigate({
         to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
@@ -320,7 +315,7 @@ export const HerokuConfigurePage = () => {
             size="sm"
             type="submit"
             isPending={isLoading}
-            disabled={integrationAuthApps.length === 0}
+            isDisabled={integrationAuthApps.length === 0}
             variant="project"
           >
             Create Integration
