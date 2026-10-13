@@ -177,8 +177,10 @@ export const MetadataDiffRenderer = ({
         const encryptionTurnedOff = encryptionChanged && isOldVersion && el.isEncrypted === true;
         const encryptionTurnedOn = encryptionChanged && !isOldVersion && el.isEncrypted === true;
 
-        const keyHighlighted = isEntirelyNew || isEntirelyRemoved || isKeyRenamed;
-        const valueHighlighted = isEntirelyNew || isEntirelyRemoved || isValueChanged;
+        const keyHighlighted =
+          isEntirelyNew || isEntirelyRemoved || isKeyRenamed || encryptionChanged;
+        const valueHighlighted =
+          isEntirelyNew || isEntirelyRemoved || isValueChanged || encryptionChanged;
 
         const diffVariant = isOldVersion ? "danger" : "success";
 
@@ -196,7 +198,9 @@ export const MetadataDiffRenderer = ({
               {el.isEncrypted && (
                 <Tooltip hoverable delayDuration={50}>
                   <TooltipTrigger asChild>
-                    <LockIcon className={lockIconClass} />
+                    <span className="inline-flex">
+                      <LockIcon className={lockIconClass} />
+                    </span>
                   </TooltipTrigger>
                   <TooltipContent>This value is encrypted</TooltipContent>
                 </Tooltip>

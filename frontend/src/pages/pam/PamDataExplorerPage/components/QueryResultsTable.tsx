@@ -72,7 +72,7 @@ export function QueryResultsTable({ result, error, isRunning }: Props) {
   if (isRunning) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Spinner className="size-5" />
+        <Spinner size="xs" />
       </div>
     );
   }
