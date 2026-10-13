@@ -84,7 +84,7 @@ type ResourceFilterProps = {
 };
 
 const ResourceFilter = ({ dataSource, value, onChange }: ResourceFilterProps) => {
-  const { data: resources = [] } = useListSecretScanningBasicResources({
+  const { data: resources = [], refetch } = useListSecretScanningBasicResources({
     dataSourceId: dataSource.id,
     type: dataSource.type
   });
@@ -93,7 +93,8 @@ const ResourceFilter = ({ dataSource, value, onChange }: ResourceFilterProps) =>
   const selectedName = resources.find((r) => r.id === value)?.name;
 
   return (
-    <DropdownMenu>
+    // scans add resources after the fact, so refresh the options whenever the menu opens
+    <DropdownMenu onOpenChange={(open) => open && refetch()}>
       <DropdownMenuTrigger asChild>
         <Button variant="outline">
           {singularTitle}: {selectedName ?? "All"}
@@ -172,9 +173,10 @@ export const SecretScanningFindingsTable = ({
     if (page > lastPage) setPage(lastPage);
   }, [data, isPlaceholderData, page, perPage]);
 
-  const { data: dataSources = [] } = useListSecretScanningBasicDataSources(currentProject.id, {
-    enabled: !isScoped
-  });
+  const { data: dataSources = [], refetch: refetchDataSources } =
+    useListSecretScanningBasicDataSources(currentProject.id, {
+      enabled: !isScoped
+    });
 
   const selectedDataSource = dataSource ?? dataSources.find((d) => d.id === dataSourceFilter);
 
@@ -388,7 +390,7 @@ export const SecretScanningFindingsTable = ({
               </DropdownMenuContent>
             </DropdownMenu>
             {!isScoped && (
-              <DropdownMenu>
+              <DropdownMenu onOpenChange={(open) => open && refetchDataSources()}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline">
                     Data Source: {selectedDataSource?.name ?? "All"}

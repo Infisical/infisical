@@ -40,15 +40,14 @@ export const secretScanningV2Keys = {
     dataSourceId
   ],
   listDataSources: (projectId: string) => [...secretScanningV2Keys.dataSource(), "list", projectId],
+  // nested under the dashboard keys so every invalidation of those lists refreshes these too
   listBasicDataSources: (projectId: string) => [
-    ...secretScanningV2Keys.dataSource(),
-    "list-basic",
-    projectId
+    ...secretScanningV2Keys.listDataSources(projectId),
+    "basic"
   ],
   listBasicResources: (dataSourceId: string) => [
-    ...secretScanningV2Keys.dataSource(),
-    "resources-basic",
-    dataSourceId
+    ...secretScanningV2Keys.listResources(dataSourceId),
+    "basic"
   ],
   listResources: (dataSourceId: string) => [
     ...secretScanningV2Keys.dataSource(),
