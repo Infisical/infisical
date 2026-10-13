@@ -30,7 +30,10 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
-  const auditLogsRetentionDays = subscription?.auditLogsRetentionDays ?? 30;
+  const auditLogsRetentionDays =
+    subscription?.auditLogsRetentionDays === null
+      ? Infinity
+      : (subscription?.auditLogsRetentionDays ?? 30);
 
   return (
     <Card className="min-w-0">

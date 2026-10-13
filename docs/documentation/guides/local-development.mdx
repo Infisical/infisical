@@ -117,7 +117,7 @@ The hook stops the commit when it finds something that looks like a secret. Chec
     The CLI is probably reading from a different environment or folder than the one holding your secret. Run `infisical sm secrets --env=dev --path=/` to see what it resolves to, confirm the environment slug in your project settings, and add `--path` if the secret lives in a folder rather than at the root.
   </Accordion>
   <Accordion title="The CLI can't find your project, or asks you to log in again">
-    The CLI is pointed at the wrong instance. It uses Infisical Cloud US by default, so an EU or self-hosted account needs the address set through the `INFISICAL_DOMAIN` environment variable, the `--domain` flag, or the `domain` field in [`.infisical.json`](/cli/project-config).
+    The CLI is pointed at the wrong instance. It uses Infisical Cloud US by default, so an EU or self-hosted account needs the address set through the `INFISICAL_DOMAIN` environment variable, the `--domain` flag, or the `general.domain` field in [`.infisical.yaml`](/cli/project-config).
   </Accordion>
   <Accordion title="It works in your terminal but not in your editor">
     Your editor's run configuration starts your application on its own, outside the `infisical sm run` process, and the injected variables exist only inside that process and the commands it starts. Change the run configuration to call `infisical sm run --env=dev -- <your-start-command>`. Avoid launching the editor itself through `infisical sm run`, because its extensions, language servers, and other child processes would also inherit the secrets.

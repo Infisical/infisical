@@ -97,14 +97,14 @@ See [Platform support](#platform-support) for what happens where the sandbox is 
 
 ## Running an agent
 
-Every option resolves the same way: **the flag → an environment variable → `.infisical.json` → the default.** Run it from a directory that has an `.infisical.json` (created by `infisical init`) and the project, environment, and path come from there, so most of the flags fall away:
+Every option resolves the same way: **the flag → an environment variable → `.infisical.yaml` → the default.** Run it from a directory that has an `.infisical.yaml` (created by `infisical init`) and the project, environment, and path come from there, so most of the flags fall away:
 
-| Option | Flag | Environment variable | `.infisical.json` |
+| Option | Flag | Environment variable | `.infisical.yaml` |
 | --- | --- | --- | --- |
-| Project | `--projectId` | `INFISICAL_PROJECT_ID` | `workspaceId` |
-| Environment slug | `--env` | `INFISICAL_ENVIRONMENT` | `defaultEnvironment` |
-| Secret path | `--path` | `INFISICAL_SECRET_PATH` | `defaultSecretPath` |
-| Instance | `--domain` | `INFISICAL_DOMAIN` | `domain` |
+| Project | `--projectId` | `INFISICAL_PROJECT_ID` | `secrets-management.project-id` |
+| Environment slug | `--env` | `INFISICAL_ENVIRONMENT` | `secrets-management.default-environment` |
+| Secret path | `--path` | `INFISICAL_SECRET_PATH` | `secrets-management.default-secret-path` |
+| Instance | `--domain` | `INFISICAL_DOMAIN` | `general.domain` |
 | Sandbox | `--sandbox` / `--no-sandbox` | `INFISICAL_AGENT_PROXY_SANDBOX` | — |
 
 Everything after `--` is your agent's own command, run as-is. From a project directory:
@@ -361,7 +361,7 @@ infisical sm agent-proxy run -e dev --no-sandbox -- claude
 
 Brokering still works and the environment is still scrubbed, but the agent is uncontained: it can read your keyring and credential files and reach the network directly, bypassing the proxy. `run` prints a warning saying so. This is a debugging tool, and the only option on Windows.
 
-`INFISICAL_AGENT_PROXY_SANDBOX=0` does the same thing. Neither can be set from `.infisical.json`, deliberately, so a committed file can't quietly disable the boundary for everyone who runs the agent.
+`INFISICAL_AGENT_PROXY_SANDBOX=0` does the same thing. Neither can be set from `.infisical.yaml`, deliberately, so a committed file can't quietly disable the boundary for everyone who runs the agent.
 
 ## Next steps
 

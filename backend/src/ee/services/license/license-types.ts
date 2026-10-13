@@ -73,7 +73,7 @@ export type TFeatureSet = {
   customRateLimits: false;
   customAlerts: false;
   auditLogs: false;
-  auditLogsRetentionDays: 0;
+  auditLogsRetentionDays: number | null;
   auditLogStreams: false;
   auditLogStreamLimit: 3;
   githubOrgSync: false;

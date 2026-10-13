@@ -18,7 +18,6 @@ import { twMerge } from "tailwind-merge";
 import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -28,6 +27,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DeleteConfirmDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -503,15 +503,15 @@ export const OrgRoleTable = () => {
         </CardContent>
       </Card>
       <RoleModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteRole.isOpen}
         title={`Are you sure you want to delete ${
           (popUp?.deleteRole?.data as TOrgRole)?.name || " "
         } role?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
-        deleteKey={(popUp?.deleteRole?.data as TOrgRole)?.slug || ""}
-        onClose={() => handlePopUpClose("deleteRole")}
-        onDeleteApproved={handleRoleDelete}
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
+        confirmKey={(popUp?.deleteRole?.data as TOrgRole)?.slug || ""}
+        onConfirm={handleRoleDelete}
       />
       <UpgradeGate
         intent={{
