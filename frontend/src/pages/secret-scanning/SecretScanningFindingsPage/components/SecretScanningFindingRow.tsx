@@ -163,7 +163,7 @@ export const SecretScanningFindingRow = ({
         </TableCell>
       </TableRow>
       <TableRow className="hover:bg-transparent">
-        <TableCell colSpan={7} className="h-auto max-w-0 border-none! p-0 whitespace-normal">
+        <TableCell colSpan={7} className="h-auto max-w-0 border-0 p-0 whitespace-normal">
           <div
             className={`w-full bg-surface-base/75 transition-all duration-500 ${
               isExpanded ? "max-h-200 overflow-y-auto opacity-100" : "max-h-0 overflow-hidden"

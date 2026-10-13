@@ -221,10 +221,7 @@ export const SecretScanningDataSourceRow = ({
             <Tooltip hoverable delayDuration={50}>
               <TooltipTrigger asChild>
                 <div className="ml-auto">
-                  <Badge
-                    variant="danger"
-                    className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
-                  >
+                  <Badge variant="danger">
                     <FontAwesomeIcon icon={faPlugCircleXmark} />
                     <span>Disconnected</span>
                   </Badge>
