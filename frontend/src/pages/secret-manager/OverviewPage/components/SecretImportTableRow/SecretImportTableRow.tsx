@@ -63,6 +63,7 @@ import {
   TABLE_ROW_RESOURCE_ICON_CLASS_NAME
 } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
+import { getOverviewTableColumnCount } from "../utils";
 import { SecretImportSecretRow } from "./SecretImportSecretRow";
 
 type ImportedSecretData = {
@@ -117,7 +118,7 @@ export const SecretImportTableRow = ({
   const resyncSecretReplication = useResyncSecretReplication();
 
   const isSingleEnvView = environments.length === 1;
-  const totalCols = environments.length + 2;
+  const totalCols = getOverviewTableColumnCount(environments.length);
 
   const singleEnvSlug = isSingleEnvView ? environments[0].slug : "";
   const singleEnvImport = isSingleEnvView
@@ -803,7 +804,7 @@ export const SecretImportTableRow = ({
             !isSingleEnvView && isExpanded && "border-r-0 border-b-0 bg-container-hover"
           )}
           isTruncatable
-          colSpan={isSingleEnvView ? 2 : undefined}
+          colSpan={isSingleEnvView ? 3 : undefined}
         >
           <div className="relative flex w-full items-center">
             <div className="flex items-center gap-2 overflow-hidden">

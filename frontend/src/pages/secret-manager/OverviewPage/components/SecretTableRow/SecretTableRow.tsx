@@ -60,7 +60,9 @@ import {
   TABLE_ROW_NAME_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
+import { getOverviewTableColumnCount } from "../utils";
 import { SecretEditTableRow } from "./SecretEditTableRow";
+import { SecretLastEditedCell } from "./SecretLastEditedCell";
 import { SecretOverrideRow } from "./SecretOverrideRow";
 import SecretRenameForm from "./SecretRenameForm";
 
@@ -150,7 +152,7 @@ export const SecretTableRow = ({
   onActivityChange
 }: Props) => {
   const [isFormExpanded, setIsFormExpanded] = useToggle();
-  const totalCols = environments.length + 2; // secret key row + icon
+  const totalCols = getOverviewTableColumnCount(environments.length);
   const [isSecretVisible, setIsSecretVisible] = useToggle();
   const [isEditSecretNameOpen, setIsEditSecretNameOpen] = useState(false);
   const [isSingleEnvBaseActive, setIsSingleEnvBaseActive] = useState(false);
@@ -359,68 +361,74 @@ export const SecretTableRow = ({
           </TableCell>
         )}
         {isSingleEnvView ? (
-          <SecretEditTableRow
-            isSingleEnvView
-            isBatchMode={isBatchMode}
-            onBatchRevert={onBatchRevert}
-            isPendingCreate={singleEnvPendingAction === PendingAction.Create}
-            isPendingDelete={singleEnvPendingAction === PendingAction.Delete}
-            hasPendingChange={Boolean(singleEnvSecret?.isPending)}
-            hasPendingValueChange={Boolean(singleEnvSecret?.hasPendingValueChange)}
-            pendingKeyName={
-              singleEnvSecret?.isPending && singleEnvSecret.key !== secretKey
-                ? singleEnvSecret.key
-                : undefined
-            }
-            onSecretRename={handleSecretRename}
-            secretPath={secretPath}
-            isVisible={isSecretVisible || isSingleEnvSecretsVisible}
-            secretName={secretKey}
-            isEmpty={
-              singleEnvSecret ? singleEnvSecret.isEmpty : singleEnvImportedSecret?.secret?.isEmpty
-            }
-            secretValueHidden={singleEnvSecret?.secretValueHidden || false}
-            defaultValue={getDefaultValue(singleEnvSecret, singleEnvImportedSecret)}
-            secretId={singleEnvSecret?.id}
-            isOverride={Boolean(singleEnvSecret?.idOverride)}
-            isImportedSecret={singleEnvIsImported}
-            importedSecret={singleEnvImportedSecret}
-            isCreatable={singleEnvIsCreatable}
-            onSecretDelete={onSecretDelete}
-            onSecretCreate={onSecretCreate}
-            onSecretUpdate={onSecretUpdate}
-            onAddOverride={() => {
-              setCreatingOverrideEnvs((prev) => new Set([...prev, singleEnvSlug]));
-            }}
-            environment={singleEnvSlug}
-            environmentName={singleEnvName}
-            isRotatedSecret={singleEnvSecret?.isRotatedSecret}
-            isHoneyTokenSecret={singleEnvSecret?.isHoneyTokenSecret}
-            importedBy={importedBy}
-            isSecretPresent={Boolean(singleEnvSecret)}
-            comment={singleEnvSecret?.comment}
-            tags={singleEnvSecret?.tags}
-            secretMetadata={singleEnvSecret?.secretMetadata}
-            skipMultilineEncoding={singleEnvSecret?.skipMultilineEncoding}
-            reminder={singleEnvSecret?.reminder}
-            revokedProjectFolderGrant={singleEnvSecret?.revokedProjectFolderGrant}
-            onCopySecret={
-              singleEnvSecret?.id
-                ? () =>
-                    onCopySecret?.({
-                      source: {
-                        id: singleEnvSecret.id,
-                        name: secretKey,
-                        path: singleEnvSecret.path ?? secretPath,
-                        isValueHidden: singleEnvSecret.secretValueHidden
-                      },
-                      environmentSlug: singleEnvSlug
-                    })
-                : undefined
-            }
-            onAccessInsightsUpgrade={onAccessInsightsUpgrade}
-            onExpandedChange={setIsSingleEnvBaseActive}
-          />
+          <>
+            <SecretEditTableRow
+              isSingleEnvView
+              isBatchMode={isBatchMode}
+              onBatchRevert={onBatchRevert}
+              isPendingCreate={singleEnvPendingAction === PendingAction.Create}
+              isPendingDelete={singleEnvPendingAction === PendingAction.Delete}
+              hasPendingChange={Boolean(singleEnvSecret?.isPending)}
+              hasPendingValueChange={Boolean(singleEnvSecret?.hasPendingValueChange)}
+              pendingKeyName={
+                singleEnvSecret?.isPending && singleEnvSecret.key !== secretKey
+                  ? singleEnvSecret.key
+                  : undefined
+              }
+              onSecretRename={handleSecretRename}
+              secretPath={secretPath}
+              isVisible={isSecretVisible || isSingleEnvSecretsVisible}
+              secretName={secretKey}
+              isEmpty={
+                singleEnvSecret ? singleEnvSecret.isEmpty : singleEnvImportedSecret?.secret?.isEmpty
+              }
+              secretValueHidden={singleEnvSecret?.secretValueHidden || false}
+              defaultValue={getDefaultValue(singleEnvSecret, singleEnvImportedSecret)}
+              secretId={singleEnvSecret?.id}
+              isOverride={Boolean(singleEnvSecret?.idOverride)}
+              isImportedSecret={singleEnvIsImported}
+              importedSecret={singleEnvImportedSecret}
+              isCreatable={singleEnvIsCreatable}
+              onSecretDelete={onSecretDelete}
+              onSecretCreate={onSecretCreate}
+              onSecretUpdate={onSecretUpdate}
+              onAddOverride={() => {
+                setCreatingOverrideEnvs((prev) => new Set([...prev, singleEnvSlug]));
+              }}
+              environment={singleEnvSlug}
+              environmentName={singleEnvName}
+              isRotatedSecret={singleEnvSecret?.isRotatedSecret}
+              isHoneyTokenSecret={singleEnvSecret?.isHoneyTokenSecret}
+              importedBy={importedBy}
+              isSecretPresent={Boolean(singleEnvSecret)}
+              comment={singleEnvSecret?.comment}
+              tags={singleEnvSecret?.tags}
+              secretMetadata={singleEnvSecret?.secretMetadata}
+              skipMultilineEncoding={singleEnvSecret?.skipMultilineEncoding}
+              reminder={singleEnvSecret?.reminder}
+              revokedProjectFolderGrant={singleEnvSecret?.revokedProjectFolderGrant}
+              onCopySecret={
+                singleEnvSecret?.id
+                  ? () =>
+                      onCopySecret?.({
+                        source: {
+                          id: singleEnvSecret.id,
+                          name: secretKey,
+                          path: singleEnvSecret.path ?? secretPath,
+                          isValueHidden: singleEnvSecret.secretValueHidden
+                        },
+                        environmentSlug: singleEnvSlug
+                      })
+                  : undefined
+              }
+              onAccessInsightsUpgrade={onAccessInsightsUpgrade}
+              onExpandedChange={setIsSingleEnvBaseActive}
+            />
+            <SecretLastEditedCell
+              secret={singleEnvSecret}
+              className={singleEnvShowOverride ? "border-b-border/50" : undefined}
+            />
+          </>
         ) : (
           <TableCell
             isTruncatable={!isFormExpanded}
@@ -598,6 +606,7 @@ export const SecretTableRow = ({
               onActiveChange={setIsSingleEnvOverrideActive}
             />
           </TableCell>
+          <TableCell className="border-l" />
         </TableRow>
       )}
       {!isSingleEnvView && (

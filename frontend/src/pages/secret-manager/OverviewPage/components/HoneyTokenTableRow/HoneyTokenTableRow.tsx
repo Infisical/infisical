@@ -50,6 +50,7 @@ import {
   TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME,
   TABLE_ROW_RESOURCE_ICON_CLASS_NAME
 } from "../tableRowActionStyles";
+import { getOverviewTableColumnCount } from "../utils";
 
 const STATUS_BADGE_VARIANT: Record<string, "success" | "danger" | "neutral"> = {
   [HoneyTokenStatus.Active]: "success",
@@ -83,7 +84,7 @@ export const HoneyTokenTableRow = ({
   const [, isNameCopied, setIsNameCopied] = useTimedReset({ initialState: false });
 
   const isSingleEnvView = environments.length === 1;
-  const totalCols = environments.length + 2;
+  const totalCols = getOverviewTableColumnCount(environments.length);
 
   const singleEnvSlug = isSingleEnvView ? environments[0].slug : "";
   const singleEnvToken = isSingleEnvView
@@ -284,7 +285,7 @@ export const HoneyTokenTableRow = ({
             !isSingleEnvView && isExpanded && "border-r-0 border-b-0 bg-container-hover"
           )}
           isTruncatable
-          colSpan={isSingleEnvView ? 2 : undefined}
+          colSpan={isSingleEnvView ? 3 : undefined}
         >
           {isSingleEnvView && singleEnvToken ? (
             <div className="relative flex w-full items-center">

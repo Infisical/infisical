@@ -270,6 +270,7 @@ import {
   type TableRowActivityChangeHandler,
   type TableRowActivityId
 } from "./components/tableRowActivity";
+import { getOverviewTableColumnCount, LAST_EDITED_COLUMN_WIDTH } from "./components/utils";
 import {
   DownloadEnvButton,
   DynamicSecretTableRow,
@@ -691,6 +692,7 @@ const OverviewPageContent = () => {
       getSecretSortValue(orderBy, orderDirection)
   );
   const ActiveSecretSortIcon = activeSecretSort?.Icon ?? ArrowUpDownIcon;
+  const isLastEditedSort = orderBy === DashboardSecretsOrderBy.UpdatedAt;
   let activeSecretSortScope = "";
   if (sortEnvironment) {
     activeSecretSortScope = ` in ${
@@ -740,6 +742,7 @@ const OverviewPageContent = () => {
   const isProtectedBranch = Boolean(boardPolicy);
 
   const isSingleEnvView = visibleEnvs.length === 1;
+  const tableColumnCount = getOverviewTableColumnCount(visibleEnvs.length);
   const [activeTableRows, setActiveTableRows] = useState<Set<TableRowActivityId>>(new Set());
   const handleTableRowActivityChange = useCallback<TableRowActivityChangeHandler>(
     (rowId, isActive) => {
@@ -2696,6 +2699,7 @@ const OverviewPageContent = () => {
   const columnKey = `${isSingleEnvView ? "single" : "multi"}:${visibleEnvs.map(({ id }) => id).join(":")}`;
   const columnMinWidths = isSingleEnvView ? [280, 368] : Array(visibleEnvs.length + 1).fill(240);
   const minColumnTotal = columnMinWidths.reduce((total, width) => total + width, 0);
+  const fixedColumnsWidth = isSingleEnvView ? 40 + LAST_EDITED_COLUMN_WIDTH : 40;
   const savedWidths = storedColumnWidths?.[columnKey];
   const getNameMaxWidth = (tableWidth: number) =>
     Math.max(isSingleEnvView ? 280 : 240, tableWidth * 0.8);
@@ -2706,20 +2710,25 @@ const OverviewPageContent = () => {
       saved.length === columnMinWidths.length &&
       saved.every((width) => Number.isFinite(width) && width > 0);
     const defaultWidth =
-      tableWidth >= 40 + minColumnTotal ? (tableWidth - 40) / columnMinWidths.length : 0;
+      tableWidth >= fixedColumnsWidth + minColumnTotal
+        ? (tableWidth - fixedColumnsWidth) / columnMinWidths.length
+        : 0;
     const widths = columnMinWidths.map((minWidth, index) =>
       Math.min(
         index === 0 ? getNameMaxWidth(tableWidth) : Infinity,
         Math.max(minWidth, hasSavedWidths ? saved[index] : defaultWidth)
       )
     );
-    if (tableWidth < 40 + minColumnTotal) return widths;
+    if (tableWidth < fixedColumnsWidth + minColumnTotal) return widths;
 
     widths[widths.length - 1] += Math.max(
       0,
-      tableWidth - 40 - widths.reduce((total, width) => total + width, 0)
+      tableWidth - fixedColumnsWidth - widths.reduce((total, width) => total + width, 0)
     );
-    let excess = Math.max(0, widths.reduce((total, width) => total + width, 0) - (tableWidth - 40));
+    let excess = Math.max(
+      0,
+      widths.reduce((total, width) => total + width, 0) - (tableWidth - fixedColumnsWidth)
+    );
     for (let index = widths.length - 1; index >= 0 && excess > 0; index -= 1) {
       const shrink = Math.min(excess, widths[index] - columnMinWidths[index]);
       widths[index] -= shrink;
@@ -2741,20 +2750,21 @@ const OverviewPageContent = () => {
     element.style.setProperty("--overview-table-width", `${tableWidth}px`);
     element.style.setProperty("--name-column-width", `${widths[0]}px`);
     table.querySelectorAll<HTMLTableColElement>(":scope > colgroup > col").forEach((col, index) => {
-      if (index > 0) col.style.setProperty("width", `${widths[index - 1]}px`);
+      if (index > 0 && index <= widths.length)
+        col.style.setProperty("width", `${widths[index - 1]}px`);
     });
-    table.style.width = `max(100%, ${40 + widths.reduce((total, width) => total + width, 0)}px)`;
+    table.style.width = `max(100%, ${fixedColumnsWidth + widths.reduce((total, width) => total + width, 0)}px)`;
   };
 
   const getCurrentColumnWidths = () =>
     Array.from(tableRef.current?.querySelectorAll(":scope > table > thead > tr > th") ?? [])
-      .slice(1)
+      .slice(1, columnMinWidths.length + 1)
       .map((header) => header.getBoundingClientRect().width);
 
   const getResizedColumnWidths = (widths: number[], index: number, delta: number) => {
     const next = [...widths];
-    const tableWidth = tableRef.current?.clientWidth ?? 40;
-    const availableWidth = tableWidth - 40;
+    const tableWidth = tableRef.current?.clientWidth ?? fixedColumnsWidth;
+    const availableWidth = tableWidth - fixedColumnsWidth;
     const spareWidth = Math.max(
       0,
       availableWidth - widths.reduce((total, width) => total + width, 0)
@@ -3225,12 +3235,19 @@ const OverviewPageContent = () => {
                   ref={tableRef}
                   className="w-full table-fixed border-separate border-spacing-0 [&_tbody>tr>td:nth-child(2)]:pl-1 [&_thead>tr>th:nth-child(2)>button]:pl-1"
                   containerClassName="overscroll-x-none rounded-t-none"
-                  style={{ minWidth: 40 + minColumnTotal }}
+                  style={{ minWidth: fixedColumnsWidth + minColumnTotal }}
                 >
                   <colgroup>
                     <col className="w-10" />
                     <col />
-                    {isSingleEnvView ? <col /> : visibleEnvs.map(({ id }) => <col key={id} />)}
+                    {isSingleEnvView ? (
+                      <>
+                        <col />
+                        <col style={{ width: LAST_EDITED_COLUMN_WIDTH }} />
+                      </>
+                    ) : (
+                      visibleEnvs.map(({ id }) => <col key={id} />)
+                    )}
                   </colgroup>
                   <TableHeader className="relative z-20">
                     <TableRow className="h-10 has-[>th:nth-child(2):hover]:[&>th:nth-child(-n+2)]:bg-container-hover">
@@ -3550,6 +3567,39 @@ const OverviewPageContent = () => {
                           </div>
                         </TableHead>
                       )}
+                      {isSingleEnvView && (
+                        <TableHead className="border-l p-0">
+                          <button
+                            type="button"
+                            className="flex h-full w-full cursor-pointer items-center justify-between gap-2 px-3 text-left hover:bg-foreground/5 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                            aria-label={`Sort secrets by last edited. Current order: ${activeSecretSort?.label ?? "Name (A to Z)"}`}
+                            onClick={() =>
+                              handleSecretSortChange(
+                                getSecretSortValue(
+                                  DashboardSecretsOrderBy.UpdatedAt,
+                                  isLastEditedSort && orderDirection === OrderByDirection.DESC
+                                    ? OrderByDirection.ASC
+                                    : OrderByDirection.DESC
+                                )
+                              )
+                            }
+                          >
+                            <span
+                              className={twMerge(
+                                "text-sm font-medium text-muted",
+                                isLastEditedSort && "text-foreground"
+                              )}
+                            >
+                              Last Edited
+                            </span>
+                            {isLastEditedSort ? (
+                              <ActiveSecretSortIcon className="size-3.5 shrink-0 text-foreground" />
+                            ) : (
+                              <ArrowUpDownIcon className="size-3.5 shrink-0 text-muted" />
+                            )}
+                          </button>
+                        </TableHead>
+                      )}
                     </TableRow>
                   </TableHeader>
                   <TableBody
@@ -3561,7 +3611,7 @@ const OverviewPageContent = () => {
                   >
                     {tableView !== "table" && (
                       <TableFilteredEmptyRow
-                        colSpan={visibleEnvs.length + 2}
+                        colSpan={tableColumnCount}
                         isFiltered={
                           tableView === "tag-filter-empty" ||
                           isTableFiltered ||
@@ -3600,6 +3650,11 @@ const OverviewPageContent = () => {
                               </TableCell>
                             );
                           })}
+                          {isSingleEnvView && (
+                            <TableCell>
+                              <Skeleton className="h-4 w-full" />
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))
                     ) : (
@@ -3892,7 +3947,7 @@ const OverviewPageContent = () => {
                           )}
                         {tableView === "table" && isTableEmpty && (
                           <TableEmptyRow
-                            colSpan={visibleEnvs.length + 2}
+                            colSpan={tableColumnCount}
                             onImportSecrets={(step) => {
                               setImportSecretsInitialStep(step);
                               handlePopUpOpen("importSecrets");

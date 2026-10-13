@@ -123,7 +123,7 @@ export const FolderTableRow = ({
       </TableCell>
       <TableCell
         isTruncatable
-        colSpan={isSingleEnvView ? 2 : undefined}
+        colSpan={isSingleEnvView ? 3 : undefined}
         className={
           isSingleEnvView
             ? "relative transition-all duration-75"
