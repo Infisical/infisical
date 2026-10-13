@@ -1,11 +1,5 @@
 import { useState } from "react";
-import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
-  FileTextIcon,
-  LinkIcon,
-  ShieldCheckIcon
-} from "lucide-react";
+import { ArrowRightIcon, FileTextIcon, LinkIcon, ShieldCheckIcon } from "lucide-react";
 
 import {
   ExternalCertificateAuthoritiesUpgradeIntent,
@@ -15,8 +9,11 @@ import {
   Badge,
   Button,
   Dialog,
+  DialogBody,
+  DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle
 } from "@app/components/v3";
@@ -235,7 +232,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
 
   const renderMethodSelection = () => (
     <>
-      <div className="flex flex-col gap-3">
+      <DialogBody className="flex flex-col gap-3">
         {SIGNING_METHOD_OPTIONS.map((option) => (
           <RadioCard
             key={option.value}
@@ -251,28 +248,22 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
             description={option.description}
           />
         ))}
-      </div>
-      <div className="mt-6 flex items-center justify-end gap-2">
-        <Button
-          variant="outline"
-          onClick={() => {
-            resetState();
-            handlePopUpToggle("installCaCert", false);
-          }}
-        >
-          Cancel
-        </Button>
+      </DialogBody>
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="ghost">Cancel</Button>
+        </DialogClose>
         <Button variant="neutral" isDisabled={!selectedMethod} onClick={handleContinue}>
           {selectedMethod === SigningMethod.Automated ? "Choose Integration" : "Continue"}
           {selectedMethod === SigningMethod.Automated && <ArrowRightIcon />}
         </Button>
-      </div>
+      </DialogFooter>
     </>
   );
 
   const renderIntegrationSelection = () => (
     <>
-      <div className="flex flex-col gap-2">
+      <DialogBody className="flex flex-col gap-2">
         {INTEGRATIONS.map((integration) => (
           <RadioCard
             key={integration.id}
@@ -292,9 +283,9 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
             className="py-3"
           />
         ))}
-      </div>
-      <div className="mt-6 flex items-center justify-end gap-2">
-        <Button variant="outline" onClick={goBackToMethodSelection}>
+      </DialogBody>
+      <DialogFooter>
+        <Button variant="ghost" onClick={goBackToMethodSelection}>
           Back
         </Button>
         <Button
@@ -304,7 +295,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
         >
           Continue
         </Button>
-      </div>
+      </DialogFooter>
     </>
   );
 
@@ -321,7 +312,7 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
 
     return (
       <>
-        <div className="mb-4 flex gap-3">
+        <div className="flex gap-3">
           {displayImage ? (
             <img
               src={displayImage}
@@ -349,7 +340,6 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
             <p className="mt-0.5 text-xs text-muted">{displayDesc}</p>
           </div>
         </div>
-        <hr className="-mx-6 mb-4 border-border-control" />
         {renderForm()}
       </>
     );
@@ -370,8 +360,6 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
     return undefined;
   };
 
-  const needsOverflowVisible = step === Step.Form && selectedMethod === SigningMethod.Automated;
-
   const subTitle = getSubTitle();
 
   return (
@@ -383,26 +371,14 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
           handlePopUpToggle("installCaCert", isOpen);
         }}
       >
-        <DialogContent className={needsOverflowVisible ? "overflow-visible" : undefined}>
+        <DialogContent>
           <DialogHeader>
-            {step === Step.ChooseIntegration && (
-              <button
-                type="button"
-                className="flex w-fit items-center gap-1 text-xs text-muted hover:text-label"
-                onClick={goBackToMethodSelection}
-              >
-                <ArrowLeftIcon className="h-3 w-3" />
-                Back
-              </button>
-            )}
             <DialogTitle>{title}</DialogTitle>
             {subTitle && <DialogDescription>{subTitle}</DialogDescription>}
           </DialogHeader>
-          <div>
-            {step === Step.ChooseMethod && renderMethodSelection()}
-            {step === Step.ChooseIntegration && renderIntegrationSelection()}
-            {step === Step.Form && renderFormStep()}
-          </div>
+          {step === Step.ChooseMethod && renderMethodSelection()}
+          {step === Step.ChooseIntegration && renderIntegrationSelection()}
+          {step === Step.Form && renderFormStep()}
         </DialogContent>
       </Dialog>
       {upgradeGate}

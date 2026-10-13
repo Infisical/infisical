@@ -5,7 +5,8 @@ import { format } from "date-fns";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Input, Select, SelectItem } from "@app/components/v2";
+import { FormControl, Input, Select, SelectItem } from "@app/components/v2";
+import { Button, DialogBody, DialogClose, DialogFooter } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   CaStatus,
@@ -132,94 +133,88 @@ export const InternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
   }
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
-      <Controller
-        control={control}
-        name="parentCaId"
-        // defaultValue=""
-        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-          <FormControl
-            label="Parent CA"
-            errorText={error?.message}
-            isError={Boolean(error)}
-            isRequired
-          >
-            <Select
-              //   defaultValue={field.value}
-              {...field}
-              onValueChange={onChange}
-              className="w-full"
+    <form className="contents" onSubmit={handleSubmit(onFormSubmit)}>
+      <DialogBody>
+        <Controller
+          control={control}
+          name="parentCaId"
+          // defaultValue=""
+          render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+            <FormControl
+              label="Parent CA"
+              errorText={error?.message}
+              isError={Boolean(error)}
+              isRequired
             >
-              {(cas || [])
-                .filter((c) => {
-                  const isParentCaNotSelf = c.id !== ca?.id;
-                  const isParentCaActive = c.status === CaStatus.ACTIVE;
-                  const isParentCaAllowedChildrenCas = c.maxPathLength && c.maxPathLength !== 0;
+              <Select
+                //   defaultValue={field.value}
+                {...field}
+                onValueChange={onChange}
+                className="w-full"
+              >
+                {(cas || [])
+                  .filter((c) => {
+                    const isParentCaNotSelf = c.id !== ca?.id;
+                    const isParentCaActive = c.status === CaStatus.ACTIVE;
+                    const isParentCaAllowedChildrenCas = c.maxPathLength && c.maxPathLength !== 0;
 
-                  return isParentCaNotSelf && isParentCaActive && isParentCaAllowedChildrenCas;
-                })
-                .map(({ id, type, dn }) => (
-                  <SelectItem value={id} key={`parent-ca-${id}`}>
-                    {`${caTypeToNameMap[type]}: ${dn}`}
+                    return isParentCaNotSelf && isParentCaActive && isParentCaAllowedChildrenCas;
+                  })
+                  .map(({ id, type, dn }) => (
+                    <SelectItem value={id} key={`parent-ca-${id}`}>
+                      {`${caTypeToNameMap[type]}: ${dn}`}
+                    </SelectItem>
+                  ))}
+              </Select>
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          name="notAfter"
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              label="Valid Until"
+              isError={Boolean(error)}
+              errorText={error?.message}
+              isRequired
+            >
+              <Input {...field} placeholder="YYYY-MM-DD" />
+            </FormControl>
+          )}
+        />
+        <Controller
+          control={control}
+          name="maxPathLength"
+          // defaultValue="0"
+          render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+            <FormControl label="Path Length" errorText={error?.message} isError={Boolean(error)}>
+              <Select
+                //   defaultValue={field.value}
+                {...field}
+                onValueChange={onChange}
+                className="w-full"
+              >
+                {generatePathLengthOpts(parentCa?.configuration.maxPathLength || 0).map((value) => (
+                  <SelectItem value={String(value)} key={`ca-path-length-${value}`}>
+                    {`${value}`}
                   </SelectItem>
                 ))}
-            </Select>
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="notAfter"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Valid Until"
-            isError={Boolean(error)}
-            errorText={error?.message}
-            isRequired
-          >
-            <Input {...field} placeholder="YYYY-MM-DD" />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="maxPathLength"
-        // defaultValue="0"
-        render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-          <FormControl label="Path Length" errorText={error?.message} isError={Boolean(error)}>
-            <Select
-              //   defaultValue={field.value}
-              {...field}
-              onValueChange={onChange}
-              className="w-full"
-            >
-              {generatePathLengthOpts(parentCa?.configuration.maxPathLength || 0).map((value) => (
-                <SelectItem value={String(value)} key={`ca-path-length-${value}`}>
-                  {`${value}`}
-                </SelectItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-      />
-      <div className="flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
+              </Select>
+            </FormControl>
+          )}
+        />
+      </DialogBody>
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="ghost" type="button">
+            Cancel
+          </Button>
+        </DialogClose>
+        <Button variant="neutral" type="submit" isPending={isSubmitting}>
           Install
         </Button>
-        <Button
-          colorSchema="secondary"
-          variant="plain"
-          onClick={() => handlePopUpToggle("installCaCert", false)}
-        >
-          Cancel
-        </Button>
-      </div>
+      </DialogFooter>
     </form>
   );
 };
