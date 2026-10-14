@@ -3426,34 +3426,39 @@ const OverviewPageContent = () => {
     const headerRows = Array.from(table.tHead?.rows ?? []);
     headerRows.forEach((row, index) => row.setAttribute("aria-rowindex", String(index + 1)));
 
-    // One logical row per entry. A secret row can span several <tr>s (its override row, its
-    // expanded sub-table); those repeat its data-index, so they share its position rather than
-    // being numbered as rows of their own.
+    // Every <tr> the table exposes is a row to assistive technology, including a secret's
+    // personal-override row and its expanded sub-table, so each one is counted and numbered.
+    // Those companion rows repeat their secret's data-index, which is what marks where a new
+    // secret starts; the rows between two secrets belong to the earlier one.
     const rows = Array.from(body.rows).filter((row) => !row.hasAttribute("aria-hidden"));
-    const firstSecretRow = rows.findIndex((row) => row.hasAttribute("data-index"));
-    // Rows rendered above the virtualized block are always all present, so their count is their
-    // offset. With no secret rows on screen there is nothing to offset against, so leave the
-    // trailing rows numbered after the full secret list.
-    const rowsBeforeSecrets = firstSecretRow === -1 ? rows.length : firstSecretRow;
 
-    let logicalIndex = 0;
+    let exposed = 0;
+    let unmounted = 0;
+    let mountedSecrets = 0;
     let lastDataIndex: string | null = null;
+
     rows.forEach((row) => {
       const dataIndex = row.getAttribute("data-index");
-      if (dataIndex !== null && dataIndex === lastDataIndex) {
-        row.removeAttribute("aria-rowindex");
-        return;
+
+      if (dataIndex !== null && dataIndex !== lastDataIndex) {
+        // Secrets the window skipped over still occupy positions, one row each: an unmounted
+        // row's own companions cannot be known without mounting it.
+        unmounted = Number(dataIndex) - mountedSecrets;
+        mountedSecrets += 1;
+      } else if (dataIndex === null && mountedSecrets > 0) {
+        // Past the virtualized block, so everything it did not render is now behind us.
+        unmounted = mergedSecKeys.length - mountedSecrets;
       }
+
       lastDataIndex = dataIndex;
-      const position = dataIndex === null ? logicalIndex : rowsBeforeSecrets + Number(dataIndex);
-      // Everything after the virtualized block continues past the whole secret list, not past
-      // the few rows of it that happen to be mounted.
-      logicalIndex =
-        dataIndex === null ? logicalIndex + 1 : rowsBeforeSecrets + mergedSecKeys.length;
-      row.setAttribute("aria-rowindex", String(headerRows.length + position + 1));
+      exposed += 1;
+      row.setAttribute("aria-rowindex", String(headerRows.length + unmounted + exposed));
     });
 
-    table.setAttribute("aria-rowcount", String(headerRows.length + logicalIndex));
+    table.setAttribute(
+      "aria-rowcount",
+      String(headerRows.length + exposed + (mergedSecKeys.length - mountedSecrets))
+    );
   }, [secretRowsRenderPlan, mergedSecKeys.length, tableView]);
 
   let quickAddSaveLabel: string | undefined;
