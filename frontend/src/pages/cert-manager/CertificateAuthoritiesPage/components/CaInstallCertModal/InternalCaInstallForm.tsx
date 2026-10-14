@@ -189,7 +189,7 @@ export const InternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
               <FieldLabel>
                 Valid Until <span className="text-danger">*</span>
               </FieldLabel>
-              <Input {...field} isError={Boolean(error)} placeholder="YYYY-MM-DD" />
+              <Input {...field} isError={Boolean(error)} required placeholder="YYYY-MM-DD" />
               <FieldError errors={[error]} />
             </Field>
           )}

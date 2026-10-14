@@ -211,6 +211,7 @@ export const AdcsNativeCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
                 <Input
                   {...field}
                   isError={Boolean(error)}
+                  required
                   value={value}
                   onChange={onChange}
                   placeholder="SubCA"
