@@ -81,6 +81,14 @@ export const useVariableAutocomplete = ({
     return [...matches, { type: "create", key, isKeyValid: VARIABLE_KEY_RE.test(key) }];
   }, [openReference, query, data, existing, requestVariable]);
 
+  // The search returns one page, plus the exact key when it exists. When matches are still left out, the list says
+  // how many it shows and how to narrow it. Not while the text is ahead of the results, whose count it isn't.
+  const shownCount = suggestions.filter((suggestion) => suggestion.type === "variable").length;
+  const truncation =
+    data && query === debouncedQuery && data.totalCount > shownCount
+      ? { shown: shownCount, total: data.totalCount }
+      : null;
+
   const close = () => setOpenReference(null);
 
   const refresh = () => {
@@ -173,11 +181,7 @@ export const useVariableAutocomplete = ({
     isOpen,
     isLoading: isOpen && !data,
     query,
-    // The search returns one page. When it matched more than that, the list says so and how to narrow it.
-    truncation:
-      data && data.totalCount > data.variables.length
-        ? { shown: data.variables.length, total: data.totalCount }
-        : null,
+    truncation,
     suggestions,
     activeIndex,
     setActiveIndex,
