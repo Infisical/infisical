@@ -1,22 +1,19 @@
 import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNowStrict } from "date-fns";
 import {
-  CircleCheckIcon,
   CopyIcon,
   MoreHorizontalIcon,
   PauseIcon,
   PencilIcon,
   PlayIcon,
   ScanSearchIcon,
-  TrashIcon,
-  UnplugIcon
+  TrashIcon
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretScanningScanStatusBadge } from "@app/components/secret-scanning";
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -25,10 +22,7 @@ import {
   IconButton,
   ProviderIcon,
   TableCell,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TableRow
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub, useOrganization } from "@app/context";
@@ -41,6 +35,8 @@ import {
   SecretScanningScanStatus,
   TSecretScanningDataSourceWithDetails
 } from "@app/hooks/api/secretScanningV2";
+
+import { DataSourceStatusBadge } from "../../components/DataSourceStatusBadge";
 
 type Props = {
   dataSource: TSecretScanningDataSourceWithDetails;
@@ -96,49 +92,6 @@ export const SecretScanningDataSourceRow = ({
     return formatDistanceToNowStrict(new Date(lastScannedAt), { addSuffix: true });
   };
 
-  const renderStatus = () => {
-    if (isDisconnected) {
-      return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge variant="danger">
-              <UnplugIcon />
-              Disconnected
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-sm">
-            The external data source has been removed and can no longer be scanned. Delete this data
-            source and reconnect it.
-          </TooltipContent>
-        </Tooltip>
-      );
-    }
-
-    if (!isScanNewCommitsEnabled) {
-      return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge variant="neutral">
-              <PauseIcon />
-              Paused
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-sm">
-            Auto-scan is disabled. Scans are not triggered when a {resourceDescription.verb} occurs
-            to {resourceDescription.pluralNoun} in this data source.
-          </TooltipContent>
-        </Tooltip>
-      );
-    }
-
-    return (
-      <Badge variant="success">
-        <CircleCheckIcon />
-        Active
-      </Badge>
-    );
-  };
-
   return (
     <TableRow
       onClick={() =>
@@ -170,7 +123,9 @@ export const SecretScanningDataSourceRow = ({
         {lastScannedAt ? (unresolvedFindings ?? 0) : <span className="text-muted">-</span>}
       </TableCell>
       <TableCell>{renderLastScan()}</TableCell>
-      <TableCell>{renderStatus()}</TableCell>
+      <TableCell>
+        <DataSourceStatusBadge dataSource={dataSource} />
+      </TableCell>
       <TableCell variant="action" onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

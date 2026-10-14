@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TBitbucketDataSource } from "@app/hooks/api/secretScanningV2/types/bitbucket-data-source";
 
 type Props = {
@@ -12,10 +12,14 @@ export const BitbucketDataSourceConfigDisplay = ({ dataSource }: Props) => {
 
   return (
     <>
-      <GenericFieldLabel label="Workspace Slug">{workspaceSlug}</GenericFieldLabel>
-      <GenericFieldLabel label="Scan Repositories">
-        {includeRepos.includes("*") ? "All" : includeRepos.join(", ")}
-      </GenericFieldLabel>
+      <Detail>
+        <DetailLabel>Workspace Slug</DetailLabel>
+        <DetailValue>{workspaceSlug}</DetailValue>
+      </Detail>
+      <Detail>
+        <DetailLabel>Scan Repositories</DetailLabel>
+        <DetailValue>{includeRepos.includes("*") ? "All" : includeRepos.join(", ")}</DetailValue>
+      </Detail>
     </>
   );
 };

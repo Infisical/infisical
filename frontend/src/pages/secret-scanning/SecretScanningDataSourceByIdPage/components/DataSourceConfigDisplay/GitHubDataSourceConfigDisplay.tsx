@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/v2";
+import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { TGitHubDataSource } from "@app/hooks/api/secretScanningV2/types/github-data-source";
 
 type Props = {
@@ -11,8 +11,9 @@ export const GitHubDataSourceConfigDisplay = ({ dataSource }: Props) => {
   } = dataSource;
 
   return (
-    <GenericFieldLabel label="Scan Repositories">
-      {includeRepos.includes("*") ? "All" : includeRepos.join(", ")}
-    </GenericFieldLabel>
+    <Detail>
+      <DetailLabel>Scan Repositories</DetailLabel>
+      <DetailValue>{includeRepos.includes("*") ? "All" : includeRepos.join(", ")}</DetailValue>
+    </Detail>
   );
 };

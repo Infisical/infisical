@@ -4,7 +4,8 @@ import { TBadgeProps } from "@app/components/v3";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   SecretScanningDataSource,
-  SecretScanningFindingStatus
+  SecretScanningFindingStatus,
+  TSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
 import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 
@@ -50,6 +51,31 @@ export const doesDataSourceSupportDiscovery = ({
     type === SecretScanningDataSource.GitLab &&
     (config as { scope?: string } | undefined)?.scope !== GitLabDataSourceScope.Group
   );
+
+export const isSecretScanningResourceIncluded = (
+  dataSource: TSecretScanningDataSource,
+  resourceName: string
+) => {
+  switch (dataSource.type) {
+    case SecretScanningDataSource.Bitbucket:
+    case SecretScanningDataSource.GitHub:
+      return (
+        dataSource.config.includeRepos.includes("*") ||
+        dataSource.config.includeRepos.includes(resourceName)
+      );
+    case SecretScanningDataSource.GitLab:
+      if (dataSource.config.scope === GitLabDataSourceScope.Project) return true;
+
+      return (
+        dataSource.config.includeProjects.includes("*") ||
+        dataSource.config.includeProjects.includes(resourceName)
+      );
+    default:
+      throw new Error(
+        `Unhandled Data Source Type: ${(dataSource as TSecretScanningDataSource).type}`
+      );
+  }
+};
 
 export const RESOURCE_DESCRIPTION_HELPER: Record<
   SecretScanningDataSource,
