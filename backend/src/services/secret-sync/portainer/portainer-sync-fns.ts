@@ -5,6 +5,7 @@ import { BadRequestError } from "@app/lib/errors";
 import {
   getPortainerErrorMessage,
   isPortainerGitStack,
+  PORTAINER_REQUEST_TIMEOUT_MS,
   portainerRequest,
   PortainerStackStatus,
   PortainerStackType,
@@ -22,8 +23,6 @@ import { TPortainerStackFileResponse, TPortainerSyncWithCredentials } from "./po
 const PORTAINER_DEPLOYMENT_POLL_INTERVAL_MS = 5_000;
 // The sync job holds a five-minute lock per sync, so the wait has to give up inside that window
 const PORTAINER_DEPLOYMENT_TIMEOUT_MS = 4 * 60_000;
-// Portainer releases before the background deployer run the redeploy inside the update request itself
-const PORTAINER_STACK_UPDATE_TIMEOUT_MS = PORTAINER_DEPLOYMENT_TIMEOUT_MS;
 
 const DOTENV_ESCAPES: Record<string, string> = { '"': '"', "\\": "\\", n: "\n", r: "\r" };
 
@@ -242,7 +241,9 @@ const writeFileStackEnv = async (
         path: `/stacks/${destinationConfig.stackId}`,
         params: { endpointId: String(destinationConfig.environmentId) },
         data: { env, stackFileContent, prune: stack.Option?.Prune ?? false },
-        timeoutMs: PORTAINER_STACK_UPDATE_TIMEOUT_MS
+        // Releases before the background deployer run the redeploy inside this request, so it may take
+        // whatever is left of the wait budget (but never less than a normal request)
+        timeoutMs: Math.max(deadline - Date.now(), PORTAINER_REQUEST_TIMEOUT_MS)
       },
       deps
     );
