@@ -191,9 +191,8 @@ export const SelectionPanel = ({
       resourceType: "mixed" as const,
       source: "bulk" as const
     };
-    telemetry.flow({
+    const attempt = telemetry.startFlow({
       ...flow,
-      phase: "submitted",
       countBucket: overviewCountBucket(selectedFolderCount + selectedKeysCount)
     });
     let responseCount = 0;
@@ -297,7 +296,7 @@ export const SelectionPanel = ({
     const areAllEntriesDeleted = results.every((result) => result.status === "fulfilled");
     const areSomeEntriesDeleted = results.some((result) => result.status === "fulfilled");
     const failureCount = results.filter((result) => result.status === "rejected").length;
-    telemetry.flow({
+    attempt.flow({
       ...flow,
       phase: overviewResponsePhase(responseCount, approvalCount, failureCount),
       responseCountBucket: overviewCountBucket(responseCount),
@@ -488,7 +487,7 @@ export const SelectionPanel = ({
       destination: "clipboard" as const,
       countBucket: overviewCountBucket(selectedSecretEntries.length)
     };
-    telemetry.flow({ ...flow, phase: "submitted" });
+    const attempt = telemetry.startFlow(flow);
     try {
       const groups = selectedSecretEntries.reduce<
         Record<string, { environment: string; path: string; secrets: SecretV3RawSanitized[] }>
@@ -530,10 +529,10 @@ export const SelectionPanel = ({
         })
       );
       await navigator.clipboard.writeText(lines.join("\n"));
-      telemetry.flow({ ...flow, phase: "clipboard-written", provenance: "committed" });
+      attempt.flow({ ...flow, phase: "clipboard-written", provenance: "committed" });
       createNotification({ type: "success", text: "Selected secrets copied to clipboard" });
     } catch {
-      telemetry.flow({ ...flow, phase: "failed" });
+      attempt.flow({ ...flow, phase: "failed" });
       createNotification({ type: "error", text: "Failed to copy selected secrets to clipboard" });
     } finally {
       setIsCopying(false);

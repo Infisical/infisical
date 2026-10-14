@@ -215,13 +215,13 @@ export function FolderBreadcrumb({ secretPath = "" }: Props) {
       source: "breadcrumb" as const,
       destination: "clipboard" as const
     };
-    telemetry.flow({ ...flow, phase: "submitted" });
+    const attempt = telemetry.startFlow(flow);
     try {
       await navigator.clipboard.writeText(fullPath);
-      telemetry.flow({ ...flow, phase: "clipboard-written" });
+      attempt.flow({ ...flow, phase: "clipboard-written" });
       createNotification({ type: "success", text: "Folder path copied to clipboard" });
     } catch {
-      telemetry.flow({ ...flow, phase: "failed" });
+      attempt.flow({ ...flow, phase: "failed" });
       createNotification({ type: "error", text: "Failed to copy folder path to clipboard" });
     }
   }, [fullPath, telemetry]);

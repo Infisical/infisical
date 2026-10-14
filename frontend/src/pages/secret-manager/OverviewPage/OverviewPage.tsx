@@ -297,6 +297,7 @@ import {
   createOverviewTelemetry,
   observeOverviewRequest,
   overviewCountBucket,
+  OverviewFlowState,
   overviewResponsePhase,
   withOverviewTelemetry
 } from "./OverviewTelemetry";
@@ -1177,10 +1178,7 @@ const OverviewPageContent = () => {
     };
   }, [projectId, visibleEnvs.length, secretPath, isBatchModeActive]);
   const telemetryFlowScope = `${projectId}:${secretPath}:${visibleEnvs.map((env) => env.slug).join(",")}`;
-  const telemetryFlows = useMemo(
-    () => new Map<string, "open" | "submitted" | "completed" | "closed">(),
-    [telemetryFlowScope]
-  );
+  const telemetryFlows = useMemo<OverviewFlowState>(() => new Map(), [telemetryFlowScope]);
   const overviewTelemetry = useMemo(
     () => createOverviewTelemetry(orgId, telemetryScope, telemetryFlows),
     [orgId, telemetryScope, telemetryFlows]
@@ -1561,11 +1559,11 @@ const OverviewPageContent = () => {
       resourceType: "folder" as const,
       source: "form" as const
     };
-    overviewTelemetry.flow({ ...flow, phase: "submitted" });
+    const attempt = overviewTelemetry.startFlow(flow);
     if (isBatchModeActive && singleVisibleEnv) {
       if (isFolderPresentInEnv(folderName, singleVisibleEnv.slug)) {
         createNotification({ type: "info", text: "Folder already exists" });
-        overviewTelemetry.flow({ ...flow, phase: "empty", countBucket: "0" });
+        attempt.flow({ ...flow, phase: "empty", countBucket: "0" });
         handlePopUpClose("addFolder");
         return;
       }
@@ -1581,7 +1579,7 @@ const OverviewPageContent = () => {
         },
         { projectId, environment: singleVisibleEnv.slug, secretPath }
       );
-      overviewTelemetry.flow({ ...flow, phase: "staged", countBucket: "1" });
+      attempt.flow({ ...flow, phase: "staged", countBucket: "1" });
       handlePopUpClose("addFolder");
       return;
     }
@@ -1605,7 +1603,7 @@ const OverviewPageContent = () => {
       .filter((promise) => promise !== undefined);
 
     if (promises.length === 0) {
-      overviewTelemetry.flow({ ...flow, phase: "empty", countBucket: "0" });
+      attempt.flow({ ...flow, phase: "empty", countBucket: "0" });
       handlePopUpClose("addFolder");
       createNotification({
         type: "info",
@@ -1617,7 +1615,7 @@ const OverviewPageContent = () => {
     const results = await Promise.allSettled(promises);
     const isFoldersAdded = results.some((result) => result.status === "fulfilled");
     const responseCount = results.filter((result) => result.status === "fulfilled").length;
-    overviewTelemetry.flow({
+    attempt.flow({
       ...flow,
       phase: overviewResponsePhase(responseCount, 0, results.length - responseCount),
       responseCountBucket: overviewCountBucket(responseCount),
@@ -1645,7 +1643,7 @@ const OverviewPageContent = () => {
       resourceType: "folder" as const,
       source: "form" as const
     };
-    overviewTelemetry.flow({ ...flow, phase: "submitted" });
+    const attempt = overviewTelemetry.startFlow(flow);
     if (isBatchModeActive && singleVisibleEnv) {
       const { name: oldFolderName } = popUp.updateFolder.data as TSecretFolder;
       const folder = getFolderByNameAndEnv(oldFolderName, singleVisibleEnv.slug);
@@ -1669,7 +1667,7 @@ const OverviewPageContent = () => {
             },
             { projectId, environment: singleVisibleEnv.slug, secretPath }
           );
-          overviewTelemetry.flow({ ...flow, phase: "staged", countBucket: "1" });
+          attempt.flow({ ...flow, phase: "staged", countBucket: "1" });
           handlePopUpClose("updateFolder");
           return;
         }
@@ -1692,12 +1690,12 @@ const OverviewPageContent = () => {
             },
             { projectId, environment: singleVisibleEnv.slug, secretPath }
           );
-          overviewTelemetry.flow({ ...flow, phase: "staged", countBucket: "1" });
+          attempt.flow({ ...flow, phase: "staged", countBucket: "1" });
           handlePopUpClose("updateFolder");
           return;
         }
 
-        overviewTelemetry.flow({ ...flow, phase: "empty", countBucket: "0" });
+        attempt.flow({ ...flow, phase: "empty", countBucket: "0" });
         handlePopUpClose("updateFolder");
         return;
       }
@@ -1715,7 +1713,7 @@ const OverviewPageContent = () => {
         },
         { projectId, environment: singleVisibleEnv.slug, secretPath }
       );
-      overviewTelemetry.flow({ ...flow, phase: "staged", countBucket: "1" });
+      attempt.flow({ ...flow, phase: "staged", countBucket: "1" });
       handlePopUpClose("updateFolder");
       return;
     }
@@ -1744,7 +1742,7 @@ const OverviewPageContent = () => {
     });
 
     if (updatedFolders.length === 0) {
-      overviewTelemetry.flow({ ...flow, phase: "empty", countBucket: "0" });
+      attempt.flow({ ...flow, phase: "empty", countBucket: "0" });
       createNotification({
         type: "info",
         text: "You don't have access to rename selected folder"
@@ -1759,7 +1757,7 @@ const OverviewPageContent = () => {
         folders: updatedFolders,
         projectId
       });
-      overviewTelemetry.flow({
+      attempt.flow({
         ...flow,
         phase: "response-received",
         countBucket: overviewCountBucket(updatedFolders.length)
@@ -1769,7 +1767,7 @@ const OverviewPageContent = () => {
         text: "Successfully renamed folder across environments"
       });
     } catch {
-      overviewTelemetry.flow({
+      attempt.flow({
         ...flow,
         phase: "failed",
         countBucket: overviewCountBucket(updatedFolders.length)
@@ -1791,7 +1789,7 @@ const OverviewPageContent = () => {
       resourceType: "folder" as const,
       source: "form" as const
     };
-    overviewTelemetry.flow({ ...flow, phase: "submitted" });
+    const attempt = overviewTelemetry.startFlow(flow);
 
     if (isBatchModeActive && singleVisibleEnv) {
       const folder = getFolderByNameAndEnv(folderName, singleVisibleEnv.slug);
@@ -1808,7 +1806,7 @@ const OverviewPageContent = () => {
             secretPath
           });
         }
-        overviewTelemetry.flow({
+        attempt.flow({
           ...flow,
           phase: pendingCreate ? "discarded" : "empty",
           countBucket: pendingCreate ? "1" : "0",
@@ -1829,7 +1827,7 @@ const OverviewPageContent = () => {
         },
         { projectId, environment: singleVisibleEnv.slug, secretPath }
       );
-      overviewTelemetry.flow({ ...flow, phase: "staged", countBucket: "1" });
+      attempt.flow({ ...flow, phase: "staged", countBucket: "1" });
       handlePopUpClose("deleteFolder");
       return;
     }
@@ -1858,7 +1856,7 @@ const OverviewPageContent = () => {
       .filter(Boolean);
 
     if (promises.length === 0) {
-      overviewTelemetry.flow({ ...flow, phase: "empty", countBucket: "0" });
+      attempt.flow({ ...flow, phase: "empty", countBucket: "0" });
       createNotification({
         type: "info",
         text: "You don't have access to delete this folder in any environment"
@@ -1869,7 +1867,7 @@ const OverviewPageContent = () => {
 
     Promise.allSettled(promises).then((results) => {
       const responseCount = results.filter((result) => result.status === "fulfilled").length;
-      overviewTelemetry.flow({
+      attempt.flow({
         ...flow,
         phase: overviewResponsePhase(responseCount, 0, results.length - responseCount),
         countBucket: overviewCountBucket(promises.length),

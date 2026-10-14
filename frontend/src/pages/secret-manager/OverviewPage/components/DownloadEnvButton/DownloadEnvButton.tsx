@@ -69,7 +69,7 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
       source: "header" as const,
       destination: action
     };
-    telemetry.flow({ ...flow, phase: "submitted" });
+    const attempt = telemetry.startFlow(flow);
 
     setPendingAction(action);
     try {
@@ -83,7 +83,7 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
 
       const file = formatSecretEnvFile(localSecrets, localImportedSecrets);
       if (!file) {
-        telemetry.flow({ ...flow, phase: "empty", countBucket: "0" });
+        attempt.flow({ ...flow, phase: "empty", countBucket: "0" });
         createNotification({
           title: "No secrets in this folder",
           text: "There are no secrets to export.",
@@ -94,7 +94,7 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
 
       if (action === "clipboard") {
         await navigator.clipboard.writeText(file);
-        telemetry.flow({
+        attempt.flow({
           ...flow,
           phase: "clipboard-written",
           countBucket: overviewCountBucket(
@@ -108,7 +108,7 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
         });
       } else {
         downloadTxtFile(`${environment}.env`, file);
-        telemetry.flow({
+        attempt.flow({
           ...flow,
           phase: "download-started",
           countBucket: overviewCountBucket(
@@ -117,7 +117,7 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
         });
       }
     } catch (err) {
-      telemetry.flow({ ...flow, phase: "failed" });
+      attempt.flow({ ...flow, phase: "failed" });
       if (err instanceof AxiosError) {
         const error = err?.response?.data as TApiErrors;
 

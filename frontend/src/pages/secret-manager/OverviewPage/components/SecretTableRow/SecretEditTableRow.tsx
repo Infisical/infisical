@@ -102,7 +102,7 @@ import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/c
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
-import { useOverviewTelemetry } from "../../OverviewTelemetry";
+import { OverviewFlowHandle, useOverviewTelemetry } from "../../OverviewTelemetry";
 import { CreateSecretForm, TSecretEditChanges } from "../CreateSecretForm/CreateSecretForm";
 import {
   TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
@@ -226,6 +226,7 @@ export const SecretEditTableRow = ({
   onExpandedChange
 }: Props) => {
   const telemetry = useOverviewTelemetry();
+  const valueSheetFlow = useRef<OverviewFlowHandle>();
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
     "createSharedSecret"
@@ -371,10 +372,11 @@ export const SecretEditTableRow = ({
     secretName
   ]);
   const closeValueSheet = () => {
-    telemetry.flow({ action: "update", resourceType: "secret", source: "row", phase: "canceled" });
+    valueSheetFlow.current?.flow({ phase: "canceled" });
     setIsValueEditDirty(false);
     setValueEditDraft(null);
   };
+  useEffect(() => () => valueSheetFlow.current?.flow({ phase: "canceled" }), [valueEditScope]);
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
     useDiscardChangesGuard({
       isDirty: valueEditDraft?.scope === valueEditScope && isValueEditDirty,
@@ -726,7 +728,7 @@ export const SecretEditTableRow = ({
           ? ("pending" as const)
           : ("committed" as const)
     };
-    telemetry.flow({ ...flow, phase: "submitted" });
+    const attempt = telemetry.startFlow(flow);
     try {
       if (isPendingCreate || (isBatchMode && hasPendingValueChange)) {
         // In batch mode with a queued value change, copy the pending value shown in the field
@@ -736,11 +738,11 @@ export const SecretEditTableRow = ({
         const { data } = await refetchSharedValue();
         await window.navigator.clipboard.writeText(data?.value ?? "");
       }
-      telemetry.flow({ ...flow, phase: "clipboard-written" });
+      attempt.flow({ ...flow, phase: "clipboard-written" });
       setIsCopied(true);
       createNotification({ type: "success", text: "Copied secret to clipboard" });
     } catch (e) {
-      telemetry.flow({ ...flow, phase: "failed" });
+      attempt.flow({ ...flow, phase: "failed" });
       console.error(e);
       createNotification({
         type: "error",
@@ -1026,7 +1028,11 @@ export const SecretEditTableRow = ({
         ? ((watchedValue as string) ?? "")
         : undefined;
     if (secretValueHidden || isEmpty || isPendingCreate) {
-      telemetry.flow({ action: "update", resourceType: "secret", source: "row", phase: "opened" });
+      valueSheetFlow.current = telemetry.openFlow({
+        action: "update",
+        resourceType: "secret",
+        source: "row"
+      });
       setValueEditDraft({ value: pendingValue ?? "", scope: valueEditScope });
       return;
     }
@@ -1040,7 +1046,11 @@ export const SecretEditTableRow = ({
         });
         return;
       }
-      telemetry.flow({ action: "update", resourceType: "secret", source: "row", phase: "opened" });
+      valueSheetFlow.current = telemetry.openFlow({
+        action: "update",
+        resourceType: "secret",
+        source: "row"
+      });
       setValueEditDraft({ value: pendingValue ?? data.value ?? "", scope: valueEditScope });
     } finally {
       setIsLoadingEditValue(false);

@@ -327,7 +327,7 @@ export const CreateSecretForm = ({
       source: "form" as const,
       countBucket: overviewCountBucket(secrets.length * selectedEnv.length)
     };
-    telemetry.flow({ ...flow, phase: "submitted" });
+    const attempt = telemetry.startFlow(flow);
     if (isBatchMode && onBatchSecretCreate) {
       secrets.forEach((secret) => {
         const filteredMetadata = secret.metadata
@@ -345,7 +345,7 @@ export const CreateSecretForm = ({
           });
         });
       });
-      telemetry.flow({ ...flow, phase: "staged" });
+      attempt.flow({ ...flow, phase: "staged" });
       onClose();
       reset();
       return;
@@ -376,7 +376,7 @@ export const CreateSecretForm = ({
         }
       })
     ).catch((error) => {
-      telemetry.flow({ ...flow, phase: "failed" });
+      attempt.flow({ ...flow, phase: "failed" });
       throw error;
     });
 
@@ -436,7 +436,7 @@ export const CreateSecretForm = ({
       (result) => result.status === "fulfilled" && "approval" in result.value
     ).length;
     const failureCount = results.filter((result) => result.status === "rejected").length;
-    telemetry.flow({
+    attempt.flow({
       ...flow,
       phase: overviewResponsePhase(responseCount, approvalCount, failureCount),
       responseCountBucket: overviewCountBucket(responseCount),

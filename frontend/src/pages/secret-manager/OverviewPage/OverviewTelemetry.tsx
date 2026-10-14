@@ -28,7 +28,11 @@ export const overviewResponsePhase = (
   return "empty";
 };
 
-export type OverviewFlowState = Map<string, "open" | "submitted" | "completed" | "closed">;
+type OverviewFlowLifecycle = { status: "open" | "submitted" | "completed" | "closed" };
+export type OverviewFlowState = Map<string, OverviewFlowLifecycle>;
+export type OverviewFlowHandle = {
+  flow: (properties: Omit<OverviewFlowProperties, "action" | "resourceType" | "source">) => void;
+};
 
 export const overviewImportSource = (
   method: "upload" | "paste",
@@ -52,18 +56,23 @@ export const createOverviewTelemetry = (
       countBucket: properties.countBucket
     });
   },
-  flow(properties: OverviewFlowProperties) {
+  flow(properties: OverviewFlowProperties, lifecycle?: OverviewFlowLifecycle) {
     const key = `${properties.action}:${properties.resourceType}:${properties.source}`;
+    let state: OverviewFlowLifecycle = lifecycle ?? flows.get(key) ?? { status: "closed" };
+    if (!lifecycle && properties.phase === "opened" && state.status === "submitted")
+      state = { status: "closed" };
     if (properties.phase === "canceled") {
-      if (flows.get(key) !== "open") return;
-      flows.set(key, "closed");
+      if (state.status !== "open") return;
+      state.status = "closed";
     } else if (properties.phase === "opened") {
-      if (flows.get(key) === "open" || flows.get(key) === "submitted") return;
-      flows.set(key, "open");
+      if (state.status === "open" || state.status === "submitted") return;
+      state.status = "open";
+      flows.set(key, state);
     } else if (properties.phase === "submitted") {
-      flows.set(key, "submitted");
+      state.status = "submitted";
+      flows.set(key, state);
     } else if (properties.phase !== "input-received") {
-      flows.set(key, "completed");
+      state.status = "completed";
     }
     analytics.captureForOrganization(AnalyticsEvent.SecretsOverviewFlowProgressed, orgId, {
       ...scope,
@@ -81,15 +90,28 @@ export const createOverviewTelemetry = (
       destination: properties.destination
     });
   },
+  openFlow(properties: Omit<OverviewFlowProperties, "phase">): OverviewFlowHandle {
+    const state: OverviewFlowLifecycle = { status: "closed" };
+    this.flow({ ...properties, phase: "opened" }, state);
+    return { flow: (progress) => this.flow({ ...properties, ...progress }, state) };
+  },
+  startFlow(properties: Omit<OverviewFlowProperties, "phase">): OverviewFlowHandle {
+    const key = `${properties.action}:${properties.resourceType}:${properties.source}`;
+    const current = flows.get(key);
+    const state: OverviewFlowLifecycle =
+      current?.status === "open" ? current : { status: "submitted" };
+    this.flow({ ...properties, phase: "submitted" }, state);
+    return { flow: (progress) => this.flow({ ...properties, ...progress }, state) };
+  },
   cancelOpenFlows() {
     flows.forEach((state, key) => {
-      if (state !== "open") return;
+      if (state.status !== "open") return;
       const [action, resourceType, source] = key.split(":") as [
         OverviewFlowProperties["action"],
         OverviewFlowProperties["resourceType"],
         OverviewFlowProperties["source"]
       ];
-      this.flow({ action, resourceType, source, phase: "canceled" });
+      this.flow({ action, resourceType, source, phase: "canceled" }, state);
     });
   }
 });
@@ -99,11 +121,10 @@ export const observeOverviewRequest = async <T,>(
   properties: Omit<OverviewFlowProperties, "phase">,
   request: () => Promise<T>
 ) => {
-  telemetry.flow({ ...properties, phase: "submitted" });
+  const attempt = telemetry.startFlow(properties);
   try {
     const result = await request();
-    telemetry.flow({
-      ...properties,
+    attempt.flow({
       phase:
         result && typeof result === "object" && "approval" in result
           ? "approval-requested"
@@ -111,7 +132,7 @@ export const observeOverviewRequest = async <T,>(
     });
     return result;
   } catch (error) {
-    telemetry.flow({ ...properties, phase: "failed" });
+    attempt.flow({ phase: "failed" });
     throw error;
   }
 };
@@ -119,6 +140,8 @@ export const observeOverviewRequest = async <T,>(
 const OverviewTelemetryContext = createContext<ReturnType<typeof createOverviewTelemetry>>({
   interaction: () => {},
   flow: () => {},
+  openFlow: () => ({ flow: () => {} }),
+  startFlow: () => ({ flow: () => {} }),
   cancelOpenFlows: () => {}
 });
 

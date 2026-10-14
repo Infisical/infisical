@@ -376,7 +376,7 @@ const ImportSecretsContent = ({
         (secretCount + (nestedImport?.folderPaths.length ?? 0)) * selectedEnvs.length
       )
     };
-    telemetry.flow({ ...flow, phase: "submitted" });
+    const attempt = telemetry.startFlow(flow);
     let responseCount = 0;
     let approvalCount = 0;
     let failureCount = 0;
@@ -751,7 +751,7 @@ const ImportSecretsContent = ({
         });
       }
 
-      telemetry.flow({
+      attempt.flow({
         ...flow,
         phase: overviewResponsePhase(
           responseCount + folderResponseCount,
@@ -770,7 +770,7 @@ const ImportSecretsContent = ({
         onComplete?.(completedEnvSlugs);
       }
     } catch (err) {
-      telemetry.flow({ ...flow, phase: "failed" });
+      attempt.flow({ ...flow, phase: "failed" });
       console.error(err);
       createNotification({
         type: "error",

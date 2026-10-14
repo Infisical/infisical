@@ -386,9 +386,8 @@ const CopySecretsSession = ({
     skippedSecretIds?: string[];
   }) => {
     setIsSubmitting(true);
-    telemetry.flow({
+    const attempt = telemetry.startFlow({
       ...flow,
-      phase: "submitted",
       countBucket: overviewCountBucket(selectedItemCount)
     });
     let receivedCount = 0;
@@ -449,7 +448,7 @@ const CopySecretsSession = ({
       );
 
       const approvalCount = results.reduce((count, result) => count + result.approvalCount, 0);
-      telemetry.flow({
+      attempt.flow({
         ...flow,
         phase: overviewResponsePhase(receivedCount + receivedFolderCount, approvalCount, 0),
         countBucket: overviewCountBucket(copiedSecretIds.length + selectedFolderPaths.length),
@@ -487,7 +486,7 @@ const CopySecretsSession = ({
       onCompleted?.(copiedSecretIds);
       closeSheet(false);
     } catch {
-      telemetry.flow({
+      attempt.flow({
         ...flow,
         phase:
           receivedCount + receivedFolderCount + receivedApprovalCount
