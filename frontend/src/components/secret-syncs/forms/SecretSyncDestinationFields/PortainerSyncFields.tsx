@@ -1,19 +1,16 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import {
-  TPortainerEnvironment,
-  TPortainerStack,
   usePortainerConnectionListEnvironments,
   usePortainerConnectionListStacks
 } from "@app/hooks/api/appConnections/portainer";
@@ -64,23 +61,32 @@ export const PortainerSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Environment</FieldLabel>
+            <FieldLabel
+              id="secret-sync-portainer-environment-id-label"
+              htmlFor="secret-sync-portainer-environment-id"
+            >
+              Environment
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-portainer-environment-id-label"
+                aria-describedby={error ? "secret-sync-portainer-environment-id-error" : undefined}
+                id="secret-sync-portainer-environment-id"
+                isError={Boolean(error)}
                 isLoading={isEnvironmentsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={environments.find((environment) => environment.id === value) ?? null}
-                onChange={(option) => {
-                  const selected = option as SingleValue<TPortainerEnvironment>;
-                  onChange(selected?.id);
+                onValueChange={(option) => {
+                  onChange(option?.id);
                   setValue("destinationConfig.stackId", undefined as unknown as number);
                 }}
                 options={environments}
                 placeholder="Select an environment..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => String(option.id)}
+                modal
               />
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-portainer-environment-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
@@ -90,27 +96,34 @@ export const PortainerSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
-            <FieldLabel>Stack</FieldLabel>
+            <FieldLabel
+              id="secret-sync-portainer-stack-id-label"
+              htmlFor="secret-sync-portainer-stack-id"
+            >
+              Stack
+            </FieldLabel>
             <FieldContent>
-              <FilterableSelect
+              <Combobox
+                aria-labelledby="secret-sync-portainer-stack-id-label"
+                aria-describedby={error ? "secret-sync-portainer-stack-id-error" : undefined}
+                id="secret-sync-portainer-stack-id"
+                isError={Boolean(error)}
                 isLoading={isStacksLoading && Boolean(connectionId)}
                 isDisabled={!environmentId}
                 value={environmentStacks.find((stack) => stack.id === value) ?? null}
-                onChange={(option) => {
-                  const selected = option as SingleValue<TPortainerStack>;
-                  onChange(selected?.id);
-                }}
+                onValueChange={(option) => onChange(option?.id)}
                 options={environmentStacks}
                 placeholder="Select a stack..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => String(option.id)}
+                modal
               />
               {selectedStack && (
                 <FieldDescription>
                   {selectedStack.isGitBased ? GIT_STACK_HELP_TEXT : FILE_STACK_HELP_TEXT}
                 </FieldDescription>
               )}
-              <FieldError errors={[error]} />
+              <FieldError id="secret-sync-portainer-stack-id-error" errors={[error]} />
             </FieldContent>
           </Field>
         )}
