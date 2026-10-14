@@ -1,4 +1,4 @@
-import { FormLabel } from "@app/components/v2";
+import { Detail, DetailLabel } from "@app/components/v3";
 import { CircleCiScope } from "@app/hooks/api/integrationAuth/types";
 import { IntegrationMappingBehavior, TIntegration } from "@app/hooks/api/integrations/types";
 
@@ -22,37 +22,36 @@ export const IntegrationDetails = ({ integration }: Props) => {
   return (
     <div className="flex flex-col gap-2 p-2">
       {integration.integration === "octopus-deploy" && (
-        <div>
-          <FormLabel label="Space" />
+        <Detail>
+          <DetailLabel>Space</DetailLabel>
           <div className={FIELD_CLASSNAME}>
             {integration.targetEnvironment || integration.targetEnvironmentId}
           </div>
-        </div>
+        </Detail>
       )}
       {integration.integration === "qovery" && (
         <>
-          <div>
-            <FormLabel label="Org" />
+          <Detail>
+            <DetailLabel>Org</DetailLabel>
             <div className={FIELD_CLASSNAME}>{integration?.owner || "-"}</div>
-          </div>
-          <div>
-            <FormLabel label="Project" />
+          </Detail>
+          <Detail>
+            <DetailLabel>Project</DetailLabel>
             <div className={FIELD_CLASSNAME}>{integration?.targetService || "-"}</div>
-          </div>
-          <div>
-            <FormLabel label="Env" />
+          </Detail>
+          <Detail>
+            <DetailLabel>Env</DetailLabel>
             <div className={FIELD_CLASSNAME}>{integration?.targetEnvironment || "-"}</div>
-          </div>
+          </Detail>
         </>
       )}
       {!(
         integration.integration === "aws-secret-manager" &&
         integration.metadata?.mappingBehavior === IntegrationMappingBehavior.ONE_TO_ONE
       ) && (
-        <div>
-          <FormLabel
-            label={
-              (integration.integration === "qovery" && integration?.scope) ||
+        <Detail>
+          <DetailLabel>
+            {(integration.integration === "qovery" && integration?.scope) ||
               (integration.integration === "circleci" &&
                 (integration.scope === CircleCiScope.Context ? "Context" : "Project")) ||
               (integration.integration === "bitbucket" && "Repository") ||
@@ -63,11 +62,10 @@ export const IntegrationDetails = ({ integration }: Props) => {
               (integration?.scope === "github-org" && "Organization") ||
               (["github-repo", "github-env"].includes(integration?.scope as string) &&
                 "Repository") ||
-              "App"
-            }
-          />
+              "App"}
+          </DetailLabel>
           <div className={FIELD_CLASSNAME}>{getIntegrationDestination(integration)}</div>
-        </div>
+        </Detail>
       )}
       {(integration.integration === "vercel" ||
         integration.integration === "netlify" ||
@@ -75,55 +73,55 @@ export const IntegrationDetails = ({ integration }: Props) => {
         integration.integration === "gitlab" ||
         integration.integration === "teamcity" ||
         (integration.integration === "github" && integration.scope === "github-env")) && (
-        <div>
-          <FormLabel label="Target Environment" />
+        <Detail>
+          <DetailLabel>Target Environment</DetailLabel>
           <div className={FIELD_CLASSNAME}>
             {integration.targetEnvironment || integration.targetEnvironmentId}
           </div>
-        </div>
+        </Detail>
       )}
       {integration.integration === "bitbucket" && (
         <>
           {integration.targetServiceId && (
-            <div>
-              <FormLabel label="Environment" />
+            <Detail>
+              <DetailLabel>Environment</DetailLabel>
               <div className={FIELD_CLASSNAME}>
                 {integration.targetService || integration.targetServiceId}
               </div>
-            </div>
+            </Detail>
           )}
-          <div>
-            <FormLabel label="Workspace" />
+          <Detail>
+            <DetailLabel>Workspace</DetailLabel>
             <div className={FIELD_CLASSNAME}>
               {integration.targetEnvironment || integration.targetEnvironmentId}
             </div>
-          </div>
+          </Detail>
         </>
       )}
       {integration.integration === "checkly" && integration.targetService && (
-        <div>
-          <FormLabel label="Group" />
+        <Detail>
+          <DetailLabel>Group</DetailLabel>
           <div className={FIELD_CLASSNAME}>{integration.targetService}</div>
-        </div>
+        </Detail>
       )}
       {integration.integration === "circleci" && integration.owner && (
-        <div>
-          <FormLabel label="Organization" />
+        <Detail>
+          <DetailLabel>Organization</DetailLabel>
           <div className={FIELD_CLASSNAME}>{integration.owner}</div>
-        </div>
+        </Detail>
       )}
       {integration.integration === "terraform-cloud" && integration.targetService && (
-        <div>
-          <FormLabel label="Category" />
+        <Detail>
+          <DetailLabel>Category</DetailLabel>
           <div className={FIELD_CLASSNAME}>{integration.targetService}</div>
-        </div>
+        </Detail>
       )}
       {(integration.integration === "checkly" || integration.integration === "github") &&
         integration?.metadata?.secretSuffix && (
-          <div>
-            <FormLabel label="Secret Suffix" />
+          <Detail>
+            <DetailLabel>Secret Suffix</DetailLabel>
             <div className={FIELD_CLASSNAME}>{integration.metadata.secretSuffix}</div>
-          </div>
+          </Detail>
         )}
       {integration.integration === "github" && integration.metadata?.githubVisibility ? (
         <div className="mt-2 text-xs text-foreground-secondary">

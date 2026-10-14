@@ -12,6 +12,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
+import { Combobox, Field, FieldError, FieldLabel } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   CaSigningConfigType,
@@ -20,10 +21,7 @@ import {
   useInstallCaCertificateVenafi,
   useUpdateCaSigningConfig
 } from "@app/hooks/api";
-import {
-  TAvailableAppConnection,
-  useListAvailableAppConnections
-} from "@app/hooks/api/appConnections";
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   TVenafiApplication,
@@ -32,6 +30,8 @@ import {
   useVenafiConnectionListIssuingTemplates
 } from "@app/hooks/api/appConnections/venafi";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+
+import { useConnectionCreation } from "./useConnectionCreation";
 
 const schema = z.object({
   appConnectionId: z.string().min(1, "App connection is required"),
@@ -71,6 +71,12 @@ export const VenafiCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
     defaultValues: {
       maxPathLength: "-1"
     }
+  });
+
+  const connectionCreation = useConnectionCreation(AppConnection.Venafi, (connection) => {
+    setValue("appConnectionId", connection.id, { shouldValidate: true });
+    setValue("applicationId", "");
+    setValue("issuingTemplateId", "");
   });
 
   const selectedConnectionId = watch("appConnectionId");
@@ -153,18 +159,18 @@ export const VenafiCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
         control={control}
         name="appConnectionId"
         render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl
-            label="Venafi Connection"
-            errorText={error?.message}
-            isError={Boolean(error)}
-            isRequired
-          >
-            <FilterableSelect
+          <Field className="mb-4">
+            <FieldLabel>
+              Venafi Connection <span className="text-danger">*</span>
+            </FieldLabel>
+            <Combobox
+              isError={Boolean(error)}
+              modal
+              isClearable={false}
               isLoading={isVenafiPending}
-              value={(availableVenafiConnections || []).find((conn) => conn.id === value)}
-              onChange={(option) => {
-                const selected = option as SingleValue<TAvailableAppConnection>;
-                onChange(selected?.id ?? "");
+              value={(availableVenafiConnections || []).find((conn) => conn.id === value) ?? null}
+              onValueChange={(option) => {
+                onChange(option.id);
                 setValue("applicationId", "");
                 setValue("issuingTemplateId", "");
               }}
@@ -172,8 +178,10 @@ export const VenafiCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
               placeholder="Select a Venafi connection..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
+              creation={connectionCreation}
             />
-          </FormControl>
+            <FieldError errors={[error]} />
+          </Field>
         )}
       />
       <Controller

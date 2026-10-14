@@ -70,10 +70,9 @@ export type TFeatureSet = {
   pitRecovery: false;
   ipAllowlisting: false;
   rbac: false;
-  customRateLimits: false;
   customAlerts: false;
   auditLogs: false;
-  auditLogsRetentionDays: 0;
+  auditLogsRetentionDays: number | null;
   auditLogStreams: false;
   auditLogStreamLimit: 3;
   githubOrgSync: false;

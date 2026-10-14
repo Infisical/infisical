@@ -1,9 +1,8 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Checkbox, DeleteActionModal } from "@app/components/v2";
-import { Spinner } from "@app/components/v3";
+import { Button, Checkbox, Field, FieldLabel, Spinner } from "@app/components/v3";
+import { DeleteConfirmDialog } from "@app/components/v3/platform";
 import { useProject } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
@@ -63,12 +62,8 @@ export const NativeIntegrationsTab = () => {
       <div className="w-full rounded-lg border border-border-control bg-surface-base p-4">
         <div className="mb-4 flex items-center justify-between">
           <p className="text-xl font-medium text-foreground">Native Integrations</p>
-          <Button
-            colorSchema="secondary"
-            type="submit"
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
-            onClick={() => handlePopUpOpen("creationBlocked")}
-          >
+          <Button variant="outline" onClick={() => handlePopUpOpen("creationBlocked")}>
+            <PlusIcon />
             Add Integration
           </Button>
         </div>
@@ -88,15 +83,16 @@ export const NativeIntegrationsTab = () => {
         isOpen={popUp.creationBlocked.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("creationBlocked", isOpen)}
       />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteConfirmation.isOpen}
         title={`Are you sure you want to remove ${
           (popUp?.deleteConfirmation.data as TIntegration)?.integration || " "
         } integration for ${
           (popUp?.deleteConfirmation.data as TIntegration)?.app || "this project"
         }?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}
-        deleteKey={
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}
+        confirmKey={
           ((popUp?.deleteConfirmation?.data as TIntegration)?.integration ===
             "azure-app-configuration" &&
             (popUp?.deleteConfirmation?.data as TIntegration)?.app
@@ -108,7 +104,7 @@ export const NativeIntegrationsTab = () => {
           (popUp?.deleteConfirmation?.data as TIntegration)?.integration ||
           ""
         }
-        onDeleteApproved={async () => {
+        onConfirm={async () => {
           if (shouldDeleteSecrets) {
             handlePopUpOpen("deleteSecretsConfirmation");
             return;
@@ -122,25 +118,28 @@ export const NativeIntegrationsTab = () => {
         }}
       >
         {(popUp?.deleteConfirmation?.data as TIntegration)?.integration === "github" && (
-          <div className="mt-4">
+          <Field orientation="horizontal">
             <Checkbox
               id="delete-integration-secrets"
+              variant="danger"
+              isChecked={shouldDeleteSecrets}
               onCheckedChange={() => setShouldDeleteSecrets.toggle()}
-            >
+            />
+            <FieldLabel htmlFor="delete-integration-secrets">
               Delete previously synced secrets from the destination
-            </Checkbox>
-          </div>
+            </FieldLabel>
+          </Field>
         )}
-      </DeleteActionModal>
-      <DeleteActionModal
+      </DeleteConfirmDialog>
+      <DeleteConfirmDialog
         isOpen={popUp.deleteSecretsConfirmation.isOpen}
         title={`Are you sure you also want to delete secrets on ${
           (popUp?.deleteConfirmation.data as TIntegration)?.integration
         }?`}
-        subTitle="By confirming, you acknowledge that all secrets managed by this integration will be removed from the destination. This action is irreversible."
-        onChange={(isOpen) => handlePopUpToggle("deleteSecretsConfirmation", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={async () => {
+        description="By confirming, you acknowledge that all secrets managed by this integration will be removed from the destination. This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteSecretsConfirmation", isOpen)}
+        confirmKey="confirm"
+        onConfirm={async () => {
           await handleIntegrationDelete(
             (popUp?.deleteConfirmation.data as TIntegration).id,
             true,

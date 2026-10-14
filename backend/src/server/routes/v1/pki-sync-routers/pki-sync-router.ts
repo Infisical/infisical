@@ -327,6 +327,7 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider, enableOp
           matchedCount: z.number(),
           certificates: PkiSyncCertificateRefSchema.array(),
           toUnlink: PkiSyncCertificateRefSchema.array(),
+          toUnlinkAtDestinationCount: z.number(),
           willRemoveFromDestination: z.boolean()
         })
       }

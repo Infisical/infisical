@@ -33,11 +33,10 @@ export type SubscriptionPlan = {
   identityLimit: number;
   auditLogs: boolean;
   dynamicSecret: boolean;
-  auditLogsRetentionDays: number;
+  auditLogsRetentionDays: number | null;
   auditLogStreamLimit: number;
   auditLogStreams: boolean;
   customAlerts: boolean;
-  customRateLimits: boolean;
   pitRecovery: boolean;
   githubOrgSync: boolean;
   subOrganization?: boolean;

@@ -203,7 +203,8 @@ for import into a folder. Type registry is `DISCOVERY_TYPE_CONFIGS`; providers r
 `{ validateConnection, scan }` and never touch the DB — the service owns encryption, staging, and
 fingerprint dedupe. Discovery runs everything **through the gateway** (SSH-exec / port-sweep / WinRM RPCs),
 so `ssh2` is never used on the backend and scans produce no session rows, recordings, or session audits.
-Current types: Active Directory and Unix.
+Current types: Active Directory, Unix, PostgreSQL, and Microsoft SQL Server. `withGatewayV2Proxy` rethrows a callback's
+error as a `BadRequestError` carrying only its message, so a provider maps driver error codes inside the callback.
 
 **Staleness (Windows).** After a completed scan, discovered accounts it no longer finds are reconciled:
 never-imported ones are deleted, imported ones are flagged stale (reappearing self-heals). Only accounts in a

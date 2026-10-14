@@ -1,6 +1,4 @@
-import { faEllipsis } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
+import { MoreHorizontalIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -8,9 +6,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Td,
-  Tr
-} from "@app/components/v2";
+  IconButton,
+  TableCell,
+  TableRow
+} from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useGetPkiCollectionById } from "@app/hooks/api";
 import { TPkiAlert } from "@app/hooks/api/pkiAlerts/types";
@@ -27,34 +26,31 @@ type Props = {
 export const PkiAlertRow = ({ alert, handlePopUpOpen }: Props) => {
   const { data: pkiCollection } = useGetPkiCollectionById(alert.pkiCollectionId || "");
   return (
-    <Tr className="h-10" key={`pki-alert-${alert.id}`}>
-      <Td>{alert.name}</Td>
-      <Td>{alert.alertBeforeDays}</Td>
-      <Td>{pkiCollection ? pkiCollection.name : "-"}</Td>
-      <Td>
+    <TableRow key={`pki-alert-${alert.id}`}>
+      <TableCell>{alert.name}</TableCell>
+      <TableCell>{alert.alertBeforeDays}</TableCell>
+      <TableCell>{pkiCollection ? pkiCollection.name : "-"}</TableCell>
+      <TableCell>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild className="rounded-lg">
-            <div className="hover:text-project data-[state=open]:text-project">
-              <FontAwesomeIcon size="sm" icon={faEllipsis} />
-            </div>
+          <DropdownMenuTrigger asChild>
+            <IconButton variant="ghost" size="xs" aria-label="Alert options">
+              <MoreHorizontalIcon />
+            </IconButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="p-1">
+          <DropdownMenuContent align="start">
             <ProjectPermissionCan
               I={ProjectPermissionActions.Edit}
               a={ProjectPermissionSub.PkiAlerts}
             >
               {(isAllowed) => (
                 <DropdownMenuItem
-                  className={twMerge(
-                    !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                  )}
                   onClick={(e) => {
                     e.stopPropagation();
                     handlePopUpOpen("pkiAlert", {
                       alertId: alert.id
                     });
                   }}
-                  disabled={!isAllowed}
+                  isDisabled={!isAllowed}
                 >
                   Edit Alert
                 </DropdownMenuItem>
@@ -66,11 +62,7 @@ export const PkiAlertRow = ({ alert, handlePopUpOpen }: Props) => {
             >
               {(isAllowed) => (
                 <DropdownMenuItem
-                  className={twMerge(
-                    isAllowed
-                      ? "hover:bg-danger! hover:text-white!"
-                      : "pointer-events-none cursor-not-allowed opacity-50"
-                  )}
+                  variant="danger"
                   onClick={(e) => {
                     e.stopPropagation();
                     handlePopUpOpen("deletePkiAlert", {
@@ -78,7 +70,7 @@ export const PkiAlertRow = ({ alert, handlePopUpOpen }: Props) => {
                       name: alert.name
                     });
                   }}
-                  disabled={!isAllowed}
+                  isDisabled={!isAllowed}
                 >
                   Delete Alert
                 </DropdownMenuItem>
@@ -86,7 +78,7 @@ export const PkiAlertRow = ({ alert, handlePopUpOpen }: Props) => {
             </ProjectPermissionCan>
           </DropdownMenuContent>
         </DropdownMenu>
-      </Td>
-    </Tr>
+      </TableCell>
+    </TableRow>
   );
 };

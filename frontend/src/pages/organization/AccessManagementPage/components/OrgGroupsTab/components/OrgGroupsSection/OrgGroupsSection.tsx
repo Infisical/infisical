@@ -4,7 +4,6 @@ import { PlusIcon } from "lucide-react";
 import { GroupsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -13,6 +12,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DeleteConfirmDialog,
   DocumentationLinkBadge
 } from "@app/components/v3";
 import {
@@ -115,7 +115,7 @@ export const OrgGroupsSection = () => {
         setWizardStep={setWizardStep}
         isSubOrganization={isSubOrganization}
       />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteGroup.isOpen}
         title={
           (popUp?.deleteGroup?.data as { name: string; isLinkedGroup?: boolean })?.isLinkedGroup
@@ -126,9 +126,10 @@ export const OrgGroupsSection = () => {
                 (popUp?.deleteGroup?.data as { name: string })?.name || ""
               }?`
         }
-        onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onDeleteGroupSubmit(
             popUp?.deleteGroup?.data as { name: string; groupId: string; isLinkedGroup?: boolean }
           )
