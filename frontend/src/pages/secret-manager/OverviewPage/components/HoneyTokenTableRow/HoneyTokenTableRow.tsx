@@ -64,6 +64,13 @@ const STATUS_BADGE_VARIANT: Record<string, "success" | "danger" | "neutral"> = {
 const TRIGGERED_STICKY_CELL_CLASS_NAME =
   "bg-[color-mix(in_srgb,var(--color-danger)_5%,var(--color-container))] group-hover:bg-[color-mix(in_srgb,var(--color-danger)_10%,var(--color-container-hover))]";
 
+// On a hover-capable pointer the status badge gives its gap up and only takes it back while the row
+// is hovered or focused, which is exactly when the action bar is shown. The bar now also stays
+// shown while this row's menu is open, so the gap has to follow the same condition the bar's
+// visibility does: otherwise moving the pointer off a row whose menu is open drops the gap while
+// the bar is still held visible, and the bar lands on top of the badge.
+const STATUS_BADGE_ACTION_BAR_GAP_CLASS_NAME = "[@media(hover:hover)]:mr-16";
+
 type Props = {
   honeyTokenName: string;
   environments: { name: string; slug: string }[];
@@ -338,7 +345,8 @@ export const HoneyTokenTableRow = ({
               <div
                 className={twMerge(
                   "ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0",
-                  "mr-16 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16"
+                  "mr-16 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16",
+                  openActionMenuEnv === singleEnvSlug && STATUS_BADGE_ACTION_BAR_GAP_CLASS_NAME
                 )}
               >
                 {renderStatusBadge(singleEnvToken)}
@@ -455,7 +463,9 @@ export const HoneyTokenTableRow = ({
                               <div
                                 className={twMerge(
                                   "ml-auto flex items-center transition-[margin] duration-300 motion-reduce:transition-none [@media(hover:hover)]:mr-0",
-                                  "mr-16 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16"
+                                  "mr-16 [@media(hover:hover)]:group-focus-within:mr-16 [@media(hover:hover)]:group-hover:mr-16",
+                                  openActionMenuEnv === slug &&
+                                    STATUS_BADGE_ACTION_BAR_GAP_CLASS_NAME
                                 )}
                               >
                                 {renderStatusBadge(honeyToken)}
