@@ -74,6 +74,7 @@ type BillingCancellationReasonSubmittedProperties = {
   action: BillingCancellationAction;
   productId: string;
   reason: string;
+  comment?: string;
 };
 
 export type OrganizationAnalyticsEventMap = {
