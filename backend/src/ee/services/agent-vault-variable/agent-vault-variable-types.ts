@@ -1,4 +1,7 @@
 import { TAgentVaultProjectScoped } from "../agent-vault-access-bundle/agent-vault-access-bundle-types";
+import { TFindAgentVaultVariablesDTO } from "./agent-vault-variable-dal";
+
+export type TListVariablesDTO = TAgentVaultProjectScoped & Omit<TFindAgentVaultVariablesDTO, "projectId">;
 
 export type TCreateVariableDTO = TAgentVaultProjectScoped & { key: string; value: string };
 

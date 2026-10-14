@@ -1305,6 +1305,44 @@ describe("Agent Vault V1 Router", async () => {
       expect((await inject("PATCH", `${variablesUrl}/${first.id}`, { key: "TOKEN" })).statusCode).toBe(200);
     });
 
+    test("the list pages, searches, and sorts by how many services use each variable", async () => {
+      const bundle = await createAccessBundle("variables-list");
+      await createVariable({ key: "ALPHA_TOKEN", value: "a" });
+      await createVariable({ key: "BETA_TOKEN", value: "b" });
+      await createVariable({ key: "GAMMA_KEY", value: "g" });
+      const createService = async (body: Record<string, unknown>) =>
+        expect((await inject("POST", servicesUrl(bundle.id), body)).statusCode).toBe(200);
+      // Two fields of one service count as one service.
+      await createService({
+        name: "both-fields",
+        hostPattern: "both-fields.example.com",
+        credential: { type: "bearer", value: "{{GAMMA_KEY}}" },
+        customHeaders: [{ name: "X-Gamma", value: "{{GAMMA_KEY}}" }]
+      });
+      await createService({
+        name: "gamma-and-beta",
+        hostPattern: "gamma-and-beta.example.com",
+        credential: { type: "basic", username: "{{BETA_TOKEN}}", password: "{{GAMMA_KEY}}" }
+      });
+
+      const list = async (query: string) => {
+        const res = await inject("GET", `${variablesUrl}?${query}`);
+        expect(res.statusCode).toBe(200);
+        const body = JSON.parse(res.payload) as { variables: { key: string }[]; totalCount: number };
+        return { keys: body.variables.map((variable) => variable.key), totalCount: body.totalCount };
+      };
+
+      expect(await list("limit=2")).toEqual({ keys: ["ALPHA_TOKEN", "BETA_TOKEN"], totalCount: 3 });
+      expect(await list("limit=2&offset=2")).toEqual({ keys: ["GAMMA_KEY"], totalCount: 3 });
+      expect(await list("search=token")).toEqual({ keys: ["ALPHA_TOKEN", "BETA_TOKEN"], totalCount: 2 });
+      expect(await list("search=%25")).toEqual({ keys: [], totalCount: 0 });
+      expect(await list("orderBy=usedBy&orderDirection=desc")).toEqual({
+        keys: ["GAMMA_KEY", "BETA_TOKEN", "ALPHA_TOKEN"],
+        totalCount: 3
+      });
+      expect((await inject("GET", `${variablesUrl}?limit=101`)).statusCode).toBe(422);
+    });
+
     test("services in different bundles share a variable, and each resolves it", async () => {
       const first = await createAccessBundle("variables-shared-first");
       const second = await createAccessBundle("variables-shared-second");

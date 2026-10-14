@@ -12,6 +12,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { actorContext } from "./agent-vault-router-fns";
 import {
+  agentVaultListQuery,
   AgentVaultVariableKeySchema,
   AgentVaultVariableSchema,
   AgentVaultVariableValueSchema
@@ -27,16 +28,25 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
       operationId: "listAgentVaultVariables",
       description: "List the variables in Agent Vault",
       tags: [ApiDocsTags.AgentVaultVariables],
-      response: { 200: z.object({ variables: AgentVaultVariableSchema.array() }) }
+      querystring: z.object({
+        orderBy: z.enum(["key", "usedBy"]).default("key").describe(AGENT_VAULT.VARIABLE.orderBy),
+        orderDirection: z.enum(["asc", "desc"]).default("asc").describe(AGENT_VAULT.VARIABLE.orderDirection),
+        ...agentVaultListQuery(AGENT_VAULT.VARIABLE)
+      }),
+      response: {
+        200: z.object({
+          variables: AgentVaultVariableSchema.array(),
+          totalCount: z.number().describe(AGENT_VAULT.VARIABLE.totalCount)
+        })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) => {
-      const variables = await server.services.agentVaultVariable.listVariables({
+    handler: async (req) =>
+      server.services.agentVaultVariable.listVariables({
         projectId: req.internalAgentVaultProjectId,
-        ctx: actorContext(req)
-      });
-      return { variables };
-    }
+        ctx: actorContext(req),
+        ...req.query
+      })
   });
 
   server.route({

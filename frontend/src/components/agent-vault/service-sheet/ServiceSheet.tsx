@@ -27,7 +27,7 @@ import {
   AgentVaultCredentialType,
   AgentVaultVariableReferenceField,
   useCreateAgentVaultService,
-  useListAgentVaultVariables,
+  useListAllAgentVaultVariables,
   useUpdateAgentVaultService
 } from "@app/hooks/api/agentVault";
 import {
@@ -156,7 +156,7 @@ export const ServiceSheet = ({
   const createService = useCreateAgentVaultService();
   const updateService = useUpdateAgentVaultService();
 
-  const { data: variables } = useListAgentVaultVariables(isOpen);
+  const { data: variables } = useListAllAgentVaultVariables(isOpen);
   const variableKeys = useMemo(() => variables?.map((variable) => variable.key), [variables]);
   const storedKeys = useMemo(() => storedVariableKeys(service), [service]);
   // One dialog for every field. The request settles once the dialog has closed, not when the variable is

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -35,6 +35,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  Pagination,
   Skeleton,
   Table,
   TableBody,
@@ -48,7 +49,14 @@ import {
 } from "@app/components/v3";
 import { MAX_VARIABLES, toVariableReference } from "@app/helpers/agentVaultVariables";
 import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import { useDebounce, useResetPageHelper } from "@app/hooks";
+import {
   useListAgentVaultVariables,
+  useListAllAgentVaultVariables,
   useRevealAgentVaultVariableValue
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
@@ -194,32 +202,39 @@ const TruncatedKey = ({ value }: { value: string }) => {
 };
 
 export const VariablesCard = () => {
-  const { data: variables = [], isPending } = useListAgentVaultVariables();
   const revealValue = useRevealAgentVaultVariableValue();
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
   const [sortColumn, setSortColumn] = useState(SortColumn.Key);
   const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("ascending");
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(() =>
+    getUserTablePreference("agentVaultVariablesTable", PreferenceKey.PerPage, 20)
+  );
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [variableToEdit, setVariableToEdit] = useState<TAgentVaultVariable | null>(null);
   const [variableToDelete, setVariableToDelete] = useState<TAgentVaultVariable | null>(null);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [revealingId, setRevealingId] = useState<string | null>(null);
 
-  const displayed = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    const filtered = variables.filter((variable) => variable.key.toLowerCase().includes(term));
+  const searchTerm = debouncedSearch.trim();
+  const { data, isPending } = useListAgentVaultVariables({
+    search: searchTerm || undefined,
+    orderBy: sortColumn,
+    orderDirection: sortDirection === "ascending" ? "asc" : "desc",
+    limit: perPage,
+    offset: (page - 1) * perPage
+  });
+  const displayed = data?.variables ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
 
-    const compare = (a: TAgentVaultVariable, b: TAgentVaultVariable) =>
-      sortColumn === SortColumn.UsedBy
-        ? a.usedBy.length - b.usedBy.length || a.key.localeCompare(b.key)
-        : a.key.localeCompare(b.key);
-
-    const ordered = [...filtered].sort(compare);
-    return sortDirection === "ascending" ? ordered : ordered.reverse();
-  }, [variables, search, sortColumn, sortDirection]);
+  // The dialog checks a new key against every key, which no single page holds.
+  const { data: allVariables } = useListAllAgentVaultVariables(isFormOpen);
 
   const handleSort = (column: SortColumn, direction: "ascending" | "descending" | "none") => {
+    setPage(1);
     if (direction === "none") {
       setSortColumn(SortColumn.Key);
       setSortDirection("ascending");
@@ -281,7 +296,9 @@ export const VariablesCard = () => {
     }
   };
 
-  const isAtLimit = variables.length >= MAX_VARIABLES;
+  const hasVariables = totalCount > 0 || Boolean(searchTerm);
+  // A search narrows totalCount, so only an unfiltered count says whether the cap is reached.
+  const isAtLimit = !searchTerm && totalCount >= MAX_VARIABLES;
 
   const openForm = (variable: TAgentVaultVariable | null) => {
     setVariableToEdit(variable);
@@ -325,7 +342,7 @@ export const VariablesCard = () => {
         </CardAction>
       </CardHeader>
 
-      {variables.length > 0 && (
+      {hasVariables && (
         <CardContent>
           <InputGroup>
             <InputGroupAddon>
@@ -333,7 +350,10 @@ export const VariablesCard = () => {
             </InputGroupAddon>
             <InputGroupInput
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               placeholder="Search variables..."
             />
           </InputGroup>
@@ -345,12 +365,12 @@ export const VariablesCard = () => {
           <Empty className="border">
             <EmptyHeader>
               <EmptyTitle>
-                {variables.length === 0 ? "No variables yet" : "No variables match your search"}
+                {hasVariables ? "No variables match your search" : "No variables yet"}
               </EmptyTitle>
               <EmptyDescription>
-                {variables.length === 0
-                  ? "Add a variable to use one value across services in any access bundle."
-                  : "Try a different search term."}
+                {hasVariables
+                  ? "Try a different search term."
+                  : "Add a variable to use one value across services in any access bundle."}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -453,11 +473,27 @@ export const VariablesCard = () => {
         </Table>
       )}
 
+      {totalCount > 0 && (
+        <CardContent className="-mt-5 pt-0">
+          <Pagination
+            count={totalCount}
+            page={page}
+            perPage={perPage}
+            onChangePage={setPage}
+            onChangePerPage={(newPerPage) => {
+              setPerPage(newPerPage);
+              setPage(1);
+              setUserTablePreference("agentVaultVariablesTable", PreferenceKey.PerPage, newPerPage);
+            }}
+          />
+        </CardContent>
+      )}
+
       <VariableFormDialog
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
         variable={variableToEdit}
-        existingKeys={variables.map((variable) => variable.key)}
+        existingKeys={allVariables?.map((variable) => variable.key) ?? []}
       />
 
       <DeleteVariableDialog

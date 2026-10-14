@@ -24,6 +24,7 @@ import {
 import {
   TAgentVaultVariableUsedBy,
   TCreateVariableDTO,
+  TListVariablesDTO,
   TUpdateVariableDTO,
   TVariableByIdDTO
 } from "./agent-vault-variable-types";
@@ -84,13 +85,13 @@ export const agentVaultVariableServiceFactory = ({
       : `The variable '${key}' is used by the services ${names}. Remove it from those services before deleting it.`;
   };
 
-  const listVariables = async (dto: TAgentVaultProjectScoped) => {
-    await assertCanManageVariables(dto);
+  const listVariables = async ({ projectId, ctx, ...query }: TListVariablesDTO) => {
+    await assertCanManageVariables({ projectId, ctx });
 
-    const variables = await agentVaultVariableDAL.findByProjectId(dto.projectId);
+    const { variables, totalCount } = await agentVaultVariableDAL.findForList({ projectId, ...query });
     const users = await agentVaultVariableDAL.findUsers(variables.map((variable) => variable.id));
 
-    return variables.map((variable) => projectVariable(variable, users));
+    return { variables: variables.map((variable) => projectVariable(variable, users)), totalCount };
   };
 
   const createVariable = async ({ key, value, ...rest }: TCreateVariableDTO) => {

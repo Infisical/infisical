@@ -4464,6 +4464,12 @@ export const AGENT_VAULT = {
     value: "The value the proxy puts in place of each `{{KEY}}`.",
     updateValue: "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value.",
     revealedValue: "The variable's value.",
+    orderBy: "What to sort variables by: key, or usedBy for how many services use each one.",
+    orderDirection: "Which way to sort: asc or desc.",
+    search: "Match variables whose key contains this text.",
+    limit: "The maximum number of variables to return.",
+    offset: "How many variables to skip.",
+    totalCount: "How many variables match the search, across every page.",
     usedBy:
       "The services that use this variable, across every access bundle, ordered by access bundle name and then service name. A variable in use can't be deleted.",
     usedById: "The ID of a service that uses this variable.",

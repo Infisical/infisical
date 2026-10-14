@@ -138,6 +138,14 @@ export type TListAgentVaultAccessBundlesDTO = Omit<TListAgentVaultProxiesDTO, "o
   orderBy?: "name" | "serviceCount" | "createdAt";
 };
 
+export type TListAgentVaultVariablesDTO = {
+  search?: string;
+  orderBy?: "key" | "usedBy";
+  orderDirection?: "asc" | "desc";
+  limit?: number;
+  offset?: number;
+};
+
 export type TListAgentVaultMembersDTO = {
   actorType?: AgentVaultMemberType;
   search?: string;

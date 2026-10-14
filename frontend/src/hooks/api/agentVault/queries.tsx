@@ -37,7 +37,8 @@ import {
   TListAgentVaultAccessBundlesDTO,
   TListAgentVaultMembersDTO,
   TListAgentVaultProxiesDTO,
-  TListAgentVaultSessionsDTO
+  TListAgentVaultSessionsDTO,
+  TListAgentVaultVariablesDTO
 } from "./types";
 
 export const fetchAgentVaultProjectId = async () => {
@@ -89,6 +90,9 @@ export const agentVaultKeys = {
     params?: Omit<TListAgentVaultMembersDTO, "actorType">
   ) => [...agentVaultKeys.accessBundleMembers(orgId, accessBundleId), "available", params] as const,
   variables: (orgId: string) => [...agentVaultKeys.all(orgId), "variables"] as const,
+  variableList: (orgId: string, params: TListAgentVaultVariablesDTO) =>
+    [...agentVaultKeys.variables(orgId), "list", params] as const,
+  allVariables: (orgId: string) => [...agentVaultKeys.variables(orgId), "all"] as const,
   members: (orgId: string) => [...agentVaultKeys.all(orgId), "members"] as const,
   memberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
     [...agentVaultKeys.members(orgId), params] as const,
@@ -527,16 +531,48 @@ export const useGetAgentVaultSessionLogs = (
   };
 };
 
-export const useListAgentVaultVariables = (enabled = true) => {
+type TAgentVaultVariablePage = { variables: TAgentVaultVariable[]; totalCount: number };
+
+const fetchAgentVaultVariables = async (params: TListAgentVaultVariablesDTO) => {
+  const { data } = await apiRequest.get<TAgentVaultVariablePage>("/api/v1/agent-vault/variables", {
+    params
+  });
+  return data;
+};
+
+export const useListAgentVaultVariables = (params: TListAgentVaultVariablesDTO = {}) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
-    queryKey: agentVaultKeys.variables(currentOrg.id),
+    queryKey: agentVaultKeys.variableList(currentOrg.id, params),
+    queryFn: () => fetchAgentVaultVariables(params),
+    placeholderData: (prev) => prev
+  });
+};
+
+const ALL_VARIABLES_PAGE_SIZE = 100;
+
+// Every variable, sorted by key, for suggesting and checking references, which need the whole set. The product
+// caps how many there can be, so this is a handful of pages at most.
+export const useListAllAgentVaultVariables = (enabled = true) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.allVariables(currentOrg.id),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ variables: TAgentVaultVariable[] }>(
-        "/api/v1/agent-vault/variables"
-      );
-      return data.variables;
+      const variables: TAgentVaultVariable[] = [];
+      let totalCount = Infinity;
+      while (variables.length < totalCount) {
+        // eslint-disable-next-line no-await-in-loop
+        const page = await fetchAgentVaultVariables({
+          limit: ALL_VARIABLES_PAGE_SIZE,
+          offset: variables.length
+        });
+        variables.push(...page.variables);
+        totalCount = page.totalCount;
+        if (page.variables.length < ALL_VARIABLES_PAGE_SIZE) break;
+      }
+      return variables;
     },
     enabled
   });

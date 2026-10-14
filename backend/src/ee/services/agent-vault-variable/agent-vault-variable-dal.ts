@@ -3,12 +3,24 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TAgentVaultVariables } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
 
 export type TAgentVaultVariableDALFactory = ReturnType<typeof agentVaultVariableDALFactory>;
 
 // accessBundleId is left over from bundle-scoped variables and no longer read, so it stays off every row.
 export type TAgentVaultVariable = Omit<TAgentVaultVariables, "accessBundleId">;
+
+export type TAgentVaultVariableOrderBy = "key" | "usedBy";
+
+export type TFindAgentVaultVariablesDTO = {
+  projectId: string;
+  search?: string;
+  orderBy: TAgentVaultVariableOrderBy;
+  orderDirection: "asc" | "desc";
+  limit: number;
+  offset: number;
+};
 
 export type TAgentVaultVariableValueRow = Pick<TAgentVaultVariables, "id" | "encryptedValue">;
 
@@ -28,15 +40,52 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
 
   const columns = VARIABLE_COLUMNS.map((column) => `${TableName.AgentVaultVariable}.${column}`);
 
-  // Reads the primary even without a tx, so a variable created a moment ago is always listed.
-  const findByProjectId = async (projectId: string, tx?: Knex): Promise<TAgentVaultVariable[]> => {
+  // Reads the primary even without a tx, so a variable created a moment ago is always listed. usedBy counts the
+  // services that use a variable, each once however many of its fields do.
+  const findForList = async (
+    { projectId, search, orderBy, orderDirection, limit, offset }: TFindAgentVaultVariablesDTO,
+    tx?: Knex
+  ): Promise<{ variables: TAgentVaultVariable[]; totalCount: number }> => {
     try {
-      return (await (tx || db)(TableName.AgentVaultVariable)
-        .where({ projectId })
-        .orderBy("key", "asc")
-        .select(columns)) as TAgentVaultVariable[];
+      const conn = tx || db;
+
+      const applyFilters = (query: Knex.QueryBuilder) => {
+        void query.where(`${TableName.AgentVaultVariable}.projectId`, projectId);
+        if (search) {
+          void query.whereILike(`${TableName.AgentVaultVariable}.key`, `%${sanitizeSqlLikeString(search)}%`);
+        }
+        return query;
+      };
+
+      const countResult = (await applyFilters(conn(TableName.AgentVaultVariable))
+        .count(`${TableName.AgentVaultVariable}.id as count`)
+        .first()) as { count: string } | undefined;
+      const totalCount = parseInt(countResult?.count || "0", 10);
+
+      const usageCounts = conn(TableName.AgentVaultServiceVariableReference)
+        .select("variableId")
+        .countDistinct("serviceId as count")
+        .groupBy("variableId")
+        .as("uc");
+
+      const pageQuery = applyFilters(conn(TableName.AgentVaultVariable))
+        .leftJoin(usageCounts, function joinUsageCount() {
+          this.on(db.raw(`uc."variableId" = ??.id`, [TableName.AgentVaultVariable]));
+        })
+        .limit(limit)
+        .offset(offset)
+        .select(columns);
+
+      if (orderBy === "usedBy") {
+        void pageQuery.orderByRaw(`COALESCE(uc.count, 0) ${orderDirection === "desc" ? "DESC" : "ASC"}`);
+        void pageQuery.orderBy(`${TableName.AgentVaultVariable}.key`, "asc");
+      } else {
+        void pageQuery.orderBy(`${TableName.AgentVaultVariable}.key`, orderDirection);
+      }
+
+      return { variables: (await pageQuery) as TAgentVaultVariable[], totalCount };
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find agent vault variables" });
+      throw new DatabaseError({ error, name: "List agent vault variables" });
     }
   };
 
@@ -173,7 +222,7 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
 
   return {
     ...orm,
-    findByProjectId,
+    findForList,
     findKeysByProjectId,
     findByIdInProject,
     findByKeyInProject,
