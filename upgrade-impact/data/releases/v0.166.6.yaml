@@ -74,13 +74,15 @@ breakingChanges:
       In orgs on the legacy privilege system, roles without that action,
       including the built-in Member role, now get 403. Editing an identity auth
       template's fields now requires edit-auth on every identity linked to the
-      template. Template LDAP URLs and OIDC discovery URLs on private IPs are
-      now rejected on create and update.
+      template. LDAP auth template URLs on private IPs are now rejected on
+      create and update, matching the existing check on OIDC discovery URLs
+      and on LDAP auth attached directly to an identity.
     action: Before upgrading, give users and machine identities that manage org
       identity credentials a role with the edit-auth, revoke-auth,
       create-token, get-token and delete-token identity actions they need. If
-      auth templates point at an LDAP or OIDC host on a private network, set
-      ALLOW_INTERNAL_IP_CONNECTIONS=true.
+      an LDAP auth template points at a host on a private network, set
+      ALLOW_INTERNAL_IP_CONNECTIONS=true. This setting allows private hosts
+      for every URL Infisical validates, not only auth templates.
     confidence: medium
     evidence:
       - type: pr
