@@ -4,6 +4,8 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardContent,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -54,32 +56,31 @@ export const TravisCIAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Travis CI Integration</CardTitle>
         </CardHeader>
-        <Field className="mb-4" data-invalid={apiKeyErrorText !== ""}>
-          <FieldLabel htmlFor="TravisCIAuthorizePage-field-1">Travis CI API Token</FieldLabel>
-          <Input
-            id="TravisCIAuthorizePage-field-1"
-            aria-describedby="TravisCIAuthorizePage-field-1-feedback"
-            isError={apiKeyErrorText !== ""}
-            placeholder=""
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-          />
-          {apiKeyErrorText !== "" && (
-            <FieldError id="TravisCIAuthorizePage-field-1-feedback">{apiKeyErrorText}</FieldError>
-          )}
-        </Field>
-        <Button
-          onClick={handleButtonClick}
-          className="mt-4"
-          isPending={isLoading}
-          variant="project"
-        >
-          Connect to Travis CI
-        </Button>
+        <CardContent className="flex flex-col gap-4">
+          <Field data-invalid={apiKeyErrorText !== ""}>
+            <FieldLabel htmlFor="TravisCIAuthorizePage-field-1">Travis CI API Token</FieldLabel>
+            <Input
+              id="TravisCIAuthorizePage-field-1"
+              aria-describedby="TravisCIAuthorizePage-field-1-feedback"
+              isError={apiKeyErrorText !== ""}
+              placeholder=""
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+            />
+            {apiKeyErrorText !== "" && (
+              <FieldError id="TravisCIAuthorizePage-field-1-feedback">{apiKeyErrorText}</FieldError>
+            )}
+          </Field>
+        </CardContent>
+        <CardFooter className="justify-end border-t pt-4">
+          <Button onClick={handleButtonClick} isPending={isLoading} variant="project">
+            Connect to Travis CI
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );

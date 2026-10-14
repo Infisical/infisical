@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
-import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import {
   Button,
   Card,
+  CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
+  DocumentationLinkBadge,
   Field,
   FieldError,
   FieldLabel,
@@ -131,163 +132,151 @@ export const TerraformCloudConfigurePage = () => {
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>
-            <div className="flex flex-row items-center">
-              <div className="flex items-center">
-                <img
-                  src="/images/integrations/Terraform.png"
-                  height={35}
-                  width={35}
-                  alt="Terraform logo"
-                />
-              </div>
-              <span className="ml-1.5">Terraform Cloud Integration </span>
-              <a
-                target="_blank"
-                rel="noopener noreferrer"
-                href="https://infisical.com/docs/integrations/cloud/terraform-cloud"
-              >
-                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  Docs
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="text-xxs mb-[0.07rem] ml-1.5"
-                  />
-                </div>
-              </a>
-            </div>
+            <img
+              src="/images/integrations/Terraform.png"
+              height={35}
+              width={35}
+              alt="Terraform logo"
+            />
+            Terraform Cloud Integration
+            <DocumentationLinkBadge href="https://infisical.com/docs/integrations/cloud/terraform-cloud" />
           </CardTitle>
           <CardDescription>
             Specify the encironment and path within Infisical that you want to push to which project
             in Terraform.
           </CardDescription>
         </CardHeader>
-        <Field className="mb-4 px-6">
-          <FieldLabel htmlFor="TerraformCloudConfigurePage-field-1">Project Environment</FieldLabel>
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-          >
-            <SelectTrigger
-              id="TerraformCloudConfigurePage-field-1"
-              aria-describedby="TerraformCloudConfigurePage-field-1-feedback"
-              className="w-full"
+        <CardContent className="flex flex-col gap-4">
+          <Field>
+            <FieldLabel htmlFor="TerraformCloudConfigurePage-field-1">
+              Project Environment
+            </FieldLabel>
+            <Select
+              value={selectedSourceEnvironment}
+              onValueChange={(val) => setSelectedSourceEnvironment(val)}
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {currentProject?.environments.map((sourceEnvironment) => (
-                <SelectItem
-                  value={sourceEnvironment.slug}
-                  key={`source-environment-${sourceEnvironment.slug}`}
-                >
-                  {sourceEnvironment.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field className="mb-4 px-6">
-          <FieldLabel htmlFor="TerraformCloudConfigurePage-field-2">Secrets Path</FieldLabel>
-          <Input
-            id="TerraformCloudConfigurePage-field-2"
-            aria-describedby="TerraformCloudConfigurePage-field-2-feedback"
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-          />
-        </Field>
-        <Field className="mb-4 px-6" data-invalid={variableTypeErrorText !== ""}>
-          <FieldLabel htmlFor="TerraformCloudConfigurePage-field-3">Category</FieldLabel>
-          <Select value={variableType} onValueChange={(val) => setVariableType(val)}>
-            <SelectTrigger
-              id="TerraformCloudConfigurePage-field-3"
-              aria-describedby="TerraformCloudConfigurePage-field-3-feedback"
-              isError={variableTypeErrorText !== ""}
-              className="w-full"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {variableTypes.map((variable) => (
-                <SelectItem value={variable.name} key={`target-app-${variable.name}`}>
-                  {variable.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {variableTypeErrorText !== "" && (
-            <FieldError id="TerraformCloudConfigurePage-field-3-feedback">
-              {variableTypeErrorText}
-            </FieldError>
-          )}
-        </Field>
-        <Field className="mb-4 px-6">
-          <FieldLabel htmlFor="TerraformCloudConfigurePage-field-4">
-            Terraform Cloud Project
-          </FieldLabel>
-          <Select
-            value={targetApp}
-            onValueChange={(val) => setTargetApp(val)}
-            disabled={integrationAuthApps.length === 0}
-          >
-            <SelectTrigger
-              id="TerraformCloudConfigurePage-field-4"
-              aria-describedby="TerraformCloudConfigurePage-field-4-feedback"
-              className="w-full"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {integrationAuthApps.length > 0 ? (
-                integrationAuthApps.map((integrationAuthApp) => (
+              <SelectTrigger
+                id="TerraformCloudConfigurePage-field-1"
+                aria-describedby="TerraformCloudConfigurePage-field-1-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {currentProject?.environments.map((sourceEnvironment) => (
                   <SelectItem
-                    value={integrationAuthApp.name}
-                    key={`target-app-${integrationAuthApp.name}`}
+                    value={sourceEnvironment.slug}
+                    key={`source-environment-${sourceEnvironment.slug}`}
                   >
-                    {integrationAuthApp.name}
+                    {sourceEnvironment.name}
                   </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="none" key="target-app-none">
-                  No project found
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field className="mb-4 px-6">
-          <FieldLabel htmlFor="TerraformCloudConfigurePage-field-5">
-            Initial Sync Behavior
-          </FieldLabel>
-          <Select value={initialSyncBehavior} onValueChange={(e) => setInitialSyncBehavior(e)}>
-            <SelectTrigger
-              id="TerraformCloudConfigurePage-field-5"
-              aria-describedby="TerraformCloudConfigurePage-field-5-feedback"
-              className="w-full"
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="TerraformCloudConfigurePage-field-2">Secrets Path</FieldLabel>
+            <Input
+              id="TerraformCloudConfigurePage-field-2"
+              aria-describedby="TerraformCloudConfigurePage-field-2-feedback"
+              value={secretPath}
+              onChange={(evt) => setSecretPath(evt.target.value)}
+              placeholder="Provide a path, default is /"
+            />
+          </Field>
+          <Field data-invalid={variableTypeErrorText !== ""}>
+            <FieldLabel htmlFor="TerraformCloudConfigurePage-field-3">Category</FieldLabel>
+            <Select value={variableType} onValueChange={(val) => setVariableType(val)}>
+              <SelectTrigger
+                id="TerraformCloudConfigurePage-field-3"
+                aria-describedby="TerraformCloudConfigurePage-field-3-feedback"
+                isError={variableTypeErrorText !== ""}
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {variableTypes.map((variable) => (
+                  <SelectItem value={variable.name} key={`target-app-${variable.name}`}>
+                    {variable.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {variableTypeErrorText !== "" && (
+              <FieldError id="TerraformCloudConfigurePage-field-3-feedback">
+                {variableTypeErrorText}
+              </FieldError>
+            )}
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="TerraformCloudConfigurePage-field-4">
+              Terraform Cloud Project
+            </FieldLabel>
+            <Select
+              value={targetApp}
+              onValueChange={(val) => setTargetApp(val)}
+              disabled={integrationAuthApps.length === 0}
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {initialSyncBehaviors.map((b) => {
-                return (
-                  <SelectItem value={b.value} key={`sync-behavior-${b.value}`}>
-                    {b.label}
+              <SelectTrigger
+                id="TerraformCloudConfigurePage-field-4"
+                aria-describedby="TerraformCloudConfigurePage-field-4-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {integrationAuthApps.length > 0 ? (
+                  integrationAuthApps.map((integrationAuthApp) => (
+                    <SelectItem
+                      value={integrationAuthApp.name}
+                      key={`target-app-${integrationAuthApp.name}`}
+                    >
+                      {integrationAuthApp.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" key="target-app-none">
+                    No project found
                   </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Button
-          onClick={handleButtonClick}
-          className="mt-2 mr-6 mb-6 ml-auto w-min"
-          isPending={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
-          variant="project"
-        >
-          Create Integration
-        </Button>
+                )}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="TerraformCloudConfigurePage-field-5">
+              Initial Sync Behavior
+            </FieldLabel>
+            <Select value={initialSyncBehavior} onValueChange={(e) => setInitialSyncBehavior(e)}>
+              <SelectTrigger
+                id="TerraformCloudConfigurePage-field-5"
+                aria-describedby="TerraformCloudConfigurePage-field-5-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {initialSyncBehaviors.map((b) => {
+                  return (
+                    <SelectItem value={b.value} key={`sync-behavior-${b.value}`}>
+                      {b.label}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </Field>
+        </CardContent>
+        <CardFooter className="justify-end border-t pt-4">
+          <Button
+            onClick={handleButtonClick}
+            isPending={isLoading}
+            isDisabled={integrationAuthApps.length === 0}
+            variant="project"
+          >
+            Create Integration
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   ) : (

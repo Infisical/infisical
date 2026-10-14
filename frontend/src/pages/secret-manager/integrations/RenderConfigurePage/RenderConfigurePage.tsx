@@ -1,23 +1,25 @@
 import { useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
-import {
-  faArrowUpRightFromSquare,
-  faBookOpen,
-  faBugs,
-  faCircleInfo
-} from "@fortawesome/free-solid-svg-icons";
+import { faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   Card,
+  CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
+  DocumentationLinkBadge,
   Field,
   FieldError,
   FieldLabel,
@@ -122,7 +124,7 @@ export const RenderConfigurePage = () => {
   return integrationAuth && selectedSourceEnvironment && integrationAuthApps ? (
     <form
       onSubmit={handleSubmit(onFormSubmit)}
-      className="flex h-full w-full flex-col items-center justify-center"
+      className="flex h-full w-full flex-col items-center justify-center gap-6"
     >
       <Helmet>
         <title>Set Up Render Integration</title>
@@ -130,43 +132,21 @@ export const RenderConfigurePage = () => {
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>
-            <div className="flex flex-row items-center">
-              <div className="flex items-center pb-0.5">
-                <img
-                  src="/images/integrations/Render.png"
-                  height={30}
-                  width={30}
-                  alt="Render logo"
-                />
-              </div>
-              <span className="ml-2.5">Render Integration </span>
-              <a
-                href="https://infisical.com/docs/integrations/cloud/render"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  Docs
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="text-xxs mb-[0.07rem] ml-1.5"
-                  />
-                </div>
-              </a>
-            </div>
+            <img src="/images/integrations/Render.png" height={30} width={30} alt="Render logo" />
+            Render Integration
+            <DocumentationLinkBadge href="https://infisical.com/docs/integrations/cloud/render" />
           </CardTitle>
           <CardDescription>
             Choose which environment or folder in Infisical you want to sync to Render environment
             variables.
           </CardDescription>
         </CardHeader>
-        <div className="px-6">
+        <CardContent className="flex flex-col gap-4">
           <Controller
             control={control}
             name="selectedSourceEnvironment"
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
+              <Field data-invalid={Boolean(error)}>
                 <FieldLabel htmlFor="RenderConfigurePage-field-1">Project Environment</FieldLabel>
                 <Select
                   defaultValue={field.value}
@@ -208,7 +188,7 @@ export const RenderConfigurePage = () => {
             defaultValue=""
             name="secretPath"
             render={({ field, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
+              <Field data-invalid={Boolean(error)}>
                 <FieldLabel htmlFor="RenderConfigurePage-field-2">Secrets Path</FieldLabel>
                 <SecretPathInput
                   id="RenderConfigurePage-field-2"
@@ -231,7 +211,7 @@ export const RenderConfigurePage = () => {
             name="targetAppId"
             render={({ field: { onChange, ...field }, fieldState: { error } }) => {
               return (
-                <Field className="mb-4" data-invalid={Boolean(error)}>
+                <Field data-invalid={Boolean(error)}>
                   <FieldLabel htmlFor="RenderConfigurePage-field-3">Render Service</FieldLabel>
                   <Select
                     value={field.value}
@@ -277,47 +257,42 @@ export const RenderConfigurePage = () => {
               );
             }}
           />
-          <div className="mt-8 mb-[2.36rem] ml-1">
-            <Controller
-              control={control}
-              name="shouldAutoRedeploy"
-              render={({ field: { onChange, value } }) => (
-                <Field orientation="horizontal">
-                  <FieldLabel htmlFor="redeploy-render">
-                    Auto-redeploy service upon secret change
-                  </FieldLabel>
-                  <Toggle
-                    id="redeploy-render"
-                    onCheckedChange={(isChecked) => onChange(isChecked)}
-                    checked={value}
-                  />
-                </Field>
-              )}
-            />
-          </div>
-        </div>
-        <Button
-          className="mt-4 mr-6 mb-8 ml-auto w-min"
-          size="sm"
-          type="submit"
-          isPending={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
-          variant="project"
-        >
-          Create Integration
-        </Button>
+          <Controller
+            control={control}
+            name="shouldAutoRedeploy"
+            render={({ field: { onChange, value } }) => (
+              <Field orientation="horizontal">
+                <FieldLabel htmlFor="redeploy-render">
+                  Auto-redeploy service upon secret change
+                </FieldLabel>
+                <Toggle
+                  id="redeploy-render"
+                  onCheckedChange={(isChecked) => onChange(isChecked)}
+                  checked={value}
+                />
+              </Field>
+            )}
+          />
+        </CardContent>
+        <CardFooter className="justify-end border-t pt-4">
+          <Button
+            type="submit"
+            isPending={isLoading}
+            isDisabled={integrationAuthApps.length === 0}
+            variant="project"
+          >
+            Create Integration
+          </Button>
+        </CardFooter>
       </Card>
-      <div className="mt-6 w-full max-w-md border-t border-border-faint" />
-      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-border-control bg-surface-raised p-4">
-        <div className="flex flex-row items-center">
-          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-foreground-secondary" />{" "}
-          <span className="text-md ml-3 text-foreground">Pro Tip</span>
-        </div>
-        <span className="mt-4 text-sm text-label">
+      <Alert variant="info" className="w-full max-w-lg">
+        <InfoIcon />
+        <AlertTitle>Pro Tip</AlertTitle>
+        <AlertDescription>
           After creating an integration, your secrets will start syncing immediately. This might
           cause an unexpected override of current secrets in Render with secrets from Infisical.
-        </span>
-      </div>
+        </AlertDescription>
+      </Alert>
     </form>
   ) : (
     <div className="flex h-full w-full items-center justify-center">

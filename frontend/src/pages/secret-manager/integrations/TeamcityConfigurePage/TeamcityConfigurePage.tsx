@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
-import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
+import { faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import {
   Button,
   Card,
+  CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
+  DocumentationLinkBadge,
   Field,
   FieldLabel,
   Input,
@@ -114,150 +117,136 @@ export const TeamcityConfigurePage = () => {
       <Helmet>
         <title>Set Up TeamCity Integration</title>
       </Helmet>
-      <Card className="mb-12 w-full max-w-lg">
+      <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>
-            <div className="flex flex-row items-center">
-              <div className="flex items-center pb-0.5">
-                <img
-                  src="/images/integrations/TeamCity.png"
-                  height={28}
-                  width={28}
-                  alt="TeamCity logo"
-                />
-              </div>
-              <span className="ml-2">TeamCity Integration</span>
-              <a
-                href="https://infisical.com/docs/integrations/cloud/teamcity"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  Docs
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="text-xxs mb-[0.07rem] ml-1.5"
-                  />
-                </div>
-              </a>
-            </div>
+            <img
+              src="/images/integrations/TeamCity.png"
+              height={28}
+              width={28}
+              alt="TeamCity logo"
+            />
+            TeamCity Integration
+            <DocumentationLinkBadge href="https://infisical.com/docs/integrations/cloud/teamcity" />
           </CardTitle>
           <CardDescription>
             Choose which environment or folders in Infisical you want to sync to which project in
             TeamCity.
           </CardDescription>
         </CardHeader>
-        <Field className="mb-4 px-6">
-          <FieldLabel htmlFor="TeamcityConfigurePage-field-1">Project Environment</FieldLabel>
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-          >
-            <SelectTrigger
-              id="TeamcityConfigurePage-field-1"
-              aria-describedby="TeamcityConfigurePage-field-1-feedback"
-              className="w-full"
+        <CardContent className="flex flex-col gap-4">
+          <Field>
+            <FieldLabel htmlFor="TeamcityConfigurePage-field-1">Project Environment</FieldLabel>
+            <Select
+              value={selectedSourceEnvironment}
+              onValueChange={(val) => setSelectedSourceEnvironment(val)}
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {currentProject?.environments.map((sourceEnvironment) => (
-                <SelectItem
-                  value={sourceEnvironment.slug}
-                  key={`source-environment-${sourceEnvironment.slug}`}
-                >
-                  {sourceEnvironment.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field className="mb-4 px-6">
-          <FieldLabel htmlFor="TeamcityConfigurePage-field-2">Secrets Path</FieldLabel>
-          <Input
-            id="TeamcityConfigurePage-field-2"
-            aria-describedby="TeamcityConfigurePage-field-2-feedback"
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-          />
-        </Field>
-        <Field className="mb-4 px-6">
-          <FieldLabel htmlFor="TeamcityConfigurePage-field-3">TeamCity Project</FieldLabel>
-          <Select
-            value={targetAppId}
-            onValueChange={(val) => setTargetAppId(val)}
-            disabled={integrationAuthApps.length === 0}
-          >
-            <SelectTrigger
-              id="TeamcityConfigurePage-field-3"
-              aria-describedby="TeamcityConfigurePage-field-3-feedback"
-              className="w-full"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {integrationAuthApps.length > 0 ? (
-                integrationAuthApps.map((integrationAuthApp) => (
+              <SelectTrigger
+                id="TeamcityConfigurePage-field-1"
+                aria-describedby="TeamcityConfigurePage-field-1-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {currentProject?.environments.map((sourceEnvironment) => (
                   <SelectItem
-                    value={integrationAuthApp.appId as string}
-                    key={`target-app-${integrationAuthApp.appId as string}`}
+                    value={sourceEnvironment.slug}
+                    key={`source-environment-${sourceEnvironment.slug}`}
                   >
-                    {integrationAuthApp.name}
+                    {sourceEnvironment.name}
                   </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="none" key="target-app-none">
-                  No projects found
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field className="mb-4 px-6">
-          <FieldLabel htmlFor="TeamcityConfigurePage-field-4">
-            Team City Build Config (Optional)
-          </FieldLabel>
-          <Select
-            value={targetBuildConfigId}
-            onValueChange={(val) => setTargetBuildConfigId(val)}
-            disabled={targetBuildConfigs.length === 0}
-          >
-            <SelectTrigger
-              id="TeamcityConfigurePage-field-4"
-              aria-describedby="TeamcityConfigurePage-field-4-feedback"
-              className="w-full"
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="TeamcityConfigurePage-field-2">Secrets Path</FieldLabel>
+            <Input
+              id="TeamcityConfigurePage-field-2"
+              aria-describedby="TeamcityConfigurePage-field-2-feedback"
+              value={secretPath}
+              onChange={(evt) => setSecretPath(evt.target.value)}
+              placeholder="Provide a path, default is /"
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="TeamcityConfigurePage-field-3">TeamCity Project</FieldLabel>
+            <Select
+              value={targetAppId}
+              onValueChange={(val) => setTargetAppId(val)}
+              disabled={integrationAuthApps.length === 0}
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {targetBuildConfigs.length ? (
-                targetBuildConfigs.map((buildConfig: any) => (
-                  <SelectItem
-                    value={buildConfig.buildConfigId}
-                    key={`target-build-config-${buildConfig.buildConfigId}`}
-                  >
-                    {buildConfig.name}
+              <SelectTrigger
+                id="TeamcityConfigurePage-field-3"
+                aria-describedby="TeamcityConfigurePage-field-3-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {integrationAuthApps.length > 0 ? (
+                  integrationAuthApps.map((integrationAuthApp) => (
+                    <SelectItem
+                      value={integrationAuthApp.appId as string}
+                      key={`target-app-${integrationAuthApp.appId as string}`}
+                    >
+                      {integrationAuthApp.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" key="target-app-none">
+                    No projects found
                   </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="none" key="target-app-none">
-                  No build configs found
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Button
-          onClick={handleButtonClick}
-          className="mt-2 mr-6 mb-6 ml-auto"
-          isPending={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
-          variant="project"
-        >
-          Create Integration
-        </Button>
+                )}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="TeamcityConfigurePage-field-4">
+              Team City Build Config (Optional)
+            </FieldLabel>
+            <Select
+              value={targetBuildConfigId}
+              onValueChange={(val) => setTargetBuildConfigId(val)}
+              disabled={targetBuildConfigs.length === 0}
+            >
+              <SelectTrigger
+                id="TeamcityConfigurePage-field-4"
+                aria-describedby="TeamcityConfigurePage-field-4-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {targetBuildConfigs.length ? (
+                  targetBuildConfigs.map((buildConfig: any) => (
+                    <SelectItem
+                      value={buildConfig.buildConfigId}
+                      key={`target-build-config-${buildConfig.buildConfigId}`}
+                    >
+                      {buildConfig.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" key="target-app-none">
+                    No build configs found
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </Field>
+        </CardContent>
+        <CardFooter className="justify-end border-t pt-4">
+          <Button
+            onClick={handleButtonClick}
+            isPending={isLoading}
+            isDisabled={integrationAuthApps.length === 0}
+            variant="project"
+          >
+            Create Integration
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   ) : (
