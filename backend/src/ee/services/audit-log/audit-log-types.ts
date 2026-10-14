@@ -3016,9 +3016,12 @@ interface RemoveGroupFromProjectEvent {
 type TCaKeySourceAuditMetadata = {
   keySource?: string;
   hsmConnectorId?: string;
+  hsmConnectorName?: string;
+  hsmKeyLabel?: string;
   appConnectionId?: string;
   appConnectionName?: string;
   externalKeyId?: string;
+  region?: string;
 };
 
 interface CreateCa {

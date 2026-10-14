@@ -3328,6 +3328,7 @@ export const registerRoutes = async (
 
   const caKeySourceService = caKeySourceServiceFactory({
     hsmConnectorService,
+    hsmConnectorDAL,
     certificateAuthoritySecretDAL,
     appConnectionDAL,
     appConnectionService,

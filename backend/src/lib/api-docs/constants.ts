@@ -2857,6 +2857,7 @@ export const CertificateAuthorities = {
       appConnectionId:
         "The ID of the AWS connection used to create the CA's signing key in AWS KMS and to sign with it. Required when keySource is 'aws-kms'.",
       appConnectionName: "The name of the AWS connection the CA's signing key is reached through. Not user-supplied.",
+      hsmConnectorName: "The name of the HSM Connector the CA's signing key is reached through. Not user-supplied.",
       region:
         "The AWS region the CA's signing key is created in. Required when keySource is 'aws-kms', and returned when reading the CA.",
       externalKeyId:

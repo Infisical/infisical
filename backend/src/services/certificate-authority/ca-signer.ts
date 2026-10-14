@@ -142,6 +142,25 @@ const HSM_MECHANISM_BY_HASH: Record<"rsa" | "ecdsa", Record<string, string>> = {
   }
 };
 
+export type TEphemeralKeyCache = (
+  keyGenParams: Algorithm,
+  generate: () => Promise<CryptoKeyPair>
+) => Promise<CryptoKeyPair>;
+
+export const createEphemeralKeyCache = (): TEphemeralKeyCache => {
+  const keyPairs = new Map<string, Promise<CryptoKeyPair>>();
+  return (keyGenParams, generate) => {
+    const cacheKey = JSON.stringify(keyGenParams);
+    const cached = keyPairs.get(cacheKey);
+    if (cached) return cached;
+
+    const keyPair = generate();
+    keyPairs.set(cacheKey, keyPair);
+    keyPair.catch(() => keyPairs.delete(cacheKey));
+    return keyPair;
+  };
+};
+
 export const algorithmHashName = (alg: Algorithm): string | undefined => {
   const { hash } = alg as { hash?: string | { name?: string } };
   return typeof hash === "string" ? hash : hash?.name;
@@ -200,12 +219,14 @@ export const buildHsmCaSigner = ({
   caPublicKey,
   keyAlgorithm,
   signingAlgorithm,
-  sign
+  sign,
+  ephemeralKeys
 }: {
   caPublicKey: CryptoKey;
   keyAlgorithm: CertKeyAlgorithm | string;
   signingAlgorithm?: Algorithm;
   sign: TCaExternalSignFn;
+  ephemeralKeys: TEphemeralKeyCache;
 }): TCaSigner => {
   const shape = caKeyAlgorithmToHsmShape(keyAlgorithm);
 
@@ -241,7 +262,9 @@ export const buildHsmCaSigner = ({
     caPublicKey,
     signingAlgorithm: certSigningAlgorithm,
     generateEphemeralKey: () =>
-      crypto.nativeCrypto.subtle.generateKey(keyGenParams as RsaHashedKeyGenParams, true, ["sign", "verify"]),
+      ephemeralKeys(keyGenParams, () =>
+        crypto.nativeCrypto.subtle.generateKey(keyGenParams as RsaHashedKeyGenParams, true, ["sign", "verify"])
+      ),
     signTbs
   });
 };

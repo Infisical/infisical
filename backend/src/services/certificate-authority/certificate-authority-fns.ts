@@ -6,6 +6,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { derivePublicKeyFromSecret, getPqcCrypto, isPqcAlgorithm, PqcCryptoKey } from "@app/lib/crypto/pqc";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { pick } from "@app/lib/fn";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
@@ -727,11 +728,19 @@ export const rethrowCaDeleteError = (error: unknown): never => {
   throw error;
 };
 
-export const getCaKeySourceAuditMetadata = (configuration: unknown) => {
-  const { keySource, hsmConnectorId, hsmKeyLabel, appConnectionId, appConnectionName, externalKeyId } =
-    (configuration ?? {}) as TCaKeyDetails & { keySource?: string };
-  return { keySource, hsmConnectorId, appConnectionId, appConnectionName, externalKeyId: externalKeyId ?? hsmKeyLabel };
-};
+const CA_KEY_SOURCE_AUDIT_FIELDS = [
+  "keySource",
+  "hsmConnectorId",
+  "hsmConnectorName",
+  "hsmKeyLabel",
+  "appConnectionId",
+  "appConnectionName",
+  "externalKeyId",
+  "region"
+] as const;
+
+export const getCaKeySourceAuditMetadata = (configuration: unknown) =>
+  pick((configuration ?? {}) as TCaKeyDetails & { keySource?: string }, [...CA_KEY_SOURCE_AUDIT_FIELDS]);
 
 export const deleteCaAndReleaseExternalKey = async ({
   caId,

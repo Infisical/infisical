@@ -11,6 +11,7 @@ import {
 import { AsnConvert } from "@peculiar/asn1-schema";
 import { SubjectPublicKeyInfo } from "@peculiar/asn1-x509";
 
+import { ProjectType } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -29,7 +30,7 @@ import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { algorithmHashName, buildExternalCaSigner } from "../ca-signer";
+import { algorithmHashName, buildExternalCaSigner, createEphemeralKeyCache } from "../ca-signer";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import {
   AWS_KMS_KEY_SPEC_BY_ALGORITHM,
@@ -66,6 +67,8 @@ export const awsKmsCaKeySourceFactory = ({
   projectDAL,
   licenseService
 }: TAwsKmsCaKeySourceDep): TExternalCaKeyProvider => {
+  const ephemeralKeys = createEphemeralKeyCache();
+
   const $getKmsClient = async (appConnectionId: string, region: string) => {
     const appConnection = await appConnectionDAL.findById(appConnectionId);
     if (!appConnection) {
@@ -76,7 +79,10 @@ export const awsKmsCaKeySourceFactory = ({
     }
 
     const decryptedConnection = (await decryptAppConnection(appConnection, kmsService)) as TAwsConnection;
-    const awsConfig = await getAwsConnectionConfig(decryptedConnection, region as AWSRegion);
+    const awsConfig = await getAwsConnectionConfig(
+      { ...decryptedConnection, projectType: ProjectType.CertificateManager },
+      region as AWSRegion
+    );
 
     return new KMSClient({
       sha256: CustomAWSHasher,
@@ -195,7 +201,9 @@ export const awsKmsCaKeySourceFactory = ({
           caPublicKey,
           signingAlgorithm: keyAlgCfg,
           generateEphemeralKey: () =>
-            pqcCrypto.subtle.generateKey(keyAlgCfg as RsaHashedKeyGenParams, true, ["sign", "verify"]),
+            ephemeralKeys(keyAlgCfg, () =>
+              pqcCrypto.subtle.generateKey(keyAlgCfg as RsaHashedKeyGenParams, true, ["sign", "verify"])
+            ),
           signTbs: (tbs) =>
             sign(
               computeMlDsaExternalMu(rawPublicKey, tbs),
@@ -218,7 +226,9 @@ export const awsKmsCaKeySourceFactory = ({
         caPublicKey,
         signingAlgorithm: certSigningAlgorithm,
         generateEphemeralKey: () =>
-          crypto.nativeCrypto.subtle.generateKey(ephemeralKeyParams, true, ["sign", "verify"]),
+          ephemeralKeys(ephemeralKeyParams, () =>
+            crypto.nativeCrypto.subtle.generateKey(ephemeralKeyParams, true, ["sign", "verify"])
+          ),
         signTbs: (tbs) =>
           sign(crypto.nativeCrypto.createHash(nodeHash).update(tbs).digest(), MessageType.DIGEST, signingAlgorithmSpec)
       });

@@ -2,6 +2,7 @@ import { Controller, UseFormReturn } from "react-hook-form";
 import { Link } from "@tanstack/react-router";
 
 import {
+  AwsKmsCaSigningUpgradeIntent,
   PostQuantumCertificatesUpgradeIntent,
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
@@ -94,6 +95,13 @@ export const KeyValidityStep = ({
               <Select
                 value={field.value}
                 onValueChange={(value) => {
+                  if (value === CertKeySource.AwsKms && !isAwsKmsLicensed) {
+                    openUpgradeGate({
+                      intent: AwsKmsCaSigningUpgradeIntent,
+                      paywallKey: "cert-manager.ca-key-source"
+                    });
+                    return;
+                  }
                   field.onChange(value);
                   if (
                     !isKeyAlgorithmSupportedByKeySource(
@@ -121,7 +129,7 @@ export const KeyValidityStep = ({
                       )}
                     </div>
                   </SelectItem>
-                  <SelectItem value={CertKeySource.AwsKms} disabled={!isAwsKmsLicensed}>
+                  <SelectItem value={CertKeySource.AwsKms}>
                     <div className="flex items-center gap-2">
                       AWS KMS
                       {!isAwsKmsLicensed && <Badge variant="info">Enterprise</Badge>}

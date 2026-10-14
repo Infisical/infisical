@@ -5,7 +5,7 @@ import * as pkijs from "pkijs";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
-import { buildHsmCaSigner } from "@app/services/certificate-authority/ca-signer";
+import { buildHsmCaSigner, createEphemeralKeyCache } from "@app/services/certificate-authority/ca-signer";
 
 import { OCSP_NONCE_OID } from "./certificate-authority-ocsp-enums";
 
@@ -76,7 +76,8 @@ const buildHarness = async () => {
       signCount += 1;
       await gate;
       return Buffer.from(await webcrypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, keys.privateKey, tbs));
-    }
+    },
+    ephemeralKeys: createEphemeralKeyCache()
   });
 
   getCaSignerMock.mockResolvedValue({ signer });

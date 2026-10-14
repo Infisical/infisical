@@ -85,17 +85,20 @@ const AWS_KMS_ERROR_MESSAGES: Record<string, string> = {
   UnsupportedOperationException: "AWS KMS does not support this key algorithm in the selected region.",
   UnrecognizedClientException: "AWS rejected the AWS connection's credentials. Check the connection and try again.",
   InvalidSignatureException: "AWS rejected the AWS connection's credentials. Check the connection and try again.",
-  ExpiredTokenException: "The AWS connection's credentials have expired. Check the connection and try again."
+  ExpiredTokenException: "The AWS connection's credentials have expired. Check the connection and try again.",
+  ThrottlingException: "AWS KMS is throttling requests. Try again shortly.",
+  KMSInternalException: "AWS KMS had an internal error. Try again shortly.",
+  DependencyTimeoutException: "AWS KMS timed out. Try again shortly."
 };
 
 export const toAwsKmsError = (error: unknown, operation: string): Error => {
   if (error instanceof BadRequestError) return error;
 
-  const { name, message } = error as { name?: string; message?: string };
+  const { name } = error as { name?: string };
   logger.error(error, `AWS KMS ${operation} failed [errorName=${name}]`);
 
   const known = name ? AWS_KMS_ERROR_MESSAGES[name] : undefined;
   return new BadRequestError({
-    message: `Failed to ${operation} in AWS KMS: ${known ?? message ?? "unknown error"}`
+    message: `Failed to ${operation} in AWS KMS: ${known ?? `AWS returned ${name ?? "an unexpected error"}.`}`
   });
 };

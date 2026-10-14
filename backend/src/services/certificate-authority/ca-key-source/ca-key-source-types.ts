@@ -21,6 +21,7 @@ export type TExternalCaKeyReference = Pick<
 
 export type TCaKeyDetails = {
   hsmConnectorId?: string;
+  hsmConnectorName?: string;
   hsmKeyLabel?: string;
   appConnectionId?: string;
   appConnectionName?: string;

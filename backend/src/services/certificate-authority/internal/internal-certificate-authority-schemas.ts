@@ -35,6 +35,7 @@ type TInternalCertificateAuthorityConfiguration = {
   hsmKeyLabel?: string;
   appConnectionId?: string;
   appConnectionName?: string;
+  hsmConnectorName?: string;
   region?: AWSRegion;
   externalKeyId?: string;
   dn?: string | null;
@@ -83,6 +84,7 @@ export const InternalCertificateAuthorityConfigurationSchema = z
       .optional()
       .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.appConnectionId),
     appConnectionName: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.appConnectionName),
+    hsmConnectorName: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmConnectorName),
     region: z.nativeEnum(AWSRegion).optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.region),
     externalKeyId: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.externalKeyId),
     dn: z.string().trim().max(PKI_TEXT_COLUMN_MAX_LENGTH).nullish(),
@@ -130,11 +132,15 @@ export const CreateInternalCertificateAuthoritySchema = GenericCreateCertificate
   .extend({
     configuration: InternalCertificateAuthorityConfigurationSchema
   })
-  .refine(({ configuration }) => !configuration.externalKeyId && !configuration.appConnectionName, {
-    message:
-      "externalKeyId and appConnectionName are read-only and cannot be set when creating a certificate authority",
-    path: ["configuration"]
-  });
+  .refine(
+    ({ configuration }) =>
+      !configuration.externalKeyId && !configuration.appConnectionName && !configuration.hsmConnectorName,
+    {
+      message:
+        "externalKeyId, appConnectionName and hsmConnectorName are read-only and cannot be set when creating a certificate authority",
+      path: ["configuration"]
+    }
+  );
 
 export const UpdateInternalCertificateAuthorityConfigurationSchema = z.object({
   crlDistributionPointUrls: distributionPointUrlsSchema

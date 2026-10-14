@@ -60,7 +60,6 @@ import { caStatusToNameMap, caTypeToNameMap } from "@app/hooks/api/ca/constants"
 import { caKeys } from "@app/hooks/api/ca/queries";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
-import { useGetHsmConnectorById } from "@app/hooks/api/hsmConnectors";
 import { CertKeySource } from "@app/hooks/api/signers";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -124,9 +123,6 @@ export const CaDetailsSection = ({ caId }: Props) => {
   const parentCa = parentCaData as TInternalCertificateAuthority | undefined;
 
   const isHsmBacked = ca?.configuration?.keySource === CertKeySource.Hsm;
-  const { data: hsmConnector } = useGetHsmConnectorById(ca?.configuration?.hsmConnectorId, {
-    enabled: Boolean(isHsmBacked && ca?.configuration?.hsmConnectorId)
-  });
 
   const isAwsKmsBacked = ca?.configuration?.keySource === CertKeySource.AwsKms;
 
@@ -319,7 +315,7 @@ export const CaDetailsSection = ({ caId }: Props) => {
                 <Detail>
                   <DetailLabel>HSM Connector</DetailLabel>
                   <DetailValue className="break-all">
-                    {hsmConnector?.name ?? ca.configuration.hsmConnectorId ?? "-"}
+                    {ca.configuration.hsmConnectorName ?? ca.configuration.hsmConnectorId ?? "-"}
                   </DetailValue>
                 </Detail>
                 {ca.configuration.hsmKeyLabel && (
