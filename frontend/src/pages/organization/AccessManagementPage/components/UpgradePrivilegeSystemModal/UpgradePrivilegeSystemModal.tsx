@@ -4,9 +4,25 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, Checkbox, Modal, ModalContent, Tooltip } from "@app/components/v2";
+import {
+  Button,
+  Checkbox,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldContent,
+  FieldGroup,
+  FieldLabel,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useOrgPermission } from "@app/context";
 import { OrgMembershipRole } from "@app/helpers/roles";
+import { useScopeVariant } from "@app/hooks";
 import { useUpgradePrivilegeSystem } from "@app/hooks/api";
 
 const formSchema = z.object({
@@ -24,6 +40,7 @@ type Props = {
 export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => {
   const { hasOrgRole } = useOrgPermission();
   const [step, setStep] = useState<"info" | "upgrade">("info");
+  const scopeVariant = useScopeVariant();
 
   const {
     handleSubmit,
@@ -62,10 +79,13 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
   const isAdmin = hasOrgRole(OrgMembershipRole.Admin);
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={handleClose}>
-      <ModalContent title="Privilege Management System Upgrade" className="max-w-2xl">
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent isPending={isSubmitting}>
+        <DialogHeader>
+          <DialogTitle>Privilege Management System Upgrade</DialogTitle>
+        </DialogHeader>
         {step === "info" ? (
-          <div className="mb-4">
+          <div>
             <p className="mb-4 text-sm text-label">
               We&apos;ve developed an improved privilege management system that enhances how access
               controls work in your organization.
@@ -136,20 +156,14 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
               </div>
             </div>
 
-            <div className="mt-4 flex justify-end">
-              <Button
-                onClick={() => setStep("upgrade")}
-                variant="solid"
-                colorSchema="primary"
-                size="md"
-                className="w-[120px] bg-project hover:bg-project"
-              >
+            <DialogFooter>
+              <Button onClick={() => setStep("upgrade")} variant={scopeVariant}>
                 Continue
               </Button>
-            </div>
+            </DialogFooter>
           </div>
         ) : (
-          <div className="mb-4">
+          <form onSubmit={handleSubmit(handlePrivilegeSystemUpgrade)}>
             <p className="mb-4 text-sm text-label">
               Your existing access control workflows will continue to function. However, actions
               that involve modifying privileges or permissions will now use the new permission-based
@@ -171,25 +185,31 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
               <div className="mb-4">
                 <p className="mb-3 text-sm font-medium">Required preparation checklist:</p>
 
-                <div className="flex flex-col space-y-4">
+                <FieldGroup>
                   <Controller
                     control={control}
                     name="isProjectPrivilegesUpdated"
                     defaultValue={false}
                     render={({ field: { onBlur, value, onChange }, fieldState: { error } }) => (
-                      <Checkbox
-                        containerClassName="items-start"
-                        className="mt-0.5 items-start"
-                        id="is-project-privileges-updated"
-                        indicatorClassName="flex h-full w-full items-center justify-center"
-                        allowMultilineLabel
-                        isChecked={value}
-                        onCheckedChange={onChange}
-                        onBlur={onBlur}
-                        isError={Boolean(error?.message)}
-                      >
-                        I have reviewed project-level privileges and updated them if necessary
-                      </Checkbox>
+                      <Field orientation="horizontal" data-invalid={Boolean(error)}>
+                        <Checkbox
+                          id="is-project-privileges-updated"
+                          variant={scopeVariant}
+                          isChecked={value}
+                          onCheckedChange={(checked) => onChange(checked === true)}
+                          onBlur={onBlur}
+                          isError={Boolean(error)}
+                        />
+                        <FieldContent>
+                          <FieldLabel
+                            htmlFor="is-project-privileges-updated"
+                            className="cursor-pointer"
+                            size="sm"
+                          >
+                            I have reviewed project-level privileges and updated them if necessary
+                          </FieldLabel>
+                        </FieldContent>
+                      </Field>
                     )}
                   />
                   <Controller
@@ -197,19 +217,26 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                     name="isOrgPrivilegesUpdated"
                     defaultValue={false}
                     render={({ field: { onBlur, value, onChange }, fieldState: { error } }) => (
-                      <Checkbox
-                        containerClassName="items-start"
-                        className="mt-0.5 items-start"
-                        id="is-org-privileges-updated"
-                        indicatorClassName="flex h-full w-full items-center justify-center"
-                        allowMultilineLabel
-                        isChecked={value}
-                        onCheckedChange={onChange}
-                        onBlur={onBlur}
-                        isError={Boolean(error?.message)}
-                      >
-                        I have reviewed organization-level privileges and updated them if necessary
-                      </Checkbox>
+                      <Field orientation="horizontal" data-invalid={Boolean(error)}>
+                        <Checkbox
+                          id="is-org-privileges-updated"
+                          variant={scopeVariant}
+                          isChecked={value}
+                          onCheckedChange={(checked) => onChange(checked === true)}
+                          onBlur={onBlur}
+                          isError={Boolean(error)}
+                        />
+                        <FieldContent>
+                          <FieldLabel
+                            htmlFor="is-org-privileges-updated"
+                            className="cursor-pointer"
+                            size="sm"
+                          >
+                            I have reviewed organization-level privileges and updated them if
+                            necessary
+                          </FieldLabel>
+                        </FieldContent>
+                      </Field>
                     )}
                   />
                   <Controller
@@ -217,20 +244,26 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                     name="isInfrastructureUpdated"
                     defaultValue={false}
                     render={({ field: { onBlur, value, onChange }, fieldState: { error } }) => (
-                      <Checkbox
-                        containerClassName="items-start"
-                        className="mt-0.5 items-start"
-                        id="is-infrastructure-updated"
-                        indicatorClassName="flex h-full w-full items-center justify-center"
-                        allowMultilineLabel
-                        isChecked={value}
-                        onCheckedChange={onChange}
-                        onBlur={onBlur}
-                        isError={Boolean(error?.message)}
-                      >
-                        I have checked Terraform configurations and API integrations for
-                        compatibility with the new system
-                      </Checkbox>
+                      <Field orientation="horizontal" data-invalid={Boolean(error)}>
+                        <Checkbox
+                          id="is-infrastructure-updated"
+                          variant={scopeVariant}
+                          isChecked={value}
+                          onCheckedChange={(checked) => onChange(checked === true)}
+                          onBlur={onBlur}
+                          isError={Boolean(error)}
+                        />
+                        <FieldContent>
+                          <FieldLabel
+                            htmlFor="is-infrastructure-updated"
+                            className="cursor-pointer"
+                            size="sm"
+                          >
+                            I have checked Terraform configurations and API integrations for
+                            compatibility with the new system
+                          </FieldLabel>
+                        </FieldContent>
+                      </Field>
                     )}
                   />
                   <Controller
@@ -238,59 +271,61 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
                     name="acknowledgesPermanentChange"
                     defaultValue={false}
                     render={({ field: { onBlur, value, onChange }, fieldState: { error } }) => (
-                      <Checkbox
-                        containerClassName="items-start"
-                        className="mt-0.5 items-start"
-                        id="acknowledges-permanent-change"
-                        indicatorClassName="flex h-full w-full items-center justify-center"
-                        allowMultilineLabel
-                        isChecked={value}
-                        onCheckedChange={onChange}
-                        onBlur={onBlur}
-                        isError={Boolean(error?.message)}
-                      >
-                        I understand that this upgrade is permanent and cannot be reversed
-                      </Checkbox>
+                      <Field orientation="horizontal" data-invalid={Boolean(error)}>
+                        <Checkbox
+                          id="acknowledges-permanent-change"
+                          variant={scopeVariant}
+                          isChecked={value}
+                          onCheckedChange={(checked) => onChange(checked === true)}
+                          onBlur={onBlur}
+                          isError={Boolean(error)}
+                        />
+                        <FieldContent>
+                          <FieldLabel
+                            htmlFor="acknowledges-permanent-change"
+                            className="cursor-pointer"
+                            size="sm"
+                          >
+                            I understand that this upgrade is permanent and cannot be reversed
+                          </FieldLabel>
+                        </FieldContent>
+                      </Field>
                     )}
                   />
-                </div>
+                </FieldGroup>
               </div>
             </div>
-            <form onSubmit={handleSubmit(handlePrivilegeSystemUpgrade)}>
-              <div className="mt-6 flex items-center justify-end gap-4">
-                <button
-                  type="button"
-                  onClick={() => setStep("info")}
-                  className="w-[120px] text-sm text-label hover:text-foreground-secondary"
+            <DialogFooter>
+              <Button variant="ghost" isDisabled={isSubmitting} onClick={() => setStep("info")}>
+                Cancel
+              </Button>
+              {isAdmin ? (
+                <Button
+                  type="submit"
+                  variant={scopeVariant}
+                  isDisabled={!isAllChecksCompleted}
+                  isPending={isSubmitting}
                 >
-                  Cancel
-                </button>
-                <Tooltip
-                  content={
-                    !isAdmin
-                      ? "You cannot perform this upgrade because you are not an organization admin."
-                      : undefined
-                  }
-                >
-                  <div>
-                    <Button
-                      type="submit"
-                      variant="solid"
-                      colorSchema="primary"
-                      size="md"
-                      className="w-[120px] bg-project hover:bg-project"
-                      isDisabled={!isAllChecksCompleted || !isAdmin}
-                      isLoading={isSubmitting}
-                    >
-                      Upgrade
-                    </Button>
-                  </div>
+                  Upgrade
+                </Button>
+              ) : (
+                <Tooltip hoverable delayDuration={50}>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <Button type="submit" variant={scopeVariant} isDisabled>
+                        Upgrade
+                      </Button>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    You cannot perform this upgrade because you are not an organization admin.
+                  </TooltipContent>
                 </Tooltip>
-              </div>
-            </form>
-          </div>
+              )}
+            </DialogFooter>
+          </form>
         )}
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

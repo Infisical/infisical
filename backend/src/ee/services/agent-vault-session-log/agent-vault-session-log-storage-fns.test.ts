@@ -16,7 +16,10 @@ vi.mock("@app/services/app-connection/app-connection-fns", () => ({
 vi.mock("@app/services/app-connection/aws/aws-connection-fns", () => ({
   getAwsConnectionConfig: vi.fn()
 }));
-vi.mock("@app/lib/aws/s3", () => ({ createS3Bucket: vi.fn(() => ({})) }));
+vi.mock("@app/lib/aws/s3", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/aws/s3")>()),
+  createS3Bucket: vi.fn(() => ({}))
+}));
 
 describe("buildSessionLogStorage", () => {
   const config = { appConnectionId: "conn-1", bucket: "logs", region: AWSRegion.US_EAST_1, keyPrefix: null };
@@ -43,7 +46,26 @@ describe("buildSessionLogStorage", () => {
     });
   });
 
-  test("assumes the role with Agent Vault's External ID, for its own connections too", async () => {
+  test.each([
+    {
+      why: "AWS throttles the call",
+      error: new STSServiceException({
+        name: "Throttling",
+        $fault: "client",
+        $metadata: { httpStatusCode: 400 },
+        message: "Rate exceeded"
+      })
+    },
+    { why: "the network drops it", error: Object.assign(new Error("connect ETIMEDOUT"), { code: "ETIMEDOUT" }) }
+  ])("is a 500 to try again when $why", async ({ error }) => {
+    vi.mocked(getAwsConnectionConfig).mockRejectedValueOnce(error);
+    await expect(buildSessionLogStorage(config, "org-1", deps)).rejects.toMatchObject({
+      name: "InternalServerError",
+      message: "Couldn't reach AWS to use the connection 'prod-logs' for session logs. Try again in a bit."
+    });
+  });
+
+  test("assumes the role with Agent Vault's External ID and timeouts, for its own connections too", async () => {
     vi.mocked(getAwsConnectionConfig).mockClear();
     vi.mocked(getAwsConnectionConfig).mockResolvedValueOnce({
       region: AWSRegion.US_EAST_1,
@@ -59,7 +81,8 @@ describe("buildSessionLogStorage", () => {
     await buildSessionLogStorage(config, "org-1", deps);
     expect(getAwsConnectionConfig).toHaveBeenCalledWith(
       expect.objectContaining({ projectType: ProjectType.AgentVault }),
-      config.region
+      config.region,
+      { stsRequestHandler: { connectionTimeout: 5_000, requestTimeout: 15_000, throwOnRequestTimeout: true } }
     );
   });
 

@@ -1,10 +1,10 @@
 import { Controller, useForm } from "react-hook-form";
-import { faQuestionCircle } from "@fortawesome/free-regular-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CircleHelpIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { FilterableSelect } from "@app/components/v2";
 import {
   Accordion,
   AccordionContent,
@@ -12,12 +12,15 @@ import {
   AccordionTrigger,
   Button,
   Checkbox,
-  FilterableSelect,
-  FormControl,
-  FormLabel,
+  Field,
+  FieldContent,
+  FieldError,
+  FieldLabel,
   Input,
-  Tooltip
-} from "@app/components/v2";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   useCreateCertTemplateV2,
@@ -178,50 +181,56 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
+    <form className="flex flex-col gap-4" onSubmit={handleSubmit(onFormSubmit)}>
       {certTemplate && (
-        <FormControl label="Certificate Template ID">
-          <Input value={certTemplate.id} isDisabled className="bg-foreground-inverse/[0.07]" />
-        </FormControl>
+        <Field>
+          <FieldLabel htmlFor="pki-template-id">Certificate Template ID</FieldLabel>
+          <Input id="pki-template-id" value={certTemplate.id} disabled />
+        </Field>
       )}
       <Controller
         control={control}
         defaultValue=""
         name="name"
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Template Name"
-            isError={Boolean(error)}
-            errorText={error?.message}
-            isRequired
-          >
-            <Input
-              {...field}
-              placeholder="my-template"
-              autoComplete="off"
-              name="pki-template-name"
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel htmlFor="pki-template-name">
+              Template Name <span className="text-danger">*</span>
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                {...field}
+                id="pki-template-name"
+                placeholder="my-template"
+                autoComplete="off"
+                name="pki-template-name"
+                isError={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
       <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl
-            label="Issuing CA"
-            errorText={error?.message}
-            isError={Boolean(error)}
-            isRequired
-          >
-            <FilterableSelect
-              options={cas || []}
-              isLoading={isCaLoading}
-              placeholder="Select CA..."
-              onChange={onChange}
-              value={value}
-              getOptionValue={(option) => option.id}
-              getOptionLabel={(option) => option.name}
-            />
-          </FormControl>
+          <Field>
+            <FieldLabel htmlFor="pki-template-ca">
+              Issuing CA <span className="text-danger">*</span>
+            </FieldLabel>
+            <FieldContent>
+              <FilterableSelect
+                inputId="pki-template-ca"
+                options={cas || []}
+                isLoading={isCaLoading}
+                placeholder="Select CA..."
+                onChange={onChange}
+                value={value}
+                getOptionValue={(option) => option.id}
+                getOptionLabel={(option) => option.name}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
         control={control}
         name="ca"
@@ -231,34 +240,29 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
         defaultValue=""
         name="commonName"
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label={
-              <div>
-                <FormLabel
-                  isRequired
-                  label="Common Name (CN)"
-                  icon={
-                    <Tooltip
-                      className="text-center"
-                      content={
-                        <span>
-                          This field accepts limited regular expressions: spaces, *, ., @, -, \ (for
-                          escaping), and alphanumeric characters only
-                        </span>
-                      }
-                    >
-                      <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                    </Tooltip>
-                  }
-                />
-              </div>
-            }
-            isError={Boolean(error)}
-            errorText={error?.message}
-            isRequired
-          >
-            <Input {...field} placeholder=".*\.acme.com" />
-          </FormControl>
+          <Field>
+            <FieldLabel htmlFor="pki-template-common-name">
+              Common Name (CN) <span className="text-danger">*</span>
+              <Tooltip hoverable delayDuration={50}>
+                <TooltipTrigger asChild>
+                  <CircleHelpIcon className="size-3.5 text-muted" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs text-center">
+                  This field accepts limited regular expressions: spaces, *, ., @, -, \ (for
+                  escaping), and alphanumeric characters only
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                {...field}
+                id="pki-template-common-name"
+                placeholder=".*\.acme.com"
+                isError={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
       <Controller
@@ -266,86 +270,91 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
         defaultValue=""
         name="subjectAlternativeName"
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label={
-              <div>
-                <FormLabel
-                  isRequired
-                  label="Alternative Names (SAN)"
-                  icon={
-                    <Tooltip
-                      className="text-center"
-                      content={
-                        <span>
-                          This field accepts limited regular expressions: spaces, *, ., @, -, \ (for
-                          escaping), and alphanumeric characters only
-                        </span>
-                      }
-                    >
-                      <FontAwesomeIcon icon={faQuestionCircle} size="sm" />
-                    </Tooltip>
-                  }
-                />
-              </div>
-            }
-            isError={Boolean(error)}
-            errorText={error?.message}
-            isRequired
-          >
-            <Input {...field} placeholder="service\.acme.\..*" />
-          </FormControl>
+          <Field>
+            <FieldLabel htmlFor="pki-template-san">
+              Alternative Names (SAN) <span className="text-danger">*</span>
+              <Tooltip hoverable delayDuration={50}>
+                <TooltipTrigger asChild>
+                  <CircleHelpIcon className="size-3.5 text-muted" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs text-center">
+                  This field accepts limited regular expressions: spaces, *, ., @, -, \ (for
+                  escaping), and alphanumeric characters only
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                {...field}
+                id="pki-template-san"
+                placeholder="service\.acme.\..*"
+                isError={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
       <Controller
         control={control}
         name="ttl"
         render={({ field, fieldState: { error } }) => (
-          <FormControl
-            label="Max TTL"
-            isError={Boolean(error)}
-            errorText={error?.message}
-            isRequired
-          >
-            <Input {...field} placeholder="2 days, 1d, 2h, 1y, ..." />
-          </FormControl>
+          <Field>
+            <FieldLabel htmlFor="pki-template-ttl">
+              Max TTL <span className="text-danger">*</span>
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                {...field}
+                id="pki-template-ttl"
+                placeholder="2 days, 1d, 2h, 1y, ..."
+                isError={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
+            </FieldContent>
+          </Field>
         )}
       />
-      <Accordion type="single" collapsible className="w-full">
-        <AccordionItem value="key-usages" className="data-[state=open]:border-none">
-          <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
-            <div className="order-1 ml-3">Key Usage</div>
-          </AccordionTrigger>
+      <Accordion type="single" collapsible variant="ghost" className="w-full">
+        <AccordionItem value="key-usages" className="border-b-0">
+          <AccordionTrigger>Key Usage</AccordionTrigger>
           <AccordionContent>
             <Controller
               control={control}
               name="keyUsages"
               render={({ field: { onChange, value }, fieldState: { error } }) => {
                 return (
-                  <FormControl
-                    label="Key Usage"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                  >
-                    <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
-                      {KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
-                        return (
-                          <Checkbox
-                            id={optionValue}
-                            key={optionValue}
-                            isChecked={value[optionValue]}
-                            onCheckedChange={(state) => {
-                              onChange({
-                                ...value,
-                                [optionValue]: state
-                              });
-                            }}
-                          >
-                            {label}
-                          </Checkbox>
-                        );
-                      })}
-                    </div>
-                  </FormControl>
+                  <Field className="mb-7">
+                    <FieldLabel>Key Usage</FieldLabel>
+                    <FieldContent>
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        {KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
+                          return (
+                            <div key={optionValue} className="flex items-center gap-3">
+                              <Checkbox
+                                id={`key-usage-${optionValue}`}
+                                variant="project"
+                                isChecked={value[optionValue]}
+                                onCheckedChange={(state) => {
+                                  onChange({
+                                    ...value,
+                                    [optionValue]: state
+                                  });
+                                }}
+                              />
+                              <label
+                                htmlFor={`key-usage-${optionValue}`}
+                                className="cursor-pointer text-sm text-foreground"
+                              >
+                                {label}
+                              </label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <FieldError errors={[error]} />
+                    </FieldContent>
+                  </Field>
                 );
               }}
             />
@@ -354,48 +363,48 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
               name="extendedKeyUsages"
               render={({ field: { onChange, value }, fieldState: { error } }) => {
                 return (
-                  <FormControl
-                    label="Extended Key Usage"
-                    errorText={error?.message}
-                    isError={Boolean(error)}
-                  >
-                    <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
-                      {EXTENDED_KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
-                        return (
-                          <Checkbox
-                            id={optionValue}
-                            key={optionValue}
-                            isChecked={value[optionValue]}
-                            onCheckedChange={(state) => {
-                              onChange({
-                                ...value,
-                                [optionValue]: state
-                              });
-                            }}
-                          >
-                            {label}
-                          </Checkbox>
-                        );
-                      })}
-                    </div>
-                  </FormControl>
+                  <Field className="mb-7">
+                    <FieldLabel>Extended Key Usage</FieldLabel>
+                    <FieldContent>
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        {EXTENDED_KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
+                          return (
+                            <div key={optionValue} className="flex items-center gap-3">
+                              <Checkbox
+                                id={`extended-key-usage-${optionValue}`}
+                                variant="project"
+                                isChecked={value[optionValue]}
+                                onCheckedChange={(state) => {
+                                  onChange({
+                                    ...value,
+                                    [optionValue]: state
+                                  });
+                                }}
+                              />
+                              <label
+                                htmlFor={`extended-key-usage-${optionValue}`}
+                                className="cursor-pointer text-sm text-foreground"
+                              >
+                                {label}
+                              </label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <FieldError errors={[error]} />
+                    </FieldContent>
+                  </Field>
                 );
               }}
             />
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-      <div className="mt-4 flex items-center">
-        <Button
-          className="mr-4"
-          size="sm"
-          type="submit"
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
+      <div className="flex items-center gap-4">
+        <Button variant="project" type="submit" isPending={isSubmitting} isDisabled={isSubmitting}>
           Save
         </Button>
-        <Button colorSchema="secondary" variant="plain" onClick={() => handlePopUpToggle(false)}>
+        <Button variant="ghost" onClick={() => handlePopUpToggle(false)}>
           Cancel
         </Button>
       </div>

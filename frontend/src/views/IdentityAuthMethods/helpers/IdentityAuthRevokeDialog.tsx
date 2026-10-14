@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useParams } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -14,6 +13,7 @@ import {
   AlertDialogTitle
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { useRouteProjectId } from "@app/hooks";
 import {
   IdentityAuthMethod,
   identityAuthToNameMap,
@@ -52,7 +52,7 @@ export const IdentityAuthRevokeDialog = ({
   authMethod,
   onSuccess
 }: Props) => {
-  const { projectId } = useParams({ strict: false });
+  const projectId = useRouteProjectId();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 

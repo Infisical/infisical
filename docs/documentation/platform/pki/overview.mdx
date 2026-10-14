@@ -1,68 +1,116 @@
 ---
 title: "Certificate management"
-description: "Manage Certificate Authorities and automate X.509 certificate lifecycle management across your organization."
+description: "Issue, track, and renew X.509 certificates from internal or external CAs, and sign software artifacts."
 sidebarTitle: "Certificate Management"
 icon: "file-key"
 ---
 
-Infisical Certificate Manager is a centralized platform for managing X.509 certificates across your organization. Issue certificates for TLS, mTLS, and device authentication — whether from your own private CAs or external providers like DigiCert and Let's Encrypt.
+Infisical Certificate Manager issues X.509 certificates for TLS, mTLS, and device authentication, from your own private CAs or from external CAs such as DigiCert and Let's Encrypt. It also tracks every certificate in your organization, alerts you before certificates expire, and signs software artifacts.
 
-The short video below provides a guided overview of Infisical's certificate management capabilities and key concepts, helping you build the right mental model before diving into the rest of the documentation.
+<Warning>
+  If you set up Certificate Manager before applications were introduced, see [Migrate to applications](/documentation/platform/pki/migration) to move from the earlier project-based model.
+</Warning>
 
-<br />
+## Get started
 
-<div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", maxWidth: "100%" }}>
-  <iframe
-    src="https://www.youtube.com/embed/jP-9Ak0tr8A"
-    title="YouTube video player"
-    style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-    allowfullscreen
-  ></iframe>
-</div>
-
-<br />
+Issue a certificate or sign an artifact, then learn how the parts of Certificate Manager fit together:
 
 <CardGroup cols={2}>
-  <Card title="Get Started" icon="rocket" href="/documentation/platform/pki/getting-started">
-    New to Certificate Manager? Start here to understand the core concepts and issue your first certificate.
+  <Card title="Issue first certificate" icon="award" href="/documentation/platform/pki/quick-starts/issue-first-certificate">
+    Issue a TLS certificate in under 10 minutes.
   </Card>
-  <Card title="Reference Architecture" icon="network" href="/documentation/platform/pki/concepts/reference-architecture">
-    Planning a rollout? See a reference layout for running your PKI across teams and environments.
+  <Card title="Sign first artifact" icon="file-pen" href="/documentation/platform/pki/quick-starts/sign-first-code">
+    Sign a JAR file in under 10 minutes.
+  </Card>
+  <Card title="Concepts" icon="book-open" href="/documentation/platform/pki/concepts/certificate-lifecycle">
+    Learn how Certificate Manager works.
   </Card>
 </CardGroup>
 
-## Core capabilities
+## Certificate authorities
+
+Set up the CAs that sign your certificates. To compare the two kinds, see [Certificate authorities](/documentation/platform/pki/ca/overview).
 
 <CardGroup cols={2}>
-  <Card title="Issue Certificates" icon="award" href="/documentation/platform/pki/applications/overview">
-    Issue X.509 certificates via API, ACME, EST, or SCEP for TLS, mTLS, and device authentication.
+  <Card title="Internal CA" icon="lock" href="/documentation/platform/pki/ca/private-ca">
+    Create root and intermediate CAs in Infisical.
   </Card>
-  <Card title="Sign Code" icon="file-pen" href="/documentation/platform/pki/code-signing/overview">
-    Sign software artifacts with centralized key management, approval workflows, and PKCS#11 integration.
+  <Card title="External CA" icon="landmark" href="/documentation/platform/pki/ca/external-ca">
+    Issue from a public or enterprise CA, such as Let's Encrypt, DigiCert, AWS Private CA, or Microsoft ADCS.
   </Card>
-  <Card title="Discover Certificates" icon="radar" href="/documentation/platform/pki/discovery/overview">
-    Scan your infrastructure to find and inventory certificates you didn't know existed.
-  </Card>
-  <Card title="Sync Certificates" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
-    Push certificates to AWS ACM, Azure Key Vault, Cloudflare, and other destinations.
+  <Card title="HSM connectors" icon="shield-half" href="/documentation/platform/pki/settings/hsm-connectors">
+    Keep internal CA and signer keys in your own HSM.
   </Card>
 </CardGroup>
 
-## Lifecycle management
+## Managing certificates
+
+Set the rules certificates must follow, then issue, deliver, and renew certificates for each service:
 
 <CardGroup cols={2}>
-  <Card title="Auto-Renewal" icon="rotate-cw" href="/documentation/platform/pki/applications/enrollment-methods/overview">
-    Automate certificate renewal so nothing expires unexpectedly.
+  <Card title="Applications" icon="layout-grid" href="/documentation/platform/pki/applications/overview">
+    Give each service its own members, certificates, and settings.
   </Card>
-  <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
-    Get notified via Slack, PagerDuty, or webhooks when certificates expire or lifecycle events occur.
+  <Card title="Certificate policies" icon="shield-check" href="/documentation/platform/pki/settings/policies">
+    Limit the subjects, names, key usages, algorithms, and validity a certificate can have.
   </Card>
-  <Card title="Approval Workflows" icon="check-check" href="/documentation/platform/pki/applications/approvals">
-    Require human review before high-value certificates are issued.
+  <Card title="Certificate profiles" icon="file-badge" href="/documentation/platform/pki/settings/profiles">
+    Pair a policy with a CA for applications to issue from.
   </Card>
-  <Card title="Certificate Authorities" icon="landmark" href="/documentation/platform/pki/ca/overview">
-    Create private CA hierarchies or connect external CAs like DigiCert, Let's Encrypt, and AWS PCA.
+  <Card title="Enrollment methods" icon="log-in" href="/documentation/platform/pki/applications/enrollment-methods/overview">
+    Request certificates through the API, ACME, EST, or SCEP, with guides for common tools.
+  </Card>
+  <Card title="Issue and manage certificates" icon="award" href="/documentation/platform/pki/applications/certificates">
+    Issue, import, revoke, and export the certificates in an application.
+  </Card>
+  <Card title="Approvals" icon="check-check" href="/documentation/platform/pki/applications/approvals">
+    Require a review before a certificate is issued.
+  </Card>
+  <Card title="Renewal" icon="rotate-cw" href="/documentation/platform/pki/applications/certificate-renewal">
+    Renew a certificate, and change its details as part of the renewal.
+  </Card>
+  <Card title="Certificate syncs" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
+    Push certificates to AWS, Azure, Cloudflare, load balancers, and servers.
   </Card>
 </CardGroup>
 
+## Monitoring
+
+Track every certificate in Certificate Manager, and find out about problems before they cause an outage:
+
+<CardGroup cols={2}>
+  <Card title="Certificate inventory" icon="list" href="/documentation/platform/pki/monitoring/certificate-inventory">
+    Search, filter, and save views of every certificate.
+  </Card>
+  <Card title="Discovery" icon="radar" href="/documentation/platform/pki/discovery/overview">
+    Scan your network for certificates that Infisical didn't issue.
+  </Card>
+  <Card title="Alerts" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified by email, Slack, PagerDuty, or webhook when certificates expire or change.
+  </Card>
+  <Card title="Certificate cleanup" icon="trash-2" href="/documentation/platform/pki/settings/certificate-cleanup">
+    Remove expired certificates automatically.
+  </Card>
+</CardGroup>
+
+## Code signing
+
+Sign software artifacts with keys kept in Infisical or in your own HSM, with approvals and an audit trail of every signature. To see how a signing operation works, see the [code signing overview](/documentation/platform/pki/code-signing/overview).
+
+<CardGroup cols={2}>
+  <Card title="Signers" icon="pen-tool" href="/documentation/platform/pki/code-signing/signers">
+    Create signing identities and choose who can sign with each one.
+  </Card>
+  <Card title="Approvals" icon="check-check" href="/documentation/platform/pki/code-signing/approvals">
+    Require approval before someone can sign with a signer.
+  </Card>
+  <Card title="Signing tools" icon="wrench" href="/documentation/platform/pki/guides/code-signing/jarsigner">
+    Sign with jarsigner, apksigner, osslsigncode, cosign, OpenSSL, or GPG.
+  </Card>
+  <Card title="PKCS#11 module" icon="cpu" href="/documentation/platform/pki/code-signing/pkcs11-module">
+    Connect standard signing tools to your signers.
+  </Card>
+  <Card title="Windows KSP" icon="windows" iconType="brands" href="/documentation/platform/pki/code-signing/windows-ksp">
+    Sign Windows executables, DLLs, and MSIs with signtool.
+  </Card>
+</CardGroup>

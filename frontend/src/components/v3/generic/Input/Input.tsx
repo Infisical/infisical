@@ -21,16 +21,31 @@ const inputVariants = cva(
 );
 
 type InputProps = React.ComponentProps<"input"> &
-  VariantProps<typeof inputVariants> & { isError?: boolean };
+  VariantProps<typeof inputVariants> & { isError?: boolean; "data-1p-ignore"?: boolean };
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, variant = "default", isError, ...props }, ref) => {
+  (
+    {
+      className,
+      type,
+      variant = "default",
+      isError,
+      autoComplete,
+      "data-1p-ignore": ignorePasswordManager = !/email|password|username/i.test(
+        autoComplete ?? ""
+      ),
+      ...props
+    },
+    ref
+  ) => {
     return (
       <input
         ref={ref}
         type={type}
         data-slot="input"
         data-variant={variant}
+        autoComplete={autoComplete}
+        data-1p-ignore={ignorePasswordManager || undefined}
         className={cn(inputVariants({ variant, className }))}
         aria-invalid={isError}
         {...props}

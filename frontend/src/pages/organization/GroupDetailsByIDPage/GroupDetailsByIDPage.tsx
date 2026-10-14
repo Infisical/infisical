@@ -5,13 +5,14 @@ import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Spinner } from "@app/components/v2";
 import {
   Button,
+  DeleteConfirmDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  Spinner
 } from "@app/components/v3";
 import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -191,7 +192,7 @@ const Page = () => {
         handlePopUpClose={handlePopUpClose}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteGroup.isOpen}
         title={
           (popUp?.deleteGroup?.data as { isLinkedGroup?: boolean })?.isLinkedGroup
@@ -202,9 +203,10 @@ const Page = () => {
                 (popUp?.deleteGroup?.data as { name: string })?.name || ""
               }?`
         }
-        onChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteGroup", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onDeleteGroupSubmit(popUp?.deleteGroup?.data as { name: string; id: string })
         }
       />

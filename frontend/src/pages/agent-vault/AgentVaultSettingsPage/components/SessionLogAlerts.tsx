@@ -33,8 +33,7 @@ export const SessionLogAlerts = () => {
       if (!config?.appConnectionId) {
         return "Session logs are off, and without an AWS connection the logs already in the bucket can't be read.";
       }
-      if (health?.connectionError || isReadBlocked)
-        return "Session logs are off, so nothing new is being stored.";
+      if (isReadBlocked) return "Session logs are off, so nothing new is being stored.";
       return "Session logs are off. Logs already in the bucket are still readable, but nothing new is being stored.";
     }
     return "Session logs are on, but Storage isn't complete, so nothing is being written to the bucket.";
@@ -46,15 +45,6 @@ export const SessionLogAlerts = () => {
         <Alert variant="danger">
           <CircleAlertIcon />
           <AlertDescription>{health.connectionError}</AlertDescription>
-        </Alert>
-      )}
-
-      {health?.isStorageFull && (
-        <Alert variant="danger">
-          <CircleAlertIcon />
-          <AlertDescription>
-            Session logs have reached their limit for this organization. Contact Infisical support.
-          </AlertDescription>
         </Alert>
       )}
 
@@ -75,14 +65,23 @@ export const SessionLogAlerts = () => {
         </Alert>
       )}
 
-      {!isSettingsPending && !isHealthPending && hasDestination && !isLapsed && !isRecording && (
-        <Alert variant="warning">
-          <TriangleAlertIcon />
-          <AlertDescription>{notRecordingReason}</AlertDescription>
-        </Alert>
-      )}
+      {/* While the connection is broken, fixing it comes first, so its error shows alone. */}
+      {!health?.connectionError && (
+        <>
+          {!isSettingsPending &&
+            !isHealthPending &&
+            hasDestination &&
+            !isLapsed &&
+            !isRecording && (
+              <Alert variant="warning">
+                <TriangleAlertIcon />
+                <AlertDescription>{notRecordingReason}</AlertDescription>
+              </Alert>
+            )}
 
-      <SessionLogReadAccessAlert />
+          <SessionLogReadAccessAlert />
+        </>
+      )}
 
       <AgentVaultSessionLogUpgradeModal isOpen={isUpgradeOpen} onOpenChange={setIsUpgradeOpen} />
     </>
