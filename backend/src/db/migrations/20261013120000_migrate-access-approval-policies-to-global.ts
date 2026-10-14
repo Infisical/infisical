@@ -5,8 +5,9 @@ import { Knex } from "knex";
 
 import { verifyRequestedPermissions } from "@app/ee/services/access-approval-request/access-approval-request-fns";
 import { isGlobSubsetOfGlob } from "@app/lib/casl/glob-subset";
-import { chunkArray } from "@app/lib/fn";
+import { chunkArray, deepEqual, groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
+import { EnforcementLevel } from "@app/lib/types";
 
 import { TableName } from "../schemas";
 import {
@@ -50,14 +51,12 @@ import {
 
 const LOG_PREFIX = "migrate-access-approval-policies-to-global";
 const SECRET_ACCESS = "secret-access";
-const SOFT_ENFORCEMENT = "soft";
 
 const LEGACY_TABLES: TLegacyApprovalTables = {
   legacyPolicies: TableName.AccessApprovalPolicy,
   legacyApprovers: TableName.AccessApprovalPolicyApprover,
   legacyBypassers: TableName.AccessApprovalPolicyBypasser,
   legacyEnvironments: TableName.AccessApprovalPolicyEnvironment,
-  legacyRequests: TableName.AccessApprovalRequest,
   legacyReviewers: TableName.AccessApprovalRequestReviewer
 };
 
@@ -153,20 +152,6 @@ type TGlobalRows = TGlobalPolicyRows &
     additionalPrivilegeGrants: { additionalPrivilegeId: string; grantId: string }[];
   };
 
-const canonicalize = (value: unknown): unknown => {
-  if (Array.isArray(value)) return value.map(canonicalize);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.keys(value as Record<string, unknown>)
-        .sort()
-        .map((key) => [key, canonicalize((value as Record<string, unknown>)[key])])
-    );
-  }
-  return value;
-};
-
-const isSameJson = (a: unknown, b: unknown) => JSON.stringify(canonicalize(a)) === JSON.stringify(canonicalize(b));
-
 const durationMs = (range?: string | null) => {
   if (!range) return null;
   try {
@@ -218,7 +203,7 @@ const checkPendingScope = (
 // reason is optional, so bypassReason alone under-reports it.
 const isBreakGlassApproval = (policy: TLegacyPolicy, request: TLegacyRequest, reviews: TLegacyReview[]) =>
   Boolean(request.bypassReason) ||
-  (policy.enforcementLevel === SOFT_ENFORCEMENT &&
+  (policy.enforcementLevel === EnforcementLevel.Soft &&
     reviews.some(
       (review) => review.status === ReviewDecision.Approved && review.reviewerUserId === request.requestedByUserId
     ));
@@ -232,7 +217,7 @@ const checkAdditionalPrivilegeState = (
   }: {
     additionalPrivilege?: TAdditionalPrivilege;
     projectId?: string;
-    requestsByAdditionalPrivilegeId: Map<string, string[]>;
+    requestsByAdditionalPrivilegeId: Record<string, TLegacyRequest[]>;
   },
   failures: TMigrationFailure[]
 ) => {
@@ -243,7 +228,9 @@ const checkAdditionalPrivilegeState = (
     fail(`A ${request.status} request still points to additional privilege ${request.privilegeId}`);
   }
 
-  const sharedWith = (requestsByAdditionalPrivilegeId.get(request.privilegeId) ?? []).filter((id) => id !== request.id);
+  const sharedWith = (requestsByAdditionalPrivilegeId[request.privilegeId] ?? [])
+    .map(({ id }) => id)
+    .filter((id) => id !== request.id);
   if (sharedWith.length) {
     fail(`Additional privilege ${request.privilegeId} is shared with requests ${sharedWith.join(", ")}`);
   }
@@ -258,7 +245,7 @@ const checkAdditionalPrivilegeState = (
   if (additionalPrivilege.grantId) {
     fail(`Additional privilege ${additionalPrivilege.id} is already linked to grant ${additionalPrivilege.grantId}`);
   }
-  if (!isSameJson(additionalPrivilege.permissions, request.permissions)) {
+  if (!deepEqual(additionalPrivilege.permissions, request.permissions)) {
     failures.push({
       code: "privilege-permissions-mismatch",
       requestId: request.id,
@@ -289,7 +276,7 @@ export const translatePolicy = (data: TPolicyData, now: Date) => {
           maxTimePeriod: policy.maxTimePeriod ?? null
         }
       },
-      bypassForMachineIdentities: false // always false for access approval policies
+      bypassForMachineIdentities: false
     }),
     secretEnvironments: buildPolicyEnvironmentRows(policy.id, environments, policy.secretPath),
     ...buildPolicyStepRows(policy.id, steps),
@@ -308,21 +295,14 @@ export const translatePolicy = (data: TPolicyData, now: Date) => {
   const additionalPrivilegeById = new Map(
     additionalPrivileges.map((additionalPrivilege) => [additionalPrivilege.id, additionalPrivilege])
   );
-  const reviewsByRequestId = new Map<string, TLegacyReview[]>();
-  reviews.forEach((review) => {
-    reviewsByRequestId.set(review.requestId, [...(reviewsByRequestId.get(review.requestId) ?? []), review]);
-  });
-  const requestsByAdditionalPrivilegeId = new Map<string, string[]>();
-  requests.forEach(({ id, privilegeId }) => {
-    if (privilegeId)
-      requestsByAdditionalPrivilegeId.set(privilegeId, [
-        ...(requestsByAdditionalPrivilegeId.get(privilegeId) ?? []),
-        id
-      ]);
-  });
+  const reviewsByRequestId = groupBy(reviews, (review) => review.requestId);
+  const requestsByAdditionalPrivilegeId = groupBy(
+    requests.filter(({ privilegeId }) => privilegeId),
+    ({ privilegeId }) => privilegeId as string
+  );
 
   requests.forEach((request) => {
-    const requestReviews = reviewsByRequestId.get(request.id) ?? [];
+    const requestReviews = reviewsByRequestId[request.id] ?? [];
 
     const knownStatuses = Object.values(LegacyRequestStatus) as string[];
     if (!knownStatuses.includes(request.status)) {
@@ -463,36 +443,38 @@ const linkAdditionalPrivilegesToGrants = async (tx: Knex, pairs: TGlobalRows["ad
 
 const readPolicyData = async (tx: Knex, policy: TLegacyPolicy, requests: TLegacyRequest[]): Promise<TPolicyData> => {
   const { id: policyId } = policy;
+  const requestIds = requests.map(({ id }) => id);
+  const privilegeIds = [...new Set(requests.map(({ privilegeId }) => privilegeId).filter(Boolean))];
+  const requesterIds = [...new Set(requests.map(({ requestedByUserId }) => requestedByUserId))];
 
-  const additionalPrivileges = (await tx(TableName.AdditionalPrivilege)
-    .join(
-      TableName.AccessApprovalRequest,
-      `${TableName.AccessApprovalRequest}.privilegeId`,
-      `${TableName.AdditionalPrivilege}.id`
-    )
-    .where(`${TableName.AccessApprovalRequest}.policyId`, policyId)
-    .forUpdate(TableName.AdditionalPrivilege)
-    .select(
-      tx.ref("id").withSchema(TableName.AdditionalPrivilege),
-      tx.ref("actorUserId").withSchema(TableName.AdditionalPrivilege),
-      tx.ref("projectId").withSchema(TableName.AdditionalPrivilege),
-      tx.ref("permissions").withSchema(TableName.AdditionalPrivilege),
-      tx.ref("isTemporary").withSchema(TableName.AdditionalPrivilege),
-      tx.ref("temporaryAccessEndTime").withSchema(TableName.AdditionalPrivilege),
-      tx.ref("grantId").withSchema(TableName.AdditionalPrivilege)
-    )) as TAdditionalPrivilege[];
+  const additionalPrivileges = privilegeIds.length
+    ? ((await tx(TableName.AdditionalPrivilege)
+        .whereRaw(`"id" = ANY(?::uuid[])`, [privilegeIds])
+        .forUpdate()
+        .select(
+          "id",
+          "actorUserId",
+          "projectId",
+          "permissions",
+          "isTemporary",
+          "temporaryAccessEndTime",
+          "grantId"
+        )) as TAdditionalPrivilege[])
+    : [];
 
   const environments = await readPolicyEnvironments(tx, LEGACY_TABLES, policyId);
   const approvers = await readLegacyApprovers(tx, LEGACY_TABLES, policyId);
   const bypassers = await readLegacyBypassers(tx, LEGACY_TABLES, policyId);
-  const reviews = await readLegacyReviews(tx, LEGACY_TABLES, policyId);
+  const reviews = await readLegacyReviews(tx, LEGACY_TABLES, requestIds);
 
-  const requesters = (await tx(TableName.Users)
-    .whereIn("id", tx(TableName.AccessApprovalRequest).where({ policyId }).select("requestedByUserId"))
-    .select("id", "username", "email", "firstName", "lastName")) as TRequester[];
+  const requesters = requesterIds.length
+    ? ((await tx(TableName.Users)
+        .whereRaw(`"id" = ANY(?::uuid[])`, [requesterIds])
+        .select("id", "username", "email", "firstName", "lastName")) as TRequester[])
+    : [];
 
   const groupMembers = await readApproverGroupMembers(tx, approvers);
-  const requestIdsAlreadyOnGlobal = await readRequestIdsAlreadyOnGlobal(tx, LEGACY_TABLES, policyId);
+  const requestIdsAlreadyOnGlobal = await readRequestIdsAlreadyOnGlobal(tx, requestIds);
 
   return {
     policy,
@@ -501,11 +483,7 @@ const readPolicyData = async (tx: Knex, policy: TLegacyPolicy, requests: TLegacy
     bypassers,
     requests,
     reviews,
-    additionalPrivileges: [
-      ...new Map(
-        additionalPrivileges.map((additionalPrivilege) => [additionalPrivilege.id, additionalPrivilege])
-      ).values()
-    ],
+    additionalPrivileges,
     requesters,
     groupMembers,
     requestIdsAlreadyOnGlobal

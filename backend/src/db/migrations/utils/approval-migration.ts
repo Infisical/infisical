@@ -4,7 +4,9 @@ import crypto from "node:crypto";
 import { Knex } from "knex";
 
 import { TableName } from "@app/db/schemas";
-import { chunkArray } from "@app/lib/fn";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
+import { chunkArray, groupBy } from "@app/lib/fn";
 import { initLogger, logger } from "@app/lib/logger";
 
 // Shared by every migration that moves a legacy approval system onto the global approval tables. Once a
@@ -13,11 +15,10 @@ import { initLogger, logger } from "@app/lib/logger";
 
 export const INSERT_CHUNK_SIZE = 500;
 export const POLICY_STATEMENT_TIMEOUT_MS = 60_000;
-export const POLICY_LOCK_TIMEOUT_MS = 10_000;
+const POLICY_LOCK_TIMEOUT_MS = 10_000;
 const POLICY_BATCH_SIZE = 100;
-const PG_LOCK_NOT_AVAILABLE = "55P03";
 
-export enum ApprovalStepStatus {
+enum ApprovalStepStatus {
   Pending = "pending",
   InProgress = "in-progress",
   Completed = "completed"
@@ -33,7 +34,6 @@ export type TLegacyApprovalTables = {
   legacyApprovers: TableName;
   legacyBypassers: TableName;
   legacyEnvironments: TableName;
-  legacyRequests: TableName;
   legacyReviewers: TableName;
 };
 
@@ -66,7 +66,6 @@ export type TApprovalStep = {
   requiredApprovals: number;
   userIds: string[];
   groupIds: string[];
-  groupMemberIds: Set<string>;
   eligibleUserIds: Set<string>;
 };
 
@@ -89,7 +88,7 @@ export type TPolicyOutcome = "migrated" | "failedChecks" | "skipped";
 
 const isId = (id: string | null | undefined): id is string => Boolean(id);
 
-export const formatFailure = ({ code, message, requestId }: TMigrationFailure) =>
+const formatFailure = ({ code, message, requestId }: TMigrationFailure) =>
   `${code}${requestId ? ` [requestId=${requestId}]` : ""}: ${message}`;
 
 export const logFailedChecks = ({
@@ -135,14 +134,14 @@ export const readLegacyBypassers = async (tx: Knex, tables: TLegacyApprovalTable
 export const readLegacyReviews = async (
   tx: Knex,
   tables: TLegacyApprovalTables,
-  policyId: string,
+  requestIds: string[],
   { withComment = false }: { withComment?: boolean } = {}
 ) => {
+  if (!requestIds.length) return [] as TLegacyReview[];
   const columns = ["id", "requestId", "reviewerUserId", "status", "createdAt", ...(withComment ? ["comment"] : [])];
   return (await tx(tables.legacyReviewers)
-    .join(tables.legacyRequests, `${tables.legacyRequests}.id`, `${tables.legacyReviewers}.requestId`)
-    .where(`${tables.legacyRequests}.policyId`, policyId)
-    .select(...columns.map((column) => tx.ref(column).withSchema(tables.legacyReviewers)))) as TLegacyReview[];
+    .whereRaw(`"requestId" = ANY(?::uuid[])`, [requestIds])
+    .select(columns)) as TLegacyReview[];
 };
 
 export const readApproverGroupMembers = async (tx: Knex, approvers: TLegacyApprover[]) => {
@@ -153,10 +152,10 @@ export const readApproverGroupMembers = async (tx: Knex, approvers: TLegacyAppro
     .select("groupId", "userId")) as TGroupMember[];
 };
 
-export const readRequestIdsAlreadyOnGlobal = async (tx: Knex, tables: TLegacyApprovalTables, policyId: string) =>
-  (await tx(TableName.ApprovalRequests)
-    .whereIn("id", tx(tables.legacyRequests).where({ policyId }).select("id"))
-    .pluck("id")) as string[];
+export const readRequestIdsAlreadyOnGlobal = async (tx: Knex, requestIds: string[]) => {
+  if (!requestIds.length) return [] as string[];
+  return (await tx(TableName.ApprovalRequests).whereRaw(`"id" = ANY(?::uuid[])`, [requestIds]).pluck("id")) as string[];
+};
 
 export const checkPolicyEnvironments = (environments: TPolicyEnvironment[], failures: TMigrationFailure[]) => {
   if (!environments.length) {
@@ -191,21 +190,14 @@ export const buildApprovalSteps = (
     });
   }
 
-  const membersByGroup = new Map<string, string[]>();
-  groupMembers.forEach(({ groupId, userId }) => {
-    membersByGroup.set(groupId, [...(membersByGroup.get(groupId) ?? []), userId]);
-  });
+  const membersByGroup = groupBy(groupMembers, (member) => member.groupId);
+  const approversBySequence = groupBy(approvers, (approver) => approver.sequence || 1);
 
-  const approversBySequence = new Map<number, TLegacyApprover[]>();
-  approvers.forEach((approver) => {
-    const sequence = approver.sequence || 1;
-    approversBySequence.set(sequence, [...(approversBySequence.get(sequence) ?? []), approver]);
-  });
-
-  return [...approversBySequence.keys()]
+  return Object.keys(approversBySequence)
+    .map(Number)
     .sort((a, b) => a - b)
     .map((sequence, index) => {
-      const rows = approversBySequence.get(sequence) as TLegacyApprover[];
+      const rows = approversBySequence[sequence];
       const requiredValues = [...new Set(rows.map((row) => row.approvalsRequired ?? null))];
       if (requiredValues.length > 1) {
         failures.push({
@@ -225,8 +217,10 @@ export const buildApprovalSteps = (
 
       const userIds = [...new Set(rows.map((row) => row.approverUserId).filter(isId))];
       const groupIds = [...new Set(rows.map((row) => row.approverGroupId).filter(isId))];
-      const groupMemberIds = new Set(groupIds.flatMap((groupId) => membersByGroup.get(groupId) ?? []));
-      const eligibleUserIds = new Set([...userIds, ...groupMemberIds]);
+      const eligibleUserIds = new Set([
+        ...userIds,
+        ...groupIds.flatMap((groupId) => (membersByGroup[groupId] ?? []).map((member) => member.userId))
+      ]);
 
       if (!groupIds.length && requiredApprovals > userIds.length) {
         failures.push({
@@ -242,7 +236,7 @@ export const buildApprovalSteps = (
         });
       }
 
-      return { sequence, requiredApprovals, userIds, groupIds, groupMemberIds, eligibleUserIds };
+      return { sequence, requiredApprovals, userIds, groupIds, eligibleUserIds };
     });
 };
 
@@ -267,7 +261,6 @@ export const checkReviewStatuses = (requestId: string, reviews: TLegacyReview[],
     });
 };
 
-// I need to check it more carefully
 export const replayReviews = (steps: TApprovalStep[], reviews: TLegacyReview[]) => {
   const approvedCounts = steps.map(() => 0);
   const completedAt: (Date | null)[] = steps.map(() => null);
@@ -308,7 +301,7 @@ const legacyPendingState = (steps: TApprovalStep[], reviews: TLegacyReview[]) =>
   const approvedBy = new Set(
     reviews.filter((review) => review.status === ReviewDecision.Approved).map((review) => review.reviewerUserId)
   );
-  const counts = steps.map((step) => [...step.eligibleUserIds].filter((userId) => approvedBy.has(userId)).length);
+  const counts = steps.map((step) => [...approvedBy].filter((userId) => step.eligibleUserIds.has(userId)).length);
   return { counts, presentIndex: steps.findIndex((step, i) => counts[i] < step.requiredApprovals) };
 };
 
@@ -474,15 +467,13 @@ export const buildRequestStepRows = ({
     );
   });
 
-  const approvals: Record<string, unknown>[] = stepIds.length
-    ? replay.attributed.map(({ review, stepIndex }) => ({
-        stepId: stepIds[stepIndex],
-        approverUserId: review.reviewerUserId,
-        decision: review.status,
-        comment: review.comment ?? null,
-        createdAt: review.createdAt
-      }))
-    : [];
+  const approvals: Record<string, unknown>[] = replay.attributed.map(({ review, stepIndex }) => ({
+    stepId: stepIds[stepIndex],
+    approverUserId: review.reviewerUserId,
+    decision: review.status,
+    comment: review.comment ?? null,
+    createdAt: review.createdAt
+  }));
 
   return { requestSteps, eligibleApprovers, approvals };
 };
@@ -561,10 +552,11 @@ export const runLegacyPolicyMigration = async (
     for (const policyId of policyIds) {
       try {
         logger.info(`${logPrefix}: locking policy [policyId=${policyId}]`);
-        counts[await knex.transaction((tx) => migratePolicy(tx, policyId))] += 1;
-        logger.info(`${logPrefix}: policy migrated [policyId=${policyId}]`);
+        const outcome = await knex.transaction((tx) => migratePolicy(tx, policyId));
+        counts[outcome] += 1;
+        if (outcome === "migrated") logger.info(`${logPrefix}: policy migrated [policyId=${policyId}]`);
       } catch (error) {
-        if ((error as { code?: string })?.code === PG_LOCK_NOT_AVAILABLE) {
+        if (hasPostgresErrorCode(error, DatabaseErrorCode.LockNotAvailable)) {
           counts.locked += 1;
           logger.warn(
             `${logPrefix}: policy not migrated, it stays on the legacy approval system [policyId=${policyId}] reasons=[locked: its rows were held by another transaction for over ${POLICY_LOCK_TIMEOUT_MS}ms, the next run retries it]`

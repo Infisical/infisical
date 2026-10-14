@@ -14,7 +14,6 @@ import {
   checkPolicyEnvironments,
   checkRequestsAlreadyMigrated,
   checkReviewStatuses,
-  formatFailure,
   logFailedChecks,
   replayReviews,
   runLegacyPolicyMigration,
@@ -79,24 +78,11 @@ const legacyTables = {
   legacyApprovers: "legacy_approvers",
   legacyBypassers: "legacy_bypassers",
   legacyEnvironments: "legacy_environments",
-  legacyRequests: "legacy_requests",
   legacyReviewers: "legacy_reviewers"
 } as unknown as Parameters<typeof runLegacyPolicyMigration>[1]["tables"];
 
 beforeEach(() => {
   vi.clearAllMocks();
-});
-
-describe("formatFailure", () => {
-  test("prints the code and message", () => {
-    expect(formatFailure({ code: "no-approvers", message: "none" })).toBe("no-approvers: none");
-  });
-
-  test("tags the request when the failure has one", () => {
-    expect(formatFailure({ code: "requester-missing", message: "gone", requestId: "req-1" })).toBe(
-      "requester-missing [requestId=req-1]: gone"
-    );
-  });
 });
 
 describe("logFailedChecks", () => {
@@ -265,7 +251,6 @@ describe("buildApprovalSteps", () => {
     expect(steps[0]).toMatchObject({
       userIds: ["u1"],
       groupIds: ["g1"],
-      groupMemberIds: new Set(["u1", "u2"]),
       eligibleUserIds: new Set(["u1", "u2"])
     });
   });

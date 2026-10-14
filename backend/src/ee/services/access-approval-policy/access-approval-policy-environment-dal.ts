@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { buildFindFilter, ormify, selectAllTableCols } from "@app/lib/knex";
+import { buildFindFilter, ormify, rowWithSameIdIn, selectAllTableCols } from "@app/lib/knex";
 
 export type TAccessApprovalPolicyEnvironmentDALFactory = ReturnType<typeof accessApprovalPolicyEnvironmentDALFactory>;
 
@@ -21,12 +21,7 @@ export const accessApprovalPolicyEnvironmentDALFactory = (db: TDbClient) => {
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         .where(buildFindFilter({ envId }, TableName.AccessApprovalPolicyEnvironment))
         .whereNull(`${TableName.AccessApprovalPolicy}.deletedAt`)
-        .whereNotExists((qb) => {
-          void qb
-            .select(db.raw("1"))
-            .from(TableName.ApprovalPolicies)
-            .whereRaw(`"${TableName.ApprovalPolicies}"."id" = "${TableName.AccessApprovalPolicy}"."id"`);
-        })
+        .whereNotExists(rowWithSameIdIn(TableName.ApprovalPolicies, TableName.AccessApprovalPolicy))
         .select(selectAllTableCols(TableName.AccessApprovalPolicyEnvironment));
       return docs;
     } catch (error) {

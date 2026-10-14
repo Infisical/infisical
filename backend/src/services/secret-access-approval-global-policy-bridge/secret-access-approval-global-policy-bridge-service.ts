@@ -576,10 +576,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
 
       await approvalPolicyDAL.deleteById(policy.id, tx);
 
-      const legacyPolicy = await accessApprovalPolicyDAL.findOne({ id: policy.id }, tx);
-      if (legacyPolicy && !legacyPolicy.deletedAt) {
-        await accessApprovalPolicyDAL.softDeleteById(policy.id, tx);
-      }
+      await accessApprovalPolicyDAL.update({ id: policy.id, deletedAt: null }, { deletedAt: new Date() }, tx);
     });
 
     return policy;
