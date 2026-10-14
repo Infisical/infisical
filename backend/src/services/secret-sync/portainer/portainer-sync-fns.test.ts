@@ -259,6 +259,32 @@ describe("PortainerSyncFns", () => {
     });
   });
 
+  it("keeps a stack variable named like an inherited object property when deletion is disabled", async () => {
+    respondWith({
+      "GET /api/stacks/4": [
+        fileStack({ Env: [{ name: "constructor", value: "keep" }] }),
+        fileStack({ Status: PortainerStackStatus.Active })
+      ],
+      "GET /api/stacks/4/file": [{ StackFileContent: "services: {}" }],
+      "PUT /api/stacks/4": [{}]
+    });
+
+    await PortainerSyncFns.syncSecrets(
+      { ...secretSync, syncOptions: { disableSecretDeletion: true } },
+      payloadOf({ A: "1" }) as any,
+      gatewayV2Service,
+      gatewayPoolService
+    );
+
+    const putConfig = requestConfigs().find((config) => config.method === "PUT");
+    expect(putConfig?.data).toMatchObject({
+      env: [
+        { name: "constructor", value: "keep" },
+        { name: "A", value: "1" }
+      ]
+    });
+  });
+
   it("fails the sync when Portainer reports the redeploy failed", async () => {
     respondWith({
       "GET /api/stacks/4": [

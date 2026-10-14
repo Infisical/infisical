@@ -143,12 +143,16 @@ const getPortainerStack = async (secretSync: TPortainerSyncWithCredentials, deps
   return stack;
 };
 
+// A run may wait twice, before the write for a deployment already in flight and after it for its own,
+// so both waits draw on one budget that starts when the sync does
+const getDeploymentWaitDeadline = () => Date.now() + PORTAINER_DEPLOYMENT_TIMEOUT_MS;
+
 const waitForPortainerDeployment = async (
   secretSync: TPortainerSyncWithCredentials,
   stack: TPortainerStackResponse,
-  deps: TPortainerGatewayDeps
+  deps: TPortainerGatewayDeps,
+  deadline: number
 ) => {
-  const deadline = Date.now() + PORTAINER_DEPLOYMENT_TIMEOUT_MS;
   let current = stack;
 
   while (current.Status === PortainerStackStatus.Deploying) {
@@ -169,10 +173,14 @@ const waitForPortainerDeployment = async (
 };
 
 // Portainer answers a stack update with 409 while a deployment is in flight, so wait for it to settle first
-const getSettledPortainerStack = async (secretSync: TPortainerSyncWithCredentials, deps: TPortainerGatewayDeps) => {
+const getSettledPortainerStack = async (
+  secretSync: TPortainerSyncWithCredentials,
+  deps: TPortainerGatewayDeps,
+  deadline: number
+) => {
   const stack = await getPortainerStack(secretSync, deps);
 
-  return waitForPortainerDeployment(secretSync, stack, deps);
+  return waitForPortainerDeployment(secretSync, stack, deps, deadline);
 };
 
 const writeGitStackEnv = async (
@@ -210,7 +218,8 @@ const writeFileStackEnv = async (
   secretSync: TPortainerSyncWithCredentials,
   stack: TPortainerStackResponse,
   env: TPortainerEnvVar[],
-  deps: TPortainerGatewayDeps
+  deps: TPortainerGatewayDeps,
+  deadline: number
 ) => {
   const { connection, destinationConfig } = secretSync;
 
@@ -243,7 +252,12 @@ const writeFileStackEnv = async (
 
   // Recent Portainer releases redeploy in the background after answering, so a 200 only means the
   // update was accepted; the stack status tells whether the containers actually came up
-  const deployed = await waitForPortainerDeployment(secretSync, await fetchPortainerStack(secretSync, deps), deps);
+  const deployed = await waitForPortainerDeployment(
+    secretSync,
+    await fetchPortainerStack(secretSync, deps),
+    deps,
+    deadline
+  );
 
   if (deployed.Status === PortainerStackStatus.Error) {
     const reason = [...(deployed.DeploymentStatus ?? [])].reverse().find((entry) => entry.Message)?.Message;
@@ -264,7 +278,8 @@ const writeStackEnvIfChanged = async (
   secretSync: TPortainerSyncWithCredentials,
   stack: TPortainerStackResponse,
   env: TPortainerEnvVar[],
-  deps: TPortainerGatewayDeps
+  deps: TPortainerGatewayDeps,
+  deadline: number
 ) => {
   const isGitStack = isPortainerGitStack(stack);
   const isUnchanged = areEnvVarsEqual(stack.Env ?? [], env);
@@ -277,7 +292,7 @@ const writeStackEnvIfChanged = async (
     return;
   }
 
-  await writeFileStackEnv(secretSync, stack, env, deps);
+  await writeFileStackEnv(secretSync, stack, env, deps, deadline);
 };
 
 const toEnvVars = (secretMap: TSecretMap, stackType: PortainerStackType): TPortainerEnvVar[] =>
@@ -311,11 +326,13 @@ export const PortainerSyncFns = {
       syncOptions: { disableSecretDeletion, keySchema }
     } = secretSync;
     const deps = getGatewayDeps(gatewayV2Service, gatewayPoolService);
+    const deadline = getDeploymentWaitDeadline();
 
-    const stack = await getSettledPortainerStack(secretSync, deps);
+    const stack = await getSettledPortainerStack(secretSync, deps, deadline);
 
+    // A plain `in` check would also match inherited names such as "constructor"
     const retainedEnv = (stack.Env ?? []).filter(({ name }) => {
-      if (name in secretMap) return false;
+      if (Object.hasOwn(secretMap, name)) return false;
 
       // Only remove keys managed by this sync (respecting the configured key schema)
       if (!disableSecretDeletion && matchesSchema(name, environment?.slug || "", keySchema)) return false;
@@ -323,7 +340,13 @@ export const PortainerSyncFns = {
       return true;
     });
 
-    await writeStackEnvIfChanged(secretSync, stack, [...retainedEnv, ...toEnvVars(secretMap, stack.Type)], deps);
+    await writeStackEnvIfChanged(
+      secretSync,
+      stack,
+      [...retainedEnv, ...toEnvVars(secretMap, stack.Type)],
+      deps,
+      deadline
+    );
   },
 
   async removeSecrets(
@@ -334,11 +357,12 @@ export const PortainerSyncFns = {
   ) {
     const secretMap = payload.flatten();
     const deps = getGatewayDeps(gatewayV2Service, gatewayPoolService);
+    const deadline = getDeploymentWaitDeadline();
 
-    const stack = await getSettledPortainerStack(secretSync, deps);
+    const stack = await getSettledPortainerStack(secretSync, deps, deadline);
 
-    const remainingEnv = (stack.Env ?? []).filter(({ name }) => !(name in secretMap));
+    const remainingEnv = (stack.Env ?? []).filter(({ name }) => !Object.hasOwn(secretMap, name));
 
-    await writeStackEnvIfChanged(secretSync, stack, remainingEnv, deps);
+    await writeStackEnvIfChanged(secretSync, stack, remainingEnv, deps, deadline);
   }
 };
