@@ -23,6 +23,7 @@ import {
   AccordionTrigger,
   Badge,
   Button,
+  ButtonGroup,
   CopyButton,
   Field,
   FieldDescription,
@@ -74,7 +75,7 @@ const parseRecipients = (emails?: string) =>
     : [];
 
 const baseSchema = z.object({
-  name: z.string().optional(),
+  name: z.string().max(50, "Name must be 50 characters or fewer.").optional(),
   password: z.string().optional(),
   secret: z.string().min(1, "Enter the value you want to share."),
   expiresIn: z.string(),
@@ -158,7 +159,7 @@ const formatExpiry = (expiresIn: string) => {
 type Props = {
   isPublic: boolean; // whether or not this is a public (non-authenticated) secret sharing form
   value?: string;
-  name?: string;
+  secretKey?: string;
   allowSecretSharingOutsideOrganization?: boolean;
   maxSharedSecretLifetime?: number;
   maxSharedSecretViewLimit?: number | null;
@@ -167,13 +168,14 @@ type Props = {
 export const ShareSecretForm = ({
   isPublic,
   value,
-  name: defaultName,
+  secretKey,
   allowSecretSharingOutsideOrganization = true,
   maxSharedSecretLifetime,
   maxSharedSecretViewLimit
 }: Props) => {
   const [result, setResult] = useState<ShareResult | null>(null);
   const [isPasswordVisible, setIsPasswordVisible] = useToggle(false);
+  const [isSharingKeyValue, setIsSharingKeyValue] = useState(true);
   const subOrganization = useSearch({
     strict: false,
     select: (el) => el?.subOrganization
@@ -191,6 +193,9 @@ export const ShareSecretForm = ({
   const isLifetimeCapped = expiresInOptions.length !== filteredExpiresInOptions.length;
   const isViewLimitEnforced = Boolean(maxSharedSecretViewLimit);
 
+  const formatSharedValue = (includeKey: boolean) =>
+    secretKey && includeKey ? `${secretKey}=${value ?? ""}` : (value ?? "");
+
   const schema = useMemo(() => buildSchema(maxSharedSecretViewLimit), [maxSharedSecretViewLimit]);
 
   const {
@@ -203,8 +208,7 @@ export const ShareSecretForm = ({
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: defaultName,
-      secret: value || "",
+      secret: formatSharedValue(true),
       viewLimit: maxSharedSecretViewLimit?.toString() ?? "1",
       shouldLimitView: isViewLimitEnforced,
       accessType: isPublic ? undefined : SecretSharingAccessType.Organization,
@@ -228,7 +232,7 @@ export const ShareSecretForm = ({
     isLimitingView,
     Boolean(watch("password")),
     !isPublic && isOrgAccess,
-    !isPublic && parseRecipients(watch("emails")).length > 0
+    !isPublic && !isAllowingExternalEmails && parseRecipients(watch("emails")).length > 0
   ].filter(Boolean).length;
 
   const onFormSubmit = async ({
@@ -294,6 +298,7 @@ export const ShareSecretForm = ({
     }
 
     reset();
+    setIsSharingKeyValue(true);
   };
 
   if (result !== null) {
@@ -387,13 +392,39 @@ export const ShareSecretForm = ({
                   placeholder="Enter sensitive data to share via an encrypted link"
                   {...field}
                   id="share-secret-value"
-                  containerClassName="min-h-16 items-start py-1"
+                  isMultiline
                   isReadOnly={isValueLocked}
                   isError={Boolean(error)}
                 />
+                {isValueLocked && secretKey && (
+                  <ButtonGroup>
+                    {[
+                      { label: `${secretKey}=value`, includeKey: true },
+                      { label: "Value only", includeKey: false }
+                    ].map((option) => {
+                      const isActive = isSharingKeyValue === option.includeKey;
+                      return (
+                        <Button
+                          key={option.label}
+                          type="button"
+                          size="xs"
+                          variant={isActive ? "project" : "outline"}
+                          aria-pressed={isActive}
+                          className="max-w-64"
+                          onClick={() => {
+                            setIsSharingKeyValue(option.includeKey);
+                            setValue("secret", formatSharedValue(option.includeKey));
+                          }}
+                        >
+                          <span className="truncate">{option.label}</span>
+                        </Button>
+                      );
+                    })}
+                  </ButtonGroup>
+                )}
                 {isValueLocked && (
                   <FieldDescription>
-                    Locked to the stored value, so the link shares exactly what is saved in
+                    Locked to the stored secret, so the link shares exactly what is saved in
                     Infisical.
                   </FieldDescription>
                 )}
