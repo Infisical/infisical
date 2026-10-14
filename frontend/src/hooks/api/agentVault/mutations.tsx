@@ -4,7 +4,7 @@ import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 
 import { ApiErrorTypes } from "../types";
-import { agentVaultKeys } from "./queries";
+import { agentVaultKeys, markAgentVaultVariablesChanged } from "./queries";
 import {
   TAddAgentVaultMembersDTO,
   TAddAgentVaultProductMembersDTO,
@@ -394,11 +394,13 @@ export const useUpdateAgentVaultSessionLogSettings = () => {
 };
 
 // A rename changes the keys each service's variableReferences reports, so the bundles refresh too.
-const invalidateVariables = (queryClient: ReturnType<typeof useQueryClient>, orgId: string) =>
-  Promise.all([
+const invalidateVariables = (queryClient: ReturnType<typeof useQueryClient>, orgId: string) => {
+  markAgentVaultVariablesChanged(orgId);
+  return Promise.all([
     queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(orgId) }),
     queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId) })
   ]);
+};
 
 export const useCreateAgentVaultVariable = () => {
   const { currentOrg } = useOrganization();
@@ -413,6 +415,7 @@ export const useCreateAgentVaultVariable = () => {
     },
     onSuccess: (variable) => {
       // Known before the refetch lands, so a reference to it that was just inserted isn't flagged.
+      markAgentVaultVariablesChanged(currentOrg.id);
       queryClient.setQueryData(agentVaultKeys.variableKeyStatus(currentOrg.id, variable.key), true);
       return invalidateVariables(queryClient, currentOrg.id);
     }

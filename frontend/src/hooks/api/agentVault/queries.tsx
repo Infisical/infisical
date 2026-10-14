@@ -12,6 +12,7 @@ import axios from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
+import { VARIABLE_KEY_MAX_LENGTH, VARIABLE_KEY_RE } from "@app/helpers/agentVaultVariables";
 
 import { AgentVaultMemberType } from "./enums";
 import {
@@ -565,6 +566,20 @@ export const useListAgentVaultVariables = (
 
 const KEY_LOOKUP_BATCH_SIZE = 100;
 
+// Bumped by every variable create, rename and delete. A lookup that was in flight across a change drops its answers
+// rather than writing them, since they may predate it: otherwise one sent just before a variable was created could
+// land after it and mark the new key missing. The change also invalidates the answers, so a fresh lookup asks again.
+const variableChangeCounts = new Map<string, number>();
+
+export const markAgentVaultVariablesChanged = (orgId: string) => {
+  variableChangeCounts.set(orgId, (variableChangeCounts.get(orgId) ?? 0) + 1);
+};
+
+// The API refuses a whole batch that holds one key it would never accept, so such a key isn't sent. No variable can
+// have it, so it counts as missing, as the API says on save.
+const isPossibleVariableKey = (key: string) =>
+  key.length <= VARIABLE_KEY_MAX_LENGTH && VARIABLE_KEY_RE.test(key);
+
 // Whether each key exists. Each key's answer is cached on its own, so a key checked once isn't asked about again
 // until a variable changes, but the keys still to check go out together through the keys filter, in batches of
 // the API's maximum, rather than a request each. Only keys whose answer has arrived are in either set.
@@ -572,21 +587,26 @@ export const useAgentVaultVariableKeyStatus = (keys: readonly string[], enabled 
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   const statusKey = (key: string) => agentVaultKeys.variableKeyStatus(currentOrg.id, key);
+  const possibleKeys = keys.filter(isPossibleVariableKey);
+  const impossibleKeys = keys.filter((key) => !isPossibleVariableKey(key));
 
   // Read-only: these never fetch, the batch below fills them.
   const { existing, missing } = useQueries({
-    queries: keys.map((key) => ({
+    queries: possibleKeys.map((key) => ({
       queryKey: statusKey(key),
       queryFn: skipToken as SkipToken
     })),
     combine: (results) => ({
-      existing: keys.filter((_, index) => results[index]?.data === true).join(","),
-      missing: keys.filter((_, index) => results[index]?.data === false).join(",")
+      existing: possibleKeys.filter((_, index) => results[index]?.data === true).join(","),
+      missing: [
+        ...impossibleKeys,
+        ...possibleKeys.filter((_, index) => results[index]?.data === false)
+      ].join(",")
     })
   });
 
   // Unanswered keys, and answered ones a variable change has invalidated since.
-  const unchecked = [...keys]
+  const unchecked = [...possibleKeys]
     .filter((key) => {
       const state = queryClient.getQueryState(statusKey(key));
       return state?.data === undefined || state.isInvalidated;
@@ -596,6 +616,7 @@ export const useAgentVaultVariableKeyStatus = (keys: readonly string[], enabled 
   useQuery({
     queryKey: [...agentVaultKeys.variables(currentOrg.id), "key-status-batch", unchecked],
     queryFn: async () => {
+      const changeCount = variableChangeCounts.get(currentOrg.id) ?? 0;
       const found = new Set<string>();
       for (let i = 0; i < unchecked.length; i += KEY_LOOKUP_BATCH_SIZE) {
         // eslint-disable-next-line no-await-in-loop
@@ -605,6 +626,7 @@ export const useAgentVaultVariableKeyStatus = (keys: readonly string[], enabled 
         });
         page.variables.forEach((variable) => found.add(variable.key));
       }
+      if ((variableChangeCounts.get(currentOrg.id) ?? 0) !== changeCount) return 0;
       unchecked.forEach((key) => queryClient.setQueryData<boolean>(statusKey(key), found.has(key)));
       return unchecked.length;
     },
