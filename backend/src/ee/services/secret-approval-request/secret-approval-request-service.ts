@@ -1799,10 +1799,7 @@ export const secretApprovalRequestServiceFactory = ({
   const findFolderIdsWithOpenRequests = async (folderIds: string[], tx?: Knex) => {
     if (!folderIds.length) return [];
 
-    const legacyRequests = await secretApprovalRequestDAL.find(
-      { $in: { folderId: folderIds }, status: RequestState.Open },
-      { tx }
-    );
+    const legacyRequests = await secretApprovalRequestDAL.findOpenByFolderIds(folderIds, tx);
     const secretChangeFolderIds =
       await secretChangeGlobalRequestBridgeService.findFolderIdsWithOpenSecretChangeRequests(folderIds, tx);
 
