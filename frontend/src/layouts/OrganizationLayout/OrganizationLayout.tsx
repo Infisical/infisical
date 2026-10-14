@@ -8,6 +8,7 @@ import { SidebarInset, SidebarProvider } from "@app/components/v3";
 import { useServerConfig, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useFetchServerStatus } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { useImplicitProduct } from "@app/hooks/useImplicitProduct";
 import { CertManagerInstanceBanner } from "@app/layouts/PkiManagerLayout/components/CertManagerInstanceBanner";
 import { AssumePrivilegeModeBanner } from "@app/layouts/ProjectLayout/components/AssumePrivilegeModeBanner";
@@ -20,6 +21,7 @@ import { NetworkHealthBanner } from "./components/NetworkHealthBanner";
 import { OrgSidebar } from "./components/OrgSidebar";
 import { RedisBanner } from "./components/RedisBanner";
 import { SmtpBanner } from "./components/SmtpBanner";
+import { TrialPaymentFailedBanner } from "./components/TrialPaymentFailedBanner";
 
 export const OrganizationLayout = () => {
   const { config } = useServerConfig();
@@ -27,14 +29,15 @@ export const OrganizationLayout = () => {
     strict: false,
     select: (el) => el?.projectId
   });
-  const isInsideProject = Boolean(projectId);
   const implicitProduct = useImplicitProduct();
+  // Certificate Manager brings its own scroll container, so it keeps the project page chrome.
+  const isInsideProject = Boolean(projectId) || implicitProduct === ProjectType.CertificateManager;
   const isCertManagerOverview = useRouterState({
     select: (state) =>
       state.matches.some(
         (match) =>
           match.routeId ===
-          "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/overview"
+          "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/overview"
       )
   });
 
@@ -61,6 +64,7 @@ export const OrganizationLayout = () => {
         className={`dark ${containerHeight} flex !min-h-0 w-full flex-col overflow-hidden bg-page transition-all`}
       >
         <PageBannerStack>
+          <TrialPaymentFailedBanner />
           {(isInsideProject || implicitProduct) && <AssumePrivilegeModeBanner />}
           {isCertManagerOverview && <CertManagerInstanceBanner />}
           {isSecretScanningProject && <SecretScanningInstanceBanner />}

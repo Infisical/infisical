@@ -93,11 +93,12 @@ import {
   extractCertificateFields,
   generatePkcs12FromCertificate,
   getCertificateCredentials,
+  normalizePemText,
   normalizeThumbprint,
   parseCertificateBody,
+  parsePemCertificateChain,
   resolveCertificateDeletionEligibility,
-  revocationReasonToCrlCode,
-  splitPemChain
+  revocationReasonToCrlCode
 } from "./certificate-fns";
 import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 import {
@@ -1148,13 +1149,16 @@ export const certificateServiceFactory = ({
     actor,
     actorOrgId,
     friendlyName,
-    certificatePem,
-    chainPem,
-    privateKeyPem,
+    certificatePem: rawCertificatePem,
+    chainPem: rawChainPem,
+    privateKeyPem: rawPrivateKeyPem,
     profileId,
     externalMetadata
   }: TImportCertDTO) => {
     const collectionId = pkiCollectionId;
+    const certificatePem = normalizePemText(rawCertificatePem);
+    const chainPem = rawChainPem ? normalizePemText(rawChainPem) : rawChainPem;
+    const privateKeyPem = rawPrivateKeyPem ? normalizePemText(rawPrivateKeyPem) : rawPrivateKeyPem;
 
     const resolveProjectId = async (): Promise<string> => {
       if (projectIdInput) return projectIdInput;
@@ -1233,7 +1237,13 @@ export const certificateServiceFactory = ({
 
     // Verify the certificate chain when one is provided
     if (chainPem) {
-      const chainCerts = splitPemChain(chainPem).map((pem) => new x509.X509Certificate(pem));
+      const chainCerts = parsePemCertificateChain(chainPem);
+      if (!chainCerts) {
+        throw new BadRequestError({
+          message:
+            "The certificate chain contains a block that is not a valid certificate. Paste each certificate in full, including its BEGIN and END lines."
+        });
+      }
 
       // Remove leaf cert from the chain if it's present
       if (chainCerts[0]?.equal(leafCert)) {
@@ -1273,7 +1283,9 @@ export const certificateServiceFactory = ({
       try {
         privateKey = crypto.nativeCrypto.createPrivateKey(privateKeyPem);
       } catch (err) {
-        throw new BadRequestError({ message: "Invalid private key format" });
+        throw new BadRequestError({
+          message: "Invalid private key. Provide an unencrypted private key in PEM format."
+        });
       }
 
       try {

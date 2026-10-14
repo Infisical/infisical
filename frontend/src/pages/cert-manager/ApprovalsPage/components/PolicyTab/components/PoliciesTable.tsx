@@ -1,31 +1,29 @@
 import { useMemo } from "react";
-import {
-  faEdit,
-  faEllipsisV,
-  faFileCircleQuestion,
-  faTrash
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistance } from "date-fns";
+import { EllipsisVerticalIcon, FileQuestionIcon, PencilIcon, Trash2Icon } from "lucide-react";
 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EmptyState,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
   IconButton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableSkeletonRows,
   Tooltip,
-  Tr
-} from "@app/components/v2";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   approvalPolicyQuery,
@@ -67,100 +65,104 @@ export const PoliciesTable = ({ handlePopUpOpen, applicationId }: Props) => {
     return conditions.flatMap((c: { profileNames: string[] }) => c.profileNames);
   };
 
+  if (!isPoliciesLoading && !sortedPolicies.length) {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <FileQuestionIcon />
+          </EmptyMedia>
+          <EmptyTitle>No certificate approval policies found</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
   return (
-    <TableContainer>
-      <Table>
-        <THead>
-          <Tr>
-            <Th>Policy Name</Th>
-            <Th>Profile Name</Th>
-            <Th>Approval Steps</Th>
-            <Th>Created</Th>
-            <Th className="w-5" />
-          </Tr>
-        </THead>
-        <TBody>
-          {isPoliciesLoading && <TableSkeleton columns={5} innerKey="cert-approval-policies" />}
-          {!isPoliciesLoading &&
-            sortedPolicies.map((policy) => {
-              const profileNames = getProfileNames(policy);
-              return (
-                <Tr key={policy.id} className="group">
-                  <Td>
-                    <div className="flex items-center gap-x-2">
-                      <span className="text-sm font-medium text-foreground">{policy.name}</span>
-                      {policy.scopeType !== ApprovalPolicyScope.PkiApplication && (
-                        <span className="rounded bg-surface-active px-2 py-0.5 text-[10px] tracking-wide text-foreground-secondary uppercase">
-                          Legacy
-                        </span>
-                      )}
-                    </div>
-                  </Td>
-                  <Td>
-                    <div className="flex flex-wrap items-center gap-1">
-                      {profileNames.slice(0, 3).map((name) => (
-                        <span
-                          key={name}
-                          className="rounded bg-surface-active px-2 py-0.5 text-xs text-foreground-secondary"
-                        >
-                          {name}
-                        </span>
-                      ))}
-                      {profileNames.length > 3 && (
-                        <span className="text-xs text-muted">+{profileNames.length - 3} more</span>
-                      )}
-                    </div>
-                  </Td>
-                  <Td>
-                    <span className="text-sm text-foreground-secondary">
-                      {policy.steps.length} step{policy.steps.length !== 1 ? "s" : ""}
-                    </span>
-                  </Td>
-                  <Td>
-                    <span className="text-sm text-muted">
-                      {formatDistance(new Date(policy.createdAt), new Date(), { addSuffix: true })}
-                    </span>
-                  </Td>
-                  <Td>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild className="rounded-lg">
-                        <div className="hover:text-project data-[state=open]:text-project">
-                          <Tooltip content="More options">
-                            <IconButton
-                              ariaLabel="More options"
-                              variant="plain"
-                              className="w-4 p-0"
-                              size="md"
-                            >
-                              <FontAwesomeIcon icon={faEllipsisV} />
-                            </IconButton>
-                          </Tooltip>
-                        </div>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="p-1" sideOffset={5}>
-                        <DropdownMenuItem
-                          onClick={() => handlePopUpOpen("policy", { policyId: policy.id, policy })}
-                          icon={<FontAwesomeIcon icon={faEdit} />}
-                        >
-                          Edit Policy
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handlePopUpOpen("deletePolicy", { policyId: policy.id })}
-                          icon={<FontAwesomeIcon icon={faTrash} />}
-                        >
-                          Delete Policy
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </Td>
-                </Tr>
-              );
-            })}
-        </TBody>
-      </Table>
-      {!isPoliciesLoading && !sortedPolicies.length && (
-        <EmptyState title="No certificate approval policies found" icon={faFileCircleQuestion} />
-      )}
-    </TableContainer>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Policy Name</TableHead>
+          <TableHead>Profile Name</TableHead>
+          <TableHead>Approval Steps</TableHead>
+          <TableHead>Created</TableHead>
+          <TableHead className="w-5" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {isPoliciesLoading && <TableSkeletonRows columns={5} />}
+        {!isPoliciesLoading &&
+          sortedPolicies.map((policy) => {
+            const profileNames = getProfileNames(policy);
+            return (
+              <TableRow key={policy.id} className="group">
+                <TableCell>
+                  <div className="flex items-center gap-x-2">
+                    <span className="text-sm font-medium text-foreground">{policy.name}</span>
+                    {policy.scopeType !== ApprovalPolicyScope.PkiApplication && (
+                      <span className="rounded bg-surface-active px-2 py-0.5 text-[10px] tracking-wide text-foreground-secondary">
+                        Legacy
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap items-center gap-1">
+                    {profileNames.slice(0, 3).map((name) => (
+                      <span
+                        key={name}
+                        className="rounded bg-surface-active px-2 py-0.5 text-xs text-foreground-secondary"
+                      >
+                        {name}
+                      </span>
+                    ))}
+                    {profileNames.length > 3 && (
+                      <span className="text-xs text-muted">+{profileNames.length - 3} more</span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <span className="text-sm text-foreground-secondary">
+                    {policy.steps.length} step{policy.steps.length !== 1 ? "s" : ""}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <span className="text-sm text-muted">
+                    {formatDistance(new Date(policy.createdAt), new Date(), { addSuffix: true })}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <Tooltip hoverable delayDuration={50}>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton aria-label="More options" variant="ghost" size="xs">
+                            <EllipsisVerticalIcon />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>More options</TooltipContent>
+                    </Tooltip>
+                    <DropdownMenuContent align="end" sideOffset={5}>
+                      <DropdownMenuItem
+                        onClick={() => handlePopUpOpen("policy", { policyId: policy.id, policy })}
+                      >
+                        <PencilIcon />
+                        Edit Policy
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handlePopUpOpen("deletePolicy", { policyId: policy.id })}
+                      >
+                        <Trash2Icon />
+                        Delete Policy
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+      </TableBody>
+    </Table>
   );
 };

@@ -40,7 +40,6 @@ import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/
 import { agentVaultSessionAccessBundleDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-access-bundle-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
-import { agentVaultSessionLogChunkDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-chunk-dal";
 import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
 import { agentVaultSessionLogServiceFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-service";
 import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
@@ -174,8 +173,6 @@ import { projectTemplateUserMembershipDALFactory } from "@app/ee/services/projec
 import { proxiedServiceCredentialDALFactory } from "@app/ee/services/proxied-service/proxied-service-credential-dal";
 import { proxiedServiceDALFactory } from "@app/ee/services/proxied-service/proxied-service-dal";
 import { proxiedServiceServiceFactory } from "@app/ee/services/proxied-service/proxied-service-service";
-import { rateLimitDALFactory } from "@app/ee/services/rate-limit/rate-limit-dal";
-import { rateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
 import { instanceRelayConfigDalFactory } from "@app/ee/services/relay/instance-relay-config-dal";
 import { orgRelayConfigDalFactory } from "@app/ee/services/relay/org-relay-config-dal";
 import { relayDalFactory } from "@app/ee/services/relay/relay-dal";
@@ -688,7 +685,6 @@ export const registerRoutes = async (
   const orgMembershipDAL = orgMembershipDALFactory(db);
   const userActivationDAL = userActivationDALFactory(db);
   const incidentContactDAL = incidentContactDALFactory(db);
-  const rateLimitDAL = rateLimitDALFactory(db);
 
   const projectDAL = projectDALFactory(db);
   const projectAccessRequestDAL = projectAccessRequestDALFactory(db);
@@ -1771,11 +1767,6 @@ export const registerRoutes = async (
     usageMeteringService
   });
 
-  const rateLimitService = rateLimitServiceFactory({
-    rateLimitDAL,
-    licenseService
-  });
-
   const secretScanningQueue = secretScanningQueueFactory({
     telemetryService,
     smtpService,
@@ -1989,7 +1980,6 @@ export const registerRoutes = async (
   const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
   const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
   const agentVaultResolveDAL = agentVaultResolveDALFactory(db);
-  const agentVaultSessionLogChunkDAL = agentVaultSessionLogChunkDALFactory(db);
   const agentVaultSessionLogConfigDAL = agentVaultSessionLogConfigDALFactory(db);
 
   const agentVaultAccessBundleService = agentVaultAccessBundleServiceFactory({
@@ -2017,8 +2007,7 @@ export const registerRoutes = async (
     agentVaultAccessBundleDAL,
     membershipDAL,
     permissionService,
-    kmsService,
-    agentVaultSessionLogChunkDAL
+    kmsService
   });
 
   const agentVaultProjectResolver = agentVaultProjectResolverFactory({
@@ -3303,7 +3292,6 @@ export const registerRoutes = async (
   });
 
   const agentVaultSessionLogService = agentVaultSessionLogServiceFactory({
-    agentVaultSessionLogChunkDAL,
     agentVaultSessionLogConfigDAL,
     agentVaultSessionDAL,
     agentVaultProxyDAL,
@@ -3311,7 +3299,8 @@ export const registerRoutes = async (
     appConnectionService,
     permissionService,
     kmsService,
-    licenseService
+    licenseService,
+    keyStore
   });
 
   const hsmConnectorService = hsmConnectorServiceFactory({
@@ -4623,7 +4612,6 @@ export const registerRoutes = async (
     secretReplication: secretReplicationService,
     secretTag: secretTagService,
     secretValidationRule: secretValidationRuleService,
-    rateLimit: rateLimitService,
     folder: folderService,
     resourceMetadata: resourceMetadataService,
     secretImport: secretImportService,
@@ -4796,14 +4784,10 @@ export const registerRoutes = async (
   }
 
   // Not gated by run mode, unlike the cron manager above: these refresh this process's own caches
-  // (env overrides, license plan, rate limits, admin integration config), so an API pod that stopped
+  // (env overrides, license plan, admin integration config), so an API pod that stopped
   // running them would serve stale config rather than shed background work.
   const cronJobs: TLocalRefreshHandle[] = [];
   if (appCfg.isProductionMode) {
-    const rateLimitSyncJob = await rateLimitService.initializeBackgroundSync();
-    if (rateLimitSyncJob) {
-      cronJobs.push(rateLimitSyncJob);
-    }
     const licenseSyncJob = await licenseService.initializeBackgroundSync();
     if (licenseSyncJob) {
       cronJobs.push(licenseSyncJob);

@@ -39,11 +39,9 @@ const handleRowAnchorClick = (event: React.MouseEvent) => {
 
 const ApplicationSelectInner = ({
   applicationName,
-  projectId,
   orgId
 }: {
   applicationName: string;
-  projectId: string;
   orgId: string;
 }) => {
   const [open, setOpen] = useState(false);
@@ -62,7 +60,7 @@ const ApplicationSelectInner = ({
     setOpen(false);
     if (nextName === applicationName) return;
     navigate({
-      to: `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${nextName}` as never
+      to: `/organizations/${orgId}/cert-manager/applications/${nextName}` as never
     } as never);
   };
 
@@ -79,9 +77,7 @@ const ApplicationSelectInner = ({
         }}
       >
         <Link
-          to={
-            `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${applicationName}` as never
-          }
+          to={`/organizations/${orgId}/cert-manager/applications/${applicationName}` as never}
           className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-foreground-inverse"
         >
           <ResourceIcon className="size-[14px] shrink-0 text-project" />
@@ -119,7 +115,7 @@ const ApplicationSelectInner = ({
                           arrow keys last selected and switch the user to the wrong application. */}
                       <Link
                         to={
-                          `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${app.name}` as never
+                          `/organizations/${orgId}/cert-manager/applications/${app.name}` as never
                         }
                         className="truncate rounded-sm text-sm outline-0 after:absolute after:inset-0 after:rounded-sm after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
                         onFocus={() => setSelectedValue(app.name)}
@@ -145,15 +141,12 @@ const ApplicationSelectInner = ({
 export const ApplicationSelect = () => {
   const params = useParams({ strict: false }) as {
     applicationName?: string;
-    projectId?: string;
     orgId?: string;
   };
   const search = useSearch({ strict: false }) as { fromApplication?: string };
-  const { projectId, orgId } = params;
+  const { orgId } = params;
   const applicationName = params.applicationName ?? search.fromApplication;
-  if (!applicationName || !projectId || !orgId) return null;
+  if (!applicationName || !orgId) return null;
 
-  return (
-    <ApplicationSelectInner applicationName={applicationName} projectId={projectId} orgId={orgId} />
-  );
+  return <ApplicationSelectInner applicationName={applicationName} orgId={orgId} />;
 };

@@ -2,7 +2,6 @@ import { PlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -10,7 +9,8 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
+  CardTitle,
+  DeleteConfirmDialog
 } from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
 import { useDeleteGroupFromWorkspace as useRemoveProjectFromGroup } from "@app/hooks/api";
@@ -86,14 +86,15 @@ export const GroupProjectsSection = ({ groupId, groupSlug, hideAddToProject = fa
         </CardContent>
       </Card>
       <AddGroupProjectModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.removeProjectFromGroup.isOpen}
         title={`Are you sure you want to remove the group from ${
           (popUp?.removeProjectFromGroup?.data as { projectName: string })?.projectName || ""
         }?`}
-        onChange={(isOpen) => handlePopUpToggle("removeProjectFromGroup", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() => {
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("removeProjectFromGroup", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() => {
           const projectData = popUp?.removeProjectFromGroup?.data as {
             projectId: string;
             projectName: string;

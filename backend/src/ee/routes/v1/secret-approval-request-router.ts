@@ -33,6 +33,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listSecretApprovalRequests",
       querystring: z.object({
         projectId: z.string().trim(),
         environment: z.string().trim().optional(),
@@ -109,6 +110,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getSecretApprovalRequestCount",
       querystring: z.object({
         projectId: z.string().trim(),
         policyId: z.string().trim().optional()
@@ -143,6 +145,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "mergeSecretApprovalRequest",
       params: z.object({
         id: z.string().uuid()
       }),
@@ -220,6 +223,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "reviewSecretApprovalRequest",
       params: z.object({
         id: z.string().uuid()
       }),
@@ -285,6 +289,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateSecretApprovalRequestStatus",
       params: z.object({
         id: z.string().uuid()
       }),
@@ -350,6 +355,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getSecretApprovalRequest",
       params: z.object({
         id: z.string().uuid()
       }),

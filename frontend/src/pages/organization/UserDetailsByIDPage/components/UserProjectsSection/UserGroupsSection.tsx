@@ -1,8 +1,14 @@
 import { useCallback } from "react";
 
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  DeleteConfirmDialog
+} from "@app/components/v3";
 import { useRemoveUserFromGroup } from "@app/hooks/api";
 import { OrgUser } from "@app/hooks/api/users/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -50,12 +56,13 @@ export const UserGroupsSection = ({ orgMembership }: Props) => {
         </CardContent>
       </Card>
 
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.removeUserFromGroup.isOpen}
         title="Are you sure you want to unassign user from group?"
-        onChange={(isOpen) => handlePopUpToggle("removeUserFromGroup", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() => {
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("removeUserFromGroup", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() => {
           const popupData = popUp?.removeUserFromGroup?.data as {
             groupId: string;
             groupSlug: string;

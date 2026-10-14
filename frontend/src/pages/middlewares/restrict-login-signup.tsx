@@ -7,7 +7,7 @@ import DOMPurify from "dompurify";
 import rehypeRaw from "rehype-raw";
 import { z } from "zod";
 
-import { Button } from "@app/components/v2";
+import { Button } from "@app/components/v3";
 import { SessionStorageKeys } from "@app/const";
 import { useServerConfig } from "@app/context";
 import { setAuthToken } from "@app/hooks/api/reactQuery";
@@ -58,7 +58,7 @@ export const AuthConsentWrapper = () => {
               {DOMPurify.sanitize(config.authConsentContent)}
             </ReactMarkdown>
             <div className="mt-6 flex justify-end">
-              <Button onClick={handleConsent} colorSchema="secondary">
+              <Button onClick={handleConsent} variant="outline">
                 OK
               </Button>
             </div>

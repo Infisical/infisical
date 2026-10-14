@@ -6527,7 +6527,7 @@ interface AgentVaultServiceDeleteEvent {
   };
 }
 
-// Keys and flags only. A variable's value never reaches an audit row, secret or not.
+// Keys only. A variable's value never reaches an audit row.
 interface AgentVaultVariableCreateEvent {
   type: EventType.AGENT_VAULT_VARIABLE_CREATE;
   metadata: {
@@ -6535,7 +6535,6 @@ interface AgentVaultVariableCreateEvent {
     accessBundleName: string;
     variableId: string;
     key: string;
-    isSecret: boolean;
   };
 }
 
@@ -6546,10 +6545,8 @@ interface AgentVaultVariableUpdateEvent {
     accessBundleName: string;
     variableId: string;
     key: string;
-    // The previous* fields are present only when the update changed them.
+    // Present only when the update changed the key.
     previousKey?: string;
-    isSecret: boolean;
-    previousIsSecret?: boolean;
     valueReplaced: boolean;
   };
 }

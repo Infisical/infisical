@@ -29,7 +29,7 @@ type Props = {
 };
 
 export const ConfigureProfilesModal = ({ application, isOpen, onOpenChange }: Props) => {
-  const { projectId, orgId } = useParams({ strict: false });
+  const { orgId } = useParams({ strict: false });
   const { data: profilesData, isPending: profilesLoading } = useListCertificateProfiles({
     limit: 100
   });
@@ -110,8 +110,8 @@ export const ConfigureProfilesModal = ({ application, isOpen, onOpenChange }: Pr
             <p className="mt-3 text-xs text-warning">
               No certificate profiles available.{" "}
               <Link
-                to="/organizations/$orgId/projects/cert-manager/$projectId/certificate-profiles"
-                params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
+                to="/organizations/$orgId/cert-manager/certificate-profiles"
+                params={{ orgId: orgId ?? "" }}
                 className="underline hover:text-warning"
               >
                 Create one in Certificate Profiles

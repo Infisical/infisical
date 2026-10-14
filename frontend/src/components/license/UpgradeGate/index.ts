@@ -64,6 +64,7 @@ export {
   SecretRotationsUpgradeIntent,
   SecretsBrokeringUpgradeIntent,
   SecretScanningUpgradeIntent,
+  SecretsManagementUpgradeIntent,
   UpgradeFeature
 } from "./upgrade-intents";
 export { UpgradeGate } from "./UpgradeGate";
