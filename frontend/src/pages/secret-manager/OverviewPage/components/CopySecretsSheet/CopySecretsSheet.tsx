@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowDownIcon,
   ArrowRightIcon,
@@ -55,6 +55,12 @@ import {
 } from "@app/hooks/api/secretFolders/queries";
 import { useDuplicateSecret } from "@app/hooks/api/secrets";
 
+import {
+  overviewCountBucket,
+  OverviewFlowHandle,
+  overviewResponsePhase,
+  useOverviewTelemetry
+} from "../../OverviewTelemetry";
 import { type CopySecretsErrorKind, getCopySecretsErrorKind } from "./copySecrets.data";
 import type {
   CopySecretsAttributes,
@@ -118,6 +124,34 @@ const CopySecretsSession = ({
   onOpenChange,
   onCompleted
 }: Props & { invocation: CopySecretsInvocation }) => {
+  const overviewTelemetry = useOverviewTelemetry();
+  const [telemetry] = useState(overviewTelemetry);
+  const sessionOwner = useRef<object>();
+  const sessionFlow = useRef<OverviewFlowHandle>();
+  const flow = {
+    action: "copy" as const,
+    resourceType: "mixed" as const,
+    source: invocation.origin === "toolbar" ? ("menu" as const) : invocation.origin,
+    destination: "environment" as const
+  };
+  useEffect(() => {
+    sessionOwner.current = {};
+    sessionFlow.current = telemetry.openFlow(flow, { cancelOnScopeChange: false });
+    return () => {
+      sessionFlow.current?.flow({ phase: "canceled" });
+      sessionFlow.current = undefined;
+      sessionOwner.current = undefined;
+    };
+  }, [telemetry, invocation.origin]);
+  const closeSheet = (open: boolean, owner = sessionOwner.current) => {
+    if (!owner || owner !== sessionOwner.current) return;
+    if (!open) sessionFlow.current?.flow({ phase: "canceled" });
+    onOpenChange(open);
+    if (!open) {
+      sessionFlow.current = undefined;
+      sessionOwner.current = undefined;
+    }
+  };
   const initialState = getInitialCopyState(invocation, environments);
   const [sourceEnvironmentSlug, setSourceEnvironmentSlug] = useState(
     initialState.sourceEnvironmentSlug
@@ -366,7 +400,15 @@ const CopySecretsSession = ({
     shouldOverwrite: boolean;
     skippedSecretIds?: string[];
   }) => {
+    const owner = sessionOwner.current;
     setIsSubmitting(true);
+    const attempt = telemetry.startFlow({
+      ...flow,
+      countBucket: overviewCountBucket(selectedItemCount)
+    });
+    let receivedCount = 0;
+    let receivedApprovalCount = 0;
+    let receivedFolderCount = 0;
     try {
       const skippedIds = new Set(skippedSecretIds);
       const copiedSecretIds = selectedIds.filter((id) => !skippedIds.has(id));
@@ -384,6 +426,7 @@ const CopySecretsSession = ({
           path: parentPath,
           name
         });
+        receivedFolderCount += 1;
       }, Promise.resolve());
 
       const results = await copyRequestGroups.reduce<Promise<Array<{ approvalCount: number }>>>(
@@ -406,6 +449,10 @@ const CopySecretsSession = ({
                 value: group.includeValues
               }
             });
+            receivedCount += response.results.filter((result) => !("approval" in result)).length;
+            receivedApprovalCount += response.results.filter(
+              (result) => "approval" in result
+            ).length;
             return [
               ...chunks,
               { approvalCount: response.results.filter((result) => "approval" in result).length }
@@ -417,6 +464,13 @@ const CopySecretsSession = ({
       );
 
       const approvalCount = results.reduce((count, result) => count + result.approvalCount, 0);
+      attempt.flow({
+        ...flow,
+        phase: overviewResponsePhase(receivedCount + receivedFolderCount, approvalCount, 0),
+        countBucket: overviewCountBucket(copiedSecretIds.length + selectedFolderPaths.length),
+        responseCountBucket: overviewCountBucket(receivedCount + receivedFolderCount),
+        approvalCountBucket: overviewCountBucket(receivedApprovalCount)
+      });
       const skippedCount = skippedSecretIds.length;
       let notificationText = `${copiedSecretIds.length} ${
         copiedSecretIds.length === 1 ? "secret" : "secrets"
@@ -445,9 +499,20 @@ const CopySecretsSession = ({
             : "success",
         text: notificationText
       });
-      onCompleted?.(copiedSecretIds);
-      onOpenChange(false);
+      if (owner && owner === sessionOwner.current) {
+        onCompleted?.(copiedSecretIds);
+        closeSheet(false, owner);
+      }
     } catch {
+      attempt.flow({
+        ...flow,
+        phase:
+          receivedCount + receivedFolderCount + receivedApprovalCount
+            ? "partial-response"
+            : "failed",
+        responseCountBucket: overviewCountBucket(receivedCount + receivedFolderCount),
+        approvalCountBucket: overviewCountBucket(receivedApprovalCount)
+      });
       // Mutation failures are surfaced by the global React Query error handler.
     } finally {
       setIsSubmitting(false);
@@ -594,7 +659,7 @@ const CopySecretsSession = ({
 
   return (
     <>
-      <Sheet open={isOpen} onOpenChange={(open) => !isSubmitting && onOpenChange(open)}>
+      <Sheet open={isOpen} onOpenChange={(open) => !isSubmitting && closeSheet(open)}>
         <SheetContent size="workspace" className="w-full sm:w-3/4">
           <form
             className="flex min-h-0 flex-1 flex-col"
@@ -808,7 +873,7 @@ const CopySecretsSession = ({
                 type="button"
                 variant="ghost"
                 isDisabled={isSubmitting}
-                onClick={() => onOpenChange(false)}
+                onClick={() => closeSheet(false)}
               >
                 Cancel
               </Button>

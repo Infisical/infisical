@@ -41,14 +41,8 @@ const SessionSchema = z.object({
   createdAt: z.date()
 });
 
-const SessionWithLogCountsSchema = SessionSchema.extend({
-  accessBundles: SessionAccessBundleSchema.array(),
-  recentSessionLogCounts: z
-    .object({
-      recordedCount: z.number().describe(AGENT_VAULT.SESSION.recentRecordedCount),
-      droppedCount: z.number().describe(AGENT_VAULT.SESSION.recentDroppedCount)
-    })
-    .describe(AGENT_VAULT.SESSION.recentSessionLogCounts)
+const SessionWithAccessBundlesSchema = SessionSchema.extend({
+  accessBundles: SessionAccessBundleSchema.array()
 });
 
 export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider) => {
@@ -86,7 +80,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       }),
       response: {
         200: z.object({
-          sessions: SessionWithLogCountsSchema.array(),
+          sessions: SessionWithAccessBundlesSchema.array(),
           totalCount: z.number()
         })
       }
@@ -114,7 +108,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       tags: [ApiDocsTags.AgentVaultSessions],
       params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
       response: {
-        200: z.object({ session: SessionWithLogCountsSchema })
+        200: z.object({ session: SessionWithAccessBundlesSchema })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),

@@ -151,7 +151,7 @@ export const validateAllowlists = ({
       });
 
     if (!isArnAllowed) {
-      logger.error(
+      logger.warn(
         `Resource AWS Auth Login: AWS principal ARN not allowed [principal-arn=${formattedArn}] [raw-arn=${Arn}] [resourceId=${String(errorContext.resourceId)}]`
       );
       throw new UnauthorizedError({

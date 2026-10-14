@@ -14,6 +14,8 @@ export type TFeatureMapping = {
   // The TFeatureSet field this maps to (drives the completeness test); dotted for nested fields
   // (e.g. "rateLimits.readLimit"). null when the feature has no plan field to write.
   v1Field: string | null;
+  // Registry keys a boolean feature was previously sold under; any of them being on turns the feature on.
+  legacyV2Keys?: string[];
 };
 
 // Org-wide capabilities that are not tied to a single product: identity and access, audit, KMS/HSM,
@@ -135,10 +137,6 @@ const platformMappings: TFeatureMapping[] = [
   {
     v2Key: "gateway_pool",
     v1Field: "gatewayPool"
-  },
-  {
-    v2Key: "custom_rate_limits",
-    v1Field: "customRateLimits"
   },
   {
     v2Key: "custom_alerts",
@@ -353,8 +351,9 @@ const pamMappings: TFeatureMapping[] = [
     v1Field: "enterprisePamAccount"
   },
   {
-    v2Key: "pam_slack_notifications",
-    v1Field: "pamSlackNotifications"
+    v2Key: "pam_enterprise_alerting",
+    v1Field: "pamEnterpriseAlerting",
+    legacyV2Keys: ["pam_slack_notifications"]
   },
   {
     // Max PAM accounts allowed. null (v1 default) means uncapped.

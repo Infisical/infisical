@@ -20,7 +20,6 @@ import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
-import { ContentLoader, Spinner } from "@app/components/v2";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -31,7 +30,9 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  PageLoader,
   ScrollableContent,
+  Spinner,
   VerificationCodeHeader
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
@@ -443,7 +444,7 @@ export const SelectOrgPage = () => {
   if (userLoading || !user) {
     return (
       <div className="h-screen w-screen bg-page">
-        <ContentLoader />
+        <PageLoader />
       </div>
     );
   }

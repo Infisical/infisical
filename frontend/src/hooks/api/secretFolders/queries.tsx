@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import {
+  MutationMeta,
   useMutation,
   useQueries,
   useQuery,
@@ -34,7 +35,7 @@ export const folderQueryKeys = {
     [...folderQueryKeys.getProjectEnvironmentsFolders(projectId), environment] as const
 };
 
-const fetchProjectFolders = async (projectId: string, environment: string, path = "/") => {
+export const fetchProjectFolders = async (projectId: string, environment: string, path = "/") => {
   const { data } = await apiRequest.get<{ folders: TSecretFolder[] }>("/api/v2/folders", {
     params: {
       projectId,
@@ -198,10 +199,11 @@ export const useGetOrCreateFolder = () => {
   });
 };
 
-export const useCreateFolder = () => {
+export const useCreateFolder = ({ meta }: { meta?: MutationMeta } = {}) => {
   const queryClient = useQueryClient();
 
   return useMutation<object, object, TCreateFolderDTO>({
+    meta,
     mutationFn: async (dto) => {
       const { data } = await apiRequest.post("/api/v2/folders", {
         ...dto,

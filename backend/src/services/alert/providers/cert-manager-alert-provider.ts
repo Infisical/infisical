@@ -123,7 +123,7 @@ export const certManagerAlertProviderFactory = ({
 }: TCertManagerAlertProviderDep): IScheduledAlertProvider<TAlertCertificate> &
   IEventAlertProvider<TAlertCertificate> => {
   const buildViewUrl = async (alert: TAlertContext): Promise<string> =>
-    `${getConfig().SITE_URL}/organizations/${alert.orgId}/projects/cert-manager/${alert.projectId}/inventory`;
+    `${getConfig().SITE_URL}/organizations/${alert.orgId}/cert-manager/inventory`;
 
   const findScheduledTargets = async (input: TFindScheduledTargetsInput): Promise<TAlertCertificate[]> => {
     if (!input.projectId || input.resourceId || !input.alreadyAlerted?.channelIds.length) return [];

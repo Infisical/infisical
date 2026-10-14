@@ -150,7 +150,7 @@ When you create an SSH dynamic secret, Infisical generates an internal CA key pa
 You can also create SSH dynamic secret leases using the CLI:
 
 ```bash
-infisical dynamic-secrets lease create <secret-name> \
+infisical sm dynamic-secrets lease create <secret-name> \
   --projectId=<project-id> \
   --env=dev \
   --principals=root,deploy
@@ -158,7 +158,7 @@ infisical dynamic-secrets lease create <secret-name> \
 
 The `--principals` flag is required for SSH dynamic secrets and accepts a comma-separated list. The requested principals must be a subset of the allowed principals configured on the dynamic secret.
 
-For more details, see the [CLI dynamic secrets documentation](/cli/reference#dynamic-secrets).
+For more details, see the [CLI dynamic secrets documentation](/cli/reference#sm-dynamic-secrets).
 
 ## Audit or revoke leases
 
