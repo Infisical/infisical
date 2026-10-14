@@ -59,7 +59,7 @@ export const AuditLogStreamRow = ({ logStream, onDelete, onEditCredentials }: Pr
           {failingSince && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="danger">
+                <Badge variant="danger" tabIndex={0}>
                   <TriangleAlertIcon />
                   Failing
                 </Badge>
