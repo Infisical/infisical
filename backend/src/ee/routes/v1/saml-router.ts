@@ -354,12 +354,12 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       operationId: "samlAcs",
       consumes: ["application/x-www-form-urlencoded"],
       params: z.object({
-        samlConfigId: z.string().trim()
+        samlConfigId: z.string().trim().describe(SamlSso.ACS.samlConfigId)
       }),
       // Unbounded on purpose: passport reads the body in preValidation, before this schema runs.
       body: z.object({
-        SAMLResponse: z.string().optional(),
-        RelayState: z.string().optional()
+        SAMLResponse: z.string().optional().describe(SamlSso.ACS.SAMLResponse),
+        RelayState: z.string().optional().describe(SamlSso.ACS.RelayState)
       })
     },
     preValidation: passport.authenticate(

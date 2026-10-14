@@ -9,6 +9,7 @@ import (
 	"github.com/Infisical/infisical/tests/fakes/samlidp"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/id"
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -60,12 +61,17 @@ func TestSAMLAssertion_Rejected(t *testing.T) {
 			reason:  "Responder error",
 		},
 		{
-			name: "should reject the response when email or first name is missing",
+			name: "should reject the response when the email is missing",
 			corrupt: func(_ *testing.T, _ *sso, r *samlidp.Response) {
 				r.NameID = r.Email
 				r.Email = ""
 			},
 			reason: "Missing email or first name",
+		},
+		{
+			name:    "should reject the response when the first name is missing",
+			corrupt: func(_ *testing.T, _ *sso, r *samlidp.Response) { r.FirstName = "" },
+			reason:  "Missing email or first name",
 		},
 	}
 
@@ -90,6 +96,28 @@ func TestSAMLAssertion_Rejected(t *testing.T) {
 			require.Nil(t, membershipOf(t, s.tn, alice.Email))
 		})
 	}
+
+	t.Run("should reject the response when the assertion alone is signed and altered after signing", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, "Azure accepts an unsigned outer response, so the assertion's own signature is the only check left.")
+
+		// Setup
+		s := setup(t, azure)
+		alice := s.person()
+		alice.Signing = samlidp.SignAssertionOnly
+		alice.AlterSigned = func(xml string) string {
+			return strings.ReplaceAll(xml, alice.Email, s.tn.Email("admin"))
+		}
+
+		// Action
+		res := s.idpLogin(t, alice)
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Contains(t, string(res.Body), "Saml authentication failed. Invalid signature")
+		require.Nil(t, refreshCookie(res))
+		require.Nil(t, membershipOf(t, s.tn, alice.Email))
+	})
 
 	t.Run("should reject the response when the config id does not exist", func(t *testing.T) {
 		t.Parallel()

@@ -11746,7 +11746,10 @@ type RedirectSamlByConfigIdParams struct {
 
 // SamlAcsFormdataBody defines parameters for SamlAcs.
 type SamlAcsFormdataBody struct {
-	RelayState   *string `form:"RelayState,omitempty" json:"RelayState,omitempty"`
+	// RelayState The RelayState Infisical sent with the authentication request, returned unchanged by the identity provider.
+	RelayState *string `form:"RelayState,omitempty" json:"RelayState,omitempty"`
+
+	// SAMLResponse The base64-encoded SAML response the identity provider posted through the browser.
 	SAMLResponse *string `form:"SAMLResponse,omitempty" json:"SAMLResponse,omitempty"`
 }
 
