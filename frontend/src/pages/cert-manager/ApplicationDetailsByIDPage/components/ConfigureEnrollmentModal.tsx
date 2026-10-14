@@ -18,7 +18,6 @@ import {
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
-import { Spinner, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,6 +60,11 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Spinner,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   TextArea,
   Toggle,
   Tooltip,
@@ -1518,16 +1522,16 @@ export const ConfigureEnrollmentModal = ({
             <div className="flex items-center justify-between gap-2 border-b border-border">
               {visibleMethods.length > 0 ? (
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EnrollmentMethod)}>
-                  <TabList className="border-b-0">
+                  <TabsList variant="project" className="border-b-0">
                     {visibleMethods.map((m) => (
-                      <Tab key={m} value={m}>
+                      <TabsTrigger key={m} value={m}>
                         {METHOD_LABELS[m]}
                         {isUnsaved(m) && (
                           <span className="ml-1.5 text-xs text-muted">(unsaved)</span>
                         )}
-                      </Tab>
+                      </TabsTrigger>
                     ))}
-                  </TabList>
+                  </TabsList>
                 </Tabs>
               ) : (
                 <div />
@@ -1581,7 +1585,7 @@ export const ConfigureEnrollmentModal = ({
                 )}
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EnrollmentMethod)}>
                   {visibleMethods.includes("api") ? (
-                    <TabPanel value="api" className="pb-0 data-[state=inactive]:hidden" forceMount>
+                    <TabsContent value="api" className="data-[state=inactive]:hidden" forceMount>
                       <ApiPanel
                         applicationId={applicationId}
                         profileId={profileId}
@@ -1590,10 +1594,10 @@ export const ConfigureEnrollmentModal = ({
                         onCancelPending={() => handleCancelPending("api")}
                         onDirtyChange={(d) => handleDirtyChange("api", d)}
                       />
-                    </TabPanel>
+                    </TabsContent>
                   ) : null}
                   {visibleMethods.includes("est") ? (
-                    <TabPanel value="est" className="pb-0 data-[state=inactive]:hidden" forceMount>
+                    <TabsContent value="est" className="data-[state=inactive]:hidden" forceMount>
                       <EstPanel
                         applicationId={applicationId}
                         profileId={profileId}
@@ -1602,10 +1606,10 @@ export const ConfigureEnrollmentModal = ({
                         onCancelPending={() => handleCancelPending("est")}
                         onDirtyChange={(d) => handleDirtyChange("est", d)}
                       />
-                    </TabPanel>
+                    </TabsContent>
                   ) : null}
                   {visibleMethods.includes("acme") ? (
-                    <TabPanel value="acme" className="pb-0 data-[state=inactive]:hidden" forceMount>
+                    <TabsContent value="acme" className="data-[state=inactive]:hidden" forceMount>
                       <AcmePanel
                         applicationId={applicationId}
                         profileId={profileId}
@@ -1614,10 +1618,10 @@ export const ConfigureEnrollmentModal = ({
                         onCancelPending={() => handleCancelPending("acme")}
                         onDirtyChange={(d) => handleDirtyChange("acme", d)}
                       />
-                    </TabPanel>
+                    </TabsContent>
                   ) : null}
                   {visibleMethods.includes("scep") ? (
-                    <TabPanel value="scep" className="pb-0 data-[state=inactive]:hidden" forceMount>
+                    <TabsContent value="scep" className="data-[state=inactive]:hidden" forceMount>
                       <ScepPanel
                         applicationId={applicationId}
                         profileId={profileId}
@@ -1628,7 +1632,7 @@ export const ConfigureEnrollmentModal = ({
                         onCancelPending={() => handleCancelPending("scep")}
                         onDirtyChange={(d) => handleDirtyChange("scep", d)}
                       />
-                    </TabPanel>
+                    </TabsContent>
                   ) : null}
                 </Tabs>
               </>

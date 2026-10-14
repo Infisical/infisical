@@ -3,6 +3,7 @@ import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { CheckIcon, ChevronDownIcon, Loader2Icon, PlusIcon, XIcon } from "lucide-react";
 
 import { cn } from "../../utils";
+import { useIsInsideOverlayLayer, useOverlayPopupRegistration } from "../../utils/overlay-layer";
 import { useScrollEdges } from "../../utils/useScrollEdges";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../Dialog";
 import { getComboboxInputAriaLabel } from "./combobox-accessibility";
@@ -57,6 +58,8 @@ type ComboboxDialogCreationConfig<TOption> = ComboboxCreationBaseConfig<TOption>
   renderForm: (props: ComboboxDialogCreationRenderProps) => React.ReactNode;
   /** Prevent dismissing the dialog while caller-owned persistence is pending. */
   isPending?: boolean;
+  /** Intercepts Escape, outside press, and the close button (e.g. to confirm discarding changes); call `cancel` to close. */
+  onDismiss?: (cancel: () => void) => void;
 };
 
 type ComboboxCreationConfig<TOption> =
@@ -182,7 +185,9 @@ const useComboboxOpen = (onPopupOpenChange?: (open: boolean) => void) => {
     []
   );
 
-  return [open, setOpen] as const;
+  const markPopupDismissEvent = useOverlayPopupRegistration(open);
+
+  return [open, setOpen, markPopupDismissEvent] as const;
 };
 
 const SINGLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height, 50dvh))";
@@ -752,9 +757,11 @@ const useComboboxDialogCreation = <TOption,>({
 
   const onOpenChange = React.useCallback(
     (nextOpen: boolean) => {
-      if (!nextOpen) cancel();
+      if (nextOpen) return;
+      if (dialogCreation?.onDismiss) dialogCreation.onDismiss(cancel);
+      else cancel();
     },
-    [cancel]
+    [cancel, dialogCreation]
   );
 
   const onCloseAutoFocus = React.useCallback(
@@ -840,7 +847,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     isDisabled = false,
     isLoading = false,
     isError = false,
-    modal = false,
+    modal: modalProp,
     onPopupOpenChange,
     portalContainer: portalContainerProp,
     variant = "default",
@@ -856,10 +863,12 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     onKeyDown,
     ...inputProps
   } = props;
+  const isInsideOverlayLayer = useIsInsideOverlayLayer();
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const listScrollRef = React.useRef<HTMLDivElement>(null);
   const highlightedOptionValueRef = React.useRef<string | null>(null);
-  const [open, setOpen] = useComboboxOpen(onPopupOpenChange);
+  const [open, setOpen, markPopupDismissEvent] = useComboboxOpen(onPopupOpenChange);
+  const modal = modalProp ?? isInsideOverlayLayer;
   const selectedLabel = value == null ? "" : getOptionLabel(value);
   const [search, setSearch] = React.useState("");
   const searchRef = React.useRef(search);
@@ -920,8 +929,9 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     onSearchChange?.(nextSearch);
     onInputValueChange?.(nextSearch);
   };
+  // Dialog creation collects its own fields, so its create row also opens from an empty query.
   const creationInput =
-    creation && isEditing
+    (creation && isEditing
       ? getComboboxCreationInput({
           inputValue: search,
           options,
@@ -930,7 +940,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
           isDuplicate: creation.isDuplicate,
           isValid: creation.isValid
         })
-      : null;
+      : null) ?? (isDialogCreationConfig(creation) && !(isEditing && search.trim()) ? "" : null);
   const handleCreationSuccess = React.useCallback(
     (inputValue: string) => {
       if (searchRef.current.trim() !== inputValue) return;
@@ -1006,7 +1016,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
             }
             if (nextValue.type === "create") {
               eventDetails.cancel();
-              if (!creationInput || nextValue.inputValue !== creationInput) return;
+              if (creationInput === null || nextValue.inputValue !== creationInput) return;
               if (dialogCreation.creation) {
                 isDialogCreationActiveRef.current = true;
                 setOpen(false);
@@ -1037,6 +1047,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
               eventDetails.reason === "item-press" &&
               isDialogCreationConfig(creation) &&
               (isDialogCreationActiveRef.current || isComboboxCreateItemEvent(eventDetails.event));
+            if (!nextOpen) markPopupDismissEvent(eventDetails.event);
             setOpen(nextOpen);
             if (!nextOpen && !isCreationActive() && !isOpeningCreationDialog) {
               highlightedOptionValueRef.current = null;
@@ -1178,7 +1189,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
               showEmptyMessage={!creation}
               creation={creation}
               creationItem={creationItem}
-              canCreate={Boolean(creationInput)}
+              canCreate={creationInput !== null}
               creationError={creationError}
               isCreationPending={isCreationPending}
               selectedValues={selectedValues}
@@ -1230,7 +1241,7 @@ const MultipleCombobox = <TOption,>({
   isDisabled = false,
   isLoading = false,
   isError = false,
-  modal = false,
+  modal: modalProp,
   onPopupOpenChange,
   portalContainer: portalContainerProp,
   className,
@@ -1245,13 +1256,15 @@ const MultipleCombobox = <TOption,>({
   onKeyDown,
   ...inputProps
 }: ComboboxMultipleProps<TOption>) => {
+  const isInsideOverlayLayer = useIsInsideOverlayLayer();
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const listScrollRef = React.useRef<HTMLDivElement>(null);
   const chipsRef = React.useRef<HTMLDivElement | null>(null);
   const { scrollEdges, setViewportRef } = useScrollEdges<HTMLDivElement>(
     singleLine ? "horizontal" : "vertical"
   );
-  const [open, setOpen] = useComboboxOpen(onPopupOpenChange);
+  const [open, setOpen, markPopupDismissEvent] = useComboboxOpen(onPopupOpenChange);
+  const modal = modalProp ?? isInsideOverlayLayer;
   const openRef = React.useRef(open);
   openRef.current = open;
   const [search, setSearch] = React.useState("");
@@ -1314,16 +1327,18 @@ const MultipleCombobox = <TOption,>({
   const areAllOptionsSelected =
     selectAllOptions.length > 0 &&
     selectAllOptions.every((option) => selectedValues.has(getOptionValue(option)));
-  const creationInput = creation
-    ? getComboboxCreationInput({
-        inputValue: search,
-        options,
-        selectedOptions,
-        getOptionLabel,
-        isDuplicate: creation.isDuplicate,
-        isValid: creation.isValid
-      })
-    : null;
+  // Dialog creation collects its own fields, so its create row also opens from an empty query.
+  const creationInput =
+    (creation
+      ? getComboboxCreationInput({
+          inputValue: search,
+          options,
+          selectedOptions,
+          getOptionLabel,
+          isDuplicate: creation.isDuplicate,
+          isValid: creation.isValid
+        })
+      : null) ?? (isDialogCreationConfig(creation) && !search.trim() ? "" : null);
   const handleCreationSuccess = React.useCallback(
     (inputValue: string) => {
       if (searchRef.current.trim() !== inputValue) return;
@@ -1412,7 +1427,7 @@ const MultipleCombobox = <TOption,>({
             const createItem = nextValue.find((item) => item.type === "create");
             if (createItem) {
               eventDetails.cancel();
-              if (!creationInput || createItem.inputValue !== creationInput) return;
+              if (creationInput === null || createItem.inputValue !== creationInput) return;
               if (dialogCreation.creation) {
                 isDialogCreationActiveRef.current = true;
                 openRef.current = false;
@@ -1460,6 +1475,7 @@ const MultipleCombobox = <TOption,>({
               eventDetails.reason === "item-press" &&
               isDialogCreationConfig(creation) &&
               (isDialogCreationActiveRef.current || isComboboxCreateItemEvent(eventDetails.event));
+            if (!nextOpen) markPopupDismissEvent(eventDetails.event);
             openRef.current = nextOpen;
             setOpen(nextOpen);
             if (!nextOpen && !isCreationActive() && !isOpeningCreationDialog) {
@@ -1597,7 +1613,7 @@ const MultipleCombobox = <TOption,>({
               showEmptyMessage={!creation}
               creation={creation}
               creationItem={creationItem}
-              canCreate={Boolean(creationInput)}
+              canCreate={creationInput !== null}
               creationError={creationError}
               isCreationPending={isCreationPending}
               selectedValues={selectedValues}

@@ -10,6 +10,15 @@ export enum SubscriptionPlanTypes {
   OnPremEnterprise = "one-prem-enterprise"
 }
 
+export type SubscriptionPlanNotice = {
+  type: "trial_payment_failed";
+  productKey: string;
+  trialPlanKey: string | null;
+  accessEndsAt: string;
+  nextAttemptAt: string | null;
+  cause: string | null;
+};
+
 export type SubscriptionPlan = {
   productPlans?: {
     productKey: string;
@@ -18,16 +27,16 @@ export type SubscriptionPlan = {
     trialPlanKey: string | null;
     trialEndsAt: string | null;
   }[];
+  notices?: SubscriptionPlanNotice[];
   id: string;
   memberLimit: number;
   identityLimit: number;
   auditLogs: boolean;
   dynamicSecret: boolean;
-  auditLogsRetentionDays: number;
+  auditLogsRetentionDays: number | null;
   auditLogStreamLimit: number;
   auditLogStreams: boolean;
   customAlerts: boolean;
-  customRateLimits: boolean;
   pitRecovery: boolean;
   githubOrgSync: boolean;
   subOrganization?: boolean;

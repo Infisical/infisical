@@ -8,6 +8,10 @@ import LogIn from "/snippets/cli/local-development/log-in.mdx";
 
 Every Infisical product that has a CLI workflow starts the same way: install the CLI, log in, and check that the CLI can reach your Infisical instance. This page covers those steps, then links to the command reference.
 
+<Tip>
+  If you prefer to learn by watching, follow along with our [video walkthrough of the Infisical CLI](https://www.youtube.com/watch?v=WQz6BCygORA).
+</Tip>
+
 ## Prerequisites
 
 - An Infisical account on [Infisical Cloud](https://app.infisical.com) or on a [self-hosted instance](/self-hosting/overview)
@@ -58,7 +62,7 @@ If your Infisical instance is behind a service that requires its own headers, su
 
         On Windows, `setx` saves the variable for new sessions only, so restart PowerShell before you run the next command.
 
-        To set the instance another way, such as with the `--domain` flag or in `.infisical.json`, see [Set the Infisical instance](/cli/project-config#set-the-infisical-instance).
+        To set the instance another way, such as with the `--domain` flag or in `.infisical.yaml`, see [Set the Infisical instance](/cli/project-config#set-the-infisical-instance).
       </Step>
       <Step>
         Log in with the client ID and client secret, and store the access token in the `INFISICAL_TOKEN` environment variable:

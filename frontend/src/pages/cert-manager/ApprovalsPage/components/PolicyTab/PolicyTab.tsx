@@ -26,7 +26,7 @@ export const PolicyTab = () => {
 
   if (!isAdmin) {
     return (
-      <AccessRestrictedDialog description="Only project admins can view and manage certificate approval policies." />
+      <AccessRestrictedDialog description="Only Certificate Manager admins can view and manage certificate approval policies." />
     );
   }
 
@@ -54,8 +54,8 @@ export const PolicyTab = () => {
             <p className="text-xl font-medium text-foreground">Certificate Approval Policies</p>
           </div>
           <p className="text-sm text-label-secondary">
-            Existing project-level policies remain editable. Create new approval policies inside an
-            Application.
+            Existing policies created outside an Application remain editable. Create new approval
+            policies inside an Application.
           </p>
         </div>
       </div>

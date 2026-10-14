@@ -1,16 +1,30 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft } from "lucide-react";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { ChevronLeft, SlidersHorizontal } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 
-import { SidebarGroup, SidebarGroupLabel } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import {
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem
+} from "@app/components/v3";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useOrgPermission,
+  useProject
+} from "@app/context";
 import {
   hasIntermediateProjectsView,
+  hasProjectTemplates,
   isOrgScopedProduct,
   projectTypeToUrlSlug
 } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { useGetSecretScanningInstanceState } from "@app/hooks/api/secretScanningV2";
 
 import { AgentVaultNav } from "./AgentVaultNav";
 import { CertManagerNav } from "./CertManagerNav";
@@ -22,8 +36,8 @@ import {
   CERT_APPROVALS_SUBMENU,
   CERT_CERTIFICATES_SUBMENU,
   CERT_INTEGRATIONS_SUBMENU,
+  getSecretScanningSettingsSubmenu,
   PROJECT_ACCESS_CONTROL_SUBMENU,
-  SECRET_SCANNING_SETTINGS_SUBMENU,
   SM_SETTINGS_SUBMENU
 } from "./submenus";
 import { ProjectSubmenuView } from "./SubmenuViews";
@@ -49,6 +63,7 @@ export const ProjectNav = () => {
   const { currentOrg, isSubOrganization } = useOrganization();
   const { pathname, search: locationSearch } = useLocation();
   const navigate = useNavigate();
+  const { permission } = useOrgPermission();
   const isLegacyView = (locationSearch as { legacy?: string })?.legacy === "true";
   const hasApplicationContext = Boolean(
     (locationSearch as { applicationName?: string })?.applicationName
@@ -56,11 +71,20 @@ export const ProjectNav = () => {
   const isFromRootRequests = (locationSearch as { from?: string })?.from === "root-requests";
   const hasSignerContext = Boolean((locationSearch as { signerId?: string })?.signerId);
   const intermediateAvailable = hasIntermediateProjectsView(currentProject.type);
+  const { data: secretScanningInstance } = useGetSecretScanningInstanceState(currentOrg.id, {
+    enabled: currentProject.type === ProjectType.SecretScanning
+  });
+  const hasMultipleSecretScanningProjects = Boolean(secretScanningInstance?.isMultiInstance);
   let projectLabel: string;
   if (intermediateAvailable) projectLabel = "Projects";
   else if (isSubOrganization) projectLabel = "Sub-Organization";
   else projectLabel = "Organization";
   const NavComponent = PROJECT_NAV_COMPONENT[currentProject.type];
+  // Products with a projects listing link Product Settings from there; the rest link it here.
+  const showProductSettings =
+    !intermediateAvailable &&
+    hasProjectTemplates(currentProject.type) &&
+    permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
 
   // scott: we currently have to use this flaky inclusion for routes/nested routes because we haven't
   // been consistent in using a route structure that reflects nested pages; once we refactor we can switch
@@ -88,7 +112,7 @@ export const ProjectNav = () => {
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretManager)
       return SM_SETTINGS_SUBMENU;
     if (isOnProjectSettings && currentProject.type === ProjectType.SecretScanning)
-      return SECRET_SCANNING_SETTINGS_SUBMENU;
+      return getSecretScanningSettingsSubmenu(hasMultipleSecretScanningProjects);
     if (isOnCertPolicies) return CERT_CERTIFICATES_SUBMENU;
     if (isOnCertApprovals) return CERT_APPROVALS_SUBMENU;
     return null;
@@ -98,7 +122,7 @@ export const ProjectNav = () => {
 
   useEffect(() => {
     setActiveSubmenu(getInitialProjectSubmenu());
-  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pathname, hasMultipleSecretScanningProjects]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmenuOpen = (submenu: Submenu) => {
     setActiveSubmenu(submenu);
@@ -172,6 +196,24 @@ export const ProjectNav = () => {
               </button>
             </SidebarGroupLabel>
             <NavComponent onSubmenuOpen={handleSubmenuOpen} />
+            {showProductSettings && (
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton size="lg" asChild closeOnMobile tooltip="Product Settings">
+                    <Link
+                      to="/organizations/$orgId/projects/product-settings/$type"
+                      params={{
+                        orgId: currentOrg.id,
+                        type: projectTypeToUrlSlug(currentProject.type)
+                      }}
+                    >
+                      <SlidersHorizontal className="size-4" />
+                      <span>Product Settings</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            )}
           </SidebarGroup>
         </motion.div>
       )}

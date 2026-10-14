@@ -47,7 +47,7 @@ export const notifyPkiSyncFailure = async (
       return;
     }
 
-    const basePath = `/organizations/${project.orgId}/projects/cert-manager/${pkiSync.projectId}`;
+    const basePath = `/organizations/${project.orgId}/cert-manager`;
     const link = `${basePath}/applications/${encodeURIComponent(application.name)}?selectedTab=syncs`;
 
     await deps.notificationService.createUserNotifications(

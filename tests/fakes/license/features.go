@@ -10,7 +10,6 @@ var (
 	CertManager                  = Feature{V2: "cert_manager", V1: "certManager"}
 	CrossProjectSecretSharing    = Feature{V2: "cross_project_secret_sharing", V1: "crossProjectSecretSharing"}
 	CustomAlerts                 = Feature{V2: "custom_alerts", V1: "customAlerts"}
-	CustomRateLimits             = Feature{V2: "custom_rate_limits", V1: "customRateLimits"}
 	DynamicSecret                = Feature{V2: "dynamic_secret", V1: "dynamicSecret"}
 	EnforceGoogleSSO             = Feature{V2: "enforce_google_sso", V1: "enforceGoogleSSO"}
 	EnforceMFA                   = Feature{V2: "enforce_mfa", V1: "enforceMfa"}
@@ -93,7 +92,6 @@ var All = []Feature{
 	CertManager,
 	CrossProjectSecretSharing,
 	CustomAlerts,
-	CustomRateLimits,
 	DynamicSecret,
 	EnforceGoogleSSO,
 	EnforceMFA,

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useParams } from "@tanstack/react-router";
 import { HelpCircleIcon, InfoIcon, PlusIcon, XIcon } from "lucide-react";
 import { z } from "zod";
 
@@ -37,7 +36,7 @@ import {
   superRefineAccessTokenTtl,
   trustedIpsSchema
 } from "@app/helpers/identityAuthSchemas";
-import { useScopeVariant } from "@app/hooks";
+import { useRouteProjectId, useScopeVariant } from "@app/hooks";
 import { useAddIdentityOidcAuth, useUpdateIdentityOidcAuth } from "@app/hooks/api";
 import { useGetIdentityOidcAuth } from "@app/hooks/api/identities/queries";
 import { MachineIdentityAuthMethod } from "@app/hooks/api/identityAuthTemplates";
@@ -169,9 +168,7 @@ export const IdentityOidcAuthForm = ({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
-  const { projectId } = useParams({
-    strict: false
-  });
+  const projectId = useRouteProjectId();
   const scopeVariant = useScopeVariant();
   const { mutateAsync: addMutateAsync } = useAddIdentityOidcAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityOidcAuth();

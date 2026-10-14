@@ -388,9 +388,12 @@ export const CaInstallCertModal = ({ popUp, handlePopUpToggle }: Props) => {
           handlePopUpToggle("installCaCert", isOpen);
         }}
       >
+        {/* z-50 (not the v2 default z-[60]) so the connection pickers' v3 creation dialog
+            (z-50, portaled later) stacks above this modal instead of behind it. */}
         <ModalContent
           title={getTitle()}
-          className="max-w-lg"
+          className="z-50 max-w-lg"
+          overlayClassName="z-50"
           bodyClassName={needsOverflowVisible ? "overflow-visible" : undefined}
           subTitle={getSubTitle()}
         >

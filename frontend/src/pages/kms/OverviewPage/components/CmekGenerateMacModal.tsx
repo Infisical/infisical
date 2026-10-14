@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useEffect, useId } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheckCircle, faFileSignature, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -6,9 +6,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Modal, ModalClose, ModalContent } from "@app/components/v2";
 import {
   Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Field,
   FieldError,
   FieldLabel,
@@ -35,11 +41,15 @@ type Props = {
   cmek: TCmek;
 };
 
-type FormProps = Pick<Props, "cmek">;
+type FormProps = Pick<Props, "cmek"> & {
+  cmekGenerateMac: ReturnType<typeof useCmekGenerateMac>;
+};
 
-const GenerateMacForm = ({ cmek }: FormProps) => {
-  const cmekGenerateMac = useCmekGenerateMac();
+const GenerateMacForm = ({ cmek, cmekGenerateMac }: FormProps) => {
   const fieldId = useId();
+  const { reset: resetMacResult } = cmekGenerateMac;
+
+  useEffect(() => resetMacResult, [resetMacResult]);
 
   const {
     handleSubmit,
@@ -122,10 +132,12 @@ const GenerateMacForm = ({ cmek }: FormProps) => {
           />
         </>
       )}
-      <div className="flex flex-wrap items-center gap-4">
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="ghost">{mac ? "Close" : "Cancel"}</Button>
+        </DialogClose>
         <Button
           className={mac ? "w-44" : undefined}
-          size="sm"
           variant="project"
           onClick={mac ? handleCopyToClipboard : undefined}
           type={mac ? "button" : "submit"}
@@ -146,28 +158,26 @@ const GenerateMacForm = ({ cmek }: FormProps) => {
           }
           {mac ? copyMac : "Generate MAC"}
         </Button>
-        <ModalClose asChild>
-          <Button variant="ghost">{mac ? "Close" : "Cancel"}</Button>
-        </ModalClose>
-      </div>
+      </DialogFooter>
     </form>
   );
 };
 
 export const CmekGenerateMacModal = ({ isOpen, onOpenChange, cmek }: Props) => {
+  const cmekGenerateMac = useCmekGenerateMac();
+
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        title="Generate MAC"
-        subTitle={
-          <>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent isPending={cmekGenerateMac.isPending}>
+        <DialogHeader>
+          <DialogTitle>Generate MAC</DialogTitle>
+          <DialogDescription>
             Generate a message authentication code using{" "}
             <span className="font-bold">{cmek?.name}</span>. Returns a Base64 encoded MAC.
-          </>
-        }
-      >
-        <GenerateMacForm cmek={cmek} />
-      </ModalContent>
-    </Modal>
+          </DialogDescription>
+        </DialogHeader>
+        <GenerateMacForm cmek={cmek} cmekGenerateMac={cmekGenerateMac} />
+      </DialogContent>
+    </Dialog>
   );
 };

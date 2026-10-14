@@ -245,10 +245,10 @@ describe("cert manager application alert provider", () => {
   test("buildViewUrl deep-links to the application and falls back to the applications list", async () => {
     const { provider } = buildProvider();
     await expect(provider.buildViewUrl(alertContext())).resolves.toBe(
-      "https://app.infisical.com/organizations/org-1/projects/cert-manager/proj-1/applications/payments-api"
+      "https://app.infisical.com/organizations/org-1/cert-manager/applications/payments-api"
     );
     await expect(provider.buildViewUrl(alertContext({ resourceId: "missing" }))).resolves.toBe(
-      "https://app.infisical.com/organizations/org-1/projects/cert-manager/proj-1/applications"
+      "https://app.infisical.com/organizations/org-1/cert-manager/applications"
     );
   });
 

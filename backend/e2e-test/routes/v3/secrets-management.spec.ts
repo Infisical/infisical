@@ -29,7 +29,7 @@ const searchByValue = async (secretValue: string, authToken: string) => {
 const at = (secrets: TFoundSecret[]) => secrets.map((s) => `${s.environment.slug}${s.secretPath}${s.key}`).sort();
 
 // Covers domain-level side effects of secrets management actions, as distinct from the routes'
-// own CRUD behavior (secrets.spec.ts / secrets-v2.spec.ts). A webhook is the observable signal
+// own CRUD behavior (secrets.spec.ts / tests/suites/secretmanager/secrets). A webhook is the observable signal
 // used here, but the thing under test is that the domain action fires the event, not webhook
 // delivery mechanics.
 describe("Secrets management", () => {

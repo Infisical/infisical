@@ -32,7 +32,9 @@ export const OrgSidebar = () => {
   const effectiveTypeSlug = typeSlug ?? parseProjectSlugFromPath(pathname);
   const projectType = effectiveTypeSlug ? urlSlugToProjectType(effectiveTypeSlug) : null;
   const isOnProjectTypeListing =
-    !isInsideProject && Boolean(projectType) && hasIntermediateProjectsView(projectType!);
+    !isInsideProject &&
+    Boolean(projectType) &&
+    (hasIntermediateProjectsView(projectType!) || pathname.includes("/product-settings"));
   const { isSubOrganization } = useOrganization();
 
   let scope: "project" | "sub-org" | "org" | "pam" | "agent-vault" = "org";
