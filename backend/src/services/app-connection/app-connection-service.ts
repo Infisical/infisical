@@ -1489,7 +1489,7 @@ export const appConnectionServiceFactory = ({
     checkly: checklyConnectionService(connectAppConnectionById),
     supabase: supabaseConnectionService(connectAppConnectionById),
     rundeck: rundeckConnectionService(connectAppConnectionById),
-    portainer: portainerConnectionService(connectAppConnectionById),
+    portainer: portainerConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
     netlify: netlifyConnectionService(connectAppConnectionById),
     northflank: northflankConnectionService(connectAppConnectionById),

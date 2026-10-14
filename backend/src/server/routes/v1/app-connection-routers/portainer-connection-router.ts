@@ -44,7 +44,7 @@ export const registerPortainerConnectionRouter = async (server: FastifyZodProvid
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 
@@ -78,7 +78,7 @@ export const registerPortainerConnectionRouter = async (server: FastifyZodProvid
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
 

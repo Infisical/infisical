@@ -3,8 +3,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
 import { z } from "zod";
 
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   Input,
@@ -18,6 +20,9 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
+import { OrgPermissionSubjects } from "@app/context";
+import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { PortainerConnectionMethod, TPortainerConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -61,16 +66,61 @@ export const PortainerConnectionForm = ({ appConnection, onSubmit }: Props) => {
     resolver: zodResolver(formSchema),
     defaultValues: appConnection ?? {
       app: AppConnection.Portainer,
-      method: PortainerConnectionMethod.ApiToken
+      method: PortainerConnectionMethod.ApiToken,
+      gatewayId: null,
+      gatewayPoolId: null
     }
   });
 
-  const { handleSubmit, control } = form;
+  const { handleSubmit, control, setValue, watch } = form;
+
+  const gatewayId = watch("gatewayId");
+  const gatewayPoolId = watch("gatewayPoolId");
 
   return (
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
         {!isUpdate && <GenericAppConnectionsFields />}
+        <OrgPermissionCan
+          I={OrgGatewayPermissionActions.AttachGateways}
+          a={OrgPermissionSubjects.Gateway}
+        >
+          {(isAllowed) => {
+            const picker = (
+              <GatewayPicker
+                isDisabled={!isAllowed}
+                value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
+                onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                  setValue("gatewayId", newGwId, { shouldDirty: true });
+                  setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                }}
+              />
+            );
+
+            return (
+              <Field className="mb-4">
+                <FieldLabel>Gateway</FieldLabel>
+                <FieldDescription>
+                  Route requests through a Gateway when your Portainer instance is not reachable
+                  from the internet.
+                </FieldDescription>
+                {isAllowed ? (
+                  picker
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="block w-full cursor-not-allowed">{picker}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Restricted access. You don&apos;t have permission to attach gateways to
+                      resources.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </Field>
+            );
+          }}
+        </OrgPermissionCan>
         <Controller
           name="method"
           control={control}

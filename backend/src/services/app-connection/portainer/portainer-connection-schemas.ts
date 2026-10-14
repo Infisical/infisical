@@ -57,7 +57,7 @@ export const ValidatePortainerConnectionCredentialsSchema = z.discriminatedUnion
 ]);
 
 export const CreatePortainerConnectionSchema = ValidatePortainerConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.Portainer)
+  GenericCreateAppConnectionFieldsSchema(AppConnection.Portainer, { supportsGateways: true })
 );
 
 export const UpdatePortainerConnectionSchema = z
@@ -66,7 +66,7 @@ export const UpdatePortainerConnectionSchema = z
       AppConnections.UPDATE(AppConnection.Portainer).credentials
     )
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Portainer));
+  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Portainer, { supportsGateways: true }));
 
 export const PortainerConnectionListItemSchema = z
   .object({
