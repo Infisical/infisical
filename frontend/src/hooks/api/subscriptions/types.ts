@@ -37,7 +37,6 @@ export type SubscriptionPlan = {
   auditLogStreamLimit: number;
   auditLogStreams: boolean;
   customAlerts: boolean;
-  customRateLimits: boolean;
   pitRecovery: boolean;
   githubOrgSync: boolean;
   subOrganization?: boolean;
@@ -74,7 +73,7 @@ export type SubscriptionPlan = {
   instanceUserManagement: boolean;
   gateway: boolean;
   gatewayPool: boolean;
-  pamSlackNotifications: boolean;
+  pamEnterpriseAlerting: boolean;
   externalKms: boolean;
   // PKI / Cert Manager. The /plan route returns z.any(), so nothing enforces that this mirrors
   // the backend's TFeatureSet.

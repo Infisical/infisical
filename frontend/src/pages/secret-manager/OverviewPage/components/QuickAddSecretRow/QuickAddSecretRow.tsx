@@ -19,6 +19,7 @@ import {
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 
+import { overviewCountBucket, useOverviewTelemetry } from "../../OverviewTelemetry";
 import { TABLE_ROW_ACTIVE_FILTER_CLASS_NAME } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
 
@@ -54,6 +55,7 @@ export const QuickAddSecretRow = ({
   activityId,
   onActivityChange
 }: Props) => {
+  const telemetry = useOverviewTelemetry();
   const { currentProject } = useProject();
   const rowRef = useRef<HTMLTableRowElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -166,6 +168,14 @@ export const QuickAddSecretRow = ({
     const parsedEnv = parsePastedEnv(event.clipboardData.getData("text"));
     const parsedEntries = Object.entries(parsedEnv);
     if (!parsedEntries.length) return;
+    if (parsedEntries.length === 1)
+      telemetry.flow({
+        action: "create",
+        resourceType: "secret",
+        source: "paste",
+        phase: "input-received",
+        countBucket: overviewCountBucket(parsedEntries.length)
+      });
 
     event.preventDefault();
 
