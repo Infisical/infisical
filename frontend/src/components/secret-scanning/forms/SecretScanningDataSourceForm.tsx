@@ -32,7 +32,17 @@ type Props = {
 
 const FORM_TABS: { name: string; key: string; fields: (keyof TSecretScanningDataSourceForm)[] }[] =
   [
-    { name: "Configuration", key: "config", fields: ["config", "isAutoScanEnabled", "connection"] },
+    {
+      name: "Configuration",
+      key: "config",
+      fields: [
+        "config",
+        "isHistoricalScanEnabled",
+        "isScanNewCommitsEnabled",
+        "isDiscoveryEnabled",
+        "connection"
+      ]
+    },
     { name: "Details", key: "details", fields: ["name", "description"] },
     { name: "Review", key: "review", fields: [] }
   ];
@@ -55,7 +65,9 @@ export const SecretScanningDataSourceForm = ({
     resolver: zodResolver(SecretScanningDataSourceSchema),
     defaultValues: dataSource ?? {
       type,
-      isAutoScanEnabled: true, // scott: this may need to be derived from type in the future
+      isHistoricalScanEnabled: true,
+      isScanNewCommitsEnabled: true,
+      isDiscoveryEnabled: true,
       ...(initialFormData as object)
     },
     reValidateMode: "onChange"

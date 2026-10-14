@@ -63,7 +63,7 @@ export const SecretScanningDataSourceRow = ({
     id,
     name,
     description,
-    isAutoScanEnabled,
+    isScanNewCommitsEnabled,
     type,
     unresolvedFindings,
     resourceCount,
@@ -114,7 +114,7 @@ export const SecretScanningDataSourceRow = ({
       );
     }
 
-    if (!isAutoScanEnabled) {
+    if (!isScanNewCommitsEnabled) {
       return (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -207,8 +207,8 @@ export const SecretScanningDataSourceRow = ({
                     isDisabled={!isAllowed}
                     onClick={() => onToggleEnableAutoScan(dataSource)}
                   >
-                    {isAutoScanEnabled ? <PauseIcon /> : <PlayIcon />}
-                    {isAutoScanEnabled ? "Disable" : "Enable"} Auto-Scan
+                    {isScanNewCommitsEnabled ? <PauseIcon /> : <PlayIcon />}
+                    {isScanNewCommitsEnabled ? "Disable" : "Enable"} Scan New Commits
                   </DropdownMenuItem>
                   <DropdownMenuItem isDisabled={!isAllowed} onClick={() => onEdit(dataSource)}>
                     <PencilIcon />

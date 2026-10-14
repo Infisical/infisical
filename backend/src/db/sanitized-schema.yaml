@@ -1119,6 +1119,9 @@ tables:
       - createdAt
       - updatedAt
       - isDisconnected
+      - isHistoricalScanEnabled
+      - isScanNewCommitsEnabled
+      - isDiscoveryEnabled
 
   - name: secret_scanning_findings
     source: public.secret_scanning_findings

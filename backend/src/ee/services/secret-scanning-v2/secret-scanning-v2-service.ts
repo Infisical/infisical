@@ -19,7 +19,11 @@ import {
 import { githubSecretScanningService } from "@app/ee/services/secret-scanning-v2/github/github-secret-scanning-service";
 import { SecretScanningFindingStatus } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { SECRET_SCANNING_FACTORY_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-factory";
-import { listSecretScanningDataSourceOptions } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
+import {
+  doesDataSourceIncludeResources,
+  doesDataSourceSupportDiscovery,
+  listSecretScanningDataSourceOptions
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import {
   SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP,
   SECRET_SCANNING_DATA_SOURCE_NAME_MAP
@@ -226,9 +230,26 @@ export const secretScanningV2ServiceFactory = ({
   };
 
   const createSecretScanningDataSource = async (
-    payload: TCreateSecretScanningDataSourceDTO,
+    { isAutoScanEnabled, ...dto }: TCreateSecretScanningDataSourceDTO,
     actor: OrgServiceActor
   ) => {
+    const supportsDiscovery = doesDataSourceSupportDiscovery(dto);
+
+    if (dto.isDiscoveryEnabled && !supportsDiscovery)
+      throw new BadRequestError({
+        message: "Discovering new projects requires a GitLab group scope. Select a group or turn off discovery."
+      });
+
+    const isScanNewCommitsEnabled = dto.isScanNewCommitsEnabled ?? isAutoScanEnabled ?? true;
+    const payload = {
+      ...dto,
+      isHistoricalScanEnabled: dto.isHistoricalScanEnabled ?? isAutoScanEnabled ?? true,
+      isScanNewCommitsEnabled,
+      isDiscoveryEnabled: dto.isDiscoveryEnabled ?? supportsDiscovery,
+      // Kept in sync for instances still reading the legacy flag during a rolling deploy.
+      isAutoScanEnabled: isScanNewCommitsEnabled
+    };
+
     const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
@@ -311,7 +332,11 @@ export const secretScanningV2ServiceFactory = ({
         }
       );
 
-      if (payload.isAutoScanEnabled) {
+      // A data source created with an empty include list has nothing to scan yet; queueing would only fail.
+      if (
+        payload.isHistoricalScanEnabled &&
+        doesDataSourceIncludeResources(payload as TSecretScanningDataSourceInput)
+      ) {
         try {
           await secretScanningV2Queue.queueDataSourceFullScan(
             {
@@ -342,9 +367,18 @@ export const secretScanningV2ServiceFactory = ({
   };
 
   const updateSecretScanningDataSource = async (
-    { type, dataSourceId, ...payload }: TUpdateSecretScanningDataSourceDTO,
+    { type, dataSourceId, isAutoScanEnabled, ...dto }: TUpdateSecretScanningDataSourceDTO,
     actor: OrgServiceActor
   ) => {
+    const isScanNewCommitsEnabled = dto.isScanNewCommitsEnabled ?? isAutoScanEnabled;
+    const payload = {
+      ...dto,
+      isHistoricalScanEnabled: dto.isHistoricalScanEnabled ?? isAutoScanEnabled,
+      isScanNewCommitsEnabled,
+      // Kept in sync for instances still reading the legacy flag during a rolling deploy.
+      isAutoScanEnabled: isScanNewCommitsEnabled
+    };
+
     const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
@@ -393,6 +427,11 @@ export const secretScanningV2ServiceFactory = ({
       appConnectionDAL,
       kmsService
     });
+
+    if (payload.isDiscoveryEnabled && !doesDataSourceSupportDiscovery(dataSource))
+      throw new BadRequestError({
+        message: "Discovering new projects requires a GitLab group scope. Select a group or turn off discovery."
+      });
 
     if (payload.config) {
       await factory.validateConfigUpdate({

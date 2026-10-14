@@ -13,6 +13,8 @@ export const BaseSecretScanningDataSourceSchema = ({ isConnectionRequired }: Sch
     connection: isConnectionRequired
       ? z.object({ name: z.string(), id: z.string().uuid() })
       : z.null().or(z.undefined()),
-    isAutoScanEnabled: z.boolean(),
+    isHistoricalScanEnabled: z.boolean(),
+    isScanNewCommitsEnabled: z.boolean(),
+    isDiscoveryEnabled: z.boolean(),
     id: z.string().uuid().optional()
   });

@@ -26,7 +26,6 @@ export const GitLabDataSourceConfigSchema = z.discriminatedUnion("scope", [
           .max(256)
           .refine((value) => value === "*" || GitLabProjectRegex.test(value), "Invalid project name format")
       )
-      .nonempty("One or more projects required")
       .max(100, "Cannot configure more than 100 projects")
       .default(["*"])
       .describe(SecretScanningDataSources.CONFIG.GITLAB.includeProjects)

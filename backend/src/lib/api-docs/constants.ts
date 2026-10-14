@@ -3959,7 +3959,10 @@ export const SecretScanningDataSources = {
       connectionId: `The ID of the ${
         APP_CONNECTION_NAME_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]]
       } Connection to use for this Data Source.`,
-      isAutoScanEnabled: `Whether scans should be automatically performed when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
+      isAutoScanEnabled: `Deprecated: use isHistoricalScanEnabled and isScanNewCommitsEnabled. Sets both when they are not provided.`,
+      isHistoricalScanEnabled: `Whether a full scan of existing history runs for ${autoScanDescription.noun} when this Data Source is created. Defaults to true.`,
+      isScanNewCommitsEnabled: `Whether a scan runs when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source. Defaults to true.`,
+      isDiscoveryEnabled: `Whether ${autoScanDescription.noun} added to the provider after setup are scanned automatically. Defaults to true, except for GitLab project scope, which does not support it.`,
       config: `The configuration parameters to use for this Data Source.`
     };
   },
@@ -3971,7 +3974,10 @@ export const SecretScanningDataSources = {
       dataSourceId: `The ID of the ${typeName} Data Source to be updated.`,
       name: `The updated name of the ${typeName} Data Source. Must be slug-friendly.`,
       description: `The updated description of the ${typeName} Data Source.`,
-      isAutoScanEnabled: `Whether scans should be automatically performed when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
+      isAutoScanEnabled: `Deprecated: use isHistoricalScanEnabled and isScanNewCommitsEnabled. Sets both when they are not provided.`,
+      isHistoricalScanEnabled: `Whether a full scan of existing history runs for ${autoScanDescription.noun} when this Data Source is created.`,
+      isScanNewCommitsEnabled: `Whether a scan runs when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source.`,
+      isDiscoveryEnabled: `Whether ${autoScanDescription.noun} added to the provider after setup are scanned automatically. Not supported for GitLab project scope.`,
       config: `The updated configuration parameters to use for this Data Source.`
     };
   },
@@ -3990,10 +3996,12 @@ export const SecretScanningDataSources = {
   }),
   CONFIG: {
     GITHUB: {
-      includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
+      includeRepos:
+        'The repositories to include when scanning. Use ["*"] for all repositories or an empty list for none. Defaults to all repositories (["*"]).'
     },
     GITLAB: {
-      includeProjects: 'The projects to include when scanning. Defaults to all projects (["*"]).',
+      includeProjects:
+        'The projects to include when scanning. Use ["*"] for all projects or an empty list for none. Defaults to all projects (["*"]).',
       scope: "The GitLab scope scanning should occur at (project or group level).",
       projectId: "The ID of the project to scan.",
       projectName: "The name of the project to scan.",
@@ -4002,7 +4010,8 @@ export const SecretScanningDataSources = {
     },
     BITBUCKET: {
       workspaceSlug: "The workspace to scan.",
-      includeRepos: 'The repositories to include when scanning. Defaults to all repositories (["*"]).'
+      includeRepos:
+        'The repositories to include when scanning. Use ["*"] for all repositories or an empty list for none. Defaults to all repositories (["*"]).'
     }
   }
 };

@@ -47,7 +47,7 @@ export const gitlabSecretScanningService = (
       return;
     }
 
-    const { isAutoScanEnabled, encryptedCredentials, projectId } = dataSource;
+    const { isScanNewCommitsEnabled, encryptedCredentials, projectId } = dataSource;
     const config = parsedConfig.data;
 
     if (!encryptedCredentials) {
@@ -79,9 +79,9 @@ export const gitlabSecretScanningService = (
       return;
     }
 
-    if (!isAutoScanEnabled) {
+    if (!isScanNewCommitsEnabled) {
       logger.info(
-        `secretScanningV2PushEvent: GitLab - ignoring due to auto scan disabled [dataSourceId=${dataSource.id}] [projectId=${payload.project.id}]`
+        `secretScanningV2PushEvent: GitLab - ignoring due to scanning new commits being disabled [dataSourceId=${dataSource.id}] [projectId=${payload.project.id}]`
       );
       return;
     }

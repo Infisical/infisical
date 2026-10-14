@@ -6,6 +6,7 @@ import {
   SecretScanningDataSource,
   SecretScanningFindingStatus
 } from "@app/hooks/api/secretScanningV2";
+import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 
 export const SECRET_SCANNING_DATA_SOURCE_MAP: Record<
   SecretScanningDataSource,
@@ -36,6 +37,19 @@ export const SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP: Record<
   [SecretScanningDataSource.Bitbucket]: AppConnection.Bitbucket,
   [SecretScanningDataSource.GitLab]: AppConnection.GitLab
 };
+
+// GitLab discovery relies on group-level webhooks, so a project-scoped data source cannot discover new projects.
+export const doesDataSourceSupportDiscovery = ({
+  type,
+  config
+}: {
+  type: SecretScanningDataSource;
+  config?: unknown;
+}) =>
+  !(
+    type === SecretScanningDataSource.GitLab &&
+    (config as { scope?: string } | undefined)?.scope !== GitLabDataSourceScope.Group
+  );
 
 export const RESOURCE_DESCRIPTION_HELPER: Record<
   SecretScanningDataSource,

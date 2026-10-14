@@ -65,12 +65,12 @@ export const githubSecretScanningService = (
       return;
     }
 
-    const { isAutoScanEnabled } = dataSource;
+    const { isScanNewCommitsEnabled } = dataSource;
     const { includeRepos } = parsedConfig.data;
 
-    if (!isAutoScanEnabled) {
+    if (!isScanNewCommitsEnabled) {
       logger.info(
-        `secretScanningV2PushEvent: GitHub - ignoring due to auto scan disabled [dataSourceId=${dataSource.id}] [installationId=${installation.id}]`
+        `secretScanningV2PushEvent: GitHub - ignoring due to scanning new commits being disabled [dataSourceId=${dataSource.id}] [installationId=${installation.id}]`
       );
       return;
     }

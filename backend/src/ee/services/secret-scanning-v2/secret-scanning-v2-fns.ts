@@ -28,8 +28,14 @@ import { BadRequestError } from "@app/lib/errors";
 import { titleCaseToCamelCase } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
+import { GitLabDataSourceScope } from "./gitlab/gitlab-secret-scanning-enums";
 import { SecretScanningDataSource, SecretScanningFindingSeverity } from "./secret-scanning-v2-enums";
-import { TCloneRepository, TGetFindingsPayload, TSecretScanningDataSourceListItem } from "./secret-scanning-v2-types";
+import {
+  TCloneRepository,
+  TGetFindingsPayload,
+  TSecretScanningDataSourceInput,
+  TSecretScanningDataSourceListItem
+} from "./secret-scanning-v2-types";
 
 const SECRET_SCANNING_SOURCE_LIST_OPTIONS: Record<SecretScanningDataSource, TSecretScanningDataSourceListItem> = {
   [SecretScanningDataSource.GitHub]: GITHUB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION,
@@ -40,6 +46,24 @@ const SECRET_SCANNING_SOURCE_LIST_OPTIONS: Record<SecretScanningDataSource, TSec
 export const listSecretScanningDataSourceOptions = () => {
   return Object.values(SECRET_SCANNING_SOURCE_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
 };
+
+export const doesDataSourceIncludeResources = (dataSource: TSecretScanningDataSourceInput) => {
+  switch (dataSource.type) {
+    case SecretScanningDataSource.GitHub:
+    case SecretScanningDataSource.Bitbucket:
+      return dataSource.config.includeRepos.length > 0;
+    case SecretScanningDataSource.GitLab:
+      return dataSource.config.scope === GitLabDataSourceScope.Project || dataSource.config.includeProjects.length > 0;
+    default:
+      return true;
+  }
+};
+
+// GitLab discovery relies on group-level webhooks, so a project-scoped data source cannot discover new projects.
+export const doesDataSourceSupportDiscovery = ({ type, config }: { type: string; config?: unknown }) =>
+  !(
+    type === SecretScanningDataSource.GitLab && (config as { scope?: string })?.scope === GitLabDataSourceScope.Project
+  );
 
 // The scanner exits 77 when it wrote findings; that is a successful scan, not a failure.
 const SCAN_FINDINGS_EXIT_CODE = 77;

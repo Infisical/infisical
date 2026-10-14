@@ -51,7 +51,15 @@ export type TSecretScanningDataSourceResponse = { dataSource: TSecretScanningDat
 
 export type TCreateSecretScanningDataSourceDTO = DiscriminativePick<
   TSecretScanningDataSource,
-  "name" | "config" | "description" | "connectionId" | "type" | "isAutoScanEnabled" | "projectId"
+  | "name"
+  | "config"
+  | "description"
+  | "connectionId"
+  | "type"
+  | "isHistoricalScanEnabled"
+  | "isScanNewCommitsEnabled"
+  | "isDiscoveryEnabled"
+  | "projectId"
 >;
 
 export type TUpdateSecretScanningDataSourceDTO = Partial<

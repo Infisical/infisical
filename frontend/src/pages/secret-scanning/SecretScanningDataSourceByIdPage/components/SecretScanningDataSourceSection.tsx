@@ -9,6 +9,7 @@ import { IconButton, Tooltip } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
+import { RESOURCE_DESCRIPTION_HELPER } from "@app/helpers/secretScanningV2";
 import { usePopUp } from "@app/hooks";
 import { TSecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 
@@ -21,7 +22,16 @@ type Props = {
 export const SecretScanningDataSourceSection = ({ dataSource }: Props) => {
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["editDataSource"] as const);
 
-  const { name, description, connection, isAutoScanEnabled, isDisconnected } = dataSource;
+  const {
+    name,
+    description,
+    connection,
+    isHistoricalScanEnabled,
+    isScanNewCommitsEnabled,
+    isDiscoveryEnabled,
+    isDisconnected,
+    type
+  } = dataSource;
 
   return (
     <>
@@ -68,19 +78,28 @@ export const SecretScanningDataSourceSection = ({ dataSource }: Props) => {
               <GenericFieldLabel label="Connection">{connection.name}</GenericFieldLabel>
             )}
             <DataSourceConfigDisplay dataSource={dataSource} />
-            <GenericFieldLabel label="Auto-Scan">
-              {isAutoScanEnabled ? (
-                <Badge variant="success">
-                  <CheckIcon />
-                  Enabled
-                </Badge>
-              ) : (
-                <Badge variant="neutral">
-                  <BanIcon />
-                  Disabled
-                </Badge>
-              )}
-            </GenericFieldLabel>
+            {[
+              { label: "Historical Scan", isEnabled: isHistoricalScanEnabled },
+              { label: "Scan New Commits", isEnabled: isScanNewCommitsEnabled },
+              {
+                label: `Discover New ${RESOURCE_DESCRIPTION_HELPER[type].pluralTitle}`,
+                isEnabled: isDiscoveryEnabled
+              }
+            ].map(({ label, isEnabled }) => (
+              <GenericFieldLabel key={label} label={label}>
+                {isEnabled ? (
+                  <Badge variant="success">
+                    <CheckIcon />
+                    Enabled
+                  </Badge>
+                ) : (
+                  <Badge variant="neutral">
+                    <BanIcon />
+                    Disabled
+                  </Badge>
+                )}
+              </GenericFieldLabel>
+            ))}
           </div>
         </div>
       </div>

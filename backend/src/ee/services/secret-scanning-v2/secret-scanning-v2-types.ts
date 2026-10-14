@@ -107,6 +107,9 @@ export type TCreateSecretScanningDataSourceDTO = Pick<
   connectionId?: string;
   type: SecretScanningDataSource;
   isAutoScanEnabled?: boolean;
+  isHistoricalScanEnabled?: boolean;
+  isScanNewCommitsEnabled?: boolean;
+  isDiscoveryEnabled?: boolean;
   config: Partial<TSecretScanningDataSourceInput["config"]>;
 };
 

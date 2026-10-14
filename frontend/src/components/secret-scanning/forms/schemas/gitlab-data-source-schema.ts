@@ -15,9 +15,7 @@ export const GitLabDataSourceSchema = z
         groupName: z.string(),
         includeProjects: z
           .array(z.string().min(1).max(256))
-          .min(1, "One or more projects required")
           .max(100, "Cannot configure more than 100 projects")
-          .default(["*"])
       }),
       z.object({
         scope: z.literal(GitLabDataSourceScope.Project),

@@ -41,12 +41,18 @@ export const registerSecretScanningEndpoints = <
     config: Partial<I["config"]>;
     description?: string | null;
     isAutoScanEnabled?: boolean;
+    isHistoricalScanEnabled?: boolean;
+    isScanNewCommitsEnabled?: boolean;
+    isDiscoveryEnabled?: boolean;
   }>;
   updateSchema: z.ZodType<{
     name?: string;
     config?: Partial<I["config"]>;
     description?: string | null;
     isAutoScanEnabled?: boolean;
+    isHistoricalScanEnabled?: boolean;
+    isScanNewCommitsEnabled?: boolean;
+    isDiscoveryEnabled?: boolean;
   }>;
   responseSchema: z.ZodTypeAny;
 }) => {

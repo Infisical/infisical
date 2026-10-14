@@ -21,7 +21,6 @@ export const GitHubDataSourceConfigSchema = z.object({
         .max(256)
         .refine((value) => value === "*" || BasicRepositoryRegex.test(value), "Invalid repository name format")
     )
-    .nonempty("One or more repositories required")
     .max(100, "Cannot configure more than 100 repositories")
     .default(["*"])
     .describe(SecretScanningDataSources.CONFIG.GITHUB.includeRepos)

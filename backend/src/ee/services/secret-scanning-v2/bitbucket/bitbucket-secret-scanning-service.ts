@@ -50,7 +50,7 @@ export const bitbucketSecretScanningService = (
       return;
     }
 
-    const { isAutoScanEnabled, encryptedCredentials, projectId } = dataSource;
+    const { isScanNewCommitsEnabled, encryptedCredentials, projectId } = dataSource;
     const { includeRepos } = parsedConfig.data;
 
     if (!encryptedCredentials) {
@@ -87,9 +87,9 @@ export const bitbucketSecretScanningService = (
       return;
     }
 
-    if (!isAutoScanEnabled) {
+    if (!isScanNewCommitsEnabled) {
       logger.info(
-        `secretScanningV2PushEvent: Bitbucket - ignoring due to auto scan disabled [dataSourceId=${dataSource.id}] [workspaceUuid=${repository.workspace.uuid}]`
+        `secretScanningV2PushEvent: Bitbucket - ignoring due to scanning new commits being disabled [dataSourceId=${dataSource.id}] [workspaceUuid=${repository.workspace.uuid}]`
       );
       return;
     }

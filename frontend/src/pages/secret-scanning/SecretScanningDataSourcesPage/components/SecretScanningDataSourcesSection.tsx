@@ -6,7 +6,7 @@ import { SecretScanningUpgradeIntent, UpgradeGate } from "@app/components/licens
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  CreateSecretScanningDataSourceModal,
+  CreateSecretScanningDataSourceSheet,
   EditSecretScanningDataSourceModal
 } from "@app/components/secret-scanning";
 import { DeleteSecretScanningDataSourceModal } from "@app/components/secret-scanning/DeleteSecretScanningDataSourceModal";
@@ -204,17 +204,17 @@ export const SecretScanningDataSourcesSection = () => {
   };
 
   const handleToggleEnableAutoScan = async (dataSource: TSecretScanningDataSource) => {
-    const isAutoScanEnabled = !dataSource.isAutoScanEnabled;
+    const isScanNewCommitsEnabled = !dataSource.isScanNewCommitsEnabled;
 
     await updateDataSource.mutateAsync({
       dataSourceId: dataSource.id,
       type: dataSource.type,
-      isAutoScanEnabled,
+      isScanNewCommitsEnabled,
       projectId: dataSource.projectId
     });
 
     createNotification({
-      text: `Auto-scan ${isAutoScanEnabled ? "enabled" : "disabled"} for "${dataSource.name}"`,
+      text: `Scanning new commits ${isScanNewCommitsEnabled ? "enabled" : "disabled"} for "${dataSource.name}"`,
       type: "success"
     });
   };
@@ -400,7 +400,7 @@ export const SecretScanningDataSourcesSection = () => {
           )}
         </CardContent>
       </Card>
-      <CreateSecretScanningDataSourceModal
+      <CreateSecretScanningDataSourceSheet
         isOpen={popUp.addDataSource.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addDataSource", isOpen)}
       />
