@@ -445,12 +445,17 @@ const ImportSecretsContent = ({
         const folderName = pathSegment.at(-1);
 
         if (folderName && parentPath && canCreateFolderIn(environment, parentPath)) {
-          await getOrCreateFolder({
-            projectId,
-            path: parentPath,
-            environment,
-            name: folderName
-          });
+          try {
+            await getOrCreateFolder({
+              projectId,
+              path: parentPath,
+              environment,
+              name: folderName
+            });
+          } catch (error) {
+            folderFailureCount += 1;
+            throw error;
+          }
           folderResponseCount += 1;
         }
       };
@@ -657,10 +662,14 @@ const ImportSecretsContent = ({
             try {
               const result = await resolveFolder(joinSecretPath(secretPath, path));
               if (result === "created") folderResponseCount += 1;
-              if (result === false) folderFailureCount += 1;
+              if (result === false) {
+                folderFailureCount += 1;
+                failureCount += 1;
+              }
               return result;
             } catch (error) {
               folderFailureCount += 1;
+              failureCount += 1;
               throw error;
             }
           },
@@ -751,7 +760,7 @@ const ImportSecretsContent = ({
         ),
         responseCountBucket: overviewCountBucket(responseCount + folderResponseCount),
         approvalCountBucket: overviewCountBucket(approvalCount),
-        failureCountBucket: overviewCountBucket(failureCount + folderFailureCount),
+        failureCountBucket: overviewCountBucket(failureCount),
         folderResponseCountBucket: overviewCountBucket(folderResponseCount),
         folderFailureCountBucket: overviewCountBucket(folderFailureCount)
       });

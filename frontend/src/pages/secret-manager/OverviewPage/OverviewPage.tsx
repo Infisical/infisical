@@ -1178,7 +1178,7 @@ const OverviewPageContent = () => {
   }, [projectId, visibleEnvs.length, secretPath, isBatchModeActive]);
   const telemetryFlowScope = `${projectId}:${secretPath}:${visibleEnvs.map((env) => env.slug).join(",")}`;
   const telemetryFlows = useMemo(
-    () => new Map<string, "open" | "completed" | "closed">(),
+    () => new Map<string, "open" | "submitted" | "completed" | "closed">(),
     [telemetryFlowScope]
   );
   const overviewTelemetry = useMemo(

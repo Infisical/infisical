@@ -28,7 +28,7 @@ export const overviewResponsePhase = (
   return "empty";
 };
 
-export type OverviewFlowState = Map<string, "open" | "completed" | "closed">;
+export type OverviewFlowState = Map<string, "open" | "submitted" | "completed" | "closed">;
 
 export const overviewImportSource = (
   method: "upload" | "paste",
@@ -58,10 +58,10 @@ export const createOverviewTelemetry = (
       if (flows.get(key) !== "open") return;
       flows.set(key, "closed");
     } else if (properties.phase === "opened") {
-      if (flows.get(key) === "open") return;
+      if (flows.get(key) === "open" || flows.get(key) === "submitted") return;
       flows.set(key, "open");
     } else if (properties.phase === "submitted") {
-      flows.set(key, "open");
+      flows.set(key, "submitted");
     } else if (properties.phase !== "input-received") {
       flows.set(key, "completed");
     }
