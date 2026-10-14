@@ -3,8 +3,10 @@ import { Knex } from "knex";
 import { TApprovalPolicies, TApprovalRequestGrants, TApprovalRequests } from "@app/db/schemas";
 import { Event } from "@app/ee/services/audit-log/audit-log-types";
 import { ResourcePermissionApprovalPolicyActions } from "@app/ee/services/permission/resource-permission";
+import { TSecretChangeRequestData } from "@app/ee/services/secret-change-global-request-bridge/secret-change-global-request-bridge-types";
 import { OrgServiceActor } from "@app/lib/types";
 import { TNotification } from "@app/lib/workflow-integrations/types";
+import { TEventInput } from "@app/services/event-outbox/event-outbox-types";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { TPostHogEvent } from "@app/services/telemetry/telemetry-types";
@@ -77,6 +79,7 @@ export type TApprovalRequestData =
   | TPamAccessRequestData
   | TCertRequestRequestData
   | TCodeSigningRequestData
+  | TSecretChangeRequestData
   | TSecretAccessRequestData;
 
 // Bypass-affordance fields the service stamps onto every request response.
@@ -143,8 +146,8 @@ export interface TUpdatePolicyDTO {
 export interface TCreateRequestDTO {
   scope: ApprovalPolicyScope;
   scopeId: string;
-  // Secret access requests are created in the access-approval bridge, not through this DTO.
-  requestData: Exclude<TApprovalRequestData, TSecretAccessRequestData>;
+  // Secret access and secret change requests are created in their bridges, not through this DTO.
+  requestData: Exclude<TApprovalRequestData, TSecretAccessRequestData | TSecretChangeRequestData>;
   justification?: TApprovalRequest["justification"];
   requestDuration?: string | null;
   // Set by a caller that decides the request in the same breath (break-glass), so approvers are not
@@ -234,6 +237,8 @@ export type TApprovalResource<
     comment?: string;
     bypassReason?: string;
   }) => Promise<TApprovalNotification | null>;
+  // The domain event a lifecycle event owes; called inside the transaction, so it must not touch the database.
+  buildEvent?: (args: { event: ApprovalNotificationEvent; request: TApprovalRequests }) => TEventInput | null;
   // Narrows the notified approvers to those still eligible, for a type where an approver row can
   // outlive the membership behind it.
   filterActiveApprovers?: (

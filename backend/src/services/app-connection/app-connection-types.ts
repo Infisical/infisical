@@ -274,6 +274,12 @@ import {
   TValidateHumanitecConnectionCredentialsSchema
 } from "./humanitec";
 import {
+  TKeeperConnection,
+  TKeeperConnectionConfig,
+  TKeeperConnectionInput,
+  TValidateKeeperConnectionCredentialsSchema
+} from "./keeper";
+import {
   TKempLoadMasterConnection,
   TKempLoadMasterConnectionConfig,
   TKempLoadMasterConnectionInput,
@@ -371,6 +377,12 @@ import {
   TOvhConnectionInput,
   TValidateOvhConnectionCredentialsSchema
 } from "./ovh";
+import {
+  TPaloAltoNetworksConnection,
+  TPaloAltoNetworksConnectionConfig,
+  TPaloAltoNetworksConnectionInput,
+  TValidatePaloAltoNetworksConnectionCredentialsSchema
+} from "./palo-alto-networks";
 import {
   TPostgresConnection,
   TPostgresConnectionInput,
@@ -588,6 +600,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TExternalInfisicalConnection
   | TDopplerConnection
   | TNetScalerConnection
+  | TPaloAltoNetworksConnection
   | TKempLoadMasterConnection
   | TAnthropicConnection
   | TOvhConnection
@@ -611,6 +624,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TSpaceliftConnection
   | TDaytonaConnection
   | TStripeConnection
+  | TKeeperConnection
   | THpeIloConnection
 );
 
@@ -687,6 +701,7 @@ export type TAppConnectionInput = { id: string } & (
   | TExternalInfisicalConnectionInput
   | TDopplerConnectionInput
   | TNetScalerConnectionInput
+  | TPaloAltoNetworksConnectionInput
   | TKempLoadMasterConnectionInput
   | TAnthropicConnectionInput
   | TOvhConnectionInput
@@ -710,6 +725,7 @@ export type TAppConnectionInput = { id: string } & (
   | TSpaceliftConnectionInput
   | TDaytonaConnectionInput
   | TStripeConnectionInput
+  | TKeeperConnectionInput
   | THpeIloConnectionInput
 );
 
@@ -820,6 +836,7 @@ export type TAppConnectionConfig =
   | TExternalInfisicalConnectionConfig
   | TDopplerConnectionConfig
   | TNetScalerConnectionConfig
+  | TPaloAltoNetworksConnectionConfig
   | TKempLoadMasterConnectionConfig
   | TAnthropicConnectionConfig
   | TOvhConnectionConfig
@@ -843,6 +860,7 @@ export type TAppConnectionConfig =
   | TSpaceliftConnectionConfig
   | TDaytonaConnectionConfig
   | TStripeConnectionConfig
+  | TKeeperConnectionConfig
   | THpeIloConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -910,6 +928,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateExternalInfisicalConnectionCredentialsSchema
   | TValidateDopplerConnectionCredentialsSchema
   | TValidateNetScalerConnectionCredentialsSchema
+  | TValidatePaloAltoNetworksConnectionCredentialsSchema
   | TValidateKempLoadMasterConnectionCredentialsSchema
   | TValidateAnthropicConnectionCredentialsSchema
   | TValidateOvhConnectionCredentialsSchema
@@ -933,6 +952,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSpaceliftConnectionCredentialsSchema
   | TValidateDaytonaConnectionCredentialsSchema
   | TValidateStripeConnectionCredentialsSchema
+  | TValidateKeeperConnectionCredentialsSchema
   | TValidateHpeIloConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

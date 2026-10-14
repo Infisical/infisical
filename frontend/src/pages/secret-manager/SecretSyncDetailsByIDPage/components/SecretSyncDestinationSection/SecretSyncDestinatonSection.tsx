@@ -32,6 +32,7 @@ import { HasuraCloudSyncDestinationSection } from "./HasuraCloudSyncDestinationS
 import { HCVaultSyncDestinationSection } from "./HCVaultSyncDestinationSection";
 import { HerokuSyncDestinationSection } from "./HerokuSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
+import { KeeperSyncDestinationSection } from "./KeeperSyncDestinationSection";
 import { LaravelForgeSyncDestinationSection } from "./LaravelForgeSyncDestinationSection";
 import { NetlifySyncDestinationSection } from "./NetlifySyncDestinationSection";
 import { NorthflankSyncDestinationSection } from "./NorthflankSyncDestinationSection";
@@ -214,6 +215,9 @@ export const SecretSyncDestinationSection = ({ secretSync }: Props) => {
       break;
     case SecretSync.Daytona:
       // The connection is the whole destination; it is already shown above.
+      break;
+    case SecretSync.Keeper:
+      DestinationComponents = <KeeperSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.Cloud66:
       DestinationComponents = <Cloud66SyncDestinationSection secretSync={secretSync} />;

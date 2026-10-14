@@ -63,6 +63,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.ExternalInfisical]: "Infisical",
   [AppConnection.Doppler]: "Doppler",
   [AppConnection.NetScaler]: "NetScaler",
+  [AppConnection.PaloAltoNetworks]: "Palo Alto Networks",
   [AppConnection.KempLoadMaster]: "Kemp LoadMaster",
   [AppConnection.Anthropic]: "Anthropic",
   [AppConnection.OVH]: "OVH",
@@ -88,6 +89,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Daytona]: "Daytona",
   [AppConnection.MicrosoftIntune]: "Microsoft Intune",
   [AppConnection.Stripe]: "Stripe",
+  [AppConnection.Keeper]: "Keeper",
   [AppConnection.HpeIloRedFish]: "HPE iLO"
 };
 
@@ -154,6 +156,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.ExternalInfisical]: AppConnectionPlanType.Regular,
   [AppConnection.Doppler]: AppConnectionPlanType.Regular,
   [AppConnection.NetScaler]: AppConnectionPlanType.Regular,
+  [AppConnection.PaloAltoNetworks]: AppConnectionPlanType.Regular,
   [AppConnection.KempLoadMaster]: AppConnectionPlanType.Regular,
   [AppConnection.Anthropic]: AppConnectionPlanType.Regular,
   [AppConnection.OVH]: AppConnectionPlanType.Regular,
@@ -179,5 +182,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Daytona]: AppConnectionPlanType.Regular,
   [AppConnection.MicrosoftIntune]: AppConnectionPlanType.Enterprise,
   [AppConnection.Stripe]: AppConnectionPlanType.Regular,
+  [AppConnection.Keeper]: AppConnectionPlanType.Regular,
   [AppConnection.HpeIloRedFish]: AppConnectionPlanType.Regular
 };

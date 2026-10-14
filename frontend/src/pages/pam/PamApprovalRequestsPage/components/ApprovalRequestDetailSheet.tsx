@@ -3,7 +3,6 @@ import { format } from "date-fns";
 import { Check, Clock, KeyRound, ShieldAlert, ShieldCheck, X } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -14,6 +13,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { DeleteConfirmDialog } from "@app/components/v3/platform";
 import { useUser } from "@app/context";
 import {
   PamAccessRequestDecision,
@@ -89,14 +89,14 @@ export const ApprovalRequestDetailSheet = ({ request, isOpen, onOpenChange }: Pr
 
   return (
     <>
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={isRevokeConfirmOpen}
-        onChange={setIsRevokeConfirmOpen}
+        onOpenChange={setIsRevokeConfirmOpen}
         title="Revoke Access"
-        subTitle="Are you sure you want to revoke this user's approved access?"
-        deleteKey="revoke"
-        buttonText="Revoke"
-        onDeleteApproved={handleRevoke}
+        description="Are you sure you want to revoke this user's approved access?"
+        confirmKey="revoke"
+        confirmLabel="Revoke"
+        onConfirm={handleRevoke}
       />
       <PamDetailSheet
         isOpen={isOpen}

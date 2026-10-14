@@ -43,6 +43,7 @@ import { THCVaultConnection } from "./hc-vault-connection";
 import { THerokuConnection } from "./heroku-connection";
 import { THpeIloConnection } from "./hpe-ilo-connection";
 import { THumanitecConnection } from "./humanitec-connection";
+import { TKeeperConnection } from "./keeper-connection";
 import { TKempLoadMasterConnection } from "./kemp-loadmaster-connection";
 import { TLaravelForgeConnection } from "./laravel-forge-connection";
 import { TLdapConnection } from "./ldap-connection";
@@ -63,6 +64,7 @@ import { TOpenAIConnection } from "./open-ai-connection";
 import { TOpenRouterConnection } from "./open-router-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TOvhConnection } from "./ovh-connection";
+import { TPaloAltoNetworksConnection } from "./palo-alto-networks-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TPowerDnsConnection } from "./powerdns-connection";
 import { TQoveryConnection } from "./qovery-connection";
@@ -129,6 +131,7 @@ export * from "./hc-vault-connection";
 export * from "./heroku-connection";
 export * from "./hpe-ilo-connection";
 export * from "./humanitec-connection";
+export * from "./keeper-connection";
 export * from "./kemp-loadmaster-connection";
 export * from "./laravel-forge-connection";
 export * from "./ldap-connection";
@@ -149,6 +152,7 @@ export * from "./open-ai-connection";
 export * from "./open-router-connection";
 export * from "./oracledb-connection";
 export * from "./ovh-connection";
+export * from "./palo-alto-networks-connection";
 export * from "./postgres-connection";
 export * from "./powerdns-connection";
 export * from "./qovery-connection";
@@ -239,6 +243,7 @@ export type TAppConnection =
   | TVenafiTppConnection
   | TExternalInfisicalConnection
   | TNetScalerConnection
+  | TPaloAltoNetworksConnection
   | TKempLoadMasterConnection
   | TDopplerConnection
   | TOvhConnection
@@ -263,6 +268,7 @@ export type TAppConnection =
   | TSpaceliftConnection
   | TDaytonaConnection
   | TStripeConnection
+  | TKeeperConnection
   | THpeIloConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;

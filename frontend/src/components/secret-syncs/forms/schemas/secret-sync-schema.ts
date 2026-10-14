@@ -29,6 +29,7 @@ import { HasuraCloudSyncDestinationSchema } from "./hasura-cloud-sync-destinatio
 import { HCVaultSyncDestinationSchema } from "./hc-vault-sync-destination-schema";
 import { HerokuSyncDestinationSchema } from "./heroku-sync-destination-schema";
 import { HumanitecSyncDestinationSchema } from "./humanitec-sync-destination-schema";
+import { KeeperSyncDestinationSchema } from "./keeper-sync-destination-schema";
 import { LaravelForgeSyncDestinationSchema } from "./laravel-forge-sync-destination-schema";
 import { NetlifySyncDestinationSchema } from "./netlify-sync-destination-schema";
 import { NorthflankSyncDestinationSchema } from "./northflank-sync-destination-schema";
@@ -101,6 +102,7 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   QoverySyncDestinationSchema,
   Cloud66SyncDestinationSchema,
   DaytonaSyncDestinationSchema,
+  KeeperSyncDestinationSchema,
   SpaceliftSyncDestinationSchema
 ]);
 

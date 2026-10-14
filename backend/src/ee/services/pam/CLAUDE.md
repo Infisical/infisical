@@ -36,7 +36,13 @@ folder or account (`PamResourceRole`: Admin/Operator/Connector/Auditor; Operator
 `ViewCredentials`, with no approval rights so credential approval can't be self-served). Shared helpers live in
 `pam/pam-permission.ts` (`verifyProductMembership`, `checkAccountAccess`, `getResourceIdsWithActions`, …) —
 use them instead of re-implementing. Every list/mutation endpoint checks an **action**, not just
-membership. There is **no org-admin fallback**: permission needs project-scoped membership.
+membership. There is **no org-admin fallback**: permission needs project-scoped membership. Instead, a user
+(never a machine identity) holding the org Admin role (the role itself, checked with `hasRole`, not a
+permission) can list every folder
+(`includeNonMemberFolders`, which only the Accounts page sends, adds `callerAccess`) and join one explicitly
+through `POST /pam/folders/:folderId/grant-admin-access`. That writes a real Admin membership, its own audit
+event (`org-admin-accessed-pam-folder`, with the role it replaced) and notifies the folder's admins, so never
+add an implicit fallback instead. A PAM product admin alone cannot join folders.
 
 Gotchas:
 
@@ -168,6 +174,10 @@ routes emitting PAM's own audit events, so folder and account auditors still see
 keeps only what the generic API cannot express: the CLI's `folderName/accountName` create, the paginated
 folder list, the approver queue and count, the approver roster, and the folder notification configs.
 
+**Folder alerts are the `pam.folder` provider on the shared alert module**, fed by the resource's `buildEvent`.
+The older per-folder Slack configs (`pam_folder_notification_configs`) are legacy: they still post and can be
+removed, never added or edited.
+
 ## Policies & Settings
 
 **Policies** are governance controls on a template (MFA, reason, session duration, command-blocking),
@@ -197,7 +207,8 @@ for import into a folder. Type registry is `DISCOVERY_TYPE_CONFIGS`; providers r
 `{ validateConnection, scan }` and never touch the DB — the service owns encryption, staging, and
 fingerprint dedupe. Discovery runs everything **through the gateway** (SSH-exec / port-sweep / WinRM RPCs),
 so `ssh2` is never used on the backend and scans produce no session rows, recordings, or session audits.
-Current types: Active Directory and Unix.
+Current types: Active Directory, Unix, PostgreSQL, and Microsoft SQL Server. `withGatewayV2Proxy` rethrows a callback's
+error as a `BadRequestError` carrying only its message, so a provider maps driver error codes inside the callback.
 
 **Staleness (Windows).** After a completed scan, discovered accounts it no longer finds are reconciled:
 never-imported ones are deleted, imported ones are flagged stale (reappearing self-heals). Only accounts in a

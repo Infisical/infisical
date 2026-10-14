@@ -29,6 +29,7 @@ import { HasuraCloudSyncDestinationCol } from "./HasuraCloudSyncDestinationCol";
 import { HCVaultSyncDestinationCol } from "./HCVaultSyncDestinationCol";
 import { HerokuSyncDestinationCol } from "./HerokuSyncDestinationCol";
 import { HumanitecSyncDestinationCol } from "./HumanitecSyncDestinationCol";
+import { KeeperSyncDestinationCol } from "./KeeperSyncDestinationCol";
 import { LaravelForgeSyncDestinationCol } from "./LaravelForgeSyncDestinationCol";
 import { NetlifySyncDestinationCol } from "./NetlifySyncDestinationCol";
 import { NorthflankSyncDestinationCol } from "./NorthflankSyncDestinationCol";
@@ -155,6 +156,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <Cloud66SyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Daytona:
       return <DaytonaSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Keeper:
+      return <KeeperSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Spacelift:
       return <SpaceliftSyncDestinationCol secretSync={secretSync} />;
     default:

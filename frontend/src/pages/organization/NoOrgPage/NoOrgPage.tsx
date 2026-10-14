@@ -6,7 +6,7 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
-import { ContentLoader } from "@app/components/v2";
+import { PageLoader } from "@app/components/v3";
 import {
   fetchOrganizations,
   organizationKeys,
@@ -108,7 +108,9 @@ export const NoOrgPage = () => {
         {failed ? (
           <CreateOrgModal isOpen logoutOnClose />
         ) : (
-          <ContentLoader text="Setting up your organization..." />
+          <div className="h-screen">
+            <PageLoader text="Setting up your organization..." />
+          </div>
         )}
       </div>
     </>

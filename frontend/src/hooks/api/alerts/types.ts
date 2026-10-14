@@ -1,9 +1,11 @@
 import { z } from "zod";
 
+import { UpgradeIntent } from "@app/components/license/UpgradeGate";
 import { CertSource } from "@app/hooks/api/certificates/enums";
 
 export enum AlertResourceType {
   IdentityAuthentication = "identity.authentication",
+  PamFolder = "pam.folder",
   SecretReminder = "secret.reminder",
   AuditLogStream = "audit-log.stream"
 }
@@ -11,8 +13,31 @@ export enum AlertResourceType {
 export enum AlertEventType {
   IdentityAuthenticationExpiry = "identity.authentication.expiry",
   IdentityAuthMethodChanged = "identity.authentication.auth-method-changed",
+  PamAccessRequested = "pam.folder.access-requested",
+  PamAccessRequestApproved = "pam.folder.access-request-approved",
+  PamAccessRequestDenied = "pam.folder.access-request-denied",
+  PamAccessRequestBypassed = "pam.folder.access-request-bypassed",
   AuditLogStreamDeliveryFailed = "audit-log.stream.delivery-failed"
 }
+
+export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventType[]> = {
+  [AlertResourceType.IdentityAuthentication]: [
+    AlertEventType.IdentityAuthenticationExpiry,
+    AlertEventType.IdentityAuthMethodChanged
+  ],
+  [AlertResourceType.PamFolder]: [
+    AlertEventType.PamAccessRequested,
+    AlertEventType.PamAccessRequestApproved,
+    AlertEventType.PamAccessRequestDenied,
+    AlertEventType.PamAccessRequestBypassed
+  ],
+  // Reminder alerts are edited from the secret's reminder form, not the generic alert form.
+  [AlertResourceType.SecretReminder]: [],
+  [AlertResourceType.AuditLogStream]: [AlertEventType.AuditLogStreamDeliveryFailed]
+};
+
+// Resource types whose provider accepts plain email addresses as email channel recipients
+export const ALERT_RESOURCE_TYPES_WITH_EMAIL_ADDRESSES: string[] = [AlertResourceType.PamFolder];
 
 export enum AlertChannelType {
   Email = "email",
@@ -69,23 +94,18 @@ export const MAX_CERTIFICATE_ALERT_FILTER_IDS = 100;
 
 export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
   [AlertResourceType.IdentityAuthentication]: "Machine Identity Authentication",
+  [AlertResourceType.PamFolder]: "PAM Folder",
   [AlertResourceType.SecretReminder]: "Secret Reminder",
   [AlertResourceType.AuditLogStream]: "Audit Log Stream"
-};
-
-// Secret reminders have their own form, so they list no events here.
-export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventType[]> = {
-  [AlertResourceType.IdentityAuthentication]: [
-    AlertEventType.IdentityAuthenticationExpiry,
-    AlertEventType.IdentityAuthMethodChanged
-  ],
-  [AlertResourceType.SecretReminder]: [],
-  [AlertResourceType.AuditLogStream]: [AlertEventType.AuditLogStreamDeliveryFailed]
 };
 
 export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
   [AlertEventType.IdentityAuthenticationExpiry]: "Credential Expiration",
   [AlertEventType.IdentityAuthMethodChanged]: "Auth Method Change",
+  [AlertEventType.PamAccessRequested]: "Access Requested",
+  [AlertEventType.PamAccessRequestApproved]: "Request Approved",
+  [AlertEventType.PamAccessRequestDenied]: "Request Denied",
+  [AlertEventType.PamAccessRequestBypassed]: "Break-Glass Used",
   [AlertEventType.AuditLogStreamDeliveryFailed]: "Delivery Failure"
 };
 
@@ -94,8 +114,23 @@ export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
     "Notify a set number of days before a Universal Auth client secret or Token Auth access token expires.",
   [AlertEventType.IdentityAuthMethodChanged]:
     "Notify whenever an auth method is added, updated, or removed, or one of its credentials is created, updated, or revoked.",
+  [AlertEventType.PamAccessRequested]:
+    "Notify when someone requests access to an account in this folder.",
+  [AlertEventType.PamAccessRequestApproved]:
+    "Notify when an access request in this folder is approved.",
+  [AlertEventType.PamAccessRequestDenied]:
+    "Notify when an access request in this folder is denied.",
+  [AlertEventType.PamAccessRequestBypassed]:
+    "Notify when someone uses break-glass to access an account in this folder without approval.",
   [AlertEventType.AuditLogStreamDeliveryFailed]:
     "Notify when an external log stream fails to deliver audit log events after all retries."
+};
+
+// Channel types a plan doesn't include, and the paywall shown when one is picked.
+export type TAlertChannelPaywall = {
+  lockedChannelTypes: AlertChannelType[];
+  intent: UpgradeIntent;
+  paywallKey: string;
 };
 
 export const ALERT_CHANNEL_TYPE_LABELS: Record<AlertChannelType, string> = {

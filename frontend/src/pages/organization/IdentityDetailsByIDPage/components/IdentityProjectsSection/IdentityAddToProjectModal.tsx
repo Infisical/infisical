@@ -25,6 +25,7 @@ import {
   useGetProjectRoles,
   useGetUserProjects
 } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z
@@ -76,7 +77,11 @@ export const IdentityAddToProjectModal = ({ identityId, popUp, handlePopUpToggle
     });
 
     return (workspaces || []).filter(
-      ({ id, orgId }) => !wsWorkspaceIds.has(id) && orgId === currentOrg?.id
+      ({ id, orgId, type }) =>
+        !wsWorkspaceIds.has(id) &&
+        orgId === currentOrg?.id &&
+        // Certificate Manager membership is managed inside Certificate Manager, not as a project.
+        type !== ProjectType.CertificateManager
     );
   }, [workspaces, projectMemberships]);
 

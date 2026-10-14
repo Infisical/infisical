@@ -3,6 +3,11 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 
 import { cn } from "../../utils";
+import {
+  OverlayLayerContext,
+  useOverlayIsPending,
+  useOverlayLayer
+} from "../../utils/overlay-layer";
 
 const DIALOG_CONTENT_WIDTH_CLASSNAME = "w-[calc(100%-2rem)] max-w-lg";
 
@@ -26,7 +31,15 @@ function DialogPortal({ ...props }: React.ComponentProps<typeof DialogPrimitive.
 }
 
 function DialogClose({ ...props }: React.ComponentProps<typeof DialogPrimitive.Close>) {
-  return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
+  const isPending = useOverlayIsPending();
+
+  return (
+    <DialogPrimitive.Close
+      data-slot="dialog-close"
+      {...props}
+      {...(isPending && { disabled: true })}
+    />
+  );
 }
 
 function DialogOverlay({
@@ -50,6 +63,10 @@ function DialogContent({
   children,
   showCloseButton = true,
   height = "auto",
+  isPending = false,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
+  onEscapeKeyDown,
   onPointerDownOutside,
   onInteractOutside,
   overlayClassName,
@@ -57,8 +74,12 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
   height?: "auto" | "fixed";
+  isPending?: boolean;
   overlayClassName?: string;
 }) {
+  const { contextValue, guardDismiss, captureFocusReturn, restoreFocusReturn } =
+    useOverlayLayer(isPending);
+
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay className={overlayClassName} />
@@ -70,26 +91,30 @@ function DialogContent({
           height === "fixed" && "h-[40rem] overflow-hidden",
           className
         )}
+        onOpenAutoFocus={(e) => captureFocusReturn(e, onOpenAutoFocus)}
+        onCloseAutoFocus={(e) => restoreFocusReturn(e, onCloseAutoFocus)}
+        onEscapeKeyDown={(e) => guardDismiss(e, onEscapeKeyDown)}
         onPointerDownOutside={(e) => {
           if (isAllowedOutsideInteraction(e.target)) {
             e.preventDefault();
             return;
           }
-          onPointerDownOutside?.(e);
+          guardDismiss(e, onPointerDownOutside);
         }}
         onInteractOutside={(e) => {
           if (isAllowedOutsideInteraction(e.target)) {
             e.preventDefault();
             return;
           }
-          onInteractOutside?.(e);
+          guardDismiss(e, onInteractOutside);
         }}
         {...props}
       >
-        {children}
+        <OverlayLayerContext.Provider value={contextValue}>{children}</OverlayLayerContext.Provider>
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
+            disabled={isPending}
             className="data-[state=open]:text-muted-foreground absolute top-4 right-4 cursor-pointer rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
           >
             <XIcon />

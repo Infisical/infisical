@@ -77,6 +77,7 @@ import {
   OrgPermissionProjectActions,
   OrgPermissionSecretsManagementInsightsActions
 } from "@app/context/OrgPermissionContext/types";
+import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
 import {
   getProjectHomePage,
   getProjectLucideIcon,
@@ -114,6 +115,10 @@ import {
 } from "@app/pages/organization/ProjectsPage/components/ProjectListToggle";
 
 import { ProjectSearchInput } from "./ProjectSearchInput";
+
+// Single-project products: their one project always exists by the time this list renders, so creating
+// another is refused.
+const PROJECT_TYPES_BLOCKED_CREATION: ProjectType[] = [ProjectType.SecretScanning];
 
 enum ProjectsViewMode {
   GRID = "grid",
@@ -243,9 +248,10 @@ export const ProjectTypePage = () => {
   useEffect(() => {
     if (projectType === ProjectType.CertificateManager) {
       if (certManagerInstance?.activeProjectId) {
+        setCertManagerActiveProjectCookie(orgId, certManagerInstance.activeProjectId);
         navigate({
-          to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
-          params: { orgId, projectId: certManagerInstance.activeProjectId }
+          to: "/organizations/$orgId/cert-manager/overview",
+          params: { orgId }
         });
       } else if (certManagerInstance && !certManagerInstance.activeProjectId) {
         setIsCertManagerSetupOpen(true);
@@ -1259,29 +1265,31 @@ const Toolbar = ({
             <ListIcon />
           </IconButton>
         </ButtonGroup>
-        <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
-          {(isOldProjectV1Allowed) => (
-            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
-              {(isAllowed) => (
-                <Button
-                  isDisabled={!isAllowed && !isOldProjectV1Allowed}
-                  size="sm"
-                  variant="project"
-                  onClick={() => {
-                    if (isAddingProjectsAllowed) {
-                      onAddNewProject();
-                    } else {
-                      onUpgradePlan();
-                    }
-                  }}
-                >
-                  <PlusIcon />
-                  New Project
-                </Button>
-              )}
-            </OrgPermissionCan>
-          )}
-        </OrgPermissionCan>
+        {!PROJECT_TYPES_BLOCKED_CREATION.includes(projectType) && (
+          <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
+            {(isOldProjectV1Allowed) => (
+              <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
+                {(isAllowed) => (
+                  <Button
+                    isDisabled={!isAllowed && !isOldProjectV1Allowed}
+                    size="sm"
+                    variant="project"
+                    onClick={() => {
+                      if (isAddingProjectsAllowed) {
+                        onAddNewProject();
+                      } else {
+                        onUpgradePlan();
+                      }
+                    }}
+                  >
+                    <PlusIcon />
+                    New Project
+                  </Button>
+                )}
+              </OrgPermissionCan>
+            )}
+          </OrgPermissionCan>
+        )}
       </div>
     </div>
   );
@@ -1301,6 +1309,30 @@ const EmptyState = ({
   isAddingProjectsAllowed: boolean;
 }) => {
   const typeTitle = getProjectTitle(projectType);
+  const { permission } = useOrgPermission();
+
+  if (projectType === ProjectType.SecretScanning) {
+    const canRequestAccess = permission.can(
+      OrgPermissionProjectActions.RequestAccess,
+      OrgPermissionSubjects.Project
+    );
+
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <ProductIcon />
+          </EmptyMedia>
+          <EmptyTitle>You don&apos;t have access to Secret Scanning</EmptyTitle>
+          <EmptyDescription>
+            {canRequestAccess
+              ? "Switch to All Projects to request access to the Secret Scanning project."
+              : "Ask an organization admin to add you to the Secret Scanning project."}
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
 
   return (
     <Empty className="border">

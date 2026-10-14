@@ -1,16 +1,18 @@
 import { Knex } from "knex";
 
-import { TApprovalRequests } from "@app/db/schemas";
+import { TApprovalRequestApprovals, TApprovalRequests } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 
 import {
   ApprovalPolicyType,
+  ApprovalRequestApprovalDecision,
   ApprovalRequestStatus,
   ApprovalRequestStepStatus,
   ApproverType
 } from "./approval-policy-enums";
 import { ApprovalPolicyStep, TApprovalRequestData, TApprovalRequestSubjectMetadata } from "./approval-policy-types";
 import {
+  TApprovalRequestApprovalsDALFactory,
   TApprovalRequestDALFactory,
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
@@ -25,6 +27,7 @@ export interface TCreateApprovalRequestWithStepsParams {
   policyType: ApprovalPolicyType;
   policySteps: ApprovalPolicyStep[];
   requestData: TApprovalRequestData;
+  status?: ApprovalRequestStatus;
   justification?: string | null;
   expiresAt?: Date | null;
   requesterUserId?: string | null;
@@ -108,6 +111,7 @@ export const createApprovalRequestWithSteps = async (
     policyType,
     policySteps,
     requestData,
+    status = ApprovalRequestStatus.Pending,
     justification,
     expiresAt,
     requesterUserId,
@@ -120,7 +124,8 @@ export const createApprovalRequestWithSteps = async (
   dependencies: {
     approvalRequestDAL: Pick<TApprovalRequestDALFactory, "create" | "transaction">;
   } & TInsertApprovalRequestStepsDeps,
-  externalTx?: Knex
+  externalTx?: Knex,
+  onCreated?: (request: TApprovalRequests, tx: Knex) => Promise<void>
 ): Promise<TApprovalRequestWithSteps> => {
   const { approvalRequestDAL, approvalRequestStepsDAL, approvalRequestStepEligibleApproversDAL } = dependencies;
 
@@ -135,7 +140,7 @@ export const createApprovalRequestWithSteps = async (
         requesterName,
         requesterEmail,
         type: policyType,
-        status: ApprovalRequestStatus.Pending,
+        status,
         justification,
         currentStep: 1,
         requestData: { version: 1, requestData },
@@ -152,6 +157,7 @@ export const createApprovalRequestWithSteps = async (
       tx
     );
 
+    await onCreated?.(newRequest, tx);
     return { request: newRequest, steps: newSteps };
   };
 
@@ -160,6 +166,38 @@ export const createApprovalRequestWithSteps = async (
     : await approvalRequestDAL.transaction(createRequestAndSteps);
 
   return { ...request, steps } as TApprovalRequestWithSteps;
+};
+
+export const isEligibleStepApprover = (
+  step: { approvers: { type: ApproverType; id: string }[] },
+  userId: string,
+  userGroupIds: Set<string>
+): boolean =>
+  step.approvers.some(
+    (approver) =>
+      (approver.type === ApproverType.User && approver.id === userId) ||
+      (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
+  );
+
+export type TUpsertApprovalRequestStepDecisionParams = {
+  stepId: string;
+  approverUserId: string;
+  decision: ApprovalRequestApprovalDecision;
+  comment?: string | null;
+};
+
+export const upsertApprovalRequestStepDecision = async (
+  { stepId, approverUserId, decision, comment }: TUpsertApprovalRequestStepDecisionParams,
+  {
+    approvalRequestApprovalsDAL
+  }: { approvalRequestApprovalsDAL: Pick<TApprovalRequestApprovalsDALFactory, "findOne" | "create" | "updateById"> },
+  tx: Knex
+): Promise<TApprovalRequestApprovals> => {
+  const existing = await approvalRequestApprovalsDAL.findOne({ stepId, approverUserId }, tx);
+  if (existing) {
+    return approvalRequestApprovalsDAL.updateById(existing.id, { decision, comment: comment ?? null }, tx);
+  }
+  return approvalRequestApprovalsDAL.create({ stepId, approverUserId, decision, comment: comment ?? null }, tx);
 };
 
 export const resolveStepApproverUserIds = async (

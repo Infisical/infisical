@@ -32,6 +32,7 @@ import { HasuraCloudSyncFields } from "./HasuraCloudSyncFields";
 import { HCVaultSyncFields } from "./HCVaultSyncFields";
 import { HerokuSyncFields } from "./HerokuSyncFields";
 import { HumanitecSyncFields } from "./HumanitecSyncFields";
+import { KeeperSyncFields } from "./KeeperSyncFields";
 import { LaravelForgeSyncFields } from "./LaravelForgeSyncFields";
 import { NetlifySyncFields } from "./NetlifySyncFields";
 import { NorthflankSyncFields } from "./NorthflankSyncFields";
@@ -158,6 +159,8 @@ export const SecretSyncDestinationFields = () => {
       return <Cloud66SyncFields />;
     case SecretSync.Daytona:
       return <DaytonaSyncFields />;
+    case SecretSync.Keeper:
+      return <KeeperSyncFields />;
     case SecretSync.Spacelift:
       return <SpaceliftSyncFields />;
     default:

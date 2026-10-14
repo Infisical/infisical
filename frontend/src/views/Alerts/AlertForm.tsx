@@ -33,6 +33,7 @@ import {
   MIN_ALERT_BEFORE_DAYS,
   parseAlertBeforeDays,
   TAlert,
+  TAlertChannelPaywall,
   TAlertForm,
   toAlertBefore,
   toChannelForm,
@@ -47,6 +48,7 @@ type Props = {
   resourceType: AlertResourceType;
   projectId?: string;
   resourceId?: string;
+  channelPaywall?: TAlertChannelPaywall;
   alert?: TAlert;
   unavailableEventTypes?: AlertEventType[];
   onComplete: () => void;
@@ -57,9 +59,13 @@ const DEFAULT_ALERT_BEFORE_DAYS = 7;
 const DEFAULT_ALERT_NAMES: Record<AlertEventType, string> = {
   [AlertEventType.IdentityAuthenticationExpiry]: "Credential expiration alert",
   [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert",
+  [AlertEventType.PamAccessRequested]: "Access requested alert",
+  [AlertEventType.PamAccessRequestApproved]: "Request approved alert",
+  [AlertEventType.PamAccessRequestDenied]: "Request denied alert",
+  [AlertEventType.PamAccessRequestBypassed]: "Break-glass alert",
   [AlertEventType.AuditLogStreamDeliveryFailed]: "Stream delivery failure alert"
 };
-const AGENT_VAULT_ALERT_NAME_PLACEHOLDERS: Record<AlertEventType, string> = {
+const AGENT_VAULT_ALERT_NAME_PLACEHOLDERS: Partial<Record<AlertEventType, string>> = {
   [AlertEventType.IdentityAuthenticationExpiry]: "Credential expiration alert",
   [AlertEventType.IdentityAuthMethodChanged]: "Auth method change alert",
   [AlertEventType.AuditLogStreamDeliveryFailed]: "Stream delivery failure alert"
@@ -101,6 +107,7 @@ export const AlertForm = ({
   resourceType,
   projectId,
   resourceId,
+  channelPaywall,
   alert,
   unavailableEventTypes = [],
   onComplete,
@@ -313,6 +320,7 @@ export const AlertForm = ({
             projectId={projectId}
             resourceType={resourceType}
             resourceId={resourceId ?? alert?.resourceId ?? null}
+            channelPaywall={channelPaywall}
           />
         </div>
 

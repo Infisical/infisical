@@ -146,6 +146,7 @@ import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
+import { KeeperConnectionListItemSchema, SanitizedKeeperConnectionSchema } from "@app/services/app-connection/keeper";
 import {
   KempLoadMasterConnectionListItemSchema,
   SanitizedKempLoadMasterConnectionSchema
@@ -197,6 +198,10 @@ import {
 } from "@app/services/app-connection/open-router";
 import { OpenAIConnectionListItemSchema, SanitizedOpenAIConnectionSchema } from "@app/services/app-connection/openai";
 import { OvhConnectionListItemSchema, SanitizedOvhConnectionSchema } from "@app/services/app-connection/ovh";
+import {
+  PaloAltoNetworksConnectionListItemSchema,
+  SanitizedPaloAltoNetworksConnectionSchema
+} from "@app/services/app-connection/palo-alto-networks";
 import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
@@ -343,6 +348,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedVenafiTppConnectionSchema.options,
   ...SanitizedExternalInfisicalConnectionSchema.options,
   ...SanitizedNetScalerConnectionSchema.options,
+  ...SanitizedPaloAltoNetworksConnectionSchema.options,
   ...SanitizedKempLoadMasterConnectionSchema.options,
   ...SanitizedDopplerConnectionSchema.options,
   ...SanitizedOvhConnectionSchema.options,
@@ -364,6 +370,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSpaceliftConnectionSchema.options,
   ...SanitizedDaytonaConnectionSchema.options,
   ...SanitizedStripeConnectionSchema.options,
+  ...SanitizedKeeperConnectionSchema.options,
   ...SanitizedHpeIloConnectionSchema.options
 ]);
 
@@ -433,6 +440,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   ExternalInfisicalConnectionListItemSchema,
   DopplerConnectionListItemSchema,
   NetScalerConnectionListItemSchema,
+  PaloAltoNetworksConnectionListItemSchema,
   KempLoadMasterConnectionListItemSchema,
   AnthropicConnectionListItemSchema,
   OvhConnectionListItemSchema,
@@ -455,6 +463,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   SpaceliftConnectionListItemSchema,
   DaytonaConnectionListItemSchema,
   StripeConnectionListItemSchema,
+  KeeperConnectionListItemSchema,
   HpeIloConnectionListItemSchema
 ]);
 

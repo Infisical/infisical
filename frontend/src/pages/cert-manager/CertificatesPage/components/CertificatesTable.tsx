@@ -424,7 +424,7 @@ export const CertificatesTable = ({
   const handleDisableAutoRenewal = async (certificateId: string, commonName: string) => {
     if (!currentProject?.slug) {
       createNotification({
-        text: "Unable to disable auto-renewal: Project not found.",
+        text: "Unable to disable auto-renewal: Certificate Manager could not be loaded. Please refresh and try again.",
         type: "error"
       });
       return;
@@ -949,10 +949,9 @@ export const CertificatesTable = ({
                       key={`certificate-${certificate.id}`}
                       onClick={() => {
                         navigate({
-                          to: "/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId",
+                          to: "/organizations/$orgId/cert-manager/certificates/$certificateId",
                           params: {
                             orgId: currentOrg.id,
-                            projectId: currentProject.id,
                             certificateId: certificate.id
                           },
                           search: applicationName ? { fromApplication: applicationName } : undefined

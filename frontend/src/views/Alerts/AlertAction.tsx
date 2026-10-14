@@ -36,6 +36,7 @@ import {
   AlertEventType,
   AlertResourceType,
   TAlert,
+  TAlertChannelPaywall,
   useDeleteAlert,
   useListAlerts,
   useUpdateAlert
@@ -48,13 +49,13 @@ type Props = {
   resourceType: AlertResourceType;
   // Alerts that watch every resource of the type in scope when omitted.
   resourceId?: string;
+  channelPaywall?: TAlertChannelPaywall;
   // Org-scoped when omitted.
   projectId?: string;
   // Renders the alerts without any way to create, edit or remove them.
   readOnly?: boolean;
-  // Wraps the mutating actions in the caller's permission gate (org- or project-scoped), which is the
-  // only thing that differs between the org and project entry points.
-  renderPermissionGate: (render: (isAllowed: boolean) => ReactNode) => ReactNode;
+  // The caller's permission gate for mutating actions; omit it when the view is already gated.
+  renderPermissionGate?: (render: (isAllowed: boolean) => ReactNode) => ReactNode;
 };
 
 const getEnabledChannelTypes = (alert: TAlert): AlertChannelType[] =>
@@ -65,9 +66,10 @@ const getEnabledChannelTypes = (alert: TAlert): AlertChannelType[] =>
 export const AlertAction = ({
   resourceType,
   resourceId,
+  channelPaywall,
   projectId,
   readOnly = false,
-  renderPermissionGate
+  renderPermissionGate = (render) => render(true)
 }: Props) => {
   const { data: alerts = [] } = useListAlerts({
     resourceType,
@@ -271,6 +273,7 @@ export const AlertAction = ({
             resourceType={resourceType}
             projectId={projectId}
             resourceId={resourceId}
+            channelPaywall={channelPaywall}
             alert={selectedAlert}
             unavailableEventTypes={usedEventTypes}
           />

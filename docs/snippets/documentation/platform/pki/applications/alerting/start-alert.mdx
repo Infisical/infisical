@@ -1,0 +1,54 @@
+<Tabs>
+  <Tab title="Certificate Manager">
+    <Steps>
+      <Step>
+        Go to **Certificate Manager** > **Settings** and select the **Alerts** tab, then select **Create Alert**.
+      </Step>
+      <Step>
+        Select the **Alert Type** from the **Certificate Lifecycle** or **Code Signing** group, then enter an **Alert Name** and an optional **Description**.
+      </Step>
+      <Step>
+        For an expiration alert, enter **Alert Before** as a number and a unit. For example: `30d` or `2w`, up to 365 days. 
+        
+        <Note>
+        To get a reminder every day, turn on **Repeat daily until expiry**. Otherwise, the alert repeats on a [schedule based on **Alert Before**](/documentation/platform/pki/applications/alerting/overview#how-often-expiration-alerts-repeat).
+        </Note>
+
+        Select **Continue**.
+      </Step>
+      <Step>
+        On the **Filters** step, optionally select **Add Filter** to [narrow the certificates the alert covers](/documentation/platform/pki/applications/alerting/overview#filter-a-certificate-manager-alert). A signer certificate expiration alert skips this step.
+        
+        Select **Continue** to go to the **Channels** step.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Application">
+    <Steps>
+      <Step>
+        Go to **Certificate Manager** > **Applications** and select your application.
+      </Step>
+      <Step>
+        Select the **Settings** tab, then select **Create Alert** in the **Alerts** section.
+      </Step>
+      <Step>
+        Select the **Alert Type**, then enter an **Alert Name** and an optional **Description**.
+      </Step>
+      <Step>
+        For an expiration alert, enter **Alert Before** as a number and a unit. For example: `30d` or `2w`, up to 365 days.
+        
+        <Note>
+        To get a reminder every day, turn on **Repeat daily until expiry**. Otherwise, the alert repeats on a [schedule based on **Alert Before**](/documentation/platform/pki/applications/alerting/overview#how-often-expiration-alerts-repeat).
+        </Note>
+
+        Select **Continue** to go to the **Channels** step.
+      </Step>
+    </Steps>
+
+    An application can have one alert for each event. To notify more places about the same event, add more channels to that alert.
+  </Tab>
+</Tabs>
+
+<Tip>
+To add this channel to an existing alert instead, edit the alert and go to its **Channels** step.
+</Tip>

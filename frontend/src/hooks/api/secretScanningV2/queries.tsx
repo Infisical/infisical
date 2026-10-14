@@ -21,6 +21,12 @@ import {
   TSecretScanningScanWithDetails
 } from "./types";
 
+// Resolves the org's active Secret Scanning project, creating it on first access (lazy bootstrap on the backend).
+export const fetchSecretScanningProjectId = async () => {
+  const { data } = await apiRequest.get<{ projectId: string }>("/api/v2/secret-scanning/project");
+  return data.projectId;
+};
+
 export const secretScanningV2Keys = {
   all: ["secret-scanning-v2"] as const,
   dataSource: () => [...secretScanningV2Keys.all, "data-source"] as const,
@@ -46,8 +52,38 @@ export const secretScanningV2Keys = {
     [...secretScanningV2Keys.finding(), "count", projectId] as const,
   listFindings: (projectId: string) => [...secretScanningV2Keys.finding(), "list", projectId],
   configByProjectId: (projectId: string) =>
-    [...secretScanningV2Keys.all, "config", projectId] as const
+    [...secretScanningV2Keys.all, "config", projectId] as const,
+  activeProjectId: (orgId: string) => [...secretScanningV2Keys.all, "project", orgId] as const,
+  instanceState: (orgId: string) => [...secretScanningV2Keys.all, "instance", orgId] as const
 };
+
+export type TSecretScanningInstanceProject = {
+  id: string;
+  name: string;
+  slug: string;
+  createdAt: string;
+};
+
+export type TSecretScanningInstanceState = {
+  activeProjectId: string | null;
+  projects: TSecretScanningInstanceProject[];
+  isMultiInstance: boolean;
+};
+
+export const useGetSecretScanningInstanceState = (
+  orgId: string,
+  { enabled = true }: { enabled?: boolean } = {}
+) =>
+  useQuery({
+    queryKey: secretScanningV2Keys.instanceState(orgId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TSecretScanningInstanceState>(
+        "/api/v2/secret-scanning/instance"
+      );
+      return data;
+    },
+    enabled: Boolean(orgId) && enabled
+  });
 
 export const useSecretScanningDataSourceOptions = (
   options?: Omit<

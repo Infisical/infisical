@@ -12,6 +12,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
+import { Combobox, Field, FieldError, FieldLabel } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   CaSigningConfigType,
@@ -20,13 +21,12 @@ import {
   useInstallCaCertificateAdcsNative,
   useUpdateCaSigningConfig
 } from "@app/hooks/api";
-import {
-  TAvailableAppConnection,
-  useListAvailableAppConnections
-} from "@app/hooks/api/appConnections";
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { useAdcsConnectionListCertificateTemplates } from "@app/hooks/api/appConnections/adcs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+
+import { useConnectionCreation } from "./useConnectionCreation";
 
 const schema = z.object({
   appConnectionId: z.string().min(1, "App connection is required"),
@@ -52,12 +52,17 @@ export const AdcsNativeCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       maxPathLength: "-1"
     }
+  });
+
+  const connectionCreation = useConnectionCreation(AppConnection.ADCS, (connection) => {
+    setValue("appConnectionId", connection.id, { shouldValidate: true });
   });
 
   const selectedConnectionId = watch("appConnectionId");
@@ -120,25 +125,27 @@ export const AdcsNativeCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
         control={control}
         name="appConnectionId"
         render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl
-            label="Microsoft ADCS Connection"
-            errorText={error?.message}
-            isError={Boolean(error)}
-            isRequired
-          >
-            <FilterableSelect
+          <Field className="mb-4">
+            <FieldLabel>
+              Microsoft ADCS Connection <span className="text-danger">*</span>
+            </FieldLabel>
+            <Combobox
+              isError={Boolean(error)}
+              modal
+              isClearable={false}
               isLoading={isAdcsPending}
-              value={(availableAdcsConnections || []).find((conn) => conn.id === value)}
-              onChange={(option) => {
-                const selected = option as SingleValue<TAvailableAppConnection>;
-                onChange(selected?.id ?? "");
+              value={(availableAdcsConnections || []).find((conn) => conn.id === value) ?? null}
+              onValueChange={(option) => {
+                onChange(option.id);
               }}
               options={availableAdcsConnections || []}
               placeholder="Select a Microsoft ADCS connection..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
+              creation={connectionCreation}
             />
-          </FormControl>
+            <FieldError errors={[error]} />
+          </Field>
         )}
       />
       <Controller

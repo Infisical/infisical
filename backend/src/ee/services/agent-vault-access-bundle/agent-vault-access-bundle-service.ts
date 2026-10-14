@@ -28,6 +28,12 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
+import {
+  agentVaultActorKey,
+  resolveAgentVaultActorNames,
+  TAgentVaultActorName,
+  TAgentVaultActorNameDALs
+} from "../agent-vault/agent-vault-actor-name-fns";
 import { describeConflict, findHostPatternConflicts } from "../agent-vault/agent-vault-conflict-fns";
 import {
   AgentVaultBearerConfigSchema,
@@ -100,7 +106,7 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
   agentVaultMemberDAL: Pick<TAgentVaultMemberDALFactory, "findProductMembers">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
-};
+} & TAgentVaultActorNameDALs;
 
 export type TAgentVaultAccessBundleServiceFactory = ReturnType<typeof agentVaultAccessBundleServiceFactory>;
 
@@ -127,7 +133,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     membershipRoleDAL,
     agentVaultMemberDAL,
     userGroupMembershipDAL,
-    identityGroupMembershipDAL
+    identityGroupMembershipDAL,
+    userDAL,
+    groupDAL,
+    identityDAL
   } = deps;
 
   const bundleScope = (projectId: string, accessBundleId: string) => ({
@@ -144,11 +153,15 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   };
 
   const toMember = (row: TMemberships) => ({
-    id: row.id,
-    accessBundleId: row.scopeResourceId!,
-    createdAt: row.createdAt,
-    actor: toActorRef(row)
+    ...toActorRef(row),
+    grantedAt: row.createdAt
   });
+
+  // actorName is for the audit body; the response schemas do not select it.
+  const withActorNames = <T extends TAgentVaultAccessBundleActorRef>(
+    members: T[],
+    nameByKey: Map<string, TAgentVaultActorName>
+  ) => members.map((member) => ({ ...member, actorName: nameByKey.get(agentVaultActorKey(member)) }));
 
   type TGrantActorColumn = "actorUserId" | "actorIdentityId" | "actorGroupId";
 
@@ -166,6 +179,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     type: ACTOR_TYPE_OF[actorColumn],
     id: actorId
   });
+
+  // Called before the write: a lookup that failed after commit would fail the request with the change made,
+  // and the retry finds the actor skipped, so that change would never be audited.
+  const resolveActorNames = (actors: TGrantActor[]) =>
+    resolveAgentVaultActorNames({ userDAL, groupDAL, identityDAL }, actors.map(toActorRefFromGrant));
 
   const ACTOR_FIELD_OF: Record<TGrantActorColumn, "userId" | "identityId" | "groupId"> = {
     actorUserId: "userId",
@@ -1295,13 +1313,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     };
   };
 
-  // The secret check sits in the projection, so no caller can put a secret value on the wire by passing one.
-  const projectVariable = (variable: TAgentVaultVariables, serviceIds: string[], value: string | null) => ({
+  // Values never leave through this projection; only the audited value endpoint returns one.
+  const projectVariable = (variable: TAgentVaultVariables, serviceIds: string[]) => ({
     id: variable.id,
     accessBundleId: variable.accessBundleId,
     key: variable.key,
-    isSecret: variable.isSecret,
-    value: variable.isSecret ? null : value,
     serviceIds,
     createdAt: variable.createdAt,
     updatedAt: variable.updatedAt
@@ -1341,21 +1357,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const bundle = await resolveVariableBundle(dto);
 
     const variables = await agentVaultVariableDAL.findByAccessBundleId(bundle.id);
-    const [references, cipher] = await Promise.all([
-      agentVaultServiceVariableReferenceDAL.findByVariableIds(variables.map((variable) => variable.id)),
-      variables.some((variable) => !variable.isSecret) ? getProjectCipher(dto.projectId) : null
-    ]);
-
-    return variables.map((variable) =>
-      projectVariable(
-        variable,
-        serviceIdsUsing(references, variable.id),
-        cipher && !variable.isSecret ? openVariableValue(cipher.decryptor, variable.encryptedValue) : null
-      )
+    const references = await agentVaultServiceVariableReferenceDAL.findByVariableIds(
+      variables.map((variable) => variable.id)
     );
+
+    return variables.map((variable) => projectVariable(variable, serviceIdsUsing(references, variable.id)));
   };
 
-  const createVariable = async ({ accessBundleId, key, value, isSecret, ...rest }: TCreateVariableDTO) => {
+  const createVariable = async ({ accessBundleId, key, value, ...rest }: TCreateVariableDTO) => {
     const bundle = await resolveVariableBundle({ ...rest, accessBundleId });
 
     const { encryptor } = await getProjectCipher(rest.projectId);
@@ -1380,26 +1389,25 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           });
         }
 
-        return agentVaultVariableDAL.create({ accessBundleId: bundle.id, key, encryptedValue, isSecret }, tx);
+        return agentVaultVariableDAL.create({ accessBundleId: bundle.id, key, encryptedValue }, tx);
       });
 
     try {
-      return { variable: projectVariable(await write(), [], value), accessBundleName: bundle.name };
+      return { variable: projectVariable(await write(), []), accessBundleName: bundle.name };
     } catch (err) {
       if (isUniqueViolation(err)) throw new BadRequestError({ message: duplicateVariableKeyMessage(key) });
       throw err;
     }
   };
 
-  const updateVariable = async ({ accessBundleId, variableId, key, value, isSecret, ...rest }: TUpdateVariableDTO) => {
+  const updateVariable = async ({ accessBundleId, variableId, key, value, ...rest }: TUpdateVariableDTO) => {
     const bundle = await resolveVariableBundle({ ...rest, accessBundleId });
 
     const variable = await agentVaultVariableDAL.findOne({ id: variableId, accessBundleId: bundle.id });
     if (!variable) throw new NotFoundError({ message: `Variable with ID '${variableId}' not found` });
 
-    const cipher =
-      value !== undefined || !(isSecret ?? variable.isSecret) ? await getProjectCipher(rest.projectId) : null;
-    const encryptedValue = value === undefined ? undefined : sealVariableValue(cipher!.encryptor, value);
+    const encryptedValue =
+      value === undefined ? undefined : sealVariableValue((await getProjectCipher(rest.projectId)).encryptor, value);
 
     const write = () =>
       agentVaultVariableDAL.transaction(async (tx) => {
@@ -1420,7 +1428,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         // A rename is this row alone. Sealed fields name the variable by id, so nothing that uses it changes.
         const updated = await agentVaultVariableDAL.updateById(
           current.id,
-          { key, isSecret, ...(encryptedValue ? { encryptedValue } : {}) },
+          { key, ...(encryptedValue ? { encryptedValue } : {}) },
           tx
         );
         const references = await agentVaultServiceVariableReferenceDAL.findByVariableIds([current.id], tx);
@@ -1438,18 +1446,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
 
     const { previous, updated, references } = result;
-    // The flag is re-read under the lock, so it can disagree with the replica read the cipher was chosen by.
-    let plainValue: string | null = null;
-    if (!updated.isSecret) {
-      plainValue =
-        value ??
-        openVariableValue((cipher ?? (await getProjectCipher(rest.projectId))).decryptor, updated.encryptedValue);
-    }
-
     return {
-      variable: projectVariable(updated, serviceIdsUsing(references, updated.id), plainValue),
+      variable: projectVariable(updated, serviceIdsUsing(references, updated.id)),
       previousKey: previous.key,
-      previousIsSecret: previous.isSecret,
       accessBundleName: bundle.name
     };
   };
@@ -1500,10 +1499,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       throw err;
     }
 
-    const plainValue = deleted.isSecret
-      ? null
-      : openVariableValue((await getProjectCipher(rest.projectId)).decryptor, deleted.encryptedValue);
-    return { variable: projectVariable(deleted, [], plainValue), accessBundleName: bundle.name };
+    return { variable: projectVariable(deleted, []), accessBundleName: bundle.name };
   };
 
   const getVariableValue = async ({ accessBundleId, variableId, ...rest }: TVariableByIdDTO) => {
@@ -1578,6 +1574,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     const actors = [...requested.values()];
     await assertActorsInProject({ projectId: rest.projectId, actors });
+    const nameByKey = await resolveActorNames(actors);
 
     // The bundle row lock serializes grants for this bundle, so reading the existing ones inside it is
     // enough to dedupe. The unique index per actor per bundle stays as the backstop, and its violation
@@ -1623,7 +1620,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
 
     return {
-      members: outcome.created.map(toMember),
+      members: withActorNames(outcome.created.map(toMember), nameByKey),
       skipped: outcome.skipped,
       accessBundleName: bundle.name
     };
@@ -1652,6 +1649,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ids.forEach((actorId) => requested.set(actorKey({ actorColumn, actorId }), { actorColumn, actorId }));
     });
     const actors = [...requested.values()];
+    const nameByKey = await resolveActorNames(actors);
 
     // The same row lock the grant path takes, so a revoke cannot race a grant or a bundle delete.
     const outcome = await membershipDAL.transaction(async (tx) => {
@@ -1686,7 +1684,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     });
 
     return {
-      members: outcome.removed.map(toMember),
+      members: withActorNames(outcome.removed.map(toActorRef), nameByKey),
       skipped: outcome.skipped,
       accessBundleName: bundle.name
     };
