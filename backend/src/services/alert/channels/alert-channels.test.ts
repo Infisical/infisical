@@ -16,7 +16,7 @@ import { buildPagerDutyEvent } from "./alert-channel-pagerduty-fns";
 import { ALERT_CHANNEL_REGISTRY } from "./alert-channel-registry";
 import { buildSlackPayload } from "./alert-channel-slack-fns";
 import {
-  assertWebhookKeptSecretsAllowed,
+  assertWebhookUrlUnchangedForKeptCredentials,
   buildWebhookPayload,
   sendWebhookNotification
 } from "./alert-channel-webhook-fns";
@@ -284,7 +284,7 @@ describe("WebhookChannelConfigSchema headers", () => {
   test("names the header whose value can't be sent", () => {
     const result = withHeaders([{ key: "X-Env", value: "prod\u200b" }]);
     expect(result.error?.issues[0].message).toBe(
-      "Header 'X-Env' has a character that can't be sent in an HTTP header, such as an emoji, a control character, or an invisible space. Re-enter the value"
+      "The value for header 'X-Env' has a character that can't be sent in an HTTP header, such as an emoji, a control character, or an invisible space. Re-enter the value"
     );
   });
 });
@@ -354,7 +354,7 @@ describe("WebhookChannelConfigSchema authentication", () => {
   });
 });
 
-describe("assertWebhookKeptSecretsAllowed", () => {
+describe("assertWebhookUrlUnchangedForKeptCredentials", () => {
   const stored = {
     url: "https://api.example.com/sources/abc",
     authType: WebhookAuthType.BEARER,
@@ -363,7 +363,7 @@ describe("assertWebhookKeptSecretsAllowed", () => {
 
   test("refuses to keep saved credentials when the URL changed, even on the same host", () => {
     expect(() =>
-      assertWebhookKeptSecretsAllowed(
+      assertWebhookUrlUnchangedForKeptCredentials(
         { url: "https://api.example.com/sources/attacker", authType: WebhookAuthType.BEARER },
         stored
       )
@@ -374,7 +374,7 @@ describe("assertWebhookKeptSecretsAllowed", () => {
 
   test("allows a changed URL when the credentials are entered again", () => {
     expect(() =>
-      assertWebhookKeptSecretsAllowed(
+      assertWebhookUrlUnchangedForKeptCredentials(
         { url: "https://other.example.com/hook", authType: WebhookAuthType.BEARER, authCredentials: "new" },
         stored
       )
@@ -383,7 +383,7 @@ describe("assertWebhookKeptSecretsAllowed", () => {
 
   test("keeps saved credentials when only the host case differs", () => {
     expect(() =>
-      assertWebhookKeptSecretsAllowed(
+      assertWebhookUrlUnchangedForKeptCredentials(
         { url: "https://API.example.com/sources/abc", authType: WebhookAuthType.BEARER },
         stored
       )
@@ -392,7 +392,7 @@ describe("assertWebhookKeptSecretsAllowed", () => {
 
   test("keeps the signing secret on a URL change, since it is never sent", () => {
     expect(() =>
-      assertWebhookKeptSecretsAllowed(
+      assertWebhookUrlUnchangedForKeptCredentials(
         { url: "https://other.example.com/hook" },
         { url: "https://example.com/hook", signingSecret: "s3cr3t" }
       )

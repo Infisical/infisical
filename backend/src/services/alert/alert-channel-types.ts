@@ -80,7 +80,10 @@ export type TAlertChannelDefinition = {
   secretFields: string[];
   configSchema: z.ZodTypeAny;
   maxTargetsPerRun?: number;
-  assertKeptSecretsAllowed?: (incomingConfig: Record<string, unknown>, storedConfig: Record<string, unknown>) => void;
+  assertStoredSecretsReusable?: (
+    incomingConfig: Record<string, unknown>,
+    storedConfig: Record<string, unknown>
+  ) => void;
   send: (ctx: TAlertChannelSendContext) => Promise<TChannelResult>;
 };
 
@@ -161,7 +164,7 @@ const WebhookChannelHeaderSchema = z
   })
   .refine(
     (header) => httpHeaderValueRegex.test(header.value),
-    (header) => ({ message: `Header '${header.key}' ${UNSENDABLE_CHARACTER_MESSAGE}`, path: ["value"] })
+    (header) => ({ message: `The value for header '${header.key}' ${UNSENDABLE_CHARACTER_MESSAGE}`, path: ["value"] })
   );
 
 export const WebhookChannelConfigSchema = z

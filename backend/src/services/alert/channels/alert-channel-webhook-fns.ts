@@ -69,7 +69,7 @@ const normalizeUrl = (url: unknown): string | null => {
   }
 };
 
-export const assertWebhookKeptSecretsAllowed = (
+export const assertWebhookUrlUnchangedForKeptCredentials = (
   incomingConfig: Record<string, unknown>,
   storedConfig: Record<string, unknown>
 ) => {
