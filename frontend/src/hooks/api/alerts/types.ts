@@ -6,7 +6,8 @@ import { CertSource } from "@app/hooks/api/certificates/enums";
 export enum AlertResourceType {
   IdentityAuthentication = "identity.authentication",
   PamFolder = "pam.folder",
-  SecretReminder = "secret.reminder"
+  SecretReminder = "secret.reminder",
+  AuditLogStream = "audit-log.stream"
 }
 
 export enum AlertEventType {
@@ -15,7 +16,8 @@ export enum AlertEventType {
   PamAccessRequested = "pam.folder.access-requested",
   PamAccessRequestApproved = "pam.folder.access-request-approved",
   PamAccessRequestDenied = "pam.folder.access-request-denied",
-  PamAccessRequestBypassed = "pam.folder.access-request-bypassed"
+  PamAccessRequestBypassed = "pam.folder.access-request-bypassed",
+  AuditLogStreamDeliveryFailed = "audit-log.stream.delivery-failed"
 }
 
 export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventType[]> = {
@@ -30,7 +32,8 @@ export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventTyp
     AlertEventType.PamAccessRequestBypassed
   ],
   // Reminder alerts are edited from the secret's reminder form, not the generic alert form.
-  [AlertResourceType.SecretReminder]: []
+  [AlertResourceType.SecretReminder]: [],
+  [AlertResourceType.AuditLogStream]: [AlertEventType.AuditLogStreamDeliveryFailed]
 };
 
 // Resource types whose provider accepts plain email addresses as email channel recipients
@@ -130,7 +133,8 @@ export const MAX_CERTIFICATE_ALERT_FILTER_IDS = 100;
 export const ALERT_RESOURCE_TYPE_LABELS: Record<AlertResourceType, string> = {
   [AlertResourceType.IdentityAuthentication]: "Machine Identity Authentication",
   [AlertResourceType.PamFolder]: "PAM Folder",
-  [AlertResourceType.SecretReminder]: "Secret Reminder"
+  [AlertResourceType.SecretReminder]: "Secret Reminder",
+  [AlertResourceType.AuditLogStream]: "Audit Log Stream"
 };
 
 export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
@@ -139,7 +143,8 @@ export const ALERT_EVENT_TYPE_LABELS: Record<AlertEventType, string> = {
   [AlertEventType.PamAccessRequested]: "Access Requested",
   [AlertEventType.PamAccessRequestApproved]: "Request Approved",
   [AlertEventType.PamAccessRequestDenied]: "Request Denied",
-  [AlertEventType.PamAccessRequestBypassed]: "Break-Glass Used"
+  [AlertEventType.PamAccessRequestBypassed]: "Break-Glass Used",
+  [AlertEventType.AuditLogStreamDeliveryFailed]: "Delivery Failure"
 };
 
 export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
@@ -154,7 +159,9 @@ export const ALERT_EVENT_TYPE_DESCRIPTIONS: Record<AlertEventType, string> = {
   [AlertEventType.PamAccessRequestDenied]:
     "Notify when an access request in this folder is denied.",
   [AlertEventType.PamAccessRequestBypassed]:
-    "Notify when someone uses break-glass to access an account in this folder without approval."
+    "Notify when someone uses break-glass to access an account in this folder without approval.",
+  [AlertEventType.AuditLogStreamDeliveryFailed]:
+    "Notify when an external log stream fails to deliver audit log events after all retries."
 };
 
 // Channel types a plan doesn't include, and the paywall shown when one is picked.
