@@ -18,7 +18,7 @@ const globalPolicyIds: string[] = [];
 
 // The create route always writes to the global tables now, so a legacy policy
 // has to be seeded straight into the legacy tables.
-const createLegacyPolicy = async (dto: { name: string; secretPath: string }) => {
+const createLegacyPolicy = async (dto: { name: string; secretPath: string; id?: string }) => {
   const db = getDb();
   const env = await db(TableName.Environment)
     .where({ projectId: seedData1.project.id, slug: seedData1.environment.slug })
@@ -27,6 +27,7 @@ const createLegacyPolicy = async (dto: { name: string; secretPath: string }) => 
 
   const [policy] = await db(TableName.AccessApprovalPolicy)
     .insert({
+      ...(dto.id ? { id: dto.id } : {}),
       name: dto.name,
       secretPath: dto.secretPath,
       envId: env.id,
@@ -277,6 +278,33 @@ describe("Access approval request routing", () => {
       await fakeWebhookServer.stop();
     }
   }, 30_000);
+
+  test("A migrated policy's legacy row does not take requests for the path it moved away from", async () => {
+    const secretPath = "/routing-migrated";
+    const created = await createGlobalPolicy({ name: "routing-migrated", secretPath });
+    expect(created.statusCode).toBe(200);
+    const policyId: string = created.json().approval.id;
+    await createLegacyPolicy({ id: policyId, name: "routing-migrated", secretPath });
+
+    const moved = await testServer.inject({
+      method: "PATCH",
+      url: `/api/v1/access-approvals/policies/${policyId}`,
+      headers: {
+        authorization: `Bearer ${jwtAuthToken}`
+      },
+      body: {
+        secretPath: "/routing-migrated-moved",
+        approvers: [{ type: ApproverType.User, id: seedData1.id }],
+        approvals: 1
+      }
+    });
+    expect(moved.statusCode).toBe(200);
+
+    const res = await createAccessRequest(secretPath);
+
+    expect(res.statusCode).toBe(404);
+    expect(res.json().message).toContain("No policy in environment");
+  });
 
   test("A request with no policy on either system is rejected", async () => {
     const res = await createAccessRequest("/routing-none");
