@@ -12,7 +12,7 @@ import AllowlistFields from "/snippets/documentation/platform/secret-scanning/al
 The scanning configuration sets the rules Infisical uses when it scans your [data sources](/documentation/platform/secret-scanning/scan-repositories). Without a configuration, Infisical uses the scanner's built-in rules, which cover the credential formats of hundreds of services. The configuration uses the same format as the configuration file for [local scans](/documentation/platform/secret-scanning/local-configuration).
 
 <Note>
-For repository scans, Infisical doesn't use the files that [local scans](/documentation/platform/secret-scanning/scan-locally) read, such as `.infisical-scan.toml`, `.infisicalignore`, or a [baseline report](/documentation/platform/secret-scanning/ignore-findings#ignore-every-existing-finding-with-a-baseline), even if they're in your repository.
+For repository scans, Infisical doesn't use the files that [local scans](/documentation/platform/secret-scanning/scan-locally) read, such as `.infisical-scan.toml`, `.infisicalignore`, or a [baseline report](/documentation/platform/secret-scanning/ignore-findings#ignore-existing-findings), even if they're in your repository.
 
 Enter your rules and allowlists in the [scanning configuration](#edit-the-scanning-configuration) instead.
 </Note>
