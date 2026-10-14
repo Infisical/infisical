@@ -177,6 +177,7 @@ export const CancellationFeedbackDialog = ({
                   <TextArea
                     {...field}
                     id="cancellation-comment"
+                    aria-describedby="cancellation-comment-hint"
                     rows={3}
                     maxLength={COMMENT_MAX_LENGTH}
                     disabled={isSubmitting}
@@ -184,7 +185,9 @@ export const CancellationFeedbackDialog = ({
                     isError={Boolean(fieldState.error)}
                   />
                   <FieldDescription className="flex justify-between gap-4">
-                    <span>Don&apos;t include secrets, credentials, or personal data.</span>
+                    <span id="cancellation-comment-hint">
+                      Don&apos;t include secrets, credentials, or personal data.
+                    </span>
                     <span className="tabular-nums">
                       {field.value.length}/{COMMENT_MAX_LENGTH}
                     </span>
