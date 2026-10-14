@@ -1,0 +1,33 @@
+version: v0.166.7
+releasedAt: 2026-10-14T13:14:07-04:00
+sourceTag: v0.166.7
+previousTag: v0.166.6
+impactLevel: low
+summary: Drops the deprecated self-hosted rate limit table during startup. No
+  config or deployment changes need operator updates.
+requiresDbMigration: true
+breakingChanges: []
+dbSchemaChanges:
+  - title: Deprecated rate limit table
+    description: Startup drops the deprecated rate_limit table and its analytics
+      view if they still exist. The migration guards for missing objects.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261009120000_drop-rate-limit.ts
+        path: backend/src/db/migrations/20261009120000_drop-rate-limit.ts
+        description: Drops deprecated table and analytics view if present
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-10-14T18:02:14.451Z
+  sourceRange:
+    from: v0.166.6
+    to: v0.166.7
