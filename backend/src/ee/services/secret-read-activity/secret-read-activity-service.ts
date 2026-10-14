@@ -61,7 +61,7 @@ type TSecretReadActivityServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "find">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findSecretReferencesByProjectId">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl">;
@@ -184,9 +184,9 @@ export const secretReadActivityServiceFactory = ({
       return localReferences.get(secret.id) as string[];
     };
 
-    const importsByLocation = groupBy(
-      await secretImportDAL.findByFolderIds(folders.map((folder) => folder.id)),
-      (secretImport) => toLocationKey({ environment: secretImport.importEnv.id, secretPath: secretImport.importPath })
+    // Replication imports are included: a replicated copy is checked against the reader's access to its source.
+    const importsByLocation = groupBy(await secretImportDAL.find({ projectId }), (secretImport) =>
+      toLocationKey({ environment: secretImport.importEnv.id, secretPath: secretImport.importPath })
     );
     const secretById = new Map([...secretsByFolder.values()].flat().map((secret) => [secret.id, secret]));
     const graph: TSecretReachGraph = {

@@ -30,6 +30,7 @@ export type TLastSecretRead = {
   environment: string;
   secretPath: string;
   secretId: string | null;
+  secretKey: string | null;
   lastReadAt: Date;
 };
 
@@ -463,9 +464,10 @@ export const auditLogDALFactory = (db: TDbClient) => {
           db.raw(`"eventMetadata"->>'environment' as "environment"`),
           db.raw(`"eventMetadata"->>'secretPath' as "secretPath"`),
           db.raw(`"eventMetadata"->>'secretId' as "secretId"`),
+          db.raw(`"eventMetadata"->>'secretKey' as "secretKey"`),
           db.raw(`MAX("createdAt") as "lastReadAt"`)
         )
-        .groupByRaw("1, 2, 3, 4, 5")
+        .groupByRaw("1, 2, 3, 4, 5, 6")
         .timeout(1000 * 120);
 
       return rows as unknown as TLastSecretRead[];

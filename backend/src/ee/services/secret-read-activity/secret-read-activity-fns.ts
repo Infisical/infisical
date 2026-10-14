@@ -48,6 +48,7 @@ export const computeSecretReach = (secret: TReachSecret, graph: TSecretReachGrap
   }
 
   const reach: TSecretReach = {
+    secretKey: secret.key,
     secretIds,
     locations: new Set(),
     parentLocations: new Set(),
@@ -74,16 +75,19 @@ export const computeSecretReach = (secret: TReachSecret, graph: TSecretReachGrap
   return reach;
 };
 
-export const indexSecretReads = (reads: TLastSecretRead[]) => ({
-  bySecretId: groupBy(
-    reads.filter((read) => read.secretId),
-    (read) => read.secretId as string
-  ),
-  byLocation: groupBy(
-    reads.filter((read) => !read.secretId),
-    (read) => toLocationKey(read)
-  )
-});
+export const indexSecretReads = (reads: TLastSecretRead[]) => {
+  const singleReads = reads.filter((read) => read.secretId);
+  return {
+    bySecretId: groupBy(singleReads, (read) => read.secretId as string),
+    // A single read by name through a replication import returns a copy with its own ID, so single reads are
+    // also matched by name at the location they were made.
+    byLocationAndKey: groupBy(singleReads, (read) => `${toLocationKey(read)}:${read.secretKey}`),
+    byLocation: groupBy(
+      reads.filter((read) => !read.secretId),
+      (read) => toLocationKey(read)
+    )
+  };
+};
 
 // Reads before trackedSince are ignored: the secret, or the path it lives at, did not exist yet.
 export const classifySecretReads = (
@@ -105,7 +109,10 @@ export const classifySecretReads = (
   };
 
   reach.secretIds.forEach((secretId) => record(SecretReadStatus.Read, reads.bySecretId[secretId]));
-  reach.locations.forEach((location) => record(SecretReadStatus.Read, reads.byLocation[location]));
+  reach.locations.forEach((location) => {
+    record(SecretReadStatus.Read, reads.byLocation[location]);
+    record(SecretReadStatus.Read, reads.byLocationAndKey[`${location}:${reach.secretKey}`]);
+  });
   reach.parentLocations.forEach((location) => record(SecretReadStatus.PossiblyRead, reads.byLocation[location]));
   return activity;
 };

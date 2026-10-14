@@ -514,6 +514,7 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
         JSONExtractString(eventMetadata, 'environment') AS environment,
         JSONExtractString(eventMetadata, 'secretPath') AS secretPath,
         JSONExtractString(eventMetadata, 'secretId') AS secretId,
+        JSONExtractString(eventMetadata, 'secretKey') AS secretKey,
         toUnixTimestamp64Milli(max(createdAt)) AS lastReadAt
       FROM ${tableName}
       WHERE orgId = {orgId:UUID}
@@ -523,7 +524,7 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
         AND eventType IN ({eventTypes:Array(String)})
         AND actor IN ({actors:Array(String)})
         AND JSONExtractString(eventMetadata, 'environment') IN ({environments:Array(String)})
-      GROUP BY actor, actorId, environment, secretPath, secretId
+      GROUP BY actor, actorId, environment, secretPath, secretId, secretKey
     `;
 
     try {
@@ -545,11 +546,14 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
         format: "JSONEachRow"
       });
 
-      const rows = await result.json<Omit<TLastSecretRead, "lastReadAt"> & { secretId: string; lastReadAt: string }>();
+      const rows = await result.json<
+        Omit<TLastSecretRead, "lastReadAt"> & { secretId: string; secretKey: string; lastReadAt: string }
+      >();
 
       return rows.map((row) => ({
         ...row,
         secretId: row.secretId || null,
+        secretKey: row.secretKey || null,
         lastReadAt: new Date(Number(row.lastReadAt))
       }));
     } catch (error) {

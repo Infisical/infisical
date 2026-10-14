@@ -40,6 +40,7 @@ const read = (overrides: Partial<TLastSecretRead>): TLastSecretRead => ({
   environment: "prod",
   secretPath: "/shared",
   secretId: null,
+  secretKey: null,
   lastReadAt: new Date("2026-10-10T00:00:00.000Z"),
   ...overrides
 });
@@ -79,7 +80,21 @@ describe("classifySecretReads", () => {
   });
 
   test("ignores a single read of an unrelated secret in the same folder", () => {
-    expect(classify([read({ secretId: "unrelated" })])).toBeUndefined();
+    expect(classify([read({ secretId: "unrelated", secretKey: "UNRELATED" })])).toBeUndefined();
+  });
+
+  test("counts a single read by name through an import, even when it returned a replicated copy", () => {
+    expect(
+      classify([
+        read({ environment: "dev", secretPath: "/consumer", secretId: "replicated-copy", secretKey: "DB_PASS" })
+      ])?.status
+    ).toBe(SecretReadStatus.Read);
+  });
+
+  test("ignores a single read of a different name in a folder that imports the secret", () => {
+    expect(
+      classify([read({ environment: "dev", secretPath: "/consumer", secretId: "other", secretKey: "OTHER_KEY" })])
+    ).toBeUndefined();
   });
 
   test("treats a read of a parent folder as a possible read", () => {

@@ -19,6 +19,7 @@ export type TSecretReadActivity = {
 // Everything whose read hands over this secret's value: the secret, every secret that references it,
 // and every folder that holds one of those or imports one that does.
 export type TSecretReach = {
+  secretKey?: string;
   secretIds: Set<string>;
   locations: Set<string>;
   parentLocations: Set<string>;
