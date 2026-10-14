@@ -103,7 +103,7 @@ const buildHarness = async () => {
       decryptWithKmsKey: vi.fn(async () => async () => Buffer.from(caCert.rawData)),
       generateKmsKey: vi.fn()
     } as never,
-    hsmConnectorService: { sign: vi.fn() } as never,
+    caKeySourceService: { buildSigner: vi.fn() } as never,
     keyStore: keyStore as never
   });
 

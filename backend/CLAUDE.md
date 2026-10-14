@@ -1018,6 +1018,29 @@ and nothing on our side errors. `TCaSigner` (`services/certificate-authority/ca-
 `signTbs` for this and abstracts over software, HSM and PQC CAs. PQC needs no special case beyond taking
 the signature OID from `pqcNameToOid`.
 
+### Internal CA key sources
+
+An internal CA's signing key lives in Infisical (`keySource: infisical`, encrypted private key) or
+outside it. Every external source (HSM, AWS KMS) is a provider in
+`services/certificate-authority/ca-key-source/`, registered in `caKeySourceServiceFactory`, and
+implements four things: `supportedKeyAlgorithms`, `assertCanUse` (permission to use the connection),
+`createKey` (entitlement check, then key creation; returns the columns to store) and `buildSigner` (returns a `TCaSigner`, usually through
+`buildExternalCaSigner`, which swaps a remote signature into structures built with a throwaway key).
+CA creation and `getCaSigner` branch only on Infisical versus external, so adding a source means a
+provider, a `CertKeySource` value, an arm in `certificate_authority_secret_key_source_chk`, and the
+wizard option. Every external source stores its key in the generic `externalKeyId` and
+`publicKeySpki` columns, and cloud KMS sources reach the key through `appConnectionId` (HSM through
+`hsmConnectorId`). Each provider's `describeKey` builds the key fields of the CA read response and
+the CA create and delete audit events, which is how the API still exposes an HSM CA's
+`externalKeyId` as `hsmKeyLabel`.
+Releasing a key is two-phase, through `prepareKeyReleases`. The provider's optional
+`prepareKeyRelease` resolves what it needs (AWS KMS decrypts the connection and builds its client)
+before the CA rows are deleted, and the returned function runs after the delete commits. The order
+matters: a project hard delete cascades away project-scoped connections and the project KMS key in
+the same transaction. Keys are released on CA delete, on project hard delete, and when CA creation
+fails after its key was made. AWS KMS schedules deletion with a 30-day window; HSM keeps its key. A
+failure is logged, never thrown, so the original outcome stands.
+
 ### Enterprise (EE) Features
 
 Enterprise code lives in `src/ee/`:

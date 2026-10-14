@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { CertificateAuthorities } from "@app/lib/api-docs/constants";
+import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import {
   PKI_TEXT_COLUMN_MAX_LENGTH,
@@ -32,6 +33,10 @@ type TInternalCertificateAuthorityConfiguration = {
   keySource?: CertKeySource;
   hsmConnectorId?: string;
   hsmKeyLabel?: string;
+  appConnectionId?: string;
+  appConnectionName?: string;
+  region?: AWSRegion;
+  externalKeyId?: string;
   dn?: string | null;
   parentCaId?: string | null;
   serialNumber?: string | null;
@@ -72,6 +77,14 @@ export const InternalCertificateAuthorityConfigurationSchema = z
       .optional()
       .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmConnectorId),
     hsmKeyLabel: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmKeyLabel),
+    appConnectionId: z
+      .string()
+      .uuid()
+      .optional()
+      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.appConnectionId),
+    appConnectionName: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.appConnectionName),
+    region: z.nativeEnum(AWSRegion).optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.region),
+    externalKeyId: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.externalKeyId),
     dn: z.string().trim().max(PKI_TEXT_COLUMN_MAX_LENGTH).nullish(),
     parentCaId: z.string().uuid().nullish(),
     serialNumber: z.string().trim().nullish(),
@@ -98,18 +111,30 @@ export const InternalCertificateAuthorityConfigurationSchema = z
         "At least one of the fields commonName, organization, ou, country, province, or locality must be non-empty",
       path: []
     }
-  ) as unknown as z.ZodType<TInternalCertificateAuthorityConfiguration>;
+  )
+  .refine((data) => data.keySource === CertKeySource.AwsKms || (!data.appConnectionId && !data.region), {
+    message: "appConnectionId and region can only be set when keySource is 'aws-kms'",
+    path: ["keySource"]
+  })
+  .refine((data) => data.keySource !== CertKeySource.AwsKms || !data.hsmConnectorId, {
+    message: "hsmConnectorId cannot be set when keySource is 'aws-kms'",
+    path: ["keySource"]
+  }) as unknown as z.ZodType<TInternalCertificateAuthorityConfiguration>;
 
 export const InternalCertificateAuthoritySchema = BaseCertificateAuthoritySchema.extend({
   type: z.literal(CaType.INTERNAL),
   configuration: InternalCertificateAuthorityConfigurationSchema
 });
 
-export const CreateInternalCertificateAuthoritySchema = GenericCreateCertificateAuthorityFieldsSchema(
-  CaType.INTERNAL
-).extend({
-  configuration: InternalCertificateAuthorityConfigurationSchema
-});
+export const CreateInternalCertificateAuthoritySchema = GenericCreateCertificateAuthorityFieldsSchema(CaType.INTERNAL)
+  .extend({
+    configuration: InternalCertificateAuthorityConfigurationSchema
+  })
+  .refine(({ configuration }) => !configuration.externalKeyId && !configuration.appConnectionName, {
+    message:
+      "externalKeyId and appConnectionName are read-only and cannot be set when creating a certificate authority",
+    path: ["configuration"]
+  });
 
 export const UpdateInternalCertificateAuthorityConfigurationSchema = z.object({
   crlDistributionPointUrls: distributionPointUrlsSchema

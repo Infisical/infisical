@@ -293,7 +293,7 @@ describe("CertificateProfileService", () => {
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
       certificateAuthoritySecretDAL: { findOne: vi.fn() } as never,
       certificateAuthorityCertDAL: { find: vi.fn() } as never,
-      hsmConnectorService: {} as never,
+      caKeySourceService: {} as never,
       externalCertificateAuthorityDAL: mockExternalCertificateAuthorityDAL,
       permissionService: mockPermissionService,
       kmsService: mockKmsService,

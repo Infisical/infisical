@@ -3013,14 +3013,20 @@ interface RemoveGroupFromProjectEvent {
   };
 }
 
+type TCaKeySourceAuditMetadata = {
+  keySource?: string;
+  hsmConnectorId?: string;
+  appConnectionId?: string;
+  appConnectionName?: string;
+  externalKeyId?: string;
+};
+
 interface CreateCa {
   type: EventType.CREATE_CA;
-  metadata: {
+  metadata: TCaKeySourceAuditMetadata & {
     caId: string;
     name: string;
     dn?: string;
-    keySource?: string;
-    hsmConnectorId?: string;
     isOcspEnabled?: boolean;
   };
 }
@@ -3054,7 +3060,7 @@ interface UpdateCa {
 
 interface DeleteCa {
   type: EventType.DELETE_CA;
-  metadata: {
+  metadata: TCaKeySourceAuditMetadata & {
     caId: string;
     name: string;
     dn?: string;

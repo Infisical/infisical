@@ -1,9 +1,11 @@
 import { Controller, UseFormReturn } from "react-hook-form";
+import { Link } from "@tanstack/react-router";
 
 import {
   PostQuantumCertificatesUpgradeIntent,
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
+import { AwsRegionSelect } from "@app/components/secret-syncs/forms/SecretSyncDestinationFields/shared/AwsRegionSelect";
 import {
   Badge,
   Field,
@@ -20,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { useProjectPermission, useSubscription } from "@app/context";
+import { useOrganization, useProject, useProjectPermission, useSubscription } from "@app/context";
 import {
   ProjectPermissionHsmConnectorActions,
   ProjectPermissionSub
@@ -31,18 +33,41 @@ import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { CertKeySource } from "@app/hooks/api/signers";
 
 import { CaWizardForm } from "./schemas";
-import { HSM_SUPPORTED_CA_KEY_ALGORITHMS, HsmConnectorOption } from "./types";
+import {
+  AwsConnectionOption,
+  HsmConnectorOption,
+  isKeyAlgorithmSupportedByKeySource
+} from "./types";
+
+const KEY_SOURCE_DESCRIPTIONS: Record<CertKeySource, string> = {
+  [CertKeySource.Infisical]: "Infisical generates and manages the CA keypair for you.",
+  [CertKeySource.Hsm]:
+    "The CA keypair is generated on a Hardware Security Module and every signature is performed there.",
+  [CertKeySource.AwsKms]:
+    "The CA keypair is generated in AWS KMS and every signature is performed there. The private key never leaves AWS."
+};
 
 type Props = {
   form: UseFormReturn<CaWizardForm>;
   hsmConnectorOptions: HsmConnectorOption[];
   isHsmConnectorsLoading: boolean;
+  awsConnectionOptions: AwsConnectionOption[];
+  isAwsConnectionsLoading: boolean;
 };
 
-export const KeyValidityStep = ({ form, hsmConnectorOptions, isHsmConnectorsLoading }: Props) => {
+export const KeyValidityStep = ({
+  form,
+  hsmConnectorOptions,
+  isHsmConnectorsLoading,
+  awsConnectionOptions,
+  isAwsConnectionsLoading
+}: Props) => {
   const { subscription } = useSubscription();
+  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const isHsmLicensed = Boolean(subscription?.hsm);
+  const isAwsKmsLicensed = Boolean(subscription?.pkiAwsKmsSigning);
   const { permission } = useProjectPermission();
   const canAttachHsm = permission.can(
     ProjectPermissionHsmConnectorActions.Attach,
@@ -52,6 +77,7 @@ export const KeyValidityStep = ({ form, hsmConnectorOptions, isHsmConnectorsLoad
   const keySource = form.watch("keySource");
   const caType = form.watch("type");
   const isHsm = keySource === CertKeySource.Hsm;
+  const isAwsKms = keySource === CertKeySource.AwsKms;
   const isRoot = caType === InternalCaType.ROOT;
 
   return (
@@ -70,8 +96,10 @@ export const KeyValidityStep = ({ form, hsmConnectorOptions, isHsmConnectorsLoad
                 onValueChange={(value) => {
                   field.onChange(value);
                   if (
-                    value === CertKeySource.Hsm &&
-                    !HSM_SUPPORTED_CA_KEY_ALGORITHMS.includes(form.getValues("keyAlgorithm"))
+                    !isKeyAlgorithmSupportedByKeySource(
+                      value as CertKeySource,
+                      form.getValues("keyAlgorithm")
+                    )
                   ) {
                     form.setValue("keyAlgorithm", CertKeyAlgorithm.ECDSA_P256, {
                       shouldValidate: true
@@ -93,13 +121,15 @@ export const KeyValidityStep = ({ form, hsmConnectorOptions, isHsmConnectorsLoad
                       )}
                     </div>
                   </SelectItem>
+                  <SelectItem value={CertKeySource.AwsKms} disabled={!isAwsKmsLicensed}>
+                    <div className="flex items-center gap-2">
+                      AWS KMS
+                      {!isAwsKmsLicensed && <Badge variant="info">Enterprise</Badge>}
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
-              <FieldDescription>
-                {isHsm
-                  ? "The CA keypair is generated on a Hardware Security Module and every signature is performed there."
-                  : "Infisical generates and manages the CA keypair for you."}
-              </FieldDescription>
+              <FieldDescription>{KEY_SOURCE_DESCRIPTIONS[field.value]}</FieldDescription>
             </FieldContent>
           </Field>
         )}
@@ -143,12 +173,88 @@ export const KeyValidityStep = ({ form, hsmConnectorOptions, isHsmConnectorsLoad
         />
       )}
 
+      {isAwsKms && (
+        <>
+          <Controller
+            name="appConnectionId"
+            control={form.control}
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel>
+                  AWS Connection <span className="text-danger">*</span>
+                </FieldLabel>
+                <FieldContent>
+                  <FilterableSelect<AwsConnectionOption>
+                    isLoading={isAwsConnectionsLoading}
+                    options={awsConnectionOptions}
+                    value={awsConnectionOptions.find((o) => o.id === field.value) ?? null}
+                    onChange={(selected) => {
+                      const opt = selected as AwsConnectionOption | null;
+                      field.onChange(opt?.id ?? null);
+                    }}
+                    getOptionLabel={(opt) => opt.name}
+                    getOptionValue={(opt) => opt.id}
+                    placeholder="Select an AWS connection..."
+                    /* eslint-disable-next-line react/no-unstable-nested-components */
+                    noOptionsMessage={() =>
+                      awsConnectionOptions.length === 0 ? (
+                        <>
+                          No AWS connections yet.{" "}
+                          <Link
+                            to="/organizations/$orgId/projects/cert-manager/$projectId/app-connections"
+                            params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+                            className="underline"
+                          >
+                            Add an AWS connection
+                          </Link>
+                        </>
+                      ) : (
+                        "No match."
+                      )
+                    }
+                    isError={Boolean(error)}
+                  />
+                  <FieldDescription>
+                    The AWS connection Infisical uses to create the key and send signing requests.
+                  </FieldDescription>
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
+            )}
+          />
+          <Controller
+            name="region"
+            control={form.control}
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel id="ca-aws-kms-region-label" htmlFor="ca-aws-kms-region">
+                  Region <span className="text-danger">*</span>
+                </FieldLabel>
+                <FieldContent>
+                  <AwsRegionSelect
+                    id="ca-aws-kms-region"
+                    value={field.value ?? ""}
+                    onChange={(value) => field.onChange(value || null)}
+                    isError={Boolean(error)}
+                    aria-labelledby="ca-aws-kms-region-label"
+                  />
+                  <FieldDescription>
+                    The AWS region where the CA signing key is created.
+                  </FieldDescription>
+                  <FieldError errors={[error]} />
+                </FieldContent>
+              </Field>
+            )}
+          />
+        </>
+      )}
+
       <Controller
         name="keyAlgorithm"
         control={form.control}
         render={({ field, fieldState: { error } }) => {
-          const options = certKeyAlgorithms.filter(
-            ({ value }) => !isHsm || HSM_SUPPORTED_CA_KEY_ALGORITHMS.includes(value)
+          const options = certKeyAlgorithms.filter(({ value }) =>
+            isKeyAlgorithmSupportedByKeySource(keySource, value)
           );
           return (
             <Field>
@@ -187,7 +293,8 @@ export const KeyValidityStep = ({ form, hsmConnectorOptions, isHsmConnectorsLoad
                   </SelectContent>
                 </Select>
                 <FieldDescription>
-                  Algorithm and size of the CA key pair. HSM-backed CAs support RSA and ECDSA only.
+                  Algorithm and size of the CA key pair.
+                  {isHsm && " HSM-backed CAs support RSA and ECDSA only."}
                 </FieldDescription>
                 <FieldError errors={[error]} />
               </FieldContent>

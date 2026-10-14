@@ -16,7 +16,9 @@ import {
   StepperList,
   StepperStep
 } from "@app/components/v3";
-import { useSubscription } from "@app/context";
+import { useProject, useSubscription } from "@app/context";
+import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { useCreateCa } from "@app/hooks/api/ca";
 import { CaStatus, CaType, InternalCaType } from "@app/hooks/api/ca/enums";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
@@ -53,6 +55,8 @@ const DEFAULT_VALUES: CaWizardForm = {
   commonName: "",
   keySource: CertKeySource.Infisical,
   hsmConnectorId: null,
+  appConnectionId: null,
+  region: null,
   keyAlgorithm: CertKeyAlgorithm.ECDSA_P256,
   notAfter: getDateTenYearsFromToday(),
   maxPathLength: "-1",
@@ -64,7 +68,15 @@ const DEFAULT_VALUES: CaWizardForm = {
 const STEP_FIELDS: (keyof CaWizardForm)[][] = [
   ["name", "type"],
   ["commonName", "organization", "ou", "country", "province", "locality"],
-  ["keySource", "hsmConnectorId", "keyAlgorithm", "notAfter", "maxPathLength"],
+  [
+    "keySource",
+    "hsmConnectorId",
+    "appConnectionId",
+    "region",
+    "keyAlgorithm",
+    "notAfter",
+    "maxPathLength"
+  ],
   ["crlDistributionPointUrls"]
 ];
 
@@ -80,6 +92,17 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
   const hsmConnectorOptions = useMemo(
     () => hsmConnectors.map((c) => ({ id: c.id, name: c.name, slotLabel: c.slotLabel })),
     [hsmConnectors]
+  );
+
+  const { currentProject } = useProject();
+  const { data: awsConnections = [], isPending: isAwsConnectionsLoading } =
+    useListAvailableAppConnections(AppConnection.AWS, currentProject.id, {
+      enabled: isOpen && Boolean(subscription?.pkiAwsKmsSigning)
+    });
+
+  const awsConnectionOptions = useMemo(
+    () => awsConnections.map((c) => ({ id: c.id, name: c.name })),
+    [awsConnections]
   );
 
   const buildDefaultValues = (): CaWizardForm => ({
@@ -124,6 +147,10 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
             values.keySource === CertKeySource.Hsm
               ? (values.hsmConnectorId ?? undefined)
               : undefined,
+          ...(values.keySource === CertKeySource.AwsKms && {
+            appConnectionId: values.appConnectionId ?? undefined,
+            region: values.region ?? undefined
+          }),
           maxPathLength: Number(values.maxPathLength),
           ...(isRoot ? { notAfter: values.notAfter } : {}),
           crlDistributionPointUrls: values.crlDistributionPointUrls.map(({ value }) => value),
@@ -177,7 +204,7 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
                 </div>
                 <p className="text-sm leading-4 text-muted">
                   A private Certificate Authority hosted by Infisical, with its signing key managed
-                  by Infisical or kept in your HSM.
+                  by Infisical, kept in your HSM, or kept in AWS KMS.
                 </p>
               </div>
             </div>
@@ -223,6 +250,8 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
                   form={form}
                   hsmConnectorOptions={hsmConnectorOptions}
                   isHsmConnectorsLoading={isHsmConnectorsLoading}
+                  awsConnectionOptions={awsConnectionOptions}
+                  isAwsConnectionsLoading={isAwsConnectionsLoading}
                 />
               )}
               {step === 3 && <DistributionStep form={form} />}
