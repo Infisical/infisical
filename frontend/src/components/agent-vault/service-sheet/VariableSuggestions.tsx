@@ -173,6 +173,11 @@ export const useVariableAutocomplete = ({
     isOpen,
     isLoading: isOpen && !data,
     query,
+    // The search returns one page. When it matched more than that, the list says so and how to narrow it.
+    truncation:
+      data && data.totalCount > data.variables.length
+        ? { shown: data.variables.length, total: data.totalCount }
+        : null,
     suggestions,
     activeIndex,
     setActiveIndex,
@@ -201,6 +206,7 @@ export const VariableSuggestions = ({
     isOpen,
     isLoading,
     query,
+    truncation,
     suggestions,
     activeIndex,
     setActiveIndex,
@@ -269,23 +275,36 @@ export const VariableSuggestions = ({
           }}
         >
           {suggestions.length > 0 ? (
-            <div id={listId} role="listbox" aria-label="Variables">
-              {variableSuggestions.length > 0 && (
-                <div
-                  className="max-h-60 overflow-y-auto overscroll-contain"
-                  // Rendered outside the sheet, whose scroll lock would otherwise cancel wheel events here.
-                  onWheel={(event) => event.stopPropagation()}
-                >
-                  {variableSuggestions.map(renderOption)}
-                </div>
-              )}
-              {createSuggestion && (
+            <>
+              <div id={listId} role="listbox" aria-label="Variables">
+                {variableSuggestions.length > 0 && (
+                  <div
+                    className="max-h-60 overflow-y-auto overscroll-contain"
+                    // Rendered outside the sheet, whose scroll lock would otherwise cancel wheel events here.
+                    onWheel={(event) => event.stopPropagation()}
+                  >
+                    {variableSuggestions.map(renderOption)}
+                  </div>
+                )}
+                {createSuggestion && (
+                  <>
+                    {variableSuggestions.length > 0 && (
+                      <div className="-mx-1 my-1 h-px bg-border" />
+                    )}
+                    {renderOption(createSuggestion, variableSuggestions.length)}
+                  </>
+                )}
+              </div>
+              {truncation && (
                 <>
-                  {variableSuggestions.length > 0 && <div className="-mx-1 my-1 h-px bg-border" />}
-                  {renderOption(createSuggestion, variableSuggestions.length)}
+                  <div className="-mx-1 my-1 h-px bg-border" />
+                  <p className="px-2 py-1.5 text-xs text-muted">
+                    Showing {truncation.shown} of {truncation.total} variables. Keep typing to
+                    narrow the list.
+                  </p>
                 </>
               )}
-            </div>
+            </>
           ) : (
             <p className="px-2 py-1.5 text-xs text-muted">
               {(() => {
