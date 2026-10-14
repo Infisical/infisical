@@ -171,7 +171,15 @@ export const secretScanningV2QueueServiceFactory = ({
 
   const queueDataSourceFullScan = async (
     dataSource: TSecretScanningDataSourceWithConnection,
-    { resourceExternalId, triggeredByUserId }: { resourceExternalId?: string; triggeredByUserId?: string } = {}
+    {
+      resourceExternalId,
+      triggeredByUserId,
+      shouldScanResource
+    }: {
+      resourceExternalId?: string;
+      triggeredByUserId?: string;
+      shouldScanResource?: (resource: Pick<TSecretScanningResourcesInsert, "externalId" | "name">) => boolean;
+    } = {}
   ) => {
     try {
       const { type } = dataSource;
@@ -188,6 +196,10 @@ export const secretScanningV2QueueServiceFactory = ({
       // TODO: should add individual resource fetch to factory
       if (resourceExternalId) {
         filteredRawResources = rawResources.filter((resource) => resource.externalId === resourceExternalId);
+      }
+
+      if (shouldScanResource) {
+        filteredRawResources = filteredRawResources.filter(shouldScanResource);
       }
 
       if (!filteredRawResources.length) {

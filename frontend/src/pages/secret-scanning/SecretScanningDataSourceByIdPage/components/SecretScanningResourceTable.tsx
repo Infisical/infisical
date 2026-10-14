@@ -5,6 +5,7 @@ import { twMerge } from "tailwind-merge";
 import {
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -36,6 +37,7 @@ import {
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import {
+  canAddSecretScanningResources,
   isSecretScanningResourceIncluded,
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_MAP
@@ -49,6 +51,7 @@ import {
   useListSecretScanningResources
 } from "@app/hooks/api/secretScanningV2";
 
+import { AddSecretScanningResourcesButton } from "./AddSecretScanningResourcesButton";
 import { SecretScanningResourceRow } from "./SecretScanningResourceRow";
 
 enum ResourcesOrderBy {
@@ -238,12 +241,14 @@ export const SecretScanningResourcesTable = ({ dataSource, onViewFindings }: Pro
           </EmptyMedia>
           <EmptyTitle>No {resourceDetails.pluralNoun} yet</EmptyTitle>
           <EmptyDescription>
-            {resourceDetails.pluralTitle} appear here once the data source has been scanned.
+            Add a {resourceDetails.singularNoun} to start scanning it for secrets.
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
     );
   };
+
+  const canAddResources = canAddSecretScanningResources(dataSource);
 
   return (
     <Card>
@@ -254,7 +259,12 @@ export const SecretScanningResourcesTable = ({ dataSource, onViewFindings }: Pro
           {SECRET_SCANNING_DATA_SOURCE_MAP[dataSource.type].name} data source. Select one to see its
           findings.
         </CardDescription>
-        <div className="flex gap-2">
+        {canAddResources && (
+          <CardAction>
+            <AddSecretScanningResourcesButton dataSource={dataSource} />
+          </CardAction>
+        )}
+        <div className="col-span-full flex gap-2">
           <InputGroup className="flex-1">
             <InputGroupAddon align="inline-start">
               <SearchIcon />

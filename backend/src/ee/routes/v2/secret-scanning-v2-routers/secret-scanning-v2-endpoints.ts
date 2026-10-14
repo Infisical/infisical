@@ -580,6 +580,44 @@ export const registerSecretScanningEndpoints = <
     }
   });
 
+  // not exposed, for UI only
+  server.route({
+    method: "GET",
+    url: "/:dataSourceId/available-resources",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: `list${sourceTypeId}DataSourceAvailableResources`,
+      tags: [ApiDocsTags.SecretScanning],
+      params: z.object({
+        dataSourceId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          resources: z
+            .object({
+              externalId: z.string(),
+              name: z.string(),
+              isIncluded: z.boolean()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { dataSourceId } = req.params;
+
+      const { resources } = await server.services.secretScanningV2.listSecretScanningAvailableResourcesByDataSourceId(
+        { dataSourceId, type },
+        req.permission
+      );
+
+      return { resources };
+    }
+  });
+
   server.route({
     method: "GET",
     url: "/:dataSourceId/scans-dashboard",

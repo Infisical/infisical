@@ -6,6 +6,7 @@ import {
   TGetSecretScanningConfigResponse,
   TGetSecretScanningDataSource,
   TGetSecretScanningUnresolvedFindingsResponse,
+  TListSecretScanningAvailableResourcesResponse,
   TListSecretScanningBasicDataSources,
   TListSecretScanningBasicResourcesResponse,
   TListSecretScanningDataSourceOptions,
@@ -14,6 +15,7 @@ import {
   TListSecretScanningFindingsResponse,
   TListSecretScanningResourcesResponse,
   TListSecretScanningScansResponse,
+  TSecretScanningAvailableResource,
   TSecretScanningConfig,
   TSecretScanningDataSource,
   TSecretScanningDataSourceOption,
@@ -48,6 +50,10 @@ export const secretScanningV2Keys = {
   listBasicResources: (dataSourceId: string) => [
     ...secretScanningV2Keys.listResources(dataSourceId),
     "basic"
+  ],
+  listAvailableResources: (dataSourceId: string) => [
+    ...secretScanningV2Keys.listResources(dataSourceId),
+    "available"
   ],
   listResources: (dataSourceId: string) => [
     ...secretScanningV2Keys.dataSource(),
@@ -263,6 +269,31 @@ export const useListSecretScanningResources = (
   });
 };
 
+export const useListSecretScanningAvailableResources = (
+  { dataSourceId, type }: TGetSecretScanningDataSource,
+  options?: Omit<
+    UseQueryOptions<
+      TSecretScanningAvailableResource[],
+      unknown,
+      TSecretScanningAvailableResource[],
+      ReturnType<typeof secretScanningV2Keys.listAvailableResources>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretScanningV2Keys.listAvailableResources(dataSourceId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TListSecretScanningAvailableResourcesResponse>(
+        `/api/v2/secret-scanning/data-sources/${type}/${dataSourceId}/available-resources`
+      );
+
+      return data.resources;
+    },
+    ...options
+  });
+};
+
 export const useListSecretScanningScans = (
   { dataSourceId, type }: TGetSecretScanningDataSource,
   options?: Omit<
@@ -340,8 +371,10 @@ export const useGetSecretScanningConfig = (
   projectId: string,
   options?: Omit<
     UseQueryOptions<
+      TSecretScanningAvailableResource,
       TSecretScanningConfig,
       unknown,
+      TSecretScanningAvailableResource,
       TSecretScanningConfig,
       ReturnType<typeof secretScanningV2Keys.configByProjectId>
     >,

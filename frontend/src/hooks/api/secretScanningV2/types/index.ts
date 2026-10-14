@@ -129,6 +129,16 @@ export type TListSecretScanningBasicResourcesResponse = {
   resources: TSecretScanningResource[];
 };
 
+export type TSecretScanningAvailableResource = {
+  externalId: string;
+  name: string;
+  isIncluded: boolean;
+};
+
+export type TListSecretScanningAvailableResourcesResponse = {
+  resources: TSecretScanningAvailableResource[];
+};
+
 export type TSecretScanningScanWithDetails = {
   id: string;
   createdAt: string;

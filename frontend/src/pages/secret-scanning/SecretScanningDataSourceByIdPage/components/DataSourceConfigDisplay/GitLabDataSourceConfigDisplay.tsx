@@ -27,24 +27,14 @@ export const GitLabDataSourceConfigDisplay = ({ dataSource }: Props) => {
     );
   }
 
-  const { includeProjects } = config;
-
   return (
-    <>
-      <Detail>
-        <DetailLabel>Group</DetailLabel>
-        <DetailValue>
-          {config.scope === GitLabDataSourceScope.Group
-            ? config.groupName || config.groupId
-            : "None (all accessible projects)"}
-        </DetailValue>
-      </Detail>
-      <Detail>
-        <DetailLabel>Scan Projects</DetailLabel>
-        <DetailValue>
-          {includeProjects.includes("*") ? "All" : includeProjects.join(", ")}
-        </DetailValue>
-      </Detail>
-    </>
+    <Detail>
+      <DetailLabel>Group</DetailLabel>
+      <DetailValue>
+        {config.scope === GitLabDataSourceScope.Group
+          ? config.groupName || config.groupId
+          : "None (all accessible projects)"}
+      </DetailValue>
+    </Detail>
   );
 };

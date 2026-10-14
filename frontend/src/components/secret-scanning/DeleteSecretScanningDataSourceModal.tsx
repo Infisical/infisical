@@ -52,7 +52,7 @@ export const DeleteSecretScanningDataSourceModal = ({
       onDeleteApproved={handleDeleteDataSource}
     >
       <p className="mt-1 font-sans text-sm text-muted">
-        Findings associated with this data source will be preserved.
+        This permanently deletes the findings and scan history of this data source.
       </p>
     </DeleteActionModal>
   );

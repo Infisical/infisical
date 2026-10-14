@@ -20,9 +20,12 @@ import { githubSecretScanningService } from "@app/ee/services/secret-scanning-v2
 import { SecretScanningFindingStatus } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { SECRET_SCANNING_FACTORY_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-factory";
 import {
+  doesConfigUpdateIncludeNewResources,
   doesDataSourceIncludeResources,
   doesDataSourceSupportDiscovery,
+  getConfigIncludingAllResources,
   isDataSourceWebhookRequired,
+  isResourceIncludedByConfig,
   listSecretScanningDataSourceOptions
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import {
@@ -475,13 +478,13 @@ export const secretScanningV2ServiceFactory = ({
       encryptedCredentials = null;
     }
 
+    let updatedDataSource: TSecretScanningDataSource;
+
     try {
-      const updatedDataSource = await secretScanningV2DAL.dataSources.updateById(dataSourceId, {
+      updatedDataSource = (await secretScanningV2DAL.dataSources.updateById(dataSourceId, {
         ...payload,
         ...(encryptedCredentials !== undefined && { encryptedCredentials })
-      });
-
-      return updatedDataSource as TSecretScanningDataSource;
+      })) as TSecretScanningDataSource;
     } catch (err) {
       if (createdCredentials) {
         await factory.teardown({ dataSource: dataSourceWithConnection, credentials: createdCredentials });
@@ -495,6 +498,50 @@ export const secretScanningV2ServiceFactory = ({
 
       throw err;
     }
+
+    if (
+      doesConfigUpdateIncludeNewResources(
+        dataSource as TSecretScanningDataSourceInput,
+        updatedDataSource as TSecretScanningDataSourceInput
+      )
+    ) {
+      const isNewlyIncluded = (resource: { name: string }) =>
+        !isResourceIncludedByConfig(dataSource as TSecretScanningDataSourceInput, resource.name);
+      const updatedDataSourceWithConnection = {
+        ...updatedDataSource,
+        connection
+      } as TSecretScanningDataSourceWithConnection;
+
+      try {
+        // Newly included resources have no history scanned yet, so they get the same historical scan a new data source does.
+        if (updatedDataSource.isHistoricalScanEnabled) {
+          await secretScanningV2Queue.queueDataSourceFullScan(updatedDataSourceWithConnection, {
+            triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined,
+            shouldScanResource: isNewlyIncluded
+          });
+        } else {
+          // Without a scan nothing would create the resource rows, and the resources wouldn't be listed until their next push.
+          const newResources = (await factory.listRawResources(updatedDataSourceWithConnection)).filter(
+            isNewlyIncluded
+          );
+
+          if (newResources.length) {
+            await secretScanningV2DAL.resources.upsert(
+              newResources.map((resource) => ({ ...resource, dataSourceId })),
+              ["externalId", "dataSourceId"]
+            );
+          }
+        }
+      } catch (error) {
+        // Deliberately non-fatal: the include list is saved, and the resources can still be scanned manually.
+        logger.error(
+          error,
+          `secretScanningV2Service: Failed to set up newly included resources [dataSourceId=${dataSourceId}] [projectId=${dataSource.projectId}]`
+        );
+      }
+    }
+
+    return updatedDataSource;
   };
 
   const deleteSecretScanningDataSource = async (
@@ -679,6 +726,82 @@ export const secretScanningV2ServiceFactory = ({
     const resources = await secretScanningV2DAL.resources.find({
       dataSourceId
     });
+
+    return { resources, projectId: dataSource.projectId };
+  };
+
+  // Lists what the data source's connection can see, so a user can pick resources to add to its include list.
+  const listSecretScanningAvailableResourcesByDataSourceId = async (
+    { type, dataSourceId }: TFindSecretScanningDataSourceByIdDTO,
+    actor: OrgServiceActor
+  ) => {
+    const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
+
+    if (!dataSource)
+      throw new NotFoundError({
+        message: `Could not find ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source with ID "${dataSourceId}"`
+      });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretScanning,
+      projectId: dataSource.projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretScanningDataSourceActions.ReadResources,
+      ProjectPermissionSub.SecretScanningDataSources
+    );
+
+    if (type !== dataSource.type)
+      throw new BadRequestError({
+        message: `Secret Scanning Data Source with ID "${dataSourceId}" is not configured for ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]}`
+      });
+
+    const sourceName = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
+
+    if (dataSource.isDisconnected)
+      throw new BadRequestError({
+        message: `Data Source "${dataSource.name}" is disconnected from ${sourceName}, so its resources can't be listed. Delete it and connect ${sourceName} again.`
+      });
+
+    let connection: TAppConnection | null = null;
+    if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
+
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({
+      appConnectionDAL,
+      kmsService
+    });
+
+    let rawResources: Awaited<ReturnType<typeof factory.listRawResources>>;
+    try {
+      rawResources = await factory.listRawResources(
+        getConfigIncludingAllResources({
+          ...dataSource,
+          connection
+        } as TSecretScanningDataSourceWithConnection)
+      );
+    } catch (error) {
+      if (error instanceof BadRequestError) throw error;
+
+      logger.error(
+        error,
+        `secretScanningV2Service: Failed to list available resources [dataSourceId=${dataSourceId}] [projectId=${dataSource.projectId}]`
+      );
+      throw new BadRequestError({
+        message: `Could not list resources from ${sourceName} for Data Source "${dataSource.name}". Check that its App Connection still has access, then try again.`
+      });
+    }
+
+    const resources = rawResources
+      .map((resource) => ({
+        ...resource,
+        isIncluded: isResourceIncludedByConfig(dataSource as TSecretScanningDataSourceInput, resource.name)
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
 
     return { resources, projectId: dataSource.projectId };
   };
@@ -1028,6 +1151,7 @@ export const secretScanningV2ServiceFactory = ({
     deleteSecretScanningDataSource,
     triggerSecretScanningDataSourceScan,
     listSecretScanningResourcesByDataSourceId,
+    listSecretScanningAvailableResourcesByDataSourceId,
     listSecretScanningScansByDataSourceId,
     listSecretScanningResourcesWithDetailsByDataSourceId,
     listSecretScanningScansWithDetailsByDataSourceId,

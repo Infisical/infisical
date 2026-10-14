@@ -59,6 +59,64 @@ export const doesDataSourceIncludeResources = (dataSource: TSecretScanningDataSo
   }
 };
 
+// null means the config includes every resource the connection can see
+const getIncludedResourceNames = (dataSource: Pick<TSecretScanningDataSourceInput, "type" | "config">) => {
+  let names: string[] | undefined;
+
+  switch (dataSource.type) {
+    case SecretScanningDataSource.GitHub:
+    case SecretScanningDataSource.Bitbucket:
+      names = dataSource.config.includeRepos;
+      break;
+    case SecretScanningDataSource.GitLab:
+      if (dataSource.config.scope === GitLabDataSourceScope.Project) return null;
+      names = dataSource.config.includeProjects;
+      break;
+    default:
+      return null;
+  }
+
+  return !names || names.includes("*") ? null : names;
+};
+
+export const isResourceIncludedByConfig = (
+  dataSource: Pick<TSecretScanningDataSourceInput, "type" | "config">,
+  resourceName: string
+) => {
+  const names = getIncludedResourceNames(dataSource);
+  return names === null || names.includes(resourceName);
+};
+
+export const getConfigIncludingAllResources = <T extends Pick<TSecretScanningDataSourceInput, "type" | "config">>(
+  dataSource: T
+): T => {
+  const { type, config } = dataSource as Pick<TSecretScanningDataSourceInput, "type" | "config">;
+
+  switch (type) {
+    case SecretScanningDataSource.GitHub:
+    case SecretScanningDataSource.Bitbucket:
+      return { ...dataSource, config: { ...config, includeRepos: ["*"] } };
+    case SecretScanningDataSource.GitLab:
+      if (config.scope === GitLabDataSourceScope.Project) return dataSource;
+      return { ...dataSource, config: { ...config, includeProjects: ["*"] } };
+    default:
+      return dataSource;
+  }
+};
+
+export const doesConfigUpdateIncludeNewResources = (
+  current: Pick<TSecretScanningDataSourceInput, "type" | "config">,
+  next: Pick<TSecretScanningDataSourceInput, "type" | "config">
+) => {
+  const currentNames = getIncludedResourceNames(current);
+  if (currentNames === null) return false;
+
+  const nextNames = getIncludedResourceNames(next);
+  if (nextNames === null) return true;
+
+  return nextNames.some((name) => !currentNames.includes(name));
+};
+
 // GitLab only reports new projects through group webhooks, so discovery needs a group. Self-hosted system
 // hooks would also work, but are not supported.
 export const doesDataSourceSupportDiscovery = ({ type, config }: { type: string; config?: unknown }) =>
