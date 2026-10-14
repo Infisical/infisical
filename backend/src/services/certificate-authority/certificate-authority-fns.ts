@@ -750,10 +750,10 @@ export const deleteCaAndReleaseExternalKey = async ({
 }: {
   caId: string;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "deleteById">;
-  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne" | "primaryNode">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "describeKey" | "prepareKeyReleases">;
 }) => {
-  const caSecret = await certificateAuthoritySecretDAL.findOne({ caId });
+  const caSecret = await certificateAuthoritySecretDAL.findOne({ caId }, certificateAuthoritySecretDAL.primaryNode());
   const keyDetails = await caKeySourceService.describeKey(caSecret);
   const releaseKeys = await caKeySourceService.prepareKeyReleases(caSecret ? [caSecret] : []);
 

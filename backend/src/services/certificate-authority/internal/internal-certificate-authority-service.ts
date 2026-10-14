@@ -138,7 +138,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
     TCertificateAuthorityCertDALFactory,
     "create" | "findOne" | "transaction" | "find" | "findById"
   >;
-  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "create" | "findOne" | "primaryNode">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "create" | "findOne" | "update">;
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getById" | "find">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByCaId">;

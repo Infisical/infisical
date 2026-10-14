@@ -21,5 +21,7 @@ export const certificateAuthoritySecretDALFactory = (db: TDbClient) => {
       .whereNot(`${TableName.CertificateAuthoritySecret}.keySource`, CertKeySource.Infisical)
       .select(selectAllTableCols(TableName.CertificateAuthoritySecret));
 
-  return { ...caSecretOrm, findExternallyKeyedByProjectId };
+  const primaryNode = () => db.primaryNode();
+
+  return { ...caSecretOrm, findExternallyKeyedByProjectId, primaryNode };
 };

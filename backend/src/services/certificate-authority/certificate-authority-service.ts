@@ -170,7 +170,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "assertCanUse" | "describeKey" | "prepareKeyReleases">;
-  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
+  certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne" | "primaryNode">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
@@ -392,7 +392,10 @@ export const certificateAuthorityServiceFactory = ({
 
       usageMeteringService.emitForProject(projectId, InternalCas.key);
 
-      const caSecret = await certificateAuthoritySecretDAL.findOne({ caId: ca.id });
+      const caSecret = await certificateAuthoritySecretDAL.findOne(
+        { caId: ca.id },
+        certificateAuthoritySecretDAL.primaryNode()
+      );
 
       return {
         id: ca.id,
