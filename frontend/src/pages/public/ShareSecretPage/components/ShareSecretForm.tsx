@@ -74,7 +74,7 @@ const parseRecipients = (emails?: string) =>
     : [];
 
 const baseSchema = z.object({
-  name: z.string().optional(),
+  name: z.string().max(50, "Name must be 50 characters or fewer.").optional(),
   password: z.string().optional(),
   secret: z.string().min(1, "Enter the value you want to share."),
   expiresIn: z.string(),
@@ -203,7 +203,7 @@ export const ShareSecretForm = ({
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: defaultName,
+      name: defaultName?.slice(0, 50),
       secret: value || "",
       viewLimit: maxSharedSecretViewLimit?.toString() ?? "1",
       shouldLimitView: isViewLimitEnforced,
@@ -228,7 +228,7 @@ export const ShareSecretForm = ({
     isLimitingView,
     Boolean(watch("password")),
     !isPublic && isOrgAccess,
-    !isPublic && parseRecipients(watch("emails")).length > 0
+    !isPublic && !isAllowingExternalEmails && parseRecipients(watch("emails")).length > 0
   ].filter(Boolean).length;
 
   const onFormSubmit = async ({
@@ -387,7 +387,7 @@ export const ShareSecretForm = ({
                   placeholder="Enter sensitive data to share via an encrypted link"
                   {...field}
                   id="share-secret-value"
-                  containerClassName="min-h-16 items-start py-1"
+                  isMultiline
                   isReadOnly={isValueLocked}
                   isError={Boolean(error)}
                 />

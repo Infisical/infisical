@@ -285,7 +285,7 @@ export const secretSharingServiceFactory = ({
             recipients: [email],
             subjectLine: "A secret has been shared with you",
             substitutions: {
-              name,
+              name: isOrgMember ? name : undefined,
               senderUsername: isOrgMember ? displayUsername : undefined,
               secretRequestUrl: `${appCfg.SITE_URL}/shared/secret/${mappedSharedSecret.id}`,
               isPasswordProtected: allowExternalEmails && Boolean(password) // if allow external emails, all secrets are password protected
