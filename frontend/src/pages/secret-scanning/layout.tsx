@@ -16,27 +16,27 @@ export const Route = createFileRoute(
 )({
   component: SecretScanningLayout,
   beforeLoad: async ({ params, context }) => {
-    // fetchQuery rather than ensureQueryData: joining a project invalidates this list, and a stale
-    // copy would ignore the earlier project the user just joined.
-    const memberProjects = await context.queryClient.fetchQuery({
-      queryKey: projectKeys.getAllUserProjects(),
-      queryFn: () => fetchUserWorkspaces(),
-      staleTime: 60_000
-    });
-
-    const pinnedProjectId = resolveSecretScanningProjectId({
-      orgId: params.orgId,
-      activeProjectId: null,
-      memberProjectIds: memberProjects.map((p) => p.id)
-    });
-
-    // Orgs get their project at creation, but orgs from before that have none until this creates it.
-    const projectId: string =
-      pinnedProjectId ??
-      (await context.queryClient.ensureQueryData<string>({
+    const [activeProjectId, memberProjects] = await Promise.all([
+      // Orgs get their project at creation, but orgs from before that have none until this creates it.
+      context.queryClient.ensureQueryData<string>({
         queryKey: secretScanningV2Keys.activeProjectId(params.orgId),
         queryFn: fetchSecretScanningProjectId
-      }));
+      }),
+      // fetchQuery rather than ensureQueryData: joining a project invalidates this list, and a stale
+      // copy would ignore the earlier project the user just joined.
+      context.queryClient.fetchQuery({
+        queryKey: projectKeys.getAllUserProjects(),
+        queryFn: () => fetchUserWorkspaces(),
+        staleTime: 60_000
+      })
+    ]);
+
+    const projectId =
+      resolveSecretScanningProjectId({
+        orgId: params.orgId,
+        activeProjectId,
+        memberProjectIds: memberProjects.map((p) => p.id)
+      }) ?? activeProjectId;
 
     const [project] = await Promise.all([
       context.queryClient.ensureQueryData({

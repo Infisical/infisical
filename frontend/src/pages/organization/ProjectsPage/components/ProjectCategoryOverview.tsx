@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 
 import { PreviewBadge } from "@app/components/agent-vault/PreviewBadge";
@@ -41,6 +42,7 @@ import { resolvePamProjectId } from "@app/hooks/api/pam/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import {
   fetchSecretScanningProjectId,
+  secretScanningV2Keys,
   useGetSecretScanningInstanceState
 } from "@app/hooks/api/secretScanningV2/queries";
 
@@ -122,6 +124,7 @@ const PRODUCT_TILE_COUNT = Object.keys(ProjectType).length;
 
 export const ProjectCategoryOverview = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
   const canRequestAccess = permission.can(
@@ -421,10 +424,15 @@ export const ProjectCategoryOverview = () => {
   };
 
   const enterSecretScanningProject = async () => {
-    // Also lazily bootstraps the Secret Scanning project for orgs that don't have one yet.
     let secretScanningProjectId: string;
     try {
-      secretScanningProjectId = await fetchSecretScanningProjectId();
+      // Orgs from before projects were created at signup have none until this creates it.
+      secretScanningProjectId =
+        activeSecretScanningProjectId ??
+        (await queryClient.ensureQueryData({
+          queryKey: secretScanningV2Keys.activeProjectId(currentOrg?.id ?? ""),
+          queryFn: fetchSecretScanningProjectId
+        }));
     } catch (err) {
       createNotification({
         type: "error",
