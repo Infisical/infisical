@@ -92,6 +92,8 @@ export type OverviewFlowProperties = {
   approvalCountBucket?: OverviewCountBucket;
   responseCountBucket?: OverviewCountBucket;
   failureCountBucket?: OverviewCountBucket;
+  folderResponseCountBucket?: OverviewCountBucket;
+  folderFailureCountBucket?: OverviewCountBucket;
   provenance?: "committed" | "pending";
   destination?: "clipboard" | "download" | "environment";
 };

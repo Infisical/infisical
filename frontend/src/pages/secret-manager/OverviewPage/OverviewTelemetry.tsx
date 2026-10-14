@@ -30,6 +30,14 @@ export const overviewResponsePhase = (
 
 export type OverviewFlowState = Map<string, "open" | "completed" | "closed">;
 
+export const overviewImportSource = (
+  method: "upload" | "paste",
+  hasInitialFile: boolean
+): "paste" | "drop" | "upload" => {
+  if (method === "paste") return "paste";
+  return hasInitialFile ? "drop" : "upload";
+};
+
 export const createOverviewTelemetry = (
   orgId: string,
   scope: OverviewScopeProperties,
@@ -67,8 +75,21 @@ export const createOverviewTelemetry = (
       approvalCountBucket: properties.approvalCountBucket,
       responseCountBucket: properties.responseCountBucket,
       failureCountBucket: properties.failureCountBucket,
+      folderResponseCountBucket: properties.folderResponseCountBucket,
+      folderFailureCountBucket: properties.folderFailureCountBucket,
       provenance: properties.provenance,
       destination: properties.destination
+    });
+  },
+  cancelOpenFlows() {
+    flows.forEach((state, key) => {
+      if (state !== "open") return;
+      const [action, resourceType, source] = key.split(":") as [
+        OverviewFlowProperties["action"],
+        OverviewFlowProperties["resourceType"],
+        OverviewFlowProperties["source"]
+      ];
+      this.flow({ action, resourceType, source, phase: "canceled" });
     });
   }
 });
@@ -97,7 +118,8 @@ export const observeOverviewRequest = async <T,>(
 
 const OverviewTelemetryContext = createContext<ReturnType<typeof createOverviewTelemetry>>({
   interaction: () => {},
-  flow: () => {}
+  flow: () => {},
+  cancelOpenFlows: () => {}
 });
 
 export const withOverviewTelemetry = (

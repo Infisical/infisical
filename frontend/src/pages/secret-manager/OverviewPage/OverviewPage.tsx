@@ -1176,11 +1176,24 @@ const OverviewPageContent = () => {
       editMode: isBatchModeActive ? "batch" : "immediate"
     };
   }, [projectId, visibleEnvs.length, secretPath, isBatchModeActive]);
-  const telemetryFlows = useRef(new Map<string, "open" | "completed" | "closed">());
-  const overviewTelemetry = useMemo(
-    () => createOverviewTelemetry(orgId, telemetryScope, telemetryFlows.current),
-    [orgId, telemetryScope]
+  const telemetryFlowScope = `${projectId}:${secretPath}:${visibleEnvs.map((env) => env.slug).join(",")}`;
+  const telemetryFlows = useMemo(
+    () => new Map<string, "open" | "completed" | "closed">(),
+    [telemetryFlowScope]
   );
+  const overviewTelemetry = useMemo(
+    () => createOverviewTelemetry(orgId, telemetryScope, telemetryFlows),
+    [orgId, telemetryScope, telemetryFlows]
+  );
+  const previousTelemetry = useRef<{
+    telemetry: typeof overviewTelemetry;
+    flows: typeof telemetryFlows;
+  }>();
+  useEffect(() => {
+    if (previousTelemetry.current && previousTelemetry.current.flows !== telemetryFlows)
+      previousTelemetry.current.telemetry.cancelOpenFlows();
+    previousTelemetry.current = { telemetry: overviewTelemetry, flows: telemetryFlows };
+  }, [overviewTelemetry, telemetryFlows]);
   const viewedProjectRef = useRef<string>();
   const loadedProjectRef = useRef<string>();
   useEffect(() => {
@@ -1334,8 +1347,7 @@ const OverviewPageContent = () => {
       addSecretsInAllEnvs: { action: "create", resourceType: "secret", source: "form" },
       addFolder: { action: "create", resourceType: "folder", source: "form" },
       updateFolder: { action: "update", resourceType: "folder", source: "form" },
-      deleteFolder: { action: "delete", resourceType: "folder", source: "form" },
-      importSecrets: { action: "import", resourceType: "mixed", source: "upload" }
+      deleteFolder: { action: "delete", resourceType: "folder", source: "form" }
     }),
     []
   );
@@ -1855,29 +1867,29 @@ const OverviewPageContent = () => {
       return;
     }
 
-    try {
-      await Promise.all(promises);
+    Promise.allSettled(promises).then((results) => {
+      const responseCount = results.filter((result) => result.status === "fulfilled").length;
       overviewTelemetry.flow({
         ...flow,
-        phase: "response-received",
-        countBucket: overviewCountBucket(promises.length)
+        phase: overviewResponsePhase(responseCount, 0, results.length - responseCount),
+        countBucket: overviewCountBucket(promises.length),
+        responseCountBucket: overviewCountBucket(responseCount),
+        failureCountBucket: overviewCountBucket(results.length - responseCount)
       });
+    });
+    try {
+      await Promise.all(promises);
       createNotification({
         type: "success",
         text: "Successfully deleted folder"
       });
     } catch {
-      overviewTelemetry.flow({
-        ...flow,
-        phase: "failed",
-        countBucket: overviewCountBucket(promises.length)
-      });
       createNotification({
         type: "error",
         text: "Failed to delete folder"
       });
     } finally {
-      handlePopUpClose("deleteFolder");
+      closePopUp("deleteFolder");
     }
   };
 
@@ -2576,6 +2588,7 @@ const OverviewPageContent = () => {
   }, [isOverviewBatchMode, singleVisibleEnv, pendingChanges, handlePopUpOpen, overviewTelemetry]);
 
   const handleConfirmDisableBatchMode = useCallback(() => {
+    overviewTelemetry.interaction({ action: "batch-mode-disabled", source: "header" });
     overviewTelemetry.flow({
       action: "discard",
       resourceType: "mixed",
@@ -4186,7 +4199,7 @@ const OverviewPageContent = () => {
                               onPasteSecrets={(env) => {
                                 overviewTelemetry.flow({
                                   action: "import",
-                                  resourceType: "secret",
+                                  resourceType: "mixed",
                                   source: "paste",
                                   phase: "input-received",
                                   countBucket: overviewCountBucket(Object.keys(env).length)

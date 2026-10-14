@@ -411,8 +411,8 @@ const CopySecretsSession = ({
           path: parentPath,
           name
         });
+        receivedFolderCount += 1;
       }, Promise.resolve());
-      receivedFolderCount = selectedFolderPaths.length;
 
       const results = await copyRequestGroups.reduce<Promise<Array<{ approvalCount: number }>>>(
         async (previousResults, group) => {
