@@ -380,6 +380,83 @@ describe("Global approval system guards outside the approval routes", () => {
     expect(await getDb()(TableName.SecretFolder).where({ id: child.id }).first()).toBeUndefined();
   });
 
+  test("a user who approves a migrated policy's legacy twin is removable once the global policy drops them", async () => {
+    const { userId, username } = await createProjectUser("migrated-approver");
+    userIds.push(userId);
+    const policyId = await createGlobalPolicy("migrated-user-guard", "/migrated-user-guard", {
+      type: ApproverType.User,
+      id: userId
+    });
+    policyIds.push(policyId);
+    await seedLegacySecretApprovalPolicy(getDb(), {
+      id: policyId,
+      projectId,
+      environment: envSlug,
+      secretPath: "/migrated-user-guard",
+      name: "migrated-user-guard",
+      approverUserId: userId
+    });
+    legacyPolicyIds.push(policyId);
+
+    const blocked = await removeProjectUser(username);
+    expect(blocked.statusCode).toBe(400);
+
+    await replaceGlobalPolicyApprover(policyId, { type: ApproverType.User, id: seedData1.id });
+
+    const removed = await removeProjectUser(username);
+    expect(removed.statusCode).toBe(200);
+  });
+
+  test("a folder whose open legacy request was migrated is deletable once the global copy closes", async () => {
+    const { parentName, parent, child } = await createFolderTree();
+    const legacyPolicy = await seedLegacySecretApprovalPolicy(getDb(), {
+      projectId,
+      environment: envSlug,
+      secretPath: `/${parentName}/child`,
+      name: "migrated-folder-guard",
+      approverUserId: seedData1.id
+    });
+    legacyPolicyIds.push(legacyPolicy.id);
+    const requestId = await seedOpenLegacyRequest(child.id, legacyPolicy.id);
+    legacyRequestIds.push(requestId);
+    const globalTwin = {
+      id: requestId,
+      projectId,
+      organizationId: orgId,
+      policyId: null,
+      requesterId: seedData1.id,
+      requesterName: "test",
+      requesterEmail: seedData1.email,
+      type: ApprovalPolicyType.SecretChange,
+      status: "open",
+      currentStep: 1,
+      requestData: JSON.stringify({})
+    };
+    await getDb()(TableName.ApprovalRequests).insert(globalTwin);
+    await getDb()(TableName.SecretChangeRequests).insert({
+      approvalRequestId: requestId,
+      folderId: child.id,
+      slug: `guard-${crypto.randomUUID().slice(0, 8)}`
+    });
+    requestIds.push(requestId);
+
+    const blocked = await deleteFolderRequest(parent.id, "/");
+    expect(blocked.statusCode).toBe(400);
+    expect(blocked.json().message).toBe(openRequestMessage(`/${parentName}/child`));
+
+    await getDb()(TableName.ApprovalRequests).where({ id: requestId }).update({ status: "close" });
+
+    await deleteFolder({
+      workspaceId: projectId,
+      environmentSlug: envSlug,
+      secretPath: "/",
+      id: parent.id,
+      authToken: jwtAuthToken,
+      forceDelete: true
+    });
+    expect(await getDb()(TableName.SecretFolder).where({ id: child.id }).first()).toBeUndefined();
+  });
+
   test("a folder with an open legacy change request cannot be deleted until the request is closed", async () => {
     const { parentName, parent, child } = await createFolderTree();
     const legacyPolicy = await seedLegacySecretApprovalPolicy(getDb(), {

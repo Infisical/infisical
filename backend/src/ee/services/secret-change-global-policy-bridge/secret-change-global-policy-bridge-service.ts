@@ -45,7 +45,7 @@ type TSecretChangeGlobalPolicyBridgeServiceFactoryDep = {
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "update">;
   secretChangeGlobalPolicyBridgeDAL: Pick<TSecretChangeGlobalPolicyBridgeDALFactory, "findSecretChangePolicies">;
-  secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath">;
+  secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath" | "update">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
@@ -351,6 +351,7 @@ export const secretChangeGlobalPolicyBridgeServiceFactory = ({
         tx
       );
       await approvalPolicyDAL.deleteById(policy.id, tx);
+      await secretApprovalPolicyDAL.update({ id: policy.id, deletedAt: null }, { deletedAt: new Date() }, tx);
     });
 
     return { ...policy, deletedAt: new Date() };

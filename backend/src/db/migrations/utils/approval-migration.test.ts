@@ -674,7 +674,15 @@ describe("runLegacyPolicyMigration", () => {
       }
     );
 
-    expect(migratePolicy.mock.calls.map(([, policyId]) => policyId)).toEqual(["p1", "p2", "p3", "p4", "p5"]);
+    expect(migratePolicy.mock.calls.map(([, policyId]) => policyId)).toEqual([
+      "p1",
+      "p2",
+      "p3",
+      "p4",
+      "p5",
+      "p2",
+      "p2"
+    ]);
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("[policyId=p2] reasons=[locked:"));
     expect(logger.error).toHaveBeenCalledWith(
       expect.objectContaining({ message: "boom" }),
@@ -682,6 +690,25 @@ describe("runLegacyPolicyMigration", () => {
     );
     expect(logger.info).toHaveBeenCalledWith(
       "pfx: migrated 1 policies, 1 failed checks, 1 were locked, 1 failed with an error, 1 were already migrated or deleted"
+    );
+  });
+
+  test("retries a locked policy after the remaining ones and counts it once it goes through", async () => {
+    let p1Attempts = 0;
+    const migratePolicy = vi.fn((_tx: Knex, policyId: string) => {
+      if (policyId === "p1") {
+        p1Attempts += 1;
+        if (p1Attempts === 1) return Promise.reject(Object.assign(new Error("lock"), { code: "55P03" }));
+      }
+      return Promise.resolve("migrated" as TPolicyOutcome);
+    });
+
+    await runLegacyPolicyMigration(fakeKnex([["p1", "p2"]]), { tables: legacyTables, logPrefix: "pfx", migratePolicy });
+
+    expect(migratePolicy.mock.calls.map(([, policyId]) => policyId)).toEqual(["p1", "p2", "p1"]);
+    expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining("stays on the legacy approval system"));
+    expect(logger.info).toHaveBeenCalledWith(
+      "pfx: migrated 2 policies, 0 failed checks, 0 were locked, 0 failed with an error, 0 were already migrated or deleted"
     );
   });
 

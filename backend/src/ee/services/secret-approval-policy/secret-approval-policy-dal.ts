@@ -9,7 +9,14 @@ import {
   TUsers
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships, TFindFilter } from "@app/lib/knex";
+import {
+  buildFindFilter,
+  ormify,
+  rowWithSameIdIn,
+  selectAllTableCols,
+  sqlNestRelationships,
+  TFindFilter
+} from "@app/lib/knex";
 
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
 
@@ -29,6 +36,7 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
     tx(TableName.SecretApprovalPolicy)
       // eslint-disable-next-line
       .where(buildFindFilter(filter))
+      .whereNotExists(rowWithSameIdIn(TableName.ApprovalPolicies, TableName.SecretApprovalPolicy))
       .where((qb) => {
         if (customFilter?.sapId) {
           void qb.where(`${TableName.SecretApprovalPolicy}.id`, "=", customFilter.sapId);
@@ -303,6 +311,7 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
           )
         )
         .whereNull(`${TableName.SecretApprovalPolicy}.deletedAt`)
+        .whereNotExists(rowWithSameIdIn(TableName.ApprovalPolicies, TableName.SecretApprovalPolicy))
         .orderBy("deletedAt", "desc")
         .orderByRaw(`"deletedAt" IS NULL`)
         .select(selectAllTableCols(TableName.SecretApprovalPolicy))
