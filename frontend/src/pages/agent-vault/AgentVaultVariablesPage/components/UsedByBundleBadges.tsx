@@ -96,7 +96,7 @@ export const UsedByBundleBadges = ({
               <button type="button">+{overflow.length} more</button>
             </Badge>
           </PopoverTrigger>
-          <PopoverContent side="right" className="flex w-auto max-w-sm flex-wrap gap-1.5">
+          <PopoverContent side="bottom" align="end" className="flex flex-wrap gap-1.5">
             {overflow.map((bundle) => (
               <BundleBadge key={bundle.accessBundleId} bundle={bundle} />
             ))}

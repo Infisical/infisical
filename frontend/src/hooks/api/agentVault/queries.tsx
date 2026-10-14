@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   InfiniteData,
   SkipToken,
@@ -580,6 +580,10 @@ export const markAgentVaultVariablesChanged = (orgId: string) => {
 const isPossibleVariableKey = (key: string) =>
   key.length <= VARIABLE_KEY_MAX_LENGTH && VARIABLE_KEY_RE.test(key);
 
+// A missing answer blocks a save, and another admin may create the key at any time, so it is asked again when the
+// window regains focus and on this interval while any key is flagged. An existing answer never blocks anything.
+const MISSING_RECHECK_MS = 30_000;
+
 // Whether each key exists. Each key's answer is cached on its own, so a key checked once isn't asked about again
 // until a variable changes, but the keys still to check go out together through the keys filter, in batches of
 // the API's maximum, rather than a request each. Only keys whose answer has arrived are in either set.
@@ -591,7 +595,7 @@ export const useAgentVaultVariableKeyStatus = (keys: readonly string[], enabled 
   const impossibleKeys = keys.filter((key) => !isPossibleVariableKey(key));
 
   // Read-only: these never fetch, the batch below fills them.
-  const { existing, missing } = useQueries({
+  const { existing, missing, hasRecheckableMissing } = useQueries({
     queries: possibleKeys.map((key) => ({
       queryKey: statusKey(key),
       queryFn: skipToken as SkipToken
@@ -601,15 +605,35 @@ export const useAgentVaultVariableKeyStatus = (keys: readonly string[], enabled 
       missing: [
         ...impossibleKeys,
         ...possibleKeys.filter((_, index) => results[index]?.data === false)
-      ].join(",")
+      ].join(","),
+      hasRecheckableMissing: possibleKeys.some((_, index) => results[index]?.data === false)
     })
   });
 
-  // Unanswered keys, and answered ones a variable change has invalidated since.
+  const [recheckMissingAt, setRecheckMissingAt] = useState(() => Date.now());
+  useEffect(() => {
+    if (!enabled || !hasRecheckableMissing) return undefined;
+    const recheck = () => setRecheckMissingAt(Date.now());
+    const recheckIfVisible = () => {
+      if (document.visibilityState === "visible") recheck();
+    };
+    window.addEventListener("focus", recheck);
+    document.addEventListener("visibilitychange", recheckIfVisible);
+    const interval = window.setInterval(recheck, MISSING_RECHECK_MS);
+    return () => {
+      window.removeEventListener("focus", recheck);
+      document.removeEventListener("visibilitychange", recheckIfVisible);
+      window.clearInterval(interval);
+    };
+  }, [enabled, hasRecheckableMissing]);
+
+  // Unanswered keys, answered ones a variable change has invalidated since, and missing ones answered before the
+  // last recheck.
   const unchecked = [...possibleKeys]
     .filter((key) => {
       const state = queryClient.getQueryState(statusKey(key));
-      return state?.data === undefined || state.isInvalidated;
+      if (state?.data === undefined || state.isInvalidated) return true;
+      return state.data === false && state.dataUpdatedAt < recheckMissingAt;
     })
     .sort();
 
@@ -621,6 +645,7 @@ export const useAgentVaultVariableKeyStatus = (keys: readonly string[], enabled 
       ...agentVaultKeys.variables(currentOrg.id),
       "key-status-batch",
       changeCount,
+      recheckMissingAt,
       unchecked
     ],
     queryFn: async () => {
