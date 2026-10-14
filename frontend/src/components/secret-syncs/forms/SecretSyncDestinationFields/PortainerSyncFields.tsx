@@ -25,7 +25,7 @@ const GIT_STACK_HELP_TEXT =
   "Variables are stored on the stack's Git configuration. The running containers are left untouched - the new values apply on the stack's next deployment.";
 
 const FILE_STACK_HELP_TEXT =
-  "Portainer requires the compose file on every update to a file-based stack, so syncing re-deploys it. Use a Git-backed stack to update variables without a redeploy.";
+  "Portainer requires the compose file on every update to a file-based stack, so syncing re-deploys it whenever the variables change. Use a Git-backed stack to update variables without a redeploy.";
 
 export const PortainerSyncFields = () => {
   const { control, setValue } = useFormContext<

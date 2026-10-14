@@ -370,7 +370,7 @@ export const SecretSyncFns = {
       case SecretSync.Rundeck:
         return RundeckSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Portainer:
-        return PortainerSyncFns.syncSecrets(secretSync, payload);
+        return PortainerSyncFns.syncSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Netlify:
@@ -536,7 +536,7 @@ export const SecretSyncFns = {
         secretMap = await RundeckSyncFns.getSecrets(secretSync);
         break;
       case SecretSync.Portainer:
-        secretMap = await PortainerSyncFns.getSecrets(secretSync);
+        secretMap = await PortainerSyncFns.getSecrets(secretSync, gatewayV2Service, gatewayPoolService);
         break;
       case SecretSync.DigitalOceanAppPlatform:
         secretMap = await DigitalOceanAppPlatformSyncFns.getSecrets(secretSync);
@@ -697,7 +697,7 @@ export const SecretSyncFns = {
       case SecretSync.Rundeck:
         return RundeckSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Portainer:
-        return PortainerSyncFns.removeSecrets(secretSync, payload);
+        return PortainerSyncFns.removeSecrets(secretSync, payload, gatewayV2Service, gatewayPoolService);
       case SecretSync.DigitalOceanAppPlatform:
         return DigitalOceanAppPlatformSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Netlify:
