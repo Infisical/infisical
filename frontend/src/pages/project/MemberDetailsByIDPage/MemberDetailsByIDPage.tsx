@@ -289,7 +289,7 @@ export const Page = () => {
                 onOpenUpgradeModal={() =>
                   handlePopUpOpen("upgradePlan", {
                     text: "Assigning custom roles to members can be unlocked if you upgrade to Infisical Advanced plan.",
-                    isEnterpriseFeature: true
+                    isEnterpriseFeature: false
                   })
                 }
               />
