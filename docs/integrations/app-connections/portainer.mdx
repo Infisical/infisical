@@ -1,114 +1,93 @@
 ---
 title: "Portainer connection"
 sidebarTitle: "Portainer"
-description: "Learn how to configure a Portainer Connection for Infisical."
+description: "Learn how to configure a Portainer connection for Infisical."
 ---
 
-Infisical supports connecting to Portainer using an **API Token**.
+import GenerateApiToken from "/snippets/app-connections/portainer/generate-api-token.mdx";
+import ConnectionFormFields from "/snippets/app-connections/portainer/form-fields.mdx";
+
+A Portainer connection authenticates Infisical to Portainer with an [access token](https://docs.portainer.io/api/access), so Infisical can list your environments and stacks and update a stack's environment variables.
+
+The token inherits the permissions of the Portainer user who created it, so Infisical can only reach the environments and stacks that user can.
+
+<Note>
+    This guide only authenticates Infisical with Portainer. Once the app connection is ready, you can [use it to set up integrations](#step-3-configure-integrations).
+</Note>
 
 ## Prerequisites
 
 - A Portainer user whose permissions cover the environments and stacks you want to sync to
 - If your Portainer instance isn't reachable from the internet, a [Gateway](/documentation/platform/gateways/overview) with network access to it
 
-## Generate a Portainer API token
+## Step 1: Generate a Portainer API token
 
-<Steps>
-    <Step title="Open your account settings">
-        Log in to your Portainer instance, select the user icon in the top-right corner, then select
-        **My account**.
-    </Step>
-    <Step title="Add an access token">
-        Scroll to the **Access tokens** section and select **Add access token**.
-    </Step>
-    <Step title="Generate the token">
-        Enter a **Description** to identify the token (e.g., `infisical`) and select
-        **Add access token**.
+Infisical needs an access token to call the Portainer API on your behalf.
 
-        <Note>
-            An access token inherits the permissions of the user that created it.
-        </Note>
-    </Step>
-    <Step title="Copy the API token">
-        Copy the generated token and store it securely — Portainer only displays it once.
-    </Step>
-</Steps>
+<GenerateApiToken />
 
-## Create a Portainer connection in Infisical
+## Step 2: Create the app connection
 
-<Tabs>
-    <Tab title="Infisical UI">
-        <Steps>
-            <Step title="Add a Portainer Connection">
-                In your Infisical dashboard, navigate to the **Integrations** tab in the desired project,
-                select **App Connections**, then select **+ Add Connection**. Search for and select the
-                **Portainer** option.
-                ![Select Portainer Connection](/images/app-connections/portainer/step-1.png)
-            </Step>
-            <Step title="Fill out the Portainer Connection form">
-                Complete the connection form by entering:
-                - A descriptive **Name** for the connection (must be slug-friendly)
-                - An optional **Description** for future reference
-                - The **Method** (**API Token**)
-                - The **Gateway** to route requests through, if the instance isn't reachable from the internet
-                - The **Portainer Instance URL** (e.g., `https://portainer.example.com`)
-                - The **Portainer API Token** you generated above
+Next, create the app connection in Infisical.
 
-                Select **Connect to Portainer**.
-                ![Portainer Connection Form](/images/app-connections/portainer/step-2.png)
-            </Step>
-            <Step title="Connection Created">
-                Your **Portainer Connection** is established and ready to use with your Infisical project.
-                ![Portainer Connection Created](/images/app-connections/portainer/step-3.png)
-            </Step>
-        </Steps>
-    </Tab>
-    <Tab title="API">
-        To create a Portainer Connection, make an API request to the [Create Portainer
-        Connection](/api-reference/endpoints/app-connections/portainer/create) API endpoint.
+<Tip>
+    To create the connection using the API, use the [Create Portainer Connection](/api-reference/endpoints/app-connections/portainer/create) endpoint. If the instance isn't reachable from the internet, include the ID of a Gateway that can reach it as `gatewayId`, or the ID of a Gateway pool as `gatewayPoolId`.
+</Tip>
 
-        If the instance isn't reachable from the internet, include the ID of a Gateway that can reach it as
-        `gatewayId`, or the ID of a Gateway pool as `gatewayPoolId`.
+<View title="Organization-level">
+    <Steps>
+        <Step>
+            In the sidebar, select **Integrations**, then open the **App Connections** tab.
 
-        ### Sample request
+            ![App Connections Tab](/images/app-connections/general/add-connection.png)
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **Portainer**.
+        </Step>
+        <Step>
+            Fill out the form's fields:
 
-        ```bash Request
-        curl    --request POST \
-                --url https://app.infisical.com/api/v1/app-connections/portainer \
-                --header 'Content-Type: application/json' \
-                --data '{
-                    "name": "my-portainer-connection",
-                    "method": "api-token",
-                    "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                    "credentials": {
-                        "instanceUrl": "https://portainer.example.com",
-                        "apiToken": "..."
-                    }
-                }'
-        ```
+            <ConnectionFormFields />
 
-        ### Sample response
+            Then, select **Connect to Portainer**.
+        </Step>
+    </Steps>
+</View>
 
-        ```bash Response
-        {
-          "appConnection": {
-            "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
-            "name": "my-portainer-connection",
-            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-            "description": null,
-            "version": 1,
-            "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
-            "createdAt": "2025-04-23T19:46:34.831Z",
-            "updatedAt": "2025-04-23T19:46:34.831Z",
-            "isPlatformManagedCredentials": false,
-            "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
-            "app": "portainer",
-            "method": "api-token",
-            "credentials": {
-              "instanceUrl": "https://portainer.example.com"
-            }
-          }
-        }
-        ```
-    </Tab>
-</Tabs>
+<View title="Project-level">
+    <Steps>
+        <Step>
+            In your Secrets Manager project, select **Integrations** from the sidebar, then open the **App Connections** tab.
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **Portainer**.
+
+            ![Select Portainer Connection](/images/app-connections/portainer/step-1.png)
+        </Step>
+        <Step>
+            Fill out the form's fields:
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to Portainer**.
+
+            ![Portainer Connection Form](/images/app-connections/portainer/step-2.png)
+        </Step>
+    </Steps>
+</View>
+
+When you submit the form, Infisical calls the Portainer API with the token to confirm that Portainer accepts it.
+
+<Check>
+    Your Portainer app connection is ready to use.
+</Check>
+
+![Portainer Connection Created](/images/app-connections/portainer/step-3.png)
+
+## Step 3: Configure integrations
+
+Now that your Portainer app connection is configured, you can use it to set up the following integration:
+
+<Card title="Portainer Secret Sync" icon="refresh-cw" href="/integrations/secret-syncs/portainer">
+    Sync secrets from Infisical to the environment variables of a Portainer stack.
+</Card>
