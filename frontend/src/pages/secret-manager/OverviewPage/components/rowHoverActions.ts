@@ -66,7 +66,7 @@ type TRowHoverActions = {
     tabIndex?: number;
     onMouseEnter: () => void;
     onMouseLeave: () => void;
-    onFocus: () => void;
+    onFocus: (e: FocusEvent<HTMLElement>) => void;
     onBlur: (e: FocusEvent<HTMLElement>) => void;
   };
 };
@@ -156,7 +156,15 @@ export const useRowHoverActions = ({
       tabIndex: needsRowTabStop ? 0 : undefined,
       onMouseEnter: () => setIsHovered(true),
       onMouseLeave: () => setIsHovered(false),
-      onFocus: () => setIsFocusWithin(true),
+      // React's synthetic focus bubbles through portals, so focus landing in a popover this row
+      // renders would otherwise mark the row focused. That node is not a DOM descendant, so when
+      // the popover closes without handing focus back the row never sees a matching onBlur and
+      // stays active for the life of the page, holding its bar mounted. The popover-open flags
+      // each row keeps are what hold the bar while a popover is genuinely in use.
+      onFocus: (e: FocusEvent<HTMLElement>) => {
+        if (!e.currentTarget.contains(e.target)) return;
+        setIsFocusWithin(true);
+      },
       onBlur: (e: FocusEvent<HTMLElement>) => {
         // focusout bubbles, so only drop the row once focus has left the row entirely.
         if (e.currentTarget.contains(e.relatedTarget)) return;
