@@ -6,6 +6,7 @@ import {
   computeRevocationVerdictFingerprint,
   computeSingleIssuanceTtlCap,
   computeTokenAuthRevokeMarkerExpiry,
+  computeUsesRemainingTtl,
   evaluateRevocationMarkers,
   hasLegacyTokenWithoutExpExceededMaxAge,
   IDENTITY_REVOCATION_MARKER_SKEW_SECONDS,
@@ -172,6 +173,24 @@ describe("computeSingleIssuanceTtlCap", () => {
 
   test("periodic mode uses period as the effective TTL", () => {
     expect(computeSingleIssuanceTtlCap({ requestedTTL: 0, accessTokenPeriod: 900 })).toBe(900);
+  });
+});
+
+describe("computeUsesRemainingTtl", () => {
+  test("lives exactly as long as the JWT has left", () => {
+    expect(computeUsesRemainingTtl({ exp: NOW + 3600, nowSeconds: NOW })).toBe(3600);
+  });
+
+  test("never outlives the ceiling", () => {
+    expect(computeUsesRemainingTtl({ exp: NOW + MAX_AGE + 10_000, nowSeconds: NOW })).toBe(MAX_AGE);
+  });
+
+  test("stays positive for a JWT that expires this second", () => {
+    expect(computeUsesRemainingTtl({ exp: NOW, nowSeconds: NOW })).toBe(1);
+  });
+
+  test("falls back to the ceiling for a legacy JWT with no exp", () => {
+    expect(computeUsesRemainingTtl({ nowSeconds: NOW })).toBe(MAX_AGE);
   });
 });
 

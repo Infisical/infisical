@@ -143,6 +143,23 @@ export const computeIssuedTtl = ({
   return Math.min(requestedCap, remainingBudget, ceiling);
 };
 
+// How long the uses-remaining counter must live: as long as the JWT it counts against can still be
+// presented. An expired JWT is rejected before the counter is read, so keeping the key longer only
+// leaves a dead key in Redis. A JWT with no exp (legacy) falls back to the configured ceiling.
+export const computeUsesRemainingTtl = ({
+  exp,
+  nowSeconds = Math.floor(Date.now() / 1000)
+}: {
+  exp?: number;
+  nowSeconds?: number;
+}): number => {
+  const { MAX_MACHINE_IDENTITY_TOKEN_AGE: ceiling } = getConfig();
+  if (typeof exp !== "number") {
+    return ceiling;
+  }
+  return Math.min(Math.max(exp - nowSeconds, 1), ceiling);
+};
+
 // Extra 5 minutes added to when a revocation record expires. Guards against
 // small clock differences between servers and a slightly stale database replica
 // so a revoked token can't slip through by dropping the record too early.

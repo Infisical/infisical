@@ -352,10 +352,78 @@ describe("identityAccessTokenServiceFactory", () => {
     });
     expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
       "identity-token-uses-remaining:identity-id:token-id",
-      MAX_AGE,
+      3600,
       2
     );
     expect(keyStore.incrementBy).not.toHaveBeenCalled();
+  });
+
+  test("reseeds a lost counter for a legacy JWT with no exp using the ceiling", async () => {
+    const { service, keyStore } = createService();
+    keyStore.getItem.mockResolvedValue(null);
+
+    await service.fnValidateIdentityAccessTokenFast(createTokenClaims({ numUsesLimit: 3, exp: undefined }), "10.0.0.1");
+    expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
+      "identity-token-uses-remaining:identity-id:token-id",
+      MAX_AGE,
+      2
+    );
+  });
+
+  test("seeds the usage counter at issuance to expire with the token, not the ceiling", async () => {
+    const { service, keyStore } = createService();
+
+    await service.issueIdentityAccessToken({
+      identityId: "identity-id",
+      identityName: "identity-name",
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      orgId: "org-id",
+      rootOrgId: "root-org-id",
+      parentOrgId: "parent-org-id",
+      subOrganizationId: null,
+      accessTokenTTL: 600,
+      accessTokenMaxTTL: 0,
+      accessTokenNumUsesLimit: 1,
+      accessTokenPeriod: 0,
+      accessTokenTrustedIps: []
+    });
+
+    expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
+      expect.stringMatching(/^identity-token-uses-remaining:identity-id:/),
+      600,
+      1
+    );
+  });
+
+  test("reseeds the usage counter on renewal to expire with the renewed token", async () => {
+    const { accessToken } = signIdentityAccessToken({
+      identityAccessTokenId: "token-id",
+      identityId: "identity-id",
+      identityName: "identity-name",
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      orgId: "org-id",
+      rootOrgId: "root-org-id",
+      parentOrgId: "parent-org-id",
+      clientSecretId: "",
+      numUsesLimit: 2,
+      ipRestrictionEnabled: false,
+      ttlSeconds: 3600,
+      accessTokenTTL: 3600,
+      accessTokenMaxTTL: 7200,
+      accessTokenPeriod: 0,
+      creationEpoch: NOW_SECONDS,
+      identityAuth: {}
+    });
+    const { service, keyStore } = createService();
+    keyStore.getItem.mockResolvedValue("1");
+
+    await service.renewAccessToken({ accessToken });
+
+    expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
+      "identity-token-uses-remaining:identity-id:token-id",
+      3600,
+      1
+    );
   });
 
   test("does not require Redis counters for unlimited-use tokens", async () => {
