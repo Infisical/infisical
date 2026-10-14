@@ -158,7 +158,6 @@ const formatExpiry = (expiresIn: string) => {
 type Props = {
   isPublic: boolean; // whether or not this is a public (non-authenticated) secret sharing form
   value?: string;
-  name?: string;
   allowSecretSharingOutsideOrganization?: boolean;
   maxSharedSecretLifetime?: number;
   maxSharedSecretViewLimit?: number | null;
@@ -167,7 +166,6 @@ type Props = {
 export const ShareSecretForm = ({
   isPublic,
   value,
-  name: defaultName,
   allowSecretSharingOutsideOrganization = true,
   maxSharedSecretLifetime,
   maxSharedSecretViewLimit
@@ -203,7 +201,6 @@ export const ShareSecretForm = ({
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: defaultName?.slice(0, 50),
       secret: value || "",
       viewLimit: maxSharedSecretViewLimit?.toString() ?? "1",
       shouldLimitView: isViewLimitEnforced,

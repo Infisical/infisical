@@ -1880,18 +1880,14 @@ export const SecretEditTableRow = ({
                     onClick={async () => {
                       if (sharedValueData) {
                         handlePopUpOpen("createSharedSecret", {
-                          value: sharedValueData.value,
-                          name: secretName
+                          value: sharedValueData.value
                         });
                         return;
                       }
 
                       const { data, error } = await refetchSharedValue();
                       if (data) {
-                        handlePopUpOpen("createSharedSecret", {
-                          value: data.value,
-                          name: secretName
-                        });
+                        handlePopUpOpen("createSharedSecret", { value: data.value });
                       } else {
                         createNotification({
                           type: "error",
