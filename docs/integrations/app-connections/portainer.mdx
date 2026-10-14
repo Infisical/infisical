@@ -6,6 +6,11 @@ description: "Learn how to configure a Portainer Connection for Infisical."
 
 Infisical supports connecting to Portainer using an **API Token**.
 
+## Prerequisites
+
+- A Portainer user whose permissions cover the environments and stacks you want to sync to
+- If your Portainer instance isn't reachable from the internet, a [Gateway](/documentation/platform/gateways/overview) with network access to it
+
 ## Generate a Portainer API token
 
 <Steps>
@@ -21,8 +26,7 @@ Infisical supports connecting to Portainer using an **API Token**.
         **Add access token**.
 
         <Note>
-            An access token inherits the permissions of the user that created it. Create it with a user
-            that can read environments and update the stacks you intend to sync to.
+            An access token inherits the permissions of the user that created it.
         </Note>
     </Step>
     <Step title="Copy the API token">
@@ -46,15 +50,12 @@ Infisical supports connecting to Portainer using an **API Token**.
                 - A descriptive **Name** for the connection (must be slug-friendly)
                 - An optional **Description** for future reference
                 - The **Method** (**API Token**)
+                - The **Gateway** to route requests through, if the instance isn't reachable from the internet
                 - The **Portainer Instance URL** (e.g., `https://portainer.example.com`)
                 - The **Portainer API Token** you generated above
 
                 Select **Connect to Portainer**.
                 ![Portainer Connection Form](/images/app-connections/portainer/step-2.png)
-
-                <Note>
-                    The instance URL must be reachable from your Infisical instance.
-                </Note>
             </Step>
             <Step title="Connection Created">
                 Your **Portainer Connection** is established and ready to use with your Infisical project.
@@ -65,6 +66,9 @@ Infisical supports connecting to Portainer using an **API Token**.
     <Tab title="API">
         To create a Portainer Connection, make an API request to the [Create Portainer
         Connection](/api-reference/endpoints/app-connections/portainer/create) API endpoint.
+
+        If the instance isn't reachable from the internet, include the ID of a Gateway that can reach it as
+        `gatewayId`, or the ID of a Gateway pool as `gatewayPoolId`.
 
         ### Sample request
 

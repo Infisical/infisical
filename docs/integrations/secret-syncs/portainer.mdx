@@ -13,13 +13,27 @@ Infisical syncs secrets to the environment variables of a Portainer stack.
 <Note>
     **How the stack is updated depends on its type.**
 
-    - **Git-backed stacks**: variables are written to the stack's Git configuration. The running
-      containers are left untouched, and the new values take effect on the stack's next deployment
-      (either an auto-update poll or a manual redeploy).
-    - **File-based stacks**: Portainer requires the compose file on every update, so Infisical
-      resubmits the current file unchanged along with the variables. This re-deploys the stack.
+    **Git-backed stacks:** Infisical writes the variables to the stack's Git settings. The running
+    containers are left untouched, and the new values take effect on the stack's next deployment
+    (an auto-update poll, a webhook, or a manual redeploy).
+
+    **File-based stacks:** Portainer requires the compose file on every update, so Infisical
+    resubmits the current file unchanged along with the variables, and Portainer redeploys the
+    stack. Infisical skips the update if the stack already has exactly these variables. Otherwise
+    Infisical waits for the redeploy to finish, and if Portainer reports that the redeploy failed,
+    the sync fails with Portainer's error message.
+
+    **Kubernetes stacks:** Portainer doesn't apply environment variables to Kubernetes stacks, so
+    Infisical doesn't list them as a destination and fails a sync that targets one.
 
     If you need variables to land without restarting anything, use a Git-backed stack.
+</Note>
+
+<Note>
+    Portainer stores a Compose stack's variables in an env file with one line per variable. If a
+    value contains line breaks, such as a PEM certificate, Infisical stores the value in double quotes
+    with each line break escaped as `\n`, and Portainer restores the line breaks when it deploys the
+    stack. Swarm stacks receive multiline values as-is.
 </Note>
 
 <Tabs>
@@ -32,6 +46,7 @@ Infisical syncs secrets to the environment variables of a Portainer stack.
 
             - **Environment**: The project environment to retrieve secrets from.
             - **Secret Path**: The folder path to retrieve secrets from.
+            - **Include secrets from all subfolders**: If enabled, secrets in every folder beneath the path are synced too.
 
         <Tip>
             If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
@@ -47,22 +62,22 @@ Infisical syncs secrets to the environment variables of a Portainer stack.
         4. Configure the **Initial Sync Behavior** to determine how Infisical should resolve the first sync, then select **Continue**.
         ![Configure Initial Sync](/images/secret-syncs/portainer/step-4.png)
 
-            - **Overwrite Destination Secrets**: Infisical writes its secrets to the stack. No variables are imported back.
-            - **Import Destination Secrets - Prioritize Infisical Values**: Existing stack variables are imported into Infisical first; where a key exists on both sides, the Infisical value wins.
-            - **Import Destination Secrets - Prioritize Portainer Values**: Same as above, but the stack's value wins on conflicts.
+            - **Overwrite Portainer**: Infisical writes its secrets to the stack. No variables are imported back.
+            - **Import from Portainer, prioritize Infisical**: Existing stack variables are imported into Infisical first; where a key exists on both sides, the Infisical value wins.
+            - **Import from Portainer, prioritize Portainer**: Same as above, but the stack's value wins on conflicts.
 
         5. Configure the **Sync Options** to control how secrets are written, then select **Continue**.
         ![Configure Sync Options](/images/secret-syncs/portainer/step-5.png)
 
-            - **Disable Secret Deletion**: If enabled, Infisical will not remove variables from the stack during a sync. Enable this if you intend to manage some variables manually outside of Infisical.
-            - **Auto-Sync on Changes**: If enabled, secrets are automatically synced whenever they change in the source. Turn off to sync manually only.
-            - **Customize Key Names**: Add a prefix or suffix so Infisical can identify which variables in the stack it manages — anything else is left untouched.
+            - **Prevent secret deletion**: If enabled, Infisical never removes variables from the stack during a sync. Enable this if you manage some variables manually outside of Infisical.
+            - **Auto-sync on changes**: If enabled, secrets are synced automatically whenever they change in the source. Turn off to sync manually only.
+            - **Customize key names**: Add a prefix or suffix so Infisical can identify which variables in the stack it manages. Anything else is left untouched.
 
         <Warning>
             A Portainer stack stores its variables as a single list, so a sync rewrites that whole list.
             Without a key schema, every existing variable on the stack is treated as managed by this sync
-            and may be removed once it leaves the source. Use **Customize Key Names** or **Disable Secret
-            Deletion** to preserve variables set outside of Infisical.
+            and may be removed once it leaves the source. Use **Customize key names** or **Prevent secret
+            deletion** to preserve variables set outside of Infisical.
         </Warning>
 
         6. Configure the **Details** of your Portainer Sync, then select **Continue**.
