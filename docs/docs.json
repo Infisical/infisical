@@ -202,6 +202,7 @@
                       "documentation/platform/dynamic-secrets/gcp-iam",
                       "documentation/platform/dynamic-secrets/github",
                       "documentation/platform/dynamic-secrets/ibm-api-connect",
+                      "documentation/platform/dynamic-secrets/kafka",
                       "documentation/platform/dynamic-secrets/kubernetes",
                       "documentation/platform/dynamic-secrets/ldap",
                       "documentation/platform/dynamic-secrets/milvus",
@@ -419,17 +420,12 @@
             "icon": "file-key",
             "pages": [
               "documentation/platform/pki/overview",
+              "documentation/platform/pki/migration",
               {
-                "group": "Certificate management",
+                "group": "Get started",
                 "pages": [
-                  {
-                    "group": "Quickstarts",
-                    "pages": [
-                      "documentation/platform/pki/getting-started",
-                      "documentation/platform/pki/quick-starts/issue-first-certificate",
-                      "documentation/platform/pki/quick-starts/sign-first-code"
-                    ]
-                  },
+                  "documentation/platform/pki/quick-starts/issue-first-certificate",
+                  "documentation/platform/pki/quick-starts/sign-first-code",
                   {
                     "group": "Concepts",
                     "pages": [
@@ -438,169 +434,168 @@
                       "documentation/platform/pki/concepts/access-control",
                       "documentation/platform/pki/concepts/reference-architecture"
                     ]
+                  }
+                ]
+              },
+              {
+                "group": "Certificate authorities",
+                "pages": [
+                  "documentation/platform/pki/ca/overview",
+                  {
+                    "group": "Internal CA",
+                    "root": "documentation/platform/pki/ca/private-ca",
+                    "pages": [
+                      "documentation/platform/pki/ca/ca-renewal",
+                      "documentation/platform/pki/ca/crl-distribution",
+                      "documentation/platform/pki/ca/ocsp",
+                      "documentation/platform/pki/reference/pqc-algorithms"
+                    ]
                   },
                   {
-                    "group": "Guides",
+                    "group": "External CA",
+                    "root": "documentation/platform/pki/ca/external-ca",
                     "pages": [
-                      "documentation/platform/pki/guides/overview",
+                      "documentation/platform/pki/ca/acme-ca",
+                      "documentation/platform/pki/ca/lets-encrypt",
+                      "documentation/platform/pki/ca/digicert",
+                      "documentation/platform/pki/ca/digicert-direct",
+                      "documentation/platform/pki/ca/godaddy",
+                      "documentation/platform/pki/ca/sectigo",
+                      "documentation/platform/pki/ca/adcs",
+                      "documentation/platform/pki/ca/azure-adcs",
+                      "documentation/platform/pki/ca/aws-pca",
+                      "documentation/platform/pki/ca/aws-acm-public-ca",
+                      "documentation/platform/pki/ca/venafi",
+                      "documentation/platform/pki/ca/venafi-tpp"
+                    ]
+                  },
+                  {
+                    "group": "HSM connectors",
+                    "root": "documentation/platform/pki/settings/hsm-connectors",
+                    "pages": [
+                      "documentation/platform/pki/settings/hsm-connectors-fortanix-dsm"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Managing certificates",
+                "pages": [
+                  "documentation/platform/pki/applications/overview",
+                  "documentation/platform/pki/settings/policies",
+                  "documentation/platform/pki/settings/profiles",
+                  {
+                    "group": "Enrollment methods",
+                    "root": "documentation/platform/pki/applications/enrollment-methods/overview",
+                    "pages": [
                       {
-                        "group": "Applications",
+                        "group": "API",
+                        "root": "documentation/platform/pki/applications/enrollment-methods/api",
                         "pages": [
                           "documentation/platform/pki/guides/applications/infisical-agent",
+                          "documentation/platform/pki/reference/infisical-agent",
+                          "documentation/platform/pki/guides/applications/k8s-cert-manager-issuer"
+                        ]
+                      },
+                      {
+                        "group": "ACME",
+                        "root": "documentation/platform/pki/applications/enrollment-methods/acme",
+                        "pages": [
                           "documentation/platform/pki/guides/applications/k8s-cert-manager-acme",
-                          "documentation/platform/pki/guides/applications/k8s-cert-manager-issuer",
                           "documentation/platform/pki/guides/applications/nginx-certbot",
                           "documentation/platform/pki/guides/applications/apache-certbot",
                           "documentation/platform/pki/guides/applications/tomcat-certbot",
                           "documentation/platform/pki/guides/applications/jboss-certbot",
                           "documentation/platform/pki/guides/applications/windows-server-acme",
-                          "documentation/platform/pki/guides/applications/gloo-mesh",
+                          "documentation/platform/pki/guides/applications/gloo-mesh"
+                        ]
+                      },
+                      "documentation/platform/pki/applications/enrollment-methods/est",
+                      {
+                        "group": "SCEP",
+                        "root": "documentation/platform/pki/applications/enrollment-methods/scep",
+                        "pages": [
                           "documentation/platform/pki/guides/applications/jamf-pro-scep",
                           "documentation/platform/pki/guides/applications/microsoft-intune-scep"
                         ]
-                      },
-                      {
-                        "group": "Code signing",
-                        "pages": [
-                          "documentation/platform/pki/guides/code-signing/digicert-code-signing",
-                          "documentation/platform/pki/guides/code-signing/jarsigner",
-                          "documentation/platform/pki/guides/code-signing/apksigner",
-                          "documentation/platform/pki/guides/code-signing/osslsigncode",
-                          "documentation/platform/pki/guides/code-signing/cosign",
-                          "documentation/platform/pki/guides/code-signing/openssl",
-                          "documentation/platform/pki/guides/code-signing/gpg"
-                        ]
                       }
+                    ]
+                  },
+                  "documentation/platform/pki/applications/certificates",
+                  "documentation/platform/pki/applications/approvals",
+                  "documentation/platform/pki/applications/certificate-renewal",
+                  {
+                    "group": "Certificate syncs",
+                    "root": "documentation/platform/pki/applications/certificate-syncs/overview",
+                    "pages": [
+                      "documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager",
+                      "documentation/platform/pki/applications/certificate-syncs/aws-elastic-load-balancer",
+                      "documentation/platform/pki/applications/certificate-syncs/aws-secrets-manager",
+                      "documentation/platform/pki/applications/certificate-syncs/azure-key-vault",
+                      "documentation/platform/pki/applications/certificate-syncs/chef",
+                      "documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate",
+                      "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
+                      "documentation/platform/pki/applications/certificate-syncs/netscaler",
+                      "documentation/platform/pki/applications/certificate-syncs/palo-alto-networks",
+                      "documentation/platform/pki/applications/certificate-syncs/palo-alto-networks-ssl-tls-profile",
+                      "documentation/platform/pki/applications/certificate-syncs/kemp-loadmaster",
+                      "documentation/platform/pki/applications/certificate-syncs/linux-server",
+                      "documentation/platform/pki/applications/certificate-syncs/windows-server",
+                      "documentation/platform/pki/applications/certificate-syncs/nutanix-prism-central",
+                      "documentation/platform/pki/applications/certificate-syncs/gcp-certificate-manager"
                     ]
                   }
                 ]
               },
               {
-                "group": "Product reference",
+                "group": "Monitoring",
                 "pages": [
+                  "documentation/platform/pki/monitoring/certificate-inventory",
                   {
-                    "group": "Applications",
+                    "group": "Discovery",
+                    "root": "documentation/platform/pki/discovery/overview",
                     "pages": [
-                      "documentation/platform/pki/applications/overview",
-                      "documentation/platform/pki/applications/certificates",
-                      "documentation/platform/pki/applications/certificate-renewal",
-                      {
-                        "group": "Enrollment methods",
-                        "pages": [
-                          "documentation/platform/pki/applications/enrollment-methods/overview",
-                          "documentation/platform/pki/applications/enrollment-methods/api",
-                          "documentation/platform/pki/applications/enrollment-methods/acme",
-                          "documentation/platform/pki/applications/enrollment-methods/est",
-                          "documentation/platform/pki/applications/enrollment-methods/scep"
-                        ]
-                      },
-                      "documentation/platform/pki/applications/approvals",
-                      {
-                        "group": "Alerting",
-                        "pages": [
-                          "documentation/platform/pki/applications/alerting/overview",
-                          "documentation/platform/pki/applications/alerting/webhook-alerts",
-                          "documentation/platform/pki/applications/alerting/slack-alerts",
-                          "documentation/platform/pki/applications/alerting/pagerduty-alerts"
-                        ]
-                      },
-                      {
-                        "group": "Certificate syncs",
-                        "pages": [
-                          "documentation/platform/pki/applications/certificate-syncs/overview",
-                          "documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager",
-                          "documentation/platform/pki/applications/certificate-syncs/aws-elastic-load-balancer",
-                          "documentation/platform/pki/applications/certificate-syncs/aws-secrets-manager",
-                          "documentation/platform/pki/applications/certificate-syncs/azure-key-vault",
-                          "documentation/platform/pki/applications/certificate-syncs/chef",
-                          "documentation/platform/pki/applications/certificate-syncs/cloudflare-custom-certificate",
-                          "documentation/platform/pki/applications/certificate-syncs/f5-big-ip",
-                          "documentation/platform/pki/applications/certificate-syncs/netscaler",
-                          "documentation/platform/pki/applications/certificate-syncs/palo-alto-networks",
-                          "documentation/platform/pki/applications/certificate-syncs/palo-alto-networks-ssl-tls-profile",
-                          "documentation/platform/pki/applications/certificate-syncs/kemp-loadmaster",
-                          "documentation/platform/pki/applications/certificate-syncs/linux-server",
-                          "documentation/platform/pki/applications/certificate-syncs/windows-server",
-                          "documentation/platform/pki/applications/certificate-syncs/nutanix-prism-central",
-                          "documentation/platform/pki/applications/certificate-syncs/gcp-certificate-manager"
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "group": "Code signing",
-                    "pages": [
-                      "documentation/platform/pki/code-signing/overview",
-                      "documentation/platform/pki/code-signing/signers",
-                      "documentation/platform/pki/code-signing/approvals",
-                      "documentation/platform/pki/code-signing/pkcs11-module",
-                      "documentation/platform/pki/code-signing/windows-ksp"
-                    ]
-                  },
-                  {
-                    "group": "Certificate discovery",
-                    "pages": [
-                      "documentation/platform/pki/discovery/overview",
                       "documentation/platform/pki/discovery/network"
                     ]
                   },
                   {
-                    "group": "Certificate authorities",
+                    "group": "Alerts",
+                    "root": "documentation/platform/pki/applications/alerting/overview",
                     "pages": [
-                      "documentation/platform/pki/ca/overview",
-                      {
-                        "group": "Internal CA",
-                        "pages": [
-                          "documentation/platform/pki/ca/private-ca",
-                          "documentation/platform/pki/ca/ca-renewal",
-                          "documentation/platform/pki/ca/crl-distribution",
-                          "documentation/platform/pki/ca/ocsp"
-                        ]
-                      },
-                      {
-                        "group": "External CA",
-                        "pages": [
-                          "documentation/platform/pki/ca/external-ca",
-                          "documentation/platform/pki/ca/acme-ca",
-                          "documentation/platform/pki/ca/lets-encrypt",
-                          "documentation/platform/pki/ca/digicert",
-                          "documentation/platform/pki/ca/digicert-direct",
-                          "documentation/platform/pki/ca/godaddy",
-                          "documentation/platform/pki/ca/sectigo",
-                          "documentation/platform/pki/ca/adcs",
-                          "documentation/platform/pki/ca/azure-adcs",
-                          "documentation/platform/pki/ca/aws-pca",
-                          "documentation/platform/pki/ca/aws-acm-public-ca",
-                          "documentation/platform/pki/ca/venafi",
-                          "documentation/platform/pki/ca/venafi-tpp"
-                        ]
-                      }
+                      "documentation/platform/pki/applications/alerting/email-alerts",
+                      "documentation/platform/pki/applications/alerting/slack-alerts",
+                      "documentation/platform/pki/applications/alerting/pagerduty-alerts",
+                      "documentation/platform/pki/applications/alerting/webhook-alerts"
                     ]
                   },
-                  {
-                    "group": "Settings",
-                    "pages": [
-                      "documentation/platform/pki/settings/policies",
-                      "documentation/platform/pki/settings/profiles",
-                      "documentation/platform/pki/settings/certificate-cleanup",
-                      "documentation/platform/pki/settings/alerts",
-                      {
-                        "group": "HSM",
-                        "pages": [
-                          "documentation/platform/pki/settings/hsm-connectors",
-                          "documentation/platform/pki/settings/hsm-connectors-fortanix-dsm"
-                        ]
-                      }
-                    ]
-                  }
+                  "documentation/platform/pki/settings/certificate-cleanup"
                 ]
               },
               {
-                "group": "Reference",
+                "group": "Code signing",
                 "pages": [
-                  "documentation/platform/pki/reference/pqc-algorithms",
-                  "documentation/platform/pki/reference/infisical-agent",
-                  "documentation/platform/pki/migration"
+                  "documentation/platform/pki/code-signing/overview",
+                  {
+                    "group": "Signers",
+                    "root": "documentation/platform/pki/code-signing/signers",
+                    "pages": [
+                      "documentation/platform/pki/guides/code-signing/digicert-code-signing"
+                    ]
+                  },
+                  "documentation/platform/pki/code-signing/approvals",
+                  {
+                    "group": "Signing tools",
+                    "pages": [
+                      "documentation/platform/pki/guides/code-signing/jarsigner",
+                      "documentation/platform/pki/guides/code-signing/apksigner",
+                      "documentation/platform/pki/guides/code-signing/osslsigncode",
+                      "documentation/platform/pki/guides/code-signing/cosign",
+                      "documentation/platform/pki/guides/code-signing/openssl",
+                      "documentation/platform/pki/guides/code-signing/gpg"
+                    ]
+                  },
+                  "documentation/platform/pki/code-signing/pkcs11-module",
+                  "documentation/platform/pki/code-signing/windows-ksp"
                 ]
               }
             ]
@@ -1303,8 +1298,6 @@
                   "cli/reference/agent-vault",
                   "cli/reference/bootstrap",
                   "cli/reference/cert-manager",
-                  "cli/reference/dynamic-secrets",
-                  "cli/reference/export",
                   "cli/reference/gateway",
                   "cli/reference/init",
                   "cli/reference/kmip",
@@ -1316,10 +1309,20 @@
                   "cli/reference/proxy",
                   "cli/reference/relay",
                   "cli/reference/reset",
-                  "cli/reference/run",
                   "cli/reference/scan",
-                  "cli/reference/secrets",
                   "cli/reference/service-token",
+                  {
+                    "group": "infisical sm",
+                    "expanded": true,
+                    "pages": [
+                      "cli/reference/sm",
+                      "cli/reference/sm/agent-proxy",
+                      "cli/reference/sm/dynamic-secrets",
+                      "cli/reference/sm/export",
+                      "cli/reference/sm/run",
+                      "cli/reference/sm/secrets"
+                    ]
+                  },
                   "cli/reference/ssh",
                   "cli/reference/token",
                   "cli/reference/user",
@@ -4871,8 +4874,24 @@
       "destination": "/cli/reference"
     },
     {
+      "source": "/cli/reference/dynamic-secrets",
+      "destination": "/cli/reference#sm-dynamic-secrets"
+    },
+    {
+      "source": "/cli/reference/export",
+      "destination": "/cli/reference#sm-export"
+    },
+    {
+      "source": "/cli/reference/run",
+      "destination": "/cli/reference#sm-run"
+    },
+    {
+      "source": "/cli/reference/secrets",
+      "destination": "/cli/reference#sm-secrets"
+    },
+    {
       "source": "/cli/commands/agent-proxy",
-      "destination": "/cli/reference#secrets-agent-proxy"
+      "destination": "/cli/reference#sm-agent-proxy"
     },
     {
       "source": "/cli/commands/agent-vault",
@@ -4884,11 +4903,11 @@
     },
     {
       "source": "/cli/commands/dynamic-secrets",
-      "destination": "/cli/reference#dynamic-secrets"
+      "destination": "/cli/reference#sm-dynamic-secrets"
     },
     {
       "source": "/cli/commands/export",
-      "destination": "/cli/reference#export"
+      "destination": "/cli/reference#sm-export"
     },
     {
       "source": "/cli/commands/gateway",
@@ -4936,7 +4955,7 @@
     },
     {
       "source": "/cli/commands/run",
-      "destination": "/cli/reference#run"
+      "destination": "/cli/reference#sm-run"
     },
     {
       "source": "/cli/commands/scan-git-changes",
@@ -4952,7 +4971,7 @@
     },
     {
       "source": "/cli/commands/secrets",
-      "destination": "/cli/reference#secrets"
+      "destination": "/cli/reference#sm-secrets"
     },
     {
       "source": "/cli/commands/service-token",
@@ -5454,6 +5473,18 @@
     {
       "source": "/documentation/platform/pki/enrollment-methods/scep",
       "destination": "/documentation/platform/pki/applications/enrollment-methods/scep"
+    },
+    {
+      "source": "/documentation/platform/pki/getting-started",
+      "destination": "/documentation/platform/pki/overview"
+    },
+    {
+      "source": "/documentation/platform/pki/guides/overview",
+      "destination": "/documentation/platform/pki/applications/enrollment-methods/overview"
+    },
+    {
+      "source": "/documentation/platform/pki/settings/alerts",
+      "destination": "/documentation/platform/pki/applications/alerting/overview"
     },
     {
       "source": "/documentation/platform/oauth-applications",

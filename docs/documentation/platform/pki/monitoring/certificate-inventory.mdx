@@ -1,0 +1,153 @@
+---
+title: "Certificate inventory"
+description: "Search, filter, and save views of every certificate in Certificate Manager."
+---
+
+The certificate inventory lists every certificate in Certificate Manager in one table: certificates issued through [Applications](/documentation/platform/pki/applications/overview), certificates you [import](/documentation/platform/pki/applications/certificates#importing-certificates), and certificates that [discovery](/documentation/platform/pki/discovery/overview) finds on your network. Use the inventory to find certificates that are about to expire, that have a key you want to retire, or that don't belong to an application yet.
+
+## Prerequisites
+
+- The Certificate Manager **Admin** role (see [access control](/documentation/platform/pki/concepts/access-control#product-level))
+
+If you don't have the **Admin** role, you can see the certificates in your applications on each application's [**Certificates** tab](/documentation/platform/pki/applications/certificates).
+
+## Find a certificate
+
+Go to **Certificate Manager** > **Inventory**, then enter the certificate's SAN, common name, ID, or serial number in the search box.
+
+### Columns
+
+The **Health** column shows **Healthy** until 60 days before a certificate expires. After that, the column shows the time left, then **Expired**.
+
+The **Application** and **Source** columns are hidden by default. To show or hide a column, select the columns button at the end of the toolbar. Infisical remembers your choice in this browser.
+
+## Filter certificates
+
+To filter the inventory:
+
+<Steps>
+  <Step>
+    Select the filter button next to the search box.
+  </Step>
+  <Step>
+    Select **Add filter**, then choose a field, an operator, and a value. Repeat for each filter you need.
+  </Step>
+  <Step>
+    Select **Apply Filters**.
+  </Step>
+</Steps>
+
+| Filter | What it matches |
+| --- | --- |
+| **Status** | Active, Renewed, Expired, or Revoked |
+| **Expiration Date** | Certificates that expire before or after a date |
+| **Issued Date** | Certificates whose validity starts before or after a date |
+| **Enrollment Method** | The [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview) used to request the certificate: ACME, API, EST, or SCEP |
+| **Algorithm** | RSA-2048, RSA-3072, RSA-4096, ECDSA-P256, ECDSA-P384, ECDSA-P521, or one of the [post-quantum](/documentation/platform/pki/reference/pqc-algorithms) algorithms ML-DSA-44, ML-DSA-65, and ML-DSA-87 |
+| **Key Size** | 256, 384, or 521 bits for ECDSA keys, and 2048, 3072, or 4096 bits for RSA keys |
+| **Source** | Managed (issued through Certificate Manager), Discovered (found by a discovery scan), or Imported |
+| **Certificate Authority** | The [CA](/documentation/platform/pki/ca/overview) that issued the certificate |
+| **Profile** | The [certificate profile](/documentation/platform/pki/settings/profiles) used to issue the certificate |
+| **Application** | The application the certificate belongs to |
+| **Metadata** | A metadata key on the certificate, and optionally the key's value |
+
+A certificate appears only if it matches every filter. If you pick several values in one filter, a certificate matches if it has any of them.
+
+The filters you apply appear as labels above the table. To remove one filter, select the **x** on its label. To remove them all, select **Clear all**.
+
+## Views
+
+A view is a saved set of filters. The views menu next to the filter button shows the view you're using, which is **All Certificates** by default. The menu groups views into:
+
+- **System Views**: views that come with Certificate Manager
+- **Shared Views**: views that an admin saved and shared with other admins
+- **My Views**: views you saved for yourself
+
+Infisical reopens the last view you used in this browser.
+
+### Built-in views
+
+| View | Shows |
+| --- | --- |
+| **All Certificates** | Every certificate |
+| **Expiring in 7 days** | Active certificates that expire in the next 7 days |
+| **Expiring in 30 days** | Active certificates that expire in the next 30 days |
+| **Renewed** | Certificates that a [renewal](/documentation/platform/pki/applications/certificate-renewal) replaced with a new certificate |
+| **Expired** | Certificates past their expiration date |
+| **Revoked** | Certificates that were revoked |
+| **Post-Quantum (PQC)** | Certificates with an ML-DSA key |
+| **Classical (Non-PQC)** | Certificates with an RSA or ECDSA key |
+
+### Save a view
+
+To save the filters you use often:
+
+<Steps>
+  <Step>
+    Select the filter button and add the filters you want to save.
+  </Step>
+  <Step>
+    Select **Save as View...** and enter a name.
+  </Step>
+  <Step>
+    To let other admins use the view, turn on **Share with team**.
+  </Step>
+  <Step>
+    Select **Save**.
+  </Step>
+</Steps>
+
+A view saves only filters. It doesn't save the search text or the columns you chose. You can't change a saved view's filters, so to change a view, save a new one and delete the old one.
+
+Each shared view needs a unique name, and so does each of your personal views.
+
+### Share or delete a view
+
+Only the admin who saved a view can share it, make it personal again, or delete it. The menu doesn't offer these options for the view you're using, so switch to another view first.
+
+<Steps>
+  <Step>
+    Open the views menu and hold the pointer over the view.
+  </Step>
+  <Step>
+    Select the share icon (**Share with team** or **Make personal**), or select **Delete view** and confirm.
+  </Step>
+</Steps>
+
+### Views in an application
+
+Each application's **Certificates** tab has the same search, filters, and views, limited to that application's certificates. Views saved in an application appear only in that application, and views saved in the inventory don't appear in any application. The **Application** filter is available only in the inventory.
+
+## Assign a certificate to an application
+
+If a certificate you imported or discovered doesn't belong to an application yet, you can assign it to one so the application's members can manage it.
+
+<Warning>
+  You can't move a certificate to a different application after you assign it.
+</Warning>
+
+<Steps>
+  <Step>
+    In the certificate's row, select the options menu, then select **Assign to Application**.
+  </Step>
+  <Step>
+    Select the application, then select **Assign**.
+  </Step>
+</Steps>
+
+If a certificate already belongs to an application, revoke or delete it from that application's [**Certificates** tab](/documentation/platform/pki/applications/certificates).
+
+## Export certificates
+
+To download the certificates in the table as a CSV file, select the download button in the toolbar. The file includes only the certificates on the current page, so increase the number of rows per page before you export a longer list.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Discovery" icon="radar" href="/documentation/platform/pki/discovery/overview">
+    Scan your network to add certificates that Infisical didn't issue.
+  </Card>
+  <Card title="Alerts" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">
+    Get notified before certificates expire.
+  </Card>
+</CardGroup>
