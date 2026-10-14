@@ -229,7 +229,7 @@ export const CertificateTemplateEnrollmentModal = ({ popUp, handlePopUpToggle }:
                       disabled={disableBootstrapCertValidation}
                       aria-required={!disableBootstrapCertValidation}
                       isError={Boolean(error)}
-                      className="min-h-60 resize-none"
+                      className="resize-none"
                     />
                     <FieldError>{error?.message}</FieldError>
                   </Field>
