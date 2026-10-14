@@ -264,7 +264,8 @@ export const AddWebhookForm = ({
                     />
                     <FieldError>{error?.message}</FieldError>
                     <FieldDescription>
-                      Enter `/**` to match all secret paths in the selected environment, or `/` for root folder only.
+                      Enter `/**` to match all secret paths in the selected environment. Use `/`
+                      for root-folder events. Access-request events may also match subfolders.
                     </FieldDescription>
                   </Field>
                 )}
