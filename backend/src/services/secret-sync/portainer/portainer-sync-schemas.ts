@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { SecretSyncs } from "@app/lib/api-docs";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import {
@@ -12,8 +13,12 @@ import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types"
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 
 const PortainerSyncDestinationConfigSchema = z.object({
-  environmentId: z.number().int().positive("Environment is required"),
-  stackId: z.number().int().positive("Stack is required")
+  environmentId: z
+    .number()
+    .int()
+    .positive("Environment is required")
+    .describe(SecretSyncs.DESTINATION_CONFIG.PORTAINER.environmentId),
+  stackId: z.number().int().positive("Stack is required").describe(SecretSyncs.DESTINATION_CONFIG.PORTAINER.stackId)
 });
 
 const PortainerSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };

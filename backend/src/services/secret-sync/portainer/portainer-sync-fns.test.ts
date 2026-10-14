@@ -111,8 +111,20 @@ describe("encodePortainerEnvValue / decodePortainerEnvValue", () => {
     expect(decodePortainerEnvValue(encoded, PortainerStackType.Compose)).toBe('line1\nline2 "quoted" back\\slash\r\n');
   });
 
+  it("quotes values the dotenv parser would trim or cut short", () => {
+    for (const value of [" leading", "trailing ", "abc #def", '"quoted"', "'single'"]) {
+      const encoded = encodePortainerEnvValue(value, PortainerStackType.Compose);
+
+      expect(encoded).not.toBe(value);
+      expect(decodePortainerEnvValue(encoded, PortainerStackType.Compose)).toBe(value);
+    }
+    expect(encodePortainerEnvValue("abc #def", PortainerStackType.Compose)).toBe('"abc #def"');
+  });
+
   it("leaves single-line values and Swarm stacks untouched", () => {
     expect(encodePortainerEnvValue("plain", PortainerStackType.Compose)).toBe("plain");
+    expect(encodePortainerEnvValue("no#space", PortainerStackType.Compose)).toBe("no#space");
+    expect(encodePortainerEnvValue("abc #def", PortainerStackType.Swarm)).toBe("abc #def");
     expect(encodePortainerEnvValue("line1\nline2", PortainerStackType.Swarm)).toBe("line1\nline2");
     expect(decodePortainerEnvValue('"line1\\nline2"', PortainerStackType.Swarm)).toBe('"line1\\nline2"');
   });

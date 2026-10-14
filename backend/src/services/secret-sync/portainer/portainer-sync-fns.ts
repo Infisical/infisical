@@ -20,20 +20,24 @@ import { TSecretMap } from "../secret-sync-types";
 import { TPortainerStackFileResponse, TPortainerSyncWithCredentials } from "./portainer-sync-types";
 
 const PORTAINER_DEPLOYMENT_POLL_INTERVAL_MS = 5_000;
-const PORTAINER_DEPLOYMENT_TIMEOUT_MS = 10 * 60_000;
+// The sync job holds a five-minute lock per sync, so the wait has to give up inside that window
+const PORTAINER_DEPLOYMENT_TIMEOUT_MS = 4 * 60_000;
 // Portainer releases before the background deployer run the redeploy inside the update request itself
 const PORTAINER_STACK_UPDATE_TIMEOUT_MS = PORTAINER_DEPLOYMENT_TIMEOUT_MS;
 
 const DOTENV_ESCAPES: Record<string, string> = { '"': '"', "\\": "\\", n: "\n", r: "\r" };
 
+// Unquoted dotenv values lose surrounding whitespace, end at " #", and must not start with a quote
+const needsDotenvQuoting = (value: string) => /[\r\n]|^\s|\s$|\s#|^["']/.test(value);
+
 /**
  * Portainer writes a Compose stack's variables to a `stack.env` file one `NAME=VALUE` line at a time,
- * so a value with line breaks has to use the dotenv double-quoted form or the file stops parsing and
- * the redeploy fails. Swarm stacks receive their variables through the process environment, where
- * line breaks are fine as-is.
+ * so a value that the dotenv parser would cut or trim has to use the double-quoted form or it reaches
+ * the container changed (or, with line breaks, stops the file from parsing at all). Swarm stacks
+ * receive their variables through the process environment, where every value is fine as-is.
  */
 export const encodePortainerEnvValue = (value: string, stackType: PortainerStackType) => {
-  if (stackType !== PortainerStackType.Compose || !/[\r\n]/.test(value)) return value;
+  if (stackType !== PortainerStackType.Compose || !needsDotenvQuoting(value)) return value;
 
   const escaped = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r/g, "\\r").replace(/\n/g, "\\n");
 
@@ -46,8 +50,8 @@ export const decodePortainerEnvValue = (value: string, stackType: PortainerStack
 
   const decoded = value.slice(1, -1).replace(/\\(["\\nr])/g, (_, escape: string) => DOTENV_ESCAPES[escape]);
 
-  // Only unwrap what the encoder above produces; a single-line value a user quoted by hand is left alone
-  return /[\r\n]/.test(decoded) ? decoded : value;
+  // Only unwrap what the encoder above produces; a value a user quoted by hand is left alone
+  return encodePortainerEnvValue(decoded, stackType) === value ? decoded : value;
 };
 
 const toSortedPairs = (env: TPortainerEnvVar[]) =>
