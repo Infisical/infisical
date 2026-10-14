@@ -194,7 +194,6 @@ export const translatePolicy = (data: TPolicyData) => {
     });
   }
 
-  // I need to check it more carefully
   const steps = buildApprovalSteps(
     {
       policy,
@@ -215,7 +214,7 @@ export const translatePolicy = (data: TPolicyData) => {
       bypassForMachineIdentities: policy.bypassForMachineIdentities
     }),
     secretEnvironments: buildPolicyEnvironmentRows(policy.id, environments, policy.secretPath),
-    ...buildPolicyStepRows(policy.id, steps), // I need to check it more carefully
+    ...buildPolicyStepRows(policy.id, steps),
     bypassers: buildBypasserRows(policy.id, bypassers),
     requests: [],
     requestSteps: [],
