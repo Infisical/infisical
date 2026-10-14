@@ -371,10 +371,8 @@ export const useGetSecretScanningConfig = (
   projectId: string,
   options?: Omit<
     UseQueryOptions<
-      TSecretScanningAvailableResource,
       TSecretScanningConfig,
       unknown,
-      TSecretScanningAvailableResource,
       TSecretScanningConfig,
       ReturnType<typeof secretScanningV2Keys.configByProjectId>
     >,

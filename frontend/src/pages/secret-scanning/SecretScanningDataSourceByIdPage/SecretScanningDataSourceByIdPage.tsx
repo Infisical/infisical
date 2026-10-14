@@ -6,8 +6,6 @@ import {
   CopyIcon,
   DatabaseIcon,
   EllipsisIcon,
-  PauseIcon,
-  PlayIcon,
   ScanSearchIcon
 } from "lucide-react";
 
@@ -51,8 +49,7 @@ import {
   SecretScanningFindingStatus,
   useGetSecretScanningDataSource,
   useListSecretScanningFindings,
-  useTriggerSecretScanningDataSource,
-  useUpdateSecretScanningDataSource
+  useTriggerSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
 
 import { DataSourceStatusBadge } from "../components/DataSourceStatusBadge";
@@ -101,7 +98,6 @@ const PageContent = () => {
   );
 
   const triggerDataSourceScan = useTriggerSecretScanningDataSource();
-  const updateDataSource = useUpdateSecretScanningDataSource();
 
   const details = SECRET_SCANNING_DATA_SOURCE_MAP[type];
 
@@ -155,22 +151,6 @@ const PageContent = () => {
 
     createNotification({
       text: `Scan triggered for "${dataSource.name}"`,
-      type: "success"
-    });
-  };
-
-  const handleToggleScanNewCommits = async () => {
-    const isScanNewCommitsEnabled = !dataSource.isScanNewCommitsEnabled;
-
-    await updateDataSource.mutateAsync({
-      dataSourceId: dataSource.id,
-      type: dataSource.type,
-      isScanNewCommitsEnabled,
-      projectId: dataSource.projectId
-    });
-
-    createNotification({
-      text: `Scanning new commits ${isScanNewCommitsEnabled ? "enabled" : "disabled"} for "${dataSource.name}"`,
       type: "success"
     });
   };
@@ -234,20 +214,6 @@ const PageContent = () => {
                     >
                       <ScanSearchIcon />
                       Scan All {resourceDetails.pluralTitle}
-                    </DropdownMenuItem>
-                  )}
-                </ProjectPermissionCan>
-                <ProjectPermissionCan
-                  I={ProjectPermissionSecretScanningDataSourceActions.Edit}
-                  a={ProjectPermissionSub.SecretScanningDataSources}
-                >
-                  {(isAllowed: boolean) => (
-                    <DropdownMenuItem
-                      isDisabled={!isAllowed || updateDataSource.isPending}
-                      onClick={handleToggleScanNewCommits}
-                    >
-                      {dataSource.isScanNewCommitsEnabled ? <PauseIcon /> : <PlayIcon />}
-                      {dataSource.isScanNewCommitsEnabled ? "Disable" : "Enable"} Scan New Commits
                     </DropdownMenuItem>
                   )}
                 </ProjectPermissionCan>

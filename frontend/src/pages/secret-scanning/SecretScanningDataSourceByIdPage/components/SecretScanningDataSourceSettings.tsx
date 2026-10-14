@@ -237,7 +237,9 @@ export const SecretScanningDataSourceSettings = ({ dataSource, onDeleted }: Prop
         <Card>
           <CardHeader>
             <CardTitle>Scanning</CardTitle>
-            <CardDescription>When {dataSource.name} is scanned for secrets.</CardDescription>
+            <CardDescription>
+              Choose which {pluralNoun} and commits are scanned for secrets.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <FieldGroup>
