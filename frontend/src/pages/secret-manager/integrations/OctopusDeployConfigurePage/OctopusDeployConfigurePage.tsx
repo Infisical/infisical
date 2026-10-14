@@ -9,12 +9,15 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Card,
+  CardContent,
+  CardFooter,
   CardHeader,
   CardTitle,
   Combobox,
   Field,
   FieldError,
   FieldLabel,
+  FieldSeparator,
   SecretPathInput,
   Spinner
 } from "@app/components/v3";
@@ -175,16 +178,16 @@ export const OctopusDeployConfigurePage = () => {
       <Card className="w-full max-w-4xl">
         <CardHeader>
           <CardTitle>
-            <SiOctopusdeploy size="1.2rem" className="mr-2 mb-1 inline-block" />
+            <SiOctopusdeploy size="1.2rem" />
             Octopus Deploy Integration
           </CardTitle>
         </CardHeader>
-        <div className="grid grid-cols-2 gap-4">
+        <CardContent className="grid grid-cols-2 gap-4">
           <Controller
             control={control}
             name="sourceEnvironment"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
+              <Field data-invalid={Boolean(error)}>
                 <FieldLabel htmlFor="OctopusDeployConfigurePage-field-1">
                   Project Environment
                 </FieldLabel>
@@ -214,7 +217,7 @@ export const OctopusDeployConfigurePage = () => {
             control={control}
             name="secretPath"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
+              <Field data-invalid={Boolean(error)}>
                 <FieldLabel htmlFor="OctopusDeployConfigurePage-field-2">Secrets Path</FieldLabel>
                 <SecretPathInput
                   id="OctopusDeployConfigurePage-field-2"
@@ -228,16 +231,12 @@ export const OctopusDeployConfigurePage = () => {
               </Field>
             )}
           />
-          <div className="col-span-2 flex w-full flex-row items-center pb-2">
-            <div className="w-full border-t border-border-strong" />
-            <span className="mx-2 text-xs whitespace-nowrap text-muted">Sync To</span>
-            <div className="w-full border-t border-border-strong" />
-          </div>
+          <FieldSeparator className="col-span-2">Sync To</FieldSeparator>
           <Controller
             control={control}
             name="targetSpace"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
+              <Field data-invalid={Boolean(error)}>
                 <FieldLabel htmlFor="OctopusDeployConfigurePage-field-3">
                   Octopus Deploy Space
                 </FieldLabel>
@@ -269,7 +268,7 @@ export const OctopusDeployConfigurePage = () => {
             control={control}
             name="targetResource"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
+              <Field data-invalid={Boolean(error)}>
                 <FieldLabel htmlFor="OctopusDeployConfigurePage-field-4">{`Octopus Deploy ${currentScope}`}</FieldLabel>
                 <Combobox
                   id="OctopusDeployConfigurePage-field-4"
@@ -300,7 +299,7 @@ export const OctopusDeployConfigurePage = () => {
             control={control}
             name="targetEnvironments"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
+              <Field data-invalid={Boolean(error)}>
                 <FieldLabel htmlFor="OctopusDeployConfigurePage-field-5">
                   Octopus Deploy Environments
                   <span className="text-xs text-accent italic">- Optional</span>
@@ -336,7 +335,7 @@ export const OctopusDeployConfigurePage = () => {
             control={control}
             name="targetRoles"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
+              <Field data-invalid={Boolean(error)}>
                 <FieldLabel htmlFor="OctopusDeployConfigurePage-field-6">
                   Octopus Deploy Target Tags
                   <span className="text-xs text-accent italic">- Optional</span>
@@ -372,7 +371,7 @@ export const OctopusDeployConfigurePage = () => {
             control={control}
             name="targetMachines"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
+              <Field data-invalid={Boolean(error)}>
                 <FieldLabel htmlFor="OctopusDeployConfigurePage-field-7">
                   Octopus Deploy Targets
                   <span className="text-xs text-accent italic">- Optional</span>
@@ -408,7 +407,7 @@ export const OctopusDeployConfigurePage = () => {
             control={control}
             name="targetProcesses"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
+              <Field data-invalid={Boolean(error)}>
                 <FieldLabel htmlFor="OctopusDeployConfigurePage-field-8">
                   Octopus Deploy Processes
                   <span className="text-xs text-accent italic">- Optional</span>
@@ -444,7 +443,7 @@ export const OctopusDeployConfigurePage = () => {
             control={control}
             name="targetActions"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
+              <Field data-invalid={Boolean(error)}>
                 <FieldLabel htmlFor="OctopusDeployConfigurePage-field-9">
                   Octopus Deploy Deployment Steps
                   <span className="text-xs text-accent italic">- Optional</span>
@@ -480,7 +479,7 @@ export const OctopusDeployConfigurePage = () => {
             control={control}
             name="targetChannels"
             render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
+              <Field data-invalid={Boolean(error)}>
                 <FieldLabel htmlFor="OctopusDeployConfigurePage-field-10">
                   Octopus Deploy Channels
                   <span className="text-xs text-accent italic">- Optional</span>
@@ -512,16 +511,17 @@ export const OctopusDeployConfigurePage = () => {
               </Field>
             )}
           />
-        </div>
-        <Button
-          type="submit"
-          className="mt-4"
-          isPending={createIntegration.isPending}
-          isDisabled={createIntegration.isPending || !octopusDeployResources?.length}
-          variant="project"
-        >
-          Create Integration
-        </Button>
+        </CardContent>
+        <CardFooter className="justify-end border-t pt-4">
+          <Button
+            type="submit"
+            isPending={createIntegration.isPending}
+            isDisabled={createIntegration.isPending || !octopusDeployResources?.length}
+            variant="project"
+          >
+            Create Integration
+          </Button>
+        </CardFooter>
       </Card>
     </form>
   );

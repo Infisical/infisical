@@ -4,6 +4,8 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardContent,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -53,32 +55,31 @@ export const RailwayAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Railway Integration</CardTitle>
         </CardHeader>
-        <Field className="mb-4" data-invalid={apiKeyErrorText !== ""}>
-          <FieldLabel htmlFor="RailwayAuthorizePage-field-1">Railway API Key</FieldLabel>
-          <Input
-            id="RailwayAuthorizePage-field-1"
-            aria-describedby="RailwayAuthorizePage-field-1-feedback"
-            isError={apiKeyErrorText !== ""}
-            placeholder=""
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-          />
-          {apiKeyErrorText !== "" && (
-            <FieldError id="RailwayAuthorizePage-field-1-feedback">{apiKeyErrorText}</FieldError>
-          )}
-        </Field>
-        <Button
-          onClick={handleButtonClick}
-          className="mt-4"
-          isPending={isLoading}
-          variant="project"
-        >
-          Connect to Railway
-        </Button>
+        <CardContent className="flex flex-col gap-4">
+          <Field data-invalid={apiKeyErrorText !== ""}>
+            <FieldLabel htmlFor="RailwayAuthorizePage-field-1">Railway API Key</FieldLabel>
+            <Input
+              id="RailwayAuthorizePage-field-1"
+              aria-describedby="RailwayAuthorizePage-field-1-feedback"
+              isError={apiKeyErrorText !== ""}
+              placeholder=""
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+            />
+            {apiKeyErrorText !== "" && (
+              <FieldError id="RailwayAuthorizePage-field-1-feedback">{apiKeyErrorText}</FieldError>
+            )}
+          </Field>
+        </CardContent>
+        <CardFooter className="justify-end border-t pt-4">
+          <Button onClick={handleButtonClick} isPending={isLoading} variant="project">
+            Connect to Railway
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );

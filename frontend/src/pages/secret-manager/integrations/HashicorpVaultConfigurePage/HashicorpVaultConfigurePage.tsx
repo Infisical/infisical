@@ -1,24 +1,25 @@
 import { useMemo } from "react";
 import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
-import {
-  faArrowUpRightFromSquare,
-  faBookOpen,
-  faBugs,
-  faCircleInfo
-} from "@fortawesome/free-solid-svg-icons";
+import { faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
+  DocumentationLinkBadge,
   Field,
   FieldDescription,
   FieldError,
@@ -118,51 +119,34 @@ export const HashicorpVaultConfigurePage = () => {
   };
 
   return integrationAuth ? (
-    <div className="flex h-full w-full flex-col items-center justify-center">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-6">
       <Helmet>
         <title>Set Up Vault Integration</title>
       </Helmet>
-      <Card className="w-full max-w-lg">
-        <CardHeader>
-          <CardTitle>
-            <div className="flex flex-row items-center">
-              <div className="inline-flex items-center">
-                <img
-                  src="/images/integrations/Vault.png"
-                  height={30}
-                  width={30}
-                  alt="HCP Vault logo"
-                />
-              </div>
-              <span className="ml-2.5">HashiCorp Vault Integration</span>
-              <a
-                href="https://infisical.com/docs/integrations/cloud/hashicorp-vault"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  Docs
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="text-xxs mb-[0.07rem] ml-1.5"
-                  />
-                </div>
-              </a>
-            </div>
-          </CardTitle>
-          <CardDescription>
-            Select which environment or folder in Infisical you want to sync to which path in
-            HashiCorp Vault.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(handleFormSubmit)} noValidate>
+      <form onSubmit={handleSubmit(handleFormSubmit)} noValidate className="w-full max-w-lg">
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <img
+                src="/images/integrations/Vault.png"
+                height={30}
+                width={30}
+                alt="HCP Vault logo"
+              />
+              HashiCorp Vault Integration
+              <DocumentationLinkBadge href="https://infisical.com/docs/integrations/cloud/hashicorp-vault" />
+            </CardTitle>
+            <CardDescription>
+              Select which environment or folder in Infisical you want to sync to which path in
+              HashiCorp Vault.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
             <Controller
               control={control}
               name="selectedSourceEnvironment"
               render={({ field, fieldState: { error } }) => (
-                <Field className="mb-4" data-invalid={Boolean(error)}>
+                <Field data-invalid={Boolean(error)}>
                   <FieldLabel htmlFor="HashicorpVaultConfigurePage-field-1">
                     Project Environment
                     <span className="text-danger">*</span>
@@ -200,7 +184,7 @@ export const HashicorpVaultConfigurePage = () => {
               control={control}
               name="secretPath"
               render={({ field, fieldState: { error } }) => (
-                <Field className="mb-4" data-invalid={Boolean(error)}>
+                <Field data-invalid={Boolean(error)}>
                   <FieldLabel htmlFor="HashicorpVaultConfigurePage-field-2">
                     Secrets Path
                     <span className="text-danger">*</span>
@@ -233,7 +217,7 @@ export const HashicorpVaultConfigurePage = () => {
               control={control}
               name="vaultEnginePath"
               render={({ field, fieldState: { error } }) => (
-                <Field className="mb-4" data-invalid={Boolean(error)}>
+                <Field data-invalid={Boolean(error)}>
                   <FieldLabel htmlFor="HashicorpVaultConfigurePage-field-3">
                     Vault KV Secrets Engine Path
                     <span className="text-danger">*</span>
@@ -266,7 +250,7 @@ export const HashicorpVaultConfigurePage = () => {
               control={control}
               name="vaultSecretPath"
               render={({ field, fieldState: { error } }) => (
-                <Field className="mb-4" data-invalid={Boolean(error)}>
+                <Field data-invalid={Boolean(error)}>
                   <FieldLabel htmlFor="HashicorpVaultConfigurePage-field-4">
                     Vault Secret(s) Path
                     <span className="text-danger">*</span>
@@ -294,24 +278,22 @@ export const HashicorpVaultConfigurePage = () => {
                 </Field>
               )}
             />
-
+          </CardContent>
+          <CardFooter className="justify-end border-t pt-4">
             <Button type="submit" isPending={isSubmitting} variant="project">
               Create Integration
             </Button>
-          </form>
-        </CardContent>
-      </Card>
-      <div className="mt-6 w-full max-w-md border-t border-border-faint" />
-      <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-border-control bg-surface-raised p-4">
-        <div className="flex flex-row items-center">
-          <FontAwesomeIcon icon={faCircleInfo} className="text-xl text-foreground-secondary" />{" "}
-          <span className="text-md ml-3 text-foreground">Pro Tip</span>
-        </div>
-        <span className="mt-4 text-sm text-label">
+          </CardFooter>
+        </Card>
+      </form>
+      <Alert variant="info" className="w-full max-w-lg">
+        <InfoIcon />
+        <AlertTitle>Pro Tip</AlertTitle>
+        <AlertDescription>
           After creating an integration, your secrets will start syncing immediately. This might
           cause an unexpected override of current secrets in Vault with secrets from Infisical.
-        </span>
-      </div>
+        </AlertDescription>
+      </Alert>
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">

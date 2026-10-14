@@ -4,6 +4,8 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardContent,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -133,146 +135,151 @@ export const RailwayConfigurePage = () => {
     targetServices &&
     filteredTargetServices ? (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Railway Integration</CardTitle>
         </CardHeader>
-        <Field className="mt-4 mb-4">
-          <FieldLabel htmlFor="RailwayConfigurePage-field-1">Project Environment</FieldLabel>
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-          >
-            <SelectTrigger
-              id="RailwayConfigurePage-field-1"
-              aria-describedby="RailwayConfigurePage-field-1-feedback"
-              className="w-full"
+        <CardContent className="flex flex-col gap-4">
+          <Field>
+            <FieldLabel htmlFor="RailwayConfigurePage-field-1">Project Environment</FieldLabel>
+            <Select
+              value={selectedSourceEnvironment}
+              onValueChange={(val) => setSelectedSourceEnvironment(val)}
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {currentProject?.environments.map((sourceEnvironment) => (
-                <SelectItem
-                  value={sourceEnvironment.slug}
-                  key={`source-environment-${sourceEnvironment.slug}`}
-                >
-                  {sourceEnvironment.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field className="mb-4">
-          <FieldLabel htmlFor="RailwayConfigurePage-field-2">Secrets Path</FieldLabel>
-          <Input
-            id="RailwayConfigurePage-field-2"
-            aria-describedby="RailwayConfigurePage-field-2-feedback"
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-          />
-        </Field>
-        <Field className="mb-4">
-          <FieldLabel htmlFor="RailwayConfigurePage-field-3">Railway Project</FieldLabel>
-          <Select
-            value={targetAppId}
-            onValueChange={(val) => setTargetAppId(val)}
-            disabled={integrationAuthApps.length === 0}
-          >
-            <SelectTrigger
-              id="RailwayConfigurePage-field-3"
-              aria-describedby="RailwayConfigurePage-field-3-feedback"
-              className="w-full"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {integrationAuthApps.length > 0 ? (
-                integrationAuthApps.map((integrationAuthApp) => (
+              <SelectTrigger
+                id="RailwayConfigurePage-field-1"
+                aria-describedby="RailwayConfigurePage-field-1-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {currentProject?.environments.map((sourceEnvironment) => (
                   <SelectItem
-                    value={integrationAuthApp.appId as string}
-                    key={`target-app-${integrationAuthApp.appId as string}`}
+                    value={sourceEnvironment.slug}
+                    key={`source-environment-${sourceEnvironment.slug}`}
                   >
-                    {integrationAuthApp.name}
+                    {sourceEnvironment.name}
                   </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="none" key="target-app-none">
-                  No projects found
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field className="mb-4">
-          <FieldLabel htmlFor="RailwayConfigurePage-field-4">
-            Railway Project Environment
-          </FieldLabel>
-          <Select
-            value={targetEnvironmentId}
-            onValueChange={(val) => setTargetEnvironmentId(val)}
-            disabled={targetEnvironments.length === 0}
-          >
-            <SelectTrigger
-              id="RailwayConfigurePage-field-4"
-              aria-describedby="RailwayConfigurePage-field-4-feedback"
-              className="w-full"
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="RailwayConfigurePage-field-2">Secrets Path</FieldLabel>
+            <Input
+              id="RailwayConfigurePage-field-2"
+              aria-describedby="RailwayConfigurePage-field-2-feedback"
+              value={secretPath}
+              onChange={(evt) => setSecretPath(evt.target.value)}
+              placeholder="Provide a path, default is /"
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="RailwayConfigurePage-field-3">Railway Project</FieldLabel>
+            <Select
+              value={targetAppId}
+              onValueChange={(val) => setTargetAppId(val)}
+              disabled={integrationAuthApps.length === 0}
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {targetEnvironments.length > 0 ? (
-                targetEnvironments.map((targetEnvironment) => (
+              <SelectTrigger
+                id="RailwayConfigurePage-field-3"
+                aria-describedby="RailwayConfigurePage-field-3-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {integrationAuthApps.length > 0 ? (
+                  integrationAuthApps.map((integrationAuthApp) => (
+                    <SelectItem
+                      value={integrationAuthApp.appId as string}
+                      key={`target-app-${integrationAuthApp.appId as string}`}
+                    >
+                      {integrationAuthApp.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" key="target-app-none">
+                    No projects found
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="RailwayConfigurePage-field-4">
+              Railway Project Environment
+            </FieldLabel>
+            <Select
+              value={targetEnvironmentId}
+              onValueChange={(val) => setTargetEnvironmentId(val)}
+              disabled={targetEnvironments.length === 0}
+            >
+              <SelectTrigger
+                id="RailwayConfigurePage-field-4"
+                aria-describedby="RailwayConfigurePage-field-4-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {targetEnvironments.length > 0 ? (
+                  targetEnvironments.map((targetEnvironment) => (
+                    <SelectItem
+                      value={targetEnvironment.environmentId as string}
+                      key={`target-environment-${targetEnvironment.environmentId as string}`}
+                    >
+                      {targetEnvironment.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" key="target-environment-none">
+                    No environments found
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="RailwayConfigurePage-field-5">
+              Railway Service (Optional)
+            </FieldLabel>
+            <Select
+              value={targetServiceId}
+              onValueChange={(val) => setTargetServiceId(val)}
+              disabled={targetServices.length === 0}
+            >
+              <SelectTrigger
+                id="RailwayConfigurePage-field-5"
+                aria-describedby="RailwayConfigurePage-field-5-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {filteredTargetServices.map((targetService) => (
                   <SelectItem
-                    value={targetEnvironment.environmentId as string}
-                    key={`target-environment-${targetEnvironment.environmentId as string}`}
+                    value={targetService.serviceId as string}
+                    key={`target-service-${targetService.serviceId as string}`}
                   >
-                    {targetEnvironment.name}
+                    {targetService.name}
                   </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="none" key="target-environment-none">
-                  No environments found
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field className="mb-4">
-          <FieldLabel htmlFor="RailwayConfigurePage-field-5">Railway Service (Optional)</FieldLabel>
-          <Select
-            value={targetServiceId}
-            onValueChange={(val) => setTargetServiceId(val)}
-            disabled={targetServices.length === 0}
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        </CardContent>
+        <CardFooter className="justify-end border-t pt-4">
+          <Button
+            onClick={handleButtonClick}
+            isPending={isLoading}
+            isDisabled={integrationAuthApps.length === 0}
+            variant="project"
           >
-            <SelectTrigger
-              id="RailwayConfigurePage-field-5"
-              aria-describedby="RailwayConfigurePage-field-5-feedback"
-              className="w-full"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {filteredTargetServices.map((targetService) => (
-                <SelectItem
-                  value={targetService.serviceId as string}
-                  key={`target-service-${targetService.serviceId as string}`}
-                >
-                  {targetService.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Button
-          onClick={handleButtonClick}
-          className="mt-4"
-          isPending={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
-          variant="project"
-        >
-          Create Integration
-        </Button>
+            Create Integration
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   ) : (

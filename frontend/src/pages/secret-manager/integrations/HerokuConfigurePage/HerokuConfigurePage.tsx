@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
-import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
+import { faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -10,9 +10,12 @@ import { z } from "zod";
 import {
   Button,
   Card,
+  CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
+  DocumentationLinkBadge,
   Field,
   FieldError,
   FieldLabel,
@@ -125,123 +128,35 @@ export const HerokuConfigurePage = () => {
       <Helmet>
         <title>Set Up Heroku Integration</title>
       </Helmet>
-      <Card className="w-full max-w-lg">
-        <CardHeader>
-          <CardTitle>
-            <div className="flex flex-row items-center">
-              <div className="flex items-center">
-                <img
-                  src="/images/integrations/Heroku.png"
-                  height={30}
-                  width={30}
-                  alt="Heroku logo"
-                />
-              </div>
-              <span className="ml-2">Heroku Integration </span>
-              <a
-                href="https://infisical.com/docs/integrations/cloud/heroku"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  Docs
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="text-xxs mb-[0.07rem] ml-1.5"
-                  />
-                </div>
-              </a>
-            </div>
-          </CardTitle>
-          <CardDescription>
-            Select which environment or folder in Infisical you want to sync to Heroku&apos;s
-            environment variables.
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit(onFormSubmit)} className="px-6">
-          <Controller
-            control={control}
-            name="selectedSourceEnvironment"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
-                <FieldLabel htmlFor="HerokuConfigurePage-field-1">Project Environment</FieldLabel>
-                <Select
-                  defaultValue={field.value}
-                  value={field.value}
-                  name={field.name}
-                  onValueChange={(e) => onChange(e)}
-                >
-                  <SelectTrigger
-                    id="HerokuConfigurePage-field-1"
-                    aria-describedby="HerokuConfigurePage-field-1-feedback"
-                    isError={Boolean(error)}
-                    className="w-full"
-                    ref={field.ref}
-                    onBlur={field.onBlur}
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {currentProject?.environments.map((sourceEnvironment) => (
-                      <SelectItem
-                        value={sourceEnvironment.slug}
-                        key={`source-environment-${sourceEnvironment.slug}`}
-                      >
-                        {sourceEnvironment.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {Boolean(error) && (
-                  <FieldError id="HerokuConfigurePage-field-1-feedback">
-                    {error?.message}
-                  </FieldError>
-                )}
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            defaultValue=""
-            name="secretPath"
-            render={({ field, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
-                <FieldLabel htmlFor="HerokuConfigurePage-field-2">Secrets Path</FieldLabel>
-                <SecretPathInput
-                  id="HerokuConfigurePage-field-2"
-                  aria-describedby="HerokuConfigurePage-field-2-feedback"
-                  isError={Boolean(error)}
-                  {...field}
-                  placeholder="/"
-                  environment={selectedSourceEnvironment}
-                />
-                {Boolean(error) && (
-                  <FieldError id="HerokuConfigurePage-field-2-feedback">
-                    {error?.message}
-                  </FieldError>
-                )}
-              </Field>
-            )}
-          />
-          <Controller
-            control={control}
-            name="targetApp"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => {
-              return (
-                <Field className="mb-4" data-invalid={Boolean(error)}>
-                  <FieldLabel htmlFor="HerokuConfigurePage-field-3">Heroku App</FieldLabel>
+      <form onSubmit={handleSubmit(onFormSubmit)} className="w-full max-w-lg">
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <img src="/images/integrations/Heroku.png" height={30} width={30} alt="Heroku logo" />
+              Heroku Integration
+              <DocumentationLinkBadge href="https://infisical.com/docs/integrations/cloud/heroku" />
+            </CardTitle>
+            <CardDescription>
+              Select which environment or folder in Infisical you want to sync to Heroku&apos;s
+              environment variables.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <Controller
+              control={control}
+              name="selectedSourceEnvironment"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="HerokuConfigurePage-field-1">Project Environment</FieldLabel>
                   <Select
+                    defaultValue={field.value}
                     value={field.value}
                     name={field.name}
-                    onValueChange={(e) => {
-                      if (e === "") return;
-                      onChange(e);
-                    }}
+                    onValueChange={(e) => onChange(e)}
                   >
                     <SelectTrigger
-                      id="HerokuConfigurePage-field-3"
-                      aria-describedby="HerokuConfigurePage-field-3-feedback"
+                      id="HerokuConfigurePage-field-1"
+                      aria-describedby="HerokuConfigurePage-field-1-feedback"
                       isError={Boolean(error)}
                       className="w-full"
                       ref={field.ref}
@@ -250,78 +165,149 @@ export const HerokuConfigurePage = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {integrationAuthApps.length > 0 ? (
-                        integrationAuthApps.map((integrationAuthApp) => (
-                          <SelectItem
-                            value={String(integrationAuthApp.name as string)}
-                            key={`target-app-${String(integrationAuthApp.appId)}`}
-                          >
-                            {integrationAuthApp.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="none" key="target-app-none">
-                          No apps found
+                      {currentProject?.environments.map((sourceEnvironment) => (
+                        <SelectItem
+                          value={sourceEnvironment.slug}
+                          key={`source-environment-${sourceEnvironment.slug}`}
+                        >
+                          {sourceEnvironment.name}
                         </SelectItem>
-                      )}
+                      ))}
                     </SelectContent>
                   </Select>
                   {Boolean(error) && (
-                    <FieldError id="HerokuConfigurePage-field-3-feedback">
+                    <FieldError id="HerokuConfigurePage-field-1-feedback">
                       {error?.message}
                     </FieldError>
                   )}
                 </Field>
-              );
-            }}
-          />
-          <Controller
-            control={control}
-            name="initialSyncBehavior"
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <Field className="mb-4" data-invalid={Boolean(error)}>
-                <FieldLabel htmlFor="HerokuConfigurePage-field-4">Initial Sync Behavior</FieldLabel>
-                <Select value={field.value} name={field.name} onValueChange={(e) => onChange(e)}>
-                  <SelectTrigger
-                    id="HerokuConfigurePage-field-4"
-                    aria-describedby="HerokuConfigurePage-field-4-feedback"
+              )}
+            />
+            <Controller
+              control={control}
+              defaultValue=""
+              name="secretPath"
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="HerokuConfigurePage-field-2">Secrets Path</FieldLabel>
+                  <SecretPathInput
+                    id="HerokuConfigurePage-field-2"
+                    aria-describedby="HerokuConfigurePage-field-2-feedback"
                     isError={Boolean(error)}
-                    className="w-full"
-                    ref={field.ref}
-                    onBlur={field.onBlur}
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {initialSyncBehaviors.map((b) => {
-                      return (
-                        <SelectItem value={b.value} key={`sync-behavior-${b.value}`}>
-                          {b.label}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                {Boolean(error) && (
-                  <FieldError id="HerokuConfigurePage-field-4-feedback">
-                    {error?.message}
-                  </FieldError>
-                )}
-              </Field>
-            )}
-          />
-          <Button
-            className="mt-2 mb-6 ml-auto"
-            size="sm"
-            type="submit"
-            isPending={isLoading}
-            isDisabled={integrationAuthApps.length === 0}
-            variant="project"
-          >
-            Create Integration
-          </Button>
-        </form>
-      </Card>
+                    {...field}
+                    placeholder="/"
+                    environment={selectedSourceEnvironment}
+                  />
+                  {Boolean(error) && (
+                    <FieldError id="HerokuConfigurePage-field-2-feedback">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
+              )}
+            />
+            <Controller
+              control={control}
+              name="targetApp"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => {
+                return (
+                  <Field data-invalid={Boolean(error)}>
+                    <FieldLabel htmlFor="HerokuConfigurePage-field-3">Heroku App</FieldLabel>
+                    <Select
+                      value={field.value}
+                      name={field.name}
+                      onValueChange={(e) => {
+                        if (e === "") return;
+                        onChange(e);
+                      }}
+                    >
+                      <SelectTrigger
+                        id="HerokuConfigurePage-field-3"
+                        aria-describedby="HerokuConfigurePage-field-3-feedback"
+                        isError={Boolean(error)}
+                        className="w-full"
+                        ref={field.ref}
+                        onBlur={field.onBlur}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {integrationAuthApps.length > 0 ? (
+                          integrationAuthApps.map((integrationAuthApp) => (
+                            <SelectItem
+                              value={String(integrationAuthApp.name as string)}
+                              key={`target-app-${String(integrationAuthApp.appId)}`}
+                            >
+                              {integrationAuthApp.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" key="target-app-none">
+                            No apps found
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {Boolean(error) && (
+                      <FieldError id="HerokuConfigurePage-field-3-feedback">
+                        {error?.message}
+                      </FieldError>
+                    )}
+                  </Field>
+                );
+              }}
+            />
+            <Controller
+              control={control}
+              name="initialSyncBehavior"
+              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="HerokuConfigurePage-field-4">
+                    Initial Sync Behavior
+                  </FieldLabel>
+                  <Select value={field.value} name={field.name} onValueChange={(e) => onChange(e)}>
+                    <SelectTrigger
+                      id="HerokuConfigurePage-field-4"
+                      aria-describedby="HerokuConfigurePage-field-4-feedback"
+                      isError={Boolean(error)}
+                      className="w-full"
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {initialSyncBehaviors.map((b) => {
+                        return (
+                          <SelectItem value={b.value} key={`sync-behavior-${b.value}`}>
+                            {b.label}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {Boolean(error) && (
+                    <FieldError id="HerokuConfigurePage-field-4-feedback">
+                      {error?.message}
+                    </FieldError>
+                  )}
+                </Field>
+              )}
+            />
+          </CardContent>
+          <CardFooter className="justify-end border-t pt-4">
+            <Button
+              size="sm"
+              type="submit"
+              isPending={isLoading}
+              isDisabled={integrationAuthApps.length === 0}
+              variant="project"
+            >
+              Create Integration
+            </Button>
+          </CardFooter>
+        </Card>
+      </form>
       {/* {integrationType === "App" && <>
       <div className="mt-6 w-full max-w-md border-t border-border-faint" />
       <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-border-control bg-surface-raised p-4">

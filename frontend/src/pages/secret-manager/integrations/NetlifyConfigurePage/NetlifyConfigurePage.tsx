@@ -4,6 +4,8 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardContent,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -100,108 +102,111 @@ export const NetlifyConfigurePage = () => {
     targetApp &&
     targetEnvironment ? (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Netlify Integration</CardTitle>
         </CardHeader>
-        <Field className="mb-4">
-          <FieldLabel htmlFor="NetlifyConfigurePage-field-1">Project Environment</FieldLabel>
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-          >
-            <SelectTrigger
-              id="NetlifyConfigurePage-field-1"
-              aria-describedby="NetlifyConfigurePage-field-1-feedback"
-              className="w-full"
+        <CardContent className="flex flex-col gap-4">
+          <Field>
+            <FieldLabel htmlFor="NetlifyConfigurePage-field-1">Project Environment</FieldLabel>
+            <Select
+              value={selectedSourceEnvironment}
+              onValueChange={(val) => setSelectedSourceEnvironment(val)}
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {currentProject?.environments.map((sourceEnvironment) => (
-                <SelectItem
-                  value={sourceEnvironment.slug}
-                  key={`source-environment-${sourceEnvironment.slug}`}
-                >
-                  {sourceEnvironment.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field className="mb-4">
-          <FieldLabel htmlFor="NetlifyConfigurePage-field-2">Secrets Path</FieldLabel>
-          <Input
-            id="NetlifyConfigurePage-field-2"
-            aria-describedby="NetlifyConfigurePage-field-2-feedback"
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-          />
-        </Field>
-        <Field className="mb-4">
-          <FieldLabel htmlFor="NetlifyConfigurePage-field-3">Netlify Site</FieldLabel>
-          <Select
-            value={targetApp}
-            onValueChange={(val) => setTargetApp(val)}
-            disabled={integrationAuthApps.length === 0}
-          >
-            <SelectTrigger
-              id="NetlifyConfigurePage-field-3"
-              aria-describedby="NetlifyConfigurePage-field-3-feedback"
-              className="w-full"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {integrationAuthApps.length > 0 ? (
-                integrationAuthApps.map((integrationAuthApp) => (
+              <SelectTrigger
+                id="NetlifyConfigurePage-field-1"
+                aria-describedby="NetlifyConfigurePage-field-1-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {currentProject?.environments.map((sourceEnvironment) => (
                   <SelectItem
-                    value={integrationAuthApp.name}
-                    key={`target-app-${integrationAuthApp.name}`}
+                    value={sourceEnvironment.slug}
+                    key={`source-environment-${sourceEnvironment.slug}`}
                   >
-                    {integrationAuthApp.name}
+                    {sourceEnvironment.name}
                   </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="none" key="target-app-none">
-                  No sites found
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field className="mb-4">
-          <FieldLabel htmlFor="NetlifyConfigurePage-field-4">Netlify Context</FieldLabel>
-          <Select value={targetEnvironment} onValueChange={(val) => setTargetEnvironment(val)}>
-            <SelectTrigger
-              id="NetlifyConfigurePage-field-4"
-              aria-describedby="NetlifyConfigurePage-field-4-feedback"
-              className="w-full"
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="NetlifyConfigurePage-field-2">Secrets Path</FieldLabel>
+            <Input
+              id="NetlifyConfigurePage-field-2"
+              aria-describedby="NetlifyConfigurePage-field-2-feedback"
+              value={secretPath}
+              onChange={(evt) => setSecretPath(evt.target.value)}
+              placeholder="Provide a path, default is /"
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="NetlifyConfigurePage-field-3">Netlify Site</FieldLabel>
+            <Select
+              value={targetApp}
+              onValueChange={(val) => setTargetApp(val)}
+              disabled={integrationAuthApps.length === 0}
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {netlifyEnvironments.map((netlifyEnvironment) => (
-                <SelectItem
-                  value={netlifyEnvironment.slug}
-                  key={`target-environment-${netlifyEnvironment.slug}`}
-                >
-                  {netlifyEnvironment.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-        <Button
-          onClick={handleButtonClick}
-          className="mt-4"
-          isPending={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
-          variant="project"
-        >
-          Create Integration
-        </Button>
+              <SelectTrigger
+                id="NetlifyConfigurePage-field-3"
+                aria-describedby="NetlifyConfigurePage-field-3-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {integrationAuthApps.length > 0 ? (
+                  integrationAuthApps.map((integrationAuthApp) => (
+                    <SelectItem
+                      value={integrationAuthApp.name}
+                      key={`target-app-${integrationAuthApp.name}`}
+                    >
+                      {integrationAuthApp.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" key="target-app-none">
+                    No sites found
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="NetlifyConfigurePage-field-4">Netlify Context</FieldLabel>
+            <Select value={targetEnvironment} onValueChange={(val) => setTargetEnvironment(val)}>
+              <SelectTrigger
+                id="NetlifyConfigurePage-field-4"
+                aria-describedby="NetlifyConfigurePage-field-4-feedback"
+                className="w-full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {netlifyEnvironments.map((netlifyEnvironment) => (
+                  <SelectItem
+                    value={netlifyEnvironment.slug}
+                    key={`target-environment-${netlifyEnvironment.slug}`}
+                  >
+                    {netlifyEnvironment.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        </CardContent>
+        <CardFooter className="justify-end border-t pt-4">
+          <Button
+            onClick={handleButtonClick}
+            isPending={isLoading}
+            isDisabled={integrationAuthApps.length === 0}
+            variant="project"
+          >
+            Create Integration
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   ) : (

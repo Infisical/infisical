@@ -4,6 +4,8 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   Button,
   Card,
+  CardContent,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -63,54 +65,53 @@ export const LaravelForgeAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Laravel Forge Integration</CardTitle>
         </CardHeader>
-        <Field className="mb-4" data-invalid={apiKeyErrorText !== ""}>
-          <FieldLabel htmlFor="LaravelForgeAuthorizePage-field-1">
-            Laravel Forge Access Token
-          </FieldLabel>
-          <Input
-            id="LaravelForgeAuthorizePage-field-1"
-            aria-describedby="LaravelForgeAuthorizePage-field-1-feedback"
-            isError={apiKeyErrorText !== ""}
-            placeholder="Access Token"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-          />
-          {apiKeyErrorText !== "" && (
-            <FieldError id="LaravelForgeAuthorizePage-field-1-feedback">
-              {apiKeyErrorText}
-            </FieldError>
-          )}
-        </Field>
-        <Field className="mb-4" data-invalid={serverIdErrorText !== ""}>
-          <FieldLabel htmlFor="LaravelForgeAuthorizePage-field-2">
-            Laravel Forge Server ID
-          </FieldLabel>
-          <Input
-            id="LaravelForgeAuthorizePage-field-2"
-            aria-describedby="LaravelForgeAuthorizePage-field-2-feedback"
-            isError={serverIdErrorText !== ""}
-            placeholder="123456"
-            value={serverId}
-            onChange={(e) => setServerId(e.target.value)}
-          />
-          {serverIdErrorText !== "" && (
-            <FieldError id="LaravelForgeAuthorizePage-field-2-feedback">
-              {serverIdErrorText}
-            </FieldError>
-          )}
-        </Field>
-        <Button
-          onClick={handleButtonClick}
-          className="mt-4"
-          isPending={isLoading}
-          variant="project"
-        >
-          Connect to Laravel Forge
-        </Button>
+        <CardContent className="flex flex-col gap-4">
+          <Field data-invalid={apiKeyErrorText !== ""}>
+            <FieldLabel htmlFor="LaravelForgeAuthorizePage-field-1">
+              Laravel Forge Access Token
+            </FieldLabel>
+            <Input
+              id="LaravelForgeAuthorizePage-field-1"
+              aria-describedby="LaravelForgeAuthorizePage-field-1-feedback"
+              isError={apiKeyErrorText !== ""}
+              placeholder="Access Token"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+            />
+            {apiKeyErrorText !== "" && (
+              <FieldError id="LaravelForgeAuthorizePage-field-1-feedback">
+                {apiKeyErrorText}
+              </FieldError>
+            )}
+          </Field>
+          <Field data-invalid={serverIdErrorText !== ""}>
+            <FieldLabel htmlFor="LaravelForgeAuthorizePage-field-2">
+              Laravel Forge Server ID
+            </FieldLabel>
+            <Input
+              id="LaravelForgeAuthorizePage-field-2"
+              aria-describedby="LaravelForgeAuthorizePage-field-2-feedback"
+              isError={serverIdErrorText !== ""}
+              placeholder="123456"
+              value={serverId}
+              onChange={(e) => setServerId(e.target.value)}
+            />
+            {serverIdErrorText !== "" && (
+              <FieldError id="LaravelForgeAuthorizePage-field-2-feedback">
+                {serverIdErrorText}
+              </FieldError>
+            )}
+          </Field>
+        </CardContent>
+        <CardFooter className="justify-end border-t pt-4">
+          <Button onClick={handleButtonClick} isPending={isLoading} variant="project">
+            Connect to Laravel Forge
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );
