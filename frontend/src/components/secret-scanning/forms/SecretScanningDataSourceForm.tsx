@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button } from "@app/components/v3";
+import { Button, SheetFooter } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import {
@@ -51,6 +51,7 @@ export const SecretScanningDataSourceForm = ({
   const { name: sourceType } = SECRET_SCANNING_DATA_SOURCE_MAP[type];
 
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+  const formId = useId();
 
   const formMethods = useForm<TSecretScanningDataSourceForm>({
     resolver: zodResolver(SecretScanningDataSourceSchema),
@@ -109,6 +110,8 @@ export const SecretScanningDataSourceForm = ({
   const isFinalStep = selectedTabIndex === FORM_TABS.length - 1;
 
   const handleNext = async () => {
+    if (isSubmitting) return;
+
     if (isFinalStep) {
       handleSubmit(onSubmit)();
       return;
@@ -132,8 +135,15 @@ export const SecretScanningDataSourceForm = ({
   };
 
   return (
-    <form>
-      <FormProvider {...formMethods}>
+    <FormProvider {...formMethods}>
+      <form
+        id={formId}
+        className="min-h-0 flex-1 overflow-y-auto p-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          handleNext();
+        }}
+      >
         <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
           <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-border-control">
             {FORM_TABS.map((tab, index) => (
@@ -169,21 +179,21 @@ export const SecretScanningDataSourceForm = ({
             </Tab.Panel>
           </Tab.Panels>
         </Tab.Group>
-      </FormProvider>
-      <div className="flex w-full flex-row-reverse justify-between gap-4 pt-4">
+      </form>
+      <SheetFooter>
+        <Button type="button" onClick={handlePrev} isDisabled={isSubmitting} variant="ghost">
+          Back
+        </Button>
         <Button
-          onClick={handleNext}
-          type="button"
+          form={formId}
+          type="submit"
           isPending={isSubmitting}
           isDisabled={isSubmitting}
           variant="project"
         >
           {isFinalStep ? `${dataSource ? "Update" : "Create"} Data Source` : "Next"}
         </Button>
-        <Button type="button" onClick={handlePrev} isDisabled={isSubmitting} variant="ghost">
-          Back
-        </Button>
-      </div>
-    </form>
+      </SheetFooter>
+    </FormProvider>
   );
 };

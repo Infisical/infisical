@@ -4,6 +4,7 @@ import { Info } from "lucide-react";
 import { z } from "zod";
 
 import {
+  DialogBody,
   Field,
   FieldError,
   FieldLabel,
@@ -22,6 +23,7 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { BitbucketConnectionMethod, TBitbucketConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
+import { useAppConnectionForm } from "./AppConnectionFormContext";
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import {
   genericAppConnectionFieldsSchema,
@@ -51,6 +53,8 @@ type FormData = z.infer<typeof formSchema>;
 
 export const BitbucketConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
+  const { layout } = useAppConnectionForm();
+  const Body = layout === "dialog" ? DialogBody : "div";
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -64,79 +68,84 @@ export const BitbucketConnectionForm = ({ appConnection, onSubmit }: Props) => {
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        {!isUpdate && <GenericAppConnectionsFields />}
-        <Controller
-          name="method"
-          control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field className="mb-4">
-              <FieldLabel>
-                Method
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-sm">
-                    {`The method you would like to use to connect with ${
-                      APP_CONNECTION_MAP[AppConnection.Bitbucket].name
-                    }. This field cannot be changed after creation.`}
-                  </TooltipContent>
-                </Tooltip>
-              </FieldLabel>
-              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
-                <SelectTrigger className="w-full" isError={Boolean(error)}>
-                  <SelectValue placeholder="Select a method..." />
-                </SelectTrigger>
-                <SelectContent position="popper">
-                  {Object.values(BitbucketConnectionMethod).map((method) => {
-                    return (
-                      <SelectItem value={method} key={method}>
-                        {getAppConnectionMethodDetails(method).name}{" "}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-              <FieldError errors={[error]} />
-            </Field>
-          )}
-        />
-        <Controller
-          name="credentials.email"
-          control={control}
-          shouldUnregister
-          render={({ field, fieldState: { error } }) => (
-            <Field className="mb-4">
-              <FieldLabel htmlFor="email">Email</FieldLabel>
-              <Input
-                id="email"
-                {...field}
-                placeholder="user@example.com"
-                isError={Boolean(error?.message)}
-              />
-              <FieldError errors={[error]} />
-            </Field>
-          )}
-        />
-        <Controller
-          name="credentials.apiToken"
-          control={control}
-          shouldUnregister
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field className="mb-4">
-              <FieldLabel htmlFor="api-token">API Token</FieldLabel>
-              <SecretInput
-                aria-describedby={error ? "api-token-error" : undefined}
-                id="api-token"
-                isError={Boolean(error)}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-              />
-              <FieldError id="api-token-error" errors={[error]} />
-            </Field>
-          )}
-        />
+      <form
+        className={layout === "dialog" ? "flex min-h-0 flex-1 flex-col gap-6" : undefined}
+        onSubmit={handleSubmit(onSubmit)}
+      >
+        <Body>
+          {!isUpdate && <GenericAppConnectionsFields />}
+          <Controller
+            name="method"
+            control={control}
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel>
+                  Method
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm">
+                      {`The method you would like to use to connect with ${
+                        APP_CONNECTION_MAP[AppConnection.Bitbucket].name
+                      }. This field cannot be changed after creation.`}
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                  <SelectTrigger className="w-full" isError={Boolean(error)}>
+                    <SelectValue placeholder="Select a method..." />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {Object.values(BitbucketConnectionMethod).map((method) => {
+                      return (
+                        <SelectItem value={method} key={method}>
+                          {getAppConnectionMethodDetails(method).name}{" "}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+          <Controller
+            name="credentials.email"
+            control={control}
+            shouldUnregister
+            render={({ field, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel htmlFor="email">Email</FieldLabel>
+                <Input
+                  id="email"
+                  {...field}
+                  placeholder="user@example.com"
+                  isError={Boolean(error?.message)}
+                />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+          <Controller
+            name="credentials.apiToken"
+            control={control}
+            shouldUnregister
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel htmlFor="api-token">API Token</FieldLabel>
+                <SecretInput
+                  aria-describedby={error ? "api-token-error" : undefined}
+                  id="api-token"
+                  isError={Boolean(error)}
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
+                <FieldError id="api-token-error" errors={[error]} />
+              </Field>
+            )}
+          />
+        </Body>
         <AppConnectionFormFooter
           submitLabel={isUpdate ? "Update Credentials" : "Connect to Bitbucket"}
         />

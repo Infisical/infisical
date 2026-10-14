@@ -3,10 +3,13 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 
 import { TSecretScanningDataSourceForm } from "@app/components/secret-scanning/forms/schemas";
 import {
+  Button,
   DocumentationLinkBadge,
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
@@ -45,7 +48,18 @@ const Content = ({
     );
   }
 
-  return <SecretScanningDataSourceSelect onSelect={setSelectedDataSource} />;
+  return (
+    <>
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        <SecretScanningDataSourceSelect onSelect={setSelectedDataSource} />
+      </div>
+      <SheetFooter>
+        <SheetClose asChild>
+          <Button variant="ghost">Cancel</Button>
+        </SheetClose>
+      </SheetFooter>
+    </>
+  );
 };
 
 export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...props }: Props) => {
@@ -113,10 +127,7 @@ export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...p
       <SheetContent size="form" isPending={isSubmitting}>
         <SheetHeader>
           {selectedDataSource ? (
-            <>
-              <SheetTitle className="sr-only">Add Data Source</SheetTitle>
-              <SecretScanningDataSourceModalHeader isConfigured={false} type={selectedDataSource} />
-            </>
+            <SecretScanningDataSourceModalHeader isConfigured={false} type={selectedDataSource} />
           ) : (
             <>
               <SheetTitle className="flex items-center gap-x-2">
@@ -129,20 +140,18 @@ export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...p
             </>
           )}
         </SheetHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          <Content
-            onComplete={() => {
-              resetModal();
-              onOpenChange(false);
-            }}
-            onCancel={resetModal}
-            onSubmittingChange={setIsSubmitting}
-            selectedDataSource={selectedDataSource}
-            setSelectedDataSource={setSelectedDataSource}
-            initialFormData={initialFormData}
-            {...props}
-          />
-        </div>
+        <Content
+          onComplete={() => {
+            resetModal();
+            onOpenChange(false);
+          }}
+          onCancel={resetModal}
+          onSubmittingChange={setIsSubmitting}
+          selectedDataSource={selectedDataSource}
+          setSelectedDataSource={setSelectedDataSource}
+          initialFormData={initialFormData}
+          {...props}
+        />
       </SheetContent>
     </Sheet>
   );

@@ -8,6 +8,8 @@ import { z } from "zod";
 
 import {
   Button,
+  DialogBody,
+  DialogFooter,
   Field,
   FieldError,
   FieldLabel,
@@ -56,9 +58,11 @@ type FormData = z.infer<typeof formSchema>;
 
 export const GitHubRadarConnectionForm = ({ appConnection, projectId }: Props) => {
   const isUpdate = Boolean(appConnection);
-  const { onCancel } = useAppConnectionForm();
+  const { onCancel, layout } = useAppConnectionForm();
   const scopeVariant = useScopeVariant();
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const Body = layout === "dialog" ? DialogBody : "div";
+  const Footer = layout === "dialog" ? DialogFooter : SheetFooter;
 
   const {
     option: { appClientSlug },
@@ -138,63 +142,74 @@ export const GitHubRadarConnectionForm = ({ appConnection, projectId }: Props) =
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        {!isUpdate && <GenericAppConnectionsFields />}
-        <Controller
-          name="method"
-          control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field className="mb-4">
-              <FieldLabel>
-                Method
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-sm">
-                    The method you would like to use to connect with{" "}
-                    {APP_CONNECTION_MAP[AppConnection.GitHubRadar].name}. This field cannot be
-                    changed after creation.
-                  </TooltipContent>
-                </Tooltip>
-              </FieldLabel>
-              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
-                <SelectTrigger
-                  className="w-full"
-                  isError={Boolean(error?.message) || isMissingConfig}
-                >
-                  <SelectValue placeholder="Select a method..." />
-                </SelectTrigger>
-                <SelectContent position="popper">
-                  {Object.values(GitHubRadarConnectionMethod).map((method) => (
-                    <SelectItem value={method} key={method}>
-                      {getAppConnectionMethodDetails(method).name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FieldError>{getMethodErrorText(error)}</FieldError>
-            </Field>
-          )}
-        />
-        <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">
-          <Button
-            type="submit"
-            variant={scopeVariant}
-            isPending={isSubmitting || isRedirecting}
-            isDisabled={isSubmitting || (!isUpdate && !isDirty) || isMissingConfig || isRedirecting}
-          >
-            {isUpdate ? "Reconnect to GitHub" : "Connect to GitHub"}
-          </Button>
+      <form
+        className={layout === "dialog" ? "flex min-h-0 flex-1 flex-col gap-6" : undefined}
+        onSubmit={handleSubmit(onSubmit)}
+      >
+        <Body>
+          {!isUpdate && <GenericAppConnectionsFields />}
+          <Controller
+            name="method"
+            control={control}
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel>
+                  Method
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm">
+                      The method you would like to use to connect with{" "}
+                      {APP_CONNECTION_MAP[AppConnection.GitHubRadar].name}. This field cannot be
+                      changed after creation.
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+                  <SelectTrigger
+                    className="w-full"
+                    isError={Boolean(error?.message) || isMissingConfig}
+                  >
+                    <SelectValue placeholder="Select a method..." />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {Object.values(GitHubRadarConnectionMethod).map((method) => (
+                      <SelectItem value={method} key={method}>
+                        {getAppConnectionMethodDetails(method).name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldError>{getMethodErrorText(error)}</FieldError>
+              </Field>
+            )}
+          />
+        </Body>
+        <Footer
+          className={
+            layout === "dialog"
+              ? undefined
+              : "sticky bottom-0 -mx-4 items-center border-t bg-popover"
+          }
+        >
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             onClick={onCancel}
             isDisabled={isSubmitting || isRedirecting}
           >
             Cancel
           </Button>
-        </SheetFooter>
+          <Button
+            type="submit"
+            variant={layout === "dialog" ? "neutral" : scopeVariant}
+            isPending={isSubmitting || isRedirecting}
+            isDisabled={isSubmitting || (!isUpdate && !isDirty) || isMissingConfig || isRedirecting}
+          >
+            {isUpdate ? "Reconnect to GitHub" : "Connect to GitHub"}
+          </Button>
+        </Footer>
       </form>
     </FormProvider>
   );

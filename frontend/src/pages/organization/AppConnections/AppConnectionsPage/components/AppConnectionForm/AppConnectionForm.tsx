@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { InfoIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Button } from "@app/components/v3";
+import { Button, DialogBody, DialogFooter, SheetFooter } from "@app/components/v3";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { useScopeVariant } from "@app/hooks";
 import {
@@ -17,7 +17,7 @@ import { DiscriminativePick } from "@app/types";
 import { OnePassConnectionForm } from "./1PasswordConnectionForm";
 import { AdcsConnectionForm } from "./AdcsConnectionForm";
 import { AnthropicConnectionForm } from "./AnthropicConnectionForm";
-import { AppConnectionFormProvider } from "./AppConnectionFormContext";
+import { AppConnectionFormProvider, useAppConnectionForm } from "./AppConnectionFormContext";
 import { Auth0ConnectionForm } from "./Auth0ConnectionForm";
 import { AwsConnectionForm } from "./AwsConnectionForm";
 import { AzureADCSConnectionForm } from "./AzureADCSConnectionForm";
@@ -131,36 +131,42 @@ const RotationConfirmation = ({
   onCancel: () => void;
   isSubmitting: boolean;
 }) => {
+  const { layout } = useAppConnectionForm();
   const scopeVariant = useScopeVariant();
+  const Body = layout === "dialog" ? DialogBody : "div";
+  const Footer = layout === "dialog" ? DialogFooter : SheetFooter;
 
   return (
-    <div className="p-4">
-      <div className="flex flex-col rounded-xs border border-l-2 border-border-control border-l-project bg-surface-hover/80 px-4 py-3">
-        <div className="mb-1 flex items-center text-sm">
-          <InfoIcon className="mr-1.5 size-4 text-project" />
-          Automatic Credential Rotation
+    <>
+      <Body className={layout === "dialog" ? undefined : "min-h-0 flex-1 overflow-y-auto p-4"}>
+        <div className="flex flex-col rounded-xs border border-l-2 border-border-control border-l-project bg-surface-hover/80 px-4 py-3">
+          <div className="mb-1 flex items-center text-sm">
+            <InfoIcon className="mr-1.5 size-4 text-project" />
+            Automatic Credential Rotation
+          </div>
+          <p className="bor mt-1 text-sm text-foreground-soft">
+            Enabling automatic credential rotation will give Infisical full control over the
+            lifecycle of this credential. Infisical will automatically rotate the credential on the
+            schedule you configured and you will no longer be able to manage it manually. The
+            original credential provided will be revoked and replaced.
+          </p>
         </div>
-        <p className="bor mt-1 text-sm text-foreground-soft">
-          Enabling automatic credential rotation will give Infisical full control over the lifecycle
-          of this credential. Infisical will automatically rotate the credential on the schedule you
-          configured and you will no longer be able to manage it manually. The original credential
-          provided will be revoked and replaced.
-        </p>
-      </div>
-      <div className="mt-4 flex gap-3">
+      </Body>
+      <Footer>
+        <Button type="button" variant="ghost" onClick={onCancel} isDisabled={isSubmitting}>
+          Cancel
+        </Button>
         <Button
+          type="button"
           onClick={onConfirm}
-          variant={scopeVariant}
+          variant={layout === "dialog" ? "neutral" : scopeVariant}
           isPending={isSubmitting}
           isDisabled={isSubmitting}
         >
           I Understand
         </Button>
-        <Button variant="outline" onClick={onCancel} isDisabled={isSubmitting}>
-          Cancel
-        </Button>
-      </div>
-    </div>
+      </Footer>
+    </>
   );
 };
 
@@ -178,6 +184,7 @@ type UpdateFormProps = FormProps & {
 };
 
 const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps) => {
+  const { layout } = useAppConnectionForm();
   const [pendingFormData, setPendingFormData] = useState<AppConnectionFormData | null>(null);
   const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false);
   const createAppConnection = useCreateAppConnection();
@@ -410,9 +417,12 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
       )}
       <div
         className={
+          // eslint-disable-next-line no-nested-ternary
           pendingFormData
             ? "hidden"
-            : "flex flex-1 flex-col [&>form]:flex [&>form]:flex-1 [&>form]:flex-col [&>form]:px-4 [&>form]:pt-4"
+            : layout === "dialog"
+              ? undefined
+              : "flex flex-1 flex-col [&>form]:flex [&>form]:flex-1 [&>form]:flex-col [&>form]:px-4 [&>form]:pt-4"
         }
       >
         {renderForm()}
@@ -422,6 +432,7 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
 };
 
 const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
+  const { layout } = useAppConnectionForm();
   const [pendingFormData, setPendingFormData] = useState<AppConnectionFormData | null>(null);
   const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false);
   const updateAppConnection = useUpdateAppConnection();
@@ -715,9 +726,12 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       )}
       <div
         className={
+          // eslint-disable-next-line no-nested-ternary
           pendingFormData
             ? "hidden"
-            : "flex flex-1 flex-col [&>form]:flex [&>form]:flex-1 [&>form]:flex-col [&>form]:px-4 [&>form]:pt-4"
+            : layout === "dialog"
+              ? undefined
+              : "flex flex-1 flex-col [&>form]:flex [&>form]:flex-1 [&>form]:flex-col [&>form]:px-4 [&>form]:pt-4"
         }
       >
         {renderForm()}
@@ -729,6 +743,7 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
 type Props = {
   onCancel: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
+  layout?: "sheet" | "dialog";
   projectId?: string;
   projectType?: ProjectType;
 } & Pick<FormProps, "onComplete"> &
@@ -739,13 +754,17 @@ type Props = {
 export const AppConnectionForm = ({
   onCancel,
   onDirtyChange,
+  layout = "sheet",
   projectId,
   projectType,
   ...props
 }: Props) => {
   const { app, appConnection } = props;
 
-  const contextValue = useMemo(() => ({ onCancel, onDirtyChange }), [onCancel, onDirtyChange]);
+  const contextValue = useMemo(
+    () => ({ onCancel, onDirtyChange, layout }),
+    [onCancel, onDirtyChange, layout]
+  );
 
   return (
     <AppConnectionFormProvider value={contextValue}>

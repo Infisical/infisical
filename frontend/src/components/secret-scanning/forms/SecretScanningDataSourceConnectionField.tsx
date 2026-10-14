@@ -136,6 +136,7 @@ export const SecretScanningDataSourceConnectionField = ({
                         <>
                           <PersistedConnectionForm
                             app={app}
+                            layout="dialog"
                             projectId={currentProject.id}
                             projectType={currentProject.type}
                             onDirtyChange={setIsConnectionDirty}

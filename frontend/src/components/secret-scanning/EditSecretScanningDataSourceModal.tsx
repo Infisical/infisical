@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@app/components/v3";
+import { Sheet, SheetContent, SheetHeader } from "@app/components/v3";
 import { TSecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 
 import { SecretScanningDataSourceForm } from "./forms";
@@ -21,18 +21,15 @@ export const EditSecretScanningDataSourceModal = ({ dataSource, isOpen, onOpenCh
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent size="form" isPending={isSubmitting}>
         <SheetHeader>
-          <SheetTitle className="sr-only">Edit Data Source</SheetTitle>
           <SecretScanningDataSourceModalHeader isConfigured type={dataSource.type} />
         </SheetHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          <SecretScanningDataSourceForm
-            onComplete={() => onOpenChange(false)}
-            onCancel={() => onOpenChange(false)}
-            onSubmittingChange={setIsSubmitting}
-            dataSource={dataSource}
-            type={dataSource.type}
-          />
-        </div>
+        <SecretScanningDataSourceForm
+          onComplete={() => onOpenChange(false)}
+          onCancel={() => onOpenChange(false)}
+          onSubmittingChange={setIsSubmitting}
+          dataSource={dataSource}
+          type={dataSource.type}
+        />
       </SheetContent>
     </Sheet>
   );

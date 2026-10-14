@@ -10,6 +10,8 @@ import { z } from "zod";
 
 import {
   Button,
+  DialogBody,
+  DialogFooter,
   Field,
   FieldError,
   FieldLabel,
@@ -91,9 +93,11 @@ type FormData = z.infer<typeof formSchema>;
 
 export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit, projectId }: Props) => {
   const isUpdate = Boolean(appConnection);
-  const { onCancel } = useAppConnectionForm();
+  const { onCancel, layout } = useAppConnectionForm();
   const scopeVariant = useScopeVariant();
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const Body = layout === "dialog" ? DialogBody : "div";
+  const Footer = layout === "dialog" ? DialogFooter : SheetFooter;
 
   const {
     option: { oauthClientId },
@@ -215,150 +219,170 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        {!isUpdate && <GenericAppConnectionsFields />}
+      <form
+        className={layout === "dialog" ? "flex min-h-0 flex-1 flex-col gap-6" : undefined}
+        onSubmit={handleSubmit(onSubmit)}
+      >
+        <Body>
+          {!isUpdate && <GenericAppConnectionsFields />}
 
-        <Controller
-          name="credentials.instanceUrl"
-          control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field className="mb-4">
-              <FieldLabel htmlFor="gitlab-instance-url">
-                Self-hosted URL <span className="text-muted">(optional)</span>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-sm">
-                    Will default to GitLab Cloud if not specified.
-                  </TooltipContent>
-                </Tooltip>
-              </FieldLabel>
-              <Input
-                id="gitlab-instance-url"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder="https://gitlab.com"
-                isError={Boolean(error?.message)}
-              />
-              <FieldError errors={[error]} />
-            </Field>
-          )}
-        />
+          <Controller
+            name="credentials.instanceUrl"
+            control={control}
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel htmlFor="gitlab-instance-url">
+                  Self-hosted URL <span className="text-muted">(optional)</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm">
+                      Will default to GitLab Cloud if not specified.
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <Input
+                  id="gitlab-instance-url"
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                  placeholder="https://gitlab.com"
+                  isError={Boolean(error?.message)}
+                />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
 
-        <Controller
-          name="method"
-          control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field className="mb-4">
-              <FieldLabel>
-                Method
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-sm">
-                    The method you would like to use to connect with{" "}
-                    {APP_CONNECTION_MAP[AppConnection.GitLab].name}. This field cannot be changed
-                    after creation.
-                  </TooltipContent>
-                </Tooltip>
-              </FieldLabel>
-              <Select
-                disabled={isUpdate}
-                value={value}
-                onValueChange={(val) => {
-                  onChange(val);
-                  if (val === GitLabConnectionMethod.OAuth) {
-                    setValue("credentials.code", "custom");
-                  }
-                }}
-              >
-                <SelectTrigger
-                  className="w-full"
-                  isError={Boolean(error?.message) || isMissingConfig}
+          <Controller
+            name="method"
+            control={control}
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel>
+                  Method
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm">
+                      The method you would like to use to connect with{" "}
+                      {APP_CONNECTION_MAP[AppConnection.GitLab].name}. This field cannot be changed
+                      after creation.
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <Select
+                  disabled={isUpdate}
+                  value={value}
+                  onValueChange={(val) => {
+                    onChange(val);
+                    if (val === GitLabConnectionMethod.OAuth) {
+                      setValue("credentials.code", "custom");
+                    }
+                  }}
                 >
-                  <SelectValue placeholder="Select a method..." />
-                </SelectTrigger>
-                <SelectContent position="popper">
-                  {Object.values(GitLabConnectionMethod).map((method) => (
-                    <SelectItem value={method} key={method}>
-                      {getAppConnectionMethodDetails(method).name}{" "}
-                      {method === GitLabConnectionMethod.AccessToken ? " (Recommended)" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FieldError>{getMethodErrorText(error)}</FieldError>
-            </Field>
-          )}
-        />
-
-        {selectedMethod === GitLabConnectionMethod.AccessToken && (
-          <>
-            <Controller
-              name="credentials.accessTokenType"
-              control={control}
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <Field className="mb-4">
-                  <FieldLabel>Access Token Type</FieldLabel>
-                  <Select
-                    disabled={isUpdate}
-                    value={value}
-                    onValueChange={(val) => {
-                      onChange(val);
-                      if (val === GitLabConnectionMethod.OAuth) {
-                        setValue("credentials.code", "custom");
-                      }
-                    }}
+                  <SelectTrigger
+                    className="w-full"
+                    isError={Boolean(error?.message) || isMissingConfig}
                   >
-                    <SelectTrigger className="w-full" isError={Boolean(error?.message)}>
-                      <SelectValue placeholder="Select a type..." />
-                    </SelectTrigger>
-                    <SelectContent position="popper">
-                      {Object.values(GitLabAccessTokenType).map((method) => (
-                        <SelectItem value={method} key={method}>
-                          {method.charAt(0).toUpperCase() + method.slice(1)} Access Token
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FieldError errors={[error]} />
-                </Field>
-              )}
-            />
-            <Controller
-              name="credentials.accessToken"
-              control={control}
-              render={({ field: { value, onChange }, fieldState: { error } }) => (
-                <Field className="mb-4">
-                  <FieldLabel htmlFor="gitlab-access-token">
-                    Access Token
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-sm">Your GitLab Access Token</TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
-                  <SecretInput
-                    aria-describedby={error ? "gitlab-access-token-error" : undefined}
-                    id="gitlab-access-token"
-                    isError={Boolean(error)}
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                  />
-                  <FieldError id="gitlab-access-token-error" errors={[error]} />
-                </Field>
-              )}
-            />
-          </>
-        )}
+                    <SelectValue placeholder="Select a method..." />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {Object.values(GitLabConnectionMethod).map((method) => (
+                      <SelectItem value={method} key={method}>
+                        {getAppConnectionMethodDetails(method).name}{" "}
+                        {method === GitLabConnectionMethod.AccessToken ? " (Recommended)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldError>{getMethodErrorText(error)}</FieldError>
+              </Field>
+            )}
+          />
 
-        <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">
+          {selectedMethod === GitLabConnectionMethod.AccessToken && (
+            <>
+              <Controller
+                name="credentials.accessTokenType"
+                control={control}
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <Field className="mb-4">
+                    <FieldLabel>Access Token Type</FieldLabel>
+                    <Select
+                      disabled={isUpdate}
+                      value={value}
+                      onValueChange={(val) => {
+                        onChange(val);
+                        if (val === GitLabConnectionMethod.OAuth) {
+                          setValue("credentials.code", "custom");
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-full" isError={Boolean(error?.message)}>
+                        <SelectValue placeholder="Select a type..." />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {Object.values(GitLabAccessTokenType).map((method) => (
+                          <SelectItem value={method} key={method}>
+                            {method.charAt(0).toUpperCase() + method.slice(1)} Access Token
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FieldError errors={[error]} />
+                  </Field>
+                )}
+              />
+              <Controller
+                name="credentials.accessToken"
+                control={control}
+                render={({ field: { value, onChange }, fieldState: { error } }) => (
+                  <Field className="mb-4">
+                    <FieldLabel htmlFor="gitlab-access-token">
+                      Access Token
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-sm">
+                          Your GitLab Access Token
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <SecretInput
+                      aria-describedby={error ? "gitlab-access-token-error" : undefined}
+                      id="gitlab-access-token"
+                      isError={Boolean(error)}
+                      value={value}
+                      onChange={(e) => onChange(e.target.value)}
+                    />
+                    <FieldError id="gitlab-access-token-error" errors={[error]} />
+                  </Field>
+                )}
+              />
+            </>
+          )}
+        </Body>
+        <Footer
+          className={
+            layout === "dialog"
+              ? undefined
+              : "sticky bottom-0 -mx-4 items-center border-t bg-popover"
+          }
+        >
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onCancel}
+            isDisabled={isSubmitting || isRedirecting}
+          >
+            Cancel
+          </Button>
           <Button
             type="submit"
-            variant={scopeVariant}
+            variant={layout === "dialog" ? "neutral" : scopeVariant}
             isPending={isSubmitting || isRedirecting}
             isDisabled={
               isSubmitting ||
@@ -373,15 +397,7 @@ export const GitLabConnectionForm = ({ appConnection, onSubmit: formSubmit, proj
                 ? "Reconnect to GitLab"
                 : "Connect to GitLab"}
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            isDisabled={isSubmitting || isRedirecting}
-          >
-            Cancel
-          </Button>
-        </SheetFooter>
+        </Footer>
       </form>
     </FormProvider>
   );
