@@ -8,7 +8,7 @@ type Props = {
 
 export const IdentityAlertAction = ({ identityId }: Props) => (
   <AlertAction
-    identityId={identityId}
+    resourceId={identityId}
     renderPermissionGate={(render) => (
       <OrgPermissionCan I={OrgPermissionIdentityActions.Edit} a={OrgPermissionSubjects.Identity}>
         {render}

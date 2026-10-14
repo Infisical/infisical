@@ -6,6 +6,7 @@ import { cva, type VariantProps } from "cva";
 import { cn } from "@app/components/v3/utils";
 
 import { Loader } from "../Loader";
+import { getButtonLoaderVariant } from "./getButtonLoaderVariant";
 
 const buttonVariants = cva(
   cn(
@@ -106,7 +107,14 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ) : (
       <>
         {_children}
-        {isPending && <Loader aria-hidden size="sm" className="absolute rounded-xl" />}
+        {isPending && (
+          <Loader
+            aria-hidden
+            variant={getButtonLoaderVariant(variant)}
+            size="sm"
+            className="absolute rounded-xl"
+          />
+        )}
       </>
     );
 

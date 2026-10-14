@@ -232,6 +232,16 @@ export const ChefSyncFns = {
     gatewayPoolService: TChefSyncGatewayPoolService
   ) {
     const secretMap = payload.flatten();
+
+    if (Object.hasOwn(secretMap, "id")) {
+      throw new SecretSyncError({
+        message:
+          'Secret key "id" is reserved by Chef data bag items and cannot be synced. Rename the secret to sync it.',
+        secretKey: "id",
+        shouldRetry: false
+      });
+    }
+
     const {
       environment,
       syncOptions: { disableSecretDeletion, keySchema }

@@ -7,6 +7,8 @@ export enum PkiSync {
   GcpCertificateManager = "gcp-certificate-manager",
   CloudflareCustomCertificate = "cloudflare-custom-certificate",
   NetScaler = "netscaler",
+  PaloAltoNetworks = "palo-alto-networks",
+  PaloAltoNetworksSslTlsProfile = "palo-alto-networks-ssl-tls-profile",
   F5BigIp = "f5-big-ip",
   KempLoadMaster = "kemp-loadmaster",
   LinuxServer = "linux-server",

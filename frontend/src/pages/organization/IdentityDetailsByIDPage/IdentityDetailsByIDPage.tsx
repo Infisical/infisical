@@ -5,7 +5,6 @@ import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Alert,
   AlertDescription,
@@ -16,6 +15,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DeleteConfirmDialog,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -240,14 +240,15 @@ const Page = () => {
         handlePopUpOpen={handlePopUpOpen}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.deleteIdentity.isOpen}
         title={`Are you sure you want to delete ${
           (popUp?.deleteIdentity?.data as { name: string })?.name || ""
         }?`}
-        onChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() =>
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteIdentity", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() =>
           onDeleteIdentitySubmit(
             (popUp?.deleteIdentity?.data as { identityId: string })?.identityId
           )

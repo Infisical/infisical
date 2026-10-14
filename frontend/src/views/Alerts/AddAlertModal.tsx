@@ -1,5 +1,10 @@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@app/components/v3";
-import { AlertEventType, TAlert } from "@app/hooks/api/alerts";
+import {
+  AlertEventType,
+  AlertResourceType,
+  TAlert,
+  TAlertChannelPaywall
+} from "@app/hooks/api/alerts";
 
 import { AlertForm } from "./AlertForm";
 
@@ -7,7 +12,9 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   projectId?: string;
+  resourceType?: AlertResourceType;
   resourceId?: string;
+  channelPaywall?: TAlertChannelPaywall;
   alert?: TAlert;
   unavailableEventTypes?: AlertEventType[];
 };
@@ -16,7 +23,9 @@ export const AddAlertModal = ({
   isOpen,
   onOpenChange,
   projectId,
+  resourceType,
   resourceId,
+  channelPaywall,
   alert,
   unavailableEventTypes
 }: Props) => {
@@ -35,7 +44,9 @@ export const AddAlertModal = ({
           <AlertForm
             key={alert?.id ?? "new"}
             projectId={projectId}
+            resourceType={resourceType}
             resourceId={resourceId}
+            channelPaywall={channelPaywall}
             alert={alert}
             unavailableEventTypes={unavailableEventTypes}
             onComplete={() => onOpenChange(false)}
