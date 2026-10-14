@@ -246,7 +246,7 @@ export const AnnouncementModal = ({ announcements, isOpen, onOpenChange }: Props
       >
         <div
           className={cn(
-            "mx-auto flex h-full min-h-0 w-[calc(100%-7rem)] max-w-xl flex-col gap-3",
+            "mx-auto flex h-full min-h-0 w-full max-w-xl flex-col gap-3 sm:w-[calc(100%-7rem)]",
             !showPager && "w-full"
           )}
         >
