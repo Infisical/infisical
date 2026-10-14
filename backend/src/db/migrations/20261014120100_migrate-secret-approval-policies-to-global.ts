@@ -330,7 +330,7 @@ const readPolicyData = async (tx: Knex, policy: TLegacyPolicy, requests: TLegacy
 
   const approvers = await readLegacyApprovers(tx, LEGACY_TABLES, policyId);
   const bypassers = await readLegacyBypassers(tx, LEGACY_TABLES, policyId);
-  const reviews = await readLegacyReviews(tx, LEGACY_TABLES, requestIds, { withComment: true });
+  const reviews = await readLegacyReviews(tx, LEGACY_TABLES, requestIds, { withComment: true, forUpdate: true });
 
   const committers = committerIds.length
     ? ((await tx(TableName.Users)

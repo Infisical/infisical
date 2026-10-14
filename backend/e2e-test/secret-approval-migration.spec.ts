@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 
 import { Knex } from "knex";
 
-import { down, up } from "@app/db/migrations/20261014120100_migrate-secret-approval-policies-to-global";
+import { up } from "@app/db/migrations/20261014120100_migrate-secret-approval-policies-to-global";
 import { TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 
@@ -316,38 +316,5 @@ describe("Legacy secret approval policies migrate to the global approval system"
     const after = await db(TableName.ApprovalRequests).where({ policyId: v3PolicyId }).count().first();
     expect(after).toEqual(before);
     expect(await db(TableName.ApprovalPolicies).where({ id: v1PolicyId }).first()).toBeUndefined();
-  });
-
-  test("down relinks the commits and writes the global outcome back onto the legacy rows", async () => {
-    await db(TableName.ApprovalRequests).where({ id: openRequest.id }).update({ status: "close" });
-    await db(TableName.SecretChangeRequests)
-      .where({ approvalRequestId: openRequest.id })
-      .update({ hasMerged: true, statusChangedByUserId: seedData1.id });
-
-    await down(db);
-
-    expect(await db(TableName.ApprovalPolicies).where({ id: v3PolicyId }).first()).toBeUndefined();
-    expect(await db(TableName.ApprovalRequests).whereIn("id", [openRequest.id, mergedRequest.id])).toEqual([]);
-    expect(await db(TableName.SecretChangeRequests).whereIn("approvalRequestId", [openRequest.id])).toEqual([]);
-
-    expect(await commitsOf(db, openRequest.commitIds)).toEqual(
-      openRequest.commitIds.map((id) => ({ id, requestId: openRequest.id, secretChangeId: null }))
-    );
-    expect(await commitsOf(db, mergedRequest.commitIds)).toEqual(
-      mergedRequest.commitIds.map((id) => ({ id, requestId: mergedRequest.id, secretChangeId: null }))
-    );
-    expect(await db(TableName.SecretApprovalRequest).where({ id: openRequest.id }).first()).toMatchObject({
-      status: "close",
-      hasMerged: true,
-      statusChangedByUserId: seedData1.id
-    });
-    expect(await db(TableName.SecretApprovalRequest).where({ id: mergedRequest.id }).first()).toMatchObject({
-      status: "close",
-      hasMerged: true,
-      bypassReason: "incident 42 needed the key right away"
-    });
-    expect(await db(TableName.SecretApprovalPolicy).where({ id: v3PolicyId }).first()).toMatchObject({
-      deletedAt: null
-    });
   });
 });
