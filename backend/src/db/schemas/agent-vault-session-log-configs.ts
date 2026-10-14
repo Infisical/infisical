@@ -17,7 +17,7 @@ export const AgentVaultSessionLogConfigsSchema = z.object({
   keyPrefix: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  storageType: z.string().default("external")
+  storageType: z.string().default("default")
 });
 
 export type TAgentVaultSessionLogConfigs = z.infer<typeof AgentVaultSessionLogConfigsSchema>;

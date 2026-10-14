@@ -4,12 +4,17 @@ import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasColumn(TableName.AgentVaultSessionLogConfig, "storageType"))) {
-    // Every saved row so far points at the customer's own bucket. The default stays so a pod still on the previous
-    // version can insert during a rolling deploy.
     await knex.schema.alterTable(TableName.AgentVaultSessionLogConfig, (t) => {
-      t.string("storageType", 16).notNullable().defaultTo("external");
+      t.string("storageType", 16).notNullable().defaultTo("default");
     });
   }
+
+  // Every row with a bucket so far points at the customer's own bucket.
+  await knex(TableName.AgentVaultSessionLogConfig)
+    .whereNotNull("appConnectionId")
+    .whereNotNull("bucket")
+    .whereNotNull("region")
+    .update({ storageType: "external" });
 
   // Turning session logs off before ever saving a bucket, or detaching the connection, left rows with no bucket.
   // Those were always off, so they become an off default-storage row and the admin's choice survives.
