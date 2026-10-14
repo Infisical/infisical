@@ -342,10 +342,14 @@ export const TabbedOverview = ({
                     <span
                       className={cn(
                         "truncate text-xs",
-                        latestInvoice.paid ? "text-muted" : "text-danger"
+                        latestInvoice.paid || latestInvoice.amount < 0
+                          ? "text-muted"
+                          : "text-danger"
                       )}
                     >
-                      {latestInvoice.paid ? latestInvoice.date : "Unpaid"}
+                      {latestInvoice.paid || latestInvoice.amount < 0
+                        ? latestInvoice.date
+                        : "Unpaid"}
                     </span>
                   </>
                 ) : (
