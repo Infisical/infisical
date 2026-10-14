@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "../../generic/AlertDialog";
-import { Button } from "../../generic/Button";
+import { Button, type ButtonProps } from "../../generic/Button";
 import { Field } from "../../generic/Field";
 import { Input } from "../../generic/Input";
 
@@ -22,8 +22,10 @@ type Props = {
   description?: ReactNode;
   confirmKey: string;
   confirmLabel?: string;
+  confirmVariant?: ButtonProps["variant"];
   isPending?: boolean;
   onConfirm: () => void | Promise<void>;
+  children?: ReactNode;
 };
 
 export const DeleteConfirmDialog = ({
@@ -33,8 +35,10 @@ export const DeleteConfirmDialog = ({
   description,
   confirmKey,
   confirmLabel = "Delete",
+  confirmVariant = "danger",
   isPending,
-  onConfirm
+  onConfirm,
+  children
 }: Props) => {
   const [typedValue, setTypedValue] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
@@ -85,7 +89,6 @@ export const DeleteConfirmDialog = ({
               <Input
                 id={confirmationInputId}
                 autoComplete="off"
-                autoFocus
                 disabled={isActionPending}
                 placeholder={confirmKey}
                 spellCheck={false}
@@ -94,11 +97,12 @@ export const DeleteConfirmDialog = ({
               />
             </Field>
           </AlertDialogConfirmationField>
+          {children}
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={isActionPending}>Cancel</AlertDialogCancel>
             <Button
               type="submit"
-              variant="danger"
+              variant={confirmVariant}
               size="sm"
               isDisabled={!canConfirm}
               isPending={isActionPending}

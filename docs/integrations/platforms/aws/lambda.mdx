@@ -63,7 +63,7 @@ Attach a policy like the one below to the IAM user or role responsible for updat
 
 Use the Infisical CLI to export secrets as JSON and pass them to the AWS CLI.
 The example below targets a project by ID, but you can also use the `--project` and `--env` flags.
-Learn more about `infisical export` [here](/cli/reference#export).
+Learn more about `infisical sm export` [here](/cli/reference#sm-export).
 
 ```bash
 FUNCTION_NAME=infisical-env-test
@@ -74,7 +74,7 @@ aws lambda update-function-configuration \
   --function-name "$FUNCTION_NAME" \
   --region "$REGION" \
   --environment "$(
-    infisical export \
+    infisical sm export \
       --format=json \
       --projectId="$PROJECT_ID" \
     | jq 'map({(.key): .value}) | add | {Variables: .}'
@@ -85,10 +85,10 @@ On success, the updated `Environment.Variables` block will be returned.
 Verify the values in the Lambda console or by invoking the function.
 
 <Tip>
-  Automate this step in CI/CD. Run `infisical export` using an Infisical Token
+  Automate this step in CI/CD. Run `infisical sm export` using an Infisical Token
   scoped to your project and environment, and trigger the sync as part of your
   deployment workflow. Learn more about the [Infisical
-  Token](/cli/reference#export--flag-token).
+  Token](/cli/reference#sm-export--flag-token).
 </Tip>
 
 <Note>

@@ -1,7 +1,6 @@
 import { ReactNode, useCallback, useRef, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 
-import { Spinner } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -9,6 +8,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Spinner,
   TextArea
 } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
@@ -187,7 +187,7 @@ export const SessionAccessGate = ({ account, children }: Props) => {
           <CardContent>
             {mfaVerifying ? (
               <div className="flex items-center justify-center gap-2 py-2 text-xs text-muted">
-                <Spinner className="h-4 w-4" />
+                <Spinner size="xs" />
                 Waiting for verification...
               </div>
             ) : (

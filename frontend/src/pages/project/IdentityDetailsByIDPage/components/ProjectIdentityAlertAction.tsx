@@ -12,7 +12,7 @@ type Props = {
 
 export const ProjectIdentityAlertAction = ({ identityId, projectId, readOnly = false }: Props) => (
   <AlertAction
-    identityId={identityId}
+    resourceId={identityId}
     projectId={projectId}
     readOnly={readOnly}
     renderPermissionGate={(render) => (

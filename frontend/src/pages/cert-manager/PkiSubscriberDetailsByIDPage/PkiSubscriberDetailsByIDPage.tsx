@@ -66,10 +66,9 @@ const Page = () => {
 
     handlePopUpClose("deletePkiSubscriber");
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/subscribers",
+      to: "/organizations/$orgId/cert-manager/subscribers",
       params: {
-        orgId: currentOrg.id,
-        projectId
+        orgId: currentOrg.id
       }
     });
   };
@@ -81,10 +80,9 @@ const Page = () => {
           <PageHeader
             backLink={
               <Link
-                to="/organizations/$orgId/projects/cert-manager/$projectId/subscribers"
+                to="/organizations/$orgId/cert-manager/subscribers"
                 params={{
-                  orgId: currentOrg.id,
-                  projectId
+                  orgId: currentOrg.id
                 }}
               >
                 <FontAwesomeIcon icon={faChevronLeft} />

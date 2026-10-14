@@ -173,8 +173,6 @@ import { projectTemplateUserMembershipDALFactory } from "@app/ee/services/projec
 import { proxiedServiceCredentialDALFactory } from "@app/ee/services/proxied-service/proxied-service-credential-dal";
 import { proxiedServiceDALFactory } from "@app/ee/services/proxied-service/proxied-service-dal";
 import { proxiedServiceServiceFactory } from "@app/ee/services/proxied-service/proxied-service-service";
-import { rateLimitDALFactory } from "@app/ee/services/rate-limit/rate-limit-dal";
-import { rateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-service";
 import { instanceRelayConfigDalFactory } from "@app/ee/services/relay/instance-relay-config-dal";
 import { orgRelayConfigDalFactory } from "@app/ee/services/relay/org-relay-config-dal";
 import { relayDalFactory } from "@app/ee/services/relay/relay-dal";
@@ -264,6 +262,8 @@ import { certManagerSignerAlertDALFactory } from "@app/services/alert/providers/
 import { certManagerSignerAlertProviderFactory } from "@app/services/alert/providers/cert-manager-signer-alert-provider";
 import { identityCredentialAlertDALFactory } from "@app/services/alert/providers/identity-credential-alert-dal";
 import { identityCredentialAlertProviderFactory } from "@app/services/alert/providers/identity-credential-alert-provider";
+import { pamFolderAlertDALFactory } from "@app/services/alert/providers/pam-folder-alert-dal";
+import { pamFolderAlertProviderFactory } from "@app/services/alert/providers/pam-folder-alert-provider";
 import { secretReminderAlertDALFactory } from "@app/services/alert/providers/secret-reminder-alert-dal";
 import { secretReminderAlertProviderFactory } from "@app/services/alert/providers/secret-reminder-alert-provider";
 import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
@@ -686,7 +686,6 @@ export const registerRoutes = async (
   const orgMembershipDAL = orgMembershipDALFactory(db);
   const userActivationDAL = userActivationDALFactory(db);
   const incidentContactDAL = incidentContactDALFactory(db);
-  const rateLimitDAL = rateLimitDALFactory(db);
 
   const projectDAL = projectDALFactory(db);
   const projectAccessRequestDAL = projectAccessRequestDALFactory(db);
@@ -1154,6 +1153,13 @@ export const registerRoutes = async (
       permissionService,
       licenseService,
       certManagerProjectResolver
+    })
+  );
+  alertProviderRegistry.register(
+    pamFolderAlertProviderFactory({
+      pamFolderAlertDAL: pamFolderAlertDALFactory(db),
+      permissionService,
+      licenseService
     })
   );
   const alertRecipientResolver = alertRecipientResolverFactory({
@@ -1767,11 +1773,6 @@ export const registerRoutes = async (
     membershipUserDAL,
     projectMembershipDAL,
     usageMeteringService
-  });
-
-  const rateLimitService = rateLimitServiceFactory({
-    rateLimitDAL,
-    licenseService
   });
 
   const secretScanningQueue = secretScanningQueueFactory({
@@ -3874,7 +3875,6 @@ export const registerRoutes = async (
   });
 
   const pamAccessApprovalResource = pamAccessApprovalResourceFactory({
-    licenseService,
     pamFolderNotificationConfigDAL,
     approvalPolicyDAL,
     userGroupMembershipDAL,
@@ -3928,6 +3928,7 @@ export const registerRoutes = async (
     groupDAL,
     slackIntegrationDAL,
     kmsService,
+    eventEmitter: eventOutboxService,
     resources: approvalResources
   });
 
@@ -3961,7 +3962,6 @@ export const registerRoutes = async (
     identityDAL,
     pamFolderNotificationConfigDAL,
     workflowIntegrationDAL,
-    licenseService,
     approvalPolicyService,
     pamAccessApprovalResource
   });
@@ -3975,7 +3975,8 @@ export const registerRoutes = async (
     userDAL,
     userGroupMembershipDAL,
     notificationService,
-    smtpService
+    smtpService,
+    alertService
   });
 
   const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
@@ -4605,7 +4606,6 @@ export const registerRoutes = async (
     secretReplication: secretReplicationService,
     secretTag: secretTagService,
     secretValidationRule: secretValidationRuleService,
-    rateLimit: rateLimitService,
     folder: folderService,
     resourceMetadata: resourceMetadataService,
     secretImport: secretImportService,
@@ -4778,14 +4778,10 @@ export const registerRoutes = async (
   }
 
   // Not gated by run mode, unlike the cron manager above: these refresh this process's own caches
-  // (env overrides, license plan, rate limits, admin integration config), so an API pod that stopped
+  // (env overrides, license plan, admin integration config), so an API pod that stopped
   // running them would serve stale config rather than shed background work.
   const cronJobs: TLocalRefreshHandle[] = [];
   if (appCfg.isProductionMode) {
-    const rateLimitSyncJob = await rateLimitService.initializeBackgroundSync();
-    if (rateLimitSyncJob) {
-      cronJobs.push(rateLimitSyncJob);
-    }
     const licenseSyncJob = await licenseService.initializeBackgroundSync();
     if (licenseSyncJob) {
       cronJobs.push(licenseSyncJob);

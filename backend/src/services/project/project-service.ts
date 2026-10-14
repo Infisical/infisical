@@ -16,6 +16,7 @@ import {
   TProjectEnvironments,
   TProjects
 } from "@app/db/schemas";
+import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionActions,
@@ -206,8 +207,7 @@ export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
 
 // Cosmetic overrides for requestProjectAccess; unlisted types fall back to the raw type/name.
 const PROJECT_ACCESS_REQUEST_URL_SLUGS: Partial<Record<ProjectType, string>> = {
-  [ProjectType.SecretManager]: "secret-management",
-  [ProjectType.CertificateManager]: "cert-manager"
+  [ProjectType.SecretManager]: "secret-management"
 };
 
 const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
@@ -1042,7 +1042,7 @@ export const projectServiceFactory = ({
         });
       }
 
-      if (update.auditLogsRetentionDays > plan.auditLogsRetentionDays) {
+      if (!isWithinPlanAuditLogRetention(update.auditLogsRetentionDays, plan)) {
         throw new BadRequestError({
           message: `Failed to update the audit logs retention period because your current plan allows a maximum of ${plan.auditLogsRetentionDays} days. Upgrade your plan to increase this limit.`
         });
@@ -1197,7 +1197,7 @@ export const projectServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.auditLogs || auditLogsRetentionDays > plan.auditLogsRetentionDays) {
+    if (!plan.auditLogs || !isWithinPlanAuditLogRetention(auditLogsRetentionDays, plan)) {
       throw new BadRequestError({
         message: "Failed to update audit logs retention due to plan limit reached. Upgrade plan to increase."
       });
@@ -2303,6 +2303,7 @@ export const projectServiceFactory = ({
     const encodedRequesterEmail = encodeURIComponent(userDetails.email ?? "");
 
     const orgScopedProductPath: Partial<Record<ProjectType, string>> = {
+      [ProjectType.CertificateManager]: "cert-manager",
       [ProjectType.PAM]: "pam",
       [ProjectType.AgentVault]: "agent-vault"
     };

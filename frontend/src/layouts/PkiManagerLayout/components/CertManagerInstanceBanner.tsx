@@ -1,13 +1,14 @@
 import { faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 
 import { useOrganization } from "@app/context";
+import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
+import { useImplicitProjectId } from "@app/hooks";
 import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 
 export const CertManagerInstanceBanner = () => {
-  const params = useParams({ strict: false }) as { projectId?: string };
-  const { projectId } = params;
+  const projectId = useImplicitProjectId();
   const { currentOrg } = useOrganization();
   const { data, isPending } = useCertManagerInstanceState();
 
@@ -36,8 +37,10 @@ export const CertManagerInstanceBanner = () => {
           You&apos;re viewing a legacy Certificate Manager project.{" "}
           {activeProject ? (
             <Link
-              to="/organizations/$orgId/projects/cert-manager/$projectId/overview"
-              params={{ orgId: currentOrg.id, projectId: activeProject.id }}
+              to="/organizations/$orgId/cert-manager/overview"
+              params={{ orgId: currentOrg.id }}
+              reloadDocument
+              onClick={() => setCertManagerActiveProjectCookie(currentOrg.id, activeProject.id)}
               className="underline underline-offset-2 hover:text-warning"
             >
               Switch to your active project →
