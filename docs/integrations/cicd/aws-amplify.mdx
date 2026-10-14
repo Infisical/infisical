@@ -53,7 +53,7 @@ This approach enables you to fetch secrets from Infisical during Amplify build t
             build:
               commands:
         - INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=${INFISICAL_MACHINE_IDENTITY_CLIENT_ID} --client-secret=${INFISICAL_MACHINE_IDENTITY_CLIENT_SECRET} --silent --plain)
-            - infisical export --format=dotenv > .env
+            - infisical sm export --format=dotenv > .env
             - <rest of the commands>
         ```
       </Step>
@@ -95,7 +95,7 @@ This approach enables you to fetch secrets from Infisical during Amplify build t
             build:
               commands:
         - INFISICAL_TOKEN=${INFISICAL_TOKEN}
-            - infisical export --format=dotenv > .env
+            - infisical sm export --format=dotenv > .env
             - <rest of the commands>
         ```
       </Step>

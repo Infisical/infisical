@@ -1304,8 +1304,6 @@
                   "cli/reference/agent-vault",
                   "cli/reference/bootstrap",
                   "cli/reference/cert-manager",
-                  "cli/reference/dynamic-secrets",
-                  "cli/reference/export",
                   "cli/reference/gateway",
                   "cli/reference/init",
                   "cli/reference/kmip",
@@ -1317,10 +1315,20 @@
                   "cli/reference/proxy",
                   "cli/reference/relay",
                   "cli/reference/reset",
-                  "cli/reference/run",
                   "cli/reference/scan",
-                  "cli/reference/secrets",
                   "cli/reference/service-token",
+                  {
+                    "group": "infisical sm",
+                    "expanded": true,
+                    "pages": [
+                      "cli/reference/sm",
+                      "cli/reference/sm/agent-proxy",
+                      "cli/reference/sm/dynamic-secrets",
+                      "cli/reference/sm/export",
+                      "cli/reference/sm/run",
+                      "cli/reference/sm/secrets"
+                    ]
+                  },
                   "cli/reference/ssh",
                   "cli/reference/token",
                   "cli/reference/user",
@@ -4872,8 +4880,24 @@
       "destination": "/cli/reference"
     },
     {
+      "source": "/cli/reference/dynamic-secrets",
+      "destination": "/cli/reference#sm-dynamic-secrets"
+    },
+    {
+      "source": "/cli/reference/export",
+      "destination": "/cli/reference#sm-export"
+    },
+    {
+      "source": "/cli/reference/run",
+      "destination": "/cli/reference#sm-run"
+    },
+    {
+      "source": "/cli/reference/secrets",
+      "destination": "/cli/reference#sm-secrets"
+    },
+    {
       "source": "/cli/commands/agent-proxy",
-      "destination": "/cli/reference#secrets-agent-proxy"
+      "destination": "/cli/reference#sm-agent-proxy"
     },
     {
       "source": "/cli/commands/agent-vault",
@@ -4885,11 +4909,11 @@
     },
     {
       "source": "/cli/commands/dynamic-secrets",
-      "destination": "/cli/reference#dynamic-secrets"
+      "destination": "/cli/reference#sm-dynamic-secrets"
     },
     {
       "source": "/cli/commands/export",
-      "destination": "/cli/reference#export"
+      "destination": "/cli/reference#sm-export"
     },
     {
       "source": "/cli/commands/gateway",
@@ -4937,7 +4961,7 @@
     },
     {
       "source": "/cli/commands/run",
-      "destination": "/cli/reference#run"
+      "destination": "/cli/reference#sm-run"
     },
     {
       "source": "/cli/commands/scan-git-changes",
@@ -4953,7 +4977,7 @@
     },
     {
       "source": "/cli/commands/secrets",
-      "destination": "/cli/reference#secrets"
+      "destination": "/cli/reference#sm-secrets"
     },
     {
       "source": "/cli/commands/service-token",
