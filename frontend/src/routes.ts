@@ -263,7 +263,7 @@ const secretManagerIntegrationsRedirect = route("/integrations", [
   )
 ]);
 
-const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$projectId", [
+const certManagerRoutes = route("/organizations/$orgId/cert-manager", [
   layout("cert-manager-layout", "cert-manager/layout.tsx", [
     index("cert-manager/DashboardPage/route-index.tsx"),
     route("/overview", "cert-manager/DashboardPage/route.tsx"),
@@ -420,6 +420,13 @@ const organizationRoutes = route("/organizations/$orgId", [
       "organization/ProductSettingsPage/SecretsManagement/project-templates/route.tsx"
     )
   ]),
+  route("/projects/product-settings/$type", [
+    index("organization/ProductSettingsPage/ProjectTemplates/route.tsx"),
+    route(
+      "/project-templates/$templateId",
+      "organization/ProductSettingsPage/ProjectTemplates/project-templates/route.tsx"
+    )
+  ]),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
   route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
   route("/billing", "organization/BillingPage/route.tsx"),
@@ -514,6 +521,10 @@ export const routes = rootRoute("root.tsx", [
         secretManagerRoutes,
         secretManagerIntegrationsRedirect,
         certManagerRoutes,
+        route(
+          "/organizations/$orgId/projects/cert-manager/$projectId/$",
+          "redirects/cert-manager-project-url-redirect.tsx"
+        ),
         kmsRoutes,
         secretScanningRoutes,
         pamRoutes,

@@ -4,7 +4,18 @@ sidebarTitle: "PagerDuty"
 description: "Create PagerDuty incidents for certificate alerts."
 ---
 
+import StartAlert from "/snippets/documentation/platform/pki/applications/alerting/start-alert.mdx";
+
 A PagerDuty channel on a certificate [alert](/documentation/platform/pki/applications/alerting/overview) creates PagerDuty incidents through the [Events API v2](https://developer.pagerduty.com/docs/events-api-v2-overview), so your on-call team gets paged when certificates are about to expire or are revoked.
+
+<Info>
+  PagerDuty channels are available under Infisical's [Enterprise](https://infisical.com/pricing) plan. If you're self-hosting Infisical, contact sales@infisical.com to purchase an enterprise license.
+</Info>
+
+## Prerequisites
+
+- The Certificate Manager **Admin** role to create a Certificate Manager alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
+- A PagerDuty account that can create services or add integrations to an existing service
 
 ## Step 1: Get a PagerDuty integration key
 
@@ -28,22 +39,27 @@ A PagerDuty channel on a certificate [alert](/documentation/platform/pki/applica
   </Step>
 </Steps>
 
-## Step 2: Add the PagerDuty channel to an alert
+## Step 2: Start an alert
+
+<StartAlert />
+
+## Step 3: Add the PagerDuty channel
 
 <Steps>
   <Step>
-    [Create an alert](/documentation/platform/pki/applications/alerting/overview#create-an-alert) in your application, or edit an existing one.
+    Select **Add Channel** > **PagerDuty** and paste the key from [step 1](#step-1-get-a-pagerduty-integration-key) into **Integration key**.
   </Step>
   <Step>
-    Select **Add Channel** > **PagerDuty** and paste the integration key.
-  </Step>
-  <Step>
-    Optionally, select **Send test** to send a test notification to the channel.
+    Optionally, select **Send test** to send a test event to the PagerDuty service.
   </Step>
   <Step>
     Select **Continue**, check the **Review** step, and select **Create Alert**.
   </Step>
 </Steps>
+
+<Check>
+  Your alert is set up. Infisical opens a PagerDuty incident whenever the alert fires.
+</Check>
 
 ## Severity mapping
 
@@ -71,20 +87,3 @@ Each incident's PagerDuty severity comes from the alert's event. For expiration 
 Each certificate gets its own incident. If the same alert fires again for the same certificate, PagerDuty updates the existing incident instead of opening a new one.
 
 Each PagerDuty channel opens at most 10 incidents per run. If more than 10 certificates are due for an expiration alert, the ones closest to expiry go first and the rest go on the next daily run.
-
-## What's next?
-
-<CardGroup cols={2}>
-  <Card title="Webhook" icon="webhook" href="/documentation/platform/pki/applications/alerting/webhook-alerts">
-    Send alerts to your own endpoint.
-  </Card>
-  <Card title="Slack" icon="slack" iconType="brands" href="/documentation/platform/pki/applications/alerting/slack-alerts">
-    Send alerts to a Slack channel.
-  </Card>
-  <Card title="Certificate syncs" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
-    Push certificates to cloud destinations.
-  </Card>
-  <Card title="Certificates" icon="list" href="/documentation/platform/pki/applications/certificates">
-    View and manage certificates.
-  </Card>
-</CardGroup>

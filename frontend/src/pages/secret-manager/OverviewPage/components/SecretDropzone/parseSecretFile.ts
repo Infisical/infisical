@@ -16,7 +16,7 @@ export type CsvData = {
 };
 
 type ParseSecretFileOptions = {
-  onParsedSecrets: (env: TParsedEnv) => void;
+  onParsedSecrets: (env: TParsedEnv, jsonSource?: string) => void;
   onCsvData: (data: CsvData) => void;
 };
 
@@ -119,7 +119,7 @@ export const parseSecretFile = (
       }
 
       if (extension === "json" || file.type === "application/json") {
-        onParsedSecrets(parseJson(src));
+        onParsedSecrets(parseJson(src), src);
         return;
       }
 

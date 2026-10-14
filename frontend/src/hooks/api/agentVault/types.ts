@@ -156,6 +156,8 @@ export type TAddAgentVaultProductMembersDTO = TAgentVaultActorIdsDTO & {
   role: string;
 };
 
+export type TUpdateAgentVaultMemberRolesDTO = TAgentVaultActorIdsDTO & { role: string };
+
 export type TAgentVaultWrittenMember = TAgentVaultActorRef & { role: string; addedAt: string };
 
 export type TAgentVaultGrantedMember = TAgentVaultActorRef & { grantedAt: string };
@@ -205,7 +207,6 @@ export type TAgentVaultSession = {
   revokedAt: string | null;
   createdAt: string;
   accessBundles: TAgentVaultSessionAccessBundle[];
-  recentSessionLogCounts: { recordedCount: number; droppedCount: number };
 };
 
 export type TAgentVaultMintedSession = {
@@ -301,7 +302,6 @@ export type TAgentVaultSessionLogSettings = {
 };
 
 export type TAgentVaultSessionLogHealth = {
-  isStorageFull: boolean;
   connectionError: string | null;
 };
 
@@ -332,28 +332,14 @@ export type TUpdateAgentVaultSessionLogSettingsDTO = {
 export type TAgentVaultSessionLogChunk = {
   chunkId: string;
   proxyId: string;
-  proxyName: string;
-  startedAt: string;
-  endedAt: string;
-  firstSeq: number;
-  lastSeq: number;
-  recordCount: number;
-  droppedCount: number;
   ciphertextBytes: number;
-  iv: string;
-  ciphertextSha256: string;
-  presignedGetUrl: string | null;
-  createdAt: string;
+  presignedGetUrl: string;
 };
 
 export type TAgentVaultSessionLog = {
   enabled: boolean;
   isRecordable: boolean;
   sessionKey: string | null;
-  storageUnavailable: {
-    reason: "no-connection" | "connection-unusable";
-    message: string | null;
-  } | null;
 };
 
 export type TAgentVaultSessionLogPage = {
@@ -363,12 +349,10 @@ export type TAgentVaultSessionLogPage = {
 
 export type TAgentVaultSessionLogHistoryPage = TAgentVaultSessionLogPage & {
   nextCursor: string | null;
-  liveCursor: string;
 };
 
 export type TAgentVaultSessionLogTailPage = TAgentVaultSessionLogPage & {
   nextCursor: string;
-  hasMore: boolean;
 };
 
 export type TAgentVaultSessionLogRecord = {
@@ -390,26 +374,14 @@ export type TAgentVaultSessionLogGapReason =
   | "missing"
   | "refused"
   | "size"
-  | "altered"
   | "gcm"
   | "json"
-  | "mismatch"
-  | "repointed";
+  | "mismatch";
 
 export type TAgentVaultSessionLogGap = {
-  chunkId: string;
-  proxyId: string;
-  proxyName: string;
-  startedAt: string;
   reason: TAgentVaultSessionLogGapReason;
-  recordCount: number;
-};
-
-export type TAgentVaultSessionLogDrop = {
-  chunkId: string;
-  proxyId: string;
-  startedAt: string;
-  droppedCount: number;
+  // When this browser first saw the chunk on the live tail; null for chunks listed from the bucket.
+  firstSeenAt: number | null;
 };
 
 export type TAgentVaultDecryptedChunk = {
@@ -428,9 +400,6 @@ export type TAgentVaultVariable = {
   id: string;
   accessBundleId: string;
   key: string;
-  isSecret: boolean;
-  /** Null for a secret variable, whose value comes only from the value route. */
-  value: string | null;
   serviceIds: string[];
   createdAt: string;
   updatedAt: string;
@@ -445,11 +414,9 @@ export type TCreateAgentVaultVariableDTO = {
   accessBundleId: string;
   key: string;
   value: string;
-  isSecret: boolean;
 };
 
 export type TUpdateAgentVaultVariableDTO = TAgentVaultVariableRef & {
   key?: string;
   value?: string;
-  isSecret?: boolean;
 };

@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
+import { pollUntil } from "e2e-test/testUtils/poll";
 
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
@@ -21,7 +22,7 @@ import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 import { initLogger, logger } from "@app/lib/logger";
@@ -166,6 +167,27 @@ const createProjectGroup = async (projectId: string, name: string, role: Project
       await testDb("identity_group_membership").where({ groupId: group.id }).delete();
       await testDb("memberships").whereIn("id", [membership.id, orgMembership.id]).delete();
       await testDb("groups").where({ id: group.id }).delete();
+    }
+  };
+};
+
+// The caller can never name itself in a demotion or a removal, so while it holds an admin row of its own
+// no batch can reach the last-admin guard. Holding admin only through a group leaves every admin row
+// nameable, because the self check covers users and identities, not groups.
+const makeCallerAdminOnlyThroughGroup = async (projectId: string) => {
+  const own = await testDb("memberships")
+    .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: seedData1.id })
+    .first();
+  await testDb("membership_roles").where({ membershipId: own.id }).update({ role: ProjectMembershipRole.Member });
+  const group = await createProjectGroup(projectId, "av-caller-admins", ProjectMembershipRole.Admin);
+  await testDb("user_group_membership").insert({ groupId: group.id, userId: seedData1.id });
+
+  return {
+    groupId: group.id,
+    restore: async () => {
+      await testDb("membership_roles").where({ membershipId: own.id }).update({ role: ProjectMembershipRole.Admin });
+      await testDb("user_group_membership").where({ groupId: group.id }).delete();
+      await group.cleanup();
     }
   };
 };
@@ -769,7 +791,7 @@ describe("Agent Vault V1 Router", async () => {
       substitutionId?: string;
     };
 
-    const createVariable = async (accessBundleId: string, body: { key: string; value: string; isSecret?: boolean }) => {
+    const createVariable = async (accessBundleId: string, body: { key: string; value: string }) => {
       const res = await inject("POST", variablesUrl(accessBundleId), body);
       expect(res.statusCode).toBe(200);
       return (JSON.parse(res.payload) as { variable: { id: string; key: string } }).variable;
@@ -953,7 +975,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a service uses a variable by key, and resolve puts the value in its place", async () => {
       const bundle = await createAccessBundle("variables-resolve");
       const token = await createVariable(bundle.id, { key: "GITHUB_TOKEN", value: "ghp_from_variable" });
-      const org = await createVariable(bundle.id, { key: "ORG_ID", value: "org-42", isSecret: false });
+      const org = await createVariable(bundle.id, { key: "ORG_ID", value: "org-42" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "github",
@@ -1079,11 +1101,7 @@ describe("Agent Vault V1 Router", async () => {
 
       const renamed = await inject("PATCH", `${variablesUrl(bundle.id)}/${variable.id}`, { key: "NEW_NAME" });
       expect(renamed.statusCode).toBe(200);
-      expect(JSON.parse(renamed.payload).variable).toMatchObject({
-        key: "NEW_NAME",
-        value: null,
-        serviceIds: [serviceId]
-      });
+      expect(JSON.parse(renamed.payload).variable).toMatchObject({ key: "NEW_NAME", serviceIds: [serviceId] });
 
       const detail = JSON.parse((await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`)).payload) as {
         accessBundle: { services: { variableReferences: TReference[] }[] };
@@ -1132,7 +1150,7 @@ describe("Agent Vault V1 Router", async () => {
 
       const removed = await inject("DELETE", `${variablesUrl(bundle.id)}/${variable.id}`);
       expect(removed.statusCode).toBe(200);
-      expect(JSON.parse(removed.payload).variable).toMatchObject({ id: variable.id, key: "API_KEY", value: null });
+      expect(JSON.parse(removed.payload).variable).toMatchObject({ id: variable.id, key: "API_KEY" });
     });
 
     test("an unknown key fails the save by name, and a malformed reference fails validation unquoted", async () => {
@@ -1206,30 +1224,41 @@ describe("Agent Vault V1 Router", async () => {
       expect(services.map((service) => service.name)).toEqual(["at-limit"]);
     });
 
-    test("the list carries only values that are not secret, and the value route returns either uncached", async () => {
+    test("no response but the value route carries a value, and that route returns it uncached", async () => {
       const bundle = await createAccessBundle("variables-visibility");
-      const hidden = await createVariable(bundle.id, { key: "HIDDEN", value: "hidden_value" });
-      await createVariable(bundle.id, { key: "SHOWN", value: "shown_value", isSecret: false });
+      // A client from before every value was secret may still send isSecret: false. It is stripped, not honoured.
+      const createdRes = await inject("POST", variablesUrl(bundle.id), {
+        key: "HIDDEN",
+        value: "hidden_value",
+        isSecret: false
+      });
+      expect(createdRes.statusCode).toBe(200);
+      expect(createdRes.payload).not.toContain("hidden_value");
+      const hidden = (JSON.parse(createdRes.payload) as { variable: { id: string } }).variable;
 
       const listed = await inject("GET", variablesUrl(bundle.id));
       expect(listed.statusCode).toBe(200);
       expect(listed.payload).not.toContain("hidden_value");
-      expect(JSON.parse(listed.payload).variables).toEqual([
-        expect.objectContaining({ key: "HIDDEN", isSecret: true, value: null, serviceIds: [] }),
-        expect.objectContaining({ key: "SHOWN", isSecret: false, value: "shown_value", serviceIds: [] })
-      ]);
+      const [listedVariable] = JSON.parse(listed.payload).variables;
+      expect(listedVariable).toMatchObject({ key: "HIDDEN", serviceIds: [] });
+      expect(listedVariable).not.toHaveProperty("value");
+      expect(listedVariable).not.toHaveProperty("isSecret");
+
+      const updated = await inject("PATCH", `${variablesUrl(bundle.id)}/${hidden.id}`, { value: "new_hidden_value" });
+      expect(updated.statusCode).toBe(200);
+      expect(updated.payload).not.toContain("new_hidden_value");
 
       const revealed = await inject("GET", `${variablesUrl(bundle.id)}/${hidden.id}/value`);
       expect(revealed.statusCode).toBe(200);
-      expect(JSON.parse(revealed.payload)).toEqual({ value: "hidden_value" });
+      expect(JSON.parse(revealed.payload)).toEqual({ value: "new_hidden_value" });
       expect(revealed.headers["cache-control"]).toContain("no-store");
 
-      const flipped = await inject("PATCH", `${variablesUrl(bundle.id)}/${hidden.id}`, { isSecret: false });
-      expect(flipped.statusCode).toBe(200);
-      expect(JSON.parse(flipped.payload).variable).toMatchObject({ isSecret: false, value: "hidden_value" });
-
       const row = await testDb("agent_vault_variables").where({ id: hidden.id }).first();
-      expect(row.encryptedValue.toString("utf-8")).not.toContain("hidden_value");
+      expect(row.encryptedValue.toString("utf-8")).not.toContain("new_hidden_value");
+
+      const removed = await inject("DELETE", `${variablesUrl(bundle.id)}/${hidden.id}`);
+      expect(removed.statusCode).toBe(200);
+      expect(removed.payload).not.toContain("new_hidden_value");
     });
 
     test("a value can't be only spaces, and one with spaces around it is kept as typed", async () => {
@@ -1238,10 +1267,9 @@ describe("Agent Vault V1 Router", async () => {
       expect(blank.statusCode).toBe(422);
       expect(blank.payload).toContain("A value can't be only spaces.");
 
-      const padded = await createVariable(bundle.id, { key: "PADDED", value: " kept ", isSecret: false });
-      expect(JSON.parse((await inject("GET", variablesUrl(bundle.id))).payload).variables).toEqual([
-        expect.objectContaining({ key: "PADDED", value: " kept " })
-      ]);
+      const padded = await createVariable(bundle.id, { key: "PADDED", value: " kept " });
+      const revealed = await inject("GET", `${variablesUrl(bundle.id)}/${padded.id}/value`);
+      expect(JSON.parse(revealed.payload)).toEqual({ value: " kept " });
       expect((await inject("PATCH", `${variablesUrl(bundle.id)}/${padded.id}`, { value: " " })).statusCode).toBe(422);
     });
 
@@ -1471,7 +1499,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("variables are admin only, reads included", async () => {
       const bundle = await createAccessBundle("variables-admin-only");
-      const variable = await createVariable(bundle.id, { key: "TOKEN", value: "admin_only_value", isSecret: false });
+      const variable = await createVariable(bundle.id, { key: "TOKEN", value: "admin_only_value" });
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "uses-token",
         hostPattern: "api.example.com",
@@ -1664,15 +1692,22 @@ describe("Agent Vault V1 Router", async () => {
       expect(row?.role).toBe("member");
       expect(row?.name).toBeTruthy();
 
-      const promoted = await inject("PATCH", `${membersUrl}/machine-identities/${identity.id}`, { role: "admin" });
+      const promoted = await inject("PATCH", membersUrl, { machineIdentityIds: [identity.id], role: "admin" });
       expect(promoted.statusCode).toBe(200);
-      expect(JSON.parse(promoted.payload).member).toMatchObject({
-        type: "machineIdentity",
-        id: identity.id,
-        role: "admin"
+      expect(JSON.parse(promoted.payload)).toMatchObject({
+        members: [{ type: "machineIdentity", id: identity.id, role: "admin" }],
+        skipped: []
       });
 
-      const removed = await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
+      // Asking for the role a member already holds changes nothing, so it is reported as skipped.
+      const unchanged = await inject("PATCH", membersUrl, { machineIdentityIds: [identity.id], role: "admin" });
+      expect(unchanged.statusCode).toBe(200);
+      expect(JSON.parse(unchanged.payload)).toMatchObject({
+        members: [],
+        skipped: [{ type: "machineIdentity", id: identity.id }]
+      });
+
+      const removed = await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] });
       expect(removed.statusCode).toBe(200);
       expect(JSON.parse(removed.payload)).toEqual({
         members: [{ type: "machineIdentity", id: identity.id }],
@@ -1681,7 +1716,7 @@ describe("Agent Vault V1 Router", async () => {
 
       // A second revoke has nothing to remove, so it reports the actor as skipped rather than failing:
       // that is what makes the call safe to retry.
-      const again = await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
+      const again = await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] });
       expect(again.statusCode).toBe(200);
       expect(JSON.parse(again.payload)).toEqual({
         members: [],
@@ -1760,9 +1795,7 @@ describe("Agent Vault V1 Router", async () => {
 
       expect(await grantRows(bundle.id, { actorIdentityId: identity.id })).toHaveLength(1);
 
-      expect((await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] })).statusCode).toBe(
-        200
-      );
+      expect((await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] })).statusCode).toBe(200);
 
       expect(await grantRows(bundle.id, { actorIdentityId: identity.id })).toHaveLength(0);
 
@@ -1854,24 +1887,22 @@ describe("Agent Vault V1 Router", async () => {
               .select("membership_roles.id")) as unknown[]
           ).length;
 
-        const before = await adminCount();
-        expect(before).toBe(3);
+        const callerGroup = await makeCallerAdminOnlyThroughGroup(projectId);
+        try {
+          expect(await adminCount()).toBe(3);
 
-        // Revoking each of these on its own would pass the guard, because the other two are still
-        // standing. Naming all three in one call is what the batch check exists for.
-        const refused = await inject("POST", `${membersUrl}/revoke`, {
-          userIds: [seedData1.id],
-          machineIdentityIds: [one.id, two.id]
-        });
-        expect(refused.statusCode).toBe(403);
-
-        // It refuses on the self check before it reaches the admin count, so take the caller out and the
-        // batch still cannot go through.
-        const withoutSelf = await inject("POST", `${membersUrl}/revoke`, {
-          machineIdentityIds: [one.id, two.id]
-        });
-        expect(withoutSelf.statusCode).toBe(200);
-        expect(await adminCount()).toBe(1);
+          // Revoking any one of these on its own would pass the guard, because the other two are still
+          // standing. Naming all three in one call is what the batch check exists for.
+          const refused = await inject("DELETE", membersUrl, {
+            groupIds: [callerGroup.groupId],
+            machineIdentityIds: [one.id, two.id]
+          });
+          expect(refused.statusCode).toBe(400);
+          expect(JSON.parse(refused.payload).message).toContain("must keep at least one admin");
+          expect(await adminCount()).toBe(3);
+        } finally {
+          await callerGroup.restore();
+        }
       } finally {
         await deleteOrgIdentity(one.id);
         await deleteOrgIdentity(two.id);
@@ -1886,7 +1917,7 @@ describe("Agent Vault V1 Router", async () => {
           (await inject("POST", membersUrl, { machineIdentityIds: [identity.id], role: "member" })).statusCode
         ).toBe(200);
 
-        const refused = await inject("POST", `${membersUrl}/revoke`, {
+        const refused = await inject("DELETE", membersUrl, {
           userIds: [seedData1.id],
           machineIdentityIds: [identity.id]
         });
@@ -1897,8 +1928,55 @@ describe("Agent Vault V1 Router", async () => {
         const listed = await listMembers("actorType=machineIdentity");
         expect(listed.members.some((member) => member.id === identity.id)).toBe(true);
       } finally {
-        await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
+        await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] });
         await deleteOrgIdentity(identity.id);
+      }
+    });
+
+    test("a role change applies to the members it can and reports the rest as skipped", async () => {
+      const projectId = await getProjectId();
+      const toChange = await createOrgIdentity(`av-role-change-${Date.now()}`);
+      const alreadyAdmin = await createOrgIdentity(`av-role-same-${Date.now()}`);
+      const notMember = await createOrgIdentity(`av-role-none-${Date.now()}`);
+      const group = await createProjectGroup(projectId, "av-role-group", ProjectMembershipRole.Member);
+
+      try {
+        expect(
+          (await inject("POST", membersUrl, { machineIdentityIds: [toChange.id], role: "member" })).statusCode
+        ).toBe(200);
+        expect(
+          (await inject("POST", membersUrl, { machineIdentityIds: [alreadyAdmin.id], role: "admin" })).statusCode
+        ).toBe(200);
+
+        const res = await inject("PATCH", membersUrl, {
+          machineIdentityIds: [toChange.id, alreadyAdmin.id, notMember.id],
+          groupIds: [group.id],
+          role: "admin"
+        });
+        expect(res.statusCode).toBe(200);
+        const { members, skipped } = JSON.parse(res.payload) as {
+          members: { type: string; id: string; role: string }[];
+          skipped: { type: string; id: string }[];
+        };
+        expect(members.map((member) => `${member.type}:${member.id}:${member.role}`).sort()).toEqual(
+          [`group:${group.id}:admin`, `machineIdentity:${toChange.id}:admin`].sort()
+        );
+        expect(skipped.map((actor) => `${actor.type}:${actor.id}`).sort()).toEqual(
+          [`machineIdentity:${alreadyAdmin.id}`, `machineIdentity:${notMember.id}`].sort()
+        );
+
+        const roleOf = async (actorType: string, id: string) =>
+          (await listMembers(`actorType=${actorType}`)).members.find((member) => member.id === id)?.role;
+        expect(await roleOf("machineIdentity", toChange.id)).toBe("admin");
+        expect(await roleOf("machineIdentity", alreadyAdmin.id)).toBe("admin");
+        expect(await roleOf("group", group.id)).toBe("admin");
+        expect(await roleOf("machineIdentity", notMember.id)).toBeUndefined();
+      } finally {
+        await inject("DELETE", membersUrl, { machineIdentityIds: [toChange.id, alreadyAdmin.id] });
+        await group.cleanup();
+        await deleteOrgIdentity(toChange.id);
+        await deleteOrgIdentity(alreadyAdmin.id);
+        await deleteOrgIdentity(notMember.id);
       }
     });
 
@@ -1935,9 +2013,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(afterAdd.totalCount).toBe(before.totalCount - 1);
 
         // Revoking puts it back, so the list tracks membership rather than caching it.
-        expect((await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] })).statusCode).toBe(
-          200
-        );
+        expect((await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] })).statusCode).toBe(200);
         const afterRevoke = await listAvailable("limit=100");
         expect(idsOf(afterRevoke.actors)).toContain(identity.id);
         expect(afterRevoke.totalCount).toBe(before.totalCount);
@@ -1955,7 +2031,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(firstPage.actors).toHaveLength(1);
         expect(firstPage.totalCount).toBe(before.totalCount);
       } finally {
-        await inject("POST", `${membersUrl}/revoke`, { machineIdentityIds: [identity.id] });
+        await inject("DELETE", membersUrl, { machineIdentityIds: [identity.id] });
         await group.cleanup();
         await deleteOrgIdentity(identity.id);
       }
@@ -1999,7 +2075,7 @@ describe("Agent Vault V1 Router", async () => {
     });
 
     test("the guards that keep the product administrable hold", async () => {
-      const self = await inject("POST", `${membersUrl}/revoke`, { userIds: [seedData1.id] });
+      const self = await inject("DELETE", membersUrl, { userIds: [seedData1.id] });
       expect(self.statusCode).toBe(403);
 
       const unknown = await inject("POST", membersUrl, {
@@ -2016,13 +2092,35 @@ describe("Agent Vault V1 Router", async () => {
         skipped: [{ type: "user", id: seedData1.id }]
       });
 
-      const badRole = await inject("PATCH", `${membersUrl}/users/${seedData1.id}`, { role: "viewer" });
+      const badRole = await inject("PATCH", membersUrl, { userIds: [seedData1.id], role: "viewer" });
       expect(badRole.statusCode).toBe(422);
 
-      const badSegment = await inject("PATCH", `${membersUrl}/identities/${seedData1.id}`, { role: "member" });
-      expect(badSegment.statusCode).toBe(422);
+      const noActors = await inject("PATCH", membersUrl, { role: "member" });
+      expect(noActors.statusCode).toBe(422);
 
-      const notAnId = await inject("POST", `${membersUrl}/revoke`, { userIds: ["not-a-uuid"] });
+      const bystander = await createOrgIdentity(`av-role-self-${Date.now()}`);
+      try {
+        expect(
+          (await inject("POST", membersUrl, { machineIdentityIds: [bystander.id], role: "member" })).statusCode
+        ).toBe(200);
+
+        const selfInBatch = await inject("PATCH", membersUrl, {
+          userIds: [seedData1.id],
+          machineIdentityIds: [bystander.id],
+          role: "admin"
+        });
+        expect(selfInBatch.statusCode).toBe(403);
+        expect(JSON.parse(selfInBatch.payload).message).toContain("your own role");
+
+        // The other actor named in the same call keeps its role.
+        const listed = await listMembers("actorType=machineIdentity");
+        expect(listed.members.find((member) => member.id === bystander.id)?.role).toBe("member");
+      } finally {
+        await inject("DELETE", membersUrl, { machineIdentityIds: [bystander.id] });
+        await deleteOrgIdentity(bystander.id);
+      }
+
+      const notAnId = await inject("DELETE", membersUrl, { userIds: ["not-a-uuid"] });
       expect(notAnId.statusCode).toBe(422);
     });
   });
@@ -2067,7 +2165,7 @@ describe("Agent Vault V1 Router", async () => {
         ],
         // The bundle is the path resource, so a missing one is still 404 even though a missing actor in
         // the body is reported as skipped.
-        ["POST", `/api/v1/agent-vault/access-bundles/${unknown}/members/revoke`, { userIds: [seedData1.id] }]
+        ["DELETE", `/api/v1/agent-vault/access-bundles/${unknown}/members`, { userIds: [seedData1.id] }]
       ];
 
       for await (const [method, url, body] of routes) {
@@ -3404,12 +3502,11 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("two admins demoted at once cannot both slip past the last-admin guard", async () => {
-      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
-        projectId: string;
-      };
+    test("two overlapping demotions cannot both slip past the last-admin guard", async () => {
+      const projectId = await getProjectId();
       const one = await createUaIdentity(`av-race-a-${Date.now()}`);
       const two = await createUaIdentity(`av-race-b-${Date.now()}`);
+      let callerGroup: Awaited<ReturnType<typeof makeCallerAdminOnlyThroughGroup>> | undefined;
 
       try {
         for await (const identity of [one, two]) {
@@ -3419,35 +3516,76 @@ describe("Agent Vault V1 Router", async () => {
           });
           expect(added.statusCode).toBe(200);
         }
+        callerGroup = await makeCallerAdminOnlyThroughGroup(projectId);
+        const { groupId } = callerGroup;
 
-        // Demote everyone at once. Whatever interleaving wins, an admin has to be left standing.
-        const admins = (await testDb("memberships")
-          .where({ scope: AccessScope.Project, scopeProjectId: projectId })
-          .select("id")) as { id: string }[];
+        // Holding the lock until both requests queue behind it means both have passed their permission
+        // checks first. Otherwise the second can rebuild them after the first demotes the caller's group,
+        // and is refused with a 403 before it ever reaches the guard.
+        let lockHeld!: () => void;
+        let releaseLock!: () => void;
+        const held = new Promise<void>((resolve) => {
+          lockHeld = resolve;
+        });
+        const released = new Promise<void>((resolve) => {
+          releaseLock = resolve;
+        });
+        const holder = testDb.transaction(async (trx) => {
+          await trx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("project", projectId)]);
+          lockHeld();
+          await released;
+        });
+        await held;
 
-        await Promise.all(
+        // Either batch alone leaves an admin standing. Together they would leave none, so one has to be
+        // refused whichever commits first.
+        const pending = Promise.all(
           [one, two].map((identity) =>
-            inject("PATCH", `/api/v1/agent-vault/members/machine-identities/${identity.id}`, {
+            inject("PATCH", "/api/v1/agent-vault/members", {
+              groupIds: [groupId],
+              machineIdentityIds: [identity.id],
               role: ProjectMembershipRole.Member
             })
           )
         );
+        // Released in finally: a poll that times out would otherwise leave the lock held and the queued
+        // requests blocked, hanging the run instead of failing the test.
+        try {
+          await pollUntil({
+            describe: "both demotions to wait on the last-admin lock",
+            read: async () =>
+              Number(
+                (
+                  (await testDb.raw(
+                    "SELECT count(*) AS waiting FROM pg_locks WHERE locktype = 'advisory' AND NOT granted"
+                  )) as { rows: { waiting: string }[] }
+                ).rows[0].waiting
+              ),
+            done: (waiting) => waiting >= 2
+          });
+        } finally {
+          releaseLock();
+          await holder;
+          await Promise.allSettled([pending]);
+        }
+        const results = await pending;
+        expect(results.map((res) => res.statusCode).sort()).toEqual([200, 400]);
+        const refused = results.find((res) => res.statusCode === 400)!;
+        expect(JSON.parse(refused.payload).message).toContain("must keep at least one admin");
 
         const remainingAdmins = (await testDb("membership_roles")
-          .whereIn(
-            "membershipId",
-            admins.map((row) => row.id)
-          )
-          .where({ role: ProjectMembershipRole.Admin })) as unknown[];
-        expect(remainingAdmins.length).toBeGreaterThan(0);
+          .join("memberships", "memberships.id", "membership_roles.membershipId")
+          .where({ scope: AccessScope.Project, scopeProjectId: projectId, role: ProjectMembershipRole.Admin })
+          .select("memberships.id")) as unknown[];
+        expect(remainingAdmins).toHaveLength(1);
       } finally {
+        await callerGroup?.restore();
         await deleteUaIdentity(one.id);
         await deleteUaIdentity(two.id);
       }
     });
 
     test("an actor from outside the organization is refused, and an unknown id does not 500", async () => {
-      // Users join through the bulk route; only groups and identities are named in the URL.
       const stranger = await inject("POST", "/api/v1/agent-vault/members", {
         userIds: ["99999999-8888-7777-6666-555555555555"],
         emails: [],
@@ -3483,6 +3621,73 @@ describe("Agent Vault V1 Router", async () => {
         expect(JSON.parse(res.payload).message).toContain("is deactivated in this organization");
       } finally {
         await testDb("memberships").where({ id: orgMembership.id }).update({ isActive: true });
+      }
+    });
+
+    test("a deactivated admin can be demoted, but a deactivated member cannot be promoted", async () => {
+      const identity = await createOrgIdentity(`av-deactivated-role-${Date.now()}`);
+
+      try {
+        expect(
+          (
+            await inject("POST", "/api/v1/agent-vault/members", {
+              machineIdentityIds: [identity.id],
+              role: ProjectMembershipRole.Admin
+            })
+          ).statusCode
+        ).toBe(200);
+        await testDb("memberships")
+          .where({ scope: AccessScope.Organization, actorIdentityId: identity.id })
+          .update({ isActive: false });
+
+        const demoted = await inject("PATCH", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [identity.id],
+          role: ProjectMembershipRole.Member
+        });
+        expect(demoted.statusCode).toBe(200);
+        expect(JSON.parse(demoted.payload).members).toMatchObject([{ id: identity.id, role: "member" }]);
+
+        const promoted = await inject("PATCH", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [identity.id],
+          role: ProjectMembershipRole.Admin
+        });
+        expect(promoted.statusCode).toBe(400);
+        expect(JSON.parse(promoted.payload).message).toContain("is deactivated in this organization");
+      } finally {
+        await deleteOrgIdentity(identity.id);
+      }
+    });
+
+    test("simultaneous role changes leave a member with exactly one role", async () => {
+      const projectId = await getProjectId();
+      const identity = await createOrgIdentity(`av-role-race-${Date.now()}`);
+
+      try {
+        expect(
+          (
+            await inject("POST", "/api/v1/agent-vault/members", {
+              machineIdentityIds: [identity.id],
+              role: ProjectMembershipRole.Member
+            })
+          ).statusCode
+        ).toBe(200);
+
+        const results = await Promise.all(
+          Array.from({ length: 10 }, (_, i) =>
+            inject("PATCH", "/api/v1/agent-vault/members", {
+              machineIdentityIds: [identity.id],
+              role: i % 2 ? ProjectMembershipRole.Member : ProjectMembershipRole.Admin
+            })
+          )
+        );
+        expect(results.every((res) => res.statusCode === 200)).toBe(true);
+
+        const membership = await testDb("memberships")
+          .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: identity.id })
+          .first();
+        expect(await testDb("membership_roles").where({ membershipId: membership.id })).toHaveLength(1);
+      } finally {
+        await deleteOrgIdentity(identity.id);
       }
     });
 
@@ -3561,7 +3766,7 @@ describe("Agent Vault V1 Router", async () => {
 
         expect(
           (
-            await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members/revoke`, {
+            await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
               groupIds: [group.id]
             })
           ).statusCode
@@ -3757,7 +3962,7 @@ describe("Agent Vault V1 Router", async () => {
 
         expect(
           (
-            await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members/revoke`, {
+            await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
               groupIds: [group.id]
             })
           ).statusCode
@@ -3814,7 +4019,7 @@ describe("Agent Vault V1 Router", async () => {
 
         const stillGranted = async () => (await grantRows(held.id, { actorGroupId: group.id })).length;
         const revoke = (accessBundleId: string, body: Record<string, unknown>) =>
-          inject("POST", `/api/v1/agent-vault/access-bundles/${accessBundleId}/members/revoke`, body);
+          inject("DELETE", `/api/v1/agent-vault/access-bundles/${accessBundleId}/members`, body);
 
         // Every miss below is a 200 with the actor reported in skipped, not a 404: a batch cannot fail
         // wholesale on one absent id and stay useful, and the grant it does not name has to survive.
@@ -3873,7 +4078,7 @@ describe("Agent Vault V1 Router", async () => {
       // The actor holds a project membership but no grant on this bundle, so the revoke reports it as
       // skipped and, crucially, leaves the project membership alone. That is the property this test
       // defends: the two scopes share one table, so a revoke that lost its scope filter would take it.
-      const refused = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members/revoke`, {
+      const refused = await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
         machineIdentityIds: [identity.id]
       });
       expect(refused.statusCode).toBe(200);

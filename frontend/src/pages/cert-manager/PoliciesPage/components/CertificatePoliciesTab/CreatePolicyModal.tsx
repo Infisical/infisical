@@ -972,7 +972,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         await updatePolicy.mutateAsync({ policyId: policy.id, ...transformedData });
       } else {
         if (!currentProject?.id) {
-          throw new Error("Project ID is required for creating a policy");
+          throw new Error("Certificate Manager could not be loaded. Please refresh and try again.");
         }
         const createdPolicy = await createPolicy.mutateAsync({
           projectId: currentProject.id,

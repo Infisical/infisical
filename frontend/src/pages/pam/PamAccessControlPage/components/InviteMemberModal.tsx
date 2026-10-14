@@ -175,8 +175,10 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
           {requesterEmail && !requesterStatus.isProjectUser && requesterStatus.userId && (
             <Alert>
               <AlertDescription>
-                Assign a role to provide access to requesting user{" "}
-                <b>{requesterStatus.userLabel}</b>.
+                <p>
+                  Assign a role to provide access to requesting user{" "}
+                  <b>{requesterStatus.userLabel}</b>.
+                </p>
               </AlertDescription>
             </Alert>
           )}
