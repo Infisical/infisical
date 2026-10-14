@@ -87,6 +87,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
             region: external?.region ?? null,
             keyPrefix: external?.keyPrefix ?? null,
             clearedAppConnectionId: cleared?.appConnectionId ?? null,
+            clearedAppConnectionName: cleared?.appConnectionName ?? null,
             clearedBucket: cleared?.bucket ?? null
           }
         }

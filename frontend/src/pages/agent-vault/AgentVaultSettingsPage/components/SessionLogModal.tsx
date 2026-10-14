@@ -118,30 +118,31 @@ const isSameStorage = (values: TFormValues, saved?: TAgentVaultSessionLogStorage
   );
 };
 
+const getKeyPrefixIssue = (value: string) => {
+  if (value.length > 512) return "At most 512 characters";
+  if (!/^[A-Za-z0-9!\-_.'()/]*$/.test(value))
+    return "Use only letters, numbers and ! - _ . ' ( ) /";
+  if (value !== "" && !value.split("/").every(Boolean)) {
+    return "Use folder names separated by single slashes, with no slash at the start or end";
+  }
+  if (value.split("/").some((segment) => segment === "." || segment === "..")) {
+    return "Cannot use '.' or '..' as a folder name";
+  }
+  return null;
+};
+
 const buildSchema = (saved: TAgentVaultSessionLogSettings | null, isExternalUsable: boolean) =>
   z
     .object({
       enabled: z.boolean(),
       storageType: z.nativeEnum(AgentVaultSessionLogStorageType),
       appConnectionId: z.string(),
-      bucket: z.string().trim().max(63),
+      bucket: z.string().trim(),
       region: z.string(),
-      keyPrefix: z
-        .string()
-        .trim()
-        .max(512, "At most 512 characters")
-        .regex(/^[A-Za-z0-9!\-_.'()/]*$/, "Use only letters, numbers and ! - _ . ' ( ) /")
-        .refine(
-          (value) => value === "" || value.split("/").every(Boolean),
-          "Use folder names separated by single slashes, with no slash at the start or end"
-        )
-        .refine(
-          (value) => !value.split("/").some((segment) => segment === "." || segment === ".."),
-          "Cannot use '.' or '..' as a folder name"
-        )
+      keyPrefix: z.string().trim()
     })
     .superRefine((values, ctx) => {
-      // Turning off sends no storage, so the bucket fields only matter while turning on.
+      // Only external storage that's being turned on sends these fields, so they're only checked then.
       if (
         !values.enabled ||
         values.storageType !== AgentVaultSessionLogStorageType.External ||
@@ -177,6 +178,10 @@ const buildSchema = (saved: TAgentVaultSessionLogSettings | null, isExternalUsab
             "Session logs need a general purpose S3 bucket. Directory buckets (names ending in --x-s3) aren't supported."
         });
       }
+
+      const keyPrefixIssue = getKeyPrefixIssue(values.keyPrefix);
+      if (keyPrefixIssue)
+        ctx.addIssue({ code: "custom", path: ["keyPrefix"], message: keyPrefixIssue });
     });
 
 type Props = {
@@ -382,8 +387,17 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
                       id="agent-vault-session-log-enabled"
                       variant="av"
                       checked={field.value ?? false}
-                      onCheckedChange={field.onChange}
-                      disabled={!field.value && !canTurnOn}
+                      onCheckedChange={(checked) => {
+                        if (checked && !canTurnOn) {
+                          setUpgradeFor(
+                            isDefaultStorageConfigured
+                              ? AgentVaultSessionLogStorageType.Default
+                              : AgentVaultSessionLogStorageType.External
+                          );
+                          return;
+                        }
+                        field.onChange(checked);
+                      }}
                     />
                   </Field>
                 )}
@@ -405,7 +419,6 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
                           : ""
                       }
                       onValueChange={(value) => field.onChange(value)}
-                      className="gap-3"
                     >
                       {storageOptions.map((option) => {
                         const id = `agent-vault-session-log-storage-${option.type}`;

@@ -613,7 +613,11 @@ export const agentVaultSessionLogServiceFactory = ({
       );
       const cleared =
         current?.storage.type === ObjectStorageType.External
-          ? { appConnectionId: current.storage.appConnectionId, bucket: current.storage.bucket }
+          ? {
+              appConnectionId: current.storage.appConnectionId,
+              appConnectionName: (await appConnectionDAL.findById(current.storage.appConnectionId))?.name ?? null,
+              bucket: current.storage.bucket
+            }
           : null;
       return { ...$settingsState(saved), appConnectionName: null, cleared };
     }

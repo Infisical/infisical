@@ -1039,7 +1039,11 @@ describe("updateSessionLogSettings: turning off", () => {
       ],
       "projectId"
     );
-    expect(result.cleared).toEqual({ appConnectionId: CONNECTION_ID, bucket: "my-bucket" });
+    expect(result.cleared).toEqual({
+      appConnectionId: CONNECTION_ID,
+      appConnectionName: "prod-logs",
+      bucket: "my-bucket"
+    });
     expect(result.settings).toBeNull();
   });
 

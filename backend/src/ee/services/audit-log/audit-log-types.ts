@@ -6439,6 +6439,7 @@ interface AgentVaultSessionLogSettingsUpdateEvent {
     keyPrefix: string | null;
     // Set when turning session logs off cleared an external bucket.
     clearedAppConnectionId?: string | null;
+    clearedAppConnectionName?: string | null;
     clearedBucket?: string | null;
   };
 }
