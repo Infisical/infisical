@@ -3410,6 +3410,52 @@ const OverviewPageContent = () => {
     return { rows, bottomSpacer: rows.length ? Math.max(0, secretRowsTotalSize - cursor) : 0 };
   })();
 
+  // Windowing puts only a slice of the secret rows in the DOM, so assistive technology would
+  // otherwise announce the rendered subset as the whole table and renumber rows while scrolling.
+  // Same mechanism TableVirtualBody uses for its own windowed rows: the real total on the table
+  // and a stable 1-based position on each row. The spacer rows are already kept out of the tree
+  // with aria-hidden. Written to the DOM rather than drilled through every row component, because
+  // these rows come from eight components and two of them are outside this change.
+  // A plain effect, not a layout effect: this is announced content, not geometry, so it does not
+  // need to land before paint.
+  useEffect(() => {
+    const table = tableRef.current?.querySelector<HTMLTableElement>(":scope > table");
+    const body = table?.tBodies[0];
+    if (!table || !body) return;
+
+    const headerRows = Array.from(table.tHead?.rows ?? []);
+    headerRows.forEach((row, index) => row.setAttribute("aria-rowindex", String(index + 1)));
+
+    // One logical row per entry. A secret row can span several <tr>s (its override row, its
+    // expanded sub-table); those repeat its data-index, so they share its position rather than
+    // being numbered as rows of their own.
+    const rows = Array.from(body.rows).filter((row) => !row.hasAttribute("aria-hidden"));
+    const firstSecretRow = rows.findIndex((row) => row.hasAttribute("data-index"));
+    // Rows rendered above the virtualized block are always all present, so their count is their
+    // offset. With no secret rows on screen there is nothing to offset against, so leave the
+    // trailing rows numbered after the full secret list.
+    const rowsBeforeSecrets = firstSecretRow === -1 ? rows.length : firstSecretRow;
+
+    let logicalIndex = 0;
+    let lastDataIndex: string | null = null;
+    rows.forEach((row) => {
+      const dataIndex = row.getAttribute("data-index");
+      if (dataIndex !== null && dataIndex === lastDataIndex) {
+        row.removeAttribute("aria-rowindex");
+        return;
+      }
+      lastDataIndex = dataIndex;
+      const position = dataIndex === null ? logicalIndex : rowsBeforeSecrets + Number(dataIndex);
+      // Everything after the virtualized block continues past the whole secret list, not past
+      // the few rows of it that happen to be mounted.
+      logicalIndex =
+        dataIndex === null ? logicalIndex + 1 : rowsBeforeSecrets + mergedSecKeys.length;
+      row.setAttribute("aria-rowindex", String(headerRows.length + position + 1));
+    });
+
+    table.setAttribute("aria-rowcount", String(headerRows.length + logicalIndex));
+  }, [secretRowsRenderPlan, mergedSecKeys.length, tableView]);
+
   let quickAddSaveLabel: string | undefined;
   if (isBatchModeActive) quickAddSaveLabel = "Add Pending Change";
   else if (visibleEnvs.length > 1) quickAddSaveLabel = "Add to all environments";

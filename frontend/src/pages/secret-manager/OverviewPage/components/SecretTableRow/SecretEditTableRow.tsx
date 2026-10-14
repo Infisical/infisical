@@ -708,15 +708,22 @@ export const SecretEditTableRow = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBatchMode, watchedValue, watchedKey, watchedComment, watchedTags, serializedMetadata]);
 
+  // A comment or metadata draft lives in that popover's own form, which this row cannot see: both
+  // child forms only push their value up to this form in batch mode. Their popovers are not modal
+  // either, so the page scrolls underneath them, and an unpinned row that scrolls out of the
+  // virtualizer's window unmounts and takes the draft with it. Closing the popover already
+  // discards the draft, so an open editor is exactly the window that windowing can destroy.
+  const hasOpenAnnotationDraft = isCommentOpen || isMetadataOpen;
+
   // isDirty covers both windows the parent has to protect: a non-batch edit waiting on the save
   // button, and a batch edit waiting on the 500ms debounce above, which clears it via reset()
   // once the change reaches the batch store.
   useEffect(() => {
     if (!unsavedChangeId || !onUnsavedChange) return undefined;
 
-    onUnsavedChange(unsavedChangeId, isDirty);
+    onUnsavedChange(unsavedChangeId, isDirty || hasOpenAnnotationDraft);
     return () => onUnsavedChange(unsavedChangeId, false);
-  }, [isDirty, unsavedChangeId, onUnsavedChange]);
+  }, [isDirty, hasOpenAnnotationDraft, unsavedChangeId, onUnsavedChange]);
 
   // Reset form when a pending change is externally discarded (e.g. CommitForm discard button
   // or toggling batch mode off). We don't gate on isBatchMode because React batches the
