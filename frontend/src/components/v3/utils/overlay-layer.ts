@@ -22,21 +22,40 @@ const getOriginalEvent = (event: Event) =>
   (event as CustomEvent<{ originalEvent?: Event } | undefined>).detail?.originalEvent ?? event;
 
 const useOverlayLayer = (isPending: boolean) => {
+  const parentLayer = React.useContext(OverlayLayerContext);
+  const parentRegisterPopup = parentLayer?.registerPopup;
+  const parentMarkPopupDismissEvent = parentLayer?.markPopupDismissEvent;
   const openPopups = React.useRef(new Map<string, ((event: KeyboardEvent) => void) | undefined>());
   const popupDismissEvents = React.useRef(new WeakSet<Event>());
   const focusReturnTarget = React.useRef<HTMLElement | null>(null);
 
-  const registerPopup = React.useCallback(
-    (id: string, open: boolean, onEscapeKeyDown?: (event: KeyboardEvent) => void) => {
-      if (open) openPopups.current.set(id, onEscapeKeyDown);
-      else openPopups.current.delete(id);
+  const markPopupDismissEvent = React.useCallback(
+    (event: Event) => {
+      const originalEvent = getOriginalEvent(event);
+      popupDismissEvents.current.add(originalEvent);
+      parentMarkPopupDismissEvent?.(originalEvent);
     },
-    []
+    [parentMarkPopupDismissEvent]
   );
 
-  const markPopupDismissEvent = React.useCallback((event: Event) => {
-    popupDismissEvents.current.add(event);
-  }, []);
+  const registerPopup = React.useCallback(
+    (id: string, open: boolean, onEscapeKeyDown?: (event: KeyboardEvent) => void) => {
+      if (!open) {
+        openPopups.current.delete(id);
+        parentRegisterPopup?.(id, false);
+        return;
+      }
+      const handleEscapeKeyDown = onEscapeKeyDown
+        ? (event: KeyboardEvent) => {
+            markPopupDismissEvent(event);
+            onEscapeKeyDown(event);
+          }
+        : undefined;
+      openPopups.current.set(id, handleEscapeKeyDown);
+      parentRegisterPopup?.(id, true, handleEscapeKeyDown);
+    },
+    [markPopupDismissEvent, parentRegisterPopup]
+  );
 
   const contextValue = React.useMemo(
     () => ({ isPending, registerPopup, markPopupDismissEvent }),
@@ -46,13 +65,14 @@ const useOverlayLayer = (isPending: boolean) => {
   const guardDismiss = <TEvent extends Event>(event: TEvent, handler?: (event: TEvent) => void) => {
     const originalEvent = getOriginalEvent(event);
     if (!popupDismissEvents.current.has(originalEvent) && openPopups.current.size > 0) {
-      const onEscapeKeyDown = Array.from(openPopups.current.values()).at(-1);
+      markPopupDismissEvent(originalEvent);
+      const escapeHandlers = Array.from(openPopups.current.values());
+      const onEscapeKeyDown = escapeHandlers[escapeHandlers.length - 1];
       if (
         onEscapeKeyDown &&
         originalEvent instanceof KeyboardEvent &&
         originalEvent.key === "Escape"
       ) {
-        popupDismissEvents.current.add(originalEvent);
         onEscapeKeyDown(originalEvent);
       }
       event.preventDefault();
