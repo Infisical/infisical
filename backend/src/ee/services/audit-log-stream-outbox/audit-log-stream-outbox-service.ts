@@ -53,7 +53,7 @@ export const STALE_CLAIM_THRESHOLD_MS = 10 * 60_000;
 const STALE_SWEEP_BATCH_SIZE = 1_000;
 const STALE_SWEEP_MAX_BATCHES = 10;
 // Shown to customers in the delivery-failed alert, where a stale claim has no provider error to report.
-const STALE_CLAIM_DROP_MESSAGE = "Events were dropped because the delivery worker stopped during their final attempt.";
+const STALE_CLAIM_DROP_MESSAGE = "The delivery worker stopped during the final delivery attempt.";
 const STREAM_CREDENTIALS_DECRYPT_MESSAGE =
   "Could not decrypt this stream's credentials. Check that the organization's KMS key is available, then update the stream's credentials.";
 

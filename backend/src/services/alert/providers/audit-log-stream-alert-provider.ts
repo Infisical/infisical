@@ -92,8 +92,8 @@ export const auditLogStreamAlertProviderFactory = ({
       severity: "critical",
       summary:
         targets.length === 1
-          ? `Audit log events are being dropped on the ${providerLabel(first)} stream`
-          : `Audit log events are being dropped on ${targets.length} streams`,
+          ? `Audit log events failed to reach the ${providerLabel(first)} stream`
+          : `Audit log events failed to reach ${targets.length} streams`,
       items: targets.map((target) => ({
         id: target.streamId,
         title: `${providerLabel(target)} stream`,
@@ -101,7 +101,7 @@ export const auditLogStreamAlertProviderFactory = ({
         fields: [
           { label: "Provider", value: providerLabel(target) },
           { label: "Error", value: target.errorMessage },
-          { label: "Dropped Events", value: String(target.droppedCount) },
+          { label: "Undelivered Events", value: String(target.droppedCount) },
           { label: "Failing Since", value: formatUtcDate(target.failingSince) }
         ]
       }))
