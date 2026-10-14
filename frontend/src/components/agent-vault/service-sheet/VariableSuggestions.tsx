@@ -14,7 +14,6 @@ import {
   useAgentVaultVariableKeyStatus,
   useListAgentVaultVariables
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 
 import { useServiceVariables } from "./ServiceVariablesContext";
 
@@ -23,7 +22,7 @@ type TOpenReference = { start: number; query: string };
 const SUGGESTION_LIMIT = 50;
 
 type TSuggestion =
-  | { type: "variable"; variable: TAgentVaultVariable }
+  | { type: "variable"; key: string }
   | { type: "create"; key: string; isKeyValid: boolean };
 
 export const useVariableAutocomplete = ({
@@ -60,16 +59,24 @@ export const useVariableAutocomplete = ({
   const suggestions = useMemo((): TSuggestion[] => {
     if (!openReference || !data) return [];
     const key = query;
-    const matches = data.variables
-      .filter((variable) => variable.key.includes(key))
-      .sort(
-        (a, b) =>
-          Number(b.key.startsWith(key)) - Number(a.key.startsWith(key)) ||
-          a.key.localeCompare(b.key)
-      )
-      .map((variable) => ({ type: "variable" as const, variable }));
+    // The search returns the first page of keys containing the text, which may not include the key itself, so
+    // one the lookup has found is added and listed first either way.
+    const keyExists = existing.has(key) || data.variables.some((variable) => variable.key === key);
+    const rank = (candidate: string) => {
+      if (candidate === key) return 0;
+      return candidate.startsWith(key) ? 1 : 2;
+    };
+    const matches = [
+      ...new Set([
+        ...(keyExists ? [key] : []),
+        ...data.variables
+          .map((variable) => variable.key)
+          .filter((candidate) => candidate.includes(key))
+      ])
+    ]
+      .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
+      .map((candidate) => ({ type: "variable" as const, key: candidate }));
 
-    const keyExists = matches.some(({ variable }) => variable.key === key) || existing.has(key);
     if (!requestVariable || keyExists) return matches;
     return [...matches, { type: "create", key, isKeyValid: VARIABLE_KEY_RE.test(key) }];
   }, [openReference, query, data, existing, requestVariable]);
@@ -130,7 +137,7 @@ export const useVariableAutocomplete = ({
     };
 
     if (suggestion.type === "variable") {
-      insert(suggestion.variable.key);
+      insert(suggestion.key);
       return;
     }
 
@@ -208,7 +215,7 @@ export const VariableSuggestions = ({
   const renderOption = (suggestion: TSuggestion, index: number) => (
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events
     <div
-      key={suggestion.type === "variable" ? suggestion.variable.id : "create"}
+      key={suggestion.type === "variable" ? suggestion.key : "create"}
       id={optionId(index)}
       role="option"
       tabIndex={-1}
@@ -222,7 +229,7 @@ export const VariableSuggestions = ({
       onClick={() => choose(suggestion)}
     >
       {suggestion.type === "variable" ? (
-        <span className="flex-1 truncate font-mono text-xs">{suggestion.variable.key}</span>
+        <span className="flex-1 truncate font-mono text-xs">{suggestion.key}</span>
       ) : (
         <>
           <PlusIcon className="size-3.5 shrink-0 text-muted" />

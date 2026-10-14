@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import {
   InfiniteData,
+  SkipToken,
+  skipToken,
   useInfiniteQuery,
   useQueries,
   useQuery,
@@ -561,22 +563,52 @@ export const useListAgentVaultVariables = (
   });
 };
 
-// Whether each key exists, one cached query per key, so a key checked once is never asked about again until a
-// variable changes. Only keys whose answer has arrived are in either set: a pending one is neither.
+const KEY_LOOKUP_BATCH_SIZE = 100;
+
+// Whether each key exists. Each key's answer is cached on its own, so a key checked once isn't asked about again
+// until a variable changes, but the keys still to check go out together through the keys filter, in batches of
+// the API's maximum, rather than a request each. Only keys whose answer has arrived are in either set.
 export const useAgentVaultVariableKeyStatus = (keys: readonly string[], enabled = true) => {
   const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  const statusKey = (key: string) => agentVaultKeys.variableKeyStatus(currentOrg.id, key);
 
+  // Read-only: these never fetch, the batch below fills them.
   const { existing, missing } = useQueries({
     queries: keys.map((key) => ({
-      queryKey: agentVaultKeys.variableKeyStatus(currentOrg.id, key),
-      queryFn: async () =>
-        (await fetchAgentVaultVariables({ keys: [key], limit: 1 })).totalCount > 0,
-      enabled
+      queryKey: statusKey(key),
+      queryFn: skipToken as SkipToken
     })),
     combine: (results) => ({
       existing: keys.filter((_, index) => results[index]?.data === true).join(","),
       missing: keys.filter((_, index) => results[index]?.data === false).join(",")
     })
+  });
+
+  // Unanswered keys, and answered ones a variable change has invalidated since.
+  const unchecked = [...keys]
+    .filter((key) => {
+      const state = queryClient.getQueryState(statusKey(key));
+      return state?.data === undefined || state.isInvalidated;
+    })
+    .sort();
+
+  useQuery({
+    queryKey: [...agentVaultKeys.variables(currentOrg.id), "key-status-batch", unchecked],
+    queryFn: async () => {
+      const found = new Set<string>();
+      for (let i = 0; i < unchecked.length; i += KEY_LOOKUP_BATCH_SIZE) {
+        // eslint-disable-next-line no-await-in-loop
+        const page = await fetchAgentVaultVariables({
+          keys: unchecked.slice(i, i + KEY_LOOKUP_BATCH_SIZE),
+          limit: KEY_LOOKUP_BATCH_SIZE
+        });
+        page.variables.forEach((variable) => found.add(variable.key));
+      }
+      unchecked.forEach((key) => queryClient.setQueryData<boolean>(statusKey(key), found.has(key)));
+      return unchecked.length;
+    },
+    enabled: enabled && unchecked.length > 0
   });
 
   return useMemo(
