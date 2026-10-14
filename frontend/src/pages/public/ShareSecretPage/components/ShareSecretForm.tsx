@@ -11,8 +11,7 @@ import {
   ForwardIcon,
   Info,
   Lock,
-  MailCheck,
-  SlidersHorizontal
+  MailCheck
 } from "lucide-react";
 import { z } from "zod";
 
@@ -37,12 +36,12 @@ import {
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
+  SecretInput,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  TextArea,
   Toggle,
   Tooltip,
   TooltipContent,
@@ -159,6 +158,7 @@ const formatExpiry = (expiresIn: string) => {
 type Props = {
   isPublic: boolean; // whether or not this is a public (non-authenticated) secret sharing form
   value?: string;
+  name?: string;
   allowSecretSharingOutsideOrganization?: boolean;
   maxSharedSecretLifetime?: number;
   maxSharedSecretViewLimit?: number | null;
@@ -167,6 +167,7 @@ type Props = {
 export const ShareSecretForm = ({
   isPublic,
   value,
+  name: defaultName,
   allowSecretSharingOutsideOrganization = true,
   maxSharedSecretLifetime,
   maxSharedSecretViewLimit
@@ -202,6 +203,7 @@ export const ShareSecretForm = ({
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
+      name: defaultName,
       secret: value || "",
       viewLimit: maxSharedSecretViewLimit?.toString() ?? "1",
       shouldLimitView: isViewLimitEnforced,
@@ -220,6 +222,14 @@ export const ShareSecretForm = ({
     accessType === SecretSharingAccessType.Organization || !allowSecretSharingOutsideOrganization;
 
   const resolvedExpiry = formatExpiry(selectedExpiresIn);
+
+  const isValueLocked = value !== undefined;
+  const constraintCount = [
+    isLimitingView,
+    Boolean(watch("password")),
+    !isPublic && isOrgAccess,
+    !isPublic && parseRecipients(watch("emails")).length > 0
+  ].filter(Boolean).length;
 
   const onFormSubmit = async ({
     name,
@@ -373,13 +383,20 @@ export const ShareSecretForm = ({
             render={({ field, fieldState: { error } }) => (
               <Field>
                 <FieldLabel htmlFor="share-secret-value">Secret Value</FieldLabel>
-                <TextArea
+                <SecretInput
                   placeholder="Enter sensitive data to share via an encrypted link"
                   {...field}
                   id="share-secret-value"
-                  disabled={value !== undefined}
-                  aria-invalid={Boolean(error)}
+                  containerClassName="min-h-16 items-start py-1"
+                  isReadOnly={isValueLocked}
+                  isError={Boolean(error)}
                 />
+                {isValueLocked && (
+                  <FieldDescription>
+                    Locked to the stored value, so the link shares exactly what is saved in
+                    Infisical.
+                  </FieldDescription>
+                )}
                 {error && <FieldError>{error.message}</FieldError>}
               </Field>
             )}
@@ -433,11 +450,12 @@ export const ShareSecretForm = ({
           <AccordionItem value="options">
             <AccordionTrigger>
               <span className="flex flex-1 items-center justify-between gap-3">
-                <span className="inline-flex items-center gap-2">
-                  <SlidersHorizontal className="size-4 text-accent" />
-                  More Options
+                More Options
+                <span className="text-xs font-normal text-muted">
+                  {constraintCount === 0
+                    ? "No constraints"
+                    : `${constraintCount} constraint${constraintCount === 1 ? "" : "s"}`}
                 </span>
-                <span className="text-xs font-normal text-muted">Password, views, delivery</span>
               </span>
             </AccordionTrigger>
             <AccordionContent className="flex flex-col gap-6 p-5">
