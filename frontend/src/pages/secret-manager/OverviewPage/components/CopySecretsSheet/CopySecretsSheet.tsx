@@ -124,7 +124,9 @@ const CopySecretsSession = ({
   onOpenChange,
   onCompleted
 }: Props & { invocation: CopySecretsInvocation }) => {
-  const telemetry = useOverviewTelemetry();
+  const overviewTelemetry = useOverviewTelemetry();
+  const [telemetry] = useState(overviewTelemetry);
+  const sessionOwner = useRef<object>();
   const sessionFlow = useRef<OverviewFlowHandle>();
   const flow = {
     action: "copy" as const,
@@ -133,17 +135,22 @@ const CopySecretsSession = ({
     destination: "environment" as const
   };
   useEffect(() => {
+    sessionOwner.current = {};
     sessionFlow.current = telemetry.openFlow(flow);
     return () => {
       sessionFlow.current?.flow({ phase: "canceled" });
       sessionFlow.current = undefined;
+      sessionOwner.current = undefined;
     };
   }, [telemetry, invocation.origin]);
-  const closeSheet = (open: boolean, owner = sessionFlow.current) => {
-    if (!owner || owner !== sessionFlow.current) return;
-    if (!open) owner.flow({ phase: "canceled" });
+  const closeSheet = (open: boolean, owner = sessionOwner.current) => {
+    if (!owner || owner !== sessionOwner.current) return;
+    if (!open) sessionFlow.current?.flow({ phase: "canceled" });
     onOpenChange(open);
-    if (!open) sessionFlow.current = undefined;
+    if (!open) {
+      sessionFlow.current = undefined;
+      sessionOwner.current = undefined;
+    }
   };
   const initialState = getInitialCopyState(invocation, environments);
   const [sourceEnvironmentSlug, setSourceEnvironmentSlug] = useState(
@@ -393,7 +400,7 @@ const CopySecretsSession = ({
     shouldOverwrite: boolean;
     skippedSecretIds?: string[];
   }) => {
-    const owner = sessionFlow.current;
+    const owner = sessionOwner.current;
     setIsSubmitting(true);
     const attempt = telemetry.startFlow({
       ...flow,
@@ -492,7 +499,7 @@ const CopySecretsSession = ({
             : "success",
         text: notificationText
       });
-      if (owner === sessionFlow.current && attempt.isCurrent()) {
+      if (owner && owner === sessionOwner.current) {
         onCompleted?.(copiedSecretIds);
         closeSheet(false, owner);
       }
