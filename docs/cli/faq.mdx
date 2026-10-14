@@ -62,6 +62,8 @@ Your shell saves the commands you run to a history file, so a secret value you p
 <Accordion title="Can I fetch secrets with Infisical while I'm offline?">
 Yes. If you have previously retrieved secrets for a specific project and environment (such as dev, staging, or prod), the  `run`/`secret` command will utilize the saved secrets, even when offline, on subsequent fetch attempts.
 
+Running `infisical login` or `infisical logout` deletes the saved secrets, so they're only available offline again after your next fetch.
+
 </Accordion>
 
 <Accordion title="Can I upload the `.infisical.yaml` file that was generated?">
