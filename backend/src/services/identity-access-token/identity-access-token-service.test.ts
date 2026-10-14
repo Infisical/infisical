@@ -54,7 +54,7 @@ const createService = ({
   const keyStore = {
     getItem: vi.fn().mockResolvedValue(null),
     getItemPrimary: vi.fn(),
-    incrementBy: vi.fn(),
+    decrementIfExists: vi.fn(),
     setItemWithExpiry: vi.fn(),
     setItemWithExpiryNX: vi.fn().mockResolvedValue("OK"),
     incrementSeededWithExpiry: vi.fn().mockResolvedValue(1),
@@ -331,14 +331,14 @@ describe("identityAccessTokenServiceFactory", () => {
   test("keeps usage counters in Redis", async () => {
     const { service, keyStore } = createService();
     keyStore.getItem.mockResolvedValue("1");
-    keyStore.incrementBy.mockResolvedValue(0);
+    keyStore.decrementIfExists.mockResolvedValue(0);
 
     await expect(
       service.fnValidateIdentityAccessTokenFast(createTokenClaims({ numUsesLimit: 3 }), "10.0.0.1")
     ).resolves.toMatchObject({
       identityId: "identity-id"
     });
-    expect(keyStore.incrementBy).toHaveBeenCalledWith("identity-token-uses-remaining:identity-id:token-id", -1);
+    expect(keyStore.decrementIfExists).toHaveBeenCalledWith("identity-token-uses-remaining:identity-id:token-id");
   });
 
   test("reseeds a lost Redis usage counter from JWT claims", async () => {
@@ -352,21 +352,66 @@ describe("identityAccessTokenServiceFactory", () => {
     });
     expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
       "identity-token-uses-remaining:identity-id:token-id",
-      3600,
+      MAX_AGE + MARKER_SKEW_SECONDS,
       2
     );
-    expect(keyStore.incrementBy).not.toHaveBeenCalled();
+    expect(keyStore.decrementIfExists).not.toHaveBeenCalled();
   });
 
-  test("reseeds a lost counter for a legacy JWT with no exp using the ceiling", async () => {
+  test("reseeds a lost counter to outlive every renewed JWT, not just the one presented", async () => {
     const { service, keyStore } = createService();
     keyStore.getItem.mockResolvedValue(null);
 
-    await service.fnValidateIdentityAccessTokenFast(createTokenClaims({ numUsesLimit: 3, exp: undefined }), "10.0.0.1");
+    // The presented JWT has 10 minutes left, but the token's maxTTL budget allows renewed JWTs for
+    // another 90 minutes, and they all share this counter.
+    await service.fnValidateIdentityAccessTokenFast(
+      createTokenClaims({
+        numUsesLimit: 3,
+        exp: NOW_SECONDS + 600,
+        accessTokenTTL: 3600,
+        accessTokenMaxTTL: 7200,
+        creationEpoch: NOW_SECONDS - 1800
+      }),
+      "10.0.0.1"
+    );
     expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
       "identity-token-uses-remaining:identity-id:token-id",
-      MAX_AGE,
+      5400 + MARKER_SKEW_SECONDS,
       2
+    );
+  });
+
+  test("does not reseed a lost counter for a JWT that expired after it was verified", async () => {
+    const { service, keyStore } = createService();
+    keyStore.getItem.mockImplementation(async (key: string) => {
+      if (key.startsWith("identity-token-uses-remaining:")) {
+        vi.setSystemTime(new Date((NOW_SECONDS + 3600) * 1000));
+      }
+      return null;
+    });
+
+    await expect(
+      service.fnValidateIdentityAccessTokenFast(createTokenClaims({ numUsesLimit: 3 }), "10.0.0.1")
+    ).rejects.toThrow("has expired");
+    expect(keyStore.setItemWithExpiry).not.toHaveBeenCalledWith(
+      expect.stringContaining("identity-token-uses-remaining:"),
+      expect.anything(),
+      expect.anything()
+    );
+  });
+
+  test("rejects without recreating a counter that expired between the read and the decrement", async () => {
+    const { service, keyStore } = createService();
+    keyStore.getItem.mockResolvedValue("2");
+    keyStore.decrementIfExists.mockResolvedValue(null);
+
+    await expect(
+      service.fnValidateIdentityAccessTokenFast(createTokenClaims({ numUsesLimit: 3 }), "10.0.0.1")
+    ).rejects.toThrow("could not be recorded");
+    expect(keyStore.setItemWithExpiry).not.toHaveBeenCalledWith(
+      expect.stringContaining("identity-token-uses-remaining:"),
+      expect.anything(),
+      expect.anything()
     );
   });
 
@@ -390,7 +435,7 @@ describe("identityAccessTokenServiceFactory", () => {
 
     expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
       expect.stringMatching(/^identity-token-uses-remaining:identity-id:/),
-      600,
+      600 + MARKER_SKEW_SECONDS,
       1
     );
   });
@@ -421,8 +466,43 @@ describe("identityAccessTokenServiceFactory", () => {
 
     expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
       "identity-token-uses-remaining:identity-id:token-id",
-      3600,
+      3600 + MARKER_SKEW_SECONDS,
       1
+    );
+  });
+
+  test("does not renew with a fresh budget when the JWT expired after it was verified", async () => {
+    const { accessToken } = signIdentityAccessToken({
+      identityAccessTokenId: "token-id",
+      identityId: "identity-id",
+      identityName: "identity-name",
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      orgId: "org-id",
+      rootOrgId: "root-org-id",
+      parentOrgId: "parent-org-id",
+      clientSecretId: "",
+      numUsesLimit: 2,
+      ipRestrictionEnabled: false,
+      ttlSeconds: 3600,
+      accessTokenTTL: 3600,
+      accessTokenMaxTTL: 7200,
+      accessTokenPeriod: 0,
+      creationEpoch: NOW_SECONDS,
+      identityAuth: {}
+    });
+    const { service, keyStore } = createService();
+    keyStore.getItem.mockImplementation(async (key: string) => {
+      if (key.startsWith("identity-token-uses-remaining:")) {
+        vi.setSystemTime(new Date((NOW_SECONDS + 3600) * 1000));
+      }
+      return null;
+    });
+
+    await expect(service.renewAccessToken({ accessToken })).rejects.toThrow("has expired");
+    expect(keyStore.setItemWithExpiry).not.toHaveBeenCalledWith(
+      expect.stringContaining("identity-token-uses-remaining:"),
+      expect.anything(),
+      expect.anything()
     );
   });
 
@@ -437,7 +517,7 @@ describe("identityAccessTokenServiceFactory", () => {
       expect.anything(),
       expect.anything()
     );
-    expect(keyStore.incrementBy).not.toHaveBeenCalled();
+    expect(keyStore.decrementIfExists).not.toHaveBeenCalled();
     expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
       "identity-trusted-ips:identity-id:universal-auth",
       300,

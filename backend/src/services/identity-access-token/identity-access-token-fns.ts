@@ -143,27 +143,43 @@ export const computeIssuedTtl = ({
   return Math.min(requestedCap, remainingBudget, ceiling);
 };
 
-// How long the uses-remaining counter must live: as long as the JWT it counts against can still be
-// presented. An expired JWT is rejected before the counter is read, so keeping the key longer only
-// leaves a dead key in Redis. A JWT with no exp (legacy) falls back to the configured ceiling.
-export const computeUsesRemainingTtl = ({
+// Extra 5 minutes added to when a revocation record expires. Guards against
+// small clock differences between servers and a slightly stale database replica
+// so a revoked token can't slip through by dropping the record too early.
+export const IDENTITY_REVOCATION_MARKER_SKEW_SECONDS = 300;
+
+export const hasJwtExpired = ({
   exp,
   nowSeconds = Math.floor(Date.now() / 1000)
 }: {
   exp?: number;
   nowSeconds?: number;
+}): boolean => typeof exp === "number" && nowSeconds >= exp;
+
+// The uses-remaining counter is read after the JWT is verified, so it has to outlive the JWT by
+// enough to cover a request in flight. A counter that vanishes mid-request reads as lost, and a lost
+// counter is reseeded with a fresh budget.
+export const computeUsesRemainingTtl = (jwtTtlSeconds: number): number =>
+  jwtTtlSeconds + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS;
+
+// A reseed rebuilds the one counter that every JWT for the token id shares (renewal keeps the id), so
+// it has to last until the latest of them could expire, not just the one being presented. No JWT
+// outlives creationEpoch + maxTTL, and none outlives now + ceiling since each is issued no later than
+// now with at most the ceiling.
+export const computeReseededUsesRemainingTtl = ({
+  accessTokenMaxTTL,
+  creationEpoch,
+  nowSeconds = Math.floor(Date.now() / 1000)
+}: {
+  accessTokenMaxTTL: number;
+  creationEpoch: number;
+  nowSeconds?: number;
 }): number => {
   const { MAX_MACHINE_IDENTITY_TOKEN_AGE: ceiling } = getConfig();
-  if (typeof exp !== "number") {
-    return ceiling;
-  }
-  return Math.min(Math.max(exp - nowSeconds, 1), ceiling);
+  const latestJwtExpiry =
+    accessTokenMaxTTL > 0 ? Math.min(creationEpoch + accessTokenMaxTTL - nowSeconds, ceiling) : ceiling;
+  return computeUsesRemainingTtl(Math.max(latestJwtExpiry, 1));
 };
-
-// Extra 5 minutes added to when a revocation record expires. Guards against
-// small clock differences between servers and a slightly stale database replica
-// so a revoked token can't slip through by dropping the record too early.
-export const IDENTITY_REVOCATION_MARKER_SKEW_SECONDS = 300;
 
 // Longest lifetime (seconds) a single token can be handed out with the
 // requested lifetime, but never above the configured maximum. Periodic tokens
