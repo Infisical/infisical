@@ -112,7 +112,7 @@ export const identityServiceFactory = ({
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
-            "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
+            "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Advanced to assign custom roles."
         });
     }
     if (role !== OrgMembershipRole.NoAccess) {
@@ -242,7 +242,7 @@ export const identityServiceFactory = ({
         if (!plan?.rbac)
           throw new BadRequestError({
             message:
-              "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
+              "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Advanced to assign custom roles."
           });
       }
       const targetRoles = resolveMembershipRoleSlugs(
