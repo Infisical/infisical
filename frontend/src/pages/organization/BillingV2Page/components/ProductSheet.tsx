@@ -56,6 +56,7 @@ import {
   unitPrice
 } from "../billing-v2-format";
 import { ActivateView } from "./ActivateView";
+import { CancellationFeedbackDialog } from "./CancellationFeedbackDialog";
 import { CommitmentView } from "./CommitmentView";
 import { ActiveBadge, DimensionMeter, ProductIcon } from "./shared";
 import { UpgradeView } from "./UpgradeView";
@@ -583,19 +584,14 @@ export const ProductSheet = ({
     }
   };
 
-  const handleCancelTrial = async () => {
-    try {
-      await cancelTrial.mutateAsync({ orgId, productId: prod.id });
-      createNotification({
-        type: "success",
-        text: upgradeTrialPlan
-          ? `Your ${upgradeTrialPlan} trial has ended. You're still on ${basePlanName}.`
-          : `Your ${prod.name} trial has been canceled.`
-      });
-      onClose();
-    } catch {
-      setShowCancelTrial(false);
-    }
+  const handleCancelTrialConfirmed = () => {
+    createNotification({
+      type: "success",
+      text: upgradeTrialPlan
+        ? `Your ${upgradeTrialPlan} trial has ended. You're still on ${basePlanName}.`
+        : `Your ${prod.name} trial has been canceled.`
+    });
+    onClose();
   };
 
   const activatePlanObj = activatePlan
@@ -813,46 +809,32 @@ export const ProductSheet = ({
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog
-        open={showCancelTrial}
-        onOpenChange={(open) => {
-          if (!open && !cancelTrial.isPending) {
-            setShowCancelTrial(false);
+      {showCancelTrial && (
+        <CancellationFeedbackDialog
+          orgId={orgId}
+          productId={prod.id}
+          action="cancel_trial"
+          icon={<CalendarX2Icon />}
+          title={
+            upgradeTrialPlan
+              ? `End your ${upgradeTrialPlan} trial`
+              : `Cancel your ${prod.name} trial`
           }
-        }}
-      >
-        <AlertDialogContent className="sm:max-w-lg!">
-          <AlertDialogHeader>
-            <AlertDialogMedia>
-              <CalendarX2Icon />
-            </AlertDialogMedia>
-            <AlertDialogTitle>
-              {upgradeTrialPlan
-                ? `End your ${upgradeTrialPlan} trial`
-                : `Cancel your ${prod.name} trial`}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {upgradeTrialPlan
-                ? `You'll go back to ${basePlanName} right away and won't be charged anything. This trial can't be restarted later.`
-                : "Canceling returns you to the free tier immediately and stops the trial from converting to a paid plan. This trial can't be restarted later."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep trial</AlertDialogCancel>
-            <AlertDialogAction
-              variant="danger"
-              isDisabled={cancelTrial.isPending}
-              isPending={cancelTrial.isPending}
-              onClick={(e) => {
-                e.preventDefault();
-                handleCancelTrial();
-              }}
-            >
-              {upgradeTrialPlan ? "End trial" : "Cancel trial"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          description={
+            upgradeTrialPlan
+              ? `You'll go back to ${basePlanName} right away and won't be charged anything. This trial can't be restarted later.`
+              : "Canceling returns you to the free tier immediately and stops the trial from converting to a paid plan. This trial can't be restarted later."
+          }
+          reasonLabel={
+            upgradeTrialPlan ? "Why are you ending your trial?" : "Why are you canceling?"
+          }
+          confirmLabel={upgradeTrialPlan ? "End trial" : "Cancel trial"}
+          dismissLabel="Keep trial"
+          onConfirm={() => cancelTrial.mutateAsync({ orgId, productId: prod.id })}
+          onConfirmed={handleCancelTrialConfirmed}
+          onDismiss={() => setShowCancelTrial(false)}
+        />
+      )}
     </>
   );
 };
