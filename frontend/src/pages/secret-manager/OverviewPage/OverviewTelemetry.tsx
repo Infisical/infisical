@@ -28,7 +28,10 @@ export const overviewResponsePhase = (
   return "empty";
 };
 
-type OverviewFlowLifecycle = { status: "open" | "submitted" | "completed" | "closed" };
+type OverviewFlowLifecycle = {
+  status: "open" | "submitted" | "completed" | "closed";
+  cancelOnScopeChange?: boolean;
+};
 export type OverviewFlowState = Map<string, OverviewFlowLifecycle>;
 export type OverviewFlowHandle = {
   flow: (properties: Omit<OverviewFlowProperties, "action" | "resourceType" | "source">) => void;
@@ -91,9 +94,15 @@ export const createOverviewTelemetry = (
       destination: properties.destination
     });
   },
-  openFlow(properties: Omit<OverviewFlowProperties, "phase">): OverviewFlowHandle {
+  openFlow(
+    properties: Omit<OverviewFlowProperties, "phase">,
+    options?: { cancelOnScopeChange: boolean }
+  ): OverviewFlowHandle {
     const key = `${properties.action}:${properties.resourceType}:${properties.source}`;
-    const state: OverviewFlowLifecycle = { status: "closed" };
+    const state: OverviewFlowLifecycle = {
+      status: "closed",
+      cancelOnScopeChange: options?.cancelOnScopeChange
+    };
     this.flow({ ...properties, phase: "opened" }, state);
     return {
       flow: (progress) => this.flow({ ...properties, ...progress }, state),
@@ -113,15 +122,19 @@ export const createOverviewTelemetry = (
   },
   cancelOpenFlows() {
     flows.forEach((state, key) => {
-      if (state.status !== "open") return;
+      if (state.cancelOnScopeChange === false) return;
+      if (state.status !== "open") {
+        flows.delete(key);
+        return;
+      }
       const [action, resourceType, source] = key.split(":") as [
         OverviewFlowProperties["action"],
         OverviewFlowProperties["resourceType"],
         OverviewFlowProperties["source"]
       ];
       this.flow({ action, resourceType, source, phase: "canceled" }, state);
+      flows.delete(key);
     });
-    flows.clear();
   }
 });
 

@@ -136,7 +136,7 @@ const CopySecretsSession = ({
   };
   useEffect(() => {
     sessionOwner.current = {};
-    sessionFlow.current = telemetry.openFlow(flow);
+    sessionFlow.current = telemetry.openFlow(flow, { cancelOnScopeChange: false });
     return () => {
       sessionFlow.current?.flow({ phase: "canceled" });
       sessionFlow.current = undefined;
