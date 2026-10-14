@@ -613,10 +613,17 @@ export const useAgentVaultVariableKeyStatus = (keys: readonly string[], enabled 
     })
     .sort();
 
+  // The change count is part of the key, so a change starts a new lookup instead of joining one still in flight,
+  // whose answers that change has made stale.
+  const changeCount = variableChangeCounts.get(currentOrg.id) ?? 0;
   useQuery({
-    queryKey: [...agentVaultKeys.variables(currentOrg.id), "key-status-batch", unchecked],
+    queryKey: [
+      ...agentVaultKeys.variables(currentOrg.id),
+      "key-status-batch",
+      changeCount,
+      unchecked
+    ],
     queryFn: async () => {
-      const changeCount = variableChangeCounts.get(currentOrg.id) ?? 0;
       const found = new Set<string>();
       for (let i = 0; i < unchecked.length; i += KEY_LOOKUP_BATCH_SIZE) {
         // eslint-disable-next-line no-await-in-loop
