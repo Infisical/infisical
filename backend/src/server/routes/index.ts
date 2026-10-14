@@ -262,6 +262,8 @@ import { certManagerSignerAlertDALFactory } from "@app/services/alert/providers/
 import { certManagerSignerAlertProviderFactory } from "@app/services/alert/providers/cert-manager-signer-alert-provider";
 import { identityCredentialAlertDALFactory } from "@app/services/alert/providers/identity-credential-alert-dal";
 import { identityCredentialAlertProviderFactory } from "@app/services/alert/providers/identity-credential-alert-provider";
+import { pamFolderAlertDALFactory } from "@app/services/alert/providers/pam-folder-alert-dal";
+import { pamFolderAlertProviderFactory } from "@app/services/alert/providers/pam-folder-alert-provider";
 import { secretReminderAlertDALFactory } from "@app/services/alert/providers/secret-reminder-alert-dal";
 import { secretReminderAlertProviderFactory } from "@app/services/alert/providers/secret-reminder-alert-provider";
 import { announcementServiceFactory } from "@app/services/announcement/announcement-service";
@@ -1151,6 +1153,13 @@ export const registerRoutes = async (
       permissionService,
       licenseService,
       certManagerProjectResolver
+    })
+  );
+  alertProviderRegistry.register(
+    pamFolderAlertProviderFactory({
+      pamFolderAlertDAL: pamFolderAlertDALFactory(db),
+      permissionService,
+      licenseService
     })
   );
   const alertRecipientResolver = alertRecipientResolverFactory({
@@ -3866,7 +3875,6 @@ export const registerRoutes = async (
   });
 
   const pamAccessApprovalResource = pamAccessApprovalResourceFactory({
-    licenseService,
     pamFolderNotificationConfigDAL,
     approvalPolicyDAL,
     userGroupMembershipDAL,
@@ -3920,6 +3928,7 @@ export const registerRoutes = async (
     groupDAL,
     slackIntegrationDAL,
     kmsService,
+    eventEmitter: eventOutboxService,
     resources: approvalResources
   });
 
@@ -3953,7 +3962,6 @@ export const registerRoutes = async (
     identityDAL,
     pamFolderNotificationConfigDAL,
     workflowIntegrationDAL,
-    licenseService,
     approvalPolicyService,
     pamAccessApprovalResource
   });
@@ -3967,7 +3975,8 @@ export const registerRoutes = async (
     userDAL,
     userGroupMembershipDAL,
     notificationService,
-    smtpService
+    smtpService,
+    alertService
   });
 
   const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
