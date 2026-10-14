@@ -1455,6 +1455,12 @@ export const RAW_SECRETS = {
     includeAllEntities:
       "When true, includes all project users, identities, and groups in the response, even those without any access to the secret."
   },
+  GET_READ_ACTIVITY: {
+    secretName: "The name of the secret to get read activity for.",
+    projectId: "The ID of the project where the secret is located.",
+    environment: "The slug of the environment where the secret is located.",
+    secretPath: "The folder path where the secret is located."
+  },
   DUPLICATE_SECRET: {
     projectId: "The ID of the project containing the secret.",
     sourceEnvironment: "The slug of the source environment.",

@@ -207,6 +207,7 @@ import { secretChangeGlobalPolicyBridgeDALFactory } from "@app/ee/services/secre
 import { secretChangeGlobalPolicyBridgeServiceFactory } from "@app/ee/services/secret-change-global-policy-bridge/secret-change-global-policy-bridge-service";
 import { secretChangeGlobalRequestBridgeDALFactory } from "@app/ee/services/secret-change-global-request-bridge/secret-change-global-request-bridge-dal";
 import { secretChangeGlobalRequestBridgeServiceFactory } from "@app/ee/services/secret-change-global-request-bridge/secret-change-global-request-bridge-service";
+import { secretReadActivityServiceFactory } from "@app/ee/services/secret-read-activity/secret-read-activity-service";
 import { secretReplicationServiceFactory } from "@app/ee/services/secret-replication/secret-replication-service";
 import { secretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { secretRotationV2QueueServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-queue";
@@ -3480,6 +3481,21 @@ export const registerRoutes = async (
     secretValidationRuleService
   });
 
+  const secretReadActivityService = secretReadActivityServiceFactory({
+    permissionService,
+    licenseService,
+    auditLogSettingsService,
+    auditLogDAL,
+    clickhouseAuditLogDAL,
+    folderDAL,
+    folderVersionDAL,
+    projectEnvDAL,
+    secretImportDAL,
+    secretV2BridgeDAL,
+    kmsService,
+    keyStore
+  });
+
   const insightsService = insightsServiceFactory({
     permissionService,
     licenseService,
@@ -4737,6 +4753,7 @@ export const registerRoutes = async (
     microsoftTeams: microsoftTeamsService,
     assumePrivileges: assumePrivilegeService,
     insights: insightsService,
+    secretReadActivity: secretReadActivityService,
     auditReport: auditReportService,
     githubOrgSync: githubOrgSyncConfigService,
     gitHubApp: gitHubAppService,

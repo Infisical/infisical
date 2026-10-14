@@ -21,10 +21,15 @@ import {
   SecretsSummarySchema,
   StaticSecretsUsageSchema
 } from "@app/ee/services/insights/insights-schemas";
+import {
+  SecretReadStatus,
+  UnusedSecretAccessOrderBy
+} from "@app/ee/services/secret-read-activity/secret-read-activity-types";
 import { INSIGHTS } from "@app/lib/api-docs";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 // Each report type declares exactly which inputs it accepts. The `inputs` schemas are the same consts
 // the generators use, so request validation and generation never drift.
@@ -463,6 +468,62 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo
       });
       return result;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/secrets/unused-access",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getInsightsUnusedSecretAccess",
+      description:
+        "List the users and machine identities that can read a secret's value but have not read it in the last 30 days",
+      security: [{ bearerAuth: [] }],
+      params: z.object({
+        projectId: z.string().trim()
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().int().min(0).max(1_000_000).default(0),
+        limit: z.coerce.number().int().min(1).max(100).default(20),
+        orderBy: z.nativeEnum(UnusedSecretAccessOrderBy).optional(),
+        orderDirection: z.nativeEnum(OrderByDirection).default(OrderByDirection.ASC)
+      }),
+      response: {
+        200: z.object({
+          totalCount: z.number(),
+          unusedAccess: z
+            .object({
+              secretKey: z.string(),
+              environment: z.string(),
+              secretPath: z.string(),
+              principalType: z.enum([ActorType.USER, ActorType.IDENTITY]),
+              principalId: z.string(),
+              principalName: z.string(),
+              readStatus: z.nativeEnum(SecretReadStatus),
+              lastReadAt: z.date().nullable(),
+              trackedSince: z.date()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req, reply) => {
+      const { projectId } = req.params;
+      const { unusedAccess, totalCount, remainingTTL } =
+        await server.services.secretReadActivity.listUnusedSecretAccess({ projectId, ...req.query }, req.permission);
+      await server.services.auditLog.createAuditLog({
+        projectId,
+        event: { type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS, metadata: { projectId } },
+        ...req.auditLogInfo
+      });
+
+      if (remainingTTL && remainingTTL >= 0) {
+        void reply.header("X-Cache-TTL", remainingTTL);
+      }
+
+      return { unusedAccess, totalCount };
     }
   });
 

@@ -1,11 +1,12 @@
 import z from "zod";
 
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
+import { SecretReadStatus } from "@app/ee/services/secret-read-activity/secret-read-activity-types";
 import { RAW_SECRETS } from "@app/lib/api-docs";
-import { removeTrailingSlash } from "@app/lib/fn";
+import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 const AccessListEntrySchema = z.object({
   allowedActions: z.nativeEnum(ProjectPermissionSecretActions).array(),
@@ -73,6 +74,60 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretName,
         includeAllEntities
       });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:secretName/read-activity",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getSecretReadActivity",
+      description: "Get which users and machine identities have recently read a secret",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        secretName: z.string().trim().min(1).describe(RAW_SECRETS.GET_READ_ACTIVITY.secretName)
+      }),
+      querystring: z.object({
+        projectId: z.string().trim().describe(RAW_SECRETS.GET_READ_ACTIVITY.projectId),
+        environment: z.string().trim().min(1).max(255).describe(RAW_SECRETS.GET_READ_ACTIVITY.environment),
+        secretPath: z
+          .string()
+          .trim()
+          .default("/")
+          .transform(prefixWithSlash)
+          .transform(removeTrailingSlash)
+          .describe(RAW_SECRETS.GET_READ_ACTIVITY.secretPath)
+      }),
+      response: {
+        200: z.object({
+          readActivity: z.object({
+            trackedSince: z.date(),
+            reads: z
+              .object({
+                actorType: z.enum([ActorType.USER, ActorType.IDENTITY]),
+                actorId: z.string(),
+                status: z.nativeEnum(SecretReadStatus),
+                lastReadAt: z.date()
+              })
+              .array()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const readActivity = await server.services.secretReadActivity.getSecretReadActivity(
+        { ...req.query, secretName: req.params.secretName },
+        req.permission
+      );
+      return { readActivity };
     }
   });
 };

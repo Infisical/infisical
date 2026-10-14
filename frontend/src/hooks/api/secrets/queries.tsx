@@ -22,10 +22,12 @@ import {
   TGetProjectSecretsDTO,
   TGetProjectSecretsKey,
   TGetSecretAccessListDTO,
+  TGetSecretReadActivityDTO,
   TGetSecretReferencesDTO,
   TGetSecretReferenceTreeDTO,
   TGetSecretVersionValue,
   TSecretDependencyTreeNode,
+  TSecretReadActivity,
   TSecretReferenceTraceNode,
   TSecretVersionValue
 } from "./types";
@@ -67,6 +69,13 @@ export const secretKeys = {
       "secret-access-list",
       { projectId, environment, secretPath, secretKey, includeAllEntities }
     ] as const,
+  getSecretReadActivity: ({
+    projectId,
+    environment,
+    secretPath,
+    secretKey
+  }: TGetSecretReadActivityDTO) =>
+    ["secret-read-activity", { projectId, environment, secretPath, secretKey }] as const,
   getSecretReferenceTree: (dto: TGetSecretReferenceTreeDTO) => ["secret-reference-tree", dto],
   getSecretReferences: (dto: TGetSecretReferencesDTO) => ["secret-references", dto]
 };
@@ -360,6 +369,30 @@ export const useGetSecretAccessList = (dto: TGetSecretAccessListDTO) =>
 
       return data;
     }
+  });
+
+export const useGetSecretReadActivity = (
+  dto: TGetSecretReadActivityDTO,
+  options?: Pick<UseQueryOptions<TSecretReadActivity>, "enabled">
+) =>
+  useQuery({
+    queryKey: secretKeys.getSecretReadActivity(dto),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ readActivity: TSecretReadActivity }>(
+        `/api/v1/secrets/${encodeURIComponent(dto.secretKey)}/read-activity`,
+        {
+          params: {
+            projectId: dto.projectId,
+            environment: dto.environment,
+            secretPath: dto.secretPath
+          }
+        }
+      );
+
+      return data.readActivity;
+    },
+    ...options,
+    enabled: Boolean(dto.secretKey) && (options?.enabled ?? true)
   });
 
 const fetchSecretReferenceTree = async ({

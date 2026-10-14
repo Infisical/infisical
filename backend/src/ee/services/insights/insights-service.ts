@@ -127,8 +127,8 @@ const assertInsightsPlanEnabled = async (
   }
 };
 
-const checkInsightsPermission = async (
-  permissionService: TInsightsServiceFactoryDep["permissionService"],
+export const checkInsightsPermission = async (
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">,
   licenseService: TInsightsServiceFactoryDep["licenseService"],
   projectId: string,
   actor: OrgServiceActor

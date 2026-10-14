@@ -14,7 +14,8 @@ export {
   // useGetSecretAccessLocations,
   useGetSecretAccessVolume,
   useGetSecretBlindIndexStatus,
-  useGetSecretsDuplication
+  useGetSecretsDuplication,
+  useGetUnusedSecretAccess
 } from "./queries";
 export type {
   TAccessLocation,
@@ -36,6 +37,7 @@ export type {
   TGetSecretAccessVolumeResponse,
   TGetSecretsDuplicationDTO,
   TGetSecretsDuplicationResponse,
+  TGetUnusedSecretAccessDTO,
   TOrgAuthMethodUsage,
   TOrgDuplicatedSecretEntry,
   TOrgDuplicatedSecretGroup,
@@ -48,5 +50,7 @@ export type {
   TSearchSecretsByValueResponse,
   TSecretAccessVolumeActor,
   TSecretAccessVolumeDay,
-  TSecretValueMatch
+  TSecretValueMatch,
+  TUnusedSecretAccess
 } from "./types";
+export { UnusedSecretAccessOrderBy } from "./types";

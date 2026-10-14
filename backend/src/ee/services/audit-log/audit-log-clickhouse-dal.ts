@@ -7,7 +7,7 @@ import { DatabaseError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { TPamAuditLogScope } from "./audit-log-dal";
+import { TFindLastSecretReadsQuery, TLastSecretRead, TPamAuditLogScope } from "./audit-log-dal";
 import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, filterableSecretEvents } from "./audit-log-types";
 
 type TAuditLogWithProjectName = TAuditLogs & { projectName: string | null };
@@ -497,11 +497,73 @@ export const clickhouseAuditLogDALFactory = (clickhouseClient: ClickHouseClient,
     }
   };
 
+  // No FINAL: a duplicate row left by a retried batch cannot change a max().
+  const findLastSecretReads = async ({
+    orgId,
+    projectId,
+    eventTypes,
+    environments,
+    startDate,
+    endDate
+  }: TFindLastSecretReadsQuery): Promise<TLastSecretRead[]> => {
+    if (!environments.length) return [];
+    const query = `
+      SELECT
+        actor,
+        if(actor = {userActor:String}, JSONExtractString(actorMetadata, 'userId'), JSONExtractString(actorMetadata, 'identityId')) AS actorId,
+        JSONExtractString(eventMetadata, 'environment') AS environment,
+        JSONExtractString(eventMetadata, 'secretPath') AS secretPath,
+        JSONExtractString(eventMetadata, 'secretId') AS secretId,
+        toUnixTimestamp64Milli(max(createdAt)) AS lastReadAt
+      FROM ${tableName}
+      WHERE orgId = {orgId:UUID}
+        AND projectId = {projectId:String}
+        AND createdAt >= {startDate:DateTime64(6, 'UTC')}
+        AND createdAt < {endDate:DateTime64(6, 'UTC')}
+        AND eventType IN ({eventTypes:Array(String)})
+        AND actor IN ({actors:Array(String)})
+        AND JSONExtractString(eventMetadata, 'environment') IN ({environments:Array(String)})
+      GROUP BY actor, actorId, environment, secretPath, secretId
+    `;
+
+    try {
+      const result = await clickhouseClient.query({
+        query,
+        query_params: {
+          orgId,
+          projectId,
+          startDate: startDate.replace("Z", ""),
+          endDate: endDate.replace("Z", ""),
+          eventTypes,
+          environments,
+          userActor: ActorType.USER,
+          actors: [ActorType.USER, ActorType.IDENTITY]
+        },
+        clickhouse_settings: {
+          max_execution_time: 30
+        },
+        format: "JSONEachRow"
+      });
+
+      const rows = await result.json<Omit<TLastSecretRead, "lastReadAt"> & { secretId: string; lastReadAt: string }>();
+
+      return rows.map((row) => ({
+        ...row,
+        secretId: row.secretId || null,
+        lastReadAt: new Date(Number(row.lastReadAt))
+      }));
+    } catch (error) {
+      logger.error(error, `Failed to find last secret reads in ClickHouse [orgId=${orgId}] [projectId=${projectId}]`);
+      throw new DatabaseError({ error });
+    }
+  };
+
   return {
     find,
     countByDateForOrg,
     countByIdentityAuthMethodForOrg,
     countByDateAndActorForProject,
-    countByAuthMethodForProject
+    countByAuthMethodForProject,
+    findLastSecretReads
   };
 };

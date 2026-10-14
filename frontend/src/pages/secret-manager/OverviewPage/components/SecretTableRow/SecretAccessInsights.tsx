@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import { subject } from "@casl/ability";
 import { Link } from "@tanstack/react-router";
+import axios from "axios";
+import { format } from "date-fns";
 import {
   BanIcon,
   CheckIcon,
@@ -18,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { SecretReadStatusBadge } from "@app/components/secrets/SecretReadStatusBadge";
 import {
   Button,
   Command,
@@ -75,6 +78,7 @@ import {
 } from "@app/context";
 import {
   PermissionConditionOperators,
+  ProjectPermissionInsightsActions,
   ProjectPermissionSecretActions
 } from "@app/context/ProjectPermissionContext/types";
 import { getProjectBaseURL } from "@app/helpers/project";
@@ -86,8 +90,8 @@ import {
 } from "@app/hooks/api";
 import { useGetAvailableOrgUsers } from "@app/hooks/api/organization/queries";
 import { useCreateProjectUserAdditionalPrivilege } from "@app/hooks/api/projectUserAdditionalPrivilege";
-import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
-import { SecretAccessListEntry } from "@app/hooks/api/secrets/types";
+import { useGetSecretAccessList, useGetSecretReadActivity } from "@app/hooks/api/secrets/queries";
+import { SecretAccessListEntry, SecretReadStatus } from "@app/hooks/api/secrets/types";
 import { IdentityProjectAdditionalPrivilegeModifySection } from "@app/pages/project/IdentityDetailsByIDPage/components/IdentityProjectAdditionalPrivilegeSection/IdentityProjectAdditionalPrivilegeModifySection";
 import { MembershipProjectAdditionalPrivilegeModifySection } from "@app/pages/project/MemberDetailsByIDPage/components/MemberProjectAdditionalPrivilegeSection/MembershipProjectAdditionalPrivilegeModifySection";
 
@@ -464,6 +468,47 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
     includeAllEntities: showAllEntities
   });
 
+  const canReadInsights = permission.can(
+    ProjectPermissionInsightsActions.Read,
+    ProjectPermissionSub.Insights
+  );
+  const {
+    data: readActivity,
+    isLoading: isReadActivityLoading,
+    error: readActivityError
+  } = useGetSecretReadActivity(
+    { projectId: currentProject.id, environment, secretPath, secretKey },
+    { enabled: canReadInsights }
+  );
+  const lastReads = useMemo(
+    () => new Map(readActivity?.reads.map((read) => [`${read.actorType}:${read.actorId}`, read])),
+    [readActivity]
+  );
+
+  let readActivityDescription = "Loading read activity...";
+  if (readActivityError) {
+    readActivityDescription =
+      (axios.isAxiosError(readActivityError) &&
+        (readActivityError.response?.data as { message?: string })?.message) ||
+      "Read activity is unavailable.";
+  } else if (readActivity) {
+    readActivityDescription = `Reads by users and machine identities since ${format(new Date(readActivity.trackedSince), "PP")}, including reads through imports and references.`;
+  }
+
+  const renderLastRead = (row: AccessRow) => {
+    if (row.type === "group") return null;
+    if (isReadActivityLoading) return <Skeleton className="h-4 w-20 rounded" />;
+    if (!readActivity) return null;
+
+    const read = lastReads.get(`${row.type}:${row.entry.id}`);
+    return (
+      <SecretReadStatusBadge
+        status={read?.status ?? SecretReadStatus.NoReads}
+        lastReadAt={read?.lastReadAt}
+      />
+    );
+  };
+
   const flatRows = useMemo<AccessRow[]>(() => {
     if (!secretAccessList) return [];
     const baseUrl = getProjectBaseURL(currentProject.type);
@@ -706,6 +751,19 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
                 <TableHead className="border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
                   Name
                 </TableHead>
+                {canReadInsights && (
+                  <TableHead className="w-40 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex items-center gap-1">
+                          Last Read
+                          <InfoIcon className="size-3.5 text-muted" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>{readActivityDescription}</TooltipContent>
+                    </Tooltip>
+                  </TableHead>
+                )}
                 {visibleColumns.map((col) => (
                   <TableHead
                     key={col.action}
@@ -764,6 +822,11 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
                         )}
                       </div>
                     </TableCell>
+                    {canReadInsights && (
+                      <TableCell className="w-40 whitespace-nowrap">
+                        {renderLastRead(row)}
+                      </TableCell>
+                    )}
                     {visibleColumns.map((col) => {
                       const hasDirect = row.entry.allowedActions.includes(col.action);
                       const hasInherited = row.inheritedActions?.has(col.action);

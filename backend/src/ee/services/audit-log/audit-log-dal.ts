@@ -21,6 +21,18 @@ type TAggregateQuery = {
   endDate: string;
 };
 
+export type TFindLastSecretReadsQuery = TAggregateQuery & { environments: string[] };
+
+// The latest read per actor and location. secretId is set only for single-secret reads.
+export type TLastSecretRead = {
+  actor: ActorType.USER | ActorType.IDENTITY;
+  actorId: string;
+  environment: string;
+  secretPath: string;
+  secretId: string | null;
+  lastReadAt: Date;
+};
+
 export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "find"> {
   pruneAuditLog: () => Promise<void>;
   getApproximateRowCount: () => Promise<number>;
@@ -47,6 +59,7 @@ export interface TAuditLogDALFactory extends Omit<TOrmify<TableName.AuditLog>, "
     arg: TAggregateQuery,
     tx?: knex.Knex
   ) => Promise<{ actor: string; actorMetadata: unknown; count: number }[]>;
+  findLastSecretReads: (arg: TFindLastSecretReadsQuery, tx?: knex.Knex) => Promise<TLastSecretRead[]>;
 }
 
 type TFindQuery = {
@@ -430,6 +443,43 @@ export const auditLogDALFactory = (db: TDbClient) => {
     return rows as { actor: string; actorMetadata: unknown; count: number }[];
   };
 
+  const findLastSecretReads: TAuditLogDALFactory["findLastSecretReads"] = async (
+    { orgId, projectId, eventTypes, environments, startDate, endDate },
+    tx
+  ) => {
+    if (!environments.length) return [];
+    try {
+      const rows = await (tx || db.replicaNode())(TableName.AuditLog)
+        .where(`${TableName.AuditLog}.orgId`, orgId)
+        .where(`${TableName.AuditLog}.projectId`, projectId)
+        .whereIn(`${TableName.AuditLog}.eventType`, eventTypes)
+        .whereIn(`${TableName.AuditLog}.actor`, [ActorType.USER, ActorType.IDENTITY])
+        .whereRaw(`"${TableName.AuditLog}"."createdAt" >= ?::timestamptz`, [startDate])
+        .whereRaw(`"${TableName.AuditLog}"."createdAt" < ?::timestamptz`, [endDate])
+        .whereRaw(`"eventMetadata"->>'environment' IN (${environments.map(() => "?").join(", ")})`, environments)
+        .select(
+          "actor",
+          db.raw(`COALESCE("actorMetadata"->>'userId', "actorMetadata"->>'identityId') as "actorId"`),
+          db.raw(`"eventMetadata"->>'environment' as "environment"`),
+          db.raw(`"eventMetadata"->>'secretPath' as "secretPath"`),
+          db.raw(`"eventMetadata"->>'secretId' as "secretId"`),
+          db.raw(`MAX("createdAt") as "lastReadAt"`)
+        )
+        .groupByRaw("1, 2, 3, 4, 5")
+        .timeout(1000 * 120);
+
+      return rows as unknown as TLastSecretRead[];
+    } catch (error) {
+      if (error instanceof knex.KnexTimeoutError) {
+        throw new GatewayTimeoutError({
+          error,
+          message: "Loading secret read activity timed out. Try a narrower folder or a shorter time window."
+        });
+      }
+      throw new DatabaseError({ error, name: "Find last secret reads" });
+    }
+  };
+
   return {
     ...auditLogOrm,
     create,
@@ -439,6 +489,7 @@ export const auditLogDALFactory = (db: TDbClient) => {
     find,
     countByDateAndActor,
     countByIpAddress,
-    countByAuthMethod
+    countByAuthMethod,
+    findLastSecretReads
   };
 };

@@ -1076,6 +1076,16 @@ timezone, so pin day grouping and bound parameters to `'UTC'` or they follow the
 the table is a `ReplacingMergeTree`: a retried batch inserts the same `id` twice and the copy goes away
 only at some later merge, so read with `FINAL` when an exact count matters.
 
+### Secret Read Activity
+
+`ee/services/secret-read-activity/` answers "who has read this secret" from audit logs, for the
+per-secret access sheet and the Insights Unused Secret Access card. A bulk read only records a folder, so a
+read counts when it reaches the secret through that folder, an import of it, or a secret referencing it
+(imports and references check the reader's own access to the source, so revoking it would break them).
+A read of a parent folder is only a possible read, since whether it was recursive is not logged. Reads
+are matched on paths, and a rename or move changes the path, so only reads after the secret's current
+path existed count (`trackedSince`, from folder versions, the secret's and environment's timestamps).
+
 ### Audit Log Event Classes and Settings
 
 Every `EventType` belongs to exactly one class in
