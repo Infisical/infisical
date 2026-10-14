@@ -60,6 +60,11 @@ import {
 import { SecretType } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
 
+import {
+  overviewCountBucket,
+  overviewResponsePhase,
+  useOverviewTelemetry
+} from "../../OverviewTelemetry";
 import { didAllSecretCreationsSucceed } from "./createSecretFormState";
 
 const formSchema = (enforceEncryptedMetadata: boolean) =>
@@ -167,6 +172,7 @@ export const CreateSecretForm = ({
   onSecretCreated,
   onUploadSecrets
 }: Props) => {
+  const overviewTelemetry = useOverviewTelemetry();
   const { currentProject, projectId } = useProject();
   const { permission } = useProjectPermission();
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
@@ -314,6 +320,14 @@ export const CreateSecretForm = ({
       });
       return;
     }
+    const telemetry = overviewTelemetry;
+    const flow = {
+      action: "create" as const,
+      resourceType: "secret" as const,
+      source: "form" as const,
+      countBucket: overviewCountBucket(secrets.length * selectedEnv.length)
+    };
+    telemetry.flow({ ...flow, phase: "submitted" });
     if (isBatchMode && onBatchSecretCreate) {
       secrets.forEach((secret) => {
         const filteredMetadata = secret.metadata
@@ -331,6 +345,7 @@ export const CreateSecretForm = ({
           });
         });
       });
+      telemetry.flow({ ...flow, phase: "staged" });
       onClose();
       reset();
       return;
@@ -360,7 +375,10 @@ export const CreateSecretForm = ({
           }
         }
       })
-    );
+    ).catch((error) => {
+      telemetry.flow({ ...flow, phase: "failed" });
+      throw error;
+    });
 
     const promises = selectedEnv.flatMap((env) =>
       secrets.map(async (secret) => {
@@ -411,6 +429,20 @@ export const CreateSecretForm = ({
           .filter(Boolean) as string[]
       )
     ];
+    const responseCount = results.filter(
+      (result) => result.status === "fulfilled" && !("approval" in result.value)
+    ).length;
+    const approvalCount = results.filter(
+      (result) => result.status === "fulfilled" && "approval" in result.value
+    ).length;
+    const failureCount = results.filter((result) => result.status === "rejected").length;
+    telemetry.flow({
+      ...flow,
+      phase: overviewResponsePhase(responseCount, approvalCount, failureCount),
+      responseCountBucket: overviewCountBucket(responseCount),
+      approvalCountBucket: overviewCountBucket(approvalCount),
+      failureCountBucket: overviewCountBucket(failureCount)
+    });
 
     if (forApprovalEnvs.length) {
       createNotification({
@@ -1032,7 +1064,20 @@ export const CreateSecretForm = ({
           </Button>
         )}
         <div className="ml-auto flex gap-2">
-          <Button onClick={onClose} variant="ghost" type="button">
+          <Button
+            onClick={() => {
+              if (!editSecret)
+                overviewTelemetry.flow({
+                  action: "create",
+                  resourceType: "secret",
+                  source: "form",
+                  phase: "canceled"
+                });
+              onClose();
+            }}
+            variant="ghost"
+            type="button"
+          >
             Cancel
           </Button>
           <Button

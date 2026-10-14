@@ -102,6 +102,7 @@ import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/c
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
+import { useOverviewTelemetry } from "../../OverviewTelemetry";
 import { CreateSecretForm, TSecretEditChanges } from "../CreateSecretForm/CreateSecretForm";
 import {
   TABLE_ROW_ACTION_BAR_FORCE_VISIBLE_CLASS_NAME,
@@ -224,6 +225,7 @@ export const SecretEditTableRow = ({
   onAccessInsightsUpgrade,
   onExpandedChange
 }: Props) => {
+  const telemetry = useOverviewTelemetry();
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
     "createSharedSecret"
@@ -369,6 +371,7 @@ export const SecretEditTableRow = ({
     secretName
   ]);
   const closeValueSheet = () => {
+    telemetry.flow({ action: "update", resourceType: "secret", source: "row", phase: "canceled" });
     setIsValueEditDirty(false);
     setValueEditDraft(null);
   };
@@ -712,6 +715,18 @@ export const SecretEditTableRow = ({
   }, [hasPendingChange, reset, isSingleEnvView, secretName]);
 
   const handleCopySharedToClipboard = async () => {
+    const flow = {
+      action: "copy" as const,
+      resourceType: "secret" as const,
+      source: "row" as const,
+      destination: "clipboard" as const,
+      countBucket: "1" as const,
+      provenance:
+        isPendingCreate || (isBatchMode && hasPendingValueChange)
+          ? ("pending" as const)
+          : ("committed" as const)
+    };
+    telemetry.flow({ ...flow, phase: "submitted" });
     try {
       if (isPendingCreate || (isBatchMode && hasPendingValueChange)) {
         // In batch mode with a queued value change, copy the pending value shown in the field
@@ -721,9 +736,11 @@ export const SecretEditTableRow = ({
         const { data } = await refetchSharedValue();
         await window.navigator.clipboard.writeText(data?.value ?? "");
       }
+      telemetry.flow({ ...flow, phase: "clipboard-written" });
       setIsCopied(true);
       createNotification({ type: "success", text: "Copied secret to clipboard" });
     } catch (e) {
+      telemetry.flow({ ...flow, phase: "failed" });
       console.error(e);
       createNotification({
         type: "error",
@@ -1009,6 +1026,7 @@ export const SecretEditTableRow = ({
         ? ((watchedValue as string) ?? "")
         : undefined;
     if (secretValueHidden || isEmpty || isPendingCreate) {
+      telemetry.flow({ action: "update", resourceType: "secret", source: "row", phase: "opened" });
       setValueEditDraft({ value: pendingValue ?? "", scope: valueEditScope });
       return;
     }
@@ -1022,6 +1040,7 @@ export const SecretEditTableRow = ({
         });
         return;
       }
+      telemetry.flow({ action: "update", resourceType: "secret", source: "row", phase: "opened" });
       setValueEditDraft({ value: pendingValue ?? data.value ?? "", scope: valueEditScope });
     } finally {
       setIsLoadingEditValue(false);

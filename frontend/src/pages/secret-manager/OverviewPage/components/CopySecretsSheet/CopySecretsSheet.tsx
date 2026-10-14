@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowDownIcon,
   ArrowRightIcon,
@@ -55,6 +55,11 @@ import {
 } from "@app/hooks/api/secretFolders/queries";
 import { useDuplicateSecret } from "@app/hooks/api/secrets";
 
+import {
+  overviewCountBucket,
+  overviewResponsePhase,
+  useOverviewTelemetry
+} from "../../OverviewTelemetry";
 import { type CopySecretsErrorKind, getCopySecretsErrorKind } from "./copySecrets.data";
 import type {
   CopySecretsAttributes,
@@ -118,6 +123,20 @@ const CopySecretsSession = ({
   onOpenChange,
   onCompleted
 }: Props & { invocation: CopySecretsInvocation }) => {
+  const telemetry = useOverviewTelemetry();
+  const flow = {
+    action: "copy" as const,
+    resourceType: "mixed" as const,
+    source: invocation.origin === "toolbar" ? ("menu" as const) : invocation.origin,
+    destination: "environment" as const
+  };
+  useEffect(() => {
+    telemetry.flow({ ...flow, phase: "opened" });
+  }, [telemetry, invocation.origin]);
+  const closeSheet = (open: boolean) => {
+    if (!open) telemetry.flow({ ...flow, phase: "canceled" });
+    onOpenChange(open);
+  };
   const initialState = getInitialCopyState(invocation, environments);
   const [sourceEnvironmentSlug, setSourceEnvironmentSlug] = useState(
     initialState.sourceEnvironmentSlug
@@ -367,6 +386,14 @@ const CopySecretsSession = ({
     skippedSecretIds?: string[];
   }) => {
     setIsSubmitting(true);
+    telemetry.flow({
+      ...flow,
+      phase: "submitted",
+      countBucket: overviewCountBucket(selectedItemCount)
+    });
+    let receivedCount = 0;
+    let receivedApprovalCount = 0;
+    let receivedFolderCount = 0;
     try {
       const skippedIds = new Set(skippedSecretIds);
       const copiedSecretIds = selectedIds.filter((id) => !skippedIds.has(id));
@@ -385,6 +412,7 @@ const CopySecretsSession = ({
           name
         });
       }, Promise.resolve());
+      receivedFolderCount = selectedFolderPaths.length;
 
       const results = await copyRequestGroups.reduce<Promise<Array<{ approvalCount: number }>>>(
         async (previousResults, group) => {
@@ -406,6 +434,10 @@ const CopySecretsSession = ({
                 value: group.includeValues
               }
             });
+            receivedCount += response.results.filter((result) => !("approval" in result)).length;
+            receivedApprovalCount += response.results.filter(
+              (result) => "approval" in result
+            ).length;
             return [
               ...chunks,
               { approvalCount: response.results.filter((result) => "approval" in result).length }
@@ -417,6 +449,13 @@ const CopySecretsSession = ({
       );
 
       const approvalCount = results.reduce((count, result) => count + result.approvalCount, 0);
+      telemetry.flow({
+        ...flow,
+        phase: overviewResponsePhase(receivedCount + receivedFolderCount, approvalCount, 0),
+        countBucket: overviewCountBucket(copiedSecretIds.length + selectedFolderPaths.length),
+        responseCountBucket: overviewCountBucket(receivedCount + receivedFolderCount),
+        approvalCountBucket: overviewCountBucket(receivedApprovalCount)
+      });
       const skippedCount = skippedSecretIds.length;
       let notificationText = `${copiedSecretIds.length} ${
         copiedSecretIds.length === 1 ? "secret" : "secrets"
@@ -446,8 +485,17 @@ const CopySecretsSession = ({
         text: notificationText
       });
       onCompleted?.(copiedSecretIds);
-      onOpenChange(false);
+      closeSheet(false);
     } catch {
+      telemetry.flow({
+        ...flow,
+        phase:
+          receivedCount + receivedFolderCount + receivedApprovalCount
+            ? "partial-response"
+            : "failed",
+        responseCountBucket: overviewCountBucket(receivedCount + receivedFolderCount),
+        approvalCountBucket: overviewCountBucket(receivedApprovalCount)
+      });
       // Mutation failures are surfaced by the global React Query error handler.
     } finally {
       setIsSubmitting(false);
@@ -594,7 +642,7 @@ const CopySecretsSession = ({
 
   return (
     <>
-      <Sheet open={isOpen} onOpenChange={(open) => !isSubmitting && onOpenChange(open)}>
+      <Sheet open={isOpen} onOpenChange={(open) => !isSubmitting && closeSheet(open)}>
         <SheetContent size="workspace" className="w-full sm:w-3/4">
           <form
             className="flex min-h-0 flex-1 flex-col"
@@ -808,7 +856,7 @@ const CopySecretsSession = ({
                 type="button"
                 variant="ghost"
                 isDisabled={isSubmitting}
-                onClick={() => onOpenChange(false)}
+                onClick={() => closeSheet(false)}
               >
                 Cancel
               </Button>

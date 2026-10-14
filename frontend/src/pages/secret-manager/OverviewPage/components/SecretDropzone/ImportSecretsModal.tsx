@@ -67,6 +67,11 @@ import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secret
 import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
 import { ApiErrorTypes, SecretType } from "@app/hooks/api/types";
 
+import {
+  overviewCountBucket,
+  overviewResponsePhase,
+  useOverviewTelemetry
+} from "../../OverviewTelemetry";
 import { CsvColumnMapContent } from "./CsvColumnMapDialog";
 import {
   buildFolderTree,
@@ -137,6 +142,7 @@ const ImportSecretsContent = ({
   onClose,
   onLockChange
 }: ContentProps) => {
+  const telemetry = useOverviewTelemetry();
   const { permission } = useProjectPermission();
   const [parsedSecrets, setParsedSecrets] = useState<TParsedEnv | null>(null);
   const [isImporting, setIsImporting] = useToggle();
@@ -352,6 +358,16 @@ const ImportSecretsContent = ({
     if (isImportRunningRef.current) return;
     isImportRunningRef.current = true;
     setIsImporting.on();
+    const flow = {
+      action: "import" as const,
+      resourceType: "mixed" as const,
+      source: "upload" as const,
+      countBucket: overviewCountBucket(secretCount * selectedEnvs.length)
+    };
+    telemetry.flow({ ...flow, phase: "submitted" });
+    let responseCount = 0;
+    let approvalCount = 0;
+    let failureCount = 0;
 
     try {
       const requestedSlugs = new Set<string>();
@@ -553,6 +569,13 @@ const ImportSecretsContent = ({
           enqueue
         );
         const writtenCount = results.filter((r) => r.status === "fulfilled").length;
+        responseCount += results.filter(
+          (r) => r.status === "fulfilled" && !("approval" in (r.value as object))
+        ).length;
+        approvalCount += results.filter(
+          (r) => r.status === "fulfilled" && "approval" in (r.value as object)
+        ).length;
+        failureCount += results.filter((r) => r.status === "rejected").length;
         let status: "written" | "partial" | "failed" = "partial";
         if (writtenCount === results.length) status = "written";
         else if (!writtenCount) status = "failed";
@@ -690,12 +713,24 @@ const ImportSecretsContent = ({
         });
       }
 
+      telemetry.flow({
+        ...flow,
+        phase: overviewResponsePhase(
+          responseCount,
+          approvalCount,
+          partialEnvs.length + failedEnvs.length
+        ),
+        responseCountBucket: overviewCountBucket(responseCount),
+        approvalCountBucket: overviewCountBucket(approvalCount),
+        failureCountBucket: overviewCountBucket(failureCount)
+      });
       onClose();
       const completedEnvSlugs = [...successEnvSlugs, ...approvalEnvSlugs, ...partialEnvSlugs];
       if (completedEnvSlugs.length) {
         onComplete?.(completedEnvSlugs);
       }
     } catch (err) {
+      telemetry.flow({ ...flow, phase: "failed" });
       console.error(err);
       createNotification({
         type: "error",
