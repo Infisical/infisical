@@ -8,10 +8,13 @@ import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import {
+  Badge,
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -78,39 +81,29 @@ export const FlyioAuthorizePage = () => {
       <Card className="mb-12 w-full max-w-lg">
         <CardHeader>
           <CardTitle>
-            <div className="flex flex-row items-center">
-              <div className="flex items-center pb-0.5">
-                <img
-                  src="/images/integrations/Flyio.svg"
-                  height={30}
-                  width={30}
-                  alt="Fly.io logo"
-                />
-              </div>
-              <span className="ml-2.5">Fly.io Integration </span>
-              <a
-                href="https://infisical.com/docs/integrations/cloud/flyio"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  Docs
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="text-xxs mb-[0.07rem] ml-1.5"
-                  />
-                </div>
-              </a>
-            </div>
+            <img src="/images/integrations/Flyio.svg" height={30} width={30} alt="Fly.io logo" />
+            <span>Fly.io Integration</span>
           </CardTitle>
           <CardDescription>
             After adding your access token, you will be prompted to set up an integration for a
             particular Infisical project and environment.
           </CardDescription>
+          <CardAction>
+            <Badge variant="info" asChild>
+              <a
+                href="https://infisical.com/docs/integrations/cloud/flyio"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <FontAwesomeIcon icon={faBookOpen} />
+                Docs
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
+              </a>
+            </Badge>
+          </CardAction>
         </CardHeader>
-        <CardContent className="flex flex-col gap-5">
-          <form onSubmit={handleSubmit(onFormSubmit)} className="pb-8 text-right">
+        <form onSubmit={handleSubmit(onFormSubmit)} className="flex flex-col gap-5">
+          <CardContent>
             <Controller
               control={control}
               name="accessToken"
@@ -132,17 +125,13 @@ export const FlyioAuthorizePage = () => {
                 </Field>
               )}
             />
-            <Button
-              className="mt-2 w-min"
-              size="sm"
-              type="submit"
-              isPending={isLoading}
-              variant="project"
-            >
+          </CardContent>
+          <CardFooter className="justify-end">
+            <Button size="sm" type="submit" isPending={isLoading} variant="project">
               Connect to Fly.io
             </Button>
-          </form>
-        </CardContent>
+          </CardFooter>
+        </form>
       </Card>
     </div>
   );

@@ -16,10 +16,13 @@ import { motion } from "motion/react";
 import { z, ZodIssueCode } from "zod";
 
 import {
+  Badge,
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
   DropdownMenu,
@@ -306,36 +309,31 @@ export const GithubConfigurePage = () => {
         <title>Set Up GitHub Integration</title>
       </Helmet>
       <Card className="w-full max-w-lg">
-        <CardContent className="flex flex-col gap-5">
-          <form className="flex flex-col gap-5" onSubmit={handleSubmit(onFormSubmit)}>
-            <CardHeader>
-              <CardTitle>
-                <div className="flex flex-row items-center">
-                  <div className="flex items-center rounded-full bg-foreground-secondary">
-                    <ProviderIcon icon="GitHub.png" height={30} width={30} alt="GitHub logo" />
-                  </div>
-                  <span className="ml-2.5">GitHub Integration </span>
-                  <a
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    href="https://infisical.com/docs/integrations/cicd/githubactions"
-                  >
-                    <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                      <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                      Docs
-                      <FontAwesomeIcon
-                        icon={faArrowUpRightFromSquare}
-                        className="text-xxs mb-[0.07rem] ml-1.5"
-                      />
-                    </div>
-                  </a>
-                </div>
-              </CardTitle>
-              <CardDescription>
-                Choose which environment in Infisical you want to sync to environment variables in
-                GitHub.
-              </CardDescription>
-            </CardHeader>
+        <CardHeader>
+          <CardTitle>
+            <ProviderIcon icon="GitHub.png" height={30} width={30} alt="GitHub logo" />
+            <span>GitHub Integration</span>
+          </CardTitle>
+          <CardDescription>
+            Choose which environment in Infisical you want to sync to environment variables in
+            GitHub.
+          </CardDescription>
+          <CardAction>
+            <Badge variant="info" asChild>
+              <a
+                target="_blank"
+                rel="noopener noreferrer"
+                href="https://infisical.com/docs/integrations/cicd/githubactions"
+              >
+                <FontAwesomeIcon icon={faBookOpen} />
+                Docs
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
+              </a>
+            </Badge>
+          </CardAction>
+        </CardHeader>
+        <form className="flex flex-col gap-5" onSubmit={handleSubmit(onFormSubmit)}>
+          <CardContent className="flex flex-col gap-5">
             <Tabs defaultValue={TabSections.Connection}>
               <TabsList variant="project">
                 <TabsTrigger value={TabSections.Connection}>Connection</TabsTrigger>
@@ -844,7 +842,7 @@ export const GithubConfigurePage = () => {
                     control={control}
                     name="secretSuffix"
                     render={({ field, fieldState: { error } }) => (
-                      <Field className="mb-4 pb-39" data-invalid={Boolean(error)}>
+                      <Field className="mb-4" data-invalid={Boolean(error)}>
                         <FieldLabel htmlFor="github-secretsuffix">
                           Append Secret Names with...
                         </FieldLabel>
@@ -864,13 +862,13 @@ export const GithubConfigurePage = () => {
                 </motion.div>
               </TabsContent>
             </Tabs>
-            <div className="flex w-full justify-end">
-              <Button type="submit" className="mb-6" isPending={isLoading} variant="project">
-                Create Integration
-              </Button>
-            </div>
-          </form>
-        </CardContent>
+          </CardContent>
+          <CardFooter className="justify-end">
+            <Button type="submit" isPending={isLoading} variant="project">
+              Create Integration
+            </Button>
+          </CardFooter>
+        </form>
       </Card>
       <div className="mt-6 w-full max-w-md border-t border-border-faint" />
       <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-border-control bg-surface-raised p-4">

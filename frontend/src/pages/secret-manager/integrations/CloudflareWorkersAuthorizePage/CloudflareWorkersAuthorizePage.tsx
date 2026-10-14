@@ -6,6 +6,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -124,15 +125,12 @@ export const CloudflareWorkersAuthorizePage = () => {
               </FieldError>
             )}
           </Field>
-          <Button
-            onClick={handleButtonClick}
-            className="mt-2 mr-6 mb-6 ml-auto w-min"
-            isPending={isLoading}
-            variant="project"
-          >
+        </CardContent>
+        <CardFooter className="justify-end">
+          <Button onClick={handleButtonClick} isPending={isLoading} variant="project">
             Connect to Cloudflare Workers
           </Button>
-        </CardContent>
+        </CardFooter>
       </Card>
     </div>
   );

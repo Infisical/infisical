@@ -13,10 +13,13 @@ import { TriangleAlertIcon } from "lucide-react";
 import {
   Alert,
   AlertDescription,
+  Badge,
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -116,36 +119,26 @@ export const FlyioConfigurePage = () => {
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>
-            <div className="flex flex-row items-center">
-              <div className="flex items-center pb-0.5">
-                <img
-                  src="/images/integrations/Flyio.svg"
-                  height={30}
-                  width={30}
-                  alt="Fly.io logo"
-                />
-              </div>
-              <span className="ml-2.5">Fly.io Integration </span>
-              <a
-                href="https://infisical.com/docs/integrations/cloud/flyio"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  Docs
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="text-xxs mb-[0.07rem] ml-1.5"
-                  />
-                </div>
-              </a>
-            </div>
+            <img src="/images/integrations/Flyio.svg" height={30} width={30} alt="Fly.io logo" />
+            <span>Fly.io Integration</span>
           </CardTitle>
           <CardDescription>
             Choose which environment or folder in Infisical you want to sync to Fly.io environment
             variables.
           </CardDescription>
+          <CardAction>
+            <Badge variant="info" asChild>
+              <a
+                href="https://infisical.com/docs/integrations/cloud/flyio"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <FontAwesomeIcon icon={faBookOpen} />
+                Docs
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
+              </a>
+            </Badge>
+          </CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
           <div className="pb-4">
@@ -215,16 +208,17 @@ export const FlyioConfigurePage = () => {
               </SelectContent>
             </Select>
           </Field>
+        </CardContent>
+        <CardFooter className="justify-end">
           <Button
             onClick={handleButtonClick}
-            className="mt-2 mr-6 mb-6 ml-auto"
             isPending={isLoading}
             isDisabled={integrationAuthApps.length === 0}
             variant="project"
           >
             Create Integration
           </Button>
-        </CardContent>
+        </CardFooter>
       </Card>
       <div className="mt-6 w-full max-w-md border-t border-border-faint" />
       <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-border-control bg-surface-raised p-4">

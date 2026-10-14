@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   CardContent,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -86,15 +87,12 @@ export const DigitalOceanAppPlatformAuthorizePage = () => {
               </FieldError>
             )}
           </Field>
-          <Button
-            onClick={handleButtonClick}
-            className="mt-4"
-            isPending={isLoading}
-            variant="outline"
-          >
+        </CardContent>
+        <CardFooter className="justify-end">
+          <Button onClick={handleButtonClick} isPending={isLoading} variant="outline">
             Connect to Digital Ocean App Platform
           </Button>
-        </CardContent>
+        </CardFooter>
       </Card>
     </div>
   );
