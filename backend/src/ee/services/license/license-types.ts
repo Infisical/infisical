@@ -70,7 +70,6 @@ export type TFeatureSet = {
   pitRecovery: false;
   ipAllowlisting: false;
   rbac: false;
-  customRateLimits: false;
   customAlerts: false;
   auditLogs: false;
   auditLogsRetentionDays: number | null;
@@ -103,7 +102,7 @@ export type TFeatureSet = {
   kmip: false;
   gateway: false;
   gatewayPool: false;
-  pamSlackNotifications: boolean;
+  pamEnterpriseAlerting: boolean;
   secretScanning: false;
   enterpriseSecretSyncs: false;
   enterpriseAppConnections: false;

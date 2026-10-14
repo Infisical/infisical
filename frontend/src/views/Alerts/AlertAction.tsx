@@ -31,10 +31,12 @@ import { usePopUp, useScopeVariant } from "@app/hooks";
 import {
   ALERT_CHANNEL_TYPE_LABELS,
   ALERT_EVENT_TYPE_LABELS,
+  ALERT_RESOURCE_EVENT_TYPES,
   AlertChannelType,
   AlertEventType,
   AlertResourceType,
   TAlert,
+  TAlertChannelPaywall,
   useDeleteAlert,
   useListAlerts,
   useUpdateAlert
@@ -44,14 +46,15 @@ import { AddAlertModal } from "./AddAlertModal";
 import { getChannelIcon } from "./channelIcons";
 
 type Props = {
-  identityId: string;
+  resourceType?: AlertResourceType;
+  resourceId: string;
+  channelPaywall?: TAlertChannelPaywall;
   // Org-scoped when omitted.
   projectId?: string;
   // Renders the alerts without any way to create, edit or remove them.
   readOnly?: boolean;
-  // Wraps the mutating actions in the caller's permission gate (org- or project-scoped), which is the
-  // only thing that differs between the org and project entry points.
-  renderPermissionGate: (render: (isAllowed: boolean) => ReactNode) => ReactNode;
+  // The caller's permission gate for mutating actions; omit it when the view is already gated.
+  renderPermissionGate?: (render: (isAllowed: boolean) => ReactNode) => ReactNode;
 };
 
 const getEnabledChannelTypes = (alert: TAlert): AlertChannelType[] =>
@@ -60,14 +63,16 @@ const getEnabledChannelTypes = (alert: TAlert): AlertChannelType[] =>
   );
 
 export const AlertAction = ({
-  identityId,
+  resourceType = AlertResourceType.IdentityAuthentication,
+  resourceId,
+  channelPaywall,
   projectId,
   readOnly = false,
-  renderPermissionGate
+  renderPermissionGate = (render) => render(true)
 }: Props) => {
   const { data: alerts = [] } = useListAlerts({
-    resourceType: AlertResourceType.IdentityAuthentication,
-    resourceId: identityId,
+    resourceType,
+    resourceId,
     ...(projectId ? { projectId } : {})
   });
 
@@ -81,7 +86,7 @@ export const AlertAction = ({
 
   const enabledCount = alerts.filter((alert) => alert.enabled).length;
   const usedEventTypes = alerts.map((alert) => alert.eventType as AlertEventType);
-  const canAddAlert = Object.values(AlertEventType).some(
+  const canAddAlert = ALERT_RESOURCE_EVENT_TYPES[resourceType].some(
     (eventType) => !usedEventTypes.includes(eventType)
   );
 
@@ -258,7 +263,9 @@ export const AlertAction = ({
             isOpen={popUp.alert.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("alert", isOpen)}
             projectId={projectId}
-            resourceId={identityId}
+            resourceType={resourceType}
+            resourceId={resourceId}
+            channelPaywall={channelPaywall}
             alert={selectedAlert}
             unavailableEventTypes={usedEventTypes}
           />

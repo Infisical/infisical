@@ -231,6 +231,7 @@ import {
   useSecretRotationOverview
 } from "@app/hooks/utils";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
+import { OverviewFlowProperties, OverviewScopeProperties } from "@app/lib/analytics/events";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 import { RequestAccessModal } from "@app/pages/secret-manager/SecretApprovalsPage/components/AccessApprovalRequest/components/RequestAccessModal";
 import { AddEnvironmentModal } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/AddEnvironmentModal";
@@ -293,6 +294,14 @@ import {
   TableEmptyRow,
   TableFilteredEmptyRow
 } from "./components";
+import {
+  createOverviewTelemetry,
+  observeOverviewRequest,
+  overviewCountBucket,
+  OverviewFlowState,
+  overviewResponsePhase,
+  withOverviewTelemetry
+} from "./OverviewTelemetry";
 import {
   CreatedResourceType,
   getOverviewRowNames,
@@ -994,6 +1003,7 @@ const OverviewPageContent = () => {
 
   const {
     isPending: isOverviewLoading,
+    isError: isOverviewError,
     data: overview,
     isPlaceholderData,
     isFetching: isOverviewFetching
@@ -1282,6 +1292,68 @@ const OverviewPageContent = () => {
   const { mutateAsync: createCommit, isPending: isCommitPending } = useCreateCommit();
 
   const isBatchModeActive = isOverviewBatchMode && isSingleEnvView;
+  const telemetryScope = useMemo<OverviewScopeProperties>(() => {
+    let environmentMode: OverviewScopeProperties["environmentMode"] = "none";
+    if (visibleEnvs.length === 1) environmentMode = "single";
+    if (visibleEnvs.length > 1) environmentMode = "multiple";
+    return {
+      projectId,
+      route: "/organizations/$orgId/projects/secret-management/$projectId/overview",
+      environmentMode,
+      folderScope: secretPath === "/" ? "root" : "nested",
+      editMode: isBatchModeActive ? "batch" : "immediate"
+    };
+  }, [projectId, visibleEnvs.length, secretPath, isBatchModeActive]);
+  const telemetryFlowScope = `${projectId}:${secretPath}:${visibleEnvs.map((env) => env.slug).join(",")}`;
+  const telemetryFlows = useMemo<OverviewFlowState>(() => new Map(), [telemetryFlowScope]);
+  const overviewTelemetry = useMemo(
+    () => createOverviewTelemetry(orgId, telemetryScope, telemetryFlows),
+    [orgId, telemetryScope, telemetryFlows]
+  );
+  const previousTelemetry = useRef<{
+    telemetry: typeof overviewTelemetry;
+    flows: typeof telemetryFlows;
+  }>();
+  useEffect(() => {
+    if (previousTelemetry.current && previousTelemetry.current.flows !== telemetryFlows)
+      previousTelemetry.current.telemetry.cancelOpenFlows();
+    previousTelemetry.current = { telemetry: overviewTelemetry, flows: telemetryFlows };
+  }, [overviewTelemetry, telemetryFlows]);
+  const viewedProjectRef = useRef<string>();
+  const loadedProjectRef = useRef<string>();
+  useEffect(() => {
+    if (!isProjectV3 || viewedProjectRef.current === projectId) return;
+    viewedProjectRef.current = projectId;
+    loadedProjectRef.current = undefined;
+    analytics.captureForOrganization(AnalyticsEvent.SecretsOverviewViewed, orgId, telemetryScope);
+  }, [isProjectV3, projectId, orgId, telemetryScope]);
+  useEffect(() => {
+    if (
+      !isProjectV3 ||
+      !visibleEnvs.length ||
+      isOverviewError ||
+      isOverviewPending ||
+      !overview ||
+      loadedProjectRef.current === projectId
+    )
+      return;
+    loadedProjectRef.current = projectId;
+    analytics.captureForOrganization(AnalyticsEvent.SecretsOverviewLoaded, orgId, {
+      ...telemetryScope,
+      resourceCountBucket: overviewCountBucket(totalCount),
+      state: totalCount === 0 ? "empty" : "populated"
+    });
+  }, [
+    isProjectV3,
+    visibleEnvs.length,
+    isOverviewError,
+    isOverviewPending,
+    overview,
+    projectId,
+    orgId,
+    telemetryScope,
+    totalCount
+  ]);
   const hasPendingBatchChanges =
     isBatchModeActive && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0);
 
@@ -1352,7 +1424,12 @@ const OverviewPageContent = () => {
     "upload"
   );
 
-  const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
+  const {
+    handlePopUpOpen: openPopUp,
+    handlePopUpToggle: togglePopUp,
+    handlePopUpClose: closePopUp,
+    popUp
+  } = usePopUp([
     "addSecretsInAllEnvs",
     "addFolder",
     "misc",
@@ -1389,6 +1466,61 @@ const OverviewPageContent = () => {
     "createEnvironment",
     "createSharedSecret"
   ] as const);
+  const popupFlows = useMemo<
+    Partial<Record<keyof typeof popUp, Omit<OverviewFlowProperties, "phase">>>
+  >(
+    () => ({
+      addSecretsInAllEnvs: { action: "create", resourceType: "secret", source: "form" },
+      addFolder: { action: "create", resourceType: "folder", source: "form" },
+      updateFolder: { action: "update", resourceType: "folder", source: "form" },
+      deleteFolder: { action: "delete", resourceType: "folder", source: "form" }
+    }),
+    []
+  );
+  const popupOwners = useRef<{
+    scope: OverviewFlowState;
+    current: Partial<Record<keyof typeof popUp, object>>;
+  }>({ scope: telemetryFlows, current: {} });
+  if (popupOwners.current.scope !== telemetryFlows)
+    popupOwners.current = { scope: telemetryFlows, current: {} };
+  const popupOwnership = useMemo(
+    () => ({ ...popupOwners.current.current }),
+    [popUp, telemetryFlows]
+  );
+  const isPopupCurrent = useCallback(
+    (name: keyof typeof popUp) => popupOwners.current.current[name] === popupOwnership[name],
+    [popupOwnership]
+  );
+  const handlePopUpOpen: typeof openPopUp = useCallback(
+    (name, data) => {
+      popupOwners.current.current[name] = {};
+      const flow = popupFlows[name];
+      if (flow) overviewTelemetry.flow({ ...flow, phase: "opened" });
+      openPopUp(name, data);
+    },
+    [popupFlows, overviewTelemetry, openPopUp]
+  );
+  const handlePopUpClose: typeof closePopUp = useCallback(
+    (name) => {
+      if (!isPopupCurrent(name)) return;
+      const flow = popupFlows[name];
+      if (flow) overviewTelemetry.flow({ ...flow, phase: "canceled" });
+      closePopUp(name);
+      delete popupOwners.current.current[name];
+    },
+    [popupFlows, overviewTelemetry, closePopUp, isPopupCurrent]
+  );
+  const handlePopUpToggle: typeof togglePopUp = (name, isOpen) => {
+    const flow = popupFlows[name];
+    const opening = isOpen ?? !popUp[name].isOpen;
+    if (!opening) {
+      handlePopUpClose(name);
+      return;
+    }
+    if (!popUp[name].isOpen) popupOwners.current.current[name] = {};
+    if (flow) overviewTelemetry.flow({ ...flow, phase: opening ? "opened" : "canceled" });
+    togglePopUp(name, isOpen);
+  };
   const { openUpgradeGate: openSharedUpgradeGate, upgradeGate } = useUpgradeGate();
   const [commitHistoryEnv, setCommitHistoryEnv] = useState<{ slug: string; name: string } | null>(
     null
@@ -1426,6 +1558,7 @@ const OverviewPageContent = () => {
 
   const handleViewCommitHistory = (envSlug: string) => {
     if (!canReadCommits) return;
+    overviewTelemetry.interaction({ action: "history", source: "header" });
 
     const openCommitHistory = () => {
       const env = userAvailableEnvs.find((el) => el.slug === envSlug);
@@ -1571,9 +1704,16 @@ const OverviewPageContent = () => {
   };
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
+    const flow = {
+      action: "create" as const,
+      resourceType: "folder" as const,
+      source: "form" as const
+    };
+    const attempt = overviewTelemetry.startFlow(flow);
     if (isBatchModeActive && singleVisibleEnv) {
       if (isFolderPresentInEnv(folderName, singleVisibleEnv.slug)) {
         createNotification({ type: "info", text: "Folder already exists" });
+        attempt.flow({ ...flow, phase: "empty", countBucket: "0" });
         handlePopUpClose("addFolder");
         return;
       }
@@ -1589,6 +1729,7 @@ const OverviewPageContent = () => {
         },
         { projectId, environment: singleVisibleEnv.slug, secretPath }
       );
+      attempt.flow({ ...flow, phase: "staged", countBucket: "1" });
       handlePopUpClose("addFolder");
       return;
     }
@@ -1612,6 +1753,7 @@ const OverviewPageContent = () => {
       .filter((promise) => promise !== undefined);
 
     if (promises.length === 0) {
+      attempt.flow({ ...flow, phase: "empty", countBucket: "0" });
       handlePopUpClose("addFolder");
       createNotification({
         type: "info",
@@ -1622,6 +1764,14 @@ const OverviewPageContent = () => {
 
     const results = await Promise.allSettled(promises);
     const isFoldersAdded = results.some((result) => result.status === "fulfilled");
+    const responseCount = results.filter((result) => result.status === "fulfilled").length;
+    attempt.flow({
+      ...flow,
+      phase: overviewResponsePhase(responseCount, 0, results.length - responseCount),
+      responseCountBucket: overviewCountBucket(responseCount),
+      failureCountBucket: overviewCountBucket(results.length - responseCount),
+      countBucket: overviewCountBucket(promises.length)
+    });
 
     if (isFoldersAdded) {
       handlePopUpClose("addFolder");
@@ -1638,6 +1788,12 @@ const OverviewPageContent = () => {
   };
 
   const handleFolderUpdate = async (newFolderName: string, description: string | null) => {
+    const flow = {
+      action: "update" as const,
+      resourceType: "folder" as const,
+      source: "form" as const
+    };
+    const attempt = overviewTelemetry.startFlow(flow);
     if (isBatchModeActive && singleVisibleEnv) {
       const { name: oldFolderName } = popUp.updateFolder.data as TSecretFolder;
       const folder = getFolderByNameAndEnv(oldFolderName, singleVisibleEnv.slug);
@@ -1661,6 +1817,7 @@ const OverviewPageContent = () => {
             },
             { projectId, environment: singleVisibleEnv.slug, secretPath }
           );
+          attempt.flow({ ...flow, phase: "staged", countBucket: "1" });
           handlePopUpClose("updateFolder");
           return;
         }
@@ -1683,10 +1840,12 @@ const OverviewPageContent = () => {
             },
             { projectId, environment: singleVisibleEnv.slug, secretPath }
           );
+          attempt.flow({ ...flow, phase: "staged", countBucket: "1" });
           handlePopUpClose("updateFolder");
           return;
         }
 
+        attempt.flow({ ...flow, phase: "empty", countBucket: "0" });
         handlePopUpClose("updateFolder");
         return;
       }
@@ -1704,6 +1863,7 @@ const OverviewPageContent = () => {
         },
         { projectId, environment: singleVisibleEnv.slug, secretPath }
       );
+      attempt.flow({ ...flow, phase: "staged", countBucket: "1" });
       handlePopUpClose("updateFolder");
       return;
     }
@@ -1732,6 +1892,7 @@ const OverviewPageContent = () => {
     });
 
     if (updatedFolders.length === 0) {
+      attempt.flow({ ...flow, phase: "empty", countBucket: "0" });
       createNotification({
         type: "info",
         text: "You don't have access to rename selected folder"
@@ -1746,11 +1907,21 @@ const OverviewPageContent = () => {
         folders: updatedFolders,
         projectId
       });
+      attempt.flow({
+        ...flow,
+        phase: "response-received",
+        countBucket: overviewCountBucket(updatedFolders.length)
+      });
       createNotification({
         type: "success",
         text: "Successfully renamed folder across environments"
       });
     } catch {
+      attempt.flow({
+        ...flow,
+        phase: "failed",
+        countBucket: overviewCountBucket(updatedFolders.length)
+      });
       createNotification({
         type: "error",
         text: "Failed to rename folder across environments"
@@ -1763,6 +1934,12 @@ const OverviewPageContent = () => {
   const handleFolderDelete = async () => {
     const folderName = (popUp.deleteFolder?.data as { name: string })?.name;
     if (!folderName) return;
+    const flow = {
+      action: "delete" as const,
+      resourceType: "folder" as const,
+      source: "form" as const
+    };
+    const attempt = overviewTelemetry.startFlow(flow);
 
     if (isBatchModeActive && singleVisibleEnv) {
       const folder = getFolderByNameAndEnv(folderName, singleVisibleEnv.slug);
@@ -1779,6 +1956,12 @@ const OverviewPageContent = () => {
             secretPath
           });
         }
+        attempt.flow({
+          ...flow,
+          phase: pendingCreate ? "discarded" : "empty",
+          countBucket: pendingCreate ? "1" : "0",
+          provenance: "pending"
+        });
         handlePopUpClose("deleteFolder");
         return;
       }
@@ -1794,6 +1977,7 @@ const OverviewPageContent = () => {
         },
         { projectId, environment: singleVisibleEnv.slug, secretPath }
       );
+      attempt.flow({ ...flow, phase: "staged", countBucket: "1" });
       handlePopUpClose("deleteFolder");
       return;
     }
@@ -1822,6 +2006,7 @@ const OverviewPageContent = () => {
       .filter(Boolean);
 
     if (promises.length === 0) {
+      attempt.flow({ ...flow, phase: "empty", countBucket: "0" });
       createNotification({
         type: "info",
         text: "You don't have access to delete this folder in any environment"
@@ -1830,6 +2015,16 @@ const OverviewPageContent = () => {
       return;
     }
 
+    Promise.allSettled(promises).then((results) => {
+      const responseCount = results.filter((result) => result.status === "fulfilled").length;
+      attempt.flow({
+        ...flow,
+        phase: overviewResponsePhase(responseCount, 0, results.length - responseCount),
+        countBucket: overviewCountBucket(promises.length),
+        responseCountBucket: overviewCountBucket(responseCount),
+        failureCountBucket: overviewCountBucket(results.length - responseCount)
+      });
+    });
     try {
       await Promise.all(promises);
       createNotification({
@@ -1930,7 +2125,8 @@ const OverviewPageContent = () => {
     key: string,
     value: string,
     type = SecretType.Shared,
-    comment = ""
+    comment = "",
+    source: "row" | "quick-add" = "row"
   ) => {
     if (isBatchModeActive && type !== SecretType.Personal) {
       addPendingChange(
@@ -1945,6 +2141,13 @@ const OverviewPageContent = () => {
         },
         { projectId, environment: env, secretPath }
       );
+      overviewTelemetry.flow({
+        action: "create",
+        resourceType: "secret",
+        source,
+        phase: "staged",
+        countBucket: "1"
+      });
       return;
     }
 
@@ -1970,15 +2173,20 @@ const OverviewPageContent = () => {
         });
       }
     }
-    const result = await createSecretV3({
-      environment: env,
-      projectId,
-      secretPath,
-      secretKey: key,
-      secretValue: value,
-      secretComment: comment,
-      type
-    });
+    const result = await observeOverviewRequest(
+      overviewTelemetry,
+      { action: "create", resourceType: "secret", source, countBucket: "1" },
+      () =>
+        createSecretV3({
+          environment: env,
+          projectId,
+          secretPath,
+          secretKey: key,
+          secretValue: value,
+          secretComment: comment,
+          type
+        })
+    );
 
     if ("approval" in result) {
       createNotification({
@@ -2056,6 +2264,13 @@ const OverviewPageContent = () => {
           },
           { projectId, environment: env, secretPath }
         );
+        overviewTelemetry.flow({
+          action: "update",
+          resourceType: "secret",
+          source: "row",
+          phase: "staged",
+          countBucket: "1"
+        });
         return;
       }
 
@@ -2087,6 +2302,13 @@ const OverviewPageContent = () => {
         },
         { projectId, environment: env, secretPath }
       );
+      overviewTelemetry.flow({
+        action: "update",
+        resourceType: "secret",
+        source: "row",
+        phase: "staged",
+        countBucket: "1"
+      });
       return;
     }
 
@@ -2099,19 +2321,24 @@ const OverviewPageContent = () => {
       secretValue = undefined;
     }
 
-    const result = await updateSecretV3({
-      environment: env,
-      projectId,
-      secretPath,
-      secretKey: key,
-      secretValue,
-      type,
-      newSecretName,
-      secretComment,
-      tagIds: updatedTags?.map((tag) => tag.id),
-      secretMetadata: updatedMetadata,
-      skipMultilineEncoding: updatedSkipMultilineEncoding
-    });
+    const result = await observeOverviewRequest(
+      overviewTelemetry,
+      { action: "update", resourceType: "secret", source: "row", countBucket: "1" },
+      () =>
+        updateSecretV3({
+          environment: env,
+          projectId,
+          secretPath,
+          secretKey: key,
+          secretValue,
+          type,
+          newSecretName,
+          secretComment,
+          tagIds: updatedTags?.map((tag) => tag.id),
+          secretMetadata: updatedMetadata,
+          skipMultilineEncoding: updatedSkipMultilineEncoding
+        })
+    );
 
     if ("approval" in result) {
       createNotification({
@@ -2146,6 +2373,14 @@ const OverviewPageContent = () => {
             environment: env,
             secretPath
           });
+          overviewTelemetry.flow({
+            action: "discard",
+            resourceType: "secret",
+            source: "row",
+            phase: "discarded",
+            countBucket: "1",
+            provenance: "pending"
+          });
         }
         return;
       }
@@ -2166,17 +2401,29 @@ const OverviewPageContent = () => {
         },
         { projectId, environment: env, secretPath }
       );
+      overviewTelemetry.flow({
+        action: "delete",
+        resourceType: "secret",
+        source: "row",
+        phase: "staged",
+        countBucket: "1"
+      });
       return;
     }
 
-    const result = await deleteSecretV3({
-      environment: env,
-      projectId,
-      secretPath,
-      secretKey: key,
-      secretId,
-      type
-    });
+    const result = await observeOverviewRequest(
+      overviewTelemetry,
+      { action: "delete", resourceType: "secret", source: "row", countBucket: "1" },
+      () =>
+        deleteSecretV3({
+          environment: env,
+          projectId,
+          secretPath,
+          secretKey: key,
+          secretId,
+          type
+        })
+    );
 
     if ("approval" in result) {
       createNotification({
@@ -2400,13 +2647,21 @@ const OverviewPageContent = () => {
     async (changes: PendingChanges, message: string) => {
       if (!singleVisibleEnv) return;
 
-      await createCommit({
-        projectId,
-        environment: singleVisibleEnv.slug,
-        secretPath,
-        pendingChanges: changes,
-        message
-      });
+      const flow = {
+        action: "commit" as const,
+        resourceType: "mixed" as const,
+        source: "bulk" as const,
+        countBucket: overviewCountBucket(changes.secrets.length + changes.folders.length)
+      };
+      await observeOverviewRequest(overviewTelemetry, flow, () =>
+        createCommit({
+          projectId,
+          environment: singleVisibleEnv.slug,
+          secretPath,
+          pendingChanges: changes,
+          message
+        })
+      );
 
       const hasOnlyFolderChanges = changes.folders.length > 0 && changes.secrets.length === 0;
       const requiresApproval = isProtectedBranch && !hasOnlyFolderChanges;
@@ -2448,6 +2703,7 @@ const OverviewPageContent = () => {
       }
     },
     [
+      overviewTelemetry,
       singleVisibleEnv,
       projectId,
       secretPath,
@@ -2473,9 +2729,24 @@ const OverviewPageContent = () => {
       else localStorage.removeItem(OVERVIEW_BATCH_MODE_KEY);
       return next;
     });
-  }, [isOverviewBatchMode, singleVisibleEnv, pendingChanges, handlePopUpOpen]);
+    overviewTelemetry.interaction({
+      action: isOverviewBatchMode ? "batch-mode-disabled" : "batch-mode-enabled",
+      source: "header"
+    });
+  }, [isOverviewBatchMode, singleVisibleEnv, pendingChanges, handlePopUpOpen, overviewTelemetry]);
 
   const handleConfirmDisableBatchMode = useCallback(() => {
+    overviewTelemetry.interaction({ action: "batch-mode-disabled", source: "header" });
+    overviewTelemetry.flow({
+      action: "discard",
+      resourceType: "mixed",
+      source: "bulk",
+      phase: "discarded",
+      countBucket: overviewCountBucket(
+        pendingChanges.secrets.length + pendingChanges.folders.length
+      ),
+      provenance: "pending"
+    });
     if (singleVisibleEnv) {
       clearAllPendingChanges({
         projectId,
@@ -2486,10 +2757,23 @@ const OverviewPageContent = () => {
     setIsOverviewBatchMode(false);
     localStorage.removeItem(OVERVIEW_BATCH_MODE_KEY);
     handlePopUpClose("confirmDisableBatchMode");
-  }, [singleVisibleEnv, clearAllPendingChanges, projectId, secretPath, handlePopUpClose]);
+  }, [
+    singleVisibleEnv,
+    clearAllPendingChanges,
+    projectId,
+    secretPath,
+    handlePopUpClose,
+    overviewTelemetry,
+    pendingChanges
+  ]);
 
   const handleFolderClick = (path: string) => {
     if (isOverviewFetching) return;
+    overviewTelemetry.interaction({
+      action: "folder-navigation",
+      source: "row",
+      resourceType: "folder"
+    });
 
     setSearchFilter("");
     navigate({
@@ -2504,11 +2788,13 @@ const OverviewPageContent = () => {
   };
 
   const handleClearTags = useCallback(() => {
+    overviewTelemetry.interaction({ action: "clear-tags", source: "header" });
     setTagFilter({});
-  }, []);
+  }, [overviewTelemetry]);
 
   const handleToggleRowType = useCallback(
-    (rowType: RowType) =>
+    (rowType: RowType) => {
+      overviewTelemetry.interaction({ action: "resource-filter", source: "header" });
       setFilter((state) => {
         const newValue = !state[rowType];
         if (rowType === RowType.Secret && !newValue) {
@@ -2518,19 +2804,24 @@ const OverviewPageContent = () => {
           ...state,
           [rowType]: newValue
         };
-      }),
-    []
+      });
+    },
+    [overviewTelemetry]
   );
 
-  const handleToggleTag = useCallback((tagSlug: string) => {
-    setTagFilter((state) => {
-      const isActivating = !state[tagSlug];
-      if (isActivating) {
-        setFilter((filterState) => ({ ...filterState, [RowType.Secret]: true }));
-      }
-      return { ...state, [tagSlug]: isActivating };
-    });
-  }, []);
+  const handleToggleTag = useCallback(
+    (tagSlug: string) => {
+      overviewTelemetry.interaction({ action: "tag-filter", source: "header" });
+      setTagFilter((state) => {
+        const isActivating = !state[tagSlug];
+        if (isActivating) {
+          setFilter((filterState) => ({ ...filterState, [RowType.Secret]: true }));
+        }
+        return { ...state, [tagSlug]: isActivating };
+      });
+    },
+    [overviewTelemetry]
+  );
 
   const hasSelectableRows = Boolean(
     secrets?.length || folders?.length || secretRotationNames?.length
@@ -2578,6 +2869,7 @@ const OverviewPageContent = () => {
 
   const toggleSelectedEntry = useCallback(
     (type: EntryType, key: string, isShiftKey = false) => {
+      overviewTelemetry.interaction({ action: "selection", source: "row" });
       const currentEntry = { type, key };
       const anchor = lastSelectedEntryRef.current;
       const anchorIndex = anchor
@@ -2635,6 +2927,7 @@ const OverviewPageContent = () => {
       if (!isShiftKey || anchorIndex < 0) lastSelectedEntryRef.current = currentEntry;
     },
     [
+      overviewTelemetry,
       selectableRows,
       userAvailableEnvs,
       getFolderByNameAndEnv,
@@ -2659,6 +2952,11 @@ const OverviewPageContent = () => {
   );
 
   const toggleSelectAllRows = () => {
+    overviewTelemetry.interaction({
+      action: "select-page",
+      source: "bulk",
+      countBucket: overviewCountBucket(selectableRows.length)
+    });
     const newChecks = { ...selectedEntries };
 
     userAvailableEnvs.forEach((env) => {
@@ -3162,7 +3460,8 @@ const OverviewPageContent = () => {
     onImportFromDoppler: () => handlePopUpOpen("importFromDoppler")
   };
 
-  return (
+  return withOverviewTelemetry(
+    overviewTelemetry,
     <div className="mx-auto flex max-w-8xl flex-col">
       <Helmet>
         <title>{t("common.head-title", { title: t("dashboard.title") })}</title>
@@ -3190,7 +3489,13 @@ const OverviewPageContent = () => {
             <div className="col-start-1 row-start-1 min-w-0">
               <EnvironmentSelect
                 selectedEnvs={filteredEnvs}
-                setSelectedEnvs={setFilteredEnvs}
+                setSelectedEnvs={(value) => {
+                  overviewTelemetry.interaction({
+                    action: "environment-selection",
+                    source: "header"
+                  });
+                  setFilteredEnvs(value);
+                }}
                 onUpgradePlan={() => openUpgradeGate(getEnvironmentUpgradeRequest())}
                 isDisabled={
                   isBatchModeActive &&
@@ -3210,10 +3515,28 @@ const OverviewPageContent = () => {
                 className="min-w-0 flex-1"
                 value={searchFilter}
                 tags={tags}
-                onChange={setSearchFilter}
-                onSelectResult={({ search }) => setSearchFilter(search)}
+                onChange={(value) => {
+                  if (Boolean(value.trim()) !== Boolean(searchFilter.trim()))
+                    overviewTelemetry.interaction({
+                      action: value.trim() ? "search-started" : "search-cleared",
+                      source: "search"
+                    });
+                  setSearchFilter(value);
+                }}
+                onSelectResult={({ search }) => {
+                  if (search.trim() && !searchFilter.trim())
+                    overviewTelemetry.interaction({ action: "search-started", source: "search" });
+                  setSearchFilter(search);
+                }}
                 isSearchAllFoldersOpen={isSearchAllFoldersOpen}
-                onSearchAllFoldersOpenChange={setIsSearchAllFoldersOpen}
+                onSearchAllFoldersOpenChange={(isOpen) => {
+                  if (isOpen && !isSearchAllFoldersOpen)
+                    overviewTelemetry.interaction({
+                      action: "search-all-folders",
+                      source: "search"
+                    });
+                  setIsSearchAllFoldersOpen(isOpen);
+                }}
                 environments={userAvailableEnvs}
                 projectId={currentProject?.id}
               />
@@ -3414,7 +3737,10 @@ const OverviewPageContent = () => {
                               value={
                                 sortEnvironment ? "" : getSecretSortValue(orderBy, orderDirection)
                               }
-                              onValueChange={(value) => handleSecretSortChange(value)}
+                              onValueChange={(value) => {
+                                overviewTelemetry.interaction({ action: "sort", source: "header" });
+                                handleSecretSortChange(value);
+                              }}
                             >
                               {SECRET_SORT_OPTIONS.filter(
                                 ({ orderBy: sortField }) =>
@@ -3606,7 +3932,17 @@ const OverviewPageContent = () => {
                             Value
                             <div className="flex items-center gap-2">
                               <Badge variant="ghost" asChild>
-                                <button type="button" onClick={setIsSingleEnvSecretsVisible.toggle}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    overviewTelemetry.interaction({
+                                      action: isSingleEnvSecretsVisible ? "hide" : "reveal",
+                                      source: "header",
+                                      resourceType: "secret"
+                                    });
+                                    setIsSingleEnvSecretsVisible.toggle();
+                                  }}
+                                >
                                   {isSingleEnvSecretsVisible ? (
                                     <>
                                       <EyeOffIcon />
@@ -4053,10 +4389,18 @@ const OverviewPageContent = () => {
                                   key,
                                   value,
                                   SecretType.Shared,
-                                  comment
+                                  comment,
+                                  "quick-add"
                                 )
                               }
                               onPasteSecrets={(env) => {
+                                overviewTelemetry.flow({
+                                  action: "import",
+                                  resourceType: "mixed",
+                                  source: "paste",
+                                  phase: "input-received",
+                                  countBucket: overviewCountBucket(Object.keys(env).length)
+                                });
                                 setImportParsedSecrets(env);
                                 setImportSecretsInitialStep("paste");
                                 handlePopUpOpen("importSecrets");
@@ -4075,14 +4419,32 @@ const OverviewPageContent = () => {
                           <TableEmptyRow
                             colSpan={visibleEnvs.length + 2}
                             onImportSecrets={(step) => {
+                              overviewTelemetry.interaction({
+                                action: "import-entry",
+                                resourceType: "mixed",
+                                source: "empty-state"
+                              });
                               setImportSecretsInitialStep(step);
                               handlePopUpOpen("importSecrets");
                             }}
                             onImportFile={(file) => {
+                              overviewTelemetry.flow({
+                                action: "import",
+                                resourceType: "mixed",
+                                source: "drop",
+                                phase: "input-received"
+                              });
                               setImportSecretsInitialFile(file);
                               handlePopUpOpen("importSecrets");
                             }}
-                            onAddSecret={() => handlePopUpOpen("addSecretsInAllEnvs")}
+                            onAddSecret={() => {
+                              overviewTelemetry.interaction({
+                                action: "create-entry",
+                                resourceType: "secret",
+                                source: "empty-state"
+                              });
+                              handlePopUpOpen("addSecretsInAllEnvs");
+                            }}
                           />
                         )}
                       </>
@@ -4112,7 +4474,10 @@ const OverviewPageContent = () => {
                   count={totalCount}
                   page={page}
                   perPage={perPage}
-                  onChangePage={(newPage) => setPage(newPage)}
+                  onChangePage={(newPage) => {
+                    overviewTelemetry.interaction({ action: "pagination", source: "header" });
+                    setPage(newPage);
+                  }}
                   onChangePerPage={handlePerPageChange}
                 />
               )}
@@ -4513,12 +4878,16 @@ const OverviewPageContent = () => {
         canCreateFoldersAt={canCreateFoldersAt}
         onCompleted={handleCopySecretsCompleted}
         onOpenChange={(isOpen) => {
-          if (!isOpen) setCopySecretsInvocation(null);
+          if (!isOpen)
+            setCopySecretsInvocation((current) =>
+              current === copySecretsInvocation ? null : current
+            );
         }}
       />
       <ImportSecretsSheet
         isOpen={popUp.importSecrets.isOpen}
         onOpenChange={(isOpen) => {
+          if (!isPopupCurrent("importSecrets")) return;
           handlePopUpToggle("importSecrets", isOpen);
           if (!isOpen) {
             setImportParsedSecrets(null);

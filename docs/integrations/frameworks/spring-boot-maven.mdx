@@ -25,7 +25,7 @@ To pass in Infisical secrets into your application, we will utilize the Infisica
 The Maven wrapper executable should already be present in the root directory of your project.
 
 ```bash 
-infisical run -- ./mvnw spring-boot:run --quiet
+infisical sm run -- ./mvnw spring-boot:run --quiet
 ```
 
 #### Accessing injected secrets 
@@ -67,7 +67,7 @@ Note that these instructions are currently only available for IntelliJ.
 <img height="200" src="../../images/spring-maven-debug-4.png" />
 
 ```
-infisical run -- ./mvnw spring-boot:run -Dspring-boot.run.jvmArguments="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=*:5005"
+infisical sm run -- ./mvnw spring-boot:run -Dspring-boot.run.jvmArguments="-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=*:5005"
 ```
 
 **Step 5:** When you need to run a block of code in debug mode, select the Infisical script

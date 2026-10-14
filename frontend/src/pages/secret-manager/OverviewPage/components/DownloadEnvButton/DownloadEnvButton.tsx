@@ -25,6 +25,8 @@ import {
 } from "@app/hooks/api/secrets/queries";
 import { ApiErrorTypes, ProjectEnv, TApiErrors } from "@app/hooks/api/types";
 
+import { overviewCountBucket, useOverviewTelemetry } from "../../OverviewTelemetry";
+
 type Props = {
   secretPath: string;
   environments: ProjectEnv[];
@@ -34,6 +36,7 @@ type Props = {
 type ExportAction = "clipboard" | "download";
 
 export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props) => {
+  const telemetry = useOverviewTelemetry();
   const [pendingAction, setPendingAction] = useState<ExportAction>();
   const environment = environments.length === 1 ? environments[0].slug : "";
   const {
@@ -60,6 +63,13 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
 
   const handleSecretExport = async (action: ExportAction) => {
     if (!environment) return;
+    const flow = {
+      action: "export" as const,
+      resourceType: "secret" as const,
+      source: "header" as const,
+      destination: action
+    };
+    const attempt = telemetry.startFlow(flow);
 
     setPendingAction(action);
     try {
@@ -73,6 +83,7 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
 
       const file = formatSecretEnvFile(localSecrets, localImportedSecrets);
       if (!file) {
+        attempt.flow({ ...flow, phase: "empty", countBucket: "0" });
         createNotification({
           title: "No secrets in this folder",
           text: "There are no secrets to export.",
@@ -83,6 +94,13 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
 
       if (action === "clipboard") {
         await navigator.clipboard.writeText(file);
+        attempt.flow({
+          ...flow,
+          phase: "clipboard-written",
+          countBucket: overviewCountBucket(
+            getSecretEnvFileEntryCount(localSecrets, localImportedSecrets)
+          )
+        });
         createNotification({
           title: "Secrets copied to clipboard",
           text: "The secrets are ready to paste.",
@@ -90,8 +108,16 @@ export const DownloadEnvButton = ({ environments, projectId, secretPath }: Props
         });
       } else {
         downloadTxtFile(`${environment}.env`, file);
+        attempt.flow({
+          ...flow,
+          phase: "download-started",
+          countBucket: overviewCountBucket(
+            getSecretEnvFileEntryCount(localSecrets, localImportedSecrets)
+          )
+        });
       }
     } catch (err) {
+      attempt.flow({ ...flow, phase: "failed" });
       if (err instanceof AxiosError) {
         const error = err?.response?.data as TApiErrors;
 
