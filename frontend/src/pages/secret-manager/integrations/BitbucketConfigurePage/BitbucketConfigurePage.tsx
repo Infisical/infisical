@@ -10,6 +10,7 @@ import {
   Button,
   Card,
   CardContent,
+  CardFooter,
   CardHeader,
   CardTitle,
   Combobox,
@@ -370,16 +371,17 @@ export const BitbucketConfigurePage = () => {
               )}
             />
           )}
+        </CardContent>
+        <CardFooter className="justify-end">
           <Button
             type="submit"
-            className="mt-4"
             isPending={createIntegration.isPending}
             isDisabled={createIntegration.isPending || !bitbucketRepos?.length}
             variant="project"
           >
             Create Integration
           </Button>
-        </CardContent>
+        </CardFooter>
       </Card>
     </form>
   );

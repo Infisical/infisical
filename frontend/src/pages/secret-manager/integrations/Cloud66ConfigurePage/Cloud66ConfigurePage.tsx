@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   CardContent,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -160,16 +161,17 @@ export const Cloud66ConfigurePage = () => {
               </SelectContent>
             </Select>
           </Field>
+        </CardContent>
+        <CardFooter className="justify-end">
           <Button
             onClick={handleButtonClick}
-            className="mt-4"
             isPending={isLoading}
             isDisabled={integrationAuthApps.length === 0}
             variant="outline"
           >
             Create Integration
           </Button>
-        </CardContent>
+        </CardFooter>
       </Card>
     </div>
   ) : (

@@ -5,10 +5,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 
 import {
+  Badge,
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -75,36 +78,31 @@ export const AzureDevopsAuthorizePage = () => {
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>
-            <div className="flex flex-row items-center">
-              <div className="flex items-center">
-                <img
-                  src="/images/integrations/Microsoft Azure.png"
-                  height={35}
-                  width={35}
-                  alt="Azure DevOps logo"
-                />
-              </div>
-              <span className="ml-1.5">Azure DevOps Integration </span>
-              <a
-                target="_blank"
-                href="https://infisical.com/docs/integrations/cloud/azure-devops"
-                rel="noopener noreferrer"
-              >
-                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  Docs
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="text-xxs mb-[0.07rem] ml-1.5"
-                  />
-                </div>
-              </a>
-            </div>
+            <img
+              src="/images/integrations/Microsoft Azure.png"
+              height={35}
+              width={35}
+              alt="Azure DevOps logo"
+            />
+            <span>Azure DevOps Integration</span>
           </CardTitle>
           <CardDescription>
             After adding the details below, you will be prompted to set up an integration for a
             particular Infisical project and environment.
           </CardDescription>
+          <CardAction>
+            <Badge variant="info" asChild>
+              <a
+                target="_blank"
+                href="https://infisical.com/docs/integrations/cloud/azure-devops"
+                rel="noopener noreferrer"
+              >
+                <FontAwesomeIcon icon={faBookOpen} />
+                Docs
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
+              </a>
+            </Badge>
+          </CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
           {" "}
@@ -160,15 +158,12 @@ export const AzureDevopsAuthorizePage = () => {
               </FieldError>
             )}
           </Field>
-          <Button
-            onClick={handleButtonClick}
-            className="mt-2 mr-6 mb-6 ml-auto w-min"
-            isPending={isLoading}
-            variant="project"
-          >
+        </CardContent>
+        <CardFooter className="justify-end">
+          <Button onClick={handleButtonClick} isPending={isLoading} variant="project">
             Connect to Azure DevOps
           </Button>
-        </CardContent>
+        </CardFooter>
       </Card>
     </div>
   );

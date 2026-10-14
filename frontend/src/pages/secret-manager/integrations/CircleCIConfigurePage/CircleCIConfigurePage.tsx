@@ -7,10 +7,13 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Badge,
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
   Combobox,
@@ -136,37 +139,30 @@ export const CircleCIConfigurePage = () => {
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>
-            <div className="flex w-full flex-row items-center justify-between">
-              <div className="flex flex-row items-center gap-1.5">
-                <img
-                  src="/images/integrations/CircleCI.png"
-                  height={30}
-                  width={30}
-                  alt="CircleCI logo"
-                />
-
-                <span className="">CircleCI Context Integration </span>
-              </div>
-
+            <img
+              src="/images/integrations/CircleCI.png"
+              height={30}
+              width={30}
+              alt="CircleCI logo"
+            />
+            <span>CircleCI Context Integration</span>
+          </CardTitle>
+          <CardDescription>
+            Choose which environment or folder in Infisical you want to sync to CircleCI.
+          </CardDescription>
+          <CardAction>
+            <Badge variant="info" asChild>
               <a
                 href="https://infisical.com/docs/integrations/cicd/circleci"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="mb-1 ml-2 flex cursor-pointer flex-row items-center gap-0.5 rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  Docs
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="text-xxs mb-[0.07rem] ml-1.5"
-                  />
-                </div>
+                <FontAwesomeIcon icon={faBookOpen} />
+                Docs
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
               </a>
-            </div>
-          </CardTitle>
-          <CardDescription>
-            Choose which environment or folder in Infisical you want to sync to CircleCI.
-          </CardDescription>
+            </Badge>
+          </CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
           <Controller
@@ -350,16 +346,17 @@ export const CircleCIConfigurePage = () => {
               )}
             />
           )}
+        </CardContent>
+        <CardFooter className="justify-end">
           <Button
             type="submit"
-            className="mt-4"
             isPending={isCreatingIntegration}
             isDisabled={isCreatingIntegration}
             variant="project"
           >
             Create Integration
           </Button>
-        </CardContent>
+        </CardFooter>
       </Card>
     </form>
   );

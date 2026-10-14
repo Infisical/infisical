@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   CardContent,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -185,15 +186,12 @@ export const AzureKeyVaultConfigurePage = () => {
               </SelectContent>
             </Select>
           </Field>
-          <Button
-            onClick={handleButtonClick}
-            className="mt-4"
-            isPending={isLoading}
-            variant="outline"
-          >
+        </CardContent>
+        <CardFooter className="justify-end">
+          <Button onClick={handleButtonClick} isPending={isLoading} variant="outline">
             Create Integration
           </Button>
-        </CardContent>
+        </CardFooter>
       </Card>
     </div>
   ) : (

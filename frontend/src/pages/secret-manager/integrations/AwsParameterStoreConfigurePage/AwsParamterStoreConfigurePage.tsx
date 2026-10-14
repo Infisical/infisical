@@ -14,8 +14,10 @@ import {
   Badge,
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
   Field,
@@ -187,36 +189,26 @@ export const AWSParameterStoreConfigurePage = () => {
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>
-            <div className="flex flex-row items-center">
-              <div className="flex items-center">
-                <ProviderIcon
-                  icon="Amazon Web Services.png"
-                  height={35}
-                  width={35}
-                  alt="AWS logo"
-                />
-              </div>
-              <span className="ml-1.5">AWS Parameter Store Integration </span>
-              <a
-                href="https://infisical.com/docs/integrations/cloud/aws-parameter-store"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="mb-1 ml-2 inline-block cursor-default rounded-md bg-warning/20 px-1.5 pt-[0.04rem] pb-[0.03rem] text-sm text-warning opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  Docs
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="text-xxs mb-[0.07rem] ml-1.5"
-                  />
-                </div>
-              </a>
-            </div>
+            <ProviderIcon icon="Amazon Web Services.png" height={35} width={35} alt="AWS logo" />
+            <span>AWS Parameter Store Integration</span>
           </CardTitle>
           <CardDescription>
             Choose which environment in Infisical you want to sync to secerts in AWS Parameter
             Store.
           </CardDescription>
+          <CardAction>
+            <Badge variant="info" asChild>
+              <a
+                href="https://infisical.com/docs/integrations/cloud/aws-parameter-store"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <FontAwesomeIcon icon={faBookOpen} />
+                Docs
+                <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
+              </a>
+            </Badge>
+          </CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
           <Tabs defaultValue={TabSections.Connection}>
@@ -391,15 +383,12 @@ export const AWSParameterStoreConfigurePage = () => {
               </motion.div>
             </TabsContent>
           </Tabs>
-          <Button
-            onClick={handleButtonClick}
-            className="mt-2 mr-6 mb-6 ml-auto"
-            isPending={isLoading}
-            variant="project"
-          >
+        </CardContent>
+        <CardFooter className="justify-end">
+          <Button onClick={handleButtonClick} isPending={isLoading} variant="project">
             Create Integration
           </Button>
-        </CardContent>
+        </CardFooter>
       </Card>
       <div className="mt-6 w-full max-w-md border-t border-border-faint" />
       <div className="mt-6 flex w-full max-w-lg flex-col rounded-md border border-border-control bg-surface-raised p-4">
