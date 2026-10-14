@@ -54,7 +54,7 @@ export const CustomRolesUpgradeIntent = {
   featureKey: "rbac",
   title: "Unlock Custom Roles",
   description: "Control access with custom roles and granular permissions.",
-  isEnterpriseFeature: true
+  isEnterpriseFeature: false
 } satisfies CapabilityUpgradeIntent;
 
 export const InstanceUserManagementUpgradeIntent = {
