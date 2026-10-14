@@ -52,4 +52,10 @@ Your comment appears as **Remarks** in the finding's details, and when you hover
 
 ## Notifications about new findings
 
-When a scan finds secrets, Infisical sends an email and an in-app notification to every member with the **Admin** role in Secret Scanning, and to the author of the commit if they're a member too. The notification links to the findings from that scan. If a scan fails, the members with the **Admin** role get a notification with the error instead.
+When a scan finds secrets, Infisical sends an email and an in-app notification to every member with the **Admin** role in Secret Scanning. The notification links to the findings from that scan. If a scan fails, the same members get a notification with the error instead.
+
+If a scan of a new push finds secrets, Infisical also notifies the author of the commit if they're a member. If the push has commits from more than one author, Infisical notifies only one of them.
+
+<Note>
+  If you self-host Infisical, scan notifications need an [email service](/self-hosting/configuration/envars#email-service) configured. Without one, Infisical doesn't send the email or the in-app notification.
+</Note>
