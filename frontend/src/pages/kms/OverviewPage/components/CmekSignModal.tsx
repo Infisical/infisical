@@ -255,7 +255,7 @@ export const CmekSignModal = ({ isOpen, onOpenChange, cmek }: Props) => {
         open={isDiscardDialogOpen}
         onOpenChange={setIsDiscardDialogOpen}
         onDiscard={confirmDiscard}
-        title="Discard signing data?"
+        title="Discard Signing Data?"
         description="Your unsent signing data will be lost."
       />
     </>

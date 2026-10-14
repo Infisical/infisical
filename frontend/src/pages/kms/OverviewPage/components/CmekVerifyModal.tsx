@@ -323,7 +323,7 @@ export const CmekVerifyModal = ({ isOpen, onOpenChange, cmek }: Props) => {
         open={isDiscardDialogOpen}
         onOpenChange={setIsDiscardDialogOpen}
         onDiscard={confirmDiscard}
-        title="Discard verification data?"
+        title="Discard Verification Data?"
         description="Your unsent verification data and signature will be lost."
       />
     </>
