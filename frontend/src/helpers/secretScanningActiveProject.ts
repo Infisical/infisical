@@ -18,10 +18,10 @@ export const setSecretScanningActiveProjectCookie = (orgId: string, projectId: s
 };
 
 // Which Secret Scanning project a page in this org shows, now that the URL carries none: the one the
-// user last opened, while they are still a member of it, otherwise the org's active project. Unlike
-// Certificate Manager's, the backend never reads this cookie: every project-scoped Secret Scanning
-// request names its projectId, so only the frontend needs to agree with itself. Do not add a backend
-// fallback to it, since the cookie is shared by every tab and would redirect another tab's writes.
+// user last opened, while they are still a member of it, otherwise the org's active project. The
+// backend falls back to this cookie for requests that name no project, but it is shared by every tab,
+// so a tab that switched projects would redirect another tab's writes. Keep naming the projectId on
+// every project-scoped request.
 export const resolveSecretScanningProjectId = ({
   orgId,
   activeProjectId,
