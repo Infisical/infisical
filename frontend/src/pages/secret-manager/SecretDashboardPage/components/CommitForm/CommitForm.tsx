@@ -12,7 +12,6 @@ import {
 
 import { createNotification } from "@app/components/notifications";
 import { SecretVersionDiffView } from "@app/components/secrets/diff";
-import { Tooltip } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -23,7 +22,10 @@ import {
   SheetDescription,
   SheetFooter,
   SheetHeader,
-  SheetTitle
+  SheetTitle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { HIDDEN_SECRET_VALUE_API_MASK } from "@app/const/secrets";
 import { dashboardKeys, fetchSecretValue } from "@app/hooks/api/dashboard/queries";
@@ -126,8 +128,13 @@ const RenderSecretChanges = ({
     const showReferenceWarning = hasKeyChange && referenceCount && referenceCount > 0;
 
     const referenceWarningElement = showReferenceWarning ? (
-      <Tooltip
-        content={
+      <Tooltip hoverable delayDuration={50}>
+        <TooltipTrigger asChild>
+          <Badge variant="warning" className="ml-2">
+            <TriangleAlertIcon className="size-3" /> References affected
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
           <div className="max-w-xs">
             <p className="font-medium">References will be updated</p>
             <p className="mt-1 text-xs text-label">
@@ -136,11 +143,7 @@ const RenderSecretChanges = ({
               syncs in the respective environments.
             </p>
           </div>
-        }
-      >
-        <Badge variant="warning" className="ml-2">
-          <TriangleAlertIcon className="size-3" /> References affected
-        </Badge>
+        </TooltipContent>
       </Tooltip>
     ) : undefined;
 

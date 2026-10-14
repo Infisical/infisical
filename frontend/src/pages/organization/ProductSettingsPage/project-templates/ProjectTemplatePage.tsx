@@ -3,8 +3,7 @@ import { ChevronLeft, Pencil, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
-import { Button } from "@app/components/v3";
+import { Button, DeleteConfirmDialog } from "@app/components/v3";
 import { PageHeader } from "@app/components/v3/platform";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { getProjectTitle } from "@app/helpers/project";
@@ -35,8 +34,11 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
     "editDetails"
   ] as const);
 
+  const matchingProjectTemplate =
+    projectTemplate?.type === projectType ? projectTemplate : undefined;
   const templateName =
-    projectTemplate?.name ?? projectTemplates.find((t) => t.id === templateId)?.name;
+    matchingProjectTemplate?.name ??
+    projectTemplates.find((t) => t.id === templateId && t.type === projectType)?.name;
 
   const isInfisicalTemplate = templateName === InfisicalProjectTemplate.Default;
 
@@ -73,16 +75,16 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
             description={
               <>
                 {getProjectTitle(projectType)}
-                {projectTemplate?.description && (
+                {matchingProjectTemplate?.description && (
                   <>
                     <span className="px-2 text-surface-selected">&bull;</span>
-                    {projectTemplate.description}
+                    {matchingProjectTemplate.description}
                   </>
                 )}
               </>
             }
           >
-            {!isInfisicalTemplate && (
+            {matchingProjectTemplate && !isInfisicalTemplate && (
               <>
                 <OrgPermissionCan
                   I={OrgPermissionActions.Edit}
@@ -122,20 +124,21 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
           </div>
         </div>
       </div>
-      {projectTemplate && (
+      {matchingProjectTemplate && (
         <>
           <ProjectTemplateDetailsModal
             projectType={projectType}
             isOpen={popUp.editDetails.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("editDetails", isOpen)}
-            projectTemplate={projectTemplate}
+            projectTemplate={matchingProjectTemplate}
           />
-          <DeleteActionModal
+          <DeleteConfirmDialog
             isOpen={popUp.removeTemplate.isOpen}
-            title={`Are you sure you want to delete ${projectTemplate.name}?`}
-            deleteKey="confirm"
-            onChange={(isOpen) => handlePopUpToggle("removeTemplate", isOpen)}
-            onDeleteApproved={handleRemoveTemplate}
+            title={`Are you sure you want to delete ${matchingProjectTemplate.name}?`}
+            confirmKey="confirm"
+            description="This action is irreversible."
+            onOpenChange={(isOpen) => handlePopUpToggle("removeTemplate", isOpen)}
+            onConfirm={handleRemoveTemplate}
           />
         </>
       )}

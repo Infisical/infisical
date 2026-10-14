@@ -166,6 +166,8 @@ export const KeyStorePrefixes = {
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
   PamDefaultProject: (orgId: string) => `pam-default-project:${orgId}` as const,
   AgentVaultDefaultProject: (orgId: string) => `agent-vault-default-project:${orgId}` as const,
+  // The live view's Redis stream for a session: the newest chunk file names, with their bucket and size.
+  AgentVaultSessionLogFeed: (sessionId: string) => `agent-vault-session-log-feed:${sessionId}` as const,
 
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
   OrgSecretScanningFindingsCount: (orgId: string) => `org-secret-scanning-findings-count:${orgId}` as const,
@@ -369,7 +371,8 @@ export type TKeyStoreFactory = {
     id: string,
     fieldValue: Record<string, string>,
     maxLen?: number,
-    expiryInSeconds?: number
+    expiryInSeconds?: number,
+    isExactTrim?: boolean
   ) => Promise<string | null>;
   streamRange: (key: string, start: string, end: string, count?: number) => Promise<[string, string[]][]>;
   streamTrim: (key: string, minId: string, inclusive?: boolean) => Promise<number>;
@@ -399,12 +402,13 @@ export type TKeyStoreFactory = {
   pgIncrementBy: (key: string, dto: { incr?: number; expiry?: string; tx?: Knex }) => Promise<number>;
   pgGetIntItem: (key: string, prefix?: string) => Promise<number | undefined>;
   // locks
-  acquireLock(
-    resources: string[],
-    duration: number,
-    settings?: Partial<Settings>
-  ): Promise<{ release: () => Promise<ExecutionResult> }>;
+  acquireLock(resources: string[], duration: number, settings?: Partial<Settings>): Promise<TKeyStoreLock>;
   waitTillReady: ({ key, waitingCb, keyCheckCb, waitIteration, delay, jitter }: TWaitTillReady) => Promise<void>;
+};
+
+export type TKeyStoreLock = {
+  release: () => Promise<ExecutionResult>;
+  extend?: (duration: number) => Promise<TKeyStoreLock>;
 };
 
 const pickPrimaryOrSecondaryRedis = (primary: Redis | Cluster, secondaries?: Array<Redis | Cluster>) => {
@@ -777,7 +781,10 @@ export const keyStoreFactory = (
     id: string,
     fieldValue: Record<string, string>,
     maxLen = 1_000_000,
-    expiryInSeconds?: number
+    expiryInSeconds?: number,
+    // With "~", Redis only trims whole internal blocks of about 100 entries, so a cap of 10 could still hold around
+    // 100. Small caps need exact trimming.
+    isExactTrim = false
   ) => {
     const args: string[] = [];
     for (const [field, value] of Object.entries(fieldValue)) {
@@ -785,14 +792,15 @@ export const keyStoreFactory = (
     }
 
     if (!expiryInSeconds) {
-      return primaryRedis.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
+      return isExactTrim
+        ? primaryRedis.xadd(key, "MAXLEN", maxLen, id, ...args)
+        : primaryRedis.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
     }
 
-    const results = await primaryRedis
-      .multi()
-      .xadd(key, "MAXLEN", "~", maxLen, id, ...args)
-      .expire(key, expiryInSeconds)
-      .exec();
+    const pipeline = primaryRedis.multi();
+    if (isExactTrim) pipeline.xadd(key, "MAXLEN", maxLen, id, ...args);
+    else pipeline.xadd(key, "MAXLEN", "~", maxLen, id, ...args);
+    const results = await pipeline.expire(key, expiryInSeconds).exec();
 
     const [addError, entryId] = results?.[0] ?? [null, null];
     if (addError) throw addError;

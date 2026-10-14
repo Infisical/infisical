@@ -7,7 +7,6 @@ import { Activity, Ban, SearchIcon, Video } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { HighlightText } from "@app/components/utilities/HighlightText";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -39,7 +38,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { PageHeader } from "@app/components/v3/platform";
+import { DeleteConfirmDialog, PageHeader } from "@app/components/v3/platform";
 import { useOrganization, useProject } from "@app/context";
 import {
   getUserTablePreference,
@@ -385,16 +384,16 @@ export const PamSessionsPage = () => {
         onTerminate={requestTerminate}
       />
 
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={!!sessionToTerminate}
-        onChange={(open) => {
+        onOpenChange={(open) => {
           if (!open) setSessionToTerminate(null);
         }}
         title="Terminate Session"
-        subTitle="Are you sure you want to terminate this session? The user's connection will be immediately dropped."
-        deleteKey="terminate"
-        buttonText="Terminate"
-        onDeleteApproved={confirmTerminate}
+        description="Are you sure you want to terminate this session? The user's connection will be immediately dropped."
+        confirmKey="terminate"
+        confirmLabel="Terminate"
+        onConfirm={confirmTerminate}
       />
     </div>
   );

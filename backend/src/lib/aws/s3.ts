@@ -1,4 +1,10 @@
-import { GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  GetObjectCommand,
+  HeadBucketCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -6,6 +12,12 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { CustomAWSHasher } from "./hashing";
 
 type TS3Credentials = { accessKeyId: string; secretAccessKey: string; sessionToken?: string };
+
+// Without these the SDK waits on a stalled AWS endpoint indefinitely, past the point Infisical drops the request.
+export const AWS_REQUEST_TIMEOUTS = { connectionTimeout: 5_000, requestTimeout: 15_000, throwOnRequestTimeout: true };
+
+// Three attempts at the 15s request timeout fit inside this, and it stays under Infisical's 100s request cut-off.
+const S3_CALL_TIMEOUT_MS = 45_000;
 
 export type TS3AccessCheck = { ok: true } | { ok: false; failure: "unreachable" | "unwritable"; error: unknown };
 
@@ -24,8 +36,11 @@ export const createS3Bucket = ({
     region,
     useFipsEndpoint: crypto.isFipsModeEnabled(),
     sha256: CustomAWSHasher,
-    credentials
+    credentials,
+    requestHandler: AWS_REQUEST_TIMEOUTS
   });
+  // The request timeout stops once the headers arrive, so a reply that stalls after them needs an overall limit.
+  const sendOptions = () => ({ abortSignal: AbortSignal.timeout(S3_CALL_TIMEOUT_MS) });
 
   // These headers are signed so S3 enforces them: the body must be the declared size and hash to the declared
   // digest, and If-None-Match stops a re-minted link from overwriting an object already stored.
@@ -59,12 +74,39 @@ export const createS3Bucket = ({
   const presignGet = (key: string, expiresInSeconds: number) =>
     getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: expiresInSeconds });
 
-  const checkAccess = async (testKey: string): Promise<TS3AccessCheck> => {
+  // One page only: callers that page do so across requests, so one request can't walk an unbounded listing.
+  const listPage = async ({
+    prefix,
+    startAfter,
+    maxKeys
+  }: {
+    prefix: string;
+    startAfter?: string;
+    maxKeys: number;
+  }) => {
+    const res = await client.send(
+      new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, StartAfter: startAfter, MaxKeys: maxKeys }),
+      sendOptions()
+    );
+    const objects: { key: string; size: number }[] = [];
+    (res.Contents ?? []).forEach(({ Key, Size }) => {
+      if (Key !== undefined && Size !== undefined) objects.push({ key: Key, size: Size });
+    });
+    return { objects, isTruncated: Boolean(res.IsTruncated) };
+  };
+
+  const checkReachable = async (): Promise<{ ok: true } | { ok: false; error: unknown }> => {
     try {
-      await client.send(new HeadBucketCommand({ Bucket: bucket }));
+      await client.send(new HeadBucketCommand({ Bucket: bucket }), sendOptions());
+      return { ok: true };
     } catch (error) {
-      return { ok: false, failure: "unreachable", error };
+      return { ok: false, error };
     }
+  };
+
+  const checkAccess = async (testKey: string): Promise<TS3AccessCheck> => {
+    const reachable = await checkReachable();
+    if (!reachable.ok) return { ok: false, failure: "unreachable", error: reachable.error };
     try {
       await client.send(
         new PutObjectCommand({
@@ -72,7 +114,8 @@ export const createS3Bucket = ({
           Key: testKey,
           Body: Buffer.from("infisical-access-check"),
           ContentType: "application/octet-stream"
-        })
+        }),
+        sendOptions()
       );
     } catch (error) {
       return { ok: false, failure: "unwritable", error };
@@ -80,5 +123,5 @@ export const createS3Bucket = ({
     return { ok: true };
   };
 
-  return { presignCreateOnlyPut, presignGet, checkAccess };
+  return { presignCreateOnlyPut, presignGet, listPage, checkReachable, checkAccess };
 };

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { subject } from "@casl/ability";
-import { useParams } from "@tanstack/react-router";
 import { EllipsisIcon, EyeIcon, LockIcon, PencilIcon, Trash2Icon } from "lucide-react";
 
 import { VariablePermissionCan } from "@app/components/permissions";
@@ -27,7 +26,7 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub
 } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useRouteProjectId } from "@app/hooks";
 import { IdentityAuthMethod, identityAuthToNameMap } from "@app/hooks/api";
 import { IdentityAuthMethodModal } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
 import { identityAuthMethodOptions } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModalContent";
@@ -53,7 +52,7 @@ export const IdentityAuthMethodsTable = ({
   const [selectedAuthMethod, setSelectedAuthMethod] = useState<IdentityAuthMethod | null>(null);
   const [revokeAuthMethod, setRevokeAuthMethod] = useState<IdentityAuthMethod | null>(null);
 
-  const { projectId } = useParams({ strict: false });
+  const projectId = useRouteProjectId();
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "identityAuthMethod",

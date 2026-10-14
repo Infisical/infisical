@@ -7,11 +7,13 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { withProjectPermission } from "@app/hoc";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { AppConnectionsTable } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
 export const AppConnectionsPage = withProjectPermission(
   () => {
     const { currentProject } = useProject();
+    const isCertManager = currentProject.type === ProjectType.CertificateManager;
 
     return (
       <div className="bg-page">
@@ -25,8 +27,12 @@ export const AppConnectionsPage = withProjectPermission(
             <PageHeader
               scope={currentProject.type}
               className="w-full"
-              title="Project App Connections"
-              description="Manage project App Connections"
+              title={isCertManager ? "App Connections" : "Project App Connections"}
+              description={
+                isCertManager
+                  ? "Manage Certificate Manager App Connections"
+                  : "Manage project App Connections"
+              }
             />
 
             <AppConnectionsTable projectId={currentProject.id} projectType={currentProject.type} />

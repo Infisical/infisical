@@ -2,7 +2,6 @@ import { PlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -10,7 +9,8 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
+  CardTitle,
+  DeleteConfirmDialog
 } from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import {
@@ -127,12 +127,13 @@ export const GroupMembersSection = ({ groupId, groupSlug, isLinkedGroup = false 
         handlePopUpToggle={handlePopUpToggle}
         isOidcManageGroupMembershipsEnabled={isOidcManageGroupMembershipsEnabled}
       />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.removeMemberFromGroup.isOpen}
         title={`Are you sure you want to remove ${getMemberName(popUp?.removeMemberFromGroup?.data)} from the group?`}
-        onChange={(isOpen) => handlePopUpToggle("removeMemberFromGroup", isOpen)}
-        deleteKey="confirm"
-        onDeleteApproved={() => {
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("removeMemberFromGroup", isOpen)}
+        confirmKey="confirm"
+        onConfirm={() => {
           const memberData = popUp?.removeMemberFromGroup?.data as RemoveMemberData;
           return handleRemoveMemberFromGroup(memberData);
         }}

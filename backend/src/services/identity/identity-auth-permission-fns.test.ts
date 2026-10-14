@@ -1,4 +1,4 @@
-import { createMongoAbility, MongoAbility } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility } from "@casl/ability";
 
 import { AccessScope } from "@app/db/schemas";
 import { projectAdminPermissions, projectMemberPermissions } from "@app/ee/services/permission/default-roles";
@@ -33,6 +33,10 @@ const orgEditAuthOnly = createMongoAbility<MongoAbility<OrgPermissionSet>>([
   { action: OrgPermissionIdentityActions.EditAuth, subject: OrgPermissionSubjects.Identity },
   { action: OrgPermissionIdentityActions.RevokeAuth, subject: OrgPermissionSubjects.Identity }
 ]);
+const orgCreateTokenOnly = createMongoAbility<MongoAbility<OrgPermissionSet>>([
+  { action: OrgPermissionIdentityActions.CreateToken, subject: OrgPermissionSubjects.Identity }
+]);
+const noAccess = createMongoAbility<MongoAbility>([]);
 
 const projectAdmin = createMongoAbility<MongoAbility<ProjectPermissionSet>>(projectAdminPermissions);
 const projectMember = createMongoAbility<MongoAbility<ProjectPermissionSet>>(projectMemberPermissions);
@@ -41,6 +45,13 @@ const projectEditAuthOnly = createMongoAbility<MongoAbility<ProjectPermissionSet
 ]);
 const projectCreateTokenOnly = createMongoAbility<MongoAbility<ProjectPermissionSet>>([
   { action: ProjectPermissionIdentityActions.CreateToken, subject: ProjectPermissionSub.Identity }
+]);
+const projectEditAuthOnOtherIdentity = createMongoAbility<MongoAbility<ProjectPermissionSet>>([
+  {
+    action: ProjectPermissionIdentityActions.EditAuth,
+    subject: ProjectPermissionSub.Identity,
+    conditions: { identityId: "identity-2" }
+  }
 ]);
 
 type TScopeCall = { scope: AccessScope; orgId: string; projectId?: string };
@@ -140,7 +151,7 @@ describe("assertIdentityAuthAccessAllowed", () => {
       ).resolves.toBeUndefined();
       await expect(
         runBoundary({ shouldUseNewPrivilegeSystem: true, actorPermission: orgMember, targetPermissions: [orgMember] })
-      ).rejects.toThrow(PermissionBoundaryError);
+      ).rejects.toThrow(ForbiddenError);
     });
 
     test("the target is not looked up at all under the new privilege system", async () => {
@@ -209,7 +220,7 @@ describe("assertIdentityAuthAccessAllowed", () => {
           targetPermissions: [projectMember],
           projectId: "project-1"
         })
-      ).rejects.toThrow(PermissionBoundaryError);
+      ).rejects.toThrow(ForbiddenError);
     });
 
     test("the target is not looked up at all under the new privilege system", async () => {
@@ -228,6 +239,39 @@ describe("assertIdentityAuthAccessAllowed", () => {
     });
   });
 
+  // the legacy boundary only compares grants, so covering the target isn't enough. the scary case is a
+  // no-access org identity that's admin in projects: no org grants, so anyone could mint it a credential
+  describe("the action is required on the legacy privilege system too", () => {
+    test("covering an org identity's grants does not stand in for the action", async () => {
+      await expect(
+        runBoundary({
+          actorPermission: orgMember,
+          targetPermissions: [noAccess],
+          action: OrgPermissionIdentityActions.CreateToken
+        })
+      ).rejects.toThrow(ForbiddenError);
+      await expect(runBoundary({ actorPermission: orgMember, targetPermissions: [orgMember] })).rejects.toThrow(
+        ForbiddenError
+      );
+    });
+
+    test("covering a project identity's grants does not stand in for the action", async () => {
+      await expect(
+        runBoundary({ actorPermission: projectMember, targetPermissions: [noAccess], projectId: "project-1" })
+      ).rejects.toThrow(ForbiddenError);
+    });
+
+    test("a project grant scoped to another identity does not cover this one", async () => {
+      await expect(
+        runBoundary({
+          actorPermission: projectEditAuthOnOtherIdentity,
+          targetPermissions: [noAccess],
+          projectId: "project-1"
+        })
+      ).rejects.toThrow(ForbiddenError);
+    });
+  });
+
   describe("credential issuance", () => {
     test("a create-token-only actor may not mint a credential for an admin identity", async () => {
       await expect(
@@ -240,7 +284,7 @@ describe("assertIdentityAuthAccessAllowed", () => {
       ).rejects.toThrow(PermissionBoundaryError);
       await expect(
         runBoundary({
-          actorPermission: orgMember,
+          actorPermission: orgCreateTokenOnly,
           targetPermissions: [orgAdmin],
           action: OrgPermissionIdentityActions.CreateToken
         })

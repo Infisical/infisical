@@ -19,21 +19,21 @@ If you're still experiencing trouble, please seek support.
 </Accordion>
 
 <Accordion title="How do I keep secret values out of my shell history?">
-Your shell saves the commands you run to a history file, so a secret value you pass to `infisical secrets set` stays in that file. To avoid this, pass the values with `--file` or `name=@path`, or configure your shell to skip those commands.
+Your shell saves the commands you run to a history file, so a secret value you pass to `infisical sm secrets set` stays in that file. To avoid this, pass the values with `--file` or `name=@path`, or configure your shell to skip those commands.
 
 <Tabs>
   <Tab title="Bash">
     Add the pattern to `HISTIGNORE` in `~/.bashrc`:
 
     ```bash
-    echo 'export HISTIGNORE="*infisical secrets set*:$HISTIGNORE"' >> ~/.bashrc && source ~/.bashrc
+    echo 'export HISTIGNORE="*infisical*secrets set*:$HISTIGNORE"' >> ~/.bashrc && source ~/.bashrc
     ```
   </Tab>
   <Tab title="Zsh">
     Add the pattern to `HISTORY_IGNORE` in `~/.zshrc`:
 
     ```bash
-    echo "HISTORY_IGNORE='(*infisical secrets set*)'" >> ~/.zshrc && source ~/.zshrc
+    echo "HISTORY_IGNORE='(*infisical*secrets set*)'" >> ~/.zshrc && source ~/.zshrc
     ```
 
     Zsh applies `HISTORY_IGNORE` when it writes the history file, so the command still appears when you press the up arrow in the current session.
@@ -43,12 +43,12 @@ Your shell saves the commands you run to a history file, so a secret value you p
 
     In PowerShell, the PSReadLine module saves your command history. To check its version, run `(Get-Module PSReadLine).Version`.
 
-    PSReadLine 2.2 and later, which ships with PowerShell 7.2 and later, doesn't save commands that contain words such as `secret`, `token`, or `password`, so `infisical secrets set` is already skipped.
+    PSReadLine 2.2 and later, which ships with PowerShell 7.2 and later, doesn't save commands that contain words such as `secret`, `token`, or `password`, so `infisical sm secrets set` is already skipped.
 
-    Older versions, including the one that ships with Windows PowerShell 5.1, save every command. Add this line to your [PowerShell profile](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_profiles) to skip `infisical secrets set`:
+    Older versions, including the one that ships with Windows PowerShell 5.1, save every command. Add this line to your [PowerShell profile](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_profiles) to skip `infisical sm secrets set`:
 
     ```powershell
-    Set-PSReadLineOption -AddToHistoryHandler { param($line) $line -notlike '*infisical secrets set*' }
+    Set-PSReadLineOption -AddToHistoryHandler { param($line) $line -notlike '*infisical*secrets set*' }
     ```
 
     Don't add this line on PSReadLine 2.2 or later, because a custom handler replaces the built-in one that skips commands with sensitive words.
@@ -64,7 +64,7 @@ Yes. If you have previously retrieved secrets for a specific project and environ
 
 </Accordion>
 
-<Accordion title="Can I upload the `.infisical.json` file that was generated?">
+<Accordion title="Can I upload the `.infisical.yaml` file that was generated?">
 Yes. This is simply a configuration file and contains no sensitive data.
 </Accordion>
 

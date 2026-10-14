@@ -5,13 +5,23 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FormControl,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
   Input,
-  Modal,
-  ModalContent,
   Select,
-  SelectItem
-} from "@app/components/v2";
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import {
   CaRenewalType,
   CaSigningConfigType,
@@ -37,40 +47,6 @@ const schema = z
   .required();
 
 export type FormData = z.infer<typeof schema>;
-
-type ExternalCaRenewalProps = {
-  description: string;
-  buttonLabel: string;
-  onRenew: () => void;
-  isRenewing: boolean;
-  onCancel: () => void;
-};
-
-const ExternalCaRenewal = ({
-  description,
-  buttonLabel,
-  onRenew,
-  isRenewing,
-  onCancel
-}: ExternalCaRenewalProps) => (
-  <div>
-    <p className="mb-4 text-sm text-label">{description}</p>
-    <div className="flex items-center">
-      <Button
-        className="mr-4"
-        size="sm"
-        onClick={onRenew}
-        isLoading={isRenewing}
-        isDisabled={isRenewing}
-      >
-        {buttonLabel}
-      </Button>
-      <Button colorSchema="secondary" variant="plain" onClick={onCancel}>
-        Cancel
-      </Button>
-    </div>
-  </div>
-);
 
 type Props = {
   popUp: UsePopUpState<["renewCa"]>;
@@ -186,51 +162,60 @@ export const CaRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
   };
 
   return (
-    <Modal
-      isOpen={popUp?.renewCa?.isOpen}
+    <Dialog
+      open={popUp?.renewCa?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("renewCa", isOpen);
         reset();
       }}
     >
-      <ModalContent title="Renew CA">
-        {isVenafi || isAdcs ? (
-          <ExternalCaRenewal
-            description={
-              isVenafi
+      <DialogContent isPending={isSubmitting || isVenafiRenewing || isAdcsRenewing}>
+        <DialogHeader>
+          <DialogTitle>Renew CA</DialogTitle>
+          {(isVenafi || isAdcs) && (
+            <DialogDescription>
+              {isVenafi
                 ? "This CA is configured to use Venafi TLS Protect Cloud for signing. Clicking renew will submit a new CSR to Venafi and install the renewed certificate."
-                : "This CA is configured to use Azure ADCS for signing. Clicking renew will submit a new CSR to ADCS and install the renewed certificate."
-            }
-            buttonLabel={isVenafi ? "Renew via Venafi" : "Renew via ADCS"}
-            onRenew={isVenafi ? onVenafiRenew : onAdcsRenew}
-            isRenewing={isVenafi ? isVenafiRenewing : isAdcsRenewing}
-            onCancel={() => handlePopUpToggle("renewCa", false)}
-          />
+                : "This CA is configured to use Azure ADCS for signing. Clicking renew will submit a new CSR to ADCS and install the renewed certificate."}
+            </DialogDescription>
+          )}
+        </DialogHeader>
+        {isVenafi || isAdcs ? (
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="ghost">Cancel</Button>
+            </DialogClose>
+            <Button
+              variant="project"
+              onClick={isVenafi ? onVenafiRenew : onAdcsRenew}
+              isPending={isVenafi ? isVenafiRenewing : isAdcsRenewing}
+            >
+              {isVenafi ? "Renew via Venafi" : "Renew via ADCS"}
+            </Button>
+          </DialogFooter>
         ) : (
-          <form onSubmit={handleSubmit(onFormSubmit)}>
+          <form className="flex flex-col gap-6" onSubmit={handleSubmit(onFormSubmit)}>
             <Controller
               control={control}
               name="type"
               defaultValue={CaRenewalType.EXISTING}
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl
-                  label="CA Renewal Method"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                >
-                  <Select
-                    defaultValue={field.value}
-                    {...field}
-                    onValueChange={(e) => onChange(e)}
-                    className="w-full"
-                  >
-                    {caRenewalTypes.map(({ label, value }) => (
-                      <SelectItem value={String(value || "")} key={label}>
-                        {label}
-                      </SelectItem>
-                    ))}
+              render={({ field: { onChange, value }, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel htmlFor="ca-renewal-type">CA Renewal Method</FieldLabel>
+                  <Select value={value} onValueChange={onChange}>
+                    <SelectTrigger id="ca-renewal-type" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      {caRenewalTypes.map(({ label, value: renewalType }) => (
+                        <SelectItem value={String(renewalType || "")} key={label}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
-                </FormControl>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
             <Controller
@@ -238,37 +223,31 @@ export const CaRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
               defaultValue=""
               name="notAfter"
               render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  label="Valid Until"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                  isRequired
-                >
-                  <Input {...field} placeholder="YYYY-MM-DD" />
-                </FormControl>
+                <Field>
+                  <FieldLabel htmlFor="ca-renewal-not-after">
+                    Valid Until <span className="text-danger">*</span>
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="ca-renewal-not-after"
+                    placeholder="YYYY-MM-DD"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
-            <div className="flex items-center">
-              <Button
-                className="mr-4"
-                size="sm"
-                type="submit"
-                isLoading={isSubmitting}
-                isDisabled={isSubmitting}
-              >
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="ghost">Cancel</Button>
+              </DialogClose>
+              <Button type="submit" variant="project" isPending={isSubmitting}>
                 Renew
               </Button>
-              <Button
-                colorSchema="secondary"
-                variant="plain"
-                onClick={() => handlePopUpToggle("renewCa", false)}
-              >
-                Cancel
-              </Button>
-            </div>
+            </DialogFooter>
           </form>
         )}
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };
