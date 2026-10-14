@@ -27,14 +27,16 @@ export const billingV2ErrorCode = (error: unknown): string | undefined =>
     ? error.response?.data?.details?.code
     : undefined;
 
-export const fmtMoney = (n: number, maximumFractionDigits = 0): string =>
-  `$${Number(n).toLocaleString("en-US", { maximumFractionDigits })}`;
+// Negative amounts put the sign before the currency symbol ("-$8.70", not "$-8.70").
+export const fmtMoney = (n: number, maximumFractionDigits = 0, minimumFractionDigits = 0): string =>
+  `${n < 0 ? "-" : ""}$${Math.abs(Number(n)).toLocaleString("en-US", {
+    minimumFractionDigits,
+    maximumFractionDigits
+  })}`;
 
-// Whole dollars stay whole ("$408"); any fractional amount always shows cents ("$22.20", "$0.60").
+// Whole dollars stay whole ("$408"); any fractional amount always shows cents ("$22.20", "-$8.70").
 export const fmtMoneyCents = (n: number): string =>
-  Number.isInteger(n)
-    ? fmtMoney(n)
-    : `$${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  Number.isInteger(n) ? fmtMoney(n) : fmtMoney(n, 2, 2);
 
 // Pluralize a singular dimension noun (the catalog's "noun" field) for display beside a count, since
 // a limit meter always reads as a plural quantity ("0 / 100 certificates"). Conservative: a noun that

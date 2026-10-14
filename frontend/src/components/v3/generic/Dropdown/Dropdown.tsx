@@ -4,8 +4,19 @@ import { CheckIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 
 import { cn } from "@app/components/v3/utils";
 
+import { registerMenuItemFocusReturn } from "../../utils/overlay-layer";
+
+const DropdownMenuTriggerRefContext =
+  React.createContext<React.MutableRefObject<HTMLButtonElement | null> | null>(null);
+
 function DropdownMenu({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null);
+
+  return (
+    <DropdownMenuTriggerRefContext.Provider value={triggerRef}>
+      <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />
+    </DropdownMenuTriggerRefContext.Provider>
+  );
 }
 
 function DropdownMenuPortal({
@@ -17,11 +28,29 @@ function DropdownMenuPortal({
 const DropdownMenuTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>
->(
-  ({ ...props }, ref): JSX.Element => (
-    <DropdownMenuPrimitive.Trigger ref={ref} data-slot="dropdown-menu-trigger" {...props} />
-  )
-);
+>(({ ...props }, ref): JSX.Element => {
+  const triggerRef = React.useContext(DropdownMenuTriggerRefContext);
+  const setTriggerRef = React.useCallback(
+    (node: HTMLButtonElement | null) => {
+      if (triggerRef) triggerRef.current = node;
+      if (typeof ref === "function") {
+        ref(node);
+      } else if (ref) {
+        const mutableRef = ref as React.MutableRefObject<HTMLButtonElement | null>;
+        mutableRef.current = node;
+      }
+    },
+    [ref, triggerRef]
+  );
+
+  return (
+    <DropdownMenuPrimitive.Trigger
+      ref={setTriggerRef}
+      data-slot="dropdown-menu-trigger"
+      {...props}
+    />
+  );
+});
 
 function DropdownMenuContent({
   className,
@@ -76,6 +105,7 @@ const DropdownMenuItem = React.forwardRef<HTMLDivElement, DropdownMenuProps>(
     ref
   ): JSX.Element => {
     const isFocusableDisabled = Boolean(isDisabled && isDisabledFocusable);
+    const triggerRef = React.useContext(DropdownMenuTriggerRefContext);
 
     return (
       <DropdownMenuPrimitive.Item
@@ -103,6 +133,7 @@ const DropdownMenuItem = React.forwardRef<HTMLDivElement, DropdownMenuProps>(
             event.stopPropagation();
             return;
           }
+          registerMenuItemFocusReturn(event.currentTarget, triggerRef?.current ?? null);
           onClick?.(event);
         }}
         onSelect={(event) => {

@@ -59,7 +59,7 @@ func NewService(_ context.Context, logger *slog.Logger, deps *Deps) *Service {
 	})
 
 	limiter := httprate.NewRateLimiter(
-		DefaultLimits.ReadLimit,
+		GlobalLimit,
 		defaultWindowLength,
 		httprate.WithKeyFuncs(httprate.KeyByRealIP),
 		httprate.WithLimitCounter(counter),
@@ -89,7 +89,7 @@ func (s *Service) Middleware(preset Preset) func(http.Handler) http.Handler {
 	}
 }
 
-// GlobalMiddleware returns the baseline rate limiter (600/min).
+// GlobalMiddleware returns the baseline rate limiter (GlobalLimit per minute).
 // Use this for routes that don't need plan-based dynamic limits.
 func (s *Service) GlobalMiddleware() func(http.Handler) http.Handler {
 	if !s.enabled {

@@ -5,7 +5,7 @@ description: "Let external platforms request delegated access to Infisical on a 
 
 The **authorization code** flow lets an [OAuth application](/documentation/platform/oauth-applications/overview) request **delegated access** to Infisical on behalf of one of your users. The platform never sees the user's password or session; instead it runs a standard authorization code flow, the user reviews and approves the request on an Infisical consent screen, and the platform receives short-lived access and refresh tokens scoped to that user.
 
-A common use case is wiring Infisical into a developer platform as an External Auth provider, so that `infisical run` can fetch secrets at runtime inside a remote development environment using the developer's own permissions.
+A common use case is wiring Infisical into a developer platform as an External Auth provider, so that `infisical sm run` can fetch secrets at runtime inside a remote development environment using the developer's own permissions.
 
 <Info>
   This page covers the browser-based flow, where each user approves the application on a consent screen. If you're registering trusted middleware that acts on behalf of many users and has no browser to redirect through, see [token exchange](/documentation/platform/oauth-applications/token-exchange).
@@ -54,7 +54,7 @@ Scopes are a coarse, named contract for what a delegated token is allowed to do.
 | `secrets:read` | Read secrets, folders, and imports |
 
 <Note>
-  `secrets:read` is the only scope available today, supporting the read-only `infisical run` use case. Requesting an unrecognized scope rejects the authorization request rather than silently dropping it.
+  `secrets:read` is the only scope available today, supporting the read-only `infisical sm run` use case. Requesting an unrecognized scope rejects the authorization request rather than silently dropping it.
 </Note>
 
 ## Creating an OAuth application

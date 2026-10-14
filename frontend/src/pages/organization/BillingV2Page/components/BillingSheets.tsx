@@ -184,11 +184,13 @@ export const InvoicesSheet = ({ overview, isOpen, onOpenChange }: SheetProps) =>
               <TableCell>{inv.date}</TableCell>
               <TableCell className="tabular-nums">{fmtMoneyCents(inv.amount)}</TableCell>
               <TableCell>
-                {inv.paid ? (
-                  <Badge variant="success">Paid</Badge>
-                ) : (
-                  <Badge variant="danger">Unpaid</Badge>
-                )}
+                {inv.amount < 0 && <Badge variant="neutral">Credit</Badge>}
+                {inv.amount >= 0 &&
+                  (inv.paid ? (
+                    <Badge variant="success">Paid</Badge>
+                  ) : (
+                    <Badge variant="danger">Unpaid</Badge>
+                  ))}
               </TableCell>
               <TableCell className="text-right">
                 {inv.pdfUrl ? (

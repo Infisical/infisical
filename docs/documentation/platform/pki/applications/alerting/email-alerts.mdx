@@ -1,0 +1,45 @@
+---
+title: "Email alerts"
+sidebarTitle: "Email"
+description: "Send certificate alert notifications by email."
+---
+
+import StartAlert from "/snippets/documentation/platform/pki/applications/alerting/start-alert.mdx";
+
+An email channel on a certificate [alert](/documentation/platform/pki/applications/alerting/overview) emails the recipients you choose whenever the alert fires. Email channels are available on every plan.
+
+<Note>
+  If you self-host Infisical, [configure an SMTP server](/self-hosting/configuration/envars#email-service) before you create an email alert. Without one, Infisical writes alert emails to its logs instead of sending them, so a **Send test** can look successful even though no email arrives.
+</Note>
+
+## Prerequisites
+
+- The Certificate Manager **Admin** role to create a Certificate Manager alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
+- Recipients who are organization members, or addresses on one of your organization's [verified email domains](/documentation/platform/email-domain)
+
+## Step 1: Start an alert
+
+<StartAlert />
+
+## Step 2: Add the email channel
+
+<Steps>
+  <Step>
+    Select **Add Channel** > **Email**.
+  </Step>
+  <Step>
+    In **Recipients**, select organization members, or type an address on one of your organization's verified email domains and add it.
+  </Step>
+  <Step>
+    Optionally, select **Send test** to send a test email to the recipients.
+  </Step>
+  <Step>
+    Select **Continue**, check the **Review** step, and select **Create Alert**.
+  </Step>
+</Steps>
+
+<Check>
+  Your alert is set up. Infisical emails the recipients whenever the alert fires.
+</Check>
+
+If a recipient is an organization member, they stop receiving alerts when they leave the organization.

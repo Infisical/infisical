@@ -12,7 +12,7 @@ export const PkiDocsUrls = {
 
   // Overview
   overview: `${PKI_DOCS_BASE_URL}/overview`,
-  gettingStarted: `${PKI_DOCS_BASE_URL}/getting-started`,
+  gettingStarted: `${PKI_DOCS_BASE_URL}/overview`,
   migration: `${PKI_DOCS_BASE_URL}/migration`,
 
   // Quick starts
@@ -31,7 +31,7 @@ export const PkiDocsUrls = {
     policies: `${PKI_DOCS_BASE_URL}/settings/policies`,
     profiles: `${PKI_DOCS_BASE_URL}/settings/profiles`,
     certificateCleanup: `${PKI_DOCS_BASE_URL}/settings/certificate-cleanup`,
-    alerts: `${PKI_DOCS_BASE_URL}/settings/alerts`,
+    alerts: `${PKI_DOCS_BASE_URL}/applications/alerting/overview`,
     hsmConnectors: `${PKI_DOCS_BASE_URL}/settings/hsm-connectors`
   },
 
@@ -62,6 +62,8 @@ export const PkiDocsUrls = {
       azureKeyVault: `${PKI_DOCS_BASE_URL}/applications/certificate-syncs/azure-key-vault`,
       cloudflare: `${PKI_DOCS_BASE_URL}/applications/certificate-syncs/cloudflare-custom-certificate`,
       netscaler: `${PKI_DOCS_BASE_URL}/applications/certificate-syncs/netscaler`,
+      paloAltoNetworks: `${PKI_DOCS_BASE_URL}/applications/certificate-syncs/palo-alto-networks`,
+      paloAltoNetworksSslTlsProfile: `${PKI_DOCS_BASE_URL}/applications/certificate-syncs/palo-alto-networks-ssl-tls-profile`,
       chef: `${PKI_DOCS_BASE_URL}/applications/certificate-syncs/chef`
     }
   },

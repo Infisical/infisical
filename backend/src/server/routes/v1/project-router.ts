@@ -14,6 +14,7 @@ import {
   SortDirection
 } from "@app/db/schemas";
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
+import { MAX_PROJECT_AUDIT_LOG_RETENTION_DAYS } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import {
   AuditLogSettingsResponseSchema,
   updateAuditLogSettingsBodySchema
@@ -546,7 +547,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .optional()
           .describe(PROJECTS.UPDATE.secretDetectionIgnoreValues),
         pitVersionLimit: z.number().min(1).max(100).optional(),
-        auditLogsRetentionDays: z.number().min(1).max(365).optional().describe(PROJECTS.UPDATE.auditLogsRetentionDays)
+        auditLogsRetentionDays: z
+          .number()
+          .int()
+          .min(1)
+          .max(365)
+          .optional()
+          .describe(PROJECTS.UPDATE.auditLogsRetentionDays)
       }),
       response: {
         200: z.object({
@@ -700,7 +707,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         projectId: z.string().trim()
       }),
       body: z.object({
-        auditLogsRetentionDays: z.number().min(0)
+        auditLogsRetentionDays: z.number().int().min(0).max(MAX_PROJECT_AUDIT_LOG_RETENTION_DAYS)
       }),
       response: {
         200: z.object({

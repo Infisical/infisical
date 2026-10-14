@@ -7,8 +7,8 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import { PageHeader } from "@app/components/v3";
+import { DeleteConfirmDialog } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 import {
@@ -148,12 +148,13 @@ const Page = () => {
                   mode="edit"
                 />
 
-                <DeleteActionModal
+                <DeleteConfirmDialog
                   isOpen={isDeleteModalOpen}
                   title={`Delete Certificate Profile ${profile.slug}?`}
-                  onChange={(isOpen) => setIsDeleteModalOpen(isOpen)}
-                  deleteKey={profile.slug}
-                  onDeleteApproved={handleDeleteConfirm}
+                  description="This action is irreversible."
+                  onOpenChange={(isOpen) => setIsDeleteModalOpen(isOpen)}
+                  confirmKey={profile.slug}
+                  onConfirm={handleDeleteConfirm}
                 />
               </div>
             ) : null

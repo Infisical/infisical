@@ -6,7 +6,6 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { RoleOption } from "@app/components/roles";
-import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import {
   Button,
   Dialog,
@@ -29,13 +28,9 @@ import { emailListSchema, parseEmailList } from "@app/helpers/email";
 import { useAddUserToWsNonE2EE, useGetProjectRoles } from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
+import { SecretsActivationProperties } from "@app/lib/analytics/events";
 import { filterByGrantConditions, getMemberAssignRoleConditions } from "@app/lib/fn/permission";
-
-const ACTIVATION_EVENTS = {
-  Viewed: "Secrets Activation Modal Viewed",
-  Invited: "Secrets Activation Modal Members Invited",
-  Dismissed: "Secrets Activation Modal Dismissed"
-} as const;
 
 const DEFAULT_PROJECT_ROLE = { slug: "member", name: "Member" };
 
@@ -97,9 +92,7 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle, experimentVariant
 
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
 
-  const telemetry = new Telemetry().getInstance();
-  const baseEventProps = {
-    orgId,
+  const baseEventProps: SecretsActivationProperties = {
     projectId,
     projectType: currentProject?.type,
     presentation: "modal",
@@ -112,7 +105,11 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle, experimentVariant
   useEffect(() => {
     if (isOpen && !hasViewedRef.current) {
       hasViewedRef.current = true;
-      telemetry.capture(ACTIVATION_EVENTS.Viewed, baseEventProps);
+      analytics.captureForOrganization(
+        AnalyticsEvent.SecretsActivationModalViewed,
+        orgId,
+        baseEventProps
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -140,7 +137,7 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle, experimentVariant
       });
     }
 
-    telemetry.capture(ACTIVATION_EVENTS.Invited, {
+    analytics.captureForOrganization(AnalyticsEvent.SecretsActivationModalMembersInvited, orgId, {
       ...baseEventProps,
       invitedCount: usernames.length
     });
@@ -235,7 +232,11 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle, experimentVariant
               variant="ghost"
               type="button"
               onClick={() => {
-                telemetry.capture(ACTIVATION_EVENTS.Dismissed, baseEventProps);
+                analytics.captureForOrganization(
+                  AnalyticsEvent.SecretsActivationModalDismissed,
+                  orgId,
+                  baseEventProps
+                );
                 handlePopUpToggle("inviteMembers", false);
                 reset();
               }}

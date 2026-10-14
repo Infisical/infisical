@@ -1,10 +1,8 @@
-import { faLock } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { LockIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { computeWordDiff, isSingleLine } from "@app/components/utilities/diff";
-import { Tag, Tooltip } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Badge, ButtonGroup, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 
 import { DiffContainer } from "./DiffContainer";
 import { MultiLineDiff } from "./MultiLineDiff";
@@ -123,20 +121,15 @@ export const TagsDiffRenderer = ({
         const isInOther = otherTagSlugs.has(slug);
         const isRemoved = isOldVersion && !isInOther;
         const isAdded = !isOldVersion && !isInOther;
+        let variant: "danger" | "success" | "outline" = "outline";
+        if (isRemoved) variant = "danger";
+        else if (isAdded) variant = "success";
 
         return (
-          <Tag
-            className={twMerge(
-              "mr-0 flex w-min items-center space-x-1.5 rounded border bg-surface-base/60 py-0.5 text-xs",
-              isRemoved && "border-danger/35 bg-danger/20",
-              isAdded && "border-success/35 bg-success/20",
-              !isRemoved && !isAdded && "border-border"
-            )}
-            key={slug}
-          >
-            {color && <div className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />}
-            <div className="text-xs text-foreground">{slug}</div>
-          </Tag>
+          <Badge key={slug} variant={variant}>
+            {color && <span className="size-3 rounded-full" style={{ backgroundColor: color }} />}
+            {slug}
+          </Badge>
         );
       })}
     </div>
@@ -184,66 +177,60 @@ export const MetadataDiffRenderer = ({
         const encryptionTurnedOff = encryptionChanged && isOldVersion && el.isEncrypted === true;
         const encryptionTurnedOn = encryptionChanged && !isOldVersion && el.isEncrypted === true;
 
-        const keyHighlighted = isEntirelyNew || isEntirelyRemoved || isKeyRenamed;
-        const valueHighlighted = isEntirelyNew || isEntirelyRemoved || isValueChanged;
+        const keyHighlighted =
+          isEntirelyNew || isEntirelyRemoved || isKeyRenamed || encryptionChanged;
+        const valueHighlighted =
+          isEntirelyNew || isEntirelyRemoved || isValueChanged || encryptionChanged;
 
-        const hasAnyChange = keyHighlighted || valueHighlighted || encryptionChanged;
-        const borderColorClass = isOldVersion ? "border-danger/35" : "border-success/35";
-        const borderClass = twMerge(
-          "border",
-          hasAnyChange && borderColorClass,
-          !hasAnyChange && "border-border"
-        );
+        const diffVariant = isOldVersion ? "danger" : "success";
 
-        const keyBgClass = twMerge(
-          "bg-muted/40",
-          keyHighlighted && (isOldVersion ? "bg-danger/30" : "bg-success/30")
-        );
-
-        const valueBgClass = twMerge(
-          valueHighlighted && (isOldVersion ? "bg-danger/30" : "bg-success/30"),
-          !valueHighlighted && "bg-surface-base/60"
-        );
-
-        const lockIconClass = twMerge(
-          "mr-1",
-          encryptionTurnedOff && "text-danger",
-          encryptionTurnedOn && "text-success",
-          !encryptionTurnedOff && !encryptionTurnedOn && "text-foreground"
-        );
+        let lockIconClass: string | undefined;
+        if (encryptionTurnedOff) lockIconClass = "text-danger";
+        else if (encryptionTurnedOn) lockIconClass = "text-success";
 
         return (
-          <div key={el.key} className="flex items-center">
-            <Tag
-              size="xs"
-              className={twMerge("mr-0 flex items-center rounded-r-none", borderClass, keyBgClass)}
+          <ButtonGroup key={el.key} className="max-w-full min-w-0">
+            <Badge
+              variant={keyHighlighted ? diffVariant : "default"}
+              isTruncatable
+              className="max-w-[125px]"
             >
               {el.isEncrypted && (
-                <Tooltip content="This value is encrypted">
-                  <FontAwesomeIcon icon={faLock} size="xs" className={lockIconClass} />
+                <Tooltip hoverable delayDuration={50}>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <LockIcon className={lockIconClass} />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>This value is encrypted</TooltipContent>
                 </Tooltip>
               )}
-              <Tooltip className="max-w-lg break-words whitespace-normal" content={el.key}>
-                <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap text-foreground">
+              <Tooltip hoverable delayDuration={50}>
+                <TooltipTrigger asChild>
+                  <span>{el.key}</span>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-lg break-words whitespace-normal">
                   {el.key}
-                </div>
+                </TooltipContent>
               </Tooltip>
-            </Tag>
-            <Tag
-              size="xs"
-              className={twMerge(
-                "mr-0 flex items-center !rounded-l-none border-l-0 pl-1",
-                borderClass,
-                valueBgClass
-              )}
+            </Badge>
+            <Badge
+              variant={valueHighlighted ? diffVariant : "outline"}
+              isTruncatable
+              className="max-w-[125px]"
             >
-              <Tooltip className="max-w-lg break-words whitespace-normal" content={el.value}>
-                <div className="max-w-[125px] overflow-hidden text-ellipsis whitespace-nowrap text-foreground">
-                  {el.value}
-                </div>
-              </Tooltip>
-            </Tag>
-          </div>
+              {el.value && (
+                <Tooltip hoverable delayDuration={50}>
+                  <TooltipTrigger asChild>
+                    <span>{el.value}</span>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-lg break-words whitespace-normal">
+                    {el.value}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </Badge>
+          </ButtonGroup>
         );
       })}
     </div>

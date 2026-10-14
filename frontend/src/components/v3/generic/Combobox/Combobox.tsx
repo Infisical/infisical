@@ -3,6 +3,7 @@ import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { CheckIcon, ChevronDownIcon, Loader2Icon, PlusIcon, XIcon } from "lucide-react";
 
 import { cn } from "../../utils";
+import { useIsInsideOverlayLayer, useOverlayPopupRegistration } from "../../utils/overlay-layer";
 import { useScrollEdges } from "../../utils/useScrollEdges";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../Dialog";
 import { getComboboxInputAriaLabel } from "./combobox-accessibility";
@@ -184,7 +185,9 @@ const useComboboxOpen = (onPopupOpenChange?: (open: boolean) => void) => {
     []
   );
 
-  return [open, setOpen] as const;
+  const markPopupDismissEvent = useOverlayPopupRegistration(open);
+
+  return [open, setOpen, markPopupDismissEvent] as const;
 };
 
 const SINGLE_LIST_MAX_HEIGHT = "min(18.75rem, var(--available-height, 50dvh))";
@@ -844,7 +847,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     isDisabled = false,
     isLoading = false,
     isError = false,
-    modal = false,
+    modal: modalProp,
     onPopupOpenChange,
     portalContainer: portalContainerProp,
     variant = "default",
@@ -860,10 +863,12 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     onKeyDown,
     ...inputProps
   } = props;
+  const isInsideOverlayLayer = useIsInsideOverlayLayer();
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const listScrollRef = React.useRef<HTMLDivElement>(null);
   const highlightedOptionValueRef = React.useRef<string | null>(null);
-  const [open, setOpen] = useComboboxOpen(onPopupOpenChange);
+  const [open, setOpen, markPopupDismissEvent] = useComboboxOpen(onPopupOpenChange);
+  const modal = modalProp ?? isInsideOverlayLayer;
   const selectedLabel = value == null ? "" : getOptionLabel(value);
   const [search, setSearch] = React.useState("");
   const searchRef = React.useRef(search);
@@ -1042,6 +1047,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
               eventDetails.reason === "item-press" &&
               isDialogCreationConfig(creation) &&
               (isDialogCreationActiveRef.current || isComboboxCreateItemEvent(eventDetails.event));
+            if (!nextOpen) markPopupDismissEvent(eventDetails.event);
             setOpen(nextOpen);
             if (!nextOpen && !isCreationActive() && !isOpeningCreationDialog) {
               highlightedOptionValueRef.current = null;
@@ -1235,7 +1241,7 @@ const MultipleCombobox = <TOption,>({
   isDisabled = false,
   isLoading = false,
   isError = false,
-  modal = false,
+  modal: modalProp,
   onPopupOpenChange,
   portalContainer: portalContainerProp,
   className,
@@ -1250,13 +1256,15 @@ const MultipleCombobox = <TOption,>({
   onKeyDown,
   ...inputProps
 }: ComboboxMultipleProps<TOption>) => {
+  const isInsideOverlayLayer = useIsInsideOverlayLayer();
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const listScrollRef = React.useRef<HTMLDivElement>(null);
   const chipsRef = React.useRef<HTMLDivElement | null>(null);
   const { scrollEdges, setViewportRef } = useScrollEdges<HTMLDivElement>(
     singleLine ? "horizontal" : "vertical"
   );
-  const [open, setOpen] = useComboboxOpen(onPopupOpenChange);
+  const [open, setOpen, markPopupDismissEvent] = useComboboxOpen(onPopupOpenChange);
+  const modal = modalProp ?? isInsideOverlayLayer;
   const openRef = React.useRef(open);
   openRef.current = open;
   const [search, setSearch] = React.useState("");
@@ -1467,6 +1475,7 @@ const MultipleCombobox = <TOption,>({
               eventDetails.reason === "item-press" &&
               isDialogCreationConfig(creation) &&
               (isDialogCreationActiveRef.current || isComboboxCreateItemEvent(eventDetails.event));
+            if (!nextOpen) markPopupDismissEvent(eventDetails.event);
             openRef.current = nextOpen;
             setOpen(nextOpen);
             if (!nextOpen && !isCreationActive() && !isOpeningCreationDialog) {

@@ -16,6 +16,7 @@ import {
   TProjectEnvironments,
   TProjects
 } from "@app/db/schemas";
+import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionActions,
@@ -1042,7 +1043,7 @@ export const projectServiceFactory = ({
         });
       }
 
-      if (update.auditLogsRetentionDays > plan.auditLogsRetentionDays) {
+      if (!isWithinPlanAuditLogRetention(update.auditLogsRetentionDays, plan)) {
         throw new BadRequestError({
           message: `Failed to update the audit logs retention period because your current plan allows a maximum of ${plan.auditLogsRetentionDays} days. Upgrade your plan to increase this limit.`
         });
@@ -1197,7 +1198,7 @@ export const projectServiceFactory = ({
     );
 
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.auditLogs || auditLogsRetentionDays > plan.auditLogsRetentionDays) {
+    if (!plan.auditLogs || !isWithinPlanAuditLogRetention(auditLogsRetentionDays, plan)) {
       throw new BadRequestError({
         message: "Failed to update audit logs retention due to plan limit reached. Upgrade plan to increase."
       });
