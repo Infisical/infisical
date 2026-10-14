@@ -219,6 +219,14 @@ export const VariablesCard = () => {
   const [revealingId, setRevealingId] = useState<string | null>(null);
 
   const searchTerm = debouncedSearch.trim();
+
+  // The page goes back to 1 in the same render the debounced search lands in. Resetting it on the keystroke
+  // instead would first request page 1 with the old search, and show that before the filtered results arrive.
+  const [pagedSearchTerm, setPagedSearchTerm] = useState(searchTerm);
+  if (pagedSearchTerm !== searchTerm) {
+    setPagedSearchTerm(searchTerm);
+    setPage(1);
+  }
   const { data, isPending } = useListAgentVaultVariables({
     search: searchTerm || undefined,
     orderBy: sortColumn,
@@ -350,10 +358,7 @@ export const VariablesCard = () => {
             </InputGroupAddon>
             <InputGroupInput
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Search variables..."
             />
           </InputGroup>
