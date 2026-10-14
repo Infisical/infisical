@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { useOrganization, useProject, useProjectPermission, useSubscription } from "@app/context";
+import { useOrganization, useProjectPermission, useSubscription } from "@app/context";
 import {
   ProjectPermissionHsmConnectorActions,
   ProjectPermissionSub
@@ -65,7 +65,6 @@ export const KeyValidityStep = ({
 }: Props) => {
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const isHsmLicensed = Boolean(subscription?.hsm);
   const isAwsKmsLicensed = Boolean(subscription?.pkiAwsKmsSigning);
@@ -209,8 +208,8 @@ export const KeyValidityStep = ({
                         <>
                           No AWS connections yet.{" "}
                           <Link
-                            to="/organizations/$orgId/projects/cert-manager/$projectId/app-connections"
-                            params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+                            to="/organizations/$orgId/app-connections"
+                            params={{ orgId: currentOrg.id }}
                             className="underline"
                           >
                             Add an AWS connection
