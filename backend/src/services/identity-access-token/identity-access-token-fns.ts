@@ -1,3 +1,5 @@
+import jwt from "jsonwebtoken";
+
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
@@ -148,13 +150,19 @@ export const computeIssuedTtl = ({
 // so a revoked token can't slip through by dropping the record too early.
 export const IDENTITY_REVOCATION_MARKER_SKEW_SECONDS = 300;
 
-export const hasJwtExpired = ({
+// For a JWT that was verified earlier in the request and has expired since. Throws the same error
+// jwt.verify throws, so the caller gets the response any other expired token gets.
+export const assertJwtNotExpired = ({
   exp,
   nowSeconds = Math.floor(Date.now() / 1000)
 }: {
   exp?: number;
   nowSeconds?: number;
-}): boolean => typeof exp === "number" && nowSeconds >= exp;
+}): void => {
+  if (typeof exp === "number" && nowSeconds >= exp) {
+    throw new jwt.TokenExpiredError("jwt expired", new Date(exp * 1000));
+  }
+};
 
 // The uses-remaining counter is read after the JWT is verified, so it has to outlive the JWT by
 // enough to cover a request in flight. A counter that vanishes mid-request reads as lost, and a lost

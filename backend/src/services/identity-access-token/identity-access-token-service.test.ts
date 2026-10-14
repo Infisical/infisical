@@ -1,3 +1,4 @@
+import jwt from "jsonwebtoken";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { IdentityAuthMethod, TableName } from "@app/db/schemas";
@@ -392,7 +393,7 @@ describe("identityAccessTokenServiceFactory", () => {
 
     await expect(
       service.fnValidateIdentityAccessTokenFast(createTokenClaims({ numUsesLimit: 3 }), "10.0.0.1")
-    ).rejects.toThrow("has expired");
+    ).rejects.toThrow(jwt.TokenExpiredError);
     expect(keyStore.setItemWithExpiry).not.toHaveBeenCalledWith(
       expect.stringContaining("identity-token-uses-remaining:"),
       expect.anything(),
@@ -498,7 +499,7 @@ describe("identityAccessTokenServiceFactory", () => {
       return null;
     });
 
-    await expect(service.renewAccessToken({ accessToken })).rejects.toThrow("has expired");
+    await expect(service.renewAccessToken({ accessToken })).rejects.toThrow(jwt.TokenExpiredError);
     expect(keyStore.setItemWithExpiry).not.toHaveBeenCalledWith(
       expect.stringContaining("identity-token-uses-remaining:"),
       expect.anything(),

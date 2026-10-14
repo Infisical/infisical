@@ -17,6 +17,7 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TIdentityAccessTokenDALFactory } from "./identity-access-token-dal";
 import {
+  assertJwtNotExpired,
   assertMinimalRenewClaims,
   assertRevocableClaims,
   computeIssuedTtl,
@@ -26,7 +27,6 @@ import {
   computeUsesRemainingTtl,
   evaluateRevocationMarkers,
   hasFullRenewClaims,
-  hasJwtExpired,
   hasLegacyTokenWithoutExpExceededMaxAge,
   hasNonWildcardTrustedIps,
   isMembershipDenyReason,
@@ -496,11 +496,7 @@ export const identityAccessTokenServiceFactory = ({
         // and allow this request; subsequent requests decrement the live counter.
         // The JWT was verified before the read, so recheck it: a token that expired in
         // between must not be handed a fresh budget.
-        if (hasJwtExpired({ exp: token.exp })) {
-          throw new UnauthorizedError({
-            message: "Failed to authorize: identity access token has expired, please re-authenticate"
-          });
-        }
+        assertJwtNotExpired({ exp: token.exp });
         await setUsesRemaining(
           token.identityId,
           tokenId,
@@ -629,8 +625,8 @@ export const identityAccessTokenServiceFactory = ({
     }
 
     const numUsesLimit = decodedToken.numUsesLimit ?? source.numUsesLimit;
-    if (numUsesLimit > 0 && existingRemaining === null && hasJwtExpired({ exp: decodedToken.exp, nowSeconds })) {
-      throw new UnauthorizedError({ message: "Cannot renew: identity access token has expired" });
+    if (numUsesLimit > 0 && existingRemaining === null) {
+      assertJwtNotExpired({ exp: decodedToken.exp, nowSeconds });
     }
     const ipRestrictionEnabled = Boolean(decodedToken.ipRestrictionEnabled);
 

@@ -1,6 +1,8 @@
+import jwt from "jsonwebtoken";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import {
+  assertJwtNotExpired,
   computeIssuedTtl,
   computePerTokenMarkerExpiry,
   computeReseededUsesRemainingTtl,
@@ -9,7 +11,6 @@ import {
   computeTokenAuthRevokeMarkerExpiry,
   computeUsesRemainingTtl,
   evaluateRevocationMarkers,
-  hasJwtExpired,
   hasLegacyTokenWithoutExpExceededMaxAge,
   IDENTITY_REVOCATION_MARKER_SKEW_SECONDS,
   isMembershipDenyReason
@@ -210,14 +211,15 @@ describe("computeReseededUsesRemainingTtl", () => {
   });
 });
 
-describe("hasJwtExpired", () => {
-  test("is true from the exp second onward", () => {
-    expect(hasJwtExpired({ exp: NOW, nowSeconds: NOW })).toBe(true);
-    expect(hasJwtExpired({ exp: NOW + 1, nowSeconds: NOW })).toBe(false);
+describe("assertJwtNotExpired", () => {
+  test("throws the jwt.verify expiry error from the exp second onward", () => {
+    expect(() => assertJwtNotExpired({ exp: NOW, nowSeconds: NOW })).toThrow(jwt.TokenExpiredError);
+    expect(() => assertJwtNotExpired({ exp: NOW, nowSeconds: NOW })).toThrow("jwt expired");
+    expect(() => assertJwtNotExpired({ exp: NOW + 1, nowSeconds: NOW })).not.toThrow();
   });
 
-  test("is false for a legacy JWT with no exp", () => {
-    expect(hasJwtExpired({ nowSeconds: NOW })).toBe(false);
+  test("passes a legacy JWT with no exp", () => {
+    expect(() => assertJwtNotExpired({ nowSeconds: NOW })).not.toThrow();
   });
 });
 
