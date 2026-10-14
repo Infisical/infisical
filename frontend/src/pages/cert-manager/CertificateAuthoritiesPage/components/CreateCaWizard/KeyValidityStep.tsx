@@ -208,7 +208,7 @@ export const KeyValidityStep = ({
                         <>
                           No AWS connections yet.{" "}
                           <Link
-                            to="/organizations/$orgId/app-connections"
+                            to="/organizations/$orgId/cert-manager/app-connections"
                             params={{ orgId: currentOrg.id }}
                             className="underline"
                           >
