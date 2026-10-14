@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
+import { keyPrefixSchema, s3BucketNameSchema } from "@app/services/object-storage/object-storage-path-fns";
+import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
 import {
   AGENT_VAULT_SESSION_LOG_CHUNK_ID_REGEX,
@@ -9,9 +11,6 @@ import {
   AGENT_VAULT_SESSION_LOG_MIN_CHUNK_BYTES
 } from "./agent-vault-session-log-constants";
 import { HistoryCursorSchema, TailCursorSchema } from "./agent-vault-session-log-fns";
-
-const BUCKET_NAME_RULE =
-  "Must be 3 to 63 characters: lowercase letters, numbers, dots and hyphens, starting and ending with a letter or number";
 
 const CiphertextSha256Schema = z
   .string()
@@ -61,7 +60,8 @@ const AgentVaultSessionLogSchema = z
   .object({
     enabled: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.enabled),
     isRecordable: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.isRecordable),
-    sessionKey: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.sessionKey)
+    sessionKey: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.sessionKey),
+    disabledReason: z.enum(["off", "not-on-plan"]).nullable().describe(AGENT_VAULT.SESSION_LOGS.disabledReason)
   })
   .describe(AGENT_VAULT.SESSION_LOGS.sessionLogs);
 
@@ -77,16 +77,46 @@ export const AgentVaultSessionLogTailResponseSchema = z.object({
   nextCursor: z.string().describe(AGENT_VAULT.SESSION_LOGS.tailNextCursor)
 });
 
+const DefaultStorageSchema = z.object({ type: z.literal(ObjectStorageType.Default) }).strict();
+
+const ExternalStorageSchema = z
+  .object({
+    type: z.literal(ObjectStorageType.External),
+    appConnectionId: z.string().uuid().describe(AGENT_VAULT.SESSION_LOGS.appConnectionId),
+    bucket: s3BucketNameSchema.describe(AGENT_VAULT.SESSION_LOGS.bucket),
+    region: z.nativeEnum(AWSRegion).describe(AGENT_VAULT.SESSION_LOGS.region),
+    keyPrefix: keyPrefixSchema(512).optional().describe(AGENT_VAULT.SESSION_LOGS.keyPrefix)
+  })
+  .strict();
+
+export const AgentVaultSessionLogStorageSchema = z
+  .discriminatedUnion("type", [DefaultStorageSchema, ExternalStorageSchema])
+  .describe(AGENT_VAULT.SESSION_LOGS.storage);
+
+const AgentVaultSessionLogStorageViewSchema = z
+  .discriminatedUnion("type", [
+    z.object({ type: z.literal(ObjectStorageType.Default) }),
+    z.object({
+      type: z.literal(ObjectStorageType.External),
+      appConnectionId: z.string().uuid().describe(AGENT_VAULT.SESSION_LOGS.appConnectionId),
+      bucket: z.string().describe(AGENT_VAULT.SESSION_LOGS.bucket),
+      region: z.string().describe(AGENT_VAULT.SESSION_LOGS.region),
+      keyPrefix: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.keyPrefix)
+    })
+  ])
+  .describe(AGENT_VAULT.SESSION_LOGS.storage);
+
 export const AgentVaultSessionLogSettingsSchema = z.object({
   enabled: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.configEnabled),
-  appConnectionId: z.string().uuid().nullable().describe(AGENT_VAULT.SESSION_LOGS.appConnectionId),
-  bucket: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.bucket),
-  region: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.region),
-  keyPrefix: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.keyPrefix)
+  isSaved: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.isSaved),
+  storage: AgentVaultSessionLogStorageViewSchema
 });
 
 export const AgentVaultSessionLogSettingsResponseSchema = z.object({
-  settings: AgentVaultSessionLogSettingsSchema
+  settings: AgentVaultSessionLogSettingsSchema.nullable(),
+  defaultStorage: z.object({
+    configured: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.defaultStorageConfigured)
+  })
 });
 
 export const AgentVaultSessionLogHealthResponseSchema = z.object({
@@ -106,28 +136,7 @@ export const AgentVaultSessionLogCorsProbeResponseSchema = z.object({
 
 export const AgentVaultSessionLogSettingsUpdateSchema = z
   .object({
-    enabled: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.configEnabled),
-    appConnectionId: z.string().uuid().nullable().describe(AGENT_VAULT.SESSION_LOGS.appConnectionId),
-    bucket: z
-      .string()
-      .trim()
-      .max(63, BUCKET_NAME_RULE)
-      .regex(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/, BUCKET_NAME_RULE)
-      .describe(AGENT_VAULT.SESSION_LOGS.bucket),
-    region: z.nativeEnum(AWSRegion).describe(AGENT_VAULT.SESSION_LOGS.region),
-    keyPrefix: z
-      .string()
-      .trim()
-      .max(512, "May be at most 512 characters")
-      .regex(/^[A-Za-z0-9!\-_.'()/]*$/, "May only contain letters, numbers and ! - _ . ' ( ) /")
-      .refine(
-        (v) => v === "" || v.split("/").every(Boolean),
-        "Must be folder names separated by single slashes, with no slash at the start or end, like 'logs/agent-vault'"
-      )
-      .refine(
-        (v) => !v.split("/").some((folder) => folder === "." || folder === ".."),
-        "May not use '.' or '..' as a folder name"
-      )
-      .describe(AGENT_VAULT.SESSION_LOGS.keyPrefix)
+    enabled: z.boolean().optional().describe(AGENT_VAULT.SESSION_LOGS.configEnabled),
+    storage: AgentVaultSessionLogStorageSchema.optional()
   })
-  .partial();
+  .strict();

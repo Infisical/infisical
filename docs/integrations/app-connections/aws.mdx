@@ -87,7 +87,8 @@ Next, add the required policies to the IAM role or user from [Step 1](#step-1-cr
         </UseCase>
 
         <UseCase use="agent-vault-session-logs" hideWhenEmpty>
-            - `<session-logs-bucket>` and `<key-prefix>`: the bucket and key prefix you'll enter in the **Session Logs** dialog in Agent Vault (if you won't set a key prefix, delete `<key-prefix>/`)
+            - `<session-logs-bucket>` and `<key-prefix>`: the bucket and key prefix you'll enter in the **Session Logs** dialog in Agent Vault (if you won't set a key prefix, delete `<key-prefix>/` in both places)
+            - `<organization-id>`: the ID of your Infisical organization (**View AWS Setup** in the **Session Logs** dialog shows the policy with it filled in)
         </UseCase>
 
         <UseCase use="private-ca" hideWhenEmpty>

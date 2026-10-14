@@ -15,6 +15,8 @@ import { AuthMode } from "@app/services/auth/auth-type";
 
 import { actorContext } from "./agent-vault-router-fns";
 
+// Both reads return no logs while session logs are off, or while the plan doesn't include the storage they use. The
+// plan check on a read is a deliberate exception to CODE_QUALITY.md "License Checks", chosen for session logs.
 export const registerAgentVaultSessionLogRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",

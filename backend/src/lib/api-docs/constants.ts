@@ -4588,7 +4588,17 @@ export const AGENT_VAULT = {
     from: "Return only chunks with records at or after this time. A chunk can also hold earlier records, so filter records by `ts`.",
     to: "Return only chunks with records at or before this time. A chunk can also hold later records, so filter records by `ts`.",
     enabled: "Whether session logs are on.",
-    configEnabled: "Whether session logs are on. Turning them off stops recording but keeps what's already recorded.",
+    configEnabled:
+      "Whether session logs are on. Turning them off stops recording, hides recorded logs, and clears the saved storage, so leave out `storage` when sending `false`.",
+    disabledReason:
+      "Why no logs are returned: `off` when session logs are off, `not-on-plan` when the plan doesn't include the storage they use. Null when logs are returned.",
+    isSaved:
+      "Whether these settings were saved. When false, they're what applies without saving anything: session logs on, in default storage.",
+    storage:
+      "Where session logs are stored. `default` is the bucket of the Infisical instance. `external` is an S3 bucket you own, reached through an AWS connection. When sent, it replaces the saved storage entirely and turns session logs on, so switching to `default` removes the saved bucket and connection.",
+    storageType: "`default` for the Infisical instance's bucket, `external` for an S3 bucket you own.",
+    defaultStorageConfigured:
+      "Whether this Infisical instance has its own bucket for session logs. When false, only external storage can be used.",
     appConnectionId: "The ID of the AWS connection Infisical uses to write to and read from the bucket.",
     bucket:
       "The name of the S3 bucket. 3 to 63 characters: lowercase letters, numbers, dots and hyphens, starting and ending with a letter or number.",

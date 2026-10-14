@@ -1,5 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
+import { buildWrappedKeyPayload, openWrappedKey } from "@app/services/kms/kms-fns";
+
 import {
   generateSessionLogKey,
   openSessionLogKey,
@@ -11,10 +13,9 @@ vi.mock("@app/lib/logger", () => ({ logger: { error: vi.fn() } }));
 
 // The real KMS wrap is authenticated encryption; passing bytes through leaves only the label check under test.
 const passThroughKms = {
-  createCipherPairWithDataKey: async () => ({
-    encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: Buffer.from(plainText) }),
-    decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => Buffer.from(cipherTextBlob)
-  })
+  wrapKey: async ({ label, key }: { label: string; key: Buffer }) => buildWrappedKeyPayload(label, key),
+  unwrapKey: async ({ label, wrappedKey, keyBytes }: { label: string; wrappedKey: Buffer; keyBytes: number }) =>
+    openWrappedKey({ label, payload: wrappedKey, keyBytes })
 } as never;
 
 describe("session log keys", () => {

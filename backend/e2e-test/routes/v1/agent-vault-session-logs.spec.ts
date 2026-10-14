@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 import { fakeAwsConnection } from "e2e-test/fakes/aws-connection-fns";
+import { FAKE_DEFAULT_STORAGE, fakeDefaultStorage } from "e2e-test/fakes/object-storage-default-fns";
 import { fakeS3Bucket } from "e2e-test/fakes/s3";
 import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
 import { v7 as uuidv7 } from "uuid";
@@ -169,10 +170,29 @@ const SETTINGS_URL = "/api/v1/agent-vault/settings/session-logs";
 
 const saveConfig = async (patch: Record<string, unknown>) => inject("PATCH", SETTINGS_URL, patch);
 
+const ORG_ID = seedData1.organization.id;
+
+// Every product's files sit under its org, then its own folder, then the namespace's record-first path.
+const productFolder = (prefix: string | null = "logs") => `${prefix ? `${prefix}/` : ""}orgs/${ORG_ID}/agent-vault/`;
+const sessionFolder = (sessionId: string, prefix: string | null = "logs") =>
+  `${productFolder(prefix)}sessions/${sessionId}/logs/`;
+
 describe("Agent Vault session logs", async () => {
   let connectionId: string;
   let connectionName: string;
   let projectId: string;
+
+  const externalStorage = (fields: Record<string, unknown> = {}) => ({
+    type: "external",
+    appConnectionId: connectionId,
+    bucket: BUCKET,
+    region: "us-east-1",
+    keyPrefix: "logs",
+    ...fields
+  });
+
+  const configure = async (fields: Record<string, unknown> = {}) =>
+    saveConfig({ enabled: true, storage: externalStorage(fields) });
 
   beforeAll(async () => {
     projectId = await getProjectId();
@@ -196,18 +216,23 @@ describe("Agent Vault session logs", async () => {
   beforeEach(async () => {
     fakeS3Bucket.reset();
     fakeAwsConnection.reset();
+    fakeDefaultStorage.reset();
     await testDb("agent_vault_session_log_configs").where({ projectId }).del();
     // Tests create their own proxies, and an org can hold only AGENT_VAULT_MAX_PROXIES_PER_ORG.
     await testDb("agent_vault_proxies").where({ projectId }).del();
   });
 
   describe("settings", () => {
-    test("reads as off, with no destination, before anything is configured", async () => {
+    type TSettingsBody = {
+      settings: { enabled: boolean; isSaved: boolean; storage: Record<string, unknown> } | null;
+      defaultStorage: { configured: boolean };
+    };
+    const settingsOf = (res: { payload: string }) => JSON.parse(res.payload) as TSettingsBody;
+
+    test("with no instance bucket and nothing saved, there are no settings and nothing to check", async () => {
       const res = await inject("GET", SETTINGS_URL);
       expect(res.statusCode).toBe(200);
-
-      const body = JSON.parse(res.payload) as { settings: Record<string, unknown> };
-      expect(body.settings).toMatchObject({ enabled: false, bucket: null, appConnectionId: null });
+      expect(settingsOf(res)).toEqual({ settings: null, defaultStorage: { configured: false } });
 
       const health = await inject("GET", `${SETTINGS_URL}/health`);
       expect(health.statusCode).toBe(200);
@@ -218,34 +243,116 @@ describe("Agent Vault session logs", async () => {
       expect(JSON.parse(probe.payload).probe).toBeNull();
     });
 
-    test("saving a destination validates the bucket, and the CORS probe then points at it", async () => {
-      const res = await saveConfig({
-        enabled: true,
-        appConnectionId: connectionId,
-        bucket: BUCKET,
-        region: "us-east-1",
-        keyPrefix: "logs"
+    test("with an instance bucket and nothing saved, session logs are on in default storage", async () => {
+      fakeDefaultStorage.set();
+      const res = await inject("GET", SETTINGS_URL);
+      expect(settingsOf(res)).toEqual({
+        settings: { enabled: true, isSaved: false, storage: { type: "default" } },
+        defaultStorage: { configured: true }
       });
-      expect(res.statusCode, res.payload).toBe(200);
+      expect(JSON.parse((await inject("GET", `${SETTINGS_URL}/cors-probe`)).payload).probe).toBeNull();
+    });
 
-      const body = JSON.parse(res.payload) as { settings: Record<string, unknown> };
-      expect(body.settings).toMatchObject({ enabled: true, bucket: BUCKET, region: "us-east-1", keyPrefix: "logs" });
+    test("saving external storage checks the bucket at the product folder, and the CORS probe points there", async () => {
+      const res = await configure();
+      expect(res.statusCode, res.payload).toBe(200);
+      expect(settingsOf(res).settings).toEqual({ enabled: true, isSaved: true, storage: externalStorage() });
+      expect(fakeS3Bucket.objectKeys(BUCKET)).toEqual([`${productFolder()}.check`]);
 
       const probe = await inject("GET", `${SETTINGS_URL}/cors-probe`);
       expect(probe.statusCode).toBe(200);
       const probeBody = JSON.parse(probe.payload) as { probe: { url: string; expiresInSeconds: number } | null };
-      expect(new URL(probeBody.probe?.url as string).pathname).toBe("/logs/.cors-probe");
+      expect(new URL(probeBody.probe?.url as string).pathname).toBe(`/${productFolder()}.cors-probe`);
+    });
+
+    test("each storage shape is strict, and mixing them is refused", async () => {
+      fakeDefaultStorage.set();
+      for (const storage of [
+        { type: "default", bucket: BUCKET },
+        { type: "external", bucket: BUCKET },
+        { type: "instance" }
+      ]) {
+        // eslint-disable-next-line no-await-in-loop
+        expect((await saveConfig({ storage })).statusCode).toBe(422);
+      }
+      expect((await saveConfig({ bucket: BUCKET })).statusCode).toBe(422);
+    });
+
+    test("default storage on an instance without a bucket is refused", async () => {
+      const res = await saveConfig({ storage: { type: "default" } });
+      expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res.payload).message).toBe("This instance doesn't offer default storage");
+    });
+
+    test("turning on with nowhere to store is refused, and turning off sticks once the instance gets a bucket", async () => {
+      const on = await saveConfig({ enabled: true });
+      expect(on.statusCode).toBe(400);
+      expect(JSON.parse(on.payload).message).toBe("Choose where to store session logs");
+
+      const off = await saveConfig({ enabled: false });
+      expect(off.statusCode).toBe(200);
+      expect(settingsOf(off).settings).toBeNull();
+
+      fakeDefaultStorage.set();
+      expect(settingsOf(await inject("GET", SETTINGS_URL)).settings).toEqual({
+        enabled: false,
+        isSaved: true,
+        storage: { type: "default" }
+      });
+    });
+
+    test("default storage can be turned off and on again", async () => {
+      fakeDefaultStorage.set();
+      const off = await saveConfig({ enabled: false });
+      expect(settingsOf(off).settings).toEqual({ enabled: false, isSaved: true, storage: { type: "default" } });
+
+      const on = await saveConfig({ enabled: true });
+      expect(settingsOf(on).settings).toEqual({ enabled: true, isSaved: true, storage: { type: "default" } });
+    });
+
+    test("switching to default storage drops the bucket and connection, and back again checks the bucket", async () => {
+      fakeDefaultStorage.set();
+      expect((await configure()).statusCode).toBe(200);
+
+      const toDefault = await saveConfig({ storage: { type: "default" } });
+      expect(settingsOf(toDefault).settings).toEqual({ enabled: true, isSaved: true, storage: { type: "default" } });
+      const row = await testDb("agent_vault_session_log_configs").where({ projectId }).first();
+      expect(row).toMatchObject({ storageType: "default", appConnectionId: null, bucket: null, region: null });
+
+      fakeS3Bucket.reset();
+      expect((await configure()).statusCode).toBe(200);
+      expect(fakeS3Bucket.objectKeys(BUCKET)).toEqual([`${productFolder()}.check`]);
+    });
+
+    test("a saved default choice reads as nothing once the operator removes the bucket, and returns with it", async () => {
+      fakeDefaultStorage.set();
+      expect((await saveConfig({ enabled: true })).statusCode).toBe(200);
+
+      fakeDefaultStorage.unset();
+      expect(settingsOf(await inject("GET", SETTINGS_URL))).toEqual({
+        settings: null,
+        defaultStorage: { configured: false }
+      });
+
+      fakeDefaultStorage.set();
+      expect(settingsOf(await inject("GET", SETTINGS_URL)).settings).toMatchObject({
+        enabled: true,
+        storage: { type: "default" }
+      });
+    });
+
+    test("a saved default choice on an instance without a bucket can still be replaced", async () => {
+      fakeDefaultStorage.set();
+      expect((await saveConfig({ enabled: true })).statusCode).toBe(200);
+      fakeDefaultStorage.unset();
+
+      expect((await configure()).statusCode).toBe(200);
     });
 
     test("a bucket it cannot write to is refused with the actionable message, and nothing is saved", async () => {
       fakeS3Bucket.failsAccessCheckWith("unwritable");
 
-      const res = await saveConfig({
-        enabled: true,
-        appConnectionId: connectionId,
-        bucket: "nope",
-        region: "us-east-1"
-      });
+      const res = await configure({ bucket: "nope", keyPrefix: undefined });
       expect(res.statusCode).toBe(400);
       expect(JSON.parse(res.payload).message).toBe(
         "Bucket 'nope' is reachable but writing to it failed. Grant s3:PutObject on the configured key prefix"
@@ -255,44 +362,31 @@ describe("Agent Vault session logs", async () => {
     });
 
     test("turning session logs off is never blocked by a destination that has gone bad", async () => {
-      await saveConfig({
-        enabled: true,
-        appConnectionId: connectionId,
-        bucket: BUCKET,
-        region: "us-east-1"
-      });
-
-      fakeS3Bucket.failsAccessCheckWith("unreachable");
+      await configure();
+      fakeS3Bucket.failsAccessCheckWith("unlistable");
 
       const res = await saveConfig({ enabled: false });
       expect(res.statusCode).toBe(200);
-      expect(JSON.parse(res.payload).settings.enabled).toBe(false);
-
-      expect((await saveConfig({ enabled: true })).statusCode).toBe(400);
+      // Off clears the storage, and this instance has no default storage, so nothing is left.
+      expect(settingsOf(res).settings).toBeNull();
     });
 
     test("a connection that can't be used says why, on the page and when saving", async () => {
-      expect(
-        (await saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1" }))
-          .statusCode
-      ).toBe(200);
+      expect((await configure()).statusCode).toBe(200);
       fakeAwsConnection.failsConfigWith("AWS refused to assume the role");
 
       const health = await inject("GET", `${SETTINGS_URL}/health`);
       const refused = `Couldn't use the AWS connection '${connectionName}' for session logs: AWS refused to assume the role`;
       expect(JSON.parse(health.payload).health.connectionError).toBe(refused);
 
-      const save = await saveConfig({ keyPrefix: "elsewhere" });
+      const save = await configure({ keyPrefix: "elsewhere" });
       expect(save.statusCode).toBe(400);
       expect(JSON.parse(save.payload).message).toBe(refused);
     });
 
-    test("a bucket the connection can't reach shows as a connection error", async () => {
-      expect(
-        (await saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1" }))
-          .statusCode
-      ).toBe(200);
-      fakeS3Bucket.failsAccessCheckWith("unreachable");
+    test("a bucket the connection can't list shows as a connection error", async () => {
+      expect((await configure()).statusCode).toBe(200);
+      fakeS3Bucket.failsAccessCheckWith("unlistable");
 
       const health = await inject("GET", `${SETTINGS_URL}/health`);
       expect(JSON.parse(health.payload).health.connectionError).toBe(
@@ -300,91 +394,78 @@ describe("Agent Vault session logs", async () => {
       );
     });
 
-    test("turning session logs on without a complete destination names what is missing", async () => {
-      const res = await saveConfig({ enabled: true });
-      expect(res.statusCode).toBe(400);
-      expect(JSON.parse(res.payload).message).toContain("an AWS connection");
-      expect(JSON.parse(res.payload).message).toContain("a bucket");
+    test("a connection session logs use cannot be deleted until session logs are turned off", async () => {
+      const otherName = `session-logs-aws-other-${Date.now()}`;
+      const otherId = await createAwsAppConnection({ name: otherName, authToken: jwtAuthToken });
+      expect((await configure({ appConnectionId: otherId })).statusCode).toBe(200);
+
+      const deleteConnection = () =>
+        testServer.inject({
+          method: "DELETE",
+          url: `/api/v1/app-connections/aws/${otherId}`,
+          headers: { authorization: `Bearer ${jwtAuthToken}` }
+        });
+      const blocked = await deleteConnection();
+      expect(blocked.statusCode).toBe(400);
+      expect(JSON.parse(blocked.payload).message).toContain("Cannot delete App Connection with existing connections");
+
+      const off = await saveConfig({ enabled: false });
+      expect(off.statusCode, off.payload).toBe(200);
+      expect(settingsOf(off)).toEqual({ settings: null, defaultStorage: { configured: false } });
+
+      expect((await deleteConnection()).statusCode).toBe(200);
     });
 
-    test("a connection session logs use cannot be deleted", async () => {
-      await saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1" });
-
-      const res = await testServer.inject({
-        method: "DELETE",
-        url: `/api/v1/app-connections/aws/${connectionId}`,
-        headers: { authorization: `Bearer ${jwtAuthToken}` }
-      });
-      expect(res.statusCode).toBe(400);
-      expect(JSON.parse(res.payload).message).toContain("Cannot delete App Connection with existing connections");
-
-      const config = await testDb("agent_vault_session_log_configs").where({ projectId }).first();
-      expect(config.appConnectionId).toBe(connectionId);
+    test("turning off external storage on an instance with a bucket leaves default storage off, not on", async () => {
+      fakeDefaultStorage.set();
+      await configure();
+      const off = await saveConfig({ enabled: false });
+      expect(settingsOf(off).settings).toEqual({ enabled: false, isSaved: true, storage: { type: "default" } });
     });
 
-    test("the connection can be detached only with recording off, and the destination is kept", async () => {
-      await saveConfig({ enabled: true, appConnectionId: connectionId, bucket: BUCKET, region: "us-east-1" });
-
-      const whileOn = await saveConfig({ appConnectionId: null });
-      expect(whileOn.statusCode).toBe(400);
-      expect(JSON.parse(whileOn.payload).message).toContain("Turn off session logs");
-
-      const whileOff = await saveConfig({ enabled: false, appConnectionId: null });
-      expect(whileOff.statusCode).toBe(200);
-      expect(JSON.parse(whileOff.payload).settings).toMatchObject({
-        enabled: false,
-        appConnectionId: null,
-        bucket: BUCKET
-      });
+    test("turning off with a storage in the request is refused, since off clears the storage", async () => {
+      await configure();
+      const res = await saveConfig({ enabled: false, storage: externalStorage() });
+      expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res.payload).message).toBe("Leave out storage when turning session logs off");
     });
 
     test("a save that puts the connection to a new use checks it again; turning recording off does not", async () => {
-      await saveConfig({
-        enabled: true,
-        appConnectionId: connectionId,
-        bucket: BUCKET,
-        region: "us-east-1",
-        keyPrefix: "logs"
-      });
+      await configure();
 
       await testDb("app_connections").where({ id: connectionId }).update({ app: AppConnection.GCP });
       try {
         expect((await saveConfig({ enabled: false })).statusCode).toBe(200);
         expect((await saveConfig({ enabled: false })).statusCode).toBe(200);
-        expect((await saveConfig({ enabled: true })).statusCode).toBe(400);
-        expect((await saveConfig({ bucket: "a-different-bucket" })).statusCode).toBe(400);
-        expect((await saveConfig({ region: "us-west-2" })).statusCode).toBe(400);
-        expect((await saveConfig({ keyPrefix: "elsewhere" })).statusCode).toBe(400);
+        expect((await configure()).statusCode).toBe(400);
+        expect((await configure({ bucket: "a-different-bucket" })).statusCode).toBe(400);
+        expect((await configure({ region: "us-west-2" })).statusCode).toBe(400);
+        expect((await configure({ keyPrefix: "elsewhere" })).statusCode).toBe(400);
       } finally {
         await testDb("app_connections").where({ id: connectionId }).update({ app: AppConnection.AWS });
       }
     });
 
-    test("a patch leaves out what it does not name", async () => {
-      await saveConfig({
-        enabled: true,
-        appConnectionId: connectionId,
-        bucket: BUCKET,
-        region: "us-east-1",
-        keyPrefix: "logs"
-      });
+    test("turning off forgets the bucket, so turning on needs a storage chosen again", async () => {
+      await configure();
 
-      const off = await saveConfig({ enabled: false });
-      expect(JSON.parse(off.payload).settings).toMatchObject({ enabled: false, bucket: BUCKET, keyPrefix: "logs" });
+      expect(settingsOf(await saveConfig({ enabled: false })).settings).toBeNull();
+      const on = await saveConfig({ enabled: true });
+      expect(on.statusCode).toBe(400);
+      expect(JSON.parse(on.payload).message).toBe("Choose where to store session logs");
+    });
+
+    test("a patch with only enabled keeps the saved storage", async () => {
+      await configure();
+      expect(settingsOf(await saveConfig({ enabled: true })).settings?.storage).toEqual(externalStorage());
     });
 
     test("the key prefix is saved as typed, and one with a slash at either end is refused", async () => {
-      const saved = await saveConfig({
-        enabled: true,
-        appConnectionId: connectionId,
-        bucket: BUCKET,
-        region: "us-east-1",
-        keyPrefix: "logs/agent-vault"
-      });
-      expect(JSON.parse(saved.payload).settings.keyPrefix).toBe("logs/agent-vault");
+      const saved = await configure({ keyPrefix: "logs/agent-vault" });
+      expect(settingsOf(saved).settings?.storage.keyPrefix).toBe("logs/agent-vault");
 
       const refused = await Promise.all(
-        ["/logs", "logs/", "logs//agent-vault"].map((keyPrefix) => saveConfig({ keyPrefix }))
+        ["/logs", "logs/", "logs//agent-vault"].map((keyPrefix) => configure({ keyPrefix }))
       );
       expect(refused.map((res) => res.statusCode)).toEqual([422, 422, 422]);
     });
@@ -402,16 +483,6 @@ describe("Agent Vault session logs", async () => {
   });
 
   describe("recording a chunk", () => {
-    const configure = async (patch: Record<string, unknown> = {}) =>
-      saveConfig({
-        enabled: true,
-        appConnectionId: connectionId,
-        bucket: BUCKET,
-        region: "us-east-1",
-        keyPrefix: "logs",
-        ...patch
-      });
-
     const tailedChunks = async (sessionId: string) =>
       (await inject("GET", `/api/v1/agent-vault/sessions/${sessionId}/logs/tail`)).json().chunks as unknown[];
 
@@ -424,12 +495,13 @@ describe("Agent Vault session logs", async () => {
       const chunk = chunkBody();
       const result = await requestUploadUrl(proxy, session.id, chunk);
 
-      expect(fakeS3Bucket.objectKeys(BUCKET)).toEqual([]);
+      const chunkKey = `${sessionFolder(session.id)}${toRev(chunkIdTimeMs(chunk.chunkId))}_${chunk.chunkId}.${proxy.id}.json.enc`;
+      expect(fakeS3Bucket.objectKeys(BUCKET)).not.toContain(chunkKey);
 
       fakeS3Bucket.put(result.uploadUrl, Buffer.alloc(CHUNK_BYTES));
-      expect(fakeS3Bucket.objectKeys(BUCKET)).toEqual([
-        `logs/${projectId}/${session.id}/${toRev(chunkIdTimeMs(chunk.chunkId))}_${chunk.chunkId}.${proxy.id}.json.enc`
-      ]);
+      expect(fakeS3Bucket.objectKeys(BUCKET)).toContain(chunkKey);
+      // A customer's bucket is theirs to manage, so nothing is tagged for deletion.
+      expect(fakeS3Bucket.objectTags(BUCKET, chunkKey)).toBeNull();
     });
 
     test("a re-sent chunk is signed for the same name, which cannot replace what is already stored", async () => {
@@ -451,7 +523,7 @@ describe("Agent Vault session logs", async () => {
       expect(fakeS3Bucket.get(only.presignedGetUrl)).toEqual(stored);
     });
 
-    test("with no key prefix, a chunk lands at the bucket root and reads back", async () => {
+    test("with no key prefix, a chunk lands under the org at the bucket root and reads back", async () => {
       await configure({ keyPrefix: "" });
       const bundle = await createAccessBundle(`session-logs-root-${Date.now()}`);
       const session = await mintSession(bundle.name);
@@ -461,8 +533,7 @@ describe("Agent Vault session logs", async () => {
       const stored = Buffer.alloc(CHUNK_BYTES, 3);
       fakeS3Bucket.put(uploadUrl, stored);
 
-      const [key] = fakeS3Bucket.objectKeys(BUCKET);
-      expect(key.startsWith(`${projectId}/${session.id}/`)).toBe(true);
+      expect(fakeS3Bucket.objectKeys(BUCKET).some((key) => key.startsWith(sessionFolder(session.id, null)))).toBe(true);
 
       const read = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
       const [only] = (JSON.parse(read.payload) as { chunks: { presignedGetUrl: string }[] }).chunks;
@@ -502,7 +573,8 @@ describe("Agent Vault session logs", async () => {
     });
 
     test("is refused with the named error while session logs are off", async () => {
-      await configure({ enabled: false });
+      await configure();
+      expect((await saveConfig({ enabled: false })).statusCode).toBe(200);
       const bundle = await createAccessBundle(`session-logs-off-${Date.now()}`);
       const session = await mintSession(bundle.name);
       const proxy = await createProxy(`session-logs-off-${Date.now()}`);
@@ -510,6 +582,40 @@ describe("Agent Vault session logs", async () => {
       const res = await proxy.postChunk(session.id, chunkBody());
       expect(res.statusCode).toBe(400);
       expect(JSON.parse(res.payload).error).toBe(AgentVaultSessionLogErrorName.Disabled);
+    });
+
+    test("with default storage, a chunk lands in the instance bucket, tagged for deletion, and reads back", async () => {
+      fakeDefaultStorage.set();
+      const bundle = await createAccessBundle(`session-logs-default-${Date.now()}`);
+      const session = await mintSession(bundle.name);
+      const proxy = await createProxy(`session-logs-default-${Date.now()}`);
+
+      const chunk = chunkBody();
+      const { uploadUrl } = await requestUploadUrl(proxy, session.id, chunk);
+      const stored = Buffer.alloc(CHUNK_BYTES, 4);
+      fakeS3Bucket.put(uploadUrl, stored);
+
+      const chunkKey = `${sessionFolder(session.id, FAKE_DEFAULT_STORAGE.prefix)}${toRev(chunkIdTimeMs(chunk.chunkId))}_${chunk.chunkId}.${proxy.id}.json.enc`;
+      expect(fakeS3Bucket.objectKeys(FAKE_DEFAULT_STORAGE.bucket)).toEqual([chunkKey]);
+      expect(fakeS3Bucket.objectTags(FAKE_DEFAULT_STORAGE.bucket, chunkKey)).toBe("retention=30d");
+
+      const read = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}/logs`);
+      const [only] = (JSON.parse(read.payload) as { chunks: { presignedGetUrl: string }[] }).chunks;
+      expect(fakeS3Bucket.get(only.presignedGetUrl)).toEqual(stored);
+    });
+
+    test("a saved default choice stops recording when the operator removes the instance bucket", async () => {
+      fakeDefaultStorage.set();
+      expect((await saveConfig({ enabled: true })).statusCode).toBe(200);
+      fakeDefaultStorage.unset();
+      const bundle = await createAccessBundle(`session-logs-default-gone-${Date.now()}`);
+      const session = await mintSession(bundle.name);
+      const proxy = await createProxy(`session-logs-default-gone-${Date.now()}`);
+
+      const res = await proxy.postChunk(session.id, chunkBody());
+      expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res.payload).error).toBe(AgentVaultSessionLogErrorName.Disabled);
+      expect(JSON.parse((await proxy.resolve(session.token, false)).payload).sessionLogs.enabled).toBe(false);
     });
 
     test("a session in another organization is a 404 that reads like a missing one", async () => {
@@ -550,16 +656,6 @@ describe("Agent Vault session logs", async () => {
   });
 
   describe("what resolve tells the proxy", () => {
-    const configure = async (patch: Record<string, unknown> = {}) =>
-      saveConfig({
-        enabled: true,
-        appConnectionId: connectionId,
-        bucket: BUCKET,
-        region: "us-east-1",
-        keyPrefix: "logs",
-        ...patch
-      });
-
     const setup = async (label: string) => {
       const bundle = await createAccessBundle(`session-logs-resolve-${label}-${Date.now()}`);
       const session = await mintSession(bundle.name);
@@ -643,15 +739,6 @@ describe("Agent Vault session logs", async () => {
   });
 
   describe("what the write endpoint refuses", () => {
-    const configure = async () =>
-      saveConfig({
-        enabled: true,
-        appConnectionId: connectionId,
-        bucket: BUCKET,
-        region: "us-east-1",
-        keyPrefix: "logs"
-      });
-
     const setup = async (label: string) => {
       const bundle = await createAccessBundle(`session-logs-refuse-${label}-${Date.now()}`);
       const session = await mintSession(bundle.name);
@@ -731,15 +818,6 @@ describe("Agent Vault session logs", async () => {
   });
 
   describe("reading a session's logs", () => {
-    const configure = async () =>
-      saveConfig({
-        enabled: true,
-        appConnectionId: connectionId,
-        bucket: BUCKET,
-        region: "us-east-1",
-        keyPrefix: "logs"
-      });
-
     const uniqueLabel = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     const seedSession = async () => {
@@ -776,6 +854,7 @@ describe("Agent Vault session logs", async () => {
     type TPage = {
       sessionLogs: {
         enabled: boolean;
+        disabledReason: "off" | "not-on-plan" | null;
         isRecordable: boolean;
         sessionKey: string | null;
       };
@@ -899,7 +978,7 @@ describe("Agent Vault session logs", async () => {
     test("files someone else put in the session's folder are skipped", async () => {
       await configure();
       const { session, chunkIds } = await seedChunks(1);
-      fakeS3Bucket.putDirect(BUCKET, `logs/${projectId}/${session.id}/0000000000000_notes.txt`, Buffer.from("hi"));
+      fakeS3Bucket.putDirect(BUCKET, `${sessionFolder(session.id)}0000000000000_notes.txt`, Buffer.from("hi"));
 
       expect((await read(session.id)).chunks.map((chunk) => chunk.chunkId)).toEqual(chunkIds);
     });
@@ -978,10 +1057,10 @@ describe("Agent Vault session logs", async () => {
       await configure();
       const { session, chunkIds } = await seedChunks(1);
 
-      expect((await saveConfig({ bucket: "a-different-bucket" })).statusCode).toBe(200);
+      expect((await configure({ bucket: "a-different-bucket" })).statusCode).toBe(200);
       expect((await read(session.id)).chunks).toEqual([]);
 
-      expect((await saveConfig({ bucket: BUCKET })).statusCode).toBe(200);
+      expect((await configure()).statusCode).toBe(200);
       const page = await read(session.id);
       expect(page.chunks.map((chunk) => chunk.chunkId)).toEqual(chunkIds);
       expect(fakeS3Bucket.get(page.chunks[0].presignedGetUrl)).toEqual(Buffer.alloc(CHUNK_BYTES));
@@ -991,10 +1070,10 @@ describe("Agent Vault session logs", async () => {
       await configure();
       const { session, chunkIds } = await seedChunks(1);
 
-      expect((await saveConfig({ keyPrefix: "other" })).statusCode).toBe(200);
+      expect((await configure({ keyPrefix: "other" })).statusCode).toBe(200);
       expect((await read(session.id)).chunks).toEqual([]);
 
-      expect((await saveConfig({ keyPrefix: "logs" })).statusCode).toBe(200);
+      expect((await configure()).statusCode).toBe(200);
       expect((await read(session.id)).chunks.map((chunk) => chunk.chunkId)).toEqual(chunkIds);
     });
 
@@ -1003,7 +1082,7 @@ describe("Agent Vault session logs", async () => {
       const { session, proxy } = await seedSession();
       await requestUploadUrl(proxy, session.id);
 
-      expect((await saveConfig({ bucket: "a-different-bucket" })).statusCode).toBe(200);
+      expect((await configure({ bucket: "a-different-bucket" })).statusCode).toBe(200);
       const body = await tail(session.id);
       expect(body.chunks).toEqual([]);
       expect(body.nextCursor).not.toBe(encodeTailCursor("0-0"));
@@ -1022,38 +1101,26 @@ describe("Agent Vault session logs", async () => {
       expect(res.payload).not.toContain("sessionKey");
     });
 
-    test("turning session logs off still serves what was already written", async () => {
+    test("turning session logs off hides what was recorded, and setting up the same bucket shows it again", async () => {
       await configure();
       const { session } = await seedChunks(2);
 
       expect((await saveConfig({ enabled: false })).statusCode).toBe(200);
+      const off = await read(session.id);
+      expect(off.sessionLogs).toMatchObject({ enabled: false, disabledReason: "off" });
+      expect(off.chunks).toEqual([]);
+      expect((await tail(session.id)).sessionLogs.disabledReason).toBe("off");
 
-      const body = await read(session.id);
-      expect(body.sessionLogs.enabled).toBe(false);
-      expect(body.chunks).toHaveLength(2);
+      expect((await configure()).statusCode).toBe(200);
+      const on = await read(session.id);
+      expect(on.sessionLogs).toMatchObject({ enabled: true, disabledReason: null });
+      expect(on.chunks).toHaveLength(2);
     });
 
     const readFails = async (sessionId: string, path = "logs") => {
       const res = await inject("GET", `/api/v1/agent-vault/sessions/${sessionId}/${path}`);
       return { statusCode: res.statusCode, body: JSON.parse(res.payload) as { error: string; message: string } };
     };
-
-    test("without a connection, a read and the tail fail with the named error and say why", async () => {
-      await configure();
-      const { session } = await seedChunks(2);
-
-      expect((await saveConfig({ enabled: false, appConnectionId: null })).statusCode).toBe(200);
-
-      for (const path of ["logs", "logs/tail"]) {
-        // eslint-disable-next-line no-await-in-loop
-        const { statusCode, body } = await readFails(session.id, path);
-        expect(statusCode).toBe(400);
-        expect(body).toMatchObject({
-          error: "AgentVaultSessionLogStorageUnavailable",
-          message: "No AWS connection is set for session logs. Choose one in Settings."
-        });
-      }
-    });
 
     test("when the connection can't be used, a read fails with the named error and says why", async () => {
       await configure();

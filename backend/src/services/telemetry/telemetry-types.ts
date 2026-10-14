@@ -2527,7 +2527,7 @@ export type TAgentVaultSessionLogSettingsUpdatedEvent = {
   event: PostHogEventTypes.AgentVaultSessionLogSettingsUpdated;
   properties: TAgentVaultEventBase & {
     enabled: boolean;
-    hasDestination: boolean;
+    storageType: "default" | "external";
   };
 };
 

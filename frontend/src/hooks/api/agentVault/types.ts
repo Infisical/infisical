@@ -3,6 +3,7 @@ import {
   AgentVaultHttpMethod,
   AgentVaultMemberType,
   AgentVaultSessionLogDecision,
+  AgentVaultSessionLogStorageType,
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
   AgentVaultSubstitutionSurface,
@@ -293,12 +294,28 @@ export type TAgentVaultProxySettingsDTO = {
   pollInterval?: number;
 };
 
+export type TAgentVaultSessionLogExternalStorage = {
+  type: AgentVaultSessionLogStorageType.External;
+  appConnectionId: string;
+  bucket: string;
+  region: string;
+  keyPrefix: string | null;
+};
+
+export type TAgentVaultSessionLogStorage =
+  | { type: AgentVaultSessionLogStorageType.Default }
+  | TAgentVaultSessionLogExternalStorage;
+
 export type TAgentVaultSessionLogSettings = {
   enabled: boolean;
-  appConnectionId: string | null;
-  bucket: string | null;
-  region: string | null;
-  keyPrefix: string | null;
+  isSaved: boolean;
+  storage: TAgentVaultSessionLogStorage;
+};
+
+// settings is null when there's nothing to turn on: no saved choice and no instance bucket.
+export type TAgentVaultSessionLogSettingsState = {
+  settings: TAgentVaultSessionLogSettings | null;
+  defaultStorage: { configured: boolean };
 };
 
 export type TAgentVaultSessionLogHealth = {
@@ -323,10 +340,9 @@ export type TAgentVaultSessionLogReadCheck = {
 
 export type TUpdateAgentVaultSessionLogSettingsDTO = {
   enabled?: boolean;
-  appConnectionId?: string | null;
-  bucket?: string;
-  region?: string;
-  keyPrefix?: string;
+  storage?:
+    | { type: AgentVaultSessionLogStorageType.Default }
+    | (Omit<TAgentVaultSessionLogExternalStorage, "keyPrefix"> & { keyPrefix?: string });
 };
 
 export type TAgentVaultSessionLogChunk = {
@@ -336,8 +352,11 @@ export type TAgentVaultSessionLogChunk = {
   presignedGetUrl: string;
 };
 
+export type TAgentVaultSessionLogDisabledReason = "off" | "not-on-plan";
+
 export type TAgentVaultSessionLog = {
   enabled: boolean;
+  disabledReason: TAgentVaultSessionLogDisabledReason | null;
   isRecordable: boolean;
   sessionKey: string | null;
 };

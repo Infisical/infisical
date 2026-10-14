@@ -122,12 +122,40 @@ describe("the session logs tail query", () => {
 });
 
 describe("the settings patch", () => {
+  const external = {
+    type: "external",
+    appConnectionId: "6f1c7a52-3f7e-4c8e-9a40-0b2d6c1e9f11",
+    bucket: "session-logs-bucket",
+    region: "us-east-1"
+  };
+  const withStorage = (storage: Record<string, unknown>) =>
+    AgentVaultSessionLogSettingsUpdateSchema.safeParse({ storage });
+  const withExternal = (fields: Record<string, unknown>) => withStorage({ ...external, ...fields });
+
   test("every field is optional, so an empty patch is valid", () => {
     expect(AgentVaultSessionLogSettingsUpdateSchema.parse({})).toEqual({});
   });
 
-  test("accepts null for the connection, which detaches it", () => {
-    expect(AgentVaultSessionLogSettingsUpdateSchema.parse({ appConnectionId: null }).appConnectionId).toBeNull();
+  test("accepts each storage shape", () => {
+    expect(withStorage({ type: "default" }).success).toBe(true);
+    expect(withStorage(external).success).toBe(true);
+    expect(withExternal({ keyPrefix: "logs" }).success).toBe(true);
+  });
+
+  test.each([
+    { storage: { type: "default", bucket: "session-logs-bucket" }, why: "default storage with a bucket" },
+    { storage: { ...external, type: "default" }, why: "default storage with every external field" },
+    { storage: { type: "external" }, why: "external storage with no bucket" },
+    { storage: { ...external, appConnectionId: undefined }, why: "external storage with no connection" },
+    { storage: { ...external, appConnectionId: null }, why: "external storage with a null connection" },
+    { storage: { type: "instance" }, why: "a storage type that doesn't exist" }
+  ])("rejects $why", ({ storage }) => {
+    expect(withStorage(storage).success).toBe(false);
+  });
+
+  test("rejects the flat fields of the old body", () => {
+    expect(AgentVaultSessionLogSettingsUpdateSchema.safeParse({ bucket: "session-logs-bucket" }).success).toBe(false);
+    expect(AgentVaultSessionLogSettingsUpdateSchema.safeParse({ appConnectionId: null }).success).toBe(false);
   });
 
   test.each([
@@ -146,22 +174,22 @@ describe("the settings patch", () => {
     { value: "team*", why: "an asterisk, which is a wildcard in the suggested IAM policy" },
     { value: "a".repeat(513), why: "longer than 512 characters" }
   ])("rejects a key prefix: $why", ({ value }) => {
-    expect(AgentVaultSessionLogSettingsUpdateSchema.safeParse({ keyPrefix: value }).success).toBe(false);
+    expect(withExternal({ keyPrefix: value }).success).toBe(false);
   });
 
   test.each(["logs", "logs/agent-vault", "a.b-c_d", "", ".hidden/logs", "logs/...", "logs.v2"])(
     "accepts the key prefix %s",
     (keyPrefix) => {
-      expect(AgentVaultSessionLogSettingsUpdateSchema.safeParse({ keyPrefix }).success).toBe(true);
+      expect(withExternal({ keyPrefix }).success).toBe(true);
     }
   );
 
   test("accepts a key prefix of exactly 512 characters", () => {
-    expect(AgentVaultSessionLogSettingsUpdateSchema.safeParse({ keyPrefix: "a".repeat(512) }).success).toBe(true);
+    expect(withExternal({ keyPrefix: "a".repeat(512) }).success).toBe(true);
   });
 
   test("rejects a region that is not an AWS region", () => {
-    expect(AgentVaultSessionLogSettingsUpdateSchema.safeParse({ region: "moon-base-1" }).success).toBe(false);
+    expect(withExternal({ region: "moon-base-1" }).success).toBe(false);
   });
 
   test.each([
@@ -172,10 +200,10 @@ describe("the settings patch", () => {
     { value: "-bucket", why: "a leading hyphen" },
     { value: "bucket.", why: "a trailing dot" }
   ])("rejects a bucket name with $why", ({ value }) => {
-    expect(AgentVaultSessionLogSettingsUpdateSchema.safeParse({ bucket: value }).success).toBe(false);
+    expect(withExternal({ bucket: value }).success).toBe(false);
   });
 
   test.each(["session-logs-bucket", "a.b-c", "a".repeat(63)])("accepts the bucket name %s", (bucket) => {
-    expect(AgentVaultSessionLogSettingsUpdateSchema.safeParse({ bucket }).success).toBe(true);
+    expect(withExternal({ bucket }).success).toBe(true);
   });
 });

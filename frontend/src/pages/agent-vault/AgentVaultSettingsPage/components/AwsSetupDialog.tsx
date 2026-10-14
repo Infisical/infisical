@@ -23,8 +23,9 @@ import {
 import { useOrganization } from "@app/context";
 import { agentVaultKeys, useGetAgentVaultSessionLogCorsProbe } from "@app/hooks/api/agentVault";
 
-const iamPolicyFor = (bucket: string, keyPrefix: string) => {
-  const objects = `arn:aws:s3:::${bucket || "<bucket>"}/${keyPrefix ? `${keyPrefix}/` : ""}*`;
+// Session logs only ever touch this org's Agent Vault folder, so the policy can be scoped to it.
+const iamPolicyFor = (bucket: string, keyPrefix: string, orgId: string) => {
+  const folder = `${keyPrefix ? `${keyPrefix}/` : ""}orgs/${orgId}/agent-vault/`;
   return JSON.stringify(
     {
       Version: "2012-10-17",
@@ -32,12 +33,13 @@ const iamPolicyFor = (bucket: string, keyPrefix: string) => {
         {
           Effect: "Allow",
           Action: ["s3:PutObject", "s3:GetObject"],
-          Resource: objects
+          Resource: `arn:aws:s3:::${bucket || "<bucket>"}/${folder}*`
         },
         {
           Effect: "Allow",
           Action: ["s3:ListBucket"],
-          Resource: `arn:aws:s3:::${bucket || "<bucket>"}`
+          Resource: `arn:aws:s3:::${bucket || "<bucket>"}`,
+          Condition: { StringLike: { "s3:prefix": [`${folder}*`] } }
         }
       ]
     },
@@ -181,7 +183,7 @@ export const AwsSetupDialog = ({
               />
               <CodeBlock
                 label="Lets the connection's credentials write and read objects"
-                value={iamPolicyFor(bucket ?? "", keyPrefix ?? "")}
+                value={iamPolicyFor(bucket ?? "", keyPrefix ?? "", currentOrg.id)}
               />
             </TabsContent>
 

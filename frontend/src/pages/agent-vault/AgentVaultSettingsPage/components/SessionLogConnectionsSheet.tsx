@@ -45,6 +45,7 @@ import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermi
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { usePopUp } from "@app/hooks";
 import { useGetAgentVaultSessionLogSettings } from "@app/hooks/api/agentVault";
+import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums";
 import { useListAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
@@ -64,7 +65,12 @@ type Props = {
 export const SessionLogConnectionsSheet = ({ isOpen, onOpenChange }: Props) => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
-  const { data: settings } = useGetAgentVaultSessionLogSettings();
+  const { data: state } = useGetAgentVaultSessionLogSettings();
+  const sessionLogStorage = state?.settings?.storage;
+  const sessionLogConnectionId =
+    sessionLogStorage?.type === AgentVaultSessionLogStorageType.External
+      ? sessionLogStorage.appConnectionId
+      : null;
   const { data: connections = [], isPending } = useListAppConnections(currentProject.id);
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addConnection",
@@ -136,7 +142,7 @@ export const SessionLogConnectionsSheet = ({ isOpen, onOpenChange }: Props) => {
                 {connections.map((connection) => {
                   const method = getAppConnectionMethodDetails(connection.method);
                   const MethodIcon = method.icon;
-                  const isInUse = connection.id === settings?.appConnectionId;
+                  const isInUse = connection.id === sessionLogConnectionId;
                   const connectionSubject = subject(ProjectPermissionSub.AppConnections, {
                     connectionId: connection.id
                   });
@@ -221,8 +227,8 @@ export const SessionLogConnectionsSheet = ({ isOpen, onOpenChange }: Props) => {
                               </TooltipTrigger>
                               {isInUse && (
                                 <TooltipContent side="left">
-                                  Session logs use this connection. Choose another one in Configure
-                                  before deleting it.
+                                  Session logs use this connection. Turn session logs off, or choose
+                                  another storage in Configure, before deleting it.
                                 </TooltipContent>
                               )}
                             </Tooltip>

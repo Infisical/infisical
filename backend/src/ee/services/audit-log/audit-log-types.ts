@@ -6431,11 +6431,15 @@ interface AgentVaultSessionLogSettingsUpdateEvent {
   type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE;
   metadata: {
     enabled: boolean;
+    storageType: "default" | "external";
     appConnectionId: string | null;
     appConnectionName: string | null;
     bucket: string | null;
     region: string | null;
     keyPrefix: string | null;
+    // Set when turning session logs off cleared an external bucket.
+    clearedAppConnectionId?: string | null;
+    clearedBucket?: string | null;
   };
 }
 

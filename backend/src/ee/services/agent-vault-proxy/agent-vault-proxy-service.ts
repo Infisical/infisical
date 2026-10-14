@@ -20,6 +20,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { isDefaultStorageConfigured } from "@app/services/object-storage/object-storage-default-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
@@ -34,7 +35,7 @@ import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns
 import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
 import {
   getSessionLogEntitlement,
-  isSessionLogIngestEnabled,
+  toEffectiveSessionLogConfig,
   TSessionLogLicenseService
 } from "../agent-vault-session-log/agent-vault-session-log-fns";
 import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
@@ -515,10 +516,13 @@ export const agentVaultProxyServiceFactory = ({
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds)
     ]);
 
-    const sessionLogConfig = await agentVaultSessionLogConfigDAL.findOne({ projectId: session.projectId });
+    const sessionLogConfig = toEffectiveSessionLogConfig(
+      await agentVaultSessionLogConfigDAL.findOne({ projectId: session.projectId }),
+      isDefaultStorageConfigured()
+    );
     const entitlement =
-      isSessionLogIngestEnabled(sessionLogConfig) && Boolean(session.encryptedSessionLogKey)
-        ? await getSessionLogEntitlement(licenseService, proxy.orgId)
+      sessionLogConfig?.enabled && Boolean(session.encryptedSessionLogKey)
+        ? (await getSessionLogEntitlement(licenseService, proxy.orgId, sessionLogConfig.storage.type)).entitlement
         : "unlicensed";
     // While the plan can't be confirmed, a proxy that already holds the key keeps recording, and no key goes out.
     const sessionLogsEnabled = entitlement === "licensed" || (entitlement === "unknown" && hasSessionLogKey);

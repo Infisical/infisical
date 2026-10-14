@@ -115,6 +115,8 @@ export type TFeatureSet = {
   honeyTokenLimit: 0;
   secretsBrokering: true;
   agentVaultByoS3: false;
+  agentVaultManagedStorage: true;
+  agentVaultSessionLogRetentionDays: number | null;
   secretSyncLimit: null;
   maxPamAccounts: null;
 

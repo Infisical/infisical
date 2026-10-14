@@ -33,14 +33,15 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { useOrganization, useProjectPermission, useSubscription } from "@app/context";
+import { useOrganization, useProjectPermission } from "@app/context";
 import {
   AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
   AgentVaultSessionLogDecision,
   getSessionLogStorageError,
   sessionLogRecordKey,
   useAgentVaultSessionLogTimeline,
-  useGetAgentVaultSessionLogs
+  useGetAgentVaultSessionLogs,
+  useGetAgentVaultSessionLogSettings
 } from "@app/hooks/api/agentVault";
 import { sessionLogChunkKey } from "@app/hooks/api/agentVault/sessionLogDecrypt";
 import {
@@ -101,8 +102,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
-  const { subscription } = useSubscription();
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+  // Only admins can read the settings; they need the storage type to show the right upgrade.
+  const { data: sessionLogSettings } = useGetAgentVaultSessionLogSettings(isAdmin);
   // A session holds one bundle (AGENT_VAULT_MAX_SESSION_BUNDLES). Raising that cap needs a bundle
   // picker here: the rows offering Add Service matched no service, so they name no bundle.
   const accessBundle = session.accessBundles[0];
@@ -172,6 +174,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const isLoadError = isError && !data;
 
   const isEnabled = pages?.[0]?.sessionLogs.enabled ?? false;
+  const disabledReason = pages?.[0]?.sessionLogs.disabledReason ?? null;
   const isRecordable = pages?.[0]?.sessionLogs.isRecordable ?? true;
   // Nothing new can arrive while session logs are off or for a session that can't be recorded, so the panel
   // doesn't go live, and an ended session doesn't promise logs that won't come.
@@ -407,28 +410,21 @@ export const SessionLogsPanel = ({ session }: Props) => {
     );
   }
 
-  // Only a running session is offered Settings or an upgrade; turning logs on can't record one that ended.
-  if (
-    !isPending &&
-    !isPlaceholderData &&
-    !isLoadError &&
-    isActive &&
-    !isEnabled &&
-    !hasChunks &&
-    !range
-  ) {
-    if (!subscription.agentVaultByoS3) {
+  // Off and off-plan hide recorded logs, for ended sessions too. Only a running session is offered Settings or an
+  // upgrade; turning logs on can't record one that ended.
+  if (!isPending && !isPlaceholderData && !isLoadError && disabledReason) {
+    if (disabledReason === "not-on-plan") {
       return (
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>Session logs aren&apos;t on your plan</EmptyTitle>
             <EmptyDescription>
               {isAdmin
-                ? "Upgrade to record what your agents reach."
+                ? "Upgrade to see recorded logs and record what your agents reach."
                 : "Ask an Agent Vault administrator about upgrading."}
             </EmptyDescription>
           </EmptyHeader>
-          {isAdmin && (
+          {isAdmin && isActive && (
             <Button variant="av" onClick={() => setIsUpgradeOpen(true)}>
               Upgrade
             </Button>
@@ -436,14 +432,15 @@ export const SessionLogsPanel = ({ session }: Props) => {
           <AgentVaultSessionLogUpgradeModal
             isOpen={isUpgradeOpen}
             onOpenChange={setIsUpgradeOpen}
+            storageType={sessionLogSettings?.settings?.storage.type}
           />
         </Empty>
       );
     }
 
     const offDescription = isAdmin
-      ? "Point Agent Vault at a bucket under Settings to start recording what your agents reach."
-      : "Ask an Agent Vault administrator to turn it on.";
+      ? "Turn them on in Settings to record what your agents do."
+      : "Ask an Agent Vault administrator to turn them on.";
 
     return (
       <Empty className="border">
@@ -451,7 +448,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
           <EmptyTitle>Session logs are off</EmptyTitle>
           <EmptyDescription>{offDescription}</EmptyDescription>
         </EmptyHeader>
-        {isAdmin && (
+        {isAdmin && isActive && (
           <Button variant="av" asChild>
             <Link to="/organizations/$orgId/agent-vault/settings" params={{ orgId: currentOrg.id }}>
               Go to Settings
