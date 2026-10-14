@@ -56,7 +56,6 @@ import {
 import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
   useListAgentVaultVariables,
-  useListAllAgentVaultVariables,
   useRevealAgentVaultVariableValue
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
@@ -237,9 +236,6 @@ export const VariablesCard = () => {
   const displayed = data?.variables ?? [];
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
-
-  // The dialog checks a new key against every key, which no single page holds.
-  const { data: allVariables } = useListAllAgentVaultVariables(isFormOpen);
 
   const handleSort = (column: SortColumn, direction: "ascending" | "descending" | "none") => {
     setPage(1);
@@ -498,7 +494,6 @@ export const VariablesCard = () => {
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
         variable={variableToEdit}
-        existingKeys={allVariables?.map((variable) => variable.key) ?? []}
       />
 
       <DeleteVariableDialog

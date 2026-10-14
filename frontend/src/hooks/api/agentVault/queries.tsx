@@ -1,5 +1,11 @@
-import { useRef, useState } from "react";
-import { InfiniteData, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useRef, useState } from "react";
+import {
+  InfiniteData,
+  useInfiniteQuery,
+  useQueries,
+  useQuery,
+  useQueryClient
+} from "@tanstack/react-query";
 import axios from "axios";
 
 import { apiRequest } from "@app/config/request";
@@ -92,7 +98,8 @@ export const agentVaultKeys = {
   variables: (orgId: string) => [...agentVaultKeys.all(orgId), "variables"] as const,
   variableList: (orgId: string, params: TListAgentVaultVariablesDTO) =>
     [...agentVaultKeys.variables(orgId), "list", params] as const,
-  allVariables: (orgId: string) => [...agentVaultKeys.variables(orgId), "all"] as const,
+  variableKeyStatus: (orgId: string, key: string) =>
+    [...agentVaultKeys.variables(orgId), "key-status", key] as const,
   members: (orgId: string) => [...agentVaultKeys.all(orgId), "members"] as const,
   memberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
     [...agentVaultKeys.members(orgId), params] as const,
@@ -533,47 +540,50 @@ export const useGetAgentVaultSessionLogs = (
 
 type TAgentVaultVariablePage = { variables: TAgentVaultVariable[]; totalCount: number };
 
-const fetchAgentVaultVariables = async (params: TListAgentVaultVariablesDTO) => {
+const fetchAgentVaultVariables = async ({ keys, ...params }: TListAgentVaultVariablesDTO) => {
   const { data } = await apiRequest.get<TAgentVaultVariablePage>("/api/v1/agent-vault/variables", {
-    params
+    params: { ...params, keys: keys?.join(",") }
   });
   return data;
 };
 
-export const useListAgentVaultVariables = (params: TListAgentVaultVariablesDTO = {}) => {
+export const useListAgentVaultVariables = (
+  params: TListAgentVaultVariablesDTO = {},
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
     queryKey: agentVaultKeys.variableList(currentOrg.id, params),
     queryFn: () => fetchAgentVaultVariables(params),
-    placeholderData: (prev) => prev
+    placeholderData: (prev) => prev,
+    enabled
   });
 };
 
-const ALL_VARIABLES_PAGE_SIZE = 100;
-
-// Every variable, sorted by key, for suggesting and checking references, which need the whole set. The product
-// caps how many there can be, so this is a handful of pages at most.
-export const useListAllAgentVaultVariables = (enabled = true) => {
+// Whether each key exists, one cached query per key, so a key checked once is never asked about again until a
+// variable changes. Only keys whose answer has arrived are in either set: a pending one is neither.
+export const useAgentVaultVariableKeyStatus = (keys: readonly string[], enabled = true) => {
   const { currentOrg } = useOrganization();
 
-  return useQuery({
-    queryKey: agentVaultKeys.allVariables(currentOrg.id),
-    queryFn: async () => {
-      const variables: TAgentVaultVariable[] = [];
-      let totalCount = Infinity;
-      while (variables.length < totalCount) {
-        // eslint-disable-next-line no-await-in-loop
-        const page = await fetchAgentVaultVariables({
-          limit: ALL_VARIABLES_PAGE_SIZE,
-          offset: variables.length
-        });
-        variables.push(...page.variables);
-        totalCount = page.totalCount;
-        if (page.variables.length < ALL_VARIABLES_PAGE_SIZE) break;
-      }
-      return variables;
-    },
-    enabled
+  const { existing, missing } = useQueries({
+    queries: keys.map((key) => ({
+      queryKey: agentVaultKeys.variableKeyStatus(currentOrg.id, key),
+      queryFn: async () =>
+        (await fetchAgentVaultVariables({ keys: [key], limit: 1 })).totalCount > 0,
+      enabled
+    })),
+    combine: (results) => ({
+      existing: keys.filter((_, index) => results[index]?.data === true).join(","),
+      missing: keys.filter((_, index) => results[index]?.data === false).join(",")
+    })
   });
+
+  return useMemo(
+    () => ({
+      existing: new Set(existing ? existing.split(",") : []) as ReadonlySet<string>,
+      missing: new Set(missing ? missing.split(",") : []) as ReadonlySet<string>
+    }),
+    [existing, missing]
+  );
 };

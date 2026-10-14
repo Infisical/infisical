@@ -4467,6 +4467,7 @@ export const AGENT_VAULT = {
     orderBy: "What to sort variables by: key, or usedBy for how many services use each one.",
     orderDirection: "Which way to sort: asc or desc.",
     search: "Match variables whose key contains this text.",
+    keys: "Return only the variables with these exact keys, comma-separated. A key that doesn't exist is left out, which is how to check whether one does.",
     limit: "The maximum number of variables to return.",
     offset: "How many variables to skip.",
     totalCount: "How many variables match the search, across every page.",

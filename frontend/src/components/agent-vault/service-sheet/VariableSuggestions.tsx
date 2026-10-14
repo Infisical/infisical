@@ -9,11 +9,18 @@ import {
   toVariableReference,
   VARIABLE_KEY_RE
 } from "@app/helpers/agentVaultVariables";
+import { useDebounce } from "@app/hooks";
+import {
+  useAgentVaultVariableKeyStatus,
+  useListAgentVaultVariables
+} from "@app/hooks/api/agentVault";
 import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 
 import { useServiceVariables } from "./ServiceVariablesContext";
 
 type TOpenReference = { start: number; query: string };
+
+const SUGGESTION_LIMIT = 50;
 
 type TSuggestion =
   | { type: "variable"; variable: TAgentVaultVariable }
@@ -27,17 +34,33 @@ export const useVariableAutocomplete = ({
   /** The whole new value, and where in it the caret belongs. */
   onInsert: (value: string, caret: number) => void;
 }) => {
-  const { variables, requestVariable } = useServiceVariables();
+  const { requestVariable } = useServiceVariables();
   const [openReference, setOpenReference] = useState<TOpenReference | null>(null);
+  const query = openReference ? normalizeVariableKey(openReference.query) : "";
+  const [debouncedQuery] = useDebounce(query, 200);
+  const isOpen = Boolean(openReference);
+
+  // Searched on the server, so the list never has to hold every variable. The last page stays up while the next
+  // loads, filtered to the new text, which a longer query only narrows.
+  const { data } = useListAgentVaultVariables(
+    { search: debouncedQuery || undefined, limit: SUGGESTION_LIMIT },
+    { enabled: isOpen }
+  );
+  // A search can show only so many, and the exact key may not be among them, so whether to offer to create it is
+  // asked of that key alone.
+  const { existing } = useAgentVaultVariableKeyStatus(
+    isOpen && VARIABLE_KEY_RE.test(debouncedQuery) ? [debouncedQuery] : [],
+    isOpen
+  );
   const [activeIndex, setActiveIndex] = useState(0);
   // Escape closes the list for the reference being typed, not for the field: it opens again at the next {{.
   const dismissedAt = useRef<number | null>(null);
   const listId = useId();
 
   const suggestions = useMemo((): TSuggestion[] => {
-    if (!openReference || !variables) return [];
-    const key = normalizeVariableKey(openReference.query);
-    const matches = variables
+    if (!openReference || !data) return [];
+    const key = query;
+    const matches = data.variables
       .filter((variable) => variable.key.includes(key))
       .sort(
         (a, b) =>
@@ -46,9 +69,10 @@ export const useVariableAutocomplete = ({
       )
       .map((variable) => ({ type: "variable" as const, variable }));
 
-    if (!requestVariable || variables.some((variable) => variable.key === key)) return matches;
+    const keyExists = matches.some(({ variable }) => variable.key === key) || existing.has(key);
+    if (!requestVariable || keyExists) return matches;
     return [...matches, { type: "create", key, isKeyValid: VARIABLE_KEY_RE.test(key) }];
-  }, [openReference, variables, requestVariable]);
+  }, [openReference, query, data, existing, requestVariable]);
 
   const close = () => setOpenReference(null);
 
@@ -139,7 +163,9 @@ export const useVariableAutocomplete = ({
   };
 
   return {
-    isOpen: Boolean(openReference),
+    isOpen,
+    isLoading: isOpen && !data,
+    query,
     suggestions,
     activeIndex,
     setActiveIndex,
@@ -163,10 +189,19 @@ export const VariableSuggestions = ({
   autocomplete: TAutocomplete;
   children: ReactNode;
 }) => {
-  const { variables } = useServiceVariables();
   const anchorRef = useRef<HTMLDivElement>(null);
-  const { isOpen, suggestions, activeIndex, setActiveIndex, listId, optionId, choose, dismiss } =
-    autocomplete;
+  const {
+    isOpen,
+    isLoading,
+    query,
+    suggestions,
+    activeIndex,
+    setActiveIndex,
+    listId,
+    optionId,
+    choose,
+    dismiss
+  } = autocomplete;
   const variableSuggestions = suggestions.filter((suggestion) => suggestion.type === "variable");
   const createSuggestion = suggestions.find((suggestion) => suggestion.type === "create");
 
@@ -246,9 +281,11 @@ export const VariableSuggestions = ({
             </div>
           ) : (
             <p className="px-2 py-1.5 text-xs text-muted">
-              {variables?.length
-                ? "No variable matches that name."
-                : "No variables yet. Add one under Variables."}
+              {(() => {
+                if (isLoading) return "Loading variables...";
+                if (query) return "No variable matches that name.";
+                return "No variables yet. Add one under Variables.";
+              })()}
             </p>
           )}
         </PopoverContent>

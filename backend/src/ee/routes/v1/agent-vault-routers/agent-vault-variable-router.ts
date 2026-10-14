@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AGENT_VAULT_VARIABLE_KEY_MAX_LENGTH } from "@app/ee/services/agent-vault/agent-vault-variable-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
@@ -18,6 +19,8 @@ import {
   AgentVaultVariableValueSchema
 } from "./agent-vault-schemas";
 
+const AGENT_VAULT_LIST_MAX_KEYS = 100;
+
 export const registerAgentVaultVariableRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -31,6 +34,13 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
       querystring: z.object({
         orderBy: z.enum(["key", "usedBy"]).default("key").describe(AGENT_VAULT.VARIABLE.orderBy),
         orderDirection: z.enum(["asc", "desc"]).default("asc").describe(AGENT_VAULT.VARIABLE.orderDirection),
+        keys: z
+          .string()
+          .max(AGENT_VAULT_LIST_MAX_KEYS * (AGENT_VAULT_VARIABLE_KEY_MAX_LENGTH + 1))
+          .transform((val) => [...new Set(val.split(",").map((key) => key.trim()))])
+          .pipe(AgentVaultVariableKeySchema.array().min(1).max(AGENT_VAULT_LIST_MAX_KEYS))
+          .optional()
+          .describe(AGENT_VAULT.VARIABLE.keys),
         ...agentVaultListQuery(AGENT_VAULT.VARIABLE)
       }),
       response: {

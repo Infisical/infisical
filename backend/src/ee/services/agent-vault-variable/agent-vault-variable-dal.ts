@@ -16,6 +16,7 @@ export type TAgentVaultVariableOrderBy = "key" | "usedBy";
 export type TFindAgentVaultVariablesDTO = {
   projectId: string;
   search?: string;
+  keys?: string[];
   orderBy: TAgentVaultVariableOrderBy;
   orderDirection: "asc" | "desc";
   limit: number;
@@ -43,7 +44,7 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
   // Reads the primary even without a tx, so a variable created a moment ago is always listed. usedBy counts the
   // services that use a variable, each once however many of its fields do.
   const findForList = async (
-    { projectId, search, orderBy, orderDirection, limit, offset }: TFindAgentVaultVariablesDTO,
+    { projectId, search, keys, orderBy, orderDirection, limit, offset }: TFindAgentVaultVariablesDTO,
     tx?: Knex
   ): Promise<{ variables: TAgentVaultVariable[]; totalCount: number }> => {
     try {
@@ -54,6 +55,7 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
         if (search) {
           void query.whereILike(`${TableName.AgentVaultVariable}.key`, `%${sanitizeSqlLikeString(search)}%`);
         }
+        if (keys) void query.whereIn(`${TableName.AgentVaultVariable}.key`, keys);
         return query;
       };
 
@@ -62,21 +64,25 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
         .first()) as { count: string } | undefined;
       const totalCount = parseInt(countResult?.count || "0", 10);
 
-      const usageCounts = conn(TableName.AgentVaultServiceVariableReference)
-        .select("variableId")
-        .countDistinct("serviceId as count")
-        .groupBy("variableId")
-        .as("uc");
-
-      const pageQuery = applyFilters(conn(TableName.AgentVaultVariable))
-        .leftJoin(usageCounts, function joinUsageCount() {
-          this.on(db.raw(`uc."variableId" = ??.id`, [TableName.AgentVaultVariable]));
-        })
-        .limit(limit)
-        .offset(offset)
-        .select(columns);
+      const pageQuery = applyFilters(conn(TableName.AgentVaultVariable)).limit(limit).offset(offset).select(columns);
 
       if (orderBy === "usedBy") {
+        // Counted over this project's variables only; the references table holds every org's.
+        const usageCounts = conn(TableName.AgentVaultServiceVariableReference)
+          .join(
+            TableName.AgentVaultVariable,
+            `${TableName.AgentVaultServiceVariableReference}.variableId`,
+            `${TableName.AgentVaultVariable}.id`
+          )
+          .where(`${TableName.AgentVaultVariable}.projectId`, projectId)
+          .select(`${TableName.AgentVaultServiceVariableReference}.variableId`)
+          .countDistinct(`${TableName.AgentVaultServiceVariableReference}.serviceId as count`)
+          .groupBy(`${TableName.AgentVaultServiceVariableReference}.variableId`)
+          .as("uc");
+
+        void pageQuery.leftJoin(usageCounts, function joinUsageCount() {
+          this.on(db.raw(`uc."variableId" = ??.id`, [TableName.AgentVaultVariable]));
+        });
         void pageQuery.orderByRaw(`COALESCE(uc.count, 0) ${orderDirection === "desc" ? "DESC" : "ASC"}`);
         void pageQuery.orderBy(`${TableName.AgentVaultVariable}.key`, "asc");
       } else {

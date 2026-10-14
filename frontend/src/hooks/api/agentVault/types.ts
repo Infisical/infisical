@@ -140,6 +140,8 @@ export type TListAgentVaultAccessBundlesDTO = Omit<TListAgentVaultProxiesDTO, "o
 
 export type TListAgentVaultVariablesDTO = {
   search?: string;
+  /** Exact keys. A key that doesn't exist is left out of the response. */
+  keys?: string[];
   orderBy?: "key" | "usedBy";
   orderDirection?: "asc" | "desc";
   limit?: number;

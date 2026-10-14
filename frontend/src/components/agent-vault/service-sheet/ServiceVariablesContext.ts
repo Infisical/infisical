@@ -1,10 +1,10 @@
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext } from "react";
 
 import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 
 type TServiceVariables = {
-  /** Undefined while the list loads, when no key can be called unknown yet. */
-  variables?: TAgentVaultVariable[];
+  /** Keys the form references that Agent Vault has confirmed it does not have. A key still being checked is not in it. */
+  missingKeys: ReadonlySet<string>;
   /** The keys each stored value uses, by field. The values never return, so the fields list these. */
   storedKeys: {
     secret: string[];
@@ -23,17 +23,13 @@ export const NO_STORED_KEYS: TServiceVariables["storedKeys"] = {
   substitutions: {}
 };
 
+export const NO_MISSING_KEYS: ReadonlySet<string> = new Set();
+
 export const ServiceVariablesContext = createContext<TServiceVariables>({
+  missingKeys: NO_MISSING_KEYS,
   storedKeys: NO_STORED_KEYS
 });
 
 export const useServiceVariables = () => useContext(ServiceVariablesContext);
 
-/** Undefined while the list loads, so nothing is marked unknown before it can be known. */
-export const useKnownVariableKeys = () => {
-  const { variables } = useServiceVariables();
-  return useMemo(
-    () => (variables ? new Set(variables.map((variable) => variable.key)) : undefined),
-    [variables]
-  );
-};
+export const useMissingVariableKeys = () => useServiceVariables().missingKeys;

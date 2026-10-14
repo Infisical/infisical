@@ -71,10 +71,13 @@ export const findVariableReferenceAtCaret = (text: string, caret: number) => {
 };
 
 /**
- * The first problem with the references in a field, or null. Without `keys`, which is the case while
- * the list loads, only the shape of each reference is checked.
+ * The first problem with the references in a field, or null. A key counts as unknown only once it is in
+ * `missingKeys`, so one still being looked up passes.
  */
-export const variableReferenceError = (text: string, keys?: ReadonlySet<string>): string | null => {
+export const variableReferenceError = (
+  text: string,
+  missingKeys?: ReadonlySet<string>
+): string | null => {
   const refs = findVariableReferences(text);
 
   if (refs.length > MAX_REFERENCES_PER_FIELD) {
@@ -86,7 +89,7 @@ export const variableReferenceError = (text: string, keys?: ReadonlySet<string>)
     return `"${toVariableReference(malformed)}" isn't a valid variable reference. ${VARIABLE_KEY_MESSAGE}`;
   }
 
-  const missing = keys ? refs.find((ref) => !keys.has(ref)) : undefined;
+  const missing = refs.find((ref) => missingKeys?.has(ref));
   if (missing) {
     return `Agent Vault has no variable named '${missing}'. Add it under Variables, or correct the name.`;
   }

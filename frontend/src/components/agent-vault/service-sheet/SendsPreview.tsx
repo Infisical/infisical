@@ -5,7 +5,7 @@ import { splitVariableReferences } from "@app/helpers/agentVaultVariables";
 import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
 import { TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
-import { useKnownVariableKeys } from "./ServiceVariablesContext";
+import { useMissingVariableKeys } from "./ServiceVariablesContext";
 import { VariableChip } from "./VariableChips";
 
 const MASK = "•".repeat(8);
@@ -13,7 +13,7 @@ const MASK = "•".repeat(8);
 // A reference holds no secret, so it is spelled out. Literal text is masked at a fixed length, which
 // says nothing about the secret's own.
 const PreviewValue = ({ value, placeholder }: { value?: string; placeholder: string }) => {
-  const knownKeys = useKnownVariableKeys();
+  const missingKeys = useMissingVariableKeys();
 
   if (!value) return <span className="text-muted">{placeholder}</span>;
   if (value === UNCHANGED_SECRET) return <span>{MASK}</span>;
@@ -29,7 +29,7 @@ const PreviewValue = ({ value, placeholder }: { value?: string; placeholder: str
             // eslint-disable-next-line react/no-array-index-key
             key={index}
             reference={segment.text}
-            isKnown={segment.isValid && (!knownKeys || knownKeys.has(segment.key))}
+            isKnown={segment.isValid && !missingKeys.has(segment.key)}
           />
         )
       )}

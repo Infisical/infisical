@@ -1341,6 +1341,14 @@ describe("Agent Vault V1 Router", async () => {
         totalCount: 3
       });
       expect((await inject("GET", `${variablesUrl}?limit=101`)).statusCode).toBe(422);
+
+      // Exact keys, so a lookup can tell a key that exists from one that only contains the text.
+      expect(await list("keys=GAMMA_KEY,MISSING_KEY,ALPHA_TOKEN")).toEqual({
+        keys: ["ALPHA_TOKEN", "GAMMA_KEY"],
+        totalCount: 2
+      });
+      expect(await list("keys=TOKEN")).toEqual({ keys: [], totalCount: 0 });
+      expect((await inject("GET", `${variablesUrl}?keys=lower_case`)).statusCode).toBe(422);
     });
 
     test("services in different bundles share a variable, and each resolves it", async () => {

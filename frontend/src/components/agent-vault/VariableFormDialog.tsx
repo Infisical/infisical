@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
@@ -32,7 +32,9 @@ import {
   VARIABLE_KEY_RE,
   VARIABLE_VALUE_MAX_LENGTH
 } from "@app/helpers/agentVaultVariables";
+import { useDebounce } from "@app/hooks";
 import {
+  useAgentVaultVariableKeyStatus,
   useCreateAgentVaultVariable,
   useUpdateAgentVaultVariable
 } from "@app/hooks/api/agentVault";
@@ -41,8 +43,9 @@ import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 // eslint-disable-next-line no-control-regex
 const NO_CONTROL_CHARS_RE = /^[^\x00-\x1f\x7f]*$/;
 
-// A stored value never comes back, so on edit its field starts empty and empty keeps it.
-const buildSchema = (takenKeys: string[], isValueRequired: boolean) =>
+// A stored value never comes back, so on edit its field starts empty and empty keeps it. Taken keys are read
+// when the form validates, as the lookup of the typed key answers after it was typed.
+const buildSchema = (getTakenKeys: () => ReadonlySet<string>, isValueRequired: boolean) =>
   z.object({
     key: z
       .string()
@@ -50,7 +53,7 @@ const buildSchema = (takenKeys: string[], isValueRequired: boolean) =>
       .max(VARIABLE_KEY_MAX_LENGTH, `A key can be at most ${VARIABLE_KEY_MAX_LENGTH} characters.`)
       .regex(VARIABLE_KEY_RE, VARIABLE_KEY_MESSAGE)
       .refine(
-        (key) => !takenKeys.includes(key),
+        (key) => !getTakenKeys().has(key),
         (key) => ({ message: `A variable named '${key}' already exists.` })
       ),
     value: z
@@ -73,7 +76,6 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   variable?: TAgentVaultVariable | null;
-  existingKeys: string[];
   /** A key to start a new variable from, as when it was named in a service before it existed. */
   initialKey?: string;
   onCreated?: (variable: TAgentVaultVariable) => void;
@@ -84,7 +86,6 @@ export const VariableFormDialog = ({
   isOpen,
   onOpenChange,
   variable,
-  existingKeys,
   initialKey,
   onCreated,
   onCloseAutoFocus
@@ -95,24 +96,36 @@ export const VariableFormDialog = ({
   const usedByCount = variable?.usedBy.length ?? 0;
   const [isValueVisible, setIsValueVisible] = useState(false);
 
-  const schema = useMemo(
-    () =>
-      buildSchema(
-        existingKeys.filter((key) => key !== variable?.key),
-        !variable
-      ),
-    [existingKeys, variable]
-  );
+  const takenKeysRef = useRef<ReadonlySet<string>>(new Set());
+  const schema = useMemo(() => buildSchema(() => takenKeysRef.current, !variable), [variable]);
 
   const {
     control,
     handleSubmit,
     reset,
     setFocus,
+    trigger,
+    getFieldState,
     formState: { isDirty, isSubmitting }
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
   const key = useWatch({ control, name: "key" });
+
+  // Checked against that one key, not a list, so it holds however many variables there are. The API refuses a
+  // duplicate that is saved before the answer comes back.
+  const [debouncedKey] = useDebounce(key ?? "", 300);
+  const lookupKey =
+    isOpen && VARIABLE_KEY_RE.test(debouncedKey) && debouncedKey !== variable?.key
+      ? debouncedKey
+      : null;
+  const { existing } = useAgentVaultVariableKeyStatus(lookupKey ? [lookupKey] : [], isOpen);
+  takenKeysRef.current = existing;
+  // Re-checked when the answer flags the key, and when a key that was flagged is changed, so the message comes
+  // and goes with the lookup rather than waiting for a submit.
+  useEffect(() => {
+    if (!lookupKey) return;
+    if (existing.has(lookupKey) || getFieldState("key").error) trigger("key");
+  }, [lookupKey, existing, trigger, getFieldState]);
   const isRenaming = Boolean(variable) && Boolean(key) && key !== variable?.key;
 
   useEffect(() => {

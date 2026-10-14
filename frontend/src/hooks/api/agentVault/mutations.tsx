@@ -412,11 +412,8 @@ export const useCreateAgentVaultVariable = () => {
       return data.variable;
     },
     onSuccess: (variable) => {
-      // Listed before the refetch lands, so a reference to it that was just inserted reads as known.
-      queryClient.setQueryData<TAgentVaultVariable[]>(
-        agentVaultKeys.allVariables(currentOrg.id),
-        (prev) => (prev ? [...prev, variable].sort((a, b) => a.key.localeCompare(b.key)) : prev)
-      );
+      // Known before the refetch lands, so a reference to it that was just inserted isn't flagged.
+      queryClient.setQueryData(agentVaultKeys.variableKeyStatus(currentOrg.id, variable.key), true);
       return invalidateVariables(queryClient, currentOrg.id);
     }
   });
