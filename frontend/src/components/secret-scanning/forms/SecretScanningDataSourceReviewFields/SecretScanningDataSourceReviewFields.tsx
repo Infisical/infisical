@@ -46,15 +46,19 @@ const getConnectionDetails = (
     case SecretScanningDataSource.Bitbucket:
       return [{ label: "Workspace", value: form.config.workspaceSlug }];
     case SecretScanningDataSource.GitLab:
-      return form.config?.scope === GitLabDataSourceScope.Group
-        ? [
-            { label: "Scope", value: "Group" },
-            { label: "Group", value: form.config.groupName }
-          ]
-        : [
-            { label: "Scope", value: "Project" },
-            { label: "Project", value: form.config?.projectName }
-          ];
+      if (form.config?.scope === GitLabDataSourceScope.Project) {
+        return [{ label: "Project", value: form.config.projectName }];
+      }
+
+      return [
+        {
+          label: "Group",
+          value:
+            form.config?.scope === GitLabDataSourceScope.Group
+              ? form.config.groupName
+              : "None (all accessible projects)"
+        }
+      ];
     default:
       throw new Error("Unhandled data source type");
   }

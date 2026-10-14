@@ -55,7 +55,7 @@ const getDefaultConfig = (type: SecretScanningDataSource) => {
     case SecretScanningDataSource.Bitbucket:
       return { workspaceSlug: "", includeRepos: [] };
     case SecretScanningDataSource.GitLab:
-      return { scope: GitLabDataSourceScope.Project };
+      return { scope: GitLabDataSourceScope.Account, includeProjects: [] };
     default:
       throw new Error(`Unhandled data source type: ${type}`);
   }
@@ -87,7 +87,7 @@ const CONNECTION_STEP_INFO: Record<SecretScanningDataSource, string> = {
   [SecretScanningDataSource.Bitbucket]:
     "The App Connection is how Secret Scanning reads your Bitbucket repositories, and the workspace tells it where to look. The connection cannot be changed after the data source is created.",
   [SecretScanningDataSource.GitLab]:
-    "The App Connection is how Secret Scanning reads your GitLab projects. Group scope relies on group-level webhooks, so it is the only scope that picks up projects added later. Connection and scope cannot be changed after the data source is created."
+    "The App Connection is how Secret Scanning reads your GitLab projects. Without a group, the data source covers every project the connection can read. GitLab only reports new projects through group webhooks, so a group is required to discover them. Connection and group cannot be changed after the data source is created."
 };
 
 const getSteps = (type: SecretScanningDataSource) => {

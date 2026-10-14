@@ -8,6 +8,7 @@ import {
   assertProviderRepositorySizeWithinLimit,
   cloneRepository,
   convertPatchLineToFileLineNumber,
+  isDataSourceWebhookRequired,
   replaceNonChangesWithNewlines,
   toFindingDetails
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
@@ -18,6 +19,7 @@ import {
   TSecretScanningFactoryInitialize,
   TSecretScanningFactoryListRawResources,
   TSecretScanningFactoryPostInitialization,
+  TSecretScanningFactorySetupWebhook,
   TSecretScanningFactoryTeardown,
   TSecretScanningFactoryValidateConfigUpdate
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
@@ -49,6 +51,8 @@ export const BitbucketSecretScanningFactory = () => {
     TBitbucketConnection,
     TBitbucketDataSourceCredentials
   > = async ({ connection, payload }, callback) => {
+    if (!isDataSourceWebhookRequired(payload)) return callback({});
+
     const cfg = getConfig();
 
     const { email, apiToken } = connection.credentials;
@@ -80,6 +84,8 @@ export const BitbucketSecretScanningFactory = () => {
     TBitbucketConnection,
     TBitbucketDataSourceCredentials
   > = async ({ dataSourceId, credentials, connection, payload }) => {
+    if (!credentials) return;
+
     const { email, apiToken } = connection.credentials;
     const { webhookId, webhookSecret } = credentials;
 
@@ -110,6 +116,8 @@ export const BitbucketSecretScanningFactory = () => {
     TBitbucketDataSourceWithConnection,
     TBitbucketDataSourceCredentials
   > = async ({ credentials, dataSource }) => {
+    if (!credentials) return;
+
     const {
       connection: {
         credentials: { email, apiToken }
@@ -325,6 +333,34 @@ export const BitbucketSecretScanningFactory = () => {
     }));
   };
 
+  const setupWebhook: TSecretScanningFactorySetupWebhook<
+    TBitbucketDataSourceWithConnection,
+    TBitbucketDataSourceCredentials
+  > = async ({ dataSource: { id, connection, config } }) => {
+    const { email, apiToken } = connection.credentials;
+    const authHeader = `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`;
+    const webhookSecret = alphaNumericNanoId(64);
+
+    const { data } = await request.post<{ uuid: string }>(
+      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${encodeURIComponent(config.workspaceSlug)}/hooks`,
+      {
+        description: "Infisical webhook for push events",
+        url: `${getConfig().SITE_URL}/secret-scanning/webhooks/bitbucket?dataSourceId=${id}`,
+        active: true,
+        events: ["repo:push"],
+        secret: webhookSecret
+      },
+      {
+        headers: {
+          Authorization: authHeader,
+          Accept: "application/json"
+        }
+      }
+    );
+
+    return { webhookId: data.uuid, webhookSecret };
+  };
+
   const validateConfigUpdate: TSecretScanningFactoryValidateConfigUpdate<
     TBitbucketDataSourceInput["config"],
     TBitbucketDataSourceWithConnection
@@ -340,6 +376,7 @@ export const BitbucketSecretScanningFactory = () => {
     getDiffScanResourcePayload,
     getDiffScanFindingsPayload,
     teardown,
+    setupWebhook,
     validateConfigUpdate
   };
 };

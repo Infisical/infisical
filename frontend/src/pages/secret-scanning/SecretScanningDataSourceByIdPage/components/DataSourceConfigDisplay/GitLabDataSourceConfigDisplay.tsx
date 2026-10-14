@@ -23,16 +23,15 @@ export const GitLabDataSourceConfigDisplay = ({ dataSource }: Props) => {
     );
   }
 
-  // group-scope
-
-  const { includeProjects, groupId, groupName } = config;
+  const { includeProjects } = config;
 
   return (
     <>
-      <GenericFieldLabel label="Scope" className="capitalize">
-        {config.scope}
+      <GenericFieldLabel label="Group">
+        {config.scope === GitLabDataSourceScope.Group
+          ? config.groupName || config.groupId
+          : "None (all accessible projects)"}
       </GenericFieldLabel>
-      <GenericFieldLabel label="Group">{groupName || groupId}</GenericFieldLabel>
       <GenericFieldLabel label="Scan Projects">
         {includeProjects.includes("*") ? "All" : includeProjects.join(", ")}
       </GenericFieldLabel>

@@ -4002,7 +4002,8 @@ export const SecretScanningDataSources = {
     GITLAB: {
       includeProjects:
         'The projects to include when scanning. Use ["*"] for all projects or an empty list for none. Defaults to all projects (["*"]).',
-      scope: "The GitLab scope scanning should occur at (project or group level).",
+      scope:
+        "The GitLab scope scanning should occur at: account (every project the connection can read), group, or project (deprecated, kept for existing Data Sources).",
       projectId: "The ID of the project to scan.",
       projectName: "The name of the project to scan.",
       groupId: "The ID of the group to scan projects from.",

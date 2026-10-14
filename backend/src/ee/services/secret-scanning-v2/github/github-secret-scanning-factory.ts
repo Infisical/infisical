@@ -21,6 +21,7 @@ import {
   TSecretScanningFactoryInitialize,
   TSecretScanningFactoryListRawResources,
   TSecretScanningFactoryPostInitialization,
+  TSecretScanningFactorySetupWebhook,
   TSecretScanningFactoryTeardown,
   TSecretScanningFactoryValidateConfigUpdate
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
@@ -67,6 +68,9 @@ export const GitHubSecretScanningFactory = () => {
   const teardown: TSecretScanningFactoryTeardown<TGitHubDataSourceWithConnection> = async () => {
     // no teardown required
   };
+
+  // Push events arrive through the GitHub App installation, so there is no webhook to create.
+  const setupWebhook: TSecretScanningFactorySetupWebhook<TGitHubDataSourceWithConnection> = async () => undefined;
 
   const validateConfigUpdate: TSecretScanningFactoryValidateConfigUpdate<
     TGitHubDataSourceInput["config"],
@@ -250,6 +254,7 @@ export const GitHubSecretScanningFactory = () => {
     getDiffScanResourcePayload,
     getDiffScanFindingsPayload,
     teardown,
+    setupWebhook,
     validateConfigUpdate
   };
 };

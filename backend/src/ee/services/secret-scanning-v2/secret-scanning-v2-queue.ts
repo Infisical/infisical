@@ -1,6 +1,11 @@
 import { join } from "path";
 
-import { ProjectMembershipRole, TSecretScanningFindings } from "@app/db/schemas";
+import {
+  ProjectMembershipRole,
+  TSecretScanningDataSources,
+  TSecretScanningFindings,
+  TSecretScanningResourcesInsert
+} from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import {
   createTempFolder,
@@ -1060,8 +1065,110 @@ export const secretScanningV2QueueServiceFactory = ({
     }
   });
 
+  const queueResourceFullScan = async ({
+    dataSourceId,
+    resourcePayload
+  }: {
+    dataSourceId: string;
+    resourcePayload: Pick<TSecretScanningResourcesInsert, "externalId" | "name">;
+  }) => {
+    try {
+      const scan = await secretScanningV2DAL.resources.transaction(async (tx) => {
+        const [resource] = await secretScanningV2DAL.resources.upsert(
+          [{ ...resourcePayload, dataSourceId }],
+          ["externalId", "dataSourceId"],
+          tx
+        );
+
+        return secretScanningV2DAL.scans.create(
+          { resourceId: resource.id, type: SecretScanningScanType.Historical },
+          tx
+        );
+      });
+
+      await queueService.queue(
+        QueueName.SecretScanningV2FullScan,
+        QueueJobs.SecretScanningV2FullScan,
+        { scanId: scan.id, resourceId: scan.resourceId, dataSourceId },
+        {
+          jobId: scan.id,
+          removeOnFail: true,
+          attempts: FULL_SCAN_ATTEMPTS,
+          backoff: { type: "fixed", delay: FULL_SCAN_RETRY_DELAY }
+        }
+      );
+    } catch (error) {
+      logger.error(
+        error,
+        `secretScanningV2Queue: Failed to queue full scan for discovered resource [dataSourceId=${dataSourceId}] [resourceExternalId=${resourcePayload.externalId}]`
+      );
+    }
+  };
+
+  // A push from a repository with no resource row means it was added after setup, so discovery decides
+  // whether it joins the data source. Pushes to known repositories are scanned only when new commits are.
+  const handleResourcePushEvent = async ({
+    dataSource,
+    dataSourceType,
+    payload
+  }: {
+    dataSource: Pick<
+      TSecretScanningDataSources,
+      "id" | "isDiscoveryEnabled" | "isScanNewCommitsEnabled" | "isHistoricalScanEnabled"
+    >;
+    dataSourceType: SecretScanningDataSource;
+    payload: TQueueSecretScanningResourceDiffScanPayload["payload"];
+  }) => {
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType]({
+      kmsService,
+      appConnectionDAL
+    });
+
+    const resourcePayload = factory.getDiffScanResourcePayload(payload);
+    const logDetails = `[dataSourceId=${dataSource.id}] [resourceExternalId=${resourcePayload.externalId}]`;
+
+    const existingResource = await secretScanningV2DAL.resources.findOne({
+      dataSourceId: dataSource.id,
+      externalId: resourcePayload.externalId
+    });
+
+    if (existingResource) {
+      if (!dataSource.isScanNewCommitsEnabled) {
+        logger.info(`secretScanningV2PushEvent: ignoring push, scanning new commits is disabled ${logDetails}`);
+        return;
+      }
+
+      await queueResourceDiffScan({ dataSourceType, payload, dataSourceId: dataSource.id });
+      return;
+    }
+
+    if (!dataSource.isDiscoveryEnabled) {
+      logger.info(
+        `secretScanningV2PushEvent: ignoring push from unknown resource, discovery is disabled ${logDetails}`
+      );
+      return;
+    }
+
+    // The historical scan covers the pushed commits too, so it replaces the diff scan.
+    if (dataSource.isHistoricalScanEnabled) {
+      await queueResourceFullScan({ dataSourceId: dataSource.id, resourcePayload });
+      return;
+    }
+
+    if (dataSource.isScanNewCommitsEnabled) {
+      await queueResourceDiffScan({ dataSourceType, payload, dataSourceId: dataSource.id });
+      return;
+    }
+
+    await secretScanningV2DAL.resources.upsert(
+      [{ ...resourcePayload, dataSourceId: dataSource.id }],
+      ["externalId", "dataSourceId"]
+    );
+  };
+
   return {
     queueDataSourceFullScan,
-    queueResourceDiffScan
+    queueResourceDiffScan,
+    handleResourcePushEvent
   };
 };

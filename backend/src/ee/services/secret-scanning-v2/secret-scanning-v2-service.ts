@@ -22,6 +22,7 @@ import { SECRET_SCANNING_FACTORY_MAP } from "@app/ee/services/secret-scanning-v2
 import {
   doesDataSourceIncludeResources,
   doesDataSourceSupportDiscovery,
+  isDataSourceWebhookRequired,
   listSecretScanningDataSourceOptions
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import {
@@ -443,11 +444,49 @@ export const secretScanningV2ServiceFactory = ({
       });
     }
 
+    const dataSourceWithConnection = { ...dataSource, connection } as TSecretScanningDataSourceWithConnection;
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: dataSource.projectId
+    });
+
+    const isWebhookRequired = isDataSourceWebhookRequired({
+      isDiscoveryEnabled: payload.isDiscoveryEnabled ?? dataSource.isDiscoveryEnabled,
+      isScanNewCommitsEnabled: payload.isScanNewCommitsEnabled ?? dataSource.isScanNewCommitsEnabled
+    });
+
+    // Stored credentials are what tells us a webhook exists, so they are added or cleared alongside it.
+    let createdCredentials: TSecretScanningDataSourceCredentials;
+    let encryptedCredentials: Buffer | null | undefined;
+
+    if (isWebhookRequired && !dataSource.encryptedCredentials) {
+      createdCredentials = await factory.setupWebhook({ dataSource: dataSourceWithConnection });
+
+      if (createdCredentials) {
+        encryptedCredentials = encryptor({ plainText: Buffer.from(JSON.stringify(createdCredentials)) }).cipherTextBlob;
+      }
+    } else if (!isWebhookRequired && dataSource.encryptedCredentials) {
+      await factory.teardown({
+        dataSource: dataSourceWithConnection,
+        credentials: JSON.parse(
+          decryptor({ cipherTextBlob: dataSource.encryptedCredentials }).toString()
+        ) as TSecretScanningDataSourceCredentials
+      });
+      encryptedCredentials = null;
+    }
+
     try {
-      const updatedDataSource = await secretScanningV2DAL.dataSources.updateById(dataSourceId, payload);
+      const updatedDataSource = await secretScanningV2DAL.dataSources.updateById(dataSourceId, {
+        ...payload,
+        ...(encryptedCredentials !== undefined && { encryptedCredentials })
+      });
 
       return updatedDataSource as TSecretScanningDataSource;
     } catch (err) {
+      if (createdCredentials) {
+        await factory.teardown({ dataSource: dataSourceWithConnection, credentials: createdCredentials });
+      }
+
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({
           message: `A Secret Scanning Data Source with the name "${payload.name}" already exists for the project with ID "${dataSource.projectId}"`

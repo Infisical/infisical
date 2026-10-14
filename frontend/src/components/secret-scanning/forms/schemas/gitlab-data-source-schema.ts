@@ -5,6 +5,10 @@ import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/git
 
 import { BaseSecretScanningDataSourceSchema } from "./base-secret-scanning-data-source-schema";
 
+const IncludeProjectsSchema = z
+  .array(z.string().min(1).max(256))
+  .max(100, "Cannot configure more than 100 projects");
+
 export const GitLabDataSourceSchema = z
   .object({
     type: z.literal(SecretScanningDataSource.GitLab),
@@ -13,9 +17,11 @@ export const GitLabDataSourceSchema = z
         scope: z.literal(GitLabDataSourceScope.Group),
         groupId: z.number(),
         groupName: z.string(),
-        includeProjects: z
-          .array(z.string().min(1).max(256))
-          .max(100, "Cannot configure more than 100 projects")
+        includeProjects: IncludeProjectsSchema
+      }),
+      z.object({
+        scope: z.literal(GitLabDataSourceScope.Account),
+        includeProjects: IncludeProjectsSchema
       }),
       z.object({
         scope: z.literal(GitLabDataSourceScope.Project),

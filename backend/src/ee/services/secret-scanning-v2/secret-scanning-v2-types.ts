@@ -215,12 +215,18 @@ export type TSecretScanningFactoryPostInitialization<
   P extends TSecretScanningDataSourceInput,
   T extends TSecretScanningDataSourceWithConnection["connection"] | undefined = undefined,
   C extends TSecretScanningDataSourceCredentials = undefined
-> = (params: { payload: P; connection: T; credentials: C; dataSourceId: string }) => Promise<void>;
+> = (params: { payload: P; connection: T; credentials?: C; dataSourceId: string }) => Promise<void>;
 
 export type TSecretScanningFactoryTeardown<
   T extends TSecretScanningDataSourceWithConnection,
   C extends TSecretScanningDataSourceCredentials = undefined
-> = (params: { dataSource: T; credentials: C }) => Promise<void>;
+> = (params: { dataSource: T; credentials?: C }) => Promise<void>;
+
+// Creates the push webhook for an existing data source; returns undefined when the provider or config has none.
+export type TSecretScanningFactorySetupWebhook<
+  T extends TSecretScanningDataSourceWithConnection,
+  C extends TSecretScanningDataSourceCredentials = undefined
+> = (params: { dataSource: T }) => Promise<C | undefined>;
 
 export type TSecretScanningFactoryParams = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
@@ -238,6 +244,7 @@ export type TSecretScanningFactory<
   initialize: TSecretScanningFactoryInitialize<I, T["connection"] | undefined, C>;
   postInitialization: TSecretScanningFactoryPostInitialization<I, T["connection"] | undefined, C>;
   teardown: TSecretScanningFactoryTeardown<T, C>;
+  setupWebhook: TSecretScanningFactorySetupWebhook<T, C>;
   validateConfigUpdate: TSecretScanningFactoryValidateConfigUpdate<I["config"], T>;
   getDiffScanResourcePayload: TSecretScanningFactoryGetDiffScanResourcePayload<P>;
   getDiffScanFindingsPayload: TSecretScanningFactoryGetDiffScanFindingsPayload<T, P>;
