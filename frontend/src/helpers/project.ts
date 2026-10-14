@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 
 import { apiRequest } from "@app/config/request";
+import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
+import { setSecretScanningActiveProjectCookie } from "@app/helpers/secretScanningActiveProject";
 import { createWorkspace } from "@app/hooks/api/projects/queries";
 import { Project, ProjectEnv, ProjectType } from "@app/hooks/api/projects/types";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
@@ -126,7 +128,6 @@ export const hasIntermediateProjectsView = (type: ProjectType) =>
 const PROJECT_TYPES_WITH_PROJECT_TEMPLATES = new Set<ProjectType>([
   ProjectType.SecretManager,
   ProjectType.KMS,
-  ProjectType.SecretScanning,
   ProjectType.PAM
 ]);
 
@@ -137,11 +138,25 @@ export const hasProjectTemplates = (type: ProjectType) =>
 // in the URL.
 const ORG_SCOPED_PRODUCT_TYPES = new Set<ProjectType>([
   ProjectType.CertificateManager,
+  ProjectType.SecretScanning,
   ProjectType.PAM,
   ProjectType.AgentVault
 ]);
 
 export const isOrgScopedProduct = (type: ProjectType) => ORG_SCOPED_PRODUCT_TYPES.has(type);
+
+// This does not include PAM and Agent Vault because they use different
+// components for each type of project. They don't reuse the shared components
+const PROJECTLESS_PRODUCT_NAMES: Partial<Record<ProjectType, string>> = {
+  [ProjectType.CertificateManager]: "Certificate Manager",
+  [ProjectType.SecretScanning]: "Secret Scanning"
+};
+
+export const hidesProjects = (type?: ProjectType) =>
+  Boolean(type && PROJECTLESS_PRODUCT_NAMES[type]);
+
+export const getProjectLabel = (type?: ProjectType) =>
+  (type && PROJECTLESS_PRODUCT_NAMES[type]) || "Project";
 
 const PRODUCTS_WITHOUT_ASSUME_PRIVILEGES = new Set<ProjectType>([ProjectType.AgentVault]);
 
@@ -149,11 +164,21 @@ export const supportsAssumePrivileges = (type: ProjectType) =>
   !PRODUCTS_WITHOUT_ASSUME_PRIVILEGES.has(type);
 
 const ORG_SCOPED_PRODUCT_PATH_RE =
-  /^\/organizations\/[^/]+\/(cert-manager|pam|agent-vault)(?:\/|$)/;
+  /^\/organizations\/[^/]+\/(cert-manager|secret-scanning|pam|agent-vault)(?:\/|$)/;
 
 export const getOrgScopedProductFromPath = (pathname: string): ProjectType | null => {
   const slug = pathname.match(ORG_SCOPED_PRODUCT_PATH_RE)?.[1];
   return slug ? urlSlugToProjectType(slug) : null;
+};
+
+// Certificate Manager and Secret Scanning URLs name no project, so a link into one specific project
+// (an earlier one, in legacy orgs that have several) pins it for their layout to open.
+export const pinProjectForNavigation = (orgId: string, project: Pick<Project, "id" | "type">) => {
+  if (project.type === ProjectType.CertificateManager) {
+    setCertManagerActiveProjectCookie(orgId, project.id);
+  } else if (project.type === ProjectType.SecretScanning) {
+    setSecretScanningActiveProjectCookie(orgId, project.id);
+  }
 };
 
 export const getProjectBaseURL = (type: ProjectType) => {
@@ -162,6 +187,8 @@ export const getProjectBaseURL = (type: ProjectType) => {
       return "/organizations/$orgId/projects/secret-management/$projectId";
     case ProjectType.CertificateManager:
       return "/organizations/$orgId/cert-manager" as const;
+    case ProjectType.SecretScanning:
+      return "/organizations/$orgId/secret-scanning" as const;
     case ProjectType.PAM:
       return "/organizations/$orgId/pam" as const;
     case ProjectType.AgentVault:
@@ -180,7 +207,7 @@ export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]
     case ProjectType.CertificateManager:
       return "/organizations/$orgId/cert-manager/overview" as const;
     case ProjectType.SecretScanning:
-      return `/organizations/$orgId/projects/${type}/$projectId/data-sources` as const;
+      return "/organizations/$orgId/secret-scanning/data-sources" as const;
     case ProjectType.PAM:
       return "/organizations/$orgId/pam/access" as const;
     case ProjectType.AgentVault:

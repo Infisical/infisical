@@ -147,10 +147,9 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
                 type="button"
                 onClick={() =>
                   navigate({
-                    to: "/organizations/$orgId/projects/secret-scanning/$projectId/findings",
+                    to: "/organizations/$orgId/secret-scanning/findings",
                     params: {
-                      orgId: currentOrg.id,
-                      projectId: dataSource.projectId
+                      orgId: currentOrg.id
                     },
                     search: {
                       search: name,

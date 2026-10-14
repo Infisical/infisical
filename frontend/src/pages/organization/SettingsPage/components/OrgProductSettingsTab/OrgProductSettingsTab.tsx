@@ -20,7 +20,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { OrgCertManagerTab } from "../OrgCertManagerTab";
 import { OrgSecretScanningTab } from "../OrgSecretScanningTab";
 
-const TEMPLATE_PRODUCTS = [ProjectType.KMS, ProjectType.SecretScanning, ProjectType.PAM];
+const TEMPLATE_PRODUCTS = [ProjectType.KMS, ProjectType.PAM];
 
 export const OrgProductSettingsTab = () => {
   const { currentOrg } = useOrganization();
