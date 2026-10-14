@@ -1,9 +1,23 @@
-import { type ComponentProps, useEffect, useRef, useSyncExternalStore } from "react";
+import { type ComponentProps, useEffect, useId, useRef, useSyncExternalStore } from "react";
 import { type DotLottie, DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 import { cn } from "../../utils";
 
-type LoaderVariant = "brand" | "inverse";
+const colorStyles = {
+  neutral: "text-neutral",
+  background: "text-background",
+  project: "text-project",
+  org: "text-org",
+  "sub-org": "text-sub-org",
+  success: "text-success",
+  info: "text-info",
+  warning: "text-warning",
+  pam: "text-product-pam",
+  av: "text-product-av",
+  product: "product-color text-(--product-color-resolved)"
+};
+
+type LoaderVariant = "brand" | "inverse" | keyof typeof colorStyles;
 
 type LoaderSize = "xs" | "sm" | "md" | "lg";
 
@@ -13,7 +27,7 @@ type LoaderProps = Omit<ComponentProps<"div">, "children"> & {
   variant?: LoaderVariant;
 };
 
-const animationSources: Record<LoaderVariant, string> = {
+const animationSources = {
   brand: "/lotties/infisical_loading.json",
   inverse: "/lotties/infisical_loading_bw.json"
 };
@@ -38,8 +52,11 @@ function Loader({
   label = "Loading",
   size = "md",
   variant = "brand",
+  style,
   ...props
 }: LoaderProps) {
+  const filterId = useId();
+  const isTokenColor = variant !== "brand" && variant !== "inverse";
   const prefersReducedMotion = useSyncExternalStore(
     subscribeToReducedMotion,
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -60,9 +77,20 @@ function Loader({
       role="status"
       aria-label={label}
       data-slot="loader"
-      className={cn(sizeStyles[size], className)}
+      className={cn(sizeStyles[size], isTokenColor && colorStyles[variant], className)}
+      style={isTokenColor ? { filter: `url("#${filterId}")`, ...style } : style}
       {...props}
     >
+      {isTokenColor && (
+        <svg aria-hidden="true" className="pointer-events-none absolute h-0 w-0">
+          <defs>
+            <filter id={filterId} colorInterpolationFilters="sRGB">
+              <feFlood floodColor="currentColor" />
+              <feComposite in2="SourceAlpha" operator="in" />
+            </filter>
+          </defs>
+        </svg>
+      )}
       {/* The reduced-motion state intentionally stops at the fully drawn first frame,
           preserving the loading indicator without continuous animation. */}
       <DotLottieReact
@@ -72,7 +100,7 @@ function Loader({
             animation?.stop();
           }
         }}
-        src={animationSources[variant]}
+        src={animationSources[isTokenColor ? "brand" : variant]}
         loop
         autoplay={!prefersReducedMotion}
         className="h-full w-full"
