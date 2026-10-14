@@ -127,7 +127,7 @@ type ContentProps = {
   initialStep?: "upload" | "paste";
   initialSelectedEnvironments?: { name: string; slug: string }[];
   onComplete?: (envSlugs: string[]) => void;
-  onClose: () => void;
+  onClose: () => boolean;
   onLockChange?: (isLocked: boolean) => void;
   onImportSourceChange: (source: "paste" | "drop" | "upload") => void;
 };
@@ -764,9 +764,9 @@ const ImportSecretsContent = ({
         folderResponseCountBucket: overviewCountBucket(folderResponseCount),
         folderFailureCountBucket: overviewCountBucket(folderFailureCount)
       });
-      onClose();
+      const closedCurrentInvocation = onClose();
       const completedEnvSlugs = [...successEnvSlugs, ...approvalEnvSlugs, ...partialEnvSlugs];
-      if (completedEnvSlugs.length) {
+      if (completedEnvSlugs.length && closedCurrentInvocation) {
         onComplete?.(completedEnvSlugs);
       }
     } catch (err) {
@@ -1282,6 +1282,11 @@ export const ImportSecretsSheet = ({
   const sourceRef = useRef<"paste" | "drop" | "upload">(
     overviewImportSource(initialStep ?? "upload", Boolean(initialFile))
   );
+  const [importSource, setImportSource] = useState(sourceRef.current);
+  const owner = useRef({ isOpen, telemetry, invocation: {} });
+  if (owner.current.isOpen !== isOpen || owner.current.telemetry !== telemetry)
+    owner.current = { isOpen, telemetry, invocation: {} };
+  const { invocation } = owner.current;
   const handleImportSourceChange = useCallback(
     (source: "paste" | "drop" | "upload") => {
       if (sourceRef.current !== source && isOpen) {
@@ -1291,24 +1296,35 @@ export const ImportSecretsSheet = ({
           source: sourceRef.current,
           phase: "canceled"
         });
+        owner.current.invocation = {};
       }
       sourceRef.current = source;
+      setImportSource(source);
       if (isOpen)
         telemetry.flow({ action: "import", resourceType: "mixed", source, phase: "opened" });
     },
     [isOpen, telemetry]
   );
   const [isLocked, setIsLocked] = useState(false);
+  const handleLockChange = useCallback(
+    (locked: boolean) => {
+      if (owner.current.invocation === invocation) setIsLocked(locked);
+    },
+    [invocation]
+  );
   // Covers the close button, Escape and outside clicks while a nested upload is running
   const closeSheet = (open: boolean) => {
+    if (owner.current.invocation !== invocation) return false;
     if (!open)
       telemetry.flow({
         action: "import",
         resourceType: "mixed",
-        source: sourceRef.current,
+        source: importSource,
         phase: "canceled"
       });
     onOpenChange(open);
+    if (!open) owner.current.invocation = {};
+    return true;
   };
   const handleOpenChange = (open: boolean) => {
     if (!open && isLocked) return;
@@ -1328,7 +1344,7 @@ export const ImportSecretsSheet = ({
           initialSelectedEnvironments={initialSelectedEnvironments}
           onComplete={onComplete}
           onClose={() => closeSheet(false)}
-          onLockChange={setIsLocked}
+          onLockChange={handleLockChange}
           onImportSourceChange={handleImportSourceChange}
         />
       </SheetContent>

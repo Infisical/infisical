@@ -32,6 +32,7 @@ type OverviewFlowLifecycle = { status: "open" | "submitted" | "completed" | "clo
 export type OverviewFlowState = Map<string, OverviewFlowLifecycle>;
 export type OverviewFlowHandle = {
   flow: (properties: Omit<OverviewFlowProperties, "action" | "resourceType" | "source">) => void;
+  isCurrent: () => boolean;
 };
 
 export const overviewImportSource = (
@@ -91,9 +92,13 @@ export const createOverviewTelemetry = (
     });
   },
   openFlow(properties: Omit<OverviewFlowProperties, "phase">): OverviewFlowHandle {
+    const key = `${properties.action}:${properties.resourceType}:${properties.source}`;
     const state: OverviewFlowLifecycle = { status: "closed" };
     this.flow({ ...properties, phase: "opened" }, state);
-    return { flow: (progress) => this.flow({ ...properties, ...progress }, state) };
+    return {
+      flow: (progress) => this.flow({ ...properties, ...progress }, state),
+      isCurrent: () => flows.get(key) === state
+    };
   },
   startFlow(properties: Omit<OverviewFlowProperties, "phase">): OverviewFlowHandle {
     const key = `${properties.action}:${properties.resourceType}:${properties.source}`;
@@ -101,7 +106,10 @@ export const createOverviewTelemetry = (
     const state: OverviewFlowLifecycle =
       current?.status === "open" ? current : { status: "submitted" };
     this.flow({ ...properties, phase: "submitted" }, state);
-    return { flow: (progress) => this.flow({ ...properties, ...progress }, state) };
+    return {
+      flow: (progress) => this.flow({ ...properties, ...progress }, state),
+      isCurrent: () => flows.get(key) === state
+    };
   },
   cancelOpenFlows() {
     flows.forEach((state, key) => {
@@ -113,6 +121,7 @@ export const createOverviewTelemetry = (
       ];
       this.flow({ action, resourceType, source, phase: "canceled" }, state);
     });
+    flows.clear();
   }
 });
 
@@ -140,8 +149,8 @@ export const observeOverviewRequest = async <T,>(
 const OverviewTelemetryContext = createContext<ReturnType<typeof createOverviewTelemetry>>({
   interaction: () => {},
   flow: () => {},
-  openFlow: () => ({ flow: () => {} }),
-  startFlow: () => ({ flow: () => {} }),
+  openFlow: () => ({ flow: () => {}, isCurrent: () => true }),
+  startFlow: () => ({ flow: () => {}, isCurrent: () => true }),
   cancelOpenFlows: () => {}
 });
 

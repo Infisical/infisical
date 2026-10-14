@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowDownIcon,
   ArrowRightIcon,
@@ -57,6 +57,7 @@ import { useDuplicateSecret } from "@app/hooks/api/secrets";
 
 import {
   overviewCountBucket,
+  OverviewFlowHandle,
   overviewResponsePhase,
   useOverviewTelemetry
 } from "../../OverviewTelemetry";
@@ -124,6 +125,7 @@ const CopySecretsSession = ({
   onCompleted
 }: Props & { invocation: CopySecretsInvocation }) => {
   const telemetry = useOverviewTelemetry();
+  const sessionFlow = useRef<OverviewFlowHandle>();
   const flow = {
     action: "copy" as const,
     resourceType: "mixed" as const,
@@ -131,11 +133,17 @@ const CopySecretsSession = ({
     destination: "environment" as const
   };
   useEffect(() => {
-    telemetry.flow({ ...flow, phase: "opened" });
+    sessionFlow.current = telemetry.openFlow(flow);
+    return () => {
+      sessionFlow.current?.flow({ phase: "canceled" });
+      sessionFlow.current = undefined;
+    };
   }, [telemetry, invocation.origin]);
-  const closeSheet = (open: boolean) => {
-    if (!open) telemetry.flow({ ...flow, phase: "canceled" });
+  const closeSheet = (open: boolean, owner = sessionFlow.current) => {
+    if (!owner || owner !== sessionFlow.current) return;
+    if (!open) owner.flow({ phase: "canceled" });
     onOpenChange(open);
+    if (!open) sessionFlow.current = undefined;
   };
   const initialState = getInitialCopyState(invocation, environments);
   const [sourceEnvironmentSlug, setSourceEnvironmentSlug] = useState(
@@ -385,6 +393,7 @@ const CopySecretsSession = ({
     shouldOverwrite: boolean;
     skippedSecretIds?: string[];
   }) => {
+    const owner = sessionFlow.current;
     setIsSubmitting(true);
     const attempt = telemetry.startFlow({
       ...flow,
@@ -483,8 +492,10 @@ const CopySecretsSession = ({
             : "success",
         text: notificationText
       });
-      onCompleted?.(copiedSecretIds);
-      closeSheet(false);
+      if (owner === sessionFlow.current && attempt.isCurrent()) {
+        onCompleted?.(copiedSecretIds);
+        closeSheet(false, owner);
+      }
     } catch {
       attempt.flow({
         ...flow,

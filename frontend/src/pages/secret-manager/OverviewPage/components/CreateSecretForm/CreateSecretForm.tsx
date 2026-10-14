@@ -173,6 +173,15 @@ export const CreateSecretForm = ({
   onUploadSecrets
 }: Props) => {
   const overviewTelemetry = useOverviewTelemetry();
+  const formOwner = useRef({ telemetry: overviewTelemetry, invocation: {} });
+  if (formOwner.current.telemetry !== overviewTelemetry)
+    formOwner.current = { telemetry: overviewTelemetry, invocation: {} };
+  useEffect(
+    () => () => {
+      formOwner.current.invocation = {};
+    },
+    []
+  );
   const { currentProject, projectId } = useProject();
   const { permission } = useProjectPermission();
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
@@ -300,6 +309,7 @@ export const CreateSecretForm = ({
   }, [hasEditChanges, onEditDirtyChange]);
 
   const handleFormSubmit = async ({ environments: selectedEnv, secrets }: TFormSchema) => {
+    const { invocation } = formOwner.current;
     if (editSecret) {
       if (isEditReadOnly || !hasEditChanges) return;
       const secret = secrets[0];
@@ -470,7 +480,11 @@ export const CreateSecretForm = ({
       console.warn("failed to create secrets");
     }
 
-    if (allRequestsSucceeded) {
+    if (
+      allRequestsSucceeded &&
+      attempt.isCurrent() &&
+      formOwner.current.invocation === invocation
+    ) {
       onClose();
       reset();
     }
@@ -1066,6 +1080,7 @@ export const CreateSecretForm = ({
         <div className="ml-auto flex gap-2">
           <Button
             onClick={() => {
+              formOwner.current.invocation = {};
               if (!editSecret)
                 overviewTelemetry.flow({
                   action: "create",

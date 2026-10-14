@@ -1349,8 +1349,23 @@ const OverviewPageContent = () => {
     }),
     []
   );
+  const popupOwners = useRef<{
+    scope: OverviewFlowState;
+    current: Partial<Record<keyof typeof popUp, object>>;
+  }>({ scope: telemetryFlows, current: {} });
+  if (popupOwners.current.scope !== telemetryFlows)
+    popupOwners.current = { scope: telemetryFlows, current: {} };
+  const popupOwnership = useMemo(
+    () => ({ ...popupOwners.current.current }),
+    [popUp, telemetryFlows]
+  );
+  const isPopupCurrent = useCallback(
+    (name: keyof typeof popUp) => popupOwners.current.current[name] === popupOwnership[name],
+    [popupOwnership]
+  );
   const handlePopUpOpen: typeof openPopUp = useCallback(
     (name, data) => {
+      popupOwners.current.current[name] = {};
       const flow = popupFlows[name];
       if (flow) overviewTelemetry.flow({ ...flow, phase: "opened" });
       openPopUp(name, data);
@@ -1359,15 +1374,22 @@ const OverviewPageContent = () => {
   );
   const handlePopUpClose: typeof closePopUp = useCallback(
     (name) => {
+      if (!isPopupCurrent(name)) return;
       const flow = popupFlows[name];
       if (flow) overviewTelemetry.flow({ ...flow, phase: "canceled" });
       closePopUp(name);
+      delete popupOwners.current.current[name];
     },
-    [popupFlows, overviewTelemetry, closePopUp]
+    [popupFlows, overviewTelemetry, closePopUp, isPopupCurrent]
   );
   const handlePopUpToggle: typeof togglePopUp = (name, isOpen) => {
     const flow = popupFlows[name];
     const opening = isOpen ?? !popUp[name].isOpen;
+    if (!opening) {
+      handlePopUpClose(name);
+      return;
+    }
+    if (!popUp[name].isOpen) popupOwners.current.current[name] = {};
     if (flow) overviewTelemetry.flow({ ...flow, phase: opening ? "opened" : "canceled" });
     togglePopUp(name, isOpen);
   };
@@ -1887,7 +1909,7 @@ const OverviewPageContent = () => {
         text: "Failed to delete folder"
       });
     } finally {
-      closePopUp("deleteFolder");
+      handlePopUpClose("deleteFolder");
     }
   };
 
@@ -4677,12 +4699,16 @@ const OverviewPageContent = () => {
         canCreateFoldersAt={canCreateFoldersAt}
         onCompleted={handleCopySecretsCompleted}
         onOpenChange={(isOpen) => {
-          if (!isOpen) setCopySecretsInvocation(null);
+          if (!isOpen)
+            setCopySecretsInvocation((current) =>
+              current === copySecretsInvocation ? null : current
+            );
         }}
       />
       <ImportSecretsSheet
         isOpen={popUp.importSecrets.isOpen}
         onOpenChange={(isOpen) => {
+          if (!isPopupCurrent("importSecrets")) return;
           handlePopUpToggle("importSecrets", isOpen);
           if (!isOpen) {
             setImportParsedSecrets(null);
