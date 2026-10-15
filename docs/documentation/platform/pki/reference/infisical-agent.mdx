@@ -388,11 +388,10 @@ certificates:
         permission: "0644"
 ```
 
-Point the server's certificate setting at the combined file and its key setting at the private key. In NGINX, these are `ssl_certificate` and `ssl_certificate_key`. Add [post-event hooks](#post-event-hooks) to reload the server after issuance and renewal.
-
-The root CA is left out of the file by default. Set `file-output.chain.omit-root: false` to include it.
-
-On restart, the agent compares the file with the current certificate and chain. It rewrites the file and runs `on-issuance` only when they differ. This happens after the option is turned on for an existing leaf-only file.
+- Point the server's certificate setting at the combined file and its key setting at the private key (`ssl_certificate` and `ssl_certificate_key` in NGINX)
+- Reload the server after issuance and renewal with [post-event hooks](#post-event-hooks)
+- The root CA is left out of the file by default (set `file-output.chain.omit-root: false` to include it)
+- On restart, the agent rewrites the file and runs `on-issuance` only when the file differs from the current certificate and chain (for example, after the option is turned on for an existing leaf-only file)
 
 ### Tracking an existing certificate
 
