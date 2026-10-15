@@ -82,6 +82,7 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { SecretApprovalRequestOrderBy } from "@app/hooks/api/secretApprovalRequest/types";
 import { ApprovalStatus } from "@app/hooks/api/types";
+import { formatReservedPaths, parsePathFromReplicatedPath } from "@app/lib/fn/string";
 
 import {
   generateCommitText,
@@ -90,7 +91,6 @@ import {
 
 enum ChangeRequestOrderBy {
   Environment = SecretApprovalRequestOrderBy.Environment,
-  SecretPath = SecretApprovalRequestOrderBy.SecretPath,
   Author = SecretApprovalRequestOrderBy.Author,
   OpenedAt = SecretApprovalRequestOrderBy.CreatedAt
 }
@@ -387,17 +387,7 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
                       className={getSortIconClassName(ChangeRequestOrderBy.Environment)}
                     />
                   </TableHead>
-                  <TableHead
-                    sortDirection={getSortDirection(ChangeRequestOrderBy.SecretPath)}
-                    onSortChange={(direction) =>
-                      handleSort(ChangeRequestOrderBy.SecretPath, direction)
-                    }
-                  >
-                    Secret Path
-                    <ChevronDownIcon
-                      className={getSortIconClassName(ChangeRequestOrderBy.SecretPath)}
-                    />
-                  </TableHead>
+                  <TableHead>Secret Path</TableHead>
                   <TableHead
                     sortDirection={getSortDirection(ChangeRequestOrderBy.Author)}
                     onSortChange={(direction) => handleSort(ChangeRequestOrderBy.Author, direction)}
@@ -464,6 +454,7 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
                     updatedAt,
                     policy,
                     environment,
+                    secretPath,
                     isReplicated
                   } = secretApproval;
 
@@ -477,6 +468,9 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
                     !reviewers.find(({ userId }) => userId === userSession.id);
 
                   const environmentDisplayName = environmentNamesBySlug[environment] ?? environment;
+                  const secretPathDisplay = isReplicated
+                    ? parsePathFromReplicatedPath(secretPath)
+                    : formatReservedPaths(secretPath);
                   const committerName = committerUser
                     ? [committerUser.firstName, committerUser.lastName].filter(Boolean).join(" ") ||
                       committerUser.email
@@ -538,7 +532,7 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
                     >
                       <TableCell>{generateCommitText(commits, isReplicated, true)}</TableCell>
                       <TableCell title={environmentDisplayName}>{environmentDisplayName}</TableCell>
-                      <TableCell title={policy.secretPath}>{policy.secretPath}</TableCell>
+                      <TableCell title={secretPathDisplay}>{secretPathDisplay}</TableCell>
                       <TableCell>
                         {committerUser || committerIdentity ? (
                           <div className="flex items-center gap-2">

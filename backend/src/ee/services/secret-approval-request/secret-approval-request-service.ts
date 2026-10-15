@@ -316,6 +316,19 @@ export const secretApprovalRequestServiceFactory = ({
     // Otherwise, filter to only show requests where they are committer or approver
     const userIdFilter = canReadAllApprovalRequests ? undefined : actorId;
 
+    const withFolderPaths = async <T extends { folderId: string }>(page: { approvals: T[]; totalCount: number }) => {
+      const folderIds = [...new Set(page.approvals.map(({ folderId }) => folderId))];
+      const folders = folderIds.length ? await folderDAL.findSecretPathByFolderIds(projectId, folderIds) : [];
+      const pathByFolderId = new Map(folderIds.map((folderId, i) => [folderId, folders[i]?.path ?? "/"]));
+      return {
+        ...page,
+        approvals: page.approvals.map((approval) => ({
+          ...approval,
+          secretPath: pathByFolderId.get(approval.folderId) ?? "/"
+        }))
+      };
+    };
+
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
     if (shouldUseSecretV2Bridge) {
@@ -338,27 +351,31 @@ export const secretApprovalRequestServiceFactory = ({
         secretChangeGlobalRequestBridgeService.listSecretChangeRequests(headOfList)
       ]);
       type TListedRequest = (typeof legacyRequests)["approvals"][number] | TSecretChangeRequestListItem;
-      return mergeSecretApprovalRequestPages<TListedRequest>({
-        pages: [legacyRequests, secretChangeRequests],
-        offset,
-        limit,
-        orderBy,
-        orderDirection
-      });
+      return withFolderPaths(
+        mergeSecretApprovalRequestPages<TListedRequest>({
+          pages: [legacyRequests, secretChangeRequests],
+          offset,
+          limit,
+          orderBy,
+          orderDirection
+        })
+      );
     }
 
-    return secretApprovalRequestDAL.findByProjectId({
-      projectId,
-      committer,
-      environment,
-      status,
-      userId: userIdFilter,
-      limit,
-      offset,
-      search,
-      orderBy,
-      orderDirection
-    });
+    return withFolderPaths(
+      await secretApprovalRequestDAL.findByProjectId({
+        projectId,
+        committer,
+        environment,
+        status,
+        userId: userIdFilter,
+        limit,
+        offset,
+        search,
+        orderBy,
+        orderDirection
+      })
+    );
   };
 
   const getSecretApprovalDetails = async (dto: TSecretApprovalDetailsDTO) => {

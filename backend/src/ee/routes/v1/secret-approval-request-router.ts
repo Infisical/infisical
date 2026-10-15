@@ -48,7 +48,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       response: {
         200: z.object({
           approvals: SecretApprovalRequestsSchema.extend({
-            // secretPath: z.string(),
+            secretPath: z.string(),
             policyId: z.string().uuid().nullable(),
             policy: z.object({
               id: z.string(),
