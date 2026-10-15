@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, no-template-curly-in-string */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // `vi.mock` factories are hoisted above imports — the spies they reference must come from `vi.hoisted`.
@@ -22,14 +22,13 @@ vi.mock("@app/lib/gateway-v2/gateway-v2", () => ({ withGatewayV2Proxy: vi.fn() }
 vi.mock("@app/ee/services/dynamic-secret/dynamic-secret-fns", () => ({
   verifyHostInputValidity: vi.fn(async () => ["host"])
 }));
-vi.mock("@app/lib/delay", () => ({ delay: vi.fn(async () => {}) }));
 // Without a key schema every variable on the stack counts as managed by the sync
 vi.mock("@app/services/secret-sync/secret-sync-fns", () => ({
   matchesSchema: (_key: string, _environment: string, schema?: string) => !schema
 }));
 
 /* eslint-disable import/first */
-import { PortainerStackStatus, PortainerStackType } from "@app/services/app-connection/portainer";
+import { PortainerStackType } from "@app/services/app-connection/portainer";
 
 import { SecretSyncError } from "../secret-sync-errors";
 import {
@@ -64,7 +63,6 @@ const fileStack = (overrides: Record<string, unknown> = {}) => ({
   Name: "web",
   Type: PortainerStackType.Compose,
   EndpointId: 1,
-  Status: PortainerStackStatus.Active,
   Env: [{ name: "A", value: "1" }],
   Option: { Prune: true },
   ...overrides
@@ -79,7 +77,8 @@ const gitStack = (overrides: Record<string, unknown> = {}) =>
     ...overrides
   });
 
-// Resolves each request by HTTP method and path; later entries for the same key answer later calls
+// Resolves each request by HTTP method and path; later entries for the same key answer later calls,
+// and an Error entry is thrown instead of returned
 const respondWith = (responses: Record<string, unknown[]>) => {
   const remaining = Object.fromEntries(Object.entries(responses).map(([key, values]) => [key, [...values]]));
 
@@ -88,9 +87,18 @@ const respondWith = (responses: Record<string, unknown[]>) => {
     const queue = remaining[key];
     if (!queue?.length) throw new Error(`Unexpected request ${key}`);
 
-    return { data: queue.length > 1 ? queue.shift() : queue[0] };
+    const next = queue.length > 1 ? queue.shift() : queue[0];
+    if (next instanceof Error) throw next;
+
+    return { data: next };
   });
 };
+
+const portainerError = (status: number, message: string, details: string) =>
+  Object.assign(new Error(`Request failed with status code ${status}`), {
+    isAxiosError: true,
+    response: { status, data: { message, details } }
+  });
 
 type TRequestConfig = { method: string; url: string; params?: Record<string, string>; data?: unknown };
 
@@ -121,17 +129,33 @@ describe("encodePortainerEnvValue / decodePortainerEnvValue", () => {
     expect(encodePortainerEnvValue("abc #def", PortainerStackType.Compose)).toBe('"abc #def"');
   });
 
+  it("doubles every dollar sign for a Compose stack so Compose does not expand it", () => {
+    expect(encodePortainerEnvValue("pa$word", PortainerStackType.Compose)).toBe("pa$$word");
+    expect(encodePortainerEnvValue("${HOME}/bin", PortainerStackType.Compose)).toBe("$${HOME}/bin");
+    expect(encodePortainerEnvValue("cost: $5\n", PortainerStackType.Compose)).toBe('"cost: $$5\\n"');
+    expect(encodePortainerEnvValue("pa$word", PortainerStackType.Swarm)).toBe("pa$word");
+
+    for (const value of ["pa$word", "${HOME}/bin", "cost: $5\n", "$", "$$", "a\\$b"]) {
+      const encoded = encodePortainerEnvValue(value, PortainerStackType.Compose);
+
+      expect(decodePortainerEnvValue(encoded, PortainerStackType.Compose)).toBe(value);
+    }
+  });
+
   it("leaves single-line values and Swarm stacks untouched", () => {
     expect(encodePortainerEnvValue("plain", PortainerStackType.Compose)).toBe("plain");
     expect(encodePortainerEnvValue("no#space", PortainerStackType.Compose)).toBe("no#space");
     expect(encodePortainerEnvValue("abc #def", PortainerStackType.Swarm)).toBe("abc #def");
     expect(encodePortainerEnvValue("line1\nline2", PortainerStackType.Swarm)).toBe("line1\nline2");
     expect(decodePortainerEnvValue('"line1\\nline2"', PortainerStackType.Swarm)).toBe('"line1\\nline2"');
+    expect(decodePortainerEnvValue("pa$$word", PortainerStackType.Swarm)).toBe("pa$$word");
   });
 
-  it("does not unwrap a single-line value a user quoted by hand", () => {
+  it("does not unwrap a value a user quoted by hand or a reference a user wrote on purpose", () => {
     expect(decodePortainerEnvValue('"hello"', PortainerStackType.Compose)).toBe('"hello"');
     expect(decodePortainerEnvValue('"C:\\\\new"', PortainerStackType.Compose)).toBe('"C:\\\\new"');
+    expect(decodePortainerEnvValue("$HOME/bin", PortainerStackType.Compose)).toBe("$HOME/bin");
+    expect(decodePortainerEnvValue("pa$$word", PortainerStackType.Compose)).toBe("pa$word");
   });
 });
 
@@ -182,7 +206,8 @@ describe("buildPortainerGitUpdatePayload", () => {
         Authentication: { Username: "deploy" }
       },
       AutoUpdate: { Interval: "", Webhook: "" },
-      Option: null
+      Option: null,
+      Registries: [1, 2]
     });
 
     expect(buildPortainerGitUpdatePayload(stack as any, [])).toEqual({
@@ -190,10 +215,33 @@ describe("buildPortainerGitUpdatePayload", () => {
       prune: false,
       repositoryReferenceName: "refs/heads/main",
       autoUpdate: null,
+      registries: [1, 2],
       repositoryAuthentication: true,
       repositoryUsername: "deploy",
       tlsSkipVerify: true
     });
+  });
+
+  it("echoes a saved credential's ID and authorization type so Portainer keeps cloning with it", () => {
+    const stack = gitStack({
+      WorkflowID: undefined,
+      GitSourceId: undefined,
+      GitConfig: {
+        URL: "https://git.example.com/repo.git",
+        Authentication: { Username: "", GitCredentialID: 2, AuthorizationType: 1 }
+      }
+    });
+
+    const payload = buildPortainerGitUpdatePayload(stack as any, []);
+
+    expect(payload).toMatchObject({
+      repositoryAuthentication: true,
+      repositoryUsername: "",
+      repositoryGitCredentialID: 2,
+      repositoryAuthorizationType: 1
+    });
+    expect(payload).not.toHaveProperty("repositoryProvider");
+    expect(payload).not.toHaveProperty("registries");
   });
 });
 
@@ -224,13 +272,9 @@ describe("PortainerSyncFns", () => {
     expect(requestsMade()).toEqual(["GET /api/stacks/4"]);
   });
 
-  it("resubmits the compose file with the merged variables and waits for the redeploy to finish", async () => {
+  it("resubmits the compose file with the merged variables and the stack's Business Edition settings", async () => {
     respondWith({
-      "GET /api/stacks/4": [
-        fileStack(),
-        fileStack({ Status: PortainerStackStatus.Deploying }),
-        fileStack({ Status: PortainerStackStatus.Active })
-      ],
+      "GET /api/stacks/4": [fileStack({ Registries: [3], Webhook: "6f0c1c3e-0d3a-4b0e-9d5e-1c2b3a4d5e6f" })],
       "GET /api/stacks/4/file": [{ StackFileContent: "services: {}" }],
       "PUT /api/stacks/4": [{}]
     });
@@ -242,29 +286,22 @@ describe("PortainerSyncFns", () => {
       gatewayPoolService
     );
 
-    expect(requestsMade()).toEqual([
-      "GET /api/stacks/4",
-      "GET /api/stacks/4/file",
-      "PUT /api/stacks/4?endpointId=1",
-      "GET /api/stacks/4",
-      "GET /api/stacks/4"
-    ]);
+    expect(requestsMade()).toEqual(["GET /api/stacks/4", "GET /api/stacks/4/file", "PUT /api/stacks/4?endpointId=1"]);
 
     const putConfig = requestConfigs().find((config) => config.method === "PUT");
     // A is managed by the sync (no key schema) and absent from the source, so it is dropped
     expect(putConfig?.data).toEqual({
       env: [{ name: "B", value: '"x\\ny"' }],
       stackFileContent: "services: {}",
-      prune: true
+      prune: true,
+      registries: [3],
+      webhook: "6f0c1c3e-0d3a-4b0e-9d5e-1c2b3a4d5e6f"
     });
   });
 
   it("keeps a stack variable named like an inherited object property when deletion is disabled", async () => {
     respondWith({
-      "GET /api/stacks/4": [
-        fileStack({ Env: [{ name: "constructor", value: "keep" }] }),
-        fileStack({ Status: PortainerStackStatus.Active })
-      ],
+      "GET /api/stacks/4": [fileStack({ Env: [{ name: "constructor", value: "keep" }] })],
       "GET /api/stacks/4/file": [{ StackFileContent: "services: {}" }],
       "PUT /api/stacks/4": [{}]
     });
@@ -277,30 +314,31 @@ describe("PortainerSyncFns", () => {
     );
 
     const putConfig = requestConfigs().find((config) => config.method === "PUT");
-    expect(putConfig?.data).toMatchObject({
+    // A Community Edition stack has no registries or webhook, so neither is sent
+    expect(putConfig?.data).toEqual({
       env: [
         { name: "constructor", value: "keep" },
         { name: "A", value: "1" }
-      ]
+      ],
+      stackFileContent: "services: {}",
+      prune: true
     });
   });
 
-  it("fails the sync when Portainer reports the redeploy failed", async () => {
+  it("fails with Portainer's reason when the stack is still being deployed and lets the sync retry", async () => {
     respondWith({
-      "GET /api/stacks/4": [
-        fileStack(),
-        fileStack({
-          Status: PortainerStackStatus.Error,
-          DeploymentStatus: [{ Status: PortainerStackStatus.Error, Time: 1, Message: "image pull failed" }]
-        })
-      ],
+      "GET /api/stacks/4": [fileStack()],
       "GET /api/stacks/4/file": [{ StackFileContent: "services: {}" }],
-      "PUT /api/stacks/4": [{}]
+      "PUT /api/stacks/4": [portainerError(409, "Unable to update stack", "Stack deployment is already in progress")]
     });
 
     await expect(
       PortainerSyncFns.syncSecrets(secretSync, payloadOf({ A: "2" }) as any, gatewayV2Service, gatewayPoolService)
-    ).rejects.toMatchObject({ message: expect.stringContaining("image pull failed"), shouldRetry: false });
+    ).rejects.toMatchObject({
+      name: "SecretSyncError",
+      message: expect.stringContaining("Stack deployment is already in progress"),
+      shouldRetry: true
+    });
   });
 
   it("updates a Git-backed stack through the git endpoint without touching the compose file", async () => {
@@ -327,11 +365,21 @@ describe("PortainerSyncFns", () => {
     );
   });
 
-  it("decodes multiline Compose values on import", async () => {
-    respondWith({ "GET /api/stacks/4": [fileStack({ Env: [{ name: "PEM", value: '"a\\nb"' }] })] });
+  it("decodes multiline and dollar-escaped Compose values on import", async () => {
+    respondWith({
+      "GET /api/stacks/4": [
+        fileStack({
+          Env: [
+            { name: "PEM", value: '"a\\nb"' },
+            { name: "PASS", value: "pa$$word" }
+          ]
+        })
+      ]
+    });
 
     await expect(PortainerSyncFns.getSecrets(secretSync, gatewayV2Service, gatewayPoolService)).resolves.toEqual({
-      PEM: { value: "a\nb" }
+      PEM: { value: "a\nb" },
+      PASS: { value: "pa$word" }
     });
   });
 });

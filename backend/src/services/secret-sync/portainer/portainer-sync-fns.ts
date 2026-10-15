@@ -1,13 +1,12 @@
+import { isAxiosError } from "axios";
+
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { delay } from "@app/lib/delay";
 import { BadRequestError } from "@app/lib/errors";
 import {
   getPortainerErrorMessage,
   isPortainerGitStack,
-  PORTAINER_REQUEST_TIMEOUT_MS,
   portainerRequest,
-  PortainerStackStatus,
   PortainerStackType,
   TPortainerEnvVar,
   TPortainerGatewayDeps,
@@ -20,9 +19,9 @@ import { TSecretSyncPayload } from "../secret-sync-payload";
 import { TSecretMap } from "../secret-sync-types";
 import { TPortainerStackFileResponse, TPortainerSyncWithCredentials } from "./portainer-sync-types";
 
-const PORTAINER_DEPLOYMENT_POLL_INTERVAL_MS = 5_000;
-// The sync job holds a five-minute lock per sync, so the wait has to give up inside that window
-const PORTAINER_DEPLOYMENT_TIMEOUT_MS = 4 * 60_000;
+// Older releases redeploy a file-based stack inside the update request, so it can run for minutes; the sync
+// job holds a five-minute lock per sync, so the request has to give up inside that window
+const PORTAINER_STACK_UPDATE_TIMEOUT_MS = 4 * 60_000;
 
 const DOTENV_ESCAPES: Record<string, string> = { '"': '"', "\\": "\\", n: "\n", r: "\r" };
 
@@ -30,26 +29,32 @@ const DOTENV_ESCAPES: Record<string, string> = { '"': '"', "\\": "\\", n: "\n", 
 const needsDotenvQuoting = (value: string) => /[\r\n]|^\s|\s$|\s#|^["']/.test(value);
 
 /**
- * Portainer writes a Compose stack's variables to a `stack.env` file one `NAME=VALUE` line at a time,
- * so a value that the dotenv parser would cut or trim has to use the double-quoted form or it reaches
- * the container changed (or, with line breaks, stops the file from parsing at all). Swarm stacks
- * receive their variables through the process environment, where every value is fine as-is.
+ * Portainer writes a Compose stack's variables to a `stack.env` file one `NAME=VALUE` line at a time and
+ * hands it to Compose, whose dotenv parser expands `$VAR` and `${VAR}` inside every value (only `$$`
+ * reaches the container as a dollar sign) and cuts or trims unquoted values. So every `$` is doubled, and
+ * a value the parser would otherwise alter uses the double-quoted form. Swarm stacks receive their
+ * variables through the process environment, where every value is fine as-is.
  */
 export const encodePortainerEnvValue = (value: string, stackType: PortainerStackType) => {
-  if (stackType !== PortainerStackType.Compose || !needsDotenvQuoting(value)) return value;
+  if (stackType !== PortainerStackType.Compose) return value;
 
-  const escaped = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r/g, "\\r").replace(/\n/g, "\\n");
+  const dollarSafe = value.replace(/\$/g, () => "$$");
+  if (!needsDotenvQuoting(value)) return dollarSafe;
+
+  const escaped = dollarSafe.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r/g, "\\r").replace(/\n/g, "\\n");
 
   return `"${escaped}"`;
 };
 
+const unescapeDotenv = (value: string) => value.replace(/\\(["\\nr])/g, (_, escape: string) => DOTENV_ESCAPES[escape]);
+
 export const decodePortainerEnvValue = (value: string, stackType: PortainerStackType) => {
   if (stackType !== PortainerStackType.Compose) return value;
-  if (value.length < 2 || !value.startsWith('"') || !value.endsWith('"')) return value;
 
-  const decoded = value.slice(1, -1).replace(/\\(["\\nr])/g, (_, escape: string) => DOTENV_ESCAPES[escape]);
+  const isQuoted = value.length >= 2 && value.startsWith('"') && value.endsWith('"');
+  const decoded = (isQuoted ? unescapeDotenv(value.slice(1, -1)) : value).replace(/\$\$/g, () => "$");
 
-  // Only unwrap what the encoder above produces; a value a user quoted by hand is left alone
+  // Only undo what the encoder above produces; a value a user wrote by hand is left alone
   return encodePortainerEnvValue(decoded, stackType) === value ? decoded : value;
 };
 
@@ -71,25 +76,32 @@ export const areEnvVarsEqual = (current: TPortainerEnvVar[], next: TPortainerEnv
  * The Git update endpoint replaces every setting it carries, so the stack's current settings are echoed
  * back alongside the new variables. On Portainer 2.45+ the repository URL and credentials live on a
  * Source and only its ID is needed; older releases wipe the stored credentials unless the
- * authentication flags are sent again.
+ * authentication settings are sent again.
  */
 export const buildPortainerGitUpdatePayload = (
   stack: TPortainerStackResponse & { GitConfig: NonNullable<TPortainerStackResponse["GitConfig"]> },
   env: TPortainerEnvVar[]
 ) => {
-  const { GitConfig: gitConfig, AutoUpdate: autoUpdate } = stack;
+  const { GitConfig: gitConfig, AutoUpdate: autoUpdate, Registries: registries } = stack;
   const hasAutoUpdate = Boolean(autoUpdate?.Webhook || autoUpdate?.Interval);
+  const auth = gitConfig.Authentication;
 
   return {
     env,
     prune: stack.Option?.Prune ?? false,
     repositoryReferenceName: gitConfig.ReferenceName ?? "",
     autoUpdate: hasAutoUpdate ? autoUpdate : null,
+    ...(registries ? { registries } : {}),
     ...(stack.GitSourceId
       ? { sourceID: stack.GitSourceId }
       : {
-          repositoryAuthentication: Boolean(gitConfig.Authentication),
-          repositoryUsername: gitConfig.Authentication?.Username ?? "",
+          repositoryAuthentication: Boolean(auth),
+          repositoryUsername: auth?.Username ?? "",
+          // A saved credential is referenced by ID and the stack stores no password for it, so without the
+          // ID Portainer clones with no credentials at all
+          ...(auth?.GitCredentialID ? { repositoryGitCredentialID: auth.GitCredentialID } : {}),
+          ...(auth?.AuthorizationType ? { repositoryAuthorizationType: auth.AuthorizationType } : {}),
+          ...(auth?.Provider ? { repositoryProvider: auth.Provider } : {}),
           tlsSkipVerify: gitConfig.TLSSkipVerify ?? false
         })
   };
@@ -107,23 +119,32 @@ const toSyncError = (error: unknown, message: string) => {
   return new SecretSyncError({ error, message: `${message}: ${getPortainerErrorMessage(error, "unknown error")}` });
 };
 
-const fetchPortainerStack = async (secretSync: TPortainerSyncWithCredentials, deps: TPortainerGatewayDeps) => {
-  const { connection, destinationConfig } = secretSync;
-
-  try {
-    return await portainerRequest<TPortainerStackResponse>(
-      connection,
-      { method: "GET", path: `/stacks/${destinationConfig.stackId}` },
-      deps
-    );
-  } catch (error) {
-    throw toSyncError(error, `Failed to read Portainer stack with ID '${destinationConfig.stackId}'`);
+// Portainer refuses to update a stack it is still deploying; the sync's own retries cover a short deployment
+const toStackUpdateError = (error: unknown, stack: TPortainerStackResponse) => {
+  if (isAxiosError(error) && error.response?.status === 409) {
+    return new SecretSyncError({
+      error,
+      message: `Portainer rejected the update of stack '${stack.Name}': ${getPortainerErrorMessage(error, "conflict")}. If the stack is still being deployed, sync again once the deployment has finished.`
+    });
   }
+
+  return toSyncError(error, `Failed to update the variables of Portainer stack '${stack.Name}'`);
 };
 
 const getPortainerStack = async (secretSync: TPortainerSyncWithCredentials, deps: TPortainerGatewayDeps) => {
-  const { environmentId, stackId } = secretSync.destinationConfig;
-  const stack = await fetchPortainerStack(secretSync, deps);
+  const { connection, destinationConfig } = secretSync;
+  const { environmentId, stackId } = destinationConfig;
+
+  let stack: TPortainerStackResponse;
+  try {
+    stack = await portainerRequest<TPortainerStackResponse>(
+      connection,
+      { method: "GET", path: `/stacks/${stackId}` },
+      deps
+    );
+  } catch (error) {
+    throw toSyncError(error, `Failed to read Portainer stack with ID '${stackId}'`);
+  }
 
   if (stack.EndpointId !== environmentId) {
     throw new SecretSyncError({
@@ -140,46 +161,6 @@ const getPortainerStack = async (secretSync: TPortainerSyncWithCredentials, deps
   }
 
   return stack;
-};
-
-// A run may wait twice, before the write for a deployment already in flight and after it for its own,
-// so both waits draw on one budget that starts when the sync does
-const getDeploymentWaitDeadline = () => Date.now() + PORTAINER_DEPLOYMENT_TIMEOUT_MS;
-
-const waitForPortainerDeployment = async (
-  secretSync: TPortainerSyncWithCredentials,
-  stack: TPortainerStackResponse,
-  deps: TPortainerGatewayDeps,
-  deadline: number
-) => {
-  let current = stack;
-
-  while (current.Status === PortainerStackStatus.Deploying) {
-    if (Date.now() >= deadline) {
-      throw new SecretSyncError({
-        message: `Portainer is still deploying stack '${stack.Name}' after ${PORTAINER_DEPLOYMENT_TIMEOUT_MS / 60_000} minutes. Check the stack in Portainer, then sync again.`,
-        shouldRetry: false
-      });
-    }
-
-    // eslint-disable-next-line no-await-in-loop
-    await delay(PORTAINER_DEPLOYMENT_POLL_INTERVAL_MS);
-    // eslint-disable-next-line no-await-in-loop
-    current = await fetchPortainerStack(secretSync, deps);
-  }
-
-  return current;
-};
-
-// Portainer answers a stack update with 409 while a deployment is in flight, so wait for it to settle first
-const getSettledPortainerStack = async (
-  secretSync: TPortainerSyncWithCredentials,
-  deps: TPortainerGatewayDeps,
-  deadline: number
-) => {
-  const stack = await getPortainerStack(secretSync, deps);
-
-  return waitForPortainerDeployment(secretSync, stack, deps, deadline);
 };
 
 const writeGitStackEnv = async (
@@ -209,7 +190,7 @@ const writeGitStackEnv = async (
       deps
     );
   } catch (error) {
-    throw toSyncError(error, `Failed to update the variables of Portainer stack '${stack.Name}'`);
+    throw toStackUpdateError(error, stack);
   }
 };
 
@@ -217,8 +198,7 @@ const writeFileStackEnv = async (
   secretSync: TPortainerSyncWithCredentials,
   stack: TPortainerStackResponse,
   env: TPortainerEnvVar[],
-  deps: TPortainerGatewayDeps,
-  deadline: number
+  deps: TPortainerGatewayDeps
 ) => {
   const { connection, destinationConfig } = secretSync;
 
@@ -240,33 +220,20 @@ const writeFileStackEnv = async (
         method: "PUT",
         path: `/stacks/${destinationConfig.stackId}`,
         params: { endpointId: String(destinationConfig.environmentId) },
-        data: { env, stackFileContent, prune: stack.Option?.Prune ?? false },
-        // Releases before the background deployer run the redeploy inside this request, so it may take
-        // whatever is left of the wait budget (but never less than a normal request)
-        timeoutMs: Math.max(deadline - Date.now(), PORTAINER_REQUEST_TIMEOUT_MS)
+        data: {
+          env,
+          stackFileContent,
+          prune: stack.Option?.Prune ?? false,
+          // Business Edition clears the stack's registries and webhook when an update leaves them out
+          ...(stack.Registries ? { registries: stack.Registries } : {}),
+          ...(stack.Webhook ? { webhook: stack.Webhook } : {})
+        },
+        timeoutMs: PORTAINER_STACK_UPDATE_TIMEOUT_MS
       },
       deps
     );
   } catch (error) {
-    throw toSyncError(error, `Failed to update the variables of Portainer stack '${stack.Name}'`);
-  }
-
-  // Recent Portainer releases redeploy in the background after answering, so a 200 only means the
-  // update was accepted; the stack status tells whether the containers actually came up
-  const deployed = await waitForPortainerDeployment(
-    secretSync,
-    await fetchPortainerStack(secretSync, deps),
-    deps,
-    deadline
-  );
-
-  if (deployed.Status === PortainerStackStatus.Error) {
-    const reason = [...(deployed.DeploymentStatus ?? [])].reverse().find((entry) => entry.Message)?.Message;
-
-    throw new SecretSyncError({
-      message: `Portainer failed to redeploy stack '${stack.Name}' with the updated variables${reason ? `: ${reason}` : ""}. The variables are saved on the stack; check the stack in Portainer and redeploy it.`,
-      shouldRetry: false
-    });
+    throw toStackUpdateError(error, stack);
   }
 };
 
@@ -279,21 +246,16 @@ const writeStackEnvIfChanged = async (
   secretSync: TPortainerSyncWithCredentials,
   stack: TPortainerStackResponse,
   env: TPortainerEnvVar[],
-  deps: TPortainerGatewayDeps,
-  deadline: number
+  deps: TPortainerGatewayDeps
 ) => {
-  const isGitStack = isPortainerGitStack(stack);
-  const isUnchanged = areEnvVarsEqual(stack.Env ?? [], env);
+  if (areEnvVarsEqual(stack.Env ?? [], env)) return;
 
-  // A file-based stack whose last deployment failed is redeployed anyway, so the sync reports the real state
-  if (isUnchanged && (isGitStack || stack.Status !== PortainerStackStatus.Error)) return;
-
-  if (isGitStack) {
+  if (isPortainerGitStack(stack)) {
     await writeGitStackEnv(secretSync, stack, env, deps);
     return;
   }
 
-  await writeFileStackEnv(secretSync, stack, env, deps, deadline);
+  await writeFileStackEnv(secretSync, stack, env, deps);
 };
 
 const toEnvVars = (secretMap: TSecretMap, stackType: PortainerStackType): TPortainerEnvVar[] =>
@@ -327,9 +289,8 @@ export const PortainerSyncFns = {
       syncOptions: { disableSecretDeletion, keySchema }
     } = secretSync;
     const deps = getGatewayDeps(gatewayV2Service, gatewayPoolService);
-    const deadline = getDeploymentWaitDeadline();
 
-    const stack = await getSettledPortainerStack(secretSync, deps, deadline);
+    const stack = await getPortainerStack(secretSync, deps);
 
     // A plain `in` check would also match inherited names such as "constructor"
     const retainedEnv = (stack.Env ?? []).filter(({ name }) => {
@@ -341,13 +302,7 @@ export const PortainerSyncFns = {
       return true;
     });
 
-    await writeStackEnvIfChanged(
-      secretSync,
-      stack,
-      [...retainedEnv, ...toEnvVars(secretMap, stack.Type)],
-      deps,
-      deadline
-    );
+    await writeStackEnvIfChanged(secretSync, stack, [...retainedEnv, ...toEnvVars(secretMap, stack.Type)], deps);
   },
 
   async removeSecrets(
@@ -358,12 +313,11 @@ export const PortainerSyncFns = {
   ) {
     const secretMap = payload.flatten();
     const deps = getGatewayDeps(gatewayV2Service, gatewayPoolService);
-    const deadline = getDeploymentWaitDeadline();
 
-    const stack = await getSettledPortainerStack(secretSync, deps, deadline);
+    const stack = await getPortainerStack(secretSync, deps);
 
     const remainingEnv = (stack.Env ?? []).filter(({ name }) => !Object.hasOwn(secretMap, name));
 
-    await writeStackEnvIfChanged(secretSync, stack, remainingEnv, deps, deadline);
+    await writeStackEnvIfChanged(secretSync, stack, remainingEnv, deps);
   }
 };

@@ -5,7 +5,7 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { DiscriminativePick } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
-import { PortainerStackStatus, PortainerStackType } from "./portainer-connection-enums";
+import { PortainerStackType } from "./portainer-connection-enums";
 import {
   CreatePortainerConnectionSchema,
   PortainerConnectionSchema,
@@ -54,11 +54,13 @@ export type TPortainerStackResponse = {
   Name: string;
   Type: PortainerStackType;
   EndpointId: number;
-  Status?: PortainerStackStatus;
   Env?: TPortainerEnvVar[] | null;
   Option?: {
     Prune?: boolean;
   } | null;
+  // Business Edition only; an update that leaves either of them out clears it
+  Registries?: number[] | null;
+  Webhook?: string | null;
   // Set on Portainer 2.45+, where the Git settings live on a Source instead of the stack
   WorkflowID?: number;
   GitSourceId?: number;
@@ -70,6 +72,10 @@ export type TPortainerStackResponse = {
     Authentication?: {
       Username?: string;
       Password?: string;
+      // A stack that authenticates through a saved credential carries its ID instead of a password
+      GitCredentialID?: number;
+      AuthorizationType?: number;
+      Provider?: number;
     } | null;
   } | null;
   AutoUpdate?: {
@@ -79,9 +85,4 @@ export type TPortainerStackResponse = {
     ForceUpdate?: boolean;
     ForcePullImage?: boolean;
   } | null;
-  DeploymentStatus?: {
-    Status: PortainerStackStatus;
-    Time: number;
-    Message?: string;
-  }[];
 };

@@ -7,10 +7,3 @@ export enum PortainerStackType {
   Compose = 2,
   Kubernetes = 3
 }
-
-export enum PortainerStackStatus {
-  Active = 1,
-  Inactive = 2,
-  Deploying = 3,
-  Error = 4
-}
