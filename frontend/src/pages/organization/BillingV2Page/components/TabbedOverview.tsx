@@ -1,6 +1,12 @@
 import { ReactNode, useState } from "react";
-import { ChevronRightIcon, InfoIcon, RefreshCw } from "lucide-react";
+import { ChevronRightIcon, ExternalLink, InfoIcon, RefreshCw } from "lucide-react";
 
+import {
+  getSelfHostedLicenseState,
+  SELF_HOSTED_CONTACT_SALES_URL,
+  SELF_HOSTED_LICENSE_COPY,
+  SELF_HOSTED_LICENSE_DOCS_URL
+} from "@app/components/license/self-hosted-license";
 import {
   CertificateManagementUpgradeIntent,
   PamUpgradeIntent,
@@ -11,6 +17,7 @@ import {
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
+  Button,
   Card,
   CardContent,
   IconButton,
@@ -21,7 +28,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { useOrganization } from "@app/context";
+import { useOrganization, useSubscription } from "@app/context";
 import {
   BillingV2BreakdownScopeKind,
   BillingV2CatalogProduct,
@@ -144,6 +151,9 @@ export const TabbedOverview = ({
   onContact
 }: TabbedOverviewProps) => {
   const { currentOrg } = useOrganization();
+  const { subscription } = useSubscription();
+  const licenseState = getSelfHostedLicenseState(subscription);
+  const licenseCopy = SELF_HOSTED_LICENSE_COPY[licenseState];
   const refreshEntitlements = useRefreshBillingV2Entitlements();
   const [expanded, setExpanded] = useState<{ productId: string; dimensionKey?: string } | null>(
     null
@@ -194,9 +204,8 @@ export const TabbedOverview = ({
   let accountTeamNote: { label: string; detail: string } | null = null;
   if (isManaged) {
     accountTeamNote = {
-      label: "Managed by your account team",
-      detail:
-        "Products and limits on this organization are set by contract. Contact your account manager to make changes."
+      label: licenseCopy.title,
+      detail: licenseCopy.detail
     };
   } else if (!overview.selfServe) {
     accountTeamNote = {
@@ -223,8 +232,8 @@ export const TabbedOverview = ({
       <div className="flex flex-col gap-1">
         <span className="text-xs text-accent">Billing Method</span>
         <span className="flex items-baseline gap-2">
-          <span className="text-lg leading-6 font-medium">Contract</span>
-          <span className="text-xs text-muted">Set by your license</span>
+          <span className="text-lg leading-6 font-medium">{licenseCopy.method}</span>
+          <span className="text-xs text-muted">{licenseCopy.methodHint}</span>
         </span>
       </div>
     );
@@ -291,10 +300,26 @@ export const TabbedOverview = ({
   let summaryRight: ReactNode = null;
   if (isManaged) {
     summaryRight = (
-      <span className="text-xs text-muted">
-        {billing.activeProductCount.toLocaleString()} active{" "}
-        {billing.activeProductCount === 1 ? "product" : "products"}
-      </span>
+      <>
+        <span className="text-xs text-muted">
+          {billing.activeProductCount.toLocaleString()} active{" "}
+          {billing.activeProductCount === 1 ? "product" : "products"}
+        </span>
+        {licenseState === "unlicensed" && (
+          <Button variant="outline" size="xs" asChild>
+            <a href={SELF_HOSTED_LICENSE_DOCS_URL} target="_blank" rel="noopener noreferrer">
+              Activate License
+              <ExternalLink />
+            </a>
+          </Button>
+        )}
+        <Button variant="outline" size="xs" asChild>
+          <a href={SELF_HOSTED_CONTACT_SALES_URL} target="_blank" rel="noopener noreferrer">
+            Contact Sales
+            <ExternalLink />
+          </a>
+        </Button>
+      </>
     );
   }
   const latestInvoice = overview.invoices[0];

@@ -27,7 +27,8 @@ import {
   OrgPermissionBillingActions,
   OrgPermissionSubjects,
   useOrganization,
-  useOrgPermission
+  useOrgPermission,
+  useSubscription
 } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import {
@@ -42,6 +43,7 @@ import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subs
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 import { ProductIcon } from "@app/pages/organization/BillingV2Page/components/shared";
 
+import { getSelfHostedLicenseState, SELF_HOSTED_LICENSE_COPY } from "../self-hosted-license";
 import { CapabilityUpgradeIntent } from "./capability-upgrade-intents";
 import { CapabilityUpgradeGate } from "./CapabilityUpgradeGate";
 import {
@@ -265,6 +267,8 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
   const queryClient = useQueryClient();
   const { currentOrg, isSubOrganization } = useOrganization();
   const { permission } = useOrgPermission();
+  const { subscription } = useSubscription();
+  const licenseCopy = SELF_HOSTED_LICENSE_COPY[getSelfHostedLicenseState(subscription)];
   const billingOrgId = currentOrg.rootOrgId ?? currentOrg.id;
   const canReadBilling = permission.can(
     OrgPermissionBillingActions.Read,
@@ -565,12 +569,16 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
             <CircleAlert />
             <AlertTitle>Plan Details Unavailable</AlertTitle>
             <AlertDescription>
-              Plan details could not be loaded.{" "}
-              {isSelfHosted
-                ? "Try again, or contact our team for a self-hosted or offline license."
-                : "Try again, or contact Infisical if the problem continues."}
+              Plan details could not be loaded.
+              {!isSelfHosted && " Try again, or contact Infisical if the problem continues."}
             </AlertDescription>
           </Alert>
+          {isSelfHosted && (
+            <div className="flex flex-col gap-1 text-sm">
+              <span className="font-medium text-foreground">{licenseCopy.title}</span>
+              <span className="text-accent">{licenseCopy.detail}</span>
+            </div>
+          )}
           <DialogFooter>
             <Button
               variant="outline"
@@ -903,6 +911,14 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
           Purchases and plan changes are unavailable right now. Your current subscription is
           unaffected; please check back shortly.
         </AlertDescription>
+      </Alert>
+    );
+  } else if (overview.data.mode === "managed") {
+    notice = (
+      <Alert variant="info" appearance="borderless">
+        <CircleAlert />
+        <AlertTitle>{licenseCopy.title}</AlertTitle>
+        <AlertDescription>{licenseCopy.detail}</AlertDescription>
       </Alert>
     );
   } else if (!selfServe) {
