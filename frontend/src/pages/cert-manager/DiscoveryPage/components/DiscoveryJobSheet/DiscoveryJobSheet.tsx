@@ -30,11 +30,13 @@ export const DiscoveryJobSheet = ({ isOpen, onClose, projectId, discovery }: Pro
     discovery?.discoveryType ?? null
   );
   const [isDirty, setIsDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
     setSelectedType(discovery?.discoveryType ?? null);
     setIsDirty(false);
+    setIsSaving(false);
   }, [isOpen, discovery]);
 
   const closeSheet = () => {
@@ -57,7 +59,7 @@ export const DiscoveryJobSheet = ({ isOpen, onClose, projectId, discovery }: Pro
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) requestDiscardAction(closeSheet);
+    if (!nextOpen && !isSaving) requestDiscardAction(closeSheet);
   };
 
   const showBack = !discovery && Boolean(selectedType);
@@ -73,6 +75,7 @@ export const DiscoveryJobSheet = ({ isOpen, onClose, projectId, discovery }: Pro
           onComplete={closeSheet}
           onCancel={() => requestDiscardAction(discovery ? closeSheet : returnToTypeSelect)}
           onDirtyChange={setIsDirty}
+          onPendingChange={setIsSaving}
         />
       );
     }
@@ -95,6 +98,7 @@ export const DiscoveryJobSheet = ({ isOpen, onClose, projectId, discovery }: Pro
                     variant="link"
                     size="xs"
                     className="mb-1 w-fit px-0"
+                    isDisabled={isSaving}
                     onClick={() => requestDiscardAction(returnToTypeSelect)}
                   >
                     <ArrowLeftIcon />

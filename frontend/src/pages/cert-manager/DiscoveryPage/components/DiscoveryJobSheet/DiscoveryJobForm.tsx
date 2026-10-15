@@ -37,6 +37,7 @@ type Props = {
   onComplete: () => void;
   onCancel: () => void;
   onDirtyChange: (isDirty: boolean) => void;
+  onPendingChange: (isPending: boolean) => void;
 };
 
 enum DiscoveryJobStep {
@@ -139,7 +140,8 @@ export const DiscoveryJobForm = ({
   discovery,
   onComplete,
   onCancel,
-  onDirtyChange
+  onDirtyChange,
+  onPendingChange
 }: Props) => {
   const isEditing = Boolean(discovery);
   const createDiscovery = useCreatePkiDiscovery();
@@ -169,6 +171,10 @@ export const DiscoveryJobForm = ({
   useEffect(() => {
     onDirtyChange(formState.isDirty);
   }, [formState.isDirty]);
+
+  useEffect(() => {
+    onPendingChange(isPending);
+  }, [isPending]);
 
   const onSubmit = async (form: TDiscoveryJobForm) => {
     const isNetwork = form.discoveryType === PkiDiscoveryType.Network;
@@ -236,7 +242,7 @@ export const DiscoveryJobForm = ({
     >
       <FormProvider {...formMethods}>
         <div className="flex min-h-0 flex-1 overflow-hidden">
-          <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
+          <aside className="hidden w-60 shrink-0 flex-col border-r border-border px-5 py-6 sm:flex">
             <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
               {isEditing ? "Sections" : "Setup steps"}
             </p>
@@ -297,7 +303,7 @@ export const DiscoveryJobForm = ({
         <span className="text-xs text-muted">{footerStatus}</span>
         {isEditing ? (
           <div className="flex items-center gap-3">
-            <Button type="button" variant="outline" onClick={onCancel}>
+            <Button type="button" variant="outline" onClick={onCancel} isDisabled={isPending}>
               Cancel
             </Button>
             <Button
@@ -312,7 +318,7 @@ export const DiscoveryJobForm = ({
           </div>
         ) : (
           <div className="flex items-center gap-3">
-            <Button type="button" variant="outline" onClick={handleBack}>
+            <Button type="button" variant="outline" onClick={handleBack} isDisabled={isPending}>
               {stepIndex === 0 ? "Cancel" : "Back"}
             </Button>
             <Button

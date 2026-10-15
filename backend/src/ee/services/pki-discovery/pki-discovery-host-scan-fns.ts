@@ -252,10 +252,22 @@ const runCertificateScan = async (
     throw new NotFoundError({ message: getMissingGatewayMessage(host.gatewayId) });
   }
 
-  const response = await withGatewayV2Proxy(
-    (proxyPort) => callCertificateScan({ port: proxyPort, credentials: host.credentials, request }),
-    { protocol: GatewayProxyProtocol.Discovery, longLived: true, ...connectionDetails }
-  );
+  let response: Awaited<ReturnType<typeof callCertificateScan>>;
+  try {
+    response = await withGatewayV2Proxy(
+      (proxyPort) => callCertificateScan({ port: proxyPort, credentials: host.credentials, request }),
+      { protocol: GatewayProxyProtocol.Discovery, longLived: true, ...connectionDetails }
+    );
+  } catch (error) {
+    if (error instanceof GatewayTransportError) throw error;
+    logger.warn(
+      `Certificate scan transport failed [connectionId=${host.connectionId}] [gatewayId=${host.gatewayId}] [error=${error instanceof Error ? error.message : String(error)}]`
+    );
+    throw new BadRequestError({
+      message:
+        "The connection to the gateway dropped during the scan. Check that the gateway and its relay are running, then try again."
+    });
+  }
 
   if (!response.ok) {
     logger.warn(
@@ -388,13 +400,17 @@ const upsertInstallationWithLinks = async (
     let installation = await findTargetInstallation(ctx, fingerprint, deps, tx);
     if (!installation && refreshOnly) return undefined;
     const previousMetadata = (installation?.metadata as TPkiInstallationMetadata | null) ?? {};
-    const metadata: TPkiInstallationMetadata = {
-      ...previousMetadata,
-      ...(keystoreStatus && { keystoreStatus }),
-      ...(keystoreStatus === PkiKeystoreStatus.Readable && { lastReadAt: ctx.scanTime.toISOString() }),
-      lastCheckedAt: new Date().toISOString(),
-      lastError: undefined
-    };
+    const previousReadAt = previousMetadata.lastReadAt ? new Date(previousMetadata.lastReadAt) : null;
+    const supersededByNewerRead = previousReadAt !== null && previousReadAt > ctx.scanTime;
+    const metadata: TPkiInstallationMetadata = supersededByNewerRead
+      ? { ...previousMetadata, lastCheckedAt: new Date().toISOString() }
+      : {
+          ...previousMetadata,
+          ...(keystoreStatus && { keystoreStatus }),
+          ...(keystoreStatus === PkiKeystoreStatus.Readable && { lastReadAt: ctx.scanTime.toISOString() }),
+          lastCheckedAt: new Date().toISOString(),
+          lastError: undefined
+        };
 
     if (!installation) {
       try {
