@@ -194,9 +194,9 @@ export const secretScanningV2QueueServiceFactory = ({
       const rawResources = await factory.listRawResources(dataSource);
 
       await secretScanningV2DAL.resources.transaction(async (tx) => {
-        // Read through the transaction so it hits the primary: a resource added just before this call may not have
-        // reached the replica yet, and would be skipped.
-        const existingResources = await secretScanningV2DAL.resources.find({ dataSourceId: dataSource.id }, { tx });
+        // Read on the primary, since a resource added just before this call may not have reached the replica, and
+        // locked, so two requests can't both see no in-flight scan and queue the same resource twice.
+        const existingResources = await secretScanningV2DAL.resources.findByDataSourceIdForUpdate(dataSource.id, tx);
         const existingByExternalId = new Map(existingResources.map((resource) => [resource.externalId, resource]));
 
         let filteredRawResources = rawResources.filter((resource) => existingByExternalId.has(resource.externalId));

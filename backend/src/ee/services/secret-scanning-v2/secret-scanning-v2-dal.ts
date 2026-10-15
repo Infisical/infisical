@@ -487,6 +487,16 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
+  // Locks the data source's resources until the transaction ends, so concurrent scan requests check for in-flight
+  // scans one at a time. Ordered so two lockers take the rows in the same order and can't deadlock.
+  const findResourcesByDataSourceIdForUpdate = async (dataSourceId: string, tx: Knex) => {
+    try {
+      return await tx(TableName.SecretScanningResource).where({ dataSourceId }).orderBy("id").forUpdate();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find For Update - Secret Scanning Resource" });
+    }
+  };
+
   // Reads the primary: the caller writes these rows straight after, and a replica that still shows
   // a just-completed scan as in-progress would have it reaped.
   const findStuckScans = async (startedBefore: Date, limit: number, tx?: Knex) => {
@@ -708,7 +718,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     },
     resources: {
       ...resourceOrm,
-      findWithDetails: findResourcesWithDetails
+      findWithDetails: findResourcesWithDetails,
+      findByDataSourceIdForUpdate: findResourcesByDataSourceIdForUpdate
     },
     scans: {
       ...scanOrm,
