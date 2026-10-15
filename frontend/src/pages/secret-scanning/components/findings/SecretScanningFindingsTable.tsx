@@ -147,7 +147,7 @@ export const SecretScanningFindingsTable = ({
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  // a snapshot keeps the sheet open when a status change moves the finding out of the current filter
+  // a snapshot keeps the sheet open when reopening moves the finding out of the current filter
   const [openFinding, setOpenFinding] = useState<TSecretScanningFinding | null>(null);
   const [statusChange, setStatusChange] = useState<{
     findings: TSecretScanningFinding[];
@@ -601,15 +601,9 @@ export const SecretScanningFindingsTable = ({
         findings={statusChange?.findings ?? []}
         status={statusChange?.status ?? null}
         onOpenChange={(isOpen) => !isOpen && setStatusChange(null)}
-        onComplete={({ status, triageComment }) => {
+        onComplete={() => {
           setOpenFinding((prev) =>
-            prev && statusChange?.findings.some((f) => f.id === prev.id)
-              ? {
-                  ...prev,
-                  status,
-                  triageComment
-                }
-              : prev
+            prev && statusChange?.findings.some((f) => f.id === prev.id) ? null : prev
           );
           resetSelection();
         }}
