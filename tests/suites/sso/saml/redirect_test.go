@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
+	"github.com/Infisical/infisical/tests/fixture/sso"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/id"
 	"github.com/stretchr/testify/require"
@@ -20,19 +21,19 @@ func TestSAMLRedirect(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		s := setup(t, okta)
+		s := setup(t, sso.Okta)
 
 		// Action
-		res, err := s.browser.RedirectSamlByOrgSlugWithResponse(t.Context(), s.tn.OrgSlug, nil)
+		res, err := s.Browser.RedirectSamlByOrgSlugWithResponse(t.Context(), s.Tenant.OrgSlug, nil)
 
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusFound, res.StatusCode(), "%s", apierr.Body(res.Body))
 		location := res.HTTPResponse.Header.Get("Location")
-		require.True(t, strings.HasPrefix(location, s.idp.EntryPoint+"?"), "redirected to %s", location)
-		req := s.idp.ParseRedirect(t, location)
-		require.Equal(t, s.issuer, req.Issuer)
-		require.Equal(t, s.siteURL+"/api/v1/sso/saml2/"+s.configID.String(), req.ACSURL)
+		require.True(t, strings.HasPrefix(location, s.IdP.EntryPoint+"?"), "redirected to %s", location)
+		req := s.IdP.ParseRedirect(t, location)
+		require.Equal(t, s.Issuer, req.Issuer)
+		require.Equal(t, s.SiteURL+"/api/v1/sso/saml2/"+s.ConfigID.String(), req.ACSURL)
 		require.Equal(t, map[string]any{"spInitiated": true, "callbackPort": ""}, relayState(t, req.RelayState))
 	})
 
@@ -40,10 +41,10 @@ func TestSAMLRedirect(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		s := setup(t, okta)
+		s := setup(t, sso.Okta)
 
 		// Action
-		req := s.startLogin(t, &api.RedirectSamlByOrgSlugParams{CallbackPort: new("5555")})
+		req := s.StartLogin(t, &api.RedirectSamlByOrgSlugParams{CallbackPort: new("5555")})
 
 		// Assert
 		require.Equal(t, "5555", relayState(t, req.RelayState)["callbackPort"])
@@ -53,45 +54,45 @@ func TestSAMLRedirect(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		s := setup(t, okta)
-		domain := strings.SplitN(s.tn.Email("x"), "@", 2)[1]
+		s := setup(t, sso.Okta)
+		domain := strings.SplitN(s.Tenant.Email("x"), "@", 2)[1]
 
 		// Action
-		res, err := s.browser.RedirectSamlByDomainWithResponse(t.Context(), domain, nil)
+		res, err := s.Browser.RedirectSamlByDomainWithResponse(t.Context(), domain, nil)
 
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusFound, res.StatusCode(), "%s", apierr.Body(res.Body))
-		req := s.idp.ParseRedirect(t, res.HTTPResponse.Header.Get("Location"))
-		require.Equal(t, s.siteURL+"/api/v1/sso/saml2/"+s.configID.String(), req.ACSURL)
+		req := s.IdP.ParseRedirect(t, res.HTTPResponse.Header.Get("Location"))
+		require.Equal(t, s.SiteURL+"/api/v1/sso/saml2/"+s.ConfigID.String(), req.ACSURL)
 	})
 
 	t.Run("should forward to SAML when the generic SSO redirect finds SAML configured", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		s := setup(t, okta)
+		s := setup(t, sso.Okta)
 
 		// Action
-		res, err := s.browser.RedirectOrgSSOWithResponse(t.Context(), s.tn.OrgSlug, nil)
+		res, err := s.Browser.RedirectOrgSSOWithResponse(t.Context(), s.Tenant.OrgSlug, nil)
 
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusFound, res.StatusCode(), "%s", apierr.Body(res.Body))
 		forwarded, err := url.Parse(res.HTTPResponse.Header.Get("Location"))
 		require.NoError(t, err)
-		require.Equal(t, "/api/v1/sso/redirect/saml2/organizations/"+s.tn.OrgSlug, forwarded.Path)
+		require.Equal(t, "/api/v1/sso/redirect/saml2/organizations/"+s.Tenant.OrgSlug, forwarded.Path)
 	})
 
 	t.Run("should return not found when the org slug does not exist", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		s := setup(t, okta)
+		s := setup(t, sso.Okta)
 		slug := "missing-" + id.Short()
 
 		// Action
-		res, err := s.browser.RedirectSamlByOrgSlugWithResponse(t.Context(), slug, nil)
+		res, err := s.Browser.RedirectSamlByOrgSlugWithResponse(t.Context(), slug, nil)
 
 		// Assert
 		require.NoError(t, err)
@@ -103,11 +104,11 @@ func TestSAMLRedirect(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		s := setup(t, okta)
+		s := setup(t, sso.Okta)
 		domain := "unverified-" + id.Short() + ".test"
 
 		// Action
-		res, err := s.browser.RedirectSamlByDomainWithResponse(t.Context(), domain, nil)
+		res, err := s.Browser.RedirectSamlByDomainWithResponse(t.Context(), domain, nil)
 
 		// Assert
 		require.NoError(t, err)
@@ -119,16 +120,16 @@ func TestSAMLRedirect(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		s := setup(t, okta)
-		updated, err := s.tn.Admin.API.UpdateSamlConfigWithResponse(t.Context(), api.UpdateSamlConfigJSONRequestBody{
-			OrganizationId: s.tn.OrgID.String(),
+		s := setup(t, sso.Okta)
+		updated, err := s.Tenant.Admin.API.UpdateSamlConfigWithResponse(t.Context(), api.UpdateSamlConfigJSONRequestBody{
+			OrganizationId: s.Tenant.OrgID.String(),
 			IsActive:       new(false),
 		})
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, updated.StatusCode(), "deactivating: %s", apierr.Body(updated.Body))
 
 		// Action
-		res, err := s.browser.RedirectSamlByConfigIdWithResponse(t.Context(), s.configID.String(), nil)
+		res, err := s.Browser.RedirectSamlByConfigIdWithResponse(t.Context(), s.ConfigID.String(), nil)
 
 		// Assert
 		require.NoError(t, err)

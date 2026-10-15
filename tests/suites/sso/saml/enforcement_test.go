@@ -6,6 +6,7 @@ import (
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
+	"github.com/Infisical/infisical/tests/fixture/sso"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/stretchr/testify/require"
@@ -18,46 +19,46 @@ func TestSAMLEnforcement(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		s := setup(t, okta)
+		s := setup(t, sso.Okta)
 
 		// Action
-		res, err := s.tn.Admin.API.UpdateOrganizationWithResponse(t.Context(), s.tn.OrgID.String(),
+		res, err := s.Tenant.Admin.API.UpdateOrganizationWithResponse(t.Context(), s.Tenant.OrgID.String(),
 			api.UpdateOrganizationJSONRequestBody{AuthEnforced: new(true)})
 
 		// Assert
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
 		require.Contains(t, string(res.Body), "please log in via SAML at least once")
-		require.False(t, authEnforced(t, s.tn))
+		require.False(t, authEnforced(t, s.Tenant))
 	})
 
 	t.Run("should enable enforcement when a SAML login has succeeded", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		s := setup(t, okta)
-		s.signedUp(t)
+		s := setup(t, sso.Okta)
+		s.SignedUp(t)
 
 		// Action
-		res, err := s.tn.Admin.API.UpdateOrganizationWithResponse(t.Context(), s.tn.OrgID.String(),
+		res, err := s.Tenant.Admin.API.UpdateOrganizationWithResponse(t.Context(), s.Tenant.OrgID.String(),
 			api.UpdateOrganizationJSONRequestBody{AuthEnforced: new(true), BypassOrgAuthEnabled: new(true)})
 
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
-		require.True(t, authEnforced(t, s.tn))
+		require.True(t, authEnforced(t, s.Tenant))
 	})
 
 	t.Run("should block org resources when a password session is used under enforcement", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		s := setup(t, okta)
-		member := s.tn.NewUser(t)
-		s.enforce(t)
+		s := setup(t, sso.Okta)
+		member := s.Tenant.NewUser(t)
+		s.Enforce(t)
 
 		// Action
-		res, err := member.API.GetOrganizationByIdWithResponse(t.Context(), s.tn.OrgID.String())
+		res, err := member.API.GetOrganizationByIdWithResponse(t.Context(), s.Tenant.OrgID.String())
 
 		// Assert
 		require.NoError(t, err)
@@ -69,10 +70,10 @@ func TestSAMLEnforcement(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		s := setup(t, okta)
-		member := s.tn.NewUser(t)
-		s.enforce(t)
-		login, err := s.tn.Anonymous(t).LoginV3WithResponse(t.Context(), api.LoginV3JSONRequestBody{
+		s := setup(t, sso.Okta)
+		member := s.Tenant.NewUser(t)
+		s.Enforce(t)
+		login, err := s.Tenant.Anonymous(t).LoginV3WithResponse(t.Context(), api.LoginV3JSONRequestBody{
 			Email:    member.Email,
 			Password: harness.UserPassword,
 		})
@@ -80,8 +81,8 @@ func TestSAMLEnforcement(t *testing.T) {
 		require.Equalf(t, http.StatusOK, login.StatusCode(), "password login: %s", apierr.Body(login.Body))
 
 		// Action
-		res, err := s.tn.Client(t, login.JSON200.AccessToken).SelectOrganizationV3WithResponse(t.Context(),
-			api.SelectOrganizationV3JSONRequestBody{OrganizationId: s.tn.OrgID.String()})
+		res, err := s.Tenant.Client(t, login.JSON200.AccessToken).SelectOrganizationV3WithResponse(t.Context(),
+			api.SelectOrganizationV3JSONRequestBody{OrganizationId: s.Tenant.OrgID.String()})
 
 		// Assert
 		require.NoError(t, err)
@@ -93,32 +94,32 @@ func TestSAMLEnforcement(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		s := setup(t, okta)
-		otherAdmin := s.tn.NewUser(t, harness.OrgRole("admin"))
-		s.enforce(t)
+		s := setup(t, sso.Okta)
+		otherAdmin := s.Tenant.NewUser(t, harness.OrgRole("admin"))
+		s.Enforce(t)
 
 		// Action
-		res, err := s.tn.Admin.API.SelectOrganizationV3WithResponse(t.Context(),
-			api.SelectOrganizationV3JSONRequestBody{OrganizationId: s.tn.OrgID.String()})
+		res, err := s.Tenant.Admin.API.SelectOrganizationV3WithResponse(t.Context(),
+			api.SelectOrganizationV3JSONRequestBody{OrganizationId: s.Tenant.OrgID.String()})
 
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
-		alert := s.tn.Mail(t).Expect(t, otherAdmin.Email, smtp.Subject("SSO Bypass"))
-		require.Contains(t, alert.Body, s.tn.Admin.Email)
+		alert := s.Tenant.Mail(t).Expect(t, otherAdmin.Email, smtp.Subject("SSO Bypass"))
+		require.Contains(t, alert.Body, s.Tenant.Admin.Email)
 	})
 
 	t.Run("should allow org resources when the session came from SAML", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		s := setup(t, okta)
-		alice := s.signedUp(t)
-		s.enforce(t)
-		session := s.session(t, s.spLogin(t, alice))
+		s := setup(t, sso.Okta)
+		alice := s.SignedUp(t)
+		s.Enforce(t)
+		session := s.Session(t, s.SPLogin(t, alice))
 
 		// Action
-		res, err := session.GetOrganizationByIdWithResponse(t.Context(), s.tn.OrgID.String())
+		res, err := session.GetOrganizationByIdWithResponse(t.Context(), s.Tenant.OrgID.String())
 
 		// Assert
 		require.NoError(t, err)

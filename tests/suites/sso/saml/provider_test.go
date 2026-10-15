@@ -6,6 +6,8 @@ import (
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/samlidp"
+	"github.com/Infisical/infisical/tests/fixture"
+	"github.com/Infisical/infisical/tests/fixture/sso"
 	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
@@ -22,12 +24,12 @@ func TestSAMLProvider_Signing(t *testing.T) {
 		signing  samlidp.Signing
 		rejected string // empty when the login is accepted
 	}{
-		{"should reject a response with only the assertion signed when the provider is Okta", okta, samlidp.SignAssertionOnly, "Invalid document signature"},
-		{"should reject a response with only the outer response signed when the provider is Okta", okta, samlidp.SignResponseOnly, "Invalid signature"},
-		{"should accept a response with only the assertion signed when the provider is Azure", azure, samlidp.SignAssertionOnly, ""},
-		{"should accept a response with only the outer response signed when the provider is Google", google, samlidp.SignResponseOnly, ""},
-		{"should reject a response with only the assertion signed when the provider is Google", google, samlidp.SignAssertionOnly, "Invalid document signature"},
-		{"should reject a response with no signature when the provider is Azure", azure, samlidp.SignNone, "Invalid signature"},
+		{"should reject a response with only the assertion signed when the provider is Okta", sso.Okta, samlidp.SignAssertionOnly, "Invalid document signature"},
+		{"should reject a response with only the outer response signed when the provider is Okta", sso.Okta, samlidp.SignResponseOnly, "Invalid signature"},
+		{"should accept a response with only the assertion signed when the provider is Azure", sso.Azure, samlidp.SignAssertionOnly, ""},
+		{"should accept a response with only the outer response signed when the provider is Google", sso.Google, samlidp.SignResponseOnly, ""},
+		{"should reject a response with only the assertion signed when the provider is Google", sso.Google, samlidp.SignAssertionOnly, "Invalid document signature"},
+		{"should reject a response with no signature when the provider is Azure", sso.Azure, samlidp.SignNone, "Invalid signature"},
 	}
 
 	for _, c := range cases {
@@ -36,21 +38,21 @@ func TestSAMLProvider_Signing(t *testing.T) {
 
 			// Setup
 			s := setup(t, c.provider)
-			alice := s.person()
+			alice := s.Person()
 			alice.Signing = c.signing
 
 			// Action
-			res := s.idpLogin(t, alice)
+			res := s.IdPLogin(t, alice)
 
 			// Assert
 			if c.rejected == "" {
-				require.Equal(t, "/signup/sso", s.redirect(t, res).Path)
-				require.NotNil(t, membershipOf(t, s.tn, alice.Email))
+				require.Equal(t, "/signup/sso", s.Redirect(t, res).Path)
+				require.NotNil(t, fixture.MembershipOf(t, s.Tenant, alice.Email))
 				return
 			}
 			require.Equal(t, http.StatusBadRequest, res.StatusCode())
 			require.Contains(t, string(res.Body), c.rejected)
-			require.Nil(t, membershipOf(t, s.tn, alice.Email))
+			require.Nil(t, fixture.MembershipOf(t, s.Tenant, alice.Email))
 		})
 	}
 }
@@ -62,31 +64,31 @@ func TestSAMLProvider_AzureAudience(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		s := setup(t, azure)
-		alice := s.person()
-		alice.Audience = "spn:" + s.issuer
+		s := setup(t, sso.Azure)
+		alice := s.Person()
+		alice.Audience = "spn:" + s.Issuer
 
 		// Action
-		res := s.spLogin(t, alice)
+		res := s.SPLogin(t, alice)
 
 		// Assert
-		require.Equal(t, "/signup/sso", s.redirect(t, res).Path)
+		require.Equal(t, "/signup/sso", s.Redirect(t, res).Path)
 	})
 
 	t.Run("should reject the spn audience when an Azure login is IdP-initiated", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
-		s := setup(t, azure)
-		alice := s.person()
-		alice.Audience = "spn:" + s.issuer
+		s := setup(t, sso.Azure)
+		alice := s.Person()
+		alice.Audience = "spn:" + s.Issuer
 
 		// Action
-		res := s.idpLogin(t, alice)
+		res := s.IdPLogin(t, alice)
 
 		// Assert
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
 		require.Contains(t, string(res.Body), "audience mismatch")
-		require.Nil(t, membershipOf(t, s.tn, alice.Email))
+		require.Nil(t, fixture.MembershipOf(t, s.Tenant, alice.Email))
 	})
 }
