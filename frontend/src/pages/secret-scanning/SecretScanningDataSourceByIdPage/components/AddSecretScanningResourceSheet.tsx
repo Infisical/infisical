@@ -122,7 +122,7 @@ export const AddSecretScanningResourceSheet = ({ dataSource, isOpen, onOpenChang
             <EmptyTitle>Couldn&apos;t load {resourceDetails.pluralNoun}</EmptyTitle>
             <EmptyDescription>
               {message ??
-                `Something went wrong listing ${resourceDetails.pluralNoun} from ${platform}. Try again in a moment.`}
+                `Couldn't list ${resourceDetails.pluralNoun} from ${platform}. Check that the App Connection still has access, then try again.`}
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
