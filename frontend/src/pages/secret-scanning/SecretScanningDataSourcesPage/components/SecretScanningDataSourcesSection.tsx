@@ -7,7 +7,7 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   CreateSecretScanningDataSourceSheet,
-  EditSecretScanningDataSourceModal
+  EditSecretScanningDataSourceSheet
 } from "@app/components/secret-scanning";
 import { DeleteSecretScanningDataSourceModal } from "@app/components/secret-scanning/DeleteSecretScanningDataSourceModal";
 import {
@@ -409,7 +409,7 @@ export const SecretScanningDataSourcesSection = () => {
         isOpen={popUp.deleteDataSource.isOpen}
         dataSource={popUp.deleteDataSource.data}
       />
-      <EditSecretScanningDataSourceModal
+      <EditSecretScanningDataSourceSheet
         onOpenChange={(isOpen) => handlePopUpToggle("editDataSource", isOpen)}
         isOpen={popUp.editDataSource.isOpen}
         dataSource={popUp.editDataSource.data}

@@ -5,7 +5,7 @@ import { TSecretScanningDataSourceForm } from "@app/components/secret-scanning/f
 import { DiscardChangesAlertDialog, Sheet, SheetContent } from "@app/components/v3";
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
-import { CreateSecretScanningDataSourceForm } from "./forms";
+import { SecretScanningDataSourceForm } from "./forms";
 import {
   SecretScanningDataSourcePopupContext,
   useSecretScanningDataSourcePopupRegistry
@@ -81,7 +81,7 @@ export const CreateSecretScanningDataSourceSheet = ({ isOpen, onOpenChange }: Pr
       >
         <SheetContent size="wide" onEscapeKeyDown={popupRegistry.onEscapeKeyDown}>
           <SecretScanningDataSourcePopupContext.Provider value={popupRegistry.onPopupOpenChange}>
-            <CreateSecretScanningDataSourceForm
+            <SecretScanningDataSourceForm
               initialType={initialFormData?.type}
               initialFormData={initialFormData}
               onComplete={closeSheet}
