@@ -203,6 +203,10 @@ import {
   SanitizedPaloAltoNetworksConnectionSchema
 } from "@app/services/app-connection/palo-alto-networks";
 import {
+  PortainerConnectionListItemSchema,
+  SanitizedPortainerConnectionSchema
+} from "@app/services/app-connection/portainer";
+import {
   PostgresConnectionListItemSchema,
   SanitizedPostgresConnectionSchema
 } from "@app/services/app-connection/postgres";
@@ -362,6 +366,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedF5BigIpConnectionSchema.options,
   ...SanitizedConvexConnectionSchema.options,
   ...SanitizedRundeckConnectionSchema.options,
+  ...SanitizedPortainerConnectionSchema.options,
   ...SanitizedQoveryConnectionSchema.options,
   ...SanitizedLiteLLMConnectionSchema.options,
   ...SanitizedFireworksConnectionSchema.options,
@@ -455,6 +460,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   F5BigIpConnectionListItemSchema,
   ConvexConnectionListItemSchema,
   RundeckConnectionListItemSchema,
+  PortainerConnectionListItemSchema,
   QoveryConnectionListItemSchema,
   LiteLLMConnectionListItemSchema,
   FireworksConnectionListItemSchema,

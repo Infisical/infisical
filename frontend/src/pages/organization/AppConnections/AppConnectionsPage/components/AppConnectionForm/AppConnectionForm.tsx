@@ -80,6 +80,7 @@ import { OpenRouterConnectionForm } from "./OpenRouterConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { OVHConnectionForm } from "./OVHConnectionForm";
 import { PaloAltoNetworksConnectionForm } from "./PaloAltoNetworksConnectionForm";
+import { PortainerConnectionForm } from "./PortainerConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { PowerDnsConnectionForm } from "./PowerDnsConnectionForm";
 import { QoveryConnectionForm } from "./QoveryConnectionForm";
@@ -382,6 +383,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <ConvexConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Rundeck:
         return <RundeckConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Portainer:
+        return <PortainerConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NutanixPrismCentral:
         return <NutanixPrismCentralConnectionForm onSubmit={onSubmit} />;
       case AppConnection.PowerDns:
@@ -681,6 +684,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <ConvexConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Rundeck:
         return <RundeckConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Portainer:
+        return <PortainerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NutanixPrismCentral:
         return (
           <NutanixPrismCentralConnectionForm onSubmit={onSubmit} appConnection={appConnection} />
