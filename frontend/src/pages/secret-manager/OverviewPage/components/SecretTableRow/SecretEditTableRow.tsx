@@ -176,6 +176,7 @@ type Props = {
   isPendingCreate?: boolean;
   isPendingDelete?: boolean;
   onBatchRevert?: (env: string, key: string) => void;
+  onPendingSave?: (env: string, key: string) => Promise<void>;
   hasPendingChange?: boolean;
   hasPendingValueChange?: boolean;
   pendingKeyName?: string;
@@ -217,6 +218,7 @@ export const SecretEditTableRow = ({
   isPendingCreate,
   isPendingDelete,
   onBatchRevert,
+  onPendingSave,
   hasPendingChange,
   hasPendingValueChange,
   pendingKeyName,
@@ -349,6 +351,7 @@ export const SecretEditTableRow = ({
   const { mutateAsync: updateSecretV3, isPending: isUpdatingMultiline } = useUpdateSecretV3();
 
   const [isDeleting, setIsDeleting] = useToggle();
+  const [isSavingPendingChange, setIsSavingPendingChange] = useToggle();
   const [isEditing, setIsEditing] = useToggle();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCommentOpen, setIsCommentOpen] = useState(false);
@@ -701,9 +704,8 @@ export const SecretEditTableRow = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBatchMode, watchedValue, watchedKey, watchedComment, watchedTags, serializedMetadata]);
 
-  // Reset form when a pending change is externally discarded (e.g. CommitForm discard button
-  // or toggling batch mode off). We don't gate on isBatchMode because React batches the
-  // state updates, so isBatchMode can already be false by the time hasPendingChange flips.
+  // Reset form when a pending change is externally discarded or saved (e.g. CommitForm discard
+  // button or this row's inline save).
   const prevHasPendingRef = useRef(hasPendingChange);
   useEffect(() => {
     if (prevHasPendingRef.current && !hasPendingChange) {
@@ -1496,6 +1498,48 @@ export const SecretEditTableRow = ({
               />
             </PopoverContent>
           </Popover>
+          {isPendingBatchChange && onPendingSave && (
+            <ProjectPermissionCan
+              I={
+                isPendingCreate
+                  ? ProjectPermissionActions.Create
+                  : isPendingDelete
+                    ? ProjectPermissionActions.Delete
+                    : ProjectPermissionActions.Edit
+              }
+              a={subject(ProjectPermissionSub.Secrets, {
+                environment,
+                secretPath,
+                secretName,
+                secretTags: ["*"]
+              })}
+            >
+              {(isAllowed) => (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <IconButton
+                      aria-label="Save pending secret changes"
+                      variant="ghost"
+                      className="size-7 border-0 hover:text-success"
+                      size="xs"
+                      isDisabled={!isAllowed || isSavingPendingChange}
+                      onClick={async () => {
+                        setIsSavingPendingChange.on();
+                        try {
+                          await onPendingSave(environment, secretName);
+                        } finally {
+                          setIsSavingPendingChange.off();
+                        }
+                      }}
+                    >
+                      <SaveIcon />
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent>Save pending changes</TooltipContent>
+                </Tooltip>
+              )}
+            </ProjectPermissionCan>
+          )}
           {isPendingBatchChange && (
             <Tooltip>
               <TooltipTrigger asChild>

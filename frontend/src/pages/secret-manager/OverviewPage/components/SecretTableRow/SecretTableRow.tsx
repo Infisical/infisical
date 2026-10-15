@@ -109,8 +109,8 @@ type Props = {
     }[];
   }[];
   isSingleEnvSecretsVisible?: boolean;
-  isBatchMode?: boolean;
   onBatchRevert?: (env: string, key: string) => void;
+  onPendingSave?: (env: string, key: string) => Promise<void>;
   isSelectionDisabled?: boolean;
   onCopySecret?: (request: {
     source: { id: string; name: string; path: string; isValueHidden: boolean };
@@ -142,8 +142,8 @@ export const SecretTableRow = ({
   isSelected,
   importedBy,
   isSingleEnvSecretsVisible,
-  isBatchMode,
   onBatchRevert,
+  onPendingSave,
   isSelectionDisabled,
   onCopySecret,
   onAccessInsightsUpgrade,
@@ -363,8 +363,9 @@ export const SecretTableRow = ({
         {isSingleEnvView ? (
           <SecretEditTableRow
             isSingleEnvView
-            isBatchMode={isBatchMode}
+            isBatchMode
             onBatchRevert={onBatchRevert}
+            onPendingSave={onPendingSave}
             isPendingCreate={singleEnvPendingAction === PendingAction.Create}
             isPendingDelete={singleEnvPendingAction === PendingAction.Delete}
             hasPendingChange={Boolean(singleEnvSecret?.isPending)}

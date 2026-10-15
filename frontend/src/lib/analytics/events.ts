@@ -45,8 +45,6 @@ export type OverviewInteractionProperties = {
     | "select-page"
     | "reveal"
     | "hide"
-    | "batch-mode-enabled"
-    | "batch-mode-disabled"
     | "pagination"
     | "sort"
     | "history"
@@ -96,6 +94,7 @@ export type OverviewFlowProperties = {
   folderFailureCountBucket?: OverviewCountBucket;
   provenance?: "committed" | "pending";
   destination?: "clipboard" | "download" | "environment";
+  commitKind?: "single" | "batch";
 };
 
 export type OverviewScopeProperties = {
@@ -103,7 +102,6 @@ export type OverviewScopeProperties = {
   route: "/organizations/$orgId/projects/secret-management/$projectId/overview";
   environmentMode: "none" | "single" | "multiple";
   folderScope: "root" | "nested";
-  editMode: "immediate" | "batch";
 };
 
 export type SecretsActivationProperties = {

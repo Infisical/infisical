@@ -91,7 +91,8 @@ export const createOverviewTelemetry = (
       folderResponseCountBucket: properties.folderResponseCountBucket,
       folderFailureCountBucket: properties.folderFailureCountBucket,
       provenance: properties.provenance,
-      destination: properties.destination
+      destination: properties.destination,
+      commitKind: properties.commitKind
     });
   },
   openFlow(

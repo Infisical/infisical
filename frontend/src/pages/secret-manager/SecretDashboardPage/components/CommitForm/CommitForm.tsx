@@ -472,7 +472,9 @@ export const CommitForm: React.FC<CommitFormProps> = ({
   isReviewOpen: externalIsReviewOpen,
   onReviewOpenChange
 }) => {
-  const { isBatchMode, pendingChanges, totalChangesCount } = useBatchMode();
+  const { pendingChanges, totalChangesCount } = useBatchMode();
+  const isSingleChange = totalChangesCount === 1;
+  const saveLabel = isSingleChange ? "Save Change" : `Commit ${totalChangesCount} Changes`;
 
   const [internalIsModalOpen, setInternalIsModalOpen] = useState(false);
   const isModalOpen = externalIsReviewOpen ?? internalIsModalOpen;
@@ -537,10 +539,6 @@ export const CommitForm: React.FC<CommitFormProps> = ({
     setLayoutContainer(document.querySelector<HTMLElement>('[data-slot="sidebar-inset"]'));
   }, []);
 
-  if (!isBatchMode) {
-    return null;
-  }
-
   const handleCommit = async () => {
     if (isBusy) return;
     setIsSubmitting(true);
@@ -586,7 +584,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
           isPending={isBusy}
         >
           <SaveIcon />
-          Save and Commit
+          {saveLabel}
         </Button>
       </SelectedActionBar>
 
@@ -602,7 +600,9 @@ export const CommitForm: React.FC<CommitFormProps> = ({
               </Badge>
             </SheetTitle>
             <SheetDescription>
-              Write a commit message and review the changes you&apos;re about to commit.
+              {isSingleChange
+                ? "Review the change you're about to save."
+                : "Write a commit message and review the changes you're about to commit."}
             </SheetDescription>
           </SheetHeader>
 
@@ -660,15 +660,18 @@ export const CommitForm: React.FC<CommitFormProps> = ({
 
           <SheetFooter className="border-t border-border">
             <div className="flex w-full flex-col gap-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium">Commit Message</label>
-                <Input
-                  value={commitMessage}
-                  onChange={(e) => setCommitMessage(e.target.value)}
-                  placeholder="Describe your changes..."
-                  autoFocus
-                />
-              </div>
+              {!isSingleChange && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium">Commit Message</label>
+                  <Input
+                    value={commitMessage}
+                    onChange={(e) => setCommitMessage(e.target.value)}
+                    placeholder="Describe your changes..."
+                    maxLength={255}
+                    autoFocus
+                  />
+                </div>
+              )}
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" onClick={() => setIsModalOpen(false)} isDisabled={isBusy}>
                   Cancel
@@ -680,7 +683,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                   isDisabled={isBusy}
                 >
                   <SaveIcon />
-                  {isBusy ? "Committing..." : "Save and Commit"}
+                  {saveLabel}
                 </Button>
               </div>
             </div>

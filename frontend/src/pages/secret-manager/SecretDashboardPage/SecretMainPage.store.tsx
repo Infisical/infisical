@@ -169,7 +169,6 @@ const createSelectedSecretStore: StateCreator<CombinedState, [], [], SelectedSec
 });
 
 type BatchModeState = {
-  isBatchMode: boolean;
   pendingChanges: PendingChanges;
   pendingChangesByContext: Map<string, PendingChanges>;
   existingSecretKeys: Set<string>;
@@ -195,7 +194,6 @@ const generateContextKey = (projectId: string, environment: string, secretPath: 
 };
 
 const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> = (set, get) => ({
-  isBatchMode: true, // Always enabled by default
   pendingChanges: { secrets: [], folders: [] },
   pendingChangesByContext: new Map<string, PendingChanges>(),
   currentContext: null,
@@ -624,7 +622,6 @@ export const usePopUpAction = () => useStoreContext(useShallow((state) => state.
 export const useBatchMode = () =>
   useStoreContext(
     useShallow((state) => ({
-      isBatchMode: state.isBatchMode,
       pendingChanges: state.pendingChanges,
       currentContext: state.currentContext,
       totalChangesCount: state.batchActions.getTotalPendingChangesCount(),
