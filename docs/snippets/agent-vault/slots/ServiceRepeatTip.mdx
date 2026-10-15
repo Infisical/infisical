@@ -1,0 +1,20 @@
+import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx";
+
+<AgentVaultBranch serviceNot="github">
+  <Tip>
+    You can repeat these steps to add as many more services as you like to the access bundle.
+  </Tip>
+</AgentVaultBranch>
+
+<AgentVaultBranch service="github">
+  <Note>
+    The GitHub template covers the GitHub API on `api.github.com`, but git sends its requests to `github.com`. If your agent clones, pulls, or pushes repositories over HTTPS, repeat these steps to add a second service for git. GitHub only accepts a token from git through Basic authentication, so configure the service like this:
+
+    - **Template:** **Custom**, with `github.com` in **Hosts**
+    - **Credential Type:** **Basic Auth**
+    - **Username:** `x-access-token`
+    - **Password:** the same personal access token that the GitHub service uses
+
+    Without this service, git commands fail with an authentication error. Some agents then use the GitHub API instead, so they can still commit and open pull requests, but they never get a local copy of the repository to build or test.
+  </Note>
+</AgentVaultBranch>
