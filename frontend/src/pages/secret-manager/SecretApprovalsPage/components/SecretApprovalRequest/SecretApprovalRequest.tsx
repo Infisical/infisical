@@ -243,7 +243,7 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   };
 
   const togglePageSelection = () => {
-    if (isPageSelected) {
+    if (isPageSelected || isPageIndeterminate) {
       const pageIds = new Set(secretApprovalRequests.map(({ id }) => id));
       setSelectedRequests((prev) =>
         Object.fromEntries(Object.entries(prev).filter(([id]) => !pageIds.has(id)))

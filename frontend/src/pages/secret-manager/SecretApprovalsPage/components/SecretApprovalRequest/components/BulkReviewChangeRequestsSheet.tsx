@@ -108,11 +108,12 @@ const BulkReviewChangeRequestsSheetContent = ({
     requests.map(({ id }, index) => [id, detailQueries[index]?.data])
   );
   const isLoadingDetails = detailQueries.some(({ isPending }) => isPending);
+  const hasAllDetails = detailQueries.every(({ data }) => Boolean(data));
 
   const groups = useMemo(() => {
     const byLocation = new Map<string, TSecretApprovalRequest[]>();
     requests.forEach((request) => {
-      const key = `${request.environment}|${request.policy.secretPath}`;
+      const key = `${request.environment}|${request.folderId}`;
       byLocation.set(key, [...(byLocation.get(key) ?? []), request]);
     });
     return [...byLocation.values()];
@@ -122,13 +123,14 @@ const BulkReviewChangeRequestsSheetContent = ({
     const touchedBy = new Map<string, { secretKey: string; requests: TSecretApprovalRequest[] }>();
     requests.forEach((request) => {
       const secretKeys = new Set(
-        (detailsById[request.id]?.commits ?? []).map(
-          (commit) => commit.secretKey || commit.secretVersion?.secretKey
-        )
+        (detailsById[request.id]?.commits ?? []).flatMap((commit) => [
+          commit.secretKey,
+          commit.secretVersion?.secretKey
+        ])
       );
       secretKeys.forEach((secretKey) => {
         if (!secretKey) return;
-        const locationKey = `${request.environment}|${request.policy.secretPath}|${secretKey}`;
+        const locationKey = `${request.environment}|${request.folderId}|${secretKey}`;
         const entry = touchedBy.get(locationKey) ?? { secretKey, requests: [] };
         touchedBy.set(locationKey, { secretKey, requests: [...entry.requests, request] });
       });
@@ -153,7 +155,7 @@ const BulkReviewChangeRequestsSheetContent = ({
 
   const decidedCount = requests.filter(({ id }) => decisions[id]).length;
   const approveCount = requests.filter(({ id }) => decisions[id] === "approve").length;
-  const isReadyToSubmit = !isLoadingDetails && decidedCount === requests.length;
+  const isReadyToSubmit = hasAllDetails && decidedCount === requests.length;
 
   const decide = (requestId: string, decision: Decision) => {
     setDecisions((prev) => ({ ...prev, [requestId]: decision }));
@@ -185,27 +187,29 @@ const BulkReviewChangeRequestsSheetContent = ({
             requestIds: rejectIds
           })
         : [];
-      const approvedIds = approveResults.filter(({ isSuccess }) => isSuccess).map(({ id }) => id);
-      const mergeResults = approvedIds.length
+      const mergeResults = approveIds.length
         ? await bulkAct({
             projectId,
             action: BulkChangeRequestAction.Merge,
-            requestIds: approvedIds
+            requestIds: approveIds
           })
         : [];
 
       const nextOutcomes: Record<string, Outcome> = {};
-      [...approveResults, ...rejectResults].forEach(({ id, isSuccess, errorMessage }) => {
-        if (!isSuccess) {
-          nextOutcomes[id] = { status: "failed", message: errorMessage ?? "Review failed" };
-          return;
-        }
-        if (decisions[id] === "reject") nextOutcomes[id] = { status: "rejected" };
+      rejectResults.forEach(({ id, isSuccess, errorMessage }) => {
+        nextOutcomes[id] = isSuccess
+          ? { status: "rejected" }
+          : { status: "failed", message: errorMessage ?? "Review failed" };
       });
       mergeResults.forEach(({ id, isSuccess, errorMessage }) => {
-        nextOutcomes[id] = isSuccess
-          ? { status: "merged" }
-          : { status: "approved", message: errorMessage ?? "Could not be merged" };
+        const review = approveResults.find((result) => result.id === id);
+        if (isSuccess) {
+          nextOutcomes[id] = { status: "merged" };
+          return;
+        }
+        nextOutcomes[id] = review?.isSuccess
+          ? { status: "approved", message: errorMessage ?? "Could not be merged" }
+          : { status: "failed", message: review?.errorMessage ?? errorMessage ?? "Review failed" };
       });
       setOutcomes(nextOutcomes);
 
@@ -352,17 +356,19 @@ const BulkReviewChangeRequestsSheetContent = ({
 
       <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-6 overflow-y-auto p-4">
         {groups.map((group) => {
-          const [{ environment, policy }] = group;
+          const [{ id, environment, folderId, policy }] = group;
+          const folderPath = detailsById[id]?.secretPath ?? policy.secretPath ?? "/";
           return (
-            <section key={`${environment}-${policy.secretPath}`} className="flex flex-col gap-2">
+            <section key={`${environment}-${folderId}`} className="flex flex-col gap-2">
               <div className="flex items-center gap-2 text-sm">
                 <span className="font-medium text-foreground">
                   {environmentNamesBySlug[environment] ?? environment}
                 </span>
-                <span className="text-muted">{formatReservedPaths(policy.secretPath ?? "/")}</span>
+                <span className="text-muted">{formatReservedPaths(folderPath)}</span>
               </div>
               {group.map((request) => {
                 const details = detailsById[request.id];
+                const detailQuery = detailQueries[requests.indexOf(request)];
                 const decision = decisions[request.id];
                 const isCollapsed = Boolean(collapsed[request.id]);
                 return (
@@ -420,7 +426,7 @@ const BulkReviewChangeRequestsSheetContent = ({
                     </div>
                     {!isCollapsed && (
                       <div className="flex flex-col gap-2 border-t border-border p-3">
-                        {details ? (
+                        {details &&
                           details.commits.map(
                             ({ op, secretVersion, secret, ...newVersion }, index) => (
                               <SecretApprovalRequestChangeItem
@@ -433,10 +439,23 @@ const BulkReviewChangeRequestsSheetContent = ({
                                 newVersion={newVersion}
                               />
                             )
-                          )
-                        ) : (
-                          <Skeleton className="h-16 w-full" />
+                          )}
+                        {!details && detailQuery?.isError && (
+                          <div className="flex items-center gap-3 text-sm text-danger">
+                            <CircleXIcon className="size-4" />
+                            <span className="flex-1">
+                              Could not load this request&apos;s changes.
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() => detailQuery.refetch()}
+                            >
+                              Retry
+                            </Button>
+                          </div>
                         )}
+                        {!details && !detailQuery?.isError && <Skeleton className="h-16 w-full" />}
                       </div>
                     )}
                   </div>
@@ -447,52 +466,54 @@ const BulkReviewChangeRequestsSheetContent = ({
         })}
       </div>
 
-      <SheetFooter className="flex-col gap-3 border-t">
-        {outcomes ? (
-          <div className="flex items-center gap-3">
-            <p className="flex-1 text-sm text-muted">
-              {summary}.
-              {hasUnfinished &&
-                " Unfinished requests stay selected so you can open them individually."}
-            </p>
-            <Button variant="project" size="sm" onClick={onClose}>
-              Done
-            </Button>
-          </div>
-        ) : (
-          <>
-            <Field>
-              <FieldLabel htmlFor="bulk-review-comment">Comment (optional)</FieldLabel>
-              <TextArea
-                id="bulk-review-comment"
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Added to each review..."
-                maxLength={1000}
-                rows={2}
-                disabled={isSubmitting}
-              />
-            </Field>
-            <div className="flex items-center gap-3">
+      <SheetFooter className="border-t">
+        <div className="flex w-full flex-col gap-2">
+          {outcomes ? (
+            <div className="flex items-center gap-2">
               <p className="flex-1 text-sm text-muted">
-                {decidedCount} of {requests.length} reviewed
+                {summary}.
+                {hasUnfinished &&
+                  " Unfinished requests stay selected so you can open them individually."}
               </p>
-              <Button variant="ghost" size="sm" isDisabled={isSubmitting} onClick={onClose}>
-                Cancel
-              </Button>
-              <Button
-                variant="project"
-                size="sm"
-                isDisabled={!isReadyToSubmit}
-                isPending={isSubmitting}
-                onClick={handleSubmit}
-              >
-                <GitMergeIcon />
-                {approveCount ? `Submit & Merge ${approveCount}` : "Submit Reviews"}
+              <Button variant="project" size="sm" onClick={onClose}>
+                Done
               </Button>
             </div>
-          </>
-        )}
+          ) : (
+            <>
+              <Field>
+                <FieldLabel htmlFor="bulk-review-comment">Comment (optional)</FieldLabel>
+                <TextArea
+                  id="bulk-review-comment"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Added to each review..."
+                  maxLength={1000}
+                  rows={2}
+                  disabled={isSubmitting}
+                />
+              </Field>
+              <div className="flex items-center gap-3">
+                <p className="flex-1 text-sm text-muted">
+                  {decidedCount} of {requests.length} reviewed
+                </p>
+                <Button variant="ghost" size="sm" isDisabled={isSubmitting} onClick={onClose}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="project"
+                  size="sm"
+                  isDisabled={!isReadyToSubmit}
+                  isPending={isSubmitting}
+                  onClick={handleSubmit}
+                >
+                  <GitMergeIcon />
+                  {approveCount ? `Submit & Merge ${approveCount}` : "Submit Reviews"}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
       </SheetFooter>
     </>
   );
@@ -509,7 +530,7 @@ export const BulkReviewChangeRequestsSheet = ({ isOpen, onOpenChange, ...content
         onOpenChange(open);
       }}
     >
-      <SheetContent size="wide" className="flex h-full w-full flex-col gap-0 overflow-hidden">
+      <SheetContent size="wide" className="flex h-full flex-col gap-0 overflow-hidden">
         {isOpen && (
           <BulkReviewChangeRequestsSheetContent
             {...contentProps}
