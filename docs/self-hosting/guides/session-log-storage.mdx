@@ -6,7 +6,7 @@ description: "Give your instance an Amazon S3 bucket so organizations can record
 
 Agent Vault [session logs](/documentation/platform/agent-vault/session-logs) record every request an AI agent makes. Organizations can store them in their own S3 bucket, called external storage, or in default storage: one S3 bucket that you set up for the whole instance.
 
-After you set up default storage, organizations on your instance can record session logs with nothing to set up. Session logs are on in default storage for every organization that hasn't changed its session log settings.
+After you set up default storage, organizations on your instance can record session logs with nothing to set up.
 
 ## Prerequisites
 
@@ -92,7 +92,7 @@ Infisical stores session logs under `<prefix>/` in the bucket, where `<prefix>` 
 }
 ```
 
-If you won't set a prefix, delete `<prefix>/` in both places. Infisical needs `s3:PutObjectTagging` to add the retention tag to each upload. Infisical doesn't delete files yet, but the policy includes `s3:DeleteObject` so that a later version of Infisical can delete files without a policy change.
+If you won't set a prefix, delete `<prefix>/` in both places. Infisical needs `s3:PutObjectTagging` to add the retention tag to each upload.
 
 Attach the policy to the identity Infisical uses for default storage:
 
@@ -113,7 +113,7 @@ OBJECT_STORAGE_S3_ACCESS_KEY_ID=<access-key-id>
 OBJECT_STORAGE_S3_SECRET_ACCESS_KEY=<secret-access-key>
 ```
 
-If you leave out the access key variables, Infisical finds credentials the way the AWS SDK does by default, for example from the instance's role. Infisical doesn't use the `INF_APP_CONNECTION_AWS_*` variables for default storage.
+If you leave out the access key variables, Infisical finds credentials the way the AWS SDK does by default, for example from the instance's role.
 
 If you set only some of the variables, such as a bucket without a region or an access key ID without its secret, Infisical doesn't start, and its log names the missing variable.
 

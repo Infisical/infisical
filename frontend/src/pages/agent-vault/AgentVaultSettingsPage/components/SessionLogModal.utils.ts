@@ -29,10 +29,7 @@ export const toStorage = (values: TSessionLogFormValues): TAgentVaultSessionLogS
         keyPrefix: values.keyPrefix.trim()
       };
 
-export const isSameStorage = (
-  values: TSessionLogFormValues,
-  saved?: TAgentVaultSessionLogStorage
-) => {
+const isSameStorage = (values: TSessionLogFormValues, saved?: TAgentVaultSessionLogStorage) => {
   if (!saved || saved.type !== values.storageType) return false;
   if (saved.type === AgentVaultSessionLogStorageType.Default) return true;
   return (
@@ -43,7 +40,7 @@ export const isSameStorage = (
   );
 };
 
-export const getKeyPrefixIssue = (value: string) => {
+const getKeyPrefixIssue = (value: string) => {
   if (value.length > 256) return "At most 256 characters";
   if (!/^[A-Za-z0-9!\-_.'()/]*$/.test(value))
     return "Use only letters, numbers and ! - _ . ' ( ) /";

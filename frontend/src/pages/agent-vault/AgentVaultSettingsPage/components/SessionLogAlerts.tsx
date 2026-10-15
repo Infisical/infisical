@@ -26,10 +26,11 @@ export const SessionLogAlerts = () => {
 
   let planMessage: string | null = null;
   if (isLapsed && isDefaultStorage) {
-    planMessage = "Your plan no longer includes default storage. Recorded logs are hidden.";
+    planMessage =
+      "Your plan no longer includes default storage. Upgrade to see recorded logs and keep recording.";
   } else if (isLapsed) {
     planMessage =
-      "Your plan no longer includes external storage. Recorded logs are hidden, and stay in your bucket.";
+      "Your plan no longer includes external storage. Upgrade to see recorded logs and keep recording. Recorded logs stay in your bucket.";
   }
 
   return (

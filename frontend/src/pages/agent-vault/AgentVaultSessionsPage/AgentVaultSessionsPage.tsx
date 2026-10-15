@@ -65,7 +65,6 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission, useSubscription } from "@app/context";
 import {
-  areAgentVaultSessionLogsOn,
   isAgentVaultSessionLogBlockedByPlan,
   isAgentVaultSessionLogPlanLapsed
 } from "@app/helpers/agentVaultSessionLogs";
@@ -203,7 +202,7 @@ export const AgentVaultSessionsPage = () => {
 
       <div className="flex flex-col gap-8">
         {sessionLogHealth?.connectionError &&
-          areAgentVaultSessionLogsOn(sessionLogSettings) &&
+          sessionLogSettings?.enabled &&
           !isSessionLogBlockedByPlan && (
             <Alert variant="danger">
               <CircleAlertIcon />
@@ -228,8 +227,10 @@ export const AgentVaultSessionsPage = () => {
             <TriangleAlertIcon />
             <AlertDescription>
               <p>
-                Your plan no longer includes {sessionLogStorageName}, so new requests aren&apos;t
-                recorded.
+                Your plan no longer includes {sessionLogStorageName}. Upgrade to see recorded logs
+                and keep recording.
+                {sessionLogSettings?.storage.type === AgentVaultSessionLogStorageType.External &&
+                  " Recorded logs stay in your bucket."}
               </p>
               <AlertAction>
                 <Button variant="outline" size="sm" onClick={() => setIsUpgradeOpen(true)}>

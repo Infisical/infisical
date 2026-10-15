@@ -122,6 +122,8 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
   // Without the plan and with nothing saved, the bucket fields could never be saved, so they aren't shown.
   const isExternalUsable =
     isOnPlan(AgentVaultSessionLogStorageType.External) || Boolean(savedExternal);
+  const isDefaultUsable =
+    isDefaultStorageConfigured && isOnPlan(AgentVaultSessionLogStorageType.Default);
 
   const {
     control,
@@ -143,19 +145,19 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
     const saved = state.settings;
     const external =
       saved?.storage.type === AgentVaultSessionLogStorageType.External ? saved.storage : null;
+    // An unsaved default isn't a choice, so a plan without default storage starts on external storage.
+    const unsavedStorageType = isDefaultUsable
+      ? AgentVaultSessionLogStorageType.Default
+      : AgentVaultSessionLogStorageType.External;
     reset({
       enabled: saved?.enabled ?? false,
-      storageType:
-        saved?.storage.type ??
-        (state.defaultStorage.configured
-          ? AgentVaultSessionLogStorageType.Default
-          : AgentVaultSessionLogStorageType.External),
+      storageType: saved?.isSaved ? saved.storage.type : unsavedStorageType,
       appConnectionId: external?.appConnectionId ?? "",
       bucket: external?.bucket ?? "",
       region: external?.region ?? AWS_REGIONS[0].slug,
       keyPrefix: external?.keyPrefix ?? ""
     });
-  }, [isOpen, state, reset]);
+  }, [isOpen, state, reset, isDefaultUsable]);
 
   const bucket = watch("bucket") ?? "";
   const keyPrefix = watch("keyPrefix") ?? "";
@@ -168,8 +170,6 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
     Boolean(savedExternal) && !isOnPlan(AgentVaultSessionLogStorageType.External);
   const isLapsed = isAgentVaultSessionLogPlanLapsed(settings, subscription);
   const canTurnOn = canTurnOnAgentVaultSessionLogs(isDefaultStorageConfigured, subscription);
-  const canSwitchToDefault =
-    isDefaultStorageConfigured && isOnPlan(AgentVaultSessionLogStorageType.Default);
 
   const canCreateConnection = permission.can(
     ProjectPermissionAppConnectionActions.Create,
@@ -239,7 +239,7 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
     {
       type: AgentVaultSessionLogStorageType.External,
       title: "External storage",
-      description: "You keep logs as long as you like."
+      description: "Your own S3 bucket. You keep logs as long as you like."
     }
   ];
 
@@ -259,7 +259,8 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
             <Alert variant="warning">
               <TriangleAlertIcon />
               <AlertDescription>
-                Your plan no longer includes default storage. Recorded logs are hidden.
+                Your plan no longer includes default storage. Upgrade to see recorded logs and keep
+                recording.
               </AlertDescription>
             </Alert>
           )}
@@ -267,9 +268,9 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
             <Alert variant="warning">
               <TriangleAlertIcon />
               <AlertDescription>
-                Your plan no longer includes external storage. Recorded logs are hidden, and stay in
-                your bucket. You can turn session logs off
-                {canSwitchToDefault ? ", or switch to default storage." : "."}
+                Your plan no longer includes external storage. Upgrade to see recorded logs and keep
+                recording. Recorded logs stay in your bucket. You can turn session logs off
+                {isDefaultUsable ? ", or switch to default storage." : "."}
               </AlertDescription>
             </Alert>
           )}
@@ -340,11 +341,6 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
                               <FieldContent>
                                 <FieldTitle>
                                   {option.title}
-                                  {option.type === AgentVaultSessionLogStorageType.External && (
-                                    <span className="font-normal text-muted">
-                                      (your own S3 bucket)
-                                    </span>
-                                  )}
                                   {!isAvailable && <Badge variant="av">Upgrade</Badge>}
                                 </FieldTitle>
                                 {isAvailable && (
@@ -517,7 +513,7 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
                     <TriangleAlertIcon />
                     <AlertDescription>
                       {settings?.storage.type === AgentVaultSessionLogStorageType.Default
-                        ? `Logs in default storage won't show after switching, and are deleted after ${retentionDays} days.`
+                        ? `Logs in default storage won't show after switching, and keep their ${retentionDays}-day retention.`
                         : "Logs in your bucket won't show after switching. They stay in the bucket."}
                     </AlertDescription>
                   </Alert>

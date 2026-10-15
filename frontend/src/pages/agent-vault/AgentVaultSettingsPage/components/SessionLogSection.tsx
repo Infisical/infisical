@@ -62,9 +62,9 @@ const AWS_CONNECTION = APP_CONNECTION_MAP[AppConnection.AWS];
 
 export const SessionLogSection = () => {
   const { currentOrg } = useOrganization();
-  const { subscription } = useSubscription();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
+  const { subscription } = useSubscription();
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConnectionsSheetOpen, setIsConnectionsSheetOpen] = useState(false);

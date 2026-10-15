@@ -250,8 +250,6 @@ Turning session logs off also hides the logs already recorded:
 - With default storage, turning session logs back on shows those logs again, as long as they're less than 30 days old
 - With external storage, Infisical forgets the bucket and its AWS connection (to see the logs again, set up the same bucket and key prefix)
 
-To turn session logs back on, follow the steps in [Switching back to default storage](#switching-back-to-default-storage), or [set up external storage](#storing-session-logs-in-your-own-s3-bucket) again.
-
 ### AWS connections
 
 If you use external storage, session logs use one AWS connection at a time, which you select in the **Session Logs** dialog.
@@ -272,28 +270,12 @@ Infisical doesn't copy existing records when you switch storage or change the bu
 
 If you switch away from default storage, logs already in default storage still expire after 30 days.
 
-#### Switching back to default storage
-
-<Steps>
-  <Step>
-    In Agent Vault, go to **Administration** > **Settings** and select **Configure** on the **Session Logs** card.
-  </Step>
-  <Step>
-    Turn on **Enable**, then under **Storage**, select **Default storage**.
-  </Step>
-  <Step>
-    Select **Save**.
-  </Step>
-</Steps>
-
 ### Retention
 
 How long session logs are kept depends on where they're stored:
 
 - **Default storage**: you can look back at the last 30 days of session logs, unless your plan sets a different period
 - **External storage**: Infisical never deletes session logs from your bucket (to delete older logs automatically, add an [S3 Lifecycle rule](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html) to the bucket)
-
-Infisical never deletes the sessions themselves.
 
 If you use external storage, don't modify or add files in the folder that session logs use. Restrict who in your AWS account can delete or overwrite these files.
 

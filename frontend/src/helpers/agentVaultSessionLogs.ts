@@ -23,9 +23,6 @@ export const getAgentVaultSessionLogRetentionDays = (
   plan: Pick<TSessionLogPlan, "agentVaultSessionLogRetentionDays">
 ) => plan.agentVaultSessionLogRetentionDays ?? DEFAULT_RETENTION_DAYS;
 
-export const areAgentVaultSessionLogsOn = (settings?: TAgentVaultSessionLogSettings | null) =>
-  Boolean(settings?.enabled);
-
 // A saved storage that was recording and is no longer on the plan. Off rows don't count, so an org that never used
 // default storage isn't told its plan "no longer" includes it.
 export const isAgentVaultSessionLogPlanLapsed = (

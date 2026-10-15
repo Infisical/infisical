@@ -104,7 +104,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   // Only admins can read the settings; they need the storage type to show the right upgrade.
-  const { data: sessionLogSettings } = useGetAgentVaultSessionLogSettings(isAdmin);
+  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(isAdmin);
   // A session holds one bundle (AGENT_VAULT_MAX_SESSION_BUNDLES). Raising that cap needs a bundle
   // picker here: the rows offering Add Service matched no service, so they name no bundle.
   const accessBundle = session.accessBundles[0];
@@ -432,7 +432,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
           <AgentVaultSessionLogUpgradeModal
             isOpen={isUpgradeOpen}
             onOpenChange={setIsUpgradeOpen}
-            storageType={sessionLogSettings?.settings?.storage.type}
+            storageType={sessionLogState?.settings?.storage.type}
           />
         </Empty>
       );
