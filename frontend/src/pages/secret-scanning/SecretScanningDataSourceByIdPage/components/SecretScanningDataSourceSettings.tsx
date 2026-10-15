@@ -1,7 +1,4 @@
-import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { TrashIcon } from "lucide-react";
-import { z } from "zod";
+import { PencilIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -12,19 +9,16 @@ import {
   CardAction,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
-  Combobox,
+  Detail,
+  DetailLabel,
+  DetailValue,
   Field,
   FieldContent,
   FieldDescription,
-  FieldError,
   FieldGroup,
-  FieldLabel,
   FieldTitle,
-  Input,
-  TextArea,
   Toggle
 } from "@app/components/v3";
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
@@ -41,16 +35,9 @@ import {
   TSecretScanningDataSource,
   useUpdateSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
-import { slugSchema } from "@app/lib/schemas";
 
 import { DataSourceConfigDisplay } from "./DataSourceConfigDisplay";
-
-const GeneralFormSchema = z.object({
-  name: slugSchema({ field: "Name" }),
-  description: z.string().trim().max(256, "Cannot exceed 256 characters").nullish()
-});
-
-type TGeneralForm = z.infer<typeof GeneralFormSchema>;
+import { EditDataSourceDetailsDialog } from "./EditDataSourceDetailsDialog";
 
 type TScanToggleName = "isHistoricalScanEnabled" | "isScanNewCommitsEnabled" | "isDiscoveryEnabled";
 
@@ -66,39 +53,18 @@ export const SecretScanningDataSourceSettings = ({ dataSource, onDeleted }: Prop
     ProjectPermissionSub.SecretScanningDataSources
   );
 
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["deleteDataSource"] as const);
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+    "deleteDataSource",
+    "editDetails"
+  ] as const);
 
   const updateDataSource = useUpdateSecretScanningDataSource();
-
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { isDirty, isSubmitting }
-  } = useForm<TGeneralForm>({
-    resolver: zodResolver(GeneralFormSchema),
-    // the Edit Configuration modal can also rename the data source, so follow the server values
-    values: { name: dataSource.name, description: dataSource.description },
-    resetOptions: { keepDirtyValues: true }
-  });
 
   const { name: platform } = SECRET_SCANNING_DATA_SOURCE_MAP[dataSource.type];
   const { pluralNoun, pluralTitle } = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
   const supportsDiscovery = doesDataSourceSupportDiscovery(dataSource);
   const connectionDetails =
     APP_CONNECTION_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSource.type]];
-
-  const onSaveGeneral = async (form: TGeneralForm) => {
-    await updateDataSource.mutateAsync({
-      dataSourceId: dataSource.id,
-      type: dataSource.type,
-      projectId: dataSource.projectId,
-      ...form
-    });
-
-    reset(form);
-    createNotification({ text: "Data source updated", type: "success" });
-  };
 
   const handleToggle = async (name: TScanToggleName, label: string, isEnabled: boolean) => {
     await updateDataSource.mutateAsync({
@@ -147,91 +113,41 @@ export const SecretScanningDataSourceSettings = ({ dataSource, onDeleted }: Prop
           <CardHeader>
             <CardTitle>General</CardTitle>
             <CardDescription>How this data source appears across Secret Scanning.</CardDescription>
+            <CardAction>
+              <Button
+                variant="outline"
+                isDisabled={!canEdit}
+                onClick={() => handlePopUpOpen("editDetails")}
+              >
+                <PencilIcon />
+                Edit
+              </Button>
+            </CardAction>
           </CardHeader>
           <CardContent>
-            <form id="data-source-general-form" onSubmit={handleSubmit(onSaveGeneral)}>
-              <FieldGroup>
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <Controller
-                    control={control}
-                    name="name"
-                    render={({ field, fieldState: { error } }) => (
-                      <Field data-invalid={Boolean(error)} data-disabled={!canEdit}>
-                        <FieldLabel htmlFor="data-source-name">Name</FieldLabel>
-                        <FieldContent>
-                          <Input
-                            {...field}
-                            id="data-source-name"
-                            autoComplete="off"
-                            isError={Boolean(error)}
-                            disabled={!canEdit}
-                          />
-                          <FieldError errors={[error]} />
-                        </FieldContent>
-                      </Field>
-                    )}
-                  />
-                  {dataSource.connection && (
-                    <Field data-disabled>
-                      <FieldLabel htmlFor="data-source-connection">
-                        {connectionDetails.name} Connection
-                      </FieldLabel>
-                      <FieldContent>
-                        <Combobox<{ id: string; name: string }>
-                          id="data-source-connection"
-                          value={dataSource.connection}
-                          options={[dataSource.connection]}
-                          isClearable={false}
-                          isDisabled
-                          onValueChange={() => {}}
-                          getOptionLabel={(option) => option.name}
-                          getOptionValue={(option) => option.id}
-                          aria-describedby="data-source-connection-help"
-                        />
-                        <FieldDescription id="data-source-connection-help">
-                          Cannot be updated
-                        </FieldDescription>
-                      </FieldContent>
-                    </Field>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <Detail>
+                <DetailLabel>Name</DetailLabel>
+                <DetailValue>{dataSource.name}</DetailValue>
+              </Detail>
+              {dataSource.connection && (
+                <Detail>
+                  <DetailLabel>{connectionDetails.name} Connection</DetailLabel>
+                  <DetailValue>{dataSource.connection.name}</DetailValue>
+                </Detail>
+              )}
+              <Detail className="md:col-span-2">
+                <DetailLabel>Description</DetailLabel>
+                <DetailValue>
+                  {dataSource.description ? (
+                    <p className="whitespace-pre-wrap">{dataSource.description}</p>
+                  ) : (
+                    <span className="text-muted">None</span>
                   )}
-                </div>
-                <Controller
-                  control={control}
-                  name="description"
-                  render={({ field, fieldState: { error } }) => (
-                    <Field data-invalid={Boolean(error)} data-disabled={!canEdit}>
-                      <FieldLabel htmlFor="data-source-description">
-                        Description (Optional)
-                      </FieldLabel>
-                      <FieldContent>
-                        <TextArea
-                          {...field}
-                          id="data-source-description"
-                          value={field.value ?? ""}
-                          placeholder="Describe what this data source scans..."
-                          rows={3}
-                          aria-invalid={Boolean(error)}
-                          disabled={!canEdit}
-                        />
-                        <FieldError errors={[error]} />
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
-              </FieldGroup>
-            </form>
+                </DetailValue>
+              </Detail>
+            </div>
           </CardContent>
-          <CardFooter className="justify-end">
-            <Button
-              type="submit"
-              form="data-source-general-form"
-              variant="ss"
-              isPending={isSubmitting}
-              isDisabled={!canEdit || !isDirty || isSubmitting}
-            >
-              Save Changes
-            </Button>
-          </CardFooter>
         </Card>
 
         <Card>
@@ -293,6 +209,11 @@ export const SecretScanningDataSourceSettings = ({ dataSource, onDeleted }: Prop
           </CardHeader>
         </Card>
       </div>
+      <EditDataSourceDetailsDialog
+        dataSource={dataSource}
+        isOpen={popUp.editDetails.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("editDetails", isOpen)}
+      />
       <DeleteSecretScanningDataSourceModal
         dataSource={dataSource}
         isOpen={popUp.deleteDataSource.isOpen}
