@@ -49,7 +49,7 @@ import { generateCommitText } from "./SecretApprovalRequestChanges";
 type Decision = "approve" | "reject";
 
 type Outcome =
-  | { status: "merged" }
+  | { status: "merged"; reviewError?: string }
   | { status: "rejected" }
   | { status: "approved"; message: string }
   | { status: "failed"; message: string };
@@ -204,7 +204,10 @@ const BulkReviewChangeRequestsSheetContent = ({
       mergeResults.forEach(({ id, isSuccess, errorMessage }) => {
         const review = approveResults.find((result) => result.id === id);
         if (isSuccess) {
-          nextOutcomes[id] = { status: "merged" };
+          nextOutcomes[id] = {
+            status: "merged",
+            reviewError: review?.isSuccess ? undefined : review?.errorMessage
+          };
           return;
         }
         nextOutcomes[id] = review?.isSuccess
@@ -258,6 +261,24 @@ const BulkReviewChangeRequestsSheetContent = ({
             <BanIcon className="size-4" />
           )}
           {outcome.status === "merged" ? "Merged" : "Rejected"}
+          {outcome.status === "merged" && outcome.reviewError && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  role="img"
+                  // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable so keyboard users can reveal the reason
+                  tabIndex={0}
+                  aria-label={`Your review wasn't saved: ${outcome.reviewError}`}
+                  className="inline-flex rounded-sm text-warning outline-0 focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <TriangleAlertIcon className="size-4" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">
+                Merged, but your review wasn&apos;t saved: {outcome.reviewError}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </span>
       );
 
