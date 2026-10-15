@@ -15,8 +15,7 @@ import {
   LucideIcon,
   PlusIcon,
   SearchIcon,
-  TriangleAlertIcon,
-  XIcon
+  TriangleAlertIcon
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -86,14 +85,13 @@ import {
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import {
-  BulkChangeRequestAction,
   SecretApprovalRequestOrderBy,
   TBulkChangeRequestResult,
   TSecretApprovalRequest
 } from "@app/hooks/api/secretApprovalRequest/types";
 import { ApprovalStatus } from "@app/hooks/api/types";
 
-import { BulkReviewChangeRequestsDialog } from "./components/BulkReviewChangeRequestsDialog";
+import { BulkReviewChangeRequestsSheet } from "./components/BulkReviewChangeRequestsSheet";
 import {
   generateCommitText,
   SecretApprovalRequestChanges
@@ -106,7 +104,7 @@ enum ChangeRequestOrderBy {
   OpenedAt = SecretApprovalRequestOrderBy.CreatedAt
 }
 
-const MAX_BULK_SELECTION = 100;
+const MAX_BULK_SELECTION = 25;
 
 type Props = {
   onConfigurePolicies: () => void;
@@ -132,7 +130,7 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
     {}
   );
   const [failedRequestErrors, setFailedRequestErrors] = useState<Record<string, string>>({});
-  const [bulkAction, setBulkAction] = useState<BulkChangeRequestAction | null>(null);
+  const [isBulkReviewOpen, setIsBulkReviewOpen] = useState(false);
 
   const {
     debouncedSearch: debouncedSearchFilter,
@@ -765,39 +763,16 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
         </CardContent>
       </Card>
       <SelectedActionBar selectedCount={selectedCount} onClearSelection={clearSelection}>
-        <Button
-          variant="success"
-          size="xs"
-          onClick={() => setBulkAction(BulkChangeRequestAction.Approve)}
-        >
-          <CheckIcon />
-          Approve
-        </Button>
-        <Button
-          variant="danger"
-          size="xs"
-          onClick={() => setBulkAction(BulkChangeRequestAction.Reject)}
-        >
-          <XIcon />
-          Reject
-        </Button>
-        <Button
-          variant="project"
-          size="xs"
-          onClick={() => setBulkAction(BulkChangeRequestAction.Merge)}
-        >
+        <Button variant="project" size="xs" onClick={() => setIsBulkReviewOpen(true)}>
           <GitMergeIcon />
-          Merge
+          Review & Merge
         </Button>
       </SelectedActionBar>
-      <BulkReviewChangeRequestsDialog
-        isOpen={Boolean(bulkAction)}
-        onOpenChange={(open) => {
-          if (!open) setBulkAction(null);
-        }}
+      <BulkReviewChangeRequestsSheet
+        isOpen={isBulkReviewOpen}
+        onOpenChange={setIsBulkReviewOpen}
         projectId={projectId}
         requests={selectedRequestList}
-        initialAction={bulkAction ?? BulkChangeRequestAction.Approve}
         environmentNamesBySlug={environmentNamesBySlug}
         onComplete={handleBulkComplete}
       />

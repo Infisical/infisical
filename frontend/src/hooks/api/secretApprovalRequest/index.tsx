@@ -7,5 +7,6 @@ export {
 export {
   useGetSecretApprovalRequestCount,
   useGetSecretApprovalRequestDetails,
+  useGetSecretApprovalRequestDetailsList,
   useGetSecretApprovalRequests
 } from "./queries";
