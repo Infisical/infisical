@@ -64,7 +64,7 @@ const ACTION_DESCRIPTIONS: Record<BulkChangeRequestAction, string> = {
   [BulkChangeRequestAction.Reject]:
     "Adds your rejecting review to each request. Requests you can't review are reported below.",
   [BulkChangeRequestAction.Merge]:
-    "Merges each request that already has its required approvals. Requests that need a policy bypass must be merged individually."
+    "Merges each request that has its required approvals. Requests that would need a policy bypass are reported below and must be merged individually."
 };
 
 const ACTION_RESULT_LABELS: Record<BulkChangeRequestAction, string> = {
@@ -90,50 +90,33 @@ type Props = {
   onComplete: (results: TBulkChangeRequestResult[]) => void;
 };
 
-type ContentProps = Omit<Props, "isOpen" | "onOpenChange">;
+type ContentProps = Omit<Props, "isOpen" | "onOpenChange"> & {
+  bulkAct: ReturnType<typeof useBulkActOnSecretApprovalRequests>["mutateAsync"];
+  isPending: boolean;
+};
 
 const BulkReviewChangeRequestsDialogContent = ({
   projectId,
   requests: selectedRequests,
   initialAction,
   environmentNamesBySlug,
-  onComplete
+  onComplete,
+  bulkAct,
+  isPending
 }: ContentProps) => {
   const [requests] = useState(selectedRequests);
   const [action, setAction] = useState(initialAction);
   const [comment, setComment] = useState("");
   const [results, setResults] = useState<Record<string, TBulkChangeRequestResult> | null>(null);
-  const { mutateAsync: bulkAct, isPending } = useBulkActOnSecretApprovalRequests();
 
   const handleSubmit = async () => {
-    const isMerge = action === BulkChangeRequestAction.Merge;
-    const blockedResults: TBulkChangeRequestResult[] = isMerge
-      ? requests
-          .filter((request) => getApprovedCount(request) < request.policy.approvals)
-          .map(({ id, policy }) => ({
-            id,
-            isSuccess: false,
-            errorMessage: `Needs ${policy.approvals} approving review${policy.approvals === 1 ? "" : "s"} before it can be merged`
-          }))
-      : [];
-    const requestsToRun = requests.filter(
-      ({ id }) => !blockedResults.some((result) => result.id === id)
-    );
+    const allResults = await bulkAct({
+      projectId,
+      action,
+      comment: action === BulkChangeRequestAction.Merge ? undefined : comment.trim() || undefined,
+      requestIds: requests.map(({ id }) => id)
+    });
 
-    const runResults = requestsToRun.length
-      ? await bulkAct({
-          projectId,
-          action,
-          comment: isMerge ? undefined : comment.trim() || undefined,
-          requests: requestsToRun.map(({ id, environment, secretPath, policy }) => ({
-            id,
-            environment,
-            secretPath: secretPath ?? policy.secretPath
-          }))
-        })
-      : [];
-
-    const allResults = [...runResults, ...blockedResults];
     setResults(Object.fromEntries(allResults.map((result) => [result.id, result])));
     onComplete(allResults);
 
@@ -160,7 +143,7 @@ const BulkReviewChangeRequestsDialogContent = ({
   };
 
   const renderResult = (requestId: string) => {
-    if (isPending) return <Spinner className="size-4 text-muted" />;
+    if (isPending) return <Spinner size="xs" />;
 
     const result = results?.[requestId];
     if (!result) return <span className="text-muted">Pending</span>;
@@ -312,16 +295,30 @@ export const BulkReviewChangeRequestsDialog = ({
   isOpen,
   onOpenChange,
   ...contentProps
-}: Props) => (
-  <Dialog open={isOpen} onOpenChange={onOpenChange}>
-    {isOpen && (
-      <DialogContent
-        className="max-w-3xl [&>*]:min-w-0"
-        overlayClassName="bg-black/10 supports-backdrop-filter:backdrop-blur-xs"
-        onInteractOutside={(e) => e.preventDefault()}
-      >
-        <BulkReviewChangeRequestsDialogContent {...contentProps} />
-      </DialogContent>
-    )}
-  </Dialog>
-);
+}: Props) => {
+  const { mutateAsync: bulkAct, isPending } = useBulkActOnSecretApprovalRequests();
+
+  return (
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open && isPending) return;
+        onOpenChange(open);
+      }}
+    >
+      {isOpen && (
+        <DialogContent
+          className="max-w-3xl [&>*]:min-w-0"
+          isPending={isPending}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <BulkReviewChangeRequestsDialogContent
+            {...contentProps}
+            bulkAct={bulkAct}
+            isPending={isPending}
+          />
+        </DialogContent>
+      )}
+    </Dialog>
+  );
+};

@@ -181,7 +181,7 @@ export type TBulkActOnSecretApprovalRequestsDTO = {
   projectId: string;
   action: BulkChangeRequestAction;
   comment?: string;
-  requests: { id: string; environment: string; secretPath: string }[];
+  requestIds: string[];
 };
 
 export type TBulkChangeRequestResult = {

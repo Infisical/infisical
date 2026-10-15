@@ -607,7 +607,8 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    bypassReason
+    bypassReason,
+    requireApprovals
   }) => {
     const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(approvalId);
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
@@ -647,7 +648,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       $resolveMergeBypass({
         unmetStep: $findUnmetStep(requestSteps, eligibleByStepId),
         slug: secretChangeRequest.slug,
-        isSoftEnforcement,
+        isSoftEnforcement: isSoftEnforcement && !requireApprovals,
         canBypass,
         bypassReason
       });

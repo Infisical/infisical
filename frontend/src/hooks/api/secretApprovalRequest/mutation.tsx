@@ -100,15 +100,17 @@ export const useBulkActOnSecretApprovalRequests = () => {
   const queryClient = useQueryClient();
 
   return useMutation<TBulkChangeRequestResult[], object, TBulkActOnSecretApprovalRequestsDTO>({
-    mutationFn: async ({ action, comment, requests }) => {
+    mutationFn: async ({ action, comment, requestIds }) => {
       const results: TBulkChangeRequestResult[] = [];
 
       // eslint-disable-next-line no-restricted-syntax
-      for (const { id } of requests) {
+      for (const id of requestIds) {
         try {
           if (action === BulkChangeRequestAction.Merge) {
             // eslint-disable-next-line no-await-in-loop
-            await apiRequest.post(`/api/v1/secret-approval-requests/${id}/merge`, {});
+            await apiRequest.post(`/api/v1/secret-approval-requests/${id}/merge`, {
+              requireApprovals: true
+            });
           } else {
             // eslint-disable-next-line no-await-in-loop
             await apiRequest.post(`/api/v1/secret-approval-requests/${id}/review`, {
@@ -125,14 +127,17 @@ export const useBulkActOnSecretApprovalRequests = () => {
           results.push({
             id,
             isSuccess: false,
-            errorMessage: typeof message === "string" ? message : "Something went wrong"
+            errorMessage:
+              typeof message === "string"
+                ? message
+                : "Could not update this change request. Try again or open it for details."
           });
         }
       }
 
       return results;
     },
-    onSuccess: (results, { projectId, action, requests }) => {
+    onSuccess: (results, { projectId, action }) => {
       queryClient.invalidateQueries({
         queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
       });
@@ -141,29 +146,20 @@ export const useBulkActOnSecretApprovalRequests = () => {
         queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.detail({ id }) })
       );
 
-      if (action !== BulkChangeRequestAction.Merge) return;
+      if (action !== BulkChangeRequestAction.Merge || !results.some(({ isSuccess }) => isSuccess))
+        return;
 
-      requests
-        .filter(({ id }) => results.some((result) => result.id === id && result.isSuccess))
-        .forEach(({ environment, secretPath }) => {
-          queryClient.invalidateQueries({
-            queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
-          });
-          queryClient.invalidateQueries({
-            queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
-          });
-          queryClient.invalidateQueries({
-            queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
-          });
-          queryClient.invalidateQueries({
-            queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
-          });
-        });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all() });
       queryClient.invalidateQueries({
         predicate: (query) =>
           (query.queryKey[0] as { projectId?: string })?.projectId === projectId &&
-          (query.queryKey[1] === "secrets-import-sec" ||
-            query.queryKey[1] === "imported-folders-all-envs")
+          [
+            "secrets",
+            "folder-commits",
+            "folder-commits-count",
+            "secrets-import-sec",
+            "imported-folders-all-envs"
+          ].includes(query.queryKey[1] as string)
       });
     }
   });
