@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
-import { XIcon } from "lucide-react";
+import { TriangleAlertIcon, XIcon } from "lucide-react";
 
 import { cn } from "../../utils";
 import { useScrollEdges } from "../../utils/useScrollEdges";
@@ -12,6 +12,7 @@ import {
   COMBOBOX_CHIPS_INPUT_CLASS,
   comboboxChipsViewportClass
 } from "../Combobox/combobox-chips";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip";
 
 import "../../utils/ScrollEdgeFade.css";
 
@@ -30,8 +31,8 @@ type TagsInputProps = Omit<
   /** Returning a reason refuses the commit. `existing` never contains the value being checked. */
   validateTag?: (tag: string, existing: string[]) => string | null;
   onValidationError?: (reason: string | null) => void;
-  /** Flags a committed tag as invalid without refusing it, so it stays visible and removable. */
-  isTagInvalid?: (tag: string) => boolean;
+  /** Returning a reason flags a committed tag as invalid without refusing it, so it stays visible and removable. */
+  getTagError?: (tag: string) => string | null;
   /** What splits a pasted list into separate tags. Defaults to commas, spaces and newlines. */
   pasteDelimiter?: RegExp;
   inputValue?: string;
@@ -48,7 +49,7 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
       isError,
       validateTag,
       onValidationError,
-      isTagInvalid,
+      getTagError,
       pasteDelimiter = DEFAULT_PASTE_DELIMITER,
       inputValue,
       onInputValueChange,
@@ -174,15 +175,17 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
             data-scrollable-end={scrollEdges.end}
           >
             {tags.map((tag) => {
-              const isInvalid = isTagInvalid?.(tag) ?? false;
-              return (
+              const tagError = getTagError?.(tag) ?? null;
+              const isInvalid = tagError !== null;
+              const chip = (
                 <ComboboxPrimitive.Chip
                   key={tag}
                   data-invalid={isInvalid || undefined}
                   className={cn(COMBOBOX_CHIP_CLASS, isInvalid && "bg-danger/15 text-danger")}
                 >
+                  {isInvalid && <TriangleAlertIcon aria-hidden className="size-3 shrink-0" />}
                   <span className={COMBOBOX_CHIP_LABEL_CLASS}>{tag}</span>
-                  {isInvalid && <span className="sr-only">(invalid)</span>}
+                  {isInvalid && <span className="sr-only">({tagError})</span>}
                   {!isDisabled && (
                     <ComboboxPrimitive.ChipRemove
                       aria-label={`Remove ${tag}`}
@@ -199,6 +202,13 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
                     </ComboboxPrimitive.ChipRemove>
                   )}
                 </ComboboxPrimitive.Chip>
+              );
+              if (!isInvalid) return chip;
+              return (
+                <Tooltip key={tag}>
+                  <TooltipTrigger asChild>{chip}</TooltipTrigger>
+                  <TooltipContent>{tagError}</TooltipContent>
+                </Tooltip>
               );
             })}
             <ComboboxPrimitive.Input

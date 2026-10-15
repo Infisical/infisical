@@ -6,7 +6,7 @@ import { TagsInput, type TagsInputProps } from "../../generic/TagsInput";
 
 type EmailInputProps = Omit<
   TagsInputProps,
-  "value" | "onValueChange" | "validateTag" | "onValidationError" | "isTagInvalid" | "onBlur"
+  "value" | "onValueChange" | "validateTag" | "onValidationError" | "getTagError" | "onBlur"
 > & {
   value?: readonly string[];
   onValueChange: (emails: string[]) => void;
@@ -24,7 +24,7 @@ const EmailInput = React.forwardRef<HTMLInputElement, EmailInputProps>(
       ref={ref}
       autoComplete={autoComplete}
       onValueChange={(next) => onValueChange(parseEmailList(next))}
-      isTagInvalid={(email) => !isValidEmail(email)}
+      getTagError={(email) => (isValidEmail(email) ? null : "Not a valid email address")}
       pasteDelimiter={EMAIL_LIST_DELIMITER}
       {...props}
     />
