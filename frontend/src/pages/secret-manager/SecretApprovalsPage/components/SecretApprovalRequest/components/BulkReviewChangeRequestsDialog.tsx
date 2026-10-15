@@ -7,6 +7,7 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -54,6 +55,12 @@ const ACTION_OPTIONS = [
     variant: "project"
   }
 ] as const;
+
+const ACTION_DESCRIPTIONS: Record<BulkChangeRequestAction, string> = {
+  [BulkChangeRequestAction.Approve]: "Adds your approving review to each request.",
+  [BulkChangeRequestAction.Reject]: "Adds your rejecting review to each request.",
+  [BulkChangeRequestAction.Merge]: "Requests missing their required approvals won't be merged."
+};
 
 const ACTION_RESULT_LABELS: Record<BulkChangeRequestAction, string> = {
   [BulkChangeRequestAction.Approve]: "Approved",
@@ -176,6 +183,7 @@ const BulkReviewChangeRequestsDialogContent = ({
           {selectedOption.label} {requests.length} Change Request
           {requests.length === 1 ? "" : "s"}
         </DialogTitle>
+        <DialogDescription>{ACTION_DESCRIPTIONS[action]}</DialogDescription>
       </DialogHeader>
       <Table containerClassName="max-h-72 overflow-y-auto">
         <TableHeader sticky>
@@ -277,7 +285,6 @@ export const BulkReviewChangeRequestsDialog = ({
         <DialogContent
           className="max-w-3xl [&>*]:min-w-0"
           isPending={isPending}
-          aria-describedby={undefined}
           onInteractOutside={(e) => e.preventDefault()}
         >
           <BulkReviewChangeRequestsDialogContent
