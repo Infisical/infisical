@@ -9,7 +9,9 @@ import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { delay } from "@app/lib/delay";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, GatewayTransportError, NotFoundError } from "@app/lib/errors";
+import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { callCertificateScan, TCertificateScanRequest } from "@app/lib/gateway-v2/certificate-scan-rpc";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
@@ -395,19 +397,32 @@ const upsertInstallationWithLinks = async (
     };
 
     if (!installation) {
-      installation = await deps.pkiCertificateInstallationDAL.create(
-        {
-          projectId: ctx.projectId,
-          locationType,
-          locationDetails,
-          locationFingerprint: fingerprint,
-          name: buildHostInstallationName(host.hostIdentifier, host.hostname, file.realPath),
-          type: PkiInstallationType.Server,
-          metadata,
-          lastSeenAt: ctx.scanTime
-        },
-        tx
-      );
+      try {
+        installation = await tx.transaction((sp) =>
+          deps.pkiCertificateInstallationDAL.create(
+            {
+              projectId: ctx.projectId,
+              locationType,
+              locationDetails,
+              locationFingerprint: fingerprint,
+              name: buildHostInstallationName(host.hostIdentifier, host.hostname, file.realPath),
+              type: PkiInstallationType.Server,
+              metadata,
+              lastSeenAt: ctx.scanTime
+            },
+            sp
+          )
+        );
+      } catch (error) {
+        if (!hasPostgresErrorCode(error, DatabaseErrorCode.UniqueViolation)) throw error;
+        installation = await findTargetInstallation(ctx, fingerprint, deps, tx);
+        if (!installation) throw error;
+        await deps.pkiCertificateInstallationDAL.updateById(
+          installation.id,
+          { lastSeenAt: ctx.scanTime, locationDetails, locationType, metadata },
+          tx
+        );
+      }
     } else {
       await deps.pkiCertificateInstallationDAL.updateById(
         installation.id,
@@ -519,10 +534,18 @@ const scanConnection = async (
 
     await run.writeLimit(async () => {
       for (const file of response.files) {
-        // eslint-disable-next-line no-await-in-loop
-        const result = await writeHostFile({ ...host, hostname: response.host.hostname }, file, run.ctx, deps);
-        if (result.installationId) run.installationIds.add(result.installationId);
-        result.certificateIds.forEach((id) => run.certificateIds.add(id));
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const result = await writeHostFile({ ...host, hostname: response.host.hostname }, file, run.ctx, deps);
+          if (result.installationId) run.installationIds.add(result.installationId);
+          result.certificateIds.forEach((id) => run.certificateIds.add(id));
+        } catch (error) {
+          const message = toHostScanErrorMessage(
+            error,
+            `Linux Server discovery file import failed [discoveryId=${run.discoveryId}] [host=${host.hostIdentifier}] [file=${file.realPath}]`
+          );
+          issues.push(`${host.hostIdentifier} (${file.realPath}): ${message}`);
+        }
       }
     });
     return { issues };

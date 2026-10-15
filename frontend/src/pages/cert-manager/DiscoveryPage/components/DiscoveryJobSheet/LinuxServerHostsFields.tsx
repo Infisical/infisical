@@ -1,4 +1,5 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 import { Info } from "lucide-react";
 
 import { AppConnectionOptionContent } from "@app/components/app-connections";
@@ -18,6 +19,7 @@ import {
   useListAvailableAppConnectionsForApps
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
 import { TLinuxServerDiscoveryJobForm } from "./discovery-job-form-schema";
@@ -37,10 +39,17 @@ export const LinuxServerHostsFields = () => {
     [AppConnection.SSH],
     currentProject.id
   );
+  const { data: gateways } = useQuery(gatewaysQueryKeys.list());
 
   const canCreateConnection = permission.can(
     ProjectPermissionAppConnectionActions.Create,
     ProjectPermissionSub.AppConnections
+  );
+
+  const incapableGatewayIds = new Set(
+    (gateways ?? [])
+      .filter((gateway) => gateway.capabilities?.certificateScan !== true)
+      .map((gateway) => gateway.id)
   );
 
   const connectionsById = new Map<string, TConnectionOption>(
@@ -51,10 +60,16 @@ export const LinuxServerHostsFields = () => {
     const connection = resolveOption(option);
     return connection.id !== CREATE_OPTION_ID && !connection.gatewayId && !connection.gatewayPoolId;
   };
+  const isGatewayOutdated = (option: TConnectionOption) => {
+    const connection = resolveOption(option);
+    return Boolean(connection.gatewayId) && incapableGatewayIds.has(connection.gatewayId as string);
+  };
+  const isUnusable = (option: TConnectionOption) =>
+    isMissingGateway(option) || isGatewayOutdated(option);
   const connectionOptions: TConnectionOption[] = [
     ...(canCreateConnection ? [{ id: CREATE_OPTION_ID, name: "Create SSH Connection" }] : []),
-    ...connections.filter((connection) => !isMissingGateway(connection)),
-    ...connections.filter(isMissingGateway)
+    ...connections.filter((connection) => !isUnusable(connection)),
+    ...connections.filter(isUnusable)
   ];
 
   return (
@@ -82,26 +97,32 @@ export const LinuxServerHostsFields = () => {
                 placeholder="Select connections..."
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
-                isOptionDisabled={isMissingGateway}
-                renderOption={(option) => (
-                  <AppConnectionOptionContent
-                    data={resolveOption(option)}
-                    createLabel="Create SSH Connection"
-                    isOnlyOption={option.id === CREATE_OPTION_ID && connectionOptions.length === 1}
-                    label={
-                      isMissingGateway(option) && (
-                        <span className="mr-2 shrink-0 text-xs text-muted">No gateway</span>
-                      )
-                    }
-                  />
-                )}
+                isOptionDisabled={isUnusable}
+                renderOption={(option) => {
+                  let unusableLabel: string | null = null;
+                  if (isMissingGateway(option)) unusableLabel = "No gateway";
+                  else if (isGatewayOutdated(option)) unusableLabel = "Update gateway";
+                  return (
+                    <AppConnectionOptionContent
+                      data={resolveOption(option)}
+                      createLabel="Create SSH Connection"
+                      isOnlyOption={
+                        option.id === CREATE_OPTION_ID && connectionOptions.length === 1
+                      }
+                      label={
+                        unusableLabel && (
+                          <span className="mr-2 shrink-0 text-xs text-muted">{unusableLabel}</span>
+                        )
+                      }
+                    />
+                  );
+                }}
                 includeMissingSelectedOptions
                 modal
               />
               {!error?.message && (
                 <FieldDescription>
-                  Each connection is one server. It must use a gateway, and the scan runs from that
-                  gateway.
+                  One connection per server. Only connections that use a gateway can be selected
                 </FieldDescription>
               )}
               <FieldError errors={[error]} />

@@ -19,7 +19,7 @@ Linux Server discovery finds the certificates stored in files and keystores on y
 
 Each certificate file becomes an installation named after the server's hostname and the file path, for example `web-01:/etc/nginx/ssl/fullchain.pem`.
 
-A leaf certificate is imported with the CA certificates in the same file. Files that hold only CA certificates, such as trust bundles, are skipped unless you turn on **Import CA Certificates Found on Their Own**.
+A leaf certificate is imported with the CA certificates in the same file. Files that hold only CA certificates, such as trust bundles, are skipped unless you turn on **Include trust stores and CA bundles**.
 
 Scans only open files with these extensions: `.pem`, `.crt`, `.cer`, `.cert`, `.der`, `.p7b`, `.p7c`, `.pfx`, `.p12`, `.jks`, `.keystore`, `.truststore`, `.jceks`, `.ks`, and files named `cacerts`.
 

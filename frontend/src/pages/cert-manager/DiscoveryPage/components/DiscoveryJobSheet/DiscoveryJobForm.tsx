@@ -98,7 +98,7 @@ const STEP_FIELDS: Record<DiscoveryJobStep, FieldPath<TDiscoveryJobForm>[]> = {
   [DiscoveryJobStep.Targets]: ["targets", "ports", "gatewayId", "gatewayPoolId"],
   [DiscoveryJobStep.Hosts]: ["connections"],
   [DiscoveryJobStep.Folders]: ["searchFolderPaths", "skipFolderPaths"],
-  [DiscoveryJobStep.Options]: ["maxFolderDepth", "maxFileSizeKb", "importStandaloneCaCertificates"],
+  [DiscoveryJobStep.Options]: ["maxFolderDepth", "importStandaloneCaCertificates"],
   [DiscoveryJobStep.Details]: ["name", "description", "isAutoScanEnabled", "scanIntervalDays"],
   [DiscoveryJobStep.Review]: []
 };
@@ -156,10 +156,15 @@ export const DiscoveryJobForm = ({
   const { handleSubmit, trigger, formState } = formMethods;
   const isPending = createDiscovery.isPending || updateDiscovery.isPending;
 
-  const steps = getSteps(discoveryType);
+  const steps = isEditing
+    ? getSteps(discoveryType).filter((step) => step !== DiscoveryJobStep.Review)
+    : getSteps(discoveryType);
   const currentKey = steps[stepIndex];
   const currentStep = STEP_META[currentKey];
   const isFinalStep = stepIndex === steps.length - 1;
+
+  let footerStatus = `${PKI_DISCOVERY_TYPE_MAP[discoveryType].name} · Step ${stepIndex + 1} of ${steps.length}`;
+  if (isEditing) footerStatus = formState.isDirty ? "Unsaved changes" : "";
 
   useEffect(() => {
     onDirtyChange(formState.isDirty);
@@ -223,13 +228,14 @@ export const DiscoveryJobForm = ({
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
             <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
-              Setup steps
+              {isEditing ? "Sections" : "Setup steps"}
             </p>
             <Stepper
               activeStep={stepIndex}
               orientation="vertical"
+              nonLinear={isEditing}
               onStepChange={(index) => {
-                if (index < stepIndex) setStepIndex(index);
+                if (isEditing || index < stepIndex) setStepIndex(index);
               }}
             >
               <StepperList>
@@ -278,24 +284,39 @@ export const DiscoveryJobForm = ({
       </FormProvider>
 
       <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
-        <span className="text-xs text-muted">
-          {PKI_DISCOVERY_TYPE_MAP[discoveryType].name} · Step {stepIndex + 1} of {steps.length}
-        </span>
-        <div className="flex items-center gap-3">
-          <Button type="button" variant="outline" onClick={handleBack}>
-            {stepIndex === 0 ? "Cancel" : "Back"}
-          </Button>
-          <Button
-            type="button"
-            variant="project"
-            onClick={handleNext}
-            isPending={isFinalStep && isPending}
-            isDisabled={isFinalStep && isPending}
-          >
-            {!isFinalStep && "Continue"}
-            {isFinalStep && (isEditing ? "Save Changes" : "Create Job")}
-          </Button>
-        </div>
+        <span className="text-xs text-muted">{footerStatus}</span>
+        {isEditing ? (
+          <div className="flex items-center gap-3">
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="project"
+              onClick={() => handleSubmit(onSubmit)().catch(() => undefined)}
+              isPending={isPending}
+              isDisabled={!formState.isDirty || isPending}
+            >
+              Save Changes
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <Button type="button" variant="outline" onClick={handleBack}>
+              {stepIndex === 0 ? "Cancel" : "Back"}
+            </Button>
+            <Button
+              type="button"
+              variant="project"
+              onClick={handleNext}
+              isPending={isFinalStep && isPending}
+              isDisabled={isFinalStep && isPending}
+            >
+              {!isFinalStep && "Continue"}
+              {isFinalStep && "Create Job"}
+            </Button>
+          </div>
+        )}
       </div>
     </form>
   );

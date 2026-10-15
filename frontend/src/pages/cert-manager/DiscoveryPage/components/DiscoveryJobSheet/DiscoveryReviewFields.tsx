@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { useFormContext } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 
 import {
   Badge,
@@ -11,6 +12,8 @@ import {
   OverflowBadgeList
 } from "@app/components/v3";
 import { PKI_DISCOVERY_TYPE_MAP } from "@app/helpers/pkiDiscovery";
+import { gatewayPoolsQueryKeys } from "@app/hooks/api/gateway-pools/queries";
+import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { PkiDiscoveryType } from "@app/hooks/api/pkiDiscovery/types";
 import { getItemLabel } from "@app/pages/cert-manager/pki-discovery-utils";
 
@@ -48,10 +51,25 @@ export const DiscoveryReviewFields = () => {
   const { watch } = useFormContext<TDiscoveryJobForm>();
   const values = watch();
 
+  const isNetwork = values.discoveryType === PkiDiscoveryType.Network;
+  const { data: gateways } = useQuery({
+    ...gatewaysQueryKeys.list(),
+    enabled: isNetwork && Boolean(values.gatewayId)
+  });
+  const { data: pools } = useQuery({
+    ...gatewayPoolsQueryKeys.list(),
+    enabled: isNetwork && Boolean(values.gatewayPoolId)
+  });
+
   let gatewayLabel: string | undefined;
-  if (values.discoveryType === PkiDiscoveryType.Network) {
-    if (values.gatewayPoolId) gatewayLabel = "Gateway pool";
-    else if (values.gatewayId) gatewayLabel = "Gateway";
+  if (isNetwork) {
+    if (values.gatewayPoolId) {
+      gatewayLabel =
+        pools?.find((pool) => pool.id === values.gatewayPoolId)?.name ?? "Gateway pool";
+    } else if (values.gatewayId) {
+      gatewayLabel =
+        gateways?.find((gateway) => gateway.id === values.gatewayId)?.name ?? "Gateway";
+    }
   }
 
   const networkTargets =
@@ -85,8 +103,7 @@ export const DiscoveryReviewFields = () => {
           </ReviewGroup>
           <ReviewGroup title="Options">
             <ReviewDetail label="Folder Depth">{String(values.maxFolderDepth)}</ReviewDetail>
-            <ReviewDetail label="Largest File">{`${values.maxFileSizeKb} KB`}</ReviewDetail>
-            <ReviewDetail label="Import CA Certificates Found on Their Own">
+            <ReviewDetail label="Include trust stores and CA bundles">
               <Badge variant={values.importStandaloneCaCertificates ? "success" : "neutral"}>
                 {values.importStandaloneCaCertificates ? "Enabled" : "Disabled"}
               </Badge>

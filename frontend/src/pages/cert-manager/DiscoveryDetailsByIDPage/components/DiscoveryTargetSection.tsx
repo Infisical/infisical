@@ -68,11 +68,7 @@ const LinuxServerTargetSection = ({ discovery }: Props) => {
             <DetailValue>{targetConfig.maxFolderDepth}</DetailValue>
           </Detail>
           <Detail>
-            <DetailLabel>Largest File</DetailLabel>
-            <DetailValue>{targetConfig.maxFileSizeKb} KB</DetailValue>
-          </Detail>
-          <Detail>
-            <DetailLabel>Import CA Certificates Found on Their Own</DetailLabel>
+            <DetailLabel>Include trust stores and CA bundles</DetailLabel>
             <DetailValue>
               <Badge variant={targetConfig.importStandaloneCaCertificates ? "success" : "neutral"}>
                 {targetConfig.importStandaloneCaCertificates ? "Enabled" : "Disabled"}
