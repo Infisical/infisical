@@ -121,7 +121,7 @@ export INFISICAL_DOMAIN=https://eu.infisical.com
 Launch an agent through an Agent Vault proxy. Everything after `--` is the agent's own command. On each run, the CLI:
 
 - Fetches the proxy's certificate authority from the proxy, checks it against `--ca-fingerprint` if you passed one, and writes it to `--ca-file`.
-- Gets a session: the one you pass with `--session-token` (or `INFISICAL_AGENT_VAULT_SESSION_TOKEN`), or one created now with the access bundle named by `--access-bundle`. Exactly one of the two is required.
+- Gets a session: the one you pass with `--session-token`, or one created now with the access bundle named by `--access-bundle`. Exactly one of the two is required, and either can come from an environment variable instead of the flag.
 - Starts the agent with `HTTPS_PROXY` and `HTTP_PROXY` pointing at the proxy, `NO_PROXY` set to `localhost,127.0.0.1` merged with your own `NO_PROXY` and `--no-proxy`, and the certificate trusted through `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE`, `CURL_CA_BUNDLE`, `GIT_SSL_CAINFO`, and `DENO_CERT`.
 
 The CLI prints the proxy's name and fingerprint and, for a session it created, when it expires, then hands the terminal to the agent. When the agent exits, a session created with `--access-bundle` is revoked unless `--keep-session` was set. A session passed with `--session-token` is left alone.
@@ -149,7 +149,7 @@ infisical agent-vault run --session-token <session-token> --proxy 10.0.1.5:17323
 
 #### `--access-bundle`
 
-Create a session with this access bundle, by name. Pass it once. Creates it as the machine identity from `--client-id` and `--client-secret`, or as your login. The identity has to be an Agent Vault member with a grant on the access bundle. Can't be combined with `--session-token`.
+Create a session with this access bundle, by name. Pass it once. Creates it as the machine identity from `--client-id` and `--client-secret`, or as your login. The identity has to be an Agent Vault member with a grant on the access bundle. Can't be combined with `--session-token`. Can also be set through `INFISICAL_AGENT_VAULT_ACCESS_BUNDLE`.
 
 ```bash
 # Example
@@ -242,11 +242,23 @@ infisical agent-vault run --access-bundle code-review --client-id <client-id> --
 
 A session token created in the dashboard. Alternative to `--session-token`.
 
-`--session-token` takes precedence over this variable, and so does `--access-bundle`.
+`--session-token` takes precedence over this variable, and so does `--access-bundle`. If this and `INFISICAL_AGENT_VAULT_ACCESS_BUNDLE` are both set and neither flag is passed, the run stops and asks which you meant.
 
 ```bash
 # Example
 export INFISICAL_AGENT_VAULT_SESSION_TOKEN=<session-token>
+infisical agent-vault run --proxy 10.0.1.5:17323 -- claude
+```
+
+#### `INFISICAL_AGENT_VAULT_ACCESS_BUNDLE`
+
+The access bundle to create a session with, by name. Alternative to `--access-bundle`, and names one bundle.
+
+`--access-bundle` takes precedence over this variable, and so does `--session-token`. If this and `INFISICAL_AGENT_VAULT_SESSION_TOKEN` are both set and neither flag is passed, the run stops and asks which you meant.
+
+```bash
+# Example
+export INFISICAL_AGENT_VAULT_ACCESS_BUNDLE=code-review
 infisical agent-vault run --proxy 10.0.1.5:17323 -- claude
 ```
 
