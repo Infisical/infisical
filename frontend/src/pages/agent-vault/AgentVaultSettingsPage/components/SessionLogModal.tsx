@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { TriangleAlertIcon } from "lucide-react";
+import { CloudIcon, TriangleAlertIcon } from "lucide-react";
 
 import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
 import { AppConnectionOptionContent } from "@app/components/app-connections";
@@ -36,14 +36,15 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-  FieldLegend,
   FieldSet,
-  FieldTitle,
   Input,
   Label,
   ProviderIcon,
-  RadioGroup,
-  RadioGroupItem,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Toggle
 } from "@app/components/v3";
 import {
@@ -228,19 +229,29 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
     await saveSettings({ enabled: true, storage: toStorage(values) });
   };
 
+  // Both are always listed so they can be found. Default storage the instance hasn't set up can't be picked; one the
+  // plan leaves out opens the upgrade instead.
   const storageOptions = [
-    ...(isDefaultStorageConfigured
-      ? [
-          {
-            type: AgentVaultSessionLogStorageType.Default,
-            title: "Default storage",
-            description: `Kept ${retentionDays} days. Nothing to set up.`
-          }
-        ]
-      : []),
+    {
+      type: AgentVaultSessionLogStorageType.Default,
+      title: "Default storage",
+      icon: <CloudIcon />,
+      isUnavailable: !isDefaultStorageConfigured,
+      description: isDefaultStorageConfigured
+        ? `Kept ${retentionDays} days. Nothing to set up.`
+        : "Not set up on this instance. Contact your server administrator."
+    },
     {
       type: AgentVaultSessionLogStorageType.External,
       title: "External storage",
+      icon: (
+        <ProviderIcon
+          alt={`${AWS_CONNECTION.name} connection`}
+          icon={AWS_CONNECTION.image}
+          className="w-4"
+        />
+      ),
+      isUnavailable: false,
       description: "Your own S3 bucket. You keep logs as long as you like."
     }
   ];
@@ -311,53 +322,51 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
 
             {isEnabled && (
               <FieldSet>
-                <FieldLegend variant="label">Storage</FieldLegend>
-
                 <Controller
                   control={control}
                   name="storageType"
                   render={({ field }) => (
-                    <RadioGroup
-                      value={
-                        isOnPlan(field.value) ||
-                        (settings?.enabled && settings.storage.type === field.value)
-                          ? field.value
-                          : ""
-                      }
-                      onValueChange={(value) => field.onChange(value)}
-                    >
-                      {storageOptions.map((option) => {
-                        const id = `agent-vault-session-log-storage-${option.type}`;
-                        const isAvailable = isOnPlan(option.type);
-                        return (
-                          <FieldLabel
-                            key={option.type}
-                            htmlFor={id}
-                            variant="av"
-                            onClick={(event) => {
-                              if (isAvailable) return;
-                              event.preventDefault();
-                              setUpgradeFor(option.type);
-                            }}
-                          >
-                            <Field orientation="horizontal">
-                              <FieldContent>
-                                <FieldTitle>
-                                  {option.title}
-                                  {!isAvailable && <Badge variant="av">Upgrade</Badge>}
-                                </FieldTitle>
-                                {isAvailable && (
-                                  <FieldDescription className="text-wrap!">
-                                    {option.description}
-                                  </FieldDescription>
+                    <Field>
+                      <FieldLabel htmlFor="agent-vault-session-log-storage">Storage</FieldLabel>
+                      <Select
+                        value={
+                          isOnPlan(field.value) ||
+                          (settings?.enabled && settings.storage.type === field.value)
+                            ? field.value
+                            : ""
+                        }
+                        onValueChange={(value) => {
+                          const type = value as AgentVaultSessionLogStorageType;
+                          if (!isOnPlan(type)) {
+                            setUpgradeFor(type);
+                            return;
+                          }
+                          field.onChange(type);
+                        }}
+                      >
+                        <SelectTrigger id="agent-vault-session-log-storage" className="w-full">
+                          <SelectValue placeholder="Choose where to store session logs" />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          {storageOptions.map((option) => (
+                            <SelectItem
+                              key={option.type}
+                              value={option.type}
+                              disabled={option.isUnavailable}
+                              description={<span className="pl-6">{option.description}</span>}
+                            >
+                              <span className="flex items-center gap-2">
+                                {option.icon}
+                                {option.title}
+                                {!option.isUnavailable && !isOnPlan(option.type) && (
+                                  <Badge variant="av">Upgrade</Badge>
                                 )}
-                              </FieldContent>
-                              <RadioGroupItem value={option.type} id={id} disabled={!isAvailable} />
-                            </Field>
-                          </FieldLabel>
-                        );
-                      })}
-                    </RadioGroup>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
                   )}
                 />
 

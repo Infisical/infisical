@@ -129,11 +129,8 @@ export const SessionLogSection = () => {
             <DocumentationLinkBadge href={AgentVaultDocsUrls.sessionLogs} />
           </CardTitle>
           <CardDescription>
-            Requests your agents make through a proxy, encrypted and kept{" "}
-            {state?.defaultStorage.configured
-              ? "in default storage or in a bucket you own"
-              : "in a bucket you own"}
-            .
+            Requests your agents make through a proxy, encrypted and kept in default storage or in a
+            bucket you own.
           </CardDescription>
           <CardAction>
             <ButtonGroup>
