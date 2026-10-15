@@ -168,7 +168,10 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onClo
           )}
         </ProjectPermissionCan>
       </div>
-      <SheetFooter className="border-t">
+      <SheetFooter className="justify-end border-t">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
         <Button
           type="submit"
           variant="project"
@@ -176,9 +179,6 @@ export const MemberMultiRoleModify = ({ projectMember, onOpenUpgradeModal, onClo
           isPending={roleForm.formState.isSubmitting}
         >
           Save Roles
-        </Button>
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
         </Button>
       </SheetFooter>
     </form>

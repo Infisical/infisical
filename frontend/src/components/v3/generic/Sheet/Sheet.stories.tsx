@@ -343,7 +343,7 @@ export const ScrollableContent: Story = {
             </div>
           ))}
         </div>
-        <SheetFooter className="border-t">
+        <SheetFooter className="justify-end border-t">
           <SheetClose asChild>
             <Button variant="ghost">Close</Button>
           </SheetClose>

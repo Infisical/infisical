@@ -388,7 +388,7 @@ export const CsvColumnMapContent = ({
           </tbody>
         </table>
       </div>
-      <SheetFooter className="border-t">
+      <SheetFooter className="justify-end border-t">
         <Button variant="outline" onClick={onClose}>
           Back
         </Button>

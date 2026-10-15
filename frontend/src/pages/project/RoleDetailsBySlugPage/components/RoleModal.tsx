@@ -187,7 +187,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                 />
               </FieldGroup>
             </div>
-            <SheetFooter className="border-t">
+            <SheetFooter className="justify-end border-t">
               <SheetClose asChild>
                 <Button variant="ghost" isDisabled={isSubmitting}>
                   Cancel

@@ -349,15 +349,7 @@ export const IdentityRoleModify = ({ identityProjectMembership, onClose }: Props
           )}
         </ProjectPermissionCan>
       </div>
-      <SheetFooter className="border-t">
-        <Button
-          type="submit"
-          variant="project"
-          isDisabled={!roleForm.formState.isDirty || isEditDisabled}
-          isPending={roleForm.formState.isSubmitting}
-        >
-          Save Roles
-        </Button>
+      <SheetFooter className="justify-end border-t">
         <Button
           type="button"
           variant="outline"
@@ -365,6 +357,14 @@ export const IdentityRoleModify = ({ identityProjectMembership, onClose }: Props
           onClick={onClose}
         >
           Cancel
+        </Button>
+        <Button
+          type="submit"
+          variant="project"
+          isDisabled={!roleForm.formState.isDirty || isEditDisabled}
+          isPending={roleForm.formState.isSubmitting}
+        >
+          Save Roles
         </Button>
       </SheetFooter>
       <UpgradeGate
