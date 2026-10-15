@@ -102,7 +102,7 @@ export const AddSecretScanningResourcesButton = ({ dataSource }: Props) => {
                   </DropdownMenuItem>
                 </TooltipTrigger>
                 <TooltipContent side="left">
-                  Without a group, add projects individually so each one gets a webhook for new
+                  Without a group, add projects individually so each one is watched for new
                   commits.
                 </TooltipContent>
               </Tooltip>
