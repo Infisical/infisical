@@ -7,7 +7,6 @@ import {
   CheckIcon,
   ChevronDownIcon,
   CircleAlertIcon,
-  ClipboardCheckIcon,
   EllipsisIcon,
   EyeIcon,
   GitMergeIcon,
@@ -16,6 +15,7 @@ import {
   LucideIcon,
   PlusIcon,
   SearchIcon,
+  TriangleAlertIcon,
   XIcon
 } from "lucide-react";
 
@@ -613,9 +613,9 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
                         };
                   } else if (requiresUserReview) {
                     statusDisplay = {
-                      label: "Review Required",
+                      label: "Needs Review",
                       type: "warning",
-                      icon: ClipboardCheckIcon
+                      icon: TriangleAlertIcon
                     };
                   } else if (isMergable) {
                     statusDisplay = { label: "Pending Merge", type: "info", icon: GitMergeIcon };
@@ -660,7 +660,9 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
                       )}
                       <TableCell>{generateCommitText(commits, isReplicated, true)}</TableCell>
                       <TableCell title={environmentDisplayName}>{environmentDisplayName}</TableCell>
-                      <TableCell title={policy.secretPath}>{policy.secretPath}</TableCell>
+                      <TableCell title={policy.secretPath} className="text-muted">
+                        {policy.secretPath}
+                      </TableCell>
                       <TableCell>
                         {committerUser || committerIdentity ? (
                           <div className="flex items-center gap-2">
@@ -677,7 +679,9 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
                       <TableCell>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span>{formatDistance(new Date(createdAt), new Date())} ago</span>
+                            <span className="text-muted">
+                              {formatDistance(new Date(createdAt), new Date())} ago
+                            </span>
                           </TooltipTrigger>
                           <TooltipContent>
                             {format(new Date(createdAt), "M/d/yyyy h:mm aa")}

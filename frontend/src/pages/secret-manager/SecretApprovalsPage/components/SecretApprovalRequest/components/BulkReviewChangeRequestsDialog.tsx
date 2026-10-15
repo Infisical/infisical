@@ -3,12 +3,10 @@ import { CheckIcon, CircleXIcon, GitMergeIcon, XIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Badge,
   Button,
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -21,7 +19,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  TextArea
+  TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useBulkActOnSecretApprovalRequests } from "@app/hooks/api";
 import {
@@ -53,15 +54,6 @@ const ACTION_OPTIONS = [
     variant: "project"
   }
 ] as const;
-
-const ACTION_DESCRIPTIONS: Record<BulkChangeRequestAction, string> = {
-  [BulkChangeRequestAction.Approve]:
-    "Adds your approving review to each request. Each request is checked against its own policy and your permissions.",
-  [BulkChangeRequestAction.Reject]:
-    "Adds your rejecting review to each request. Each request is checked against its own policy and your permissions.",
-  [BulkChangeRequestAction.Merge]:
-    "Merges each request that has its required approvals. Requests that would need a policy bypass are reported and must be merged individually."
-};
 
 const ACTION_RESULT_LABELS: Record<BulkChangeRequestAction, string> = {
   [BulkChangeRequestAction.Approve]: "Approved",
@@ -139,33 +131,37 @@ const BulkReviewChangeRequestsDialogContent = ({
   };
 
   const renderResult = (requestId: string) => {
-    if (isPending) return <Spinner size="xs" />;
-
     const result = results?.[requestId];
-    if (!result) return <span className="text-muted">Pending</span>;
+    if (!result) return <Spinner size="xs" />;
 
     if (result.isSuccess)
       return (
-        <Badge variant="success">
-          <CheckIcon />
+        <span className="inline-flex items-center gap-1.5 text-success">
+          <CheckIcon className="size-4" />
           {ACTION_RESULT_LABELS[action]}
-        </Badge>
+        </span>
       );
 
     return (
-      <div className="flex flex-col items-start gap-1 py-1">
-        <Badge variant="danger">
-          <CircleXIcon />
-          Failed
-        </Badge>
-        <span className="text-xs text-muted">{result.errorMessage}</span>
-      </div>
+      <span className="inline-flex items-center gap-1.5 text-danger">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span role="img" aria-label={result.errorMessage} className="inline-flex">
+              <CircleXIcon className="size-4" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-sm">{result.errorMessage}</TooltipContent>
+        </Tooltip>
+        Failed
+      </span>
     );
   };
 
   const selectedOption = ACTION_OPTIONS.find(({ value }) => value === action) ?? ACTION_OPTIONS[0];
   const failedResults = Object.values(results ?? {}).filter(({ isSuccess }) => !isSuccess);
   const succeededCount = Object.keys(results ?? {}).length - failedResults.length;
+  const showResults = isPending || Boolean(results);
+  const ActionIcon = selectedOption.icon;
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-6">
@@ -174,35 +170,14 @@ const BulkReviewChangeRequestsDialogContent = ({
           {selectedOption.label} {requests.length} Change Request
           {requests.length === 1 ? "" : "s"}
         </DialogTitle>
-        <DialogDescription>{ACTION_DESCRIPTIONS[action]}</DialogDescription>
       </DialogHeader>
-      {results && (
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <Badge variant="success">
-            <CheckIcon />
-            {succeededCount} {ACTION_RESULT_LABELS[action]}
-          </Badge>
-          {failedResults.length > 0 && (
-            <Badge variant="danger">
-              <CircleXIcon />
-              {failedResults.length} Failed
-            </Badge>
-          )}
-          {failedResults.length > 0 && (
-            <span className="text-muted">
-              Failed requests stay selected so you can open them individually or try again.
-            </span>
-          )}
-        </div>
-      )}
       <Table containerClassName="max-h-72 overflow-y-auto">
         <TableHeader sticky>
           <TableRow>
             <TableHead>Change</TableHead>
             <TableHead>Environment</TableHead>
             <TableHead>Secret Path</TableHead>
-            {!results && <TableHead>Approvals</TableHead>}
-            <TableHead>Result</TableHead>
+            {showResults ? <TableHead>Result</TableHead> : <TableHead>Approvals</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -216,19 +191,23 @@ const BulkReviewChangeRequestsDialogContent = ({
                 </TableCell>
                 <TableCell title={environmentName}>{environmentName}</TableCell>
                 <TableCell title={request.policy.secretPath}>{request.policy.secretPath}</TableCell>
-                {!results && (
-                  <TableCell>
-                    {getApprovedCount(request)}/{request.policy.approvals}
-                  </TableCell>
-                )}
-                <TableCell isWrappable className="max-w-80">
-                  {renderResult(request.id)}
+                <TableCell>
+                  {showResults
+                    ? renderResult(request.id)
+                    : `${getApprovedCount(request)}/${request.policy.approvals}`}
                 </TableCell>
               </TableRow>
             );
           })}
         </TableBody>
       </Table>
+      {results && (
+        <p className="text-sm text-muted">
+          {succeededCount} {ACTION_RESULT_LABELS[action].toLowerCase()}
+          {failedResults.length > 0 &&
+            `, ${failedResults.length} failed. Failed requests stay selected so you can open them individually or try again.`}
+        </p>
+      )}
       {!results && action !== BulkChangeRequestAction.Merge && (
         <Field>
           <FieldLabel htmlFor="bulk-change-request-comment">Comment (optional)</FieldLabel>
@@ -263,6 +242,7 @@ const BulkReviewChangeRequestsDialogContent = ({
               isPending={isPending}
               onClick={handleSubmit}
             >
+              <ActionIcon />
               {selectedOption.label} {requests.length} Request{requests.length === 1 ? "" : "s"}
             </Button>
           </>
@@ -291,6 +271,7 @@ export const BulkReviewChangeRequestsDialog = ({
         <DialogContent
           className="max-w-3xl [&>*]:min-w-0"
           isPending={isPending}
+          aria-describedby={undefined}
           onInteractOutside={(e) => e.preventDefault()}
         >
           <BulkReviewChangeRequestsDialogContent
