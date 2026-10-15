@@ -4593,9 +4593,9 @@ export const AGENT_VAULT = {
       "Why no logs are returned: `off` when session logs are off, `not-on-plan` when the plan doesn't include the storage they use. Null when logs are returned.",
     isSaved: "False when nothing has been saved, so the defaults apply: session logs on, in default storage.",
     storage:
-      "Where session logs are stored: `default`, provided by your Infisical instance, or `external`, an S3 bucket you own. Required when turning session logs on.",
+      "Where session logs are stored: `default`, stored by Infisical, or `external`, an S3 bucket you own. Required when turning session logs on.",
     defaultStorageConfigured:
-      "Whether this Infisical instance offers default storage. Using it also needs a plan that includes it.",
+      "Whether default storage is available. Using it also needs a plan that includes it.",
     appConnectionId: "The ID of the AWS connection Infisical uses to write to and read from the bucket.",
     bucket:
       "The name of the S3 bucket. 3 to 63 characters: lowercase letters, numbers, dots and hyphens, starting and ending with a letter or number.",

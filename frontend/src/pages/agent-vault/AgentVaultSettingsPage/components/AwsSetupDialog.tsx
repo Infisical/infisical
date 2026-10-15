@@ -23,9 +23,8 @@ import {
 import { useOrganization } from "@app/context";
 import { agentVaultKeys, useGetAgentVaultSessionLogCorsProbe } from "@app/hooks/api/agentVault";
 
-// Session logs only ever touch this org's Agent Vault folder, so the policy can be scoped to it.
-const iamPolicyFor = (bucket: string, keyPrefix: string, orgId: string) => {
-  const folder = `${keyPrefix ? `${keyPrefix}/` : ""}orgs/${orgId}/agent-vault/`;
+const iamPolicyFor = (bucket: string, keyPrefix: string) => {
+  const folder = keyPrefix ? `${keyPrefix}/` : "";
   return JSON.stringify(
     {
       Version: "2012-10-17",
@@ -39,7 +38,7 @@ const iamPolicyFor = (bucket: string, keyPrefix: string, orgId: string) => {
           Effect: "Allow",
           Action: ["s3:ListBucket"],
           Resource: `arn:aws:s3:::${bucket || "<bucket>"}`,
-          Condition: { StringLike: { "s3:prefix": [`${folder}*`] } }
+          ...(folder && { Condition: { StringLike: { "s3:prefix": [`${folder}*`] } } })
         }
       ]
     },
@@ -183,7 +182,7 @@ export const AwsSetupDialog = ({
               />
               <CodeBlock
                 label="Lets the connection's credentials write and read objects"
-                value={iamPolicyFor(bucket ?? "", keyPrefix ?? "", currentOrg.id)}
+                value={iamPolicyFor(bucket ?? "", keyPrefix ?? "")}
               />
             </TabsContent>
 

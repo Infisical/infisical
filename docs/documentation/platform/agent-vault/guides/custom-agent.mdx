@@ -228,7 +228,7 @@ Keep the session token out of logs. Anyone who can reach the proxy with the toke
 
 Make a request from the agent to an API in the session's access bundle. For example, if the bundle has a GitHub service, request `https://api.github.com/user`. GitHub returns the account that the service's token belongs to, even though the agent doesn't have a GitHub token.
 
-If you've [set up session logs](/documentation/platform/agent-vault/session-logs#setting-up-session-logs), [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to check which requests the agent made. Requests that got a credential have the outcome **Brokered**.
+[View the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to check which requests the agent made. Requests that got a credential have the outcome **Brokered**.
 
 <Check>
   Your agent now calls APIs through the proxy. The only credential the agent has is the session token, and if you revoke the session, the proxy stops attaching credentials to the agent's requests.
