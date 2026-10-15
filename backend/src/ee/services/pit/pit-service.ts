@@ -1039,29 +1039,22 @@ export const pitServiceFactory = ({
       { type: ProjectEvents.SecretDelete, secrets: response.secrets.deleted }
     ].filter((event) => event.secrets.length > 0);
     if (secretSyncEvents.length > 0) {
-      try {
-        await secretQueueService.syncSecrets({
-          actor,
-          actorId,
-          secretPath,
+      await secretQueueService.syncSecrets({
+        actor,
+        actorId,
+        secretPath,
+        projectId,
+        orgId: actorOrgId,
+        environmentSlug: environment,
+        environmentName,
+        events: secretSyncEvents.map((event) => ({
+          type: event.type,
+          secretKeys: event.secrets.map((secret) => secret.secretKey),
           projectId,
-          orgId: actorOrgId,
-          environmentSlug: environment,
-          environmentName,
-          events: secretSyncEvents.map((event) => ({
-            type: event.type,
-            secretKeys: event.secrets.map((secret) => secret.secretKey),
-            projectId,
-            secretPath,
-            environment
-          }))
-        });
-      } catch (error) {
-        logger.error(
-          error,
-          `Failed to queue secret sync for commit [projectId=${projectId}] [secretPath=${secretPath}]`
-        );
-      }
+          secretPath,
+          environment
+        }))
+      });
     }
 
     if ("approval" in response && response.approval) {
