@@ -140,7 +140,7 @@ infisical agent-vault run --access-bundle on-call-infrastructure --proxy 10.0.1.
 
 #### `--session-token`
 
-Run with a session token created in the dashboard. No login is needed, and the CLI never revokes the session. Can't be combined with `--access-bundle`. Can also be set through `INFISICAL_AGENT_VAULT_SESSION_TOKEN`, which keeps the token out of your shell history and out of process listings.
+Run with a session token created in the dashboard. No login is needed, and the CLI never revokes the session. Can't be combined with `--access-bundle`. Can also be set through `INFISICAL_AGENT_VAULT_SESSION_TOKEN`.
 
 ```bash
 # Example
@@ -240,7 +240,7 @@ infisical agent-vault run --access-bundle code-review --client-id <client-id> --
 
 #### `INFISICAL_AGENT_VAULT_SESSION_TOKEN`
 
-A session token created in the dashboard. Alternative to `--session-token`, and the way to keep the token off the command line, where it lands in your shell history and in process listings.
+A session token created in the dashboard. Alternative to `--session-token`, and the way to keep the token off the command line.
 
 `--session-token` wins if you pass both. Passing `--access-bundle` while this is set creates a new session and ignores the variable, with a warning: the flag was typed for this run, and an exported variable may be left over from another one.
 
