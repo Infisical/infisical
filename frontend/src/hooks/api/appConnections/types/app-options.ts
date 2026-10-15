@@ -379,6 +379,10 @@ export type TDaytonaConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Daytona;
 };
 
+export type TJiraConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Jira;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -470,7 +474,8 @@ export type TAppConnectionOption =
   | TFireworksConnectionOption
   | TNutanixPrismCentralConnectionOption
   | TSpaceliftConnectionOption
-  | TDaytonaConnectionOption;
+  | TDaytonaConnectionOption
+  | TJiraConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -564,4 +569,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.NutanixPrismCentral]: TNutanixPrismCentralConnectionOption;
   [AppConnection.Spacelift]: TSpaceliftConnectionOption;
   [AppConnection.Daytona]: TDaytonaConnectionOption;
+  [AppConnection.Jira]: TJiraConnectionOption;
 };

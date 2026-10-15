@@ -189,6 +189,7 @@ import {
   HumanitecConnectionMethod,
   validateHumanitecConnectionCredentials
 } from "./humanitec";
+import { getJiraConnectionListItem, JiraConnectionMethod, validateJiraConnectionCredentials } from "./jira";
 import { getKeeperConnectionListItem, KeeperConnectionMethod, validateKeeperConnectionCredentials } from "./keeper";
 import {
   getKempLoadMasterConnectionListItem,
@@ -490,7 +491,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getDaytonaConnectionListItem(),
     getStripeConnectionListItem(),
     getKeeperConnectionListItem(),
-    getHpeIloConnectionListItem()
+    getHpeIloConnectionListItem(),
+    getJiraConnectionListItem()
   ]
     .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -732,7 +734,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Daytona]: validateDaytonaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Stripe]: validateStripeConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Keeper]: validateKeeperConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.HpeIloRedFish]: validateHpeIloConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.HpeIloRedFish]: validateHpeIloConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayV2Service);
@@ -788,7 +791,10 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case RundeckConnectionMethod.ApiToken:
     case PortainerConnectionMethod.ApiToken:
     case DatadogConnectionMethod.Token:
+    case JiraConnectionMethod.ApiToken:
       return "API Token";
+    case JiraConnectionMethod.PersonalAccessToken:
+      return "Personal Access Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
     case SpaceliftConnectionMethod.ApiKeySecret:
       return "API Key & Secret";
@@ -1018,7 +1024,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Daytona]: platformManagedCredentialsNotSupported,
   [AppConnection.Stripe]: platformManagedCredentialsNotSupported,
   [AppConnection.Keeper]: platformManagedCredentialsNotSupported,
-  [AppConnection.HpeIloRedFish]: platformManagedCredentialsNotSupported
+  [AppConnection.HpeIloRedFish]: platformManagedCredentialsNotSupported,
+  [AppConnection.Jira]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

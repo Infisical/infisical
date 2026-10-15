@@ -3138,6 +3138,16 @@ export const AppConnections = {
         "Whether or not to reject untrusted SSL certificates (true/false). Set to false for iLO interfaces using self-signed certificates.",
       sslCertificate: "The CA certificate (PEM format) used to verify the iLO interface's TLS certificate."
     },
+    JIRA: {
+      instanceUrl:
+        "The URL of your Jira site (e.g., 'https://your-domain.atlassian.net' for Jira Cloud or 'https://jira.example.com' for Jira Data Center).",
+      email: "The email address of the Atlassian account that owns the API token.",
+      apiToken: "The Atlassian API token used to authenticate with Jira Cloud.",
+      personalAccessToken: "The personal access token used to authenticate with Jira Data Center.",
+      sslRejectUnauthorized:
+        "Whether or not to reject untrusted SSL certificates (true/false). Set to false for Jira Data Center sites using self-signed certificates.",
+      sslCertificate: "The CA certificate (PEM format) used to verify the Jira Data Center site's TLS certificate."
+    },
     DBT: {
       apiToken: "The API token used to authenticate with DBT.",
       accountId: "The account ID of your DBT account.",

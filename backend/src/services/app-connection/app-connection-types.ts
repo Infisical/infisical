@@ -274,6 +274,12 @@ import {
   TValidateHumanitecConnectionCredentialsSchema
 } from "./humanitec";
 import {
+  TJiraConnection,
+  TJiraConnectionConfig,
+  TJiraConnectionInput,
+  TValidateJiraConnectionCredentialsSchema
+} from "./jira";
+import {
   TKeeperConnection,
   TKeeperConnectionConfig,
   TKeeperConnectionInput,
@@ -633,6 +639,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TStripeConnection
   | TKeeperConnection
   | THpeIloConnection
+  | TJiraConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -735,6 +742,7 @@ export type TAppConnectionInput = { id: string } & (
   | TStripeConnectionInput
   | TKeeperConnectionInput
   | THpeIloConnectionInput
+  | TJiraConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -870,7 +878,8 @@ export type TAppConnectionConfig =
   | TDaytonaConnectionConfig
   | TStripeConnectionConfig
   | TKeeperConnectionConfig
-  | THpeIloConnectionConfig;
+  | THpeIloConnectionConfig
+  | TJiraConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -963,7 +972,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDaytonaConnectionCredentialsSchema
   | TValidateStripeConnectionCredentialsSchema
   | TValidateKeeperConnectionCredentialsSchema
-  | TValidateHpeIloConnectionCredentialsSchema;
+  | TValidateHpeIloConnectionCredentialsSchema
+  | TValidateJiraConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

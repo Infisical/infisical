@@ -58,6 +58,7 @@ import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 import { HerokuConnectionForm } from "./HerokuAppConnectionForm";
 import { HpeIloConnectionForm } from "./HpeIloConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
+import { JiraConnectionForm } from "./JiraConnectionForm";
 import { KeeperConnectionForm } from "./KeeperConnectionForm";
 import { KempLoadMasterConnectionForm } from "./KempLoadMasterConnectionForm";
 import { LaravelForgeConnectionForm } from "./LaravelForgeConnectionForm";
@@ -379,6 +380,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <F5BigIpConnectionForm onSubmit={onSubmit} />;
       case AppConnection.HpeIloRedFish:
         return <HpeIloConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Jira:
+        return <JiraConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Rundeck:
@@ -680,6 +683,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <F5BigIpConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.HpeIloRedFish:
         return <HpeIloConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Jira:
+        return <JiraConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Rundeck:
