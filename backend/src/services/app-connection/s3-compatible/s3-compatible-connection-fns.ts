@@ -3,6 +3,7 @@ import type { Agent } from "node:https";
 import { ListBucketsCommand, S3ServiceException } from "@aws-sdk/client-s3";
 
 import { createS3Client } from "@app/lib/aws/s3";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { buildSsrfSafeAgent } from "@app/lib/validator";
@@ -26,10 +27,12 @@ export const getS3CompatibleConnectionListItem = () => {
 };
 
 const buildCustomHostAgent = async (origin: string, host: string) =>
-  (await buildSsrfSafeAgent(origin).catch((error: NodeJS.ErrnoException) => {
-    if (error.code !== "ENOTFOUND" && error.code !== "EAI_AGAIN") throw error;
-    throw new BadRequestError({ message: `Could not resolve ${host}. Verify the hostname and try again.` });
-  })) as Agent | undefined;
+  (await buildSsrfSafeAgent(origin, { allowPrivateIps: getConfig().S3_COMPATIBLE_STORAGE_ALLOW_INTERNAL_IP }).catch(
+    (error: NodeJS.ErrnoException) => {
+      if (error.code !== "ENOTFOUND" && error.code !== "EAI_AGAIN") throw error;
+      throw new BadRequestError({ message: `Could not resolve ${host}. Verify the hostname and try again.` });
+    }
+  )) as Agent | undefined;
 
 export const getS3CompatibleConnectionConfig = async ({
   credentials
