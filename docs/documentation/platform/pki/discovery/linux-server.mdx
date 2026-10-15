@@ -82,8 +82,9 @@ If a folder still can't be read, the scan completes and the job shows which fold
       <Step>
         Set the options:
         - **Folder Depth**: how many levels below each search folder to search (defaults to 8)
-        - **Largest File (KB)**: files bigger than this are skipped and listed in the scan results (defaults to 512)
-        - **Import CA Certificates Found on Their Own**: also import CA certificates from files that hold no leaf certificate
+        - **Include trust stores and CA bundles**: also import CA certificates from files that hold no leaf certificate
+
+        Files larger than 512 KB are skipped and listed in the scan results. To raise that limit, set `maxFileSizeKb` on the job through the [API](/api-reference/endpoints/pki-discovery/update).
       </Step>
       <Step>
         Enter a **Name** and an optional **Description**. To run the job on a schedule, turn on **Scan on a Schedule** and pick a **Scan Interval**.
@@ -124,7 +125,7 @@ To set the password through the API, call [the endpoint that updates an installa
 
 <AccordionGroup>
   <Accordion title="Why does the job show a warning after a scan?">
-    The scan completed, but some files or folders couldn't be read, or the scan stopped early. The job lists what happened. For folders or files the SSH user can't open, [give the SSH user read access](#give-the-ssh-user-read-access). For files over the size limit, raise **Largest File (KB)**. If the scan stopped after 5,000 files, narrow the search folders or add skip folders.
+    The scan completed, but some files or folders couldn't be read, or the scan stopped early. The job lists what happened. For folders or files the SSH user can't open, [give the SSH user read access](#give-the-ssh-user-read-access). For files over the 512 KB size limit, raise `maxFileSizeKb` on the job through the [API](/api-reference/endpoints/pki-discovery/update). If the scan stopped after 5,000 files, narrow the search folders or add skip folders.
   </Accordion>
 </AccordionGroup>
 

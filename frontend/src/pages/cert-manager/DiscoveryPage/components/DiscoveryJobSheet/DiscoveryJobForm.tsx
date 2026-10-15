@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FieldPath, FormProvider, useForm } from "react-hook-form";
+import { FieldErrors, FieldPath, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import {
@@ -202,9 +202,19 @@ export const DiscoveryJobForm = ({
     onComplete();
   };
 
+  const goToFirstErrorStep = (errors: FieldErrors<TDiscoveryJobForm>) => {
+    const erroredFields = Object.keys(errors);
+    const errorStepIndex = steps.findIndex((key) =>
+      STEP_FIELDS[key].some((field) => erroredFields.includes(field))
+    );
+    if (errorStepIndex >= 0) setStepIndex(errorStepIndex);
+  };
+
+  const submitForm = () => handleSubmit(onSubmit, goToFirstErrorStep)().catch(() => undefined);
+
   const handleNext = async () => {
     if (isFinalStep) {
-      await handleSubmit(onSubmit)().catch(() => undefined);
+      await submitForm();
       return;
     }
     const isValid = await trigger(STEP_FIELDS[currentKey]);
@@ -293,7 +303,7 @@ export const DiscoveryJobForm = ({
             <Button
               type="button"
               variant="project"
-              onClick={() => handleSubmit(onSubmit)().catch(() => undefined)}
+              onClick={submitForm}
               isPending={isPending}
               isDisabled={!formState.isDirty || isPending}
             >

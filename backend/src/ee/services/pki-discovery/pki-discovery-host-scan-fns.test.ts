@@ -84,7 +84,8 @@ test("writeHostFile names a new installation after the hostname and links its ce
       })
     ).rawData
   );
-  const tx = {};
+  const savepoint = {};
+  const tx = { transaction: (callback: (trx: unknown) => unknown) => callback(savepoint) };
   const create = vi.fn().mockResolvedValue({ id: "installation-1" });
   const upsertCertLink = vi.fn().mockResolvedValue(undefined);
   const deps = {
@@ -113,7 +114,7 @@ test("writeHostFile names a new installation after the hostname and links its ce
     deps
   );
 
-  expect(create).toHaveBeenCalledWith(expect.objectContaining({ name: "web-01:/etc/ssl/a.pem" }), tx);
+  expect(create).toHaveBeenCalledWith(expect.objectContaining({ name: "web-01:/etc/ssl/a.pem" }), savepoint);
   expect(upsertCertLink).toHaveBeenCalledWith("installation-1", "cert-1", { lastSeenAt: ctx.scanTime }, tx);
 });
 
