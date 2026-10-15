@@ -34,6 +34,7 @@ import {
 } from "@app/helpers/agentVaultVariables";
 import { useDebounce } from "@app/hooks";
 import {
+  AgentVaultVariableScope,
   useAgentVaultVariableKeyStatus,
   useCreateAgentVaultVariable,
   useUpdateAgentVaultVariable
@@ -45,7 +46,11 @@ const NO_CONTROL_CHARS_RE = /^[^\x00-\x1f\x7f]*$/;
 
 // A stored value never comes back, so on edit its field starts empty and empty keeps it. Taken keys are read
 // when the form validates, as the lookup of the typed key answers after it was typed.
-const buildSchema = (getTakenKeys: () => ReadonlySet<string>, isValueRequired: boolean) =>
+const buildSchema = (
+  getTakenKeys: () => ReadonlySet<string>,
+  isValueRequired: boolean,
+  isPersonal: boolean
+) =>
   z.object({
     key: z
       .string()
@@ -54,7 +59,11 @@ const buildSchema = (getTakenKeys: () => ReadonlySet<string>, isValueRequired: b
       .regex(VARIABLE_KEY_RE, VARIABLE_KEY_MESSAGE)
       .refine(
         (key) => !getTakenKeys().has(key),
-        (key) => ({ message: `A variable named '${key}' already exists.` })
+        (key) => ({
+          message: isPersonal
+            ? `You already have a variable named '${key}'.`
+            : `A variable named '${key}' already exists.`
+        })
       ),
     value: z
       .string()
@@ -80,6 +89,8 @@ type Props = {
   initialKey?: string;
   onCreated?: (variable: TAgentVaultVariable) => void;
   onCloseAutoFocus?: (event: Event) => void;
+  /** Personal for one of the caller's own variables, which only their member values use. */
+  scope?: AgentVaultVariableScope;
 };
 
 export const VariableFormDialog = ({
@@ -88,16 +99,22 @@ export const VariableFormDialog = ({
   variable,
   initialKey,
   onCreated,
-  onCloseAutoFocus
+  onCloseAutoFocus,
+  scope = AgentVaultVariableScope.Shared
 }: Props) => {
+  const isPersonal = scope === AgentVaultVariableScope.Personal;
   const createVariable = useCreateAgentVaultVariable();
   const updateVariable = useUpdateAgentVaultVariable();
   const isUpdate = Boolean(variable);
   const usedByCount = variable?.usedBy.length ?? 0;
   const [isValueVisible, setIsValueVisible] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   const takenKeysRef = useRef<ReadonlySet<string>>(new Set());
-  const schema = useMemo(() => buildSchema(() => takenKeysRef.current, !variable), [variable]);
+  const schema = useMemo(
+    () => buildSchema(() => takenKeysRef.current, !variable, isPersonal),
+    [variable, isPersonal]
+  );
 
   const {
     control,
@@ -114,11 +131,18 @@ export const VariableFormDialog = ({
   // Checked against that one key, not a list, so it holds however many variables there are. The API refuses a
   // duplicate that is saved before the answer comes back.
   const [debouncedKey] = useDebounce(key ?? "", 300);
+  // Not while saving or once saved: the new key joins the list before the dialog has closed, and would flag itself.
+  // Not while the debounce trails the field either, which on reopening still holds the key of the last variable.
   const lookupKey =
-    isOpen && VARIABLE_KEY_RE.test(debouncedKey) && debouncedKey !== variable?.key
+    isOpen &&
+    !isSubmitting &&
+    !isSaved &&
+    debouncedKey === key &&
+    VARIABLE_KEY_RE.test(debouncedKey) &&
+    debouncedKey !== variable?.key
       ? debouncedKey
       : null;
-  const { existing } = useAgentVaultVariableKeyStatus(lookupKey ? [lookupKey] : [], isOpen);
+  const { existing } = useAgentVaultVariableKeyStatus(lookupKey ? [lookupKey] : [], isOpen, scope);
   takenKeysRef.current = existing;
   // Re-checked when the answer flags the key, and when a key that was flagged is changed, so the message comes
   // and goes with the lookup rather than waiting for a submit.
@@ -135,6 +159,7 @@ export const VariableFormDialog = ({
       value: ""
     });
     setIsValueVisible(false);
+    setIsSaved(false);
   }, [isOpen, variable, initialKey, reset]);
 
   const onSubmit = async (data: FormData) => {
@@ -148,12 +173,14 @@ export const VariableFormDialog = ({
         createNotification({ text: `Variable "${data.key}" updated`, type: "success" });
       } else {
         const created = await createVariable.mutateAsync({
+          scope,
           key: data.key,
           value: data.value
         });
         onCreated?.(created);
         createNotification({ text: `Variable "${data.key}" created`, type: "success" });
       }
+      setIsSaved(true);
       onOpenChange(false);
     } catch {
       // A failed request returns a 4xx that the global request handler surfaces as a toast
@@ -172,9 +199,13 @@ export const VariableFormDialog = ({
         onCloseAutoFocus={onCloseAutoFocus}
       >
         <DialogHeader>
-          <DialogTitle>{isUpdate ? "Edit Variable" : "Add Variable"}</DialogTitle>
+          <DialogTitle>
+            {isUpdate ? "Edit" : "Add"} {isPersonal ? "Personal" : "Shared"} Variable
+          </DialogTitle>
           <DialogDescription>
-            Store a value once and use it from any service in any access bundle.
+            {isPersonal
+              ? "Store a value once and reuse it for any service that asks you for a value. Only you can read it."
+              : "Store a value once and use it from any service in any access bundle."}
           </DialogDescription>
         </DialogHeader>
 
@@ -205,7 +236,7 @@ export const VariableFormDialog = ({
                       </>
                     ) : (
                       <>
-                        Services use it as{" "}
+                        {isPersonal ? "Your values use" : "Services use"} it as{" "}
                         <code className="font-mono">{toVariableReference(key || "KEY")}</code>.
                       </>
                     )}
@@ -259,7 +290,7 @@ export const VariableFormDialog = ({
               isPending={isSubmitting}
               isDisabled={isUpdate && !isDirty}
             >
-              {isUpdate ? "Save" : "Add Variable"}
+              {isUpdate ? "Save" : `Add ${isPersonal ? "Personal" : "Shared"} Variable`}
             </Button>
           </DialogFooter>
         </form>

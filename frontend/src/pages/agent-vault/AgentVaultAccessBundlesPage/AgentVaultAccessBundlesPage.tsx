@@ -11,6 +11,7 @@ import {
   PlusIcon,
   SearchIcon,
   TrashIcon,
+  TriangleAlertIcon,
   UsersIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -19,6 +20,10 @@ import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundle
 import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
 import { ServiceIconStack } from "@app/components/agent-vault/ServiceIconStack";
 import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+  Badge,
   Button,
   Card,
   CardAction,
@@ -59,7 +64,10 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, useResetPageHelper } from "@app/hooks";
-import { useListAgentVaultAccessBundles } from "@app/hooks/api/agentVault";
+import {
+  useListAgentVaultAccessBundles,
+  useListAgentVaultAccessBundlesRequiringSetup
+} from "@app/hooks/api/agentVault";
 import { TAgentVaultAccessBundleListItem } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -106,6 +114,10 @@ export const AgentVaultAccessBundlesPage = () => {
   });
 
   const displayedBundles = data?.accessBundles ?? [];
+
+  // From its own query rather than the page shown, so a bundle on a later page is still called out.
+  const { data: requiringSetup } = useListAgentVaultAccessBundlesRequiringSetup();
+  const bundlesNeedingSetup = requiringSetup?.accessBundles ?? [];
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
 
@@ -155,6 +167,34 @@ export const AgentVaultAccessBundlesPage = () => {
         description="Group the services an agent can reach through a session."
       />
 
+      {bundlesNeedingSetup.length > 0 && (
+        <Alert variant="warning" className="mb-6">
+          <TriangleAlertIcon />
+          <AlertDescription>
+            <p>
+              {bundlesNeedingSetup.length === 1
+                ? `${bundlesNeedingSetup[0].name} has services that require your personal values.`
+                : `${bundlesNeedingSetup.length} access bundles have services that require your personal values: ${bundlesNeedingSetup.map((bundle) => bundle.name).join(", ")}.`}{" "}
+              Sessions can&apos;t reach those services until you set them up.
+            </p>
+            <AlertAction>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  navigate({
+                    to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
+                    params: { orgId: currentOrg.id, accessBundleId: bundlesNeedingSetup[0].id }
+                  })
+                }
+              >
+                Open {bundlesNeedingSetup[0].name}
+              </Button>
+            </AlertAction>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>
@@ -174,8 +214,8 @@ export const AgentVaultAccessBundlesPage = () => {
             </CardAction>
           )}
         </CardHeader>
-        <CardContent>
-          <InputGroup>
+        <CardContent className="flex items-center gap-2">
+          <InputGroup className="flex-1">
             <InputGroupAddon>
               <SearchIcon />
             </InputGroupAddon>
@@ -227,6 +267,7 @@ export const AgentVaultAccessBundlesPage = () => {
                   Created
                   <ChevronDownIcon className={sortIconClassName(SortColumn.Created)} />
                 </TableHead>
+                <TableHead className="w-0" />
                 <TableHead variant="action" />
               </TableRow>
             </TableHeader>
@@ -302,51 +343,71 @@ export const AgentVaultAccessBundlesPage = () => {
                         </TooltipContent>
                       </Tooltip>
                     </TableCell>
+                    <TableCell>
+                      <div className="flex justify-center">
+                        {bundle.servicesRequiringSetup.length > 0 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="warning">
+                                <TriangleAlertIcon />
+                                Requires Setup
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              Your personal values are missing for{" "}
+                              {bundle.servicesRequiringSetup.join(", ")}.
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell variant="action">
-                      {isAdmin && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <IconButton
-                              variant="ghost"
-                              size="xs"
-                              aria-label="Open access bundle actions"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <MoreHorizontalIcon />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent sideOffset={2} align="end">
-                            <DropdownMenuItem
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setBundleToManage(bundle);
-                              }}
-                            >
-                              <UsersIcon />
-                              Manage Access
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setBundleToEdit(bundle);
-                              }}
-                            >
-                              <PencilIcon />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="danger"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setBundleToDelete(bundle);
-                              }}
-                            >
-                              <TrashIcon />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                      <div className="flex items-center justify-end gap-1.5">
+                        {isAdmin && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <IconButton
+                                variant="ghost"
+                                size="xs"
+                                aria-label="Open access bundle actions"
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                <MoreHorizontalIcon />
+                              </IconButton>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent sideOffset={2} align="end">
+                              <DropdownMenuItem
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setBundleToManage(bundle);
+                                }}
+                              >
+                                <UsersIcon />
+                                Manage Access
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setBundleToEdit(bundle);
+                                }}
+                              >
+                                <PencilIcon />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="danger"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setBundleToDelete(bundle);
+                                }}
+                              >
+                                <TrashIcon />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

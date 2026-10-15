@@ -1,9 +1,15 @@
+import { AgentVaultVariableScope } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultProjectScoped } from "../agent-vault-access-bundle/agent-vault-access-bundle-types";
 import { TFindAgentVaultVariablesDTO } from "./agent-vault-variable-dal";
 
-export type TListVariablesDTO = TAgentVaultProjectScoped & Omit<TFindAgentVaultVariablesDTO, "projectId">;
+export type TListVariablesDTO = TAgentVaultProjectScoped &
+  Omit<TFindAgentVaultVariablesDTO, "projectId" | "owner"> & { scope: AgentVaultVariableScope };
 
-export type TCreateVariableDTO = TAgentVaultProjectScoped & { key: string; value: string };
+export type TCreateVariableDTO = TAgentVaultProjectScoped & {
+  scope: AgentVaultVariableScope;
+  key: string;
+  value: string;
+};
 
 export type TUpdateVariableDTO = TAgentVaultProjectScoped & { variableId: string; key?: string; value?: string };
 

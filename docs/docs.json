@@ -4486,7 +4486,9 @@
                     "pages": [
                       "api-reference/endpoints/agent-vault-services/create",
                       "api-reference/endpoints/agent-vault-services/update",
-                      "api-reference/endpoints/agent-vault-services/delete"
+                      "api-reference/endpoints/agent-vault-services/delete",
+                      "api-reference/endpoints/agent-vault-services/set-personal-values",
+                      "api-reference/endpoints/agent-vault-services/delete-personal-values"
                     ]
                   },
                   {
