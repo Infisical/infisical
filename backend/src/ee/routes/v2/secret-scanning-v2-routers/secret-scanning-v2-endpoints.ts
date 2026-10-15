@@ -514,7 +514,7 @@ export const registerSecretScanningEndpoints = <
     handler: async (req) => {
       const { dataSourceId } = req.params;
 
-      const { resources, projectId } = await server.services.secretScanningV2.addSecretScanningResource(
+      const { resources, projectId, dataSourceName } = await server.services.secretScanningV2.addSecretScanningResource(
         { type, dataSourceId, resourceName: req.body.resourceName },
         req.permission
       );
@@ -527,6 +527,7 @@ export const registerSecretScanningEndpoints = <
           metadata: {
             type,
             dataSourceId,
+            dataSourceName,
             resources: resources.map((resource) => ({ resourceId: resource.id, resourceName: resource.name }))
           }
         }
@@ -559,10 +560,8 @@ export const registerSecretScanningEndpoints = <
     handler: async (req) => {
       const { dataSourceId } = req.params;
 
-      const { resources, projectId } = await server.services.secretScanningV2.addAllSecretScanningResources(
-        { type, dataSourceId },
-        req.permission
-      );
+      const { resources, projectId, dataSourceName } =
+        await server.services.secretScanningV2.addAllSecretScanningResources({ type, dataSourceId }, req.permission);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -572,6 +571,7 @@ export const registerSecretScanningEndpoints = <
           metadata: {
             type,
             dataSourceId,
+            dataSourceName,
             resources: resources.map((resource) => ({ resourceId: resource.id, resourceName: resource.name }))
           }
         }
@@ -604,10 +604,11 @@ export const registerSecretScanningEndpoints = <
     handler: async (req) => {
       const { dataSourceId, resourceId } = req.params;
 
-      const { resource, projectId } = await server.services.secretScanningV2.removeSecretScanningResource(
-        { type, dataSourceId, resourceId },
-        req.permission
-      );
+      const { resource, projectId, dataSourceName } =
+        await server.services.secretScanningV2.removeSecretScanningResource(
+          { type, dataSourceId, resourceId },
+          req.permission
+        );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -617,6 +618,7 @@ export const registerSecretScanningEndpoints = <
           metadata: {
             type,
             dataSourceId,
+            dataSourceName,
             resourceId: resource.id,
             resourceName: resource.name
           }

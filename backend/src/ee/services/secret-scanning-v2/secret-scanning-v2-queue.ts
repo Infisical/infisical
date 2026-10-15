@@ -192,37 +192,46 @@ export const secretScanningV2QueueServiceFactory = ({
       // Only the data source's resources are scanned. The provider is still listed so a renamed resource is cloned
       // under its current name and a deleted one is skipped.
       const rawResources = await factory.listRawResources(dataSource);
-      const existingResources = await secretScanningV2DAL.resources.find({ dataSourceId: dataSource.id });
-      const existingExternalIds = new Set(existingResources.map((resource) => resource.externalId));
-
-      let filteredRawResources = rawResources.filter((resource) => existingExternalIds.has(resource.externalId));
-
-      // TODO: should add individual resource fetch to factory
-      if (resourceExternalId) {
-        filteredRawResources = rawResources.filter((resource) => resource.externalId === resourceExternalId);
-      }
-
-      if (shouldScanResource) {
-        filteredRawResources = filteredRawResources.filter(shouldScanResource);
-      }
-
-      if (!filteredRawResources.length) {
-        throw new BadRequestError({
-          message: resourceExternalId
-            ? "This resource could not be found. It may have been deleted, or the App Connection may no longer have access to it."
-            : "This data source has no resources to scan. Add one, then try again."
-        });
-      }
 
       await secretScanningV2DAL.resources.transaction(async (tx) => {
-        const resources = await secretScanningV2DAL.resources.upsert(
-          filteredRawResources.map((rawResource) => ({
-            ...rawResource,
-            dataSourceId: dataSource.id
-          })),
-          ["externalId", "dataSourceId"],
-          tx
-        );
+        // Read through the transaction so it hits the primary: a resource added just before this call may not have
+        // reached the replica yet, and would be skipped.
+        const existingResources = await secretScanningV2DAL.resources.find({ dataSourceId: dataSource.id }, { tx });
+        const existingByExternalId = new Map(existingResources.map((resource) => [resource.externalId, resource]));
+
+        let filteredRawResources = rawResources.filter((resource) => existingByExternalId.has(resource.externalId));
+
+        // TODO: should add individual resource fetch to factory
+        if (resourceExternalId) {
+          filteredRawResources = filteredRawResources.filter((resource) => resource.externalId === resourceExternalId);
+        }
+
+        if (shouldScanResource) {
+          filteredRawResources = filteredRawResources.filter(shouldScanResource);
+        }
+
+        if (!filteredRawResources.length) {
+          throw new BadRequestError({
+            message: resourceExternalId
+              ? "This resource could not be found. It may have been deleted, or the App Connection may no longer have access to it."
+              : "This data source has no resources to scan. Add one, then try again."
+          });
+        }
+
+        // Only names are refreshed. An upsert would bring back a resource removed after it was read; inserting its
+        // scan fails on the foreign key instead.
+        const resources: typeof existingResources = [];
+        for (const rawResource of filteredRawResources) {
+          const existing = existingByExternalId.get(rawResource.externalId)!;
+
+          if (existing.name === rawResource.name) {
+            resources.push(existing);
+          } else {
+            // eslint-disable-next-line no-await-in-loop
+            const renamed = await secretScanningV2DAL.resources.updateById(existing.id, { name: rawResource.name }, tx);
+            resources.push(renamed ?? existing);
+          }
+        }
 
         const inFlightScans = await secretScanningV2DAL.scans.find(
           {
@@ -603,8 +612,12 @@ export const secretScanningV2QueueServiceFactory = ({
   const queueResourceDiffScan = async ({
     payload,
     dataSourceId,
-    dataSourceType
-  }: Omit<TQueueSecretScanningResourceDiffScanPayload, "scanId" | "resourceId">) => {
+    dataSourceType,
+    isDiscovered = false
+  }: Omit<TQueueSecretScanningResourceDiffScanPayload, "scanId" | "resourceId"> & {
+    // Only discovery may create the resource. A known one that is gone was removed after the push was read.
+    isDiscovered?: boolean;
+  }) => {
     const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType as SecretScanningDataSource]({
       kmsService,
       appConnectionDAL
@@ -613,17 +626,33 @@ export const secretScanningV2QueueServiceFactory = ({
     const resourcePayload = factory.getDiffScanResourcePayload(payload);
 
     try {
-      const { resourceId, scanId } = await secretScanningV2DAL.resources.transaction(async (tx) => {
-        const [resource] = await secretScanningV2DAL.resources.upsert(
-          [
-            {
-              ...resourcePayload,
-              dataSourceId
-            }
-          ],
-          ["externalId", "dataSourceId"],
-          tx
-        );
+      const queued = await secretScanningV2DAL.resources.transaction(async (tx) => {
+        let resource;
+
+        if (isDiscovered) {
+          [resource] = await secretScanningV2DAL.resources.upsert(
+            [
+              {
+                ...resourcePayload,
+                dataSourceId
+              }
+            ],
+            ["externalId", "dataSourceId"],
+            tx
+          );
+        } else {
+          const existing = await secretScanningV2DAL.resources.findOne(
+            { dataSourceId, externalId: resourcePayload.externalId },
+            tx
+          );
+          if (!existing) return null;
+
+          resource =
+            existing.name === resourcePayload.name
+              ? existing
+              : ((await secretScanningV2DAL.resources.updateById(existing.id, { name: resourcePayload.name }, tx)) ??
+                existing);
+        }
 
         const scan = await secretScanningV2DAL.scans.create(
           {
@@ -638,6 +667,15 @@ export const secretScanningV2QueueServiceFactory = ({
           scanId: scan.id
         };
       });
+
+      if (!queued) {
+        logger.info(
+          `secretScanningV2Queue: skipping diff scan, resource was removed [dataSourceId=${dataSourceId}] [resourceExternalId=${resourcePayload.externalId}]`
+        );
+        return;
+      }
+
+      const { resourceId, scanId } = queued;
 
       await queueService.queue(
         QueueName.SecretScanningV2RealtimeScan,
@@ -1174,7 +1212,7 @@ export const secretScanningV2QueueServiceFactory = ({
     }
 
     if (dataSource.isScanNewCommitsEnabled) {
-      await queueResourceDiffScan({ dataSourceType, payload, dataSourceId: dataSource.id });
+      await queueResourceDiffScan({ dataSourceType, payload, dataSourceId: dataSource.id, isDiscovered: true });
       return;
     }
 

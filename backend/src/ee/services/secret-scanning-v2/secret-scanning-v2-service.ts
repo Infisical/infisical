@@ -798,7 +798,8 @@ export const secretScanningV2ServiceFactory = ({
     const existingExternalIds = new Set(existingResources.map((resource) => resource.externalId));
     const newResources = requestedResources.filter((resource) => !existingExternalIds.has(resource.externalId));
 
-    if (!newResources.length) return { resources: [], projectId: dataSource.projectId };
+    if (!newResources.length)
+      return { resources: [], projectId: dataSource.projectId, dataSourceName: dataSource.name };
 
     const webhook = await prepareResourceWebhooks(dataSourceWithConnection, dataSource.encryptedCredentials, [
       ...existingResources.map((resource) => resource.name),
@@ -846,7 +847,7 @@ export const secretScanningV2ServiceFactory = ({
       }
     }
 
-    return { resources: addedResources, projectId: dataSource.projectId };
+    return { resources: addedResources, projectId: dataSource.projectId, dataSourceName: dataSource.name };
   };
 
   const addSecretScanningResource = ({ resourceName, ...dto }: TAddSecretScanningResourceDTO, actor: OrgServiceActor) =>
@@ -922,7 +923,7 @@ export const secretScanningV2ServiceFactory = ({
 
     await webhook?.finalize();
 
-    return { resource, projectId: dataSource.projectId };
+    return { resource, projectId: dataSource.projectId, dataSourceName: dataSource.name };
   };
 
   const listSecretScanningResourcesByDataSourceId = async (

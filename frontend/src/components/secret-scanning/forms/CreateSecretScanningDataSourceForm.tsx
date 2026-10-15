@@ -307,7 +307,7 @@ export const CreateSecretScanningDataSourceForm = ({
         id="create-secret-scanning-data-source-form"
       >
         {step !== FormStep.Provider && (
-          <aside className="flex w-56 shrink-0 flex-col gap-4 overflow-y-auto border-r border-border p-5">
+          <aside className="hidden w-56 shrink-0 flex-col gap-4 overflow-y-auto border-r border-border p-5 md:flex">
             <p className="text-xs font-medium tracking-wider text-muted uppercase">Setup Steps</p>
             <Stepper activeStep={step} onStepChange={setStep}>
               <StepperList>
@@ -324,7 +324,7 @@ export const CreateSecretScanningDataSourceForm = ({
           </aside>
         )}
 
-        <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-8 py-6">
+        <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-4 py-4 sm:px-8 sm:py-6">
           <div className="flex flex-col gap-1">
             <h3 className="text-lg text-foreground">{currentStep.title}</h3>
             <p className="text-sm text-accent">{currentStep.subtitle}</p>
