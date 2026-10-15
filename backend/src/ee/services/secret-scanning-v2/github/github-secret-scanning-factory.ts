@@ -82,21 +82,9 @@ export const GitHubSecretScanningFactory = () => {
   const listRawResources: TSecretScanningFactoryListRawResources<TGitHubDataSourceWithConnection> = async (
     dataSource
   ) => {
-    const {
-      connection,
-      config: { includeRepos }
-    } = dataSource;
+    const repos = await listGitHubRadarRepositories(dataSource.connection);
 
-    const repos = await listGitHubRadarRepositories(connection);
-
-    const filteredRepos: typeof repos = [];
-    if (includeRepos.includes("*")) {
-      filteredRepos.push(...repos);
-    } else {
-      filteredRepos.push(...repos.filter((repo) => includeRepos.includes(repo.full_name)));
-    }
-
-    return filteredRepos.map(({ id, full_name }) => ({
+    return repos.map(({ id, full_name }) => ({
       name: full_name,
       externalId: id.toString()
     }));

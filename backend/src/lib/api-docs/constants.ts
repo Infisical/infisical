@@ -4003,24 +4003,16 @@ export const SecretScanningDataSources = {
     resourceId: "The ID of the resource to remove. Its scans and findings are deleted with it."
   }),
   CONFIG: {
-    GITHUB: {
-      includeRepos:
-        'The repositories to include when scanning. Use ["*"] for all repositories or an empty list for none. Defaults to all repositories (["*"]).'
-    },
     GITLAB: {
-      includeProjects:
-        'The projects to include when scanning. Use ["*"] for all projects or an empty list for none. Defaults to all projects (["*"]).',
       scope:
-        "The GitLab scope scanning should occur at: account (every project the connection can read), group, or project (deprecated, kept for existing Data Sources).",
+        "Where projects are added from: account (projects the connection can read, added one at a time), group, or project (deprecated, kept for existing Data Sources).",
       projectId: "The ID of the project to scan.",
       projectName: "The name of the project to scan.",
       groupId: "The ID of the group to scan projects from.",
       groupName: "The name of the group to scan projects from."
     },
     BITBUCKET: {
-      workspaceSlug: "The workspace to scan.",
-      includeRepos:
-        'The repositories to include when scanning. Use ["*"] for all repositories or an empty list for none. Defaults to all repositories (["*"]).'
+      workspaceSlug: "The workspace to scan."
     }
   }
 };

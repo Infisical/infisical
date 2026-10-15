@@ -16,11 +16,9 @@ export type TGitLabDataSource = TSecretScanningDataSourceBase & {
     | {
         groupId: number;
         groupName?: string;
-        includeProjects: string[];
         scope: GitLabDataSourceScope.Group;
       }
     | {
-        includeProjects: string[];
         scope: GitLabDataSourceScope.Account;
       }
     | {

@@ -41,13 +41,6 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 export type TSecretScanningDataSource = TGitHubDataSource | TBitbucketDataSource | TGitLabDataSource;
 
-// The data source schemas type `type` as the whole enum rather than their own member, so this pairs each
-// literal with its config by hand to let a check on `type` narrow `config`.
-export type TSecretScanningDataSourceTypeAndConfig =
-  | { type: SecretScanningDataSource.GitHub; config: TGitHubDataSource["config"] }
-  | { type: SecretScanningDataSource.Bitbucket; config: TBitbucketDataSource["config"] }
-  | { type: SecretScanningDataSource.GitLab; config: TGitLabDataSource["config"] };
-
 export type TSecretScanningDataSourceWithDetails = TSecretScanningDataSource & {
   lastScannedAt?: Date | null;
   lastScanStatus?: SecretScanningScanStatus | null;

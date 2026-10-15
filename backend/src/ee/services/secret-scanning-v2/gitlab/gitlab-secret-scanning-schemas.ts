@@ -10,31 +10,16 @@ import {
   GitRepositoryScanFindingDetailsSchema
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-schemas";
 import { SecretScanningDataSources } from "@app/lib/api-docs";
-import { GitLabProjectRegex } from "@app/lib/regex";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-
-const GitLabIncludeProjectsSchema = z
-  .array(
-    z
-      .string()
-      .min(1)
-      .max(256)
-      .refine((value) => value === "*" || GitLabProjectRegex.test(value), "Invalid project name format")
-  )
-  .max(100, "Cannot configure more than 100 projects")
-  .default(["*"])
-  .describe(SecretScanningDataSources.CONFIG.GITLAB.includeProjects);
 
 export const GitLabDataSourceConfigSchema = z.discriminatedUnion("scope", [
   z.object({
     scope: z.literal(GitLabDataSourceScope.Group).describe(SecretScanningDataSources.CONFIG.GITLAB.scope),
     groupId: z.number().describe(SecretScanningDataSources.CONFIG.GITLAB.groupId),
-    groupName: z.string().trim().max(256).optional().describe(SecretScanningDataSources.CONFIG.GITLAB.groupName),
-    includeProjects: GitLabIncludeProjectsSchema
+    groupName: z.string().trim().max(256).optional().describe(SecretScanningDataSources.CONFIG.GITLAB.groupName)
   }),
   z.object({
-    scope: z.literal(GitLabDataSourceScope.Account).describe(SecretScanningDataSources.CONFIG.GITLAB.scope),
-    includeProjects: GitLabIncludeProjectsSchema
+    scope: z.literal(GitLabDataSourceScope.Account).describe(SecretScanningDataSources.CONFIG.GITLAB.scope)
   }),
   z.object({
     scope: z.literal(GitLabDataSourceScope.Project).describe(SecretScanningDataSources.CONFIG.GITLAB.scope),

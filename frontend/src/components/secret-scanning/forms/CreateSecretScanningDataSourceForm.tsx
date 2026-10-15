@@ -51,11 +51,11 @@ enum FormStep {
 const getDefaultConfig = (type: SecretScanningDataSource) => {
   switch (type) {
     case SecretScanningDataSource.GitHub:
-      return { includeRepos: [] };
+      return {};
     case SecretScanningDataSource.Bitbucket:
-      return { workspaceSlug: "", includeRepos: [] };
+      return { workspaceSlug: "" };
     case SecretScanningDataSource.GitLab:
-      return { scope: GitLabDataSourceScope.Account, includeProjects: [] };
+      return { scope: GitLabDataSourceScope.Account };
     default:
       throw new Error(`Unhandled data source type: ${type}`);
   }

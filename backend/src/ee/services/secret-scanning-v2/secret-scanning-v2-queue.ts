@@ -14,7 +14,6 @@ import {
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import {
   assertClonedRepositoryWithinSizeLimit,
-  getConfigIncludingAllResources,
   parseScanErrorMessage,
   planCommitBatches,
   repositoryHasCommits,
@@ -175,15 +174,11 @@ export const secretScanningV2QueueServiceFactory = ({
     {
       resourceExternalId,
       triggeredByUserId,
-      shouldScanResource,
-      existingResourcesOnly
+      shouldScanResource
     }: {
       resourceExternalId?: string;
       triggeredByUserId?: string;
       shouldScanResource?: (resource: Pick<TSecretScanningResourcesInsert, "externalId" | "name">) => boolean;
-      // The data source's resources are the ones added to it, not what its include list matches. The provider is
-      // still listed so a renamed resource is cloned under its current name and a deleted one is skipped.
-      existingResourcesOnly?: boolean;
     } = {}
   ) => {
     try {
@@ -194,17 +189,13 @@ export const secretScanningV2QueueServiceFactory = ({
         appConnectionDAL
       });
 
-      const rawResources = await factory.listRawResources(
-        existingResourcesOnly ? getConfigIncludingAllResources(dataSource) : dataSource
-      );
+      // Only the data source's resources are scanned. The provider is still listed so a renamed resource is cloned
+      // under its current name and a deleted one is skipped.
+      const rawResources = await factory.listRawResources(dataSource);
+      const existingResources = await secretScanningV2DAL.resources.find({ dataSourceId: dataSource.id });
+      const existingExternalIds = new Set(existingResources.map((resource) => resource.externalId));
 
-      let filteredRawResources = rawResources;
-
-      if (existingResourcesOnly) {
-        const existingResources = await secretScanningV2DAL.resources.find({ dataSourceId: dataSource.id });
-        const existingExternalIds = new Set(existingResources.map((resource) => resource.externalId));
-        filteredRawResources = filteredRawResources.filter((resource) => existingExternalIds.has(resource.externalId));
-      }
+      let filteredRawResources = rawResources.filter((resource) => existingExternalIds.has(resource.externalId));
 
       // TODO: should add individual resource fetch to factory
       if (resourceExternalId) {

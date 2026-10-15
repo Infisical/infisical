@@ -36,7 +36,6 @@ import {
   getGitLabConnectionClient,
   getGitLabInstanceUrl
 } from "@app/services/app-connection/gitlab/gitlab-connection-fns";
-import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { GitLabDataSourceScope } from "./gitlab-secret-scanning-enums";
 import {
@@ -49,13 +48,6 @@ import {
 const PROJECT_HOOK_CONCURRENCY = 5;
 
 type TGitLabProjectHook = { projectId: number; projectName: string; hookId: number };
-
-// Including every project (`*`) would mean a hook on each project the connection can see, possibly thousands,
-// so only an explicit list gets project hooks.
-const getHookedProjectNames = (config: TGitLabDataSourceInput["config"]) => {
-  if (config.scope !== GitLabDataSourceScope.Account || config.includeProjects.includes("*")) return [];
-  return config.includeProjects;
-};
 
 export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TSecretScanningFactoryParams) => {
   type TGitLabClient = Awaited<ReturnType<typeof getGitLabConnectionClient>>;
@@ -211,42 +203,13 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
     TGitLabDataSourceInput,
     TGitLabConnection,
     TGitLabDataSourceCredentials
-  > = async ({ payload, connection, secretScanningV2DAL }, callback) => {
+  > = async ({ payload, connection }, callback) => {
     const { config, name } = payload;
 
     if (!isDataSourceWebhookRequired(payload)) return callback({});
 
-    if (config.scope === GitLabDataSourceScope.Account) {
-      const projectNames = getHookedProjectNames(config);
-      if (!projectNames.length) return callback({});
-
-      // Project hooks are created with the data source ID already set, so they are added once the row exists
-      // rather than in a second call inside the create transaction.
-      const accountClient = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
-      const dataSource = await callback({});
-      const accountToken = alphaNumericNanoId(64);
-      let projectHooks: TGitLabProjectHook[] = [];
-
-      try {
-        projectHooks = await addProjectHooks(accountClient, projectNames, accountToken, dataSource.id);
-
-        const credentials: TGitLabDataSourceCredentials = { token: accountToken, projectHooks };
-        const { encryptor } = await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId: dataSource.projectId
-        });
-        const { cipherTextBlob: encryptedCredentials } = encryptor({
-          plainText: Buffer.from(JSON.stringify(credentials))
-        });
-
-        await secretScanningV2DAL.dataSources.updateById(dataSource.id, { encryptedCredentials });
-        return { ...dataSource, encryptedCredentials };
-      } catch (error) {
-        await removeProjectHooks(accountClient, projectHooks);
-        await secretScanningV2DAL.dataSources.deleteById(dataSource.id);
-        throw error;
-      }
-    }
+    // An account data source starts with no projects; each one gets its hook as it is added.
+    if (config.scope === GitLabDataSourceScope.Account) return callback({});
 
     const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
     const token = alphaNumericNanoId(64);
@@ -340,21 +303,15 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
       ];
     }
 
-    const { includeProjects } = config;
-
     const projects =
       config.scope === GitLabDataSourceScope.Account
         ? await client.Projects.all({ membership: true, archived: false })
         : await client.Groups.allProjects(config.groupId, { archived: false });
 
-    const resources = projects.map(({ id, pathWithNamespace }) => ({
+    return projects.map(({ id, pathWithNamespace }) => ({
       name: pathWithNamespace,
       externalId: id.toString()
     }));
-
-    if (!includeProjects || includeProjects.includes("*")) return resources;
-
-    return resources.filter((resource) => includeProjects.includes(resource.name));
   };
 
   const getFullScanPath: TSecretScanningFactoryGetFullScanPath<TGitLabDataSourceWithConnection> = async ({

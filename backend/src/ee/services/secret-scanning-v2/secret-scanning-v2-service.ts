@@ -24,12 +24,8 @@ import {
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { SECRET_SCANNING_FACTORY_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-factory";
 import {
-  doesConfigUpdateIncludeNewResources,
-  doesDataSourceIncludeResources,
   doesDataSourceSupportDiscovery,
-  getConfigIncludingAllResources,
   isDataSourceWebhookRequired,
-  isResourceIncludedByConfig,
   listSecretScanningDataSourceOptions
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import {
@@ -49,7 +45,6 @@ import {
   TSecretScanningDataSource,
   TSecretScanningDataSourceCredentials,
   TSecretScanningDataSourceInput,
-  TSecretScanningDataSourceTypeAndConfig,
   TSecretScanningDataSourceWithConnection,
   TSecretScanningDataSourceWithDetails,
   TSecretScanningFinding,
@@ -387,38 +382,6 @@ export const secretScanningV2ServiceFactory = ({
         }
       );
 
-      // A data source created with an empty include list has nothing to scan yet; queueing would only fail.
-      if (doesDataSourceIncludeResources(payload as TSecretScanningDataSourceTypeAndConfig)) {
-        const createdDataSourceWithConnection = {
-          ...createdDataSource,
-          connection
-        } as TSecretScanningDataSourceWithConnection;
-
-        try {
-          // The include list is only read here: from now on the data source covers the resources it has rows for.
-          if (payload.isHistoricalScanEnabled) {
-            await secretScanningV2Queue.queueDataSourceFullScan(createdDataSourceWithConnection, {
-              triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined
-            });
-          } else {
-            const rawResources = await factory.listRawResources(createdDataSourceWithConnection);
-
-            if (rawResources.length) {
-              await secretScanningV2DAL.resources.upsert(
-                rawResources.map((resource) => ({ ...resource, dataSourceId: createdDataSource.id })),
-                ["externalId", "dataSourceId"]
-              );
-            }
-          }
-        } catch (error) {
-          // Deliberately non-fatal — the data source is saved, and its resources can still be added from it.
-          logger.error(
-            error,
-            `secretScanningV2Service: Failed to set up resources on data source creation [dataSourceId=${createdDataSource.id}] [projectId=${payload.projectId}]`
-          );
-        }
-      }
-
       return createdDataSource as TSecretScanningDataSource;
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
@@ -568,68 +531,6 @@ export const secretScanningV2ServiceFactory = ({
       throw err;
     }
 
-    if (
-      doesConfigUpdateIncludeNewResources(
-        dataSource as TSecretScanningDataSourceTypeAndConfig,
-        updatedDataSource as TSecretScanningDataSourceTypeAndConfig
-      )
-    ) {
-      const isNewlyIncluded = (resource: { name: string }) =>
-        !isResourceIncludedByConfig(dataSource as TSecretScanningDataSourceTypeAndConfig, resource.name);
-      const updatedDataSourceWithConnection = {
-        ...updatedDataSource,
-        connection
-      } as TSecretScanningDataSourceWithConnection;
-
-      try {
-        // Newly included resources have no history scanned yet, so they get the same historical scan a new data source does.
-        if (updatedDataSource.isHistoricalScanEnabled) {
-          await secretScanningV2Queue.queueDataSourceFullScan(updatedDataSourceWithConnection, {
-            triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined,
-            shouldScanResource: isNewlyIncluded
-          });
-        } else {
-          // Without a scan nothing would create the resource rows, and the resources wouldn't be listed until their next push.
-          const newResources = (await factory.listRawResources(updatedDataSourceWithConnection)).filter(
-            isNewlyIncluded
-          );
-
-          if (newResources.length) {
-            await secretScanningV2DAL.resources.upsert(
-              newResources.map((resource) => ({ ...resource, dataSourceId })),
-              ["externalId", "dataSourceId"]
-            );
-          }
-        }
-
-        const resources = await secretScanningV2DAL.resources.find({ dataSourceId });
-        const savedDataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
-        const webhook = await prepareResourceWebhooks(
-          updatedDataSourceWithConnection,
-          savedDataSource?.encryptedCredentials,
-          resources.map((resource) => resource.name)
-        );
-
-        if (webhook) {
-          try {
-            await secretScanningV2DAL.dataSources.updateById(dataSourceId, {
-              encryptedCredentials: webhook.encryptedCredentials
-            });
-          } catch (err) {
-            await webhook.revert();
-            throw err;
-          }
-          await webhook.finalize();
-        }
-      } catch (error) {
-        // Deliberately non-fatal: the include list is saved, and the resources can still be scanned manually.
-        logger.error(
-          error,
-          `secretScanningV2Service: Failed to set up newly included resources [dataSourceId=${dataSourceId}] [projectId=${dataSource.projectId}]`
-        );
-      }
-    }
-
     return updatedDataSource;
   };
 
@@ -770,8 +671,7 @@ export const secretScanningV2ServiceFactory = ({
       } as TSecretScanningDataSourceWithConnection,
       {
         resourceExternalId,
-        triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined,
-        existingResourcesOnly: true
+        triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined
       }
     );
 
@@ -857,7 +757,7 @@ export const secretScanningV2ServiceFactory = ({
 
     let availableResources: Awaited<ReturnType<typeof factory.listRawResources>>;
     try {
-      availableResources = await factory.listRawResources(getConfigIncludingAllResources(dataSourceWithConnection));
+      availableResources = await factory.listRawResources(dataSourceWithConnection);
     } catch (error) {
       if (error instanceof BadRequestError) throw error;
 
@@ -924,7 +824,6 @@ export const secretScanningV2ServiceFactory = ({
       try {
         await secretScanningV2Queue.queueDataSourceFullScan(dataSourceWithConnection, {
           triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined,
-          existingResourcesOnly: true,
           shouldScanResource: (resource) => newExternalIds.has(resource.externalId)
         });
       } catch (error) {
@@ -1108,12 +1007,10 @@ export const secretScanningV2ServiceFactory = ({
 
     let rawResources: Awaited<ReturnType<typeof factory.listRawResources>>;
     try {
-      rawResources = await factory.listRawResources(
-        getConfigIncludingAllResources({
-          ...dataSource,
-          connection
-        } as TSecretScanningDataSourceWithConnection)
-      );
+      rawResources = await factory.listRawResources({
+        ...dataSource,
+        connection
+      } as TSecretScanningDataSourceWithConnection);
     } catch (error) {
       if (error instanceof BadRequestError) throw error;
 

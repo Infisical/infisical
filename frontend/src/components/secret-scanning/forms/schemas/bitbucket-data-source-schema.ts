@@ -8,8 +8,7 @@ export const BitbucketDataSourceSchema = z
   .object({
     type: z.literal(SecretScanningDataSource.Bitbucket),
     config: z.object({
-      workspaceSlug: z.string().min(1, "Workspace Required").max(128),
-      includeRepos: z.string().array().max(100, "Cannot configure more than 100 repositories")
+      workspaceSlug: z.string().min(1, "Workspace Required").max(128)
     })
   })
   .merge(BaseSecretScanningDataSourceSchema({ isConnectionRequired: true }));

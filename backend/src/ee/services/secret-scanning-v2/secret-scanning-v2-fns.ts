@@ -30,12 +30,7 @@ import { logger } from "@app/lib/logger";
 
 import { GitLabDataSourceScope } from "./gitlab/gitlab-secret-scanning-enums";
 import { SecretScanningDataSource, SecretScanningFindingSeverity } from "./secret-scanning-v2-enums";
-import {
-  TCloneRepository,
-  TGetFindingsPayload,
-  TSecretScanningDataSourceListItem,
-  TSecretScanningDataSourceTypeAndConfig
-} from "./secret-scanning-v2-types";
+import { TCloneRepository, TGetFindingsPayload, TSecretScanningDataSourceListItem } from "./secret-scanning-v2-types";
 
 const SECRET_SCANNING_SOURCE_LIST_OPTIONS: Record<SecretScanningDataSource, TSecretScanningDataSourceListItem> = {
   [SecretScanningDataSource.GitHub]: GITHUB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION,
@@ -45,76 +40,6 @@ const SECRET_SCANNING_SOURCE_LIST_OPTIONS: Record<SecretScanningDataSource, TSec
 
 export const listSecretScanningDataSourceOptions = () => {
   return Object.values(SECRET_SCANNING_SOURCE_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
-};
-
-export const doesDataSourceIncludeResources = (dataSource: TSecretScanningDataSourceTypeAndConfig) => {
-  switch (dataSource.type) {
-    case SecretScanningDataSource.GitHub:
-    case SecretScanningDataSource.Bitbucket:
-      return dataSource.config.includeRepos.length > 0;
-    case SecretScanningDataSource.GitLab:
-      return dataSource.config.scope === GitLabDataSourceScope.Project || dataSource.config.includeProjects.length > 0;
-    default:
-      return true;
-  }
-};
-
-// null means the config includes every resource the connection can see
-const getIncludedResourceNames = (dataSource: TSecretScanningDataSourceTypeAndConfig) => {
-  let names: string[] | undefined;
-
-  switch (dataSource.type) {
-    case SecretScanningDataSource.GitHub:
-    case SecretScanningDataSource.Bitbucket:
-      names = dataSource.config.includeRepos;
-      break;
-    case SecretScanningDataSource.GitLab:
-      if (dataSource.config.scope === GitLabDataSourceScope.Project) return null;
-      names = dataSource.config.includeProjects;
-      break;
-    default:
-      return null;
-  }
-
-  return !names || names.includes("*") ? null : names;
-};
-
-export const isResourceIncludedByConfig = (
-  dataSource: TSecretScanningDataSourceTypeAndConfig,
-  resourceName: string
-) => {
-  const names = getIncludedResourceNames(dataSource);
-  return names === null || names.includes(resourceName);
-};
-
-export const getConfigIncludingAllResources = <T extends { type: SecretScanningDataSource; config: unknown }>(
-  dataSource: T
-): T => {
-  const { type, config } = dataSource as TSecretScanningDataSourceTypeAndConfig;
-
-  switch (type) {
-    case SecretScanningDataSource.GitHub:
-    case SecretScanningDataSource.Bitbucket:
-      return { ...dataSource, config: { ...config, includeRepos: ["*"] } };
-    case SecretScanningDataSource.GitLab:
-      if (config.scope === GitLabDataSourceScope.Project) return dataSource;
-      return { ...dataSource, config: { ...config, includeProjects: ["*"] } };
-    default:
-      return dataSource;
-  }
-};
-
-export const doesConfigUpdateIncludeNewResources = (
-  current: TSecretScanningDataSourceTypeAndConfig,
-  next: TSecretScanningDataSourceTypeAndConfig
-) => {
-  const currentNames = getIncludedResourceNames(current);
-  if (currentNames === null) return false;
-
-  const nextNames = getIncludedResourceNames(next);
-  if (nextNames === null) return true;
-
-  return nextNames.some((name) => !currentNames.includes(name));
 };
 
 // GitLab only reports new projects through group webhooks, so discovery needs a group. Self-hosted system

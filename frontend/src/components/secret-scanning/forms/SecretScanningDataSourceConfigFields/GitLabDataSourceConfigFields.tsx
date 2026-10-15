@@ -59,7 +59,6 @@ export const GitLabDataSourceConnectionFields = () => {
     // @ts-expect-error rhf doesn't like this but we need to reset
     setValue("config.groupId", group ? Number(group.id) : undefined);
     setValue("config.groupName", group?.fullName ?? "");
-    setValue("config.includeProjects", []);
     setValue("isDiscoveryEnabled", Boolean(group));
   };
 

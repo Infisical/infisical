@@ -148,19 +148,12 @@ export const BitbucketSecretScanningFactory = () => {
   ) => {
     const {
       connection,
-      config: { includeRepos, workspaceSlug }
+      config: { workspaceSlug }
     } = dataSource;
 
     const repos = await listBitbucketRepositories(connection, workspaceSlug);
 
-    const filteredRepos: typeof repos = [];
-    if (includeRepos.includes("*")) {
-      filteredRepos.push(...repos);
-    } else {
-      filteredRepos.push(...repos.filter((repo) => includeRepos.includes(repo.full_name)));
-    }
-
-    return filteredRepos.map(({ full_name, uuid }) => ({
+    return repos.map(({ full_name, uuid }) => ({
       name: full_name,
       externalId: uuid
     }));

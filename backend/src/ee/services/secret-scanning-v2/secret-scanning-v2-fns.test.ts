@@ -11,13 +11,8 @@ import {
   SecretScanningExecPhase
 } from "@app/ee/services/secret-scanning/secret-scanning-exec";
 
-import { GitLabDataSourceScope } from "./gitlab/gitlab-secret-scanning-enums";
-import { SecretScanningDataSource } from "./secret-scanning-v2-enums";
 import {
   assertClonedRepositoryWithinSizeLimit,
-  doesConfigUpdateIncludeNewResources,
-  getConfigIncludingAllResources,
-  isResourceIncludedByConfig,
   parseScanErrorMessage,
   planCommitBatches,
   repositoryHasCommits,
@@ -301,76 +296,5 @@ describe("planCommitBatches", () => {
       expect(plan.resumed).toBe(false);
       expect(plan.batches).toHaveLength(2);
     });
-  });
-});
-
-describe("doesConfigUpdateIncludeNewResources", () => {
-  const github = (includeRepos: string[]) =>
-    ({ type: SecretScanningDataSource.GitHub, config: { includeRepos } }) as const;
-
-  test("is true when a repository is added", () => {
-    expect(doesConfigUpdateIncludeNewResources(github(["acme/api"]), github(["acme/api", "acme/web"]))).toBe(true);
-  });
-
-  test("is true when an empty list becomes all repositories", () => {
-    expect(doesConfigUpdateIncludeNewResources(github([]), github(["*"]))).toBe(true);
-  });
-
-  test("is false when a repository is only removed", () => {
-    expect(doesConfigUpdateIncludeNewResources(github(["acme/api", "acme/web"]), github(["acme/api"]))).toBe(false);
-  });
-
-  test("is false when everything was already included", () => {
-    expect(doesConfigUpdateIncludeNewResources(github(["*"]), github(["*"]))).toBe(false);
-  });
-
-  test("is false for a project-scoped GitLab data source", () => {
-    const gitlab = {
-      type: SecretScanningDataSource.GitLab,
-      config: { scope: GitLabDataSourceScope.Project, projectId: 1 }
-    } as Parameters<typeof doesConfigUpdateIncludeNewResources>[0];
-
-    expect(doesConfigUpdateIncludeNewResources(gitlab, gitlab)).toBe(false);
-  });
-});
-
-describe("isResourceIncludedByConfig", () => {
-  test("matches listed names exactly", () => {
-    const dataSource = {
-      type: SecretScanningDataSource.Bitbucket,
-      config: { includeRepos: ["acme/api"] }
-    } as Parameters<typeof isResourceIncludedByConfig>[0];
-
-    expect(isResourceIncludedByConfig(dataSource, "acme/api")).toBe(true);
-    expect(isResourceIncludedByConfig(dataSource, "acme/web")).toBe(false);
-  });
-
-  test("includes every resource for a wildcard", () => {
-    const dataSource = {
-      type: SecretScanningDataSource.GitLab,
-      config: { scope: GitLabDataSourceScope.Group, groupId: 1, includeProjects: ["*"] }
-    } as Parameters<typeof isResourceIncludedByConfig>[0];
-
-    expect(isResourceIncludedByConfig(dataSource, "acme/anything")).toBe(true);
-  });
-});
-
-describe("getConfigIncludingAllResources", () => {
-  test("widens a repository list to every repository and keeps the rest of the config", () => {
-    const dataSource = {
-      type: SecretScanningDataSource.Bitbucket,
-      config: { workspaceSlug: "acme", includeRepos: ["acme/api"] }
-    } as Parameters<typeof getConfigIncludingAllResources>[0];
-
-    expect(getConfigIncludingAllResources(dataSource).config).toEqual({ workspaceSlug: "acme", includeRepos: ["*"] });
-  });
-
-  test("leaves a project-scoped GitLab data source unchanged", () => {
-    const dataSource = {
-      type: SecretScanningDataSource.GitLab,
-      config: { scope: GitLabDataSourceScope.Project, projectId: 1 }
-    } as Parameters<typeof getConfigIncludingAllResources>[0];
-
-    expect(getConfigIncludingAllResources(dataSource)).toBe(dataSource);
   });
 });
