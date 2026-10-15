@@ -30,7 +30,7 @@ export const SELF_HOSTED_LICENSE_COPY: Record<SelfHostedLicenseState, SelfHosted
     methodHint: "No active license",
     title: "No License Active",
     detail:
-      "No license is active, so paid features stay locked until you set LICENSE_KEY on the server.",
+      "No license is active, so paid features stay locked until you set LICENSE_KEY on the server and restart it.",
     pageDescription: "View products and usage for this unlicensed instance.",
     inactiveProductNote: "Requires a self-hosted license key from sales."
   },
@@ -48,7 +48,7 @@ export const SELF_HOSTED_LICENSE_COPY: Record<SelfHostedLicenseState, SelfHosted
     methodHint: "Set by your license key",
     title: "Offline License",
     detail:
-      "To change your plan, get an updated key from sales and replace LICENSE_KEY on the server.",
+      "To change your plan, get an updated key from sales, replace LICENSE_KEY on the server, and restart it.",
     pageDescription: "Your plan is set by an offline license.",
     inactiveProductNote: "Not in your offline license, so contact sales for an updated key."
   },
