@@ -273,7 +273,10 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
               <TriangleAlertIcon />
               <AlertDescription>
                 Your plan no longer includes default storage. Upgrade to see recorded logs and keep
-                recording.
+                recording. You can turn session logs off
+                {isOnPlan(AgentVaultSessionLogStorageType.External)
+                  ? ", or switch to external storage."
+                  : "."}
               </AlertDescription>
             </Alert>
           )}

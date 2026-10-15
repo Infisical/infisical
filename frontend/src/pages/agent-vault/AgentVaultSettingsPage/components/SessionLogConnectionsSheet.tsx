@@ -46,7 +46,10 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { usePopUp } from "@app/hooks";
 import { useGetAgentVaultSessionLogSettings } from "@app/hooks/api/agentVault";
 import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums";
-import { useListAppConnections } from "@app/hooks/api/appConnections";
+import {
+  useListAppConnections,
+  useListAvailableAppConnections
+} from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 import { DeleteAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/DeleteAppConnectionModal";
@@ -72,6 +75,14 @@ export const SessionLogConnectionsSheet = ({ isOpen, onOpenChange }: Props) => {
       ? sessionLogStorage.appConnectionId
       : null;
   const { data: connections = [], isPending } = useListAppConnections(currentProject.id);
+  // Organization connections aren't listed here, so the one session logs use is named when the list is empty.
+  const { data: availableConnections } = useListAvailableAppConnections(
+    AppConnection.AWS,
+    currentProject.id
+  );
+  const orgConnectionInUse = availableConnections?.find(
+    ({ id, projectId }) => id === sessionLogConnectionId && !projectId
+  );
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addConnection",
     "editDetails",
@@ -123,7 +134,9 @@ export const SessionLogConnectionsSheet = ({ isOpen, onOpenChange }: Props) => {
               <EmptyHeader>
                 <EmptyTitle>No connections yet</EmptyTitle>
                 <EmptyDescription>
-                  Add an AWS connection, then choose it when you set up session logs.
+                  {orgConnectionInUse
+                    ? `Session logs use ${orgConnectionInUse.name}, an organization connection. Edit it under Integrations.`
+                    : "Add an AWS connection, then choose it when you set up session logs."}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
