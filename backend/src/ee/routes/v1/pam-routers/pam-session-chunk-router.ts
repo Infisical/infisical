@@ -36,14 +36,26 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
       body: z.object({
         chunkIndex: z.number().int().nonnegative().max(999999).describe("Sequential chunk index"),
         ciphertextBytes: z.number().int().positive().describe("Size of the encrypted chunk in bytes"),
-        isKeyframe: z.boolean().optional().describe("Whether this chunk is a keyframe")
+        isKeyframe: z.boolean().optional().describe("Whether this chunk is a keyframe"),
+        ciphertextSha256: z
+          .string()
+          .trim()
+          .max(64)
+          .optional()
+          .describe(
+            "Base64 SHA-256 of the ciphertext. When sent, the URL only accepts a body with this hash and the response lists the headers the upload must carry"
+          )
       }),
       response: {
         200: z.object({
           url: z.string(),
           objectKey: z.string(),
           method: z.literal("PUT"),
-          expiresInSeconds: z.number()
+          expiresInSeconds: z.number(),
+          headers: z
+            .record(z.string())
+            .optional()
+            .describe("Headers the PUT request must include exactly, when the URL is bound to a checksum")
         })
       }
     },
@@ -72,6 +84,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
             chunkIndex: req.body.chunkIndex,
             ciphertextBytes: req.body.ciphertextBytes,
             isKeyframe: req.body.isKeyframe,
+            ciphertextSha256Base64: req.body.ciphertextSha256,
             uploadToken
           },
           req.permission

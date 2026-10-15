@@ -1,11 +1,19 @@
 import { describe, expect, test } from "vitest";
 
-import { PamAccountType, PamPostgresAuthMethod, PamSnowflakeAuthMethod } from "../pam/pam-enums";
+import {
+  accountTypeSupportsSessionLogMasking,
+  PamAccountType,
+  PamPostgresAuthMethod,
+  PamSnowflakeAuthMethod,
+  PamWebAppAuthMethod
+} from "../pam/pam-enums";
 import {
   accountTypeRequiresRecording,
+  accountTypeSupportsCliAccess,
   applyForcedFields,
   buildPamAccountTypeMetadata,
   collectCredentialSecrets,
+  extractGatewayTarget,
   gatewaySupportsAccountType,
   gatewaySupportsClickHouseNative,
   getAccountAccessibilityIssues,
@@ -626,5 +634,148 @@ describe("gatewaySupportsAccountType", () => {
 
   test("Windows AD is proxied over the Windows protocol, so that is what a gateway reports", () => {
     expect(gatewaySupportsAccountType(PamAccountType.WindowsAd, ["windows"])).toBe(true);
+  });
+});
+
+describe("Web App accounts", () => {
+  const connection = (overrides: Record<string, unknown> = {}) => ({
+    url: "http://grafana.internal:3000",
+    tlsRejectUnauthorized: true,
+    ...overrides
+  });
+
+  test("accept http and https App URLs and nothing else", () => {
+    expect(() => validateConnectionDetails(PamAccountType.WebApp, connection())).not.toThrow();
+    expect(() =>
+      validateConnectionDetails(PamAccountType.WebApp, connection({ url: "https://grafana.internal" }))
+    ).not.toThrow();
+    expect(() =>
+      validateConnectionDetails(PamAccountType.WebApp, connection({ url: "ftp://files.internal" }))
+    ).toThrow();
+    expect(() => validateConnectionDetails(PamAccountType.WebApp, connection({ url: "grafana.internal" }))).toThrow();
+  });
+
+  test("require the start path to begin with a slash", () => {
+    expect(() =>
+      validateConnectionDetails(PamAccountType.WebApp, connection({ startPath: "/d/abc123/cpu" }))
+    ).not.toThrow();
+    expect(() => validateConnectionDetails(PamAccountType.WebApp, connection({ startPath: "d/abc123" }))).toThrow();
+  });
+
+  test("verify TLS unless told otherwise", () => {
+    const validated = validateConnectionDetails(PamAccountType.WebApp, { url: "https://grafana.internal" }) as {
+      tlsRejectUnauthorized: boolean;
+    };
+    expect(validated.tlsRejectUnauthorized).toBe(true);
+  });
+
+  test("accept each auth method with its own fields", () => {
+    expect(() => validateCredentials(PamAccountType.WebApp, { authMethod: PamWebAppAuthMethod.None })).not.toThrow();
+    expect(() =>
+      validateCredentials(PamAccountType.WebApp, {
+        authMethod: PamWebAppAuthMethod.Basic,
+        username: "viewer",
+        password: "s3cret"
+      })
+    ).not.toThrow();
+    expect(() =>
+      validateCredentials(PamAccountType.WebApp, { authMethod: PamWebAppAuthMethod.Bearer, token: "glsa_abc" })
+    ).not.toThrow();
+    expect(() =>
+      validateCredentials(PamAccountType.WebApp, {
+        authMethod: PamWebAppAuthMethod.Header,
+        headerName: "X-Api-Key",
+        headerValue: "k-123"
+      })
+    ).not.toThrow();
+  });
+
+  test("reject incomplete credentials and malformed header names", () => {
+    expect(() =>
+      validateCredentials(PamAccountType.WebApp, { authMethod: PamWebAppAuthMethod.Basic, username: "viewer" })
+    ).toThrow();
+    expect(() =>
+      validateCredentials(PamAccountType.WebApp, {
+        authMethod: PamWebAppAuthMethod.Header,
+        headerName: "X Api Key",
+        headerValue: "k-123"
+      })
+    ).toThrow();
+  });
+
+  test("treat a no-auth account as configured and a secret-less one as not", () => {
+    expect(isCredentialConfigured(PamAccountType.WebApp, { authMethod: PamWebAppAuthMethod.None })).toBe(true);
+    expect(
+      isCredentialConfigured(PamAccountType.WebApp, { authMethod: PamWebAppAuthMethod.Bearer, token: "glsa_abc" })
+    ).toBe(true);
+    expect(isCredentialConfigured(PamAccountType.WebApp, { authMethod: PamWebAppAuthMethod.Bearer, token: "" })).toBe(
+      false
+    );
+  });
+
+  test("never return the secret in sanitized credentials", () => {
+    expect(
+      sanitizeCredentials(PamAccountType.WebApp, {
+        authMethod: PamWebAppAuthMethod.Header,
+        headerName: "X-Api-Key",
+        headerValue: "k-123"
+      })
+    ).toEqual({ authMethod: PamWebAppAuthMethod.Header, headerName: "X-Api-Key" });
+    expect(
+      sanitizeCredentials(PamAccountType.WebApp, {
+        authMethod: PamWebAppAuthMethod.Basic,
+        username: "viewer",
+        password: "s3cret"
+      })
+    ).toEqual({ authMethod: PamWebAppAuthMethod.Basic, username: "viewer" });
+  });
+
+  test("target the App URL's host, with the scheme's default port when none is given", async () => {
+    await expect(
+      extractGatewayTarget(PamAccountType.WebApp, connection({ url: "http://grafana.internal:3000/login" }))
+    ).resolves.toEqual({ host: "grafana.internal", port: 3000 });
+    await expect(
+      extractGatewayTarget(PamAccountType.WebApp, connection({ url: "https://argo.internal" }))
+    ).resolves.toEqual({ host: "argo.internal", port: 443 });
+    await expect(
+      extractGatewayTarget(PamAccountType.WebApp, connection({ url: "http://jenkins.internal" }))
+    ).resolves.toEqual({ host: "jenkins.internal", port: 80 });
+  });
+
+  test("open in the browser only", () => {
+    expect(accountTypeSupportsCliAccess(PamAccountType.WebApp)).toBe(false);
+    expect(accountTypeSupportsCliAccess(PamAccountType.Postgres)).toBe(true);
+
+    const metadata = buildPamAccountTypeMetadata(new Set([PamAccountType.WebApp, PamAccountType.Postgres]));
+    const webApp = metadata.find((m) => m.type === PamAccountType.WebApp);
+    const postgres = metadata.find((m) => m.type === PamAccountType.Postgres);
+    expect(webApp?.supportsWebAccess).toBe(true);
+    expect(webApp?.supportsCliAccess).toBe(false);
+    expect(postgres?.supportsCliAccess).toBe(true);
+  });
+
+  test("describe the auth method as a select whose secret fields only show for their method", () => {
+    const [webApp] = buildPamAccountTypeMetadata(new Set()).filter((m) => m.type === PamAccountType.WebApp);
+    const authMethod = webApp.credentialFields.find((f) => f.key === "authMethod");
+    expect(authMethod?.options?.map((o) => o.value)).toEqual([
+      PamWebAppAuthMethod.None,
+      PamWebAppAuthMethod.Basic,
+      PamWebAppAuthMethod.Bearer,
+      PamWebAppAuthMethod.Header
+    ]);
+
+    const token = webApp.credentialFields.find((f) => f.key === "token");
+    expect(token?.secret).toBe(true);
+    expect(token?.showWhen).toEqual({ field: "authMethod", equals: PamWebAppAuthMethod.Bearer });
+  });
+
+  test("record to either storage backend and skip log masking, since the recording is screen frames", () => {
+    expect(accountTypeRequiresRecording(PamAccountType.WebApp)).toBe(false);
+    expect(accountTypeSupportsSessionLogMasking(PamAccountType.WebApp)).toBe(false);
+  });
+
+  test("need a gateway that reports web app support", () => {
+    expect(gatewaySupportsAccountType(PamAccountType.WebApp, ["postgres", "windows"])).toBe(false);
+    expect(gatewaySupportsAccountType(PamAccountType.WebApp, ["postgres", "web-app"])).toBe(true);
   });
 });

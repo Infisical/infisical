@@ -3,7 +3,7 @@ import z from "zod";
 
 import { PamSessionsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamAccessMethod, PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
+import { PamAccessMethod, PamAccountType, PamSessionEndCause, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
 import { PamPolicyRulesSchema } from "@app/ee/services/pam/pam-policies";
 import { hostPattern } from "@app/ee/services/pam-account/pam-account-schemas";
 import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recording/pam-recording-enums";
@@ -203,6 +203,19 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         sessionId: z.string().uuid().describe("The ID of the session")
       }),
+      // Optional: gateways that predate these fields send no body
+      body: z
+        .object({
+          endReason: z.nativeEnum(PamSessionEndCause).optional().describe("Why the gateway ended the session"),
+          blockedRequestCount: z
+            .number()
+            .int()
+            .min(0)
+            .max(1_000_000)
+            .optional()
+            .describe("Web app sessions: requests refused because their host isn't allowed")
+        })
+        .optional(),
       response: {
         200: z.object({ message: z.string() })
       }
@@ -216,6 +229,8 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
           req.permission.orgId
         );
 
+      // Only the call that ends the row writes the event. A web session's backend bridge can end it first,
+      // in which case the gateway's reason and blocked-request count stay in the recording, not the audit log.
       if (!alreadyEnded) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
@@ -226,7 +241,9 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
             metadata: {
               sessionId: req.params.sessionId,
               accountId: accountId ?? undefined,
-              accountName
+              accountName,
+              endReason: req.body?.endReason,
+              blockedRequestCount: req.body?.blockedRequestCount
             }
           }
         });

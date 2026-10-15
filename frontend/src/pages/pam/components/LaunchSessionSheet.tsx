@@ -41,11 +41,13 @@ type LaunchMethod = "browser" | "cli";
 const LaunchTab = ({
   account,
   supportsWebAccess,
+  supportsCliAccess,
   webAccessUnavailableReason,
   hosts
 }: {
   account: TAccessiblePamAccount;
   supportsWebAccess: boolean;
+  supportsCliAccess: boolean;
   webAccessUnavailableReason: string | null;
   hosts: string[];
 }) => {
@@ -53,7 +55,8 @@ const LaunchTab = ({
   const browserDisabled = Boolean(webAccessUnavailableReason);
   const [method, setMethod] = useState<LaunchMethod>(supportsWebAccess ? "browser" : "cli");
   // The reason arrives with the account, after this state is seeded, so the render has to re-decide.
-  const effectiveMethod: LaunchMethod = browserDisabled ? "cli" : method;
+  let effectiveMethod: LaunchMethod = browserDisabled ? "cli" : method;
+  if (!supportsCliAccess) effectiveMethod = "browser";
 
   const needsHost = hosts.length > 1;
   const [selectedHost, setSelectedHost] = useState<string | undefined>(
@@ -96,7 +99,7 @@ const LaunchTab = ({
             </div>
           )}
 
-          {supportsWebAccess && (
+          {supportsWebAccess && supportsCliAccess && (
             <div>
               <p className="mb-3 text-sm font-medium text-foreground">Launch method</p>
               <RadioGroup
@@ -196,6 +199,8 @@ export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => 
   if (!account) return null;
 
   const supportsWebAccess = Boolean(typeMeta?.supportsWebAccess);
+  // Absent on older servers, which predate browser-only types
+  const supportsCliAccess = typeMeta?.supportsCliAccess !== false;
 
   return (
     <PamDetailSheet
@@ -215,6 +220,7 @@ export const LaunchSessionSheet = ({ account, isOpen, onOpenChange }: Props) => 
             <LaunchTab
               account={account}
               supportsWebAccess={supportsWebAccess}
+              supportsCliAccess={supportsCliAccess}
               webAccessUnavailableReason={webAccessUnavailableReason}
               hosts={hosts}
             />

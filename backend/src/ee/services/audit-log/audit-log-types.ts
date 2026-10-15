@@ -6168,6 +6168,10 @@ interface PamSessionEndEvent {
     sessionId: string;
     accountId?: string;
     accountName: string;
+    // PamSessionEndCause; absent when the path that ended the session can't tell why
+    endReason?: string;
+    // Web app sessions: requests the remote browser refused because their host isn't allowed
+    blockedRequestCount?: number;
   };
 }
 

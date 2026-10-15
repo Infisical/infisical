@@ -7,6 +7,7 @@ import { PamAccountType, TPamAccount, useGetPamAccountById } from "@app/hooks/ap
 import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
 
 import { AwsIamAccessContent } from "./AwsIamAccessContent";
+import { BrowserContent } from "./BrowserContent";
 import { DisconnectedScreen } from "./DisconnectedScreen";
 import { RdpLauncher } from "./RdpLauncher";
 import { SessionAccessGate } from "./ReasonGate";
@@ -150,6 +151,9 @@ const PageContent = () => {
               preselectedHost={preselectedHost}
             />
           );
+        }
+        if (account.accountType === PamAccountType.WebApp) {
+          return <BrowserContent account={account} reason={reason} mfaSessionId={mfaSessionId} />;
         }
         return <TerminalContent account={account} reason={reason} mfaSessionId={mfaSessionId} />;
       }}

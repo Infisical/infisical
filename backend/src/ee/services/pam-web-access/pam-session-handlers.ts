@@ -1,5 +1,6 @@
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 
+import { handleBrowserSession } from "./browser/pam-browser-session-handler";
 import { handleClickhouseSession } from "./clickhouse/pam-clickhouse-session-handler";
 import { handleMysqlSession } from "./mysql/pam-mysql-session-handler";
 import { TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
@@ -52,5 +53,9 @@ export const SESSION_HANDLERS: Partial<Record<PamAccountType, TSessionHandlerEnt
   [PamAccountType.WindowsAd]: {
     gatewayAccountType: PamAccountType.Windows,
     handler: handleRdpSession
+  },
+  [PamAccountType.WebApp]: {
+    gatewayAccountType: PamAccountType.WebApp,
+    handler: handleBrowserSession
   }
 };

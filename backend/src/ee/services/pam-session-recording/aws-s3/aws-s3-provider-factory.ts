@@ -1,8 +1,11 @@
 import {
+  ChecksumMode,
   DeleteObjectsCommand,
   GetObjectCommand,
   HeadBucketCommand,
+  HeadObjectCommand,
   ListObjectsV2Command,
+  NotFound,
   PutObjectCommand,
   S3Client
 } from "@aws-sdk/client-s3";
@@ -78,7 +81,15 @@ export const AwsS3RecordingStorageProvider: TPamRecordingStorageProvider = () =>
     }
   },
 
-  mintPresignedPut: async ({ config, projectId, sessionId, chunkIndex, ciphertextBytes, isKeyframe }) => {
+  mintPresignedPut: async ({
+    config,
+    projectId,
+    sessionId,
+    chunkIndex,
+    ciphertextBytes,
+    isKeyframe,
+    ciphertextSha256Base64
+  }) => {
     if (ciphertextBytes <= 0 || ciphertextBytes > PAM_RECORDING_MAX_CHUNK_BYTES) {
       throw new BadRequestError({
         message: `Chunk size out of range [bytes=${ciphertextBytes}, max=${PAM_RECORDING_MAX_CHUNK_BYTES}]`
@@ -99,20 +110,45 @@ export const AwsS3RecordingStorageProvider: TPamRecordingStorageProvider = () =>
       Bucket: config.bucket,
       Key: objectKey,
       ContentLength: ciphertextBytes,
-      ContentType: "application/octet-stream"
+      ContentType: "application/octet-stream",
+      ...(ciphertextSha256Base64 ? { ChecksumSHA256: ciphertextSha256Base64 } : {})
     });
+
+    // A signed checksum header makes S3 itself refuse a body whose hash differs from the one declared here.
+    // Only signed when the gateway asked for it: an older gateway would not send the header and S3 would
+    // reject every upload.
+    const unhoistableHeaders = new Set(["content-length"]);
+    if (ciphertextSha256Base64) unhoistableHeaders.add("x-amz-checksum-sha256");
 
     const url = await getSignedUrl(client, command, {
       expiresIn: PAM_RECORDING_PRESIGNED_URL_EXPIRY_SECONDS,
-      unhoistableHeaders: new Set(["content-length"])
+      unhoistableHeaders
     });
 
     return {
       url,
       objectKey,
       method: "PUT" as const,
-      expiresInSeconds: PAM_RECORDING_PRESIGNED_URL_EXPIRY_SECONDS
+      expiresInSeconds: PAM_RECORDING_PRESIGNED_URL_EXPIRY_SECONDS,
+      ...(ciphertextSha256Base64 ? { headers: { "x-amz-checksum-sha256": ciphertextSha256Base64 } } : {})
     };
+  },
+
+  describeObject: async ({ config, objectKey }) => {
+    if (!config.bucket) throw new BadRequestError({ message: "Bucket is required" });
+    const client = buildClient(config);
+    try {
+      const head = await client.send(
+        new HeadObjectCommand({ Bucket: config.bucket, Key: objectKey, ChecksumMode: ChecksumMode.ENABLED })
+      );
+      return { sizeBytes: Number(head.ContentLength ?? 0), sha256Base64: head.ChecksumSHA256 || undefined };
+    } catch (err) {
+      if (err instanceof NotFound || (err as { name?: string })?.name === "NotFound") return null;
+      logger.warn({ err, bucket: config.bucket, objectKey }, `S3 HeadObject failed [bucket=${config.bucket}]`);
+      throw new BadRequestError({
+        message: `Unable to read the uploaded recording chunk from the bucket. Grant s3:GetObject on the configured key prefix [bucket=${config.bucket}]`
+      });
+    }
   },
 
   mintPresignedGet: async ({ config, objectKey }) => {

@@ -47,6 +47,7 @@ import {
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import {
+  accountTypeSupportsCliAccess,
   buildSessionGatewayConnectionDetails,
   extractGatewayTarget,
   getAccountAccessibilityIssues,
@@ -491,6 +492,12 @@ export const pamSessionServiceFactory = ({
       ResourcePermissionPamResourceActions.LaunchSessions,
       actor
     );
+
+    if (!accountTypeSupportsCliAccess(account.accountType as PamAccountType)) {
+      throw new BadRequestError({
+        message: `Account '${account.name}' opens in the browser only. Launch it from the PAM accounts page in Infisical.`
+      });
+    }
 
     const trimmedReason = reason?.trim() || null;
 

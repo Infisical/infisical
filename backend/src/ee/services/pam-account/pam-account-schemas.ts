@@ -13,7 +13,8 @@ import {
   PamAccountType,
   PamPostgresAuthMethod,
   PamSnowflakeAuthMethod,
-  PamSshAuthMethod
+  PamSshAuthMethod,
+  PamWebAppAuthMethod
 } from "../pam/pam-enums";
 import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
 import {
@@ -71,6 +72,15 @@ const delimitedStringList = z.preprocess(
   normalizeDelimitedStringList,
   z.array(z.string().trim().min(1).max(255).regex(hostPattern, "Must be a valid hostname or IP address")).min(1)
 );
+
+const webAppUrlSchema = z
+  .string()
+  .trim()
+  .max(2048)
+  .url()
+  .refine((value) => ["http:", "https:"].includes(new URL(value).protocol), {
+    message: "URL must start with http:// or https://"
+  });
 
 // A type that gained its authMethod discriminator after launch has stored rows without one,
 // which a discriminated union rejects outright. Defaulting it keeps them parsing
@@ -905,6 +915,81 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }
   },
 
+  [PamAccountType.WebApp]: {
+    name: "Web App",
+    icon: "Web.png",
+    // The app is rendered by the gateway's remote browser; there is no local client for the CLI to tunnel
+    supportsCliAccess: false,
+    connectionDetails: z.object({
+      url: webAppUrlSchema,
+      startPath: boundedOptionalString(1024).refine((value) => value === undefined || value.startsWith("/"), {
+        message: "Start path must begin with /"
+      }),
+      tlsRejectUnauthorized: z.boolean().default(true),
+      tlsCaCertificate: optionalTrimmedString
+    }),
+    credentials: z.discriminatedUnion("authMethod", [
+      z.object({ authMethod: z.literal(PamWebAppAuthMethod.None) }),
+      z.object({
+        authMethod: z.literal(PamWebAppAuthMethod.Basic),
+        username: z.string().trim().min(1).max(255),
+        password: z.string().min(1).max(4096)
+      }),
+      z.object({
+        authMethod: z.literal(PamWebAppAuthMethod.Bearer),
+        token: z.string().trim().min(1).max(8192)
+      }),
+      z.object({
+        authMethod: z.literal(PamWebAppAuthMethod.Header),
+        headerName: z
+          .string()
+          .trim()
+          .min(1)
+          .max(128)
+          .regex(new RE2(/^[A-Za-z0-9-]+$/), "Header name may only contain letters, digits and hyphens"),
+        headerValue: z.string().trim().min(1).max(8192)
+      })
+    ]),
+    sanitizedCredentials: z.object({
+      authMethod: z.string(),
+      username: z.string().optional(),
+      headerName: z.string().optional()
+    }),
+    ui: {
+      url: {
+        label: "App URL",
+        tooltip:
+          "The address of the web app as the gateway reaches it on the private network (e.g. http://grafana.internal:3000). The remote browser can only reach this host."
+      },
+      startPath: {
+        label: "Start Path",
+        tooltip: "Path the session opens on, relative to the App URL. Defaults to the URL's own path."
+      },
+      tlsRejectUnauthorized: { label: "Reject Unauthorized TLS", defaultValue: true },
+      tlsCaCertificate: {
+        label: "CA Certificate",
+        widget: PamFieldWidget.Textarea,
+        tooltip: "PEM certificate authority to trust for the App URL, for apps served with an internal CA."
+      },
+      authMethod: {
+        label: "Auth Method",
+        defaultValue: PamWebAppAuthMethod.None,
+        options: [
+          { label: "None", value: PamWebAppAuthMethod.None },
+          { label: "Basic Auth", value: PamWebAppAuthMethod.Basic },
+          { label: "Bearer Token", value: PamWebAppAuthMethod.Bearer },
+          { label: "Custom Header", value: PamWebAppAuthMethod.Header }
+        ],
+        tooltip:
+          "How the gateway signs the browser in. The credential is injected only into requests to the App URL's host and never reaches the user."
+      },
+      password: { widget: PamFieldWidget.Password, secret: true },
+      token: { label: "Token", widget: PamFieldWidget.Password, secret: true },
+      headerName: { label: "Header Name" },
+      headerValue: { label: "Header Value", widget: PamFieldWidget.Password, secret: true }
+    }
+  },
+
   [PamAccountType.AwsIam]: {
     name: "AWS IAM",
     icon: "Amazon Web Services.png",
@@ -1086,7 +1171,8 @@ export const extractGatewayTarget = async (
       const { host, port, nativePort } = validated as { host: string; port?: number; nativePort?: number };
       return { host, port: port ?? nativePort };
     }
-    case PamAccountType.Kubernetes: {
+    case PamAccountType.Kubernetes:
+    case PamAccountType.WebApp: {
       const { url } = validated as { url: string };
       const parsed = new URL(url);
       const defaultPort = parsed.protocol === "http:" ? 80 : 443;
@@ -1233,6 +1319,13 @@ export enum PamAccountAccessibilityIssue {
 export const accountTypeRequiresRecording = (accountType: PamAccountType): boolean =>
   accountType === PamAccountType.Windows || accountType === PamAccountType.WindowsAd;
 
+export const accountTypeSupportsCliAccess = (accountType: PamAccountType): boolean => {
+  const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType] as
+    | { supportsCliAccess?: boolean }
+    | undefined;
+  return config?.supportsCliAccess !== false;
+};
+
 export const accountTypeRequiresGateway = (accountType: PamAccountType): boolean => {
   const config = ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType] as
     | { requiresGateway?: boolean }
@@ -1354,6 +1447,7 @@ export const PamAccountTypeMetadataSchema = z.object({
   name: z.string(),
   icon: z.string(),
   supportsWebAccess: z.boolean(),
+  supportsCliAccess: z.boolean(),
   requiresGateway: z.boolean(),
   supportsDependencies: z.boolean(),
 
@@ -1519,6 +1613,7 @@ export const buildPamAccountTypeMetadata = (webAccessSupportedTypes: Set<PamAcco
     name: config.name,
     icon: config.icon,
     supportsWebAccess: webAccessSupportedTypes.has(type),
+    supportsCliAccess: accountTypeSupportsCliAccess(type),
     requiresGateway: accountTypeRequiresGateway(type),
     supportsDependencies: isWindowsRotatableType(type),
     connectionStringSchemes: accountTypeConnectionStringSchemes(type),

@@ -13,7 +13,8 @@ export enum PamAccountType {
   GcpServiceAccount = "gcp-service-account",
   AzureCli = "azure-cli",
   Windows = "windows",
-  WindowsAd = "windows-ad"
+  WindowsAd = "windows-ad",
+  WebApp = "web-app"
 }
 
 export enum PamResourceRole {
@@ -53,6 +54,23 @@ export enum PamSessionEndReason {
   Expired = "expired"
 }
 
+// Why a session ended, as recorded in its audit event. The values that also appear in the browser
+// session protocol's `end` message (completed, expired, terminated, idle, user_quit, browser_stopped,
+// capacity, error) keep the same spelling there.
+export enum PamSessionEndCause {
+  Completed = "completed",
+  Expired = "expired",
+  Terminated = "terminated",
+  Idle = "idle",
+  UserQuit = "user_quit",
+  BrowserStopped = "browser_stopped",
+  Capacity = "capacity",
+  ClientDisconnected = "client_disconnected",
+  GatewayClosed = "gateway_closed",
+  SetupFailed = "setup_failed",
+  Error = "error"
+}
+
 export enum PamSnowflakeAuthMethod {
   KeyPair = "key-pair",
   ProgrammaticAccessToken = "programmatic-access-token",
@@ -78,6 +96,13 @@ export enum PamSshAuthMethod {
 export enum PamPostgresAuthMethod {
   Password = "password",
   AwsIam = "aws-iam"
+}
+
+export enum PamWebAppAuthMethod {
+  None = "none",
+  Basic = "basic",
+  Bearer = "bearer",
+  Header = "header"
 }
 
 export enum PamAccessType {
@@ -112,4 +137,5 @@ export enum PamAccountWarning {
 export const accountTypeSupportsSessionLogMasking = (accountType: PamAccountType): boolean =>
   accountType !== PamAccountType.Windows &&
   accountType !== PamAccountType.WindowsAd &&
+  accountType !== PamAccountType.WebApp &&
   accountType !== PamAccountType.AwsIam;

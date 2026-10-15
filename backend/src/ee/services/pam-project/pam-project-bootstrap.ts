@@ -53,7 +53,8 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = (
     { name: "windows", type: PamAccountType.Windows },
     { name: "windows-ad", type: PamAccountType.WindowsAd },
     { name: "snowflake", type: PamAccountType.Snowflake },
-    { name: "clickhouse", type: PamAccountType.ClickHouse }
+    { name: "clickhouse", type: PamAccountType.ClickHouse },
+    { name: "web-app", type: PamAccountType.WebApp }
   ] as const
 ).map(({ name, type }) => ({ name, type, settings: defaultTemplateSettings(type) }));
 

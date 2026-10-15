@@ -13,7 +13,8 @@ export enum PamAccountType {
   GcpServiceAccount = "gcp-service-account",
   AzureCli = "azure-cli",
   Windows = "windows",
-  WindowsAd = "windows-ad"
+  WindowsAd = "windows-ad",
+  WebApp = "web-app"
 }
 
 export enum PamDiscoveryType {
@@ -48,12 +49,13 @@ export enum PamAccountWarning {
   SessionLogMaskingDegraded = "session-log-masking-degraded"
 }
 
-// Windows is brokered over RDP, whose recordings the gateway never masks; AWS IAM is gateway-less
-// and produces no session log. Mirrors accountTypeSupportsSessionLogMasking in
-// backend/src/ee/services/pam/pam-enums.ts.
+// Windows (RDP) and web apps (remote browser) record screen frames, which the gateway never masks;
+// AWS IAM is gateway-less and produces no session log. Mirrors accountTypeSupportsSessionLogMasking
+// in backend/src/ee/services/pam/pam-enums.ts.
 export const UNMASKABLE_PAM_ACCOUNT_TYPES = [
   PamAccountType.Windows,
   PamAccountType.WindowsAd,
+  PamAccountType.WebApp,
   PamAccountType.AwsIam
 ];
 
@@ -112,7 +114,8 @@ export enum SessionChannelType {
   Terminal = "terminal",
   Exec = "exec",
   Sftp = "sftp",
-  Rdp = "rdp"
+  Rdp = "rdp",
+  Browser = "browser"
 }
 
 export enum PamSessionStatus {

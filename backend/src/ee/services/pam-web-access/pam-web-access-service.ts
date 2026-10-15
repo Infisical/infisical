@@ -4,6 +4,7 @@ import type WebSocket from "ws";
 
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway-v2-types";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
@@ -29,6 +30,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import {
   PAM_CANCELLATION_FLUSH_TIMEOUT_MS,
   PamAccessMethod,
+  PamSessionEndCause,
   PamSessionEndReason,
   PamSessionStatus
 } from "../pam/pam-enums";
@@ -36,10 +38,13 @@ import { checkAccountAccess } from "../pam/pam-permission";
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import {
+  ACCOUNT_TYPE_CONFIGS,
   extractGatewayTarget,
+  gatewaySupportsAccountType,
   getAccountAccessibilityIssues,
   PamAccountAccessibilityIssue,
   resolveSelectedHost,
+  TSupportedAccountType,
   webAccessUnavailableReason
 } from "../pam-account/pam-account-schemas";
 import { assertUserStillActiveInOrg } from "../pam-session/pam-session-access-fns";
@@ -80,6 +85,7 @@ type TPamWebAccessServiceFactoryDep = {
   >;
   membershipDAL: Pick<TMembershipDALFactory, "lockOrgMembershipForUser">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "runWithPoolFailover">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   userDAL: Pick<TUserDALFactory, "findById">;
@@ -120,6 +126,7 @@ export const pamWebAccessServiceFactory = ({
   tokenService,
   pamSessionDAL,
   gatewayV2Service,
+  gatewayV2DAL,
   gatewayPoolService,
   kmsService,
   userDAL,
@@ -164,6 +171,31 @@ export const pamWebAccessServiceFactory = ({
     if (issues.includes(PamAccountAccessibilityIssue.NoRecordingConfig)) {
       throw new BadRequestError({
         message: "S3 recording must be configured before launching this account"
+      });
+    }
+  };
+
+  const supportedTypesOf = (capabilities: unknown) =>
+    (capabilities as { supported_account_types?: string[] } | null)?.supported_account_types;
+
+  const accountTypeName = (accountType: PamAccountType) =>
+    ACCOUNT_TYPE_CONFIGS[accountType as TSupportedAccountType]?.name ?? accountType;
+
+  const browserImageHint = (accountType: PamAccountType) =>
+    accountType === PamAccountType.WebApp ? " and running its browser-enabled image" : "";
+
+  // A gateway that can't run the type would only fail once the tunnel is open, with nothing to point at.
+  // Pool members are filtered at connect time instead, since which member answers isn't known yet.
+  const assertGatewayCanRunSession = async (account: { accountType: string; gatewayId?: string | null; templateGatewayId?: string | null }) => {
+    const gatewayId = account.gatewayId ?? account.templateGatewayId;
+    if (!gatewayId) return;
+    const gateway = await gatewayV2DAL.findById(gatewayId);
+    if (!gateway) return;
+
+    const accountType = account.accountType as PamAccountType;
+    if (!gatewaySupportsAccountType(accountType, supportedTypesOf(gateway.capabilities))) {
+      throw new BadRequestError({
+        message: `Gateway '${gateway.name}' can't run ${accountTypeName(accountType)} sessions. Update the gateway${browserImageHint(accountType)}, or attach this account to a gateway that supports them.`
       });
     }
   };
@@ -240,6 +272,8 @@ export const pamWebAccessServiceFactory = ({
     if (webAccessBlocked) {
       throw new BadRequestError({ message: webAccessBlocked });
     }
+
+    await assertGatewayCanRunSession(account);
 
     const resolvedHost = resolveSelectedHost(account.accountType as PamAccountType, connectionDetails, selectedHost);
 
@@ -350,7 +384,7 @@ export const pamWebAccessServiceFactory = ({
     let pingInterval: ReturnType<typeof setInterval> | null = null;
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const cleanup = async () => {
+    const cleanup = async (endCause: PamSessionEndCause = PamSessionEndCause.ClientDisconnected) => {
       if (expiryTimer) {
         clearTimeout(expiryTimer);
         expiryTimer = null;
@@ -395,7 +429,7 @@ export const pamWebAccessServiceFactory = ({
               projectId,
               event: {
                 type: EventType.PAM_SESSION_END,
-                metadata: { sessionId, accountId: session.accountId ?? undefined, accountName }
+                metadata: { sessionId, accountId: session.accountId ?? undefined, accountName, endReason: endCause }
               }
             });
 
@@ -553,13 +587,20 @@ export const pamWebAccessServiceFactory = ({
 
       const createdSession = session;
       const isRdp = account.accountType === PamAccountType.Windows || account.accountType === PamAccountType.WindowsAd;
+      const isBrowser = account.accountType === PamAccountType.WebApp;
+      let tunnelProtocol = GatewayProxyProtocol.Pam;
+      if (isRdp) tunnelProtocol = GatewayProxyProtocol.PamRdpBrowser;
+      if (isBrowser) tunnelProtocol = GatewayProxyProtocol.PamBrowser;
 
       // Certs are minted per gateway, so each attempt has to re-mint. `eager` opens the tunnel
       // during setup, so an unreachable gateway fails here where another member can still be tried.
+      const sessionAccountType = account.accountType as PamAccountType;
       const attempt = await gatewayPoolService.runWithPoolFailover(
         {
           gatewayId: account.gatewayId ?? account.templateGatewayId,
-          poolId: account.gatewayPoolId ?? account.templateGatewayPoolId
+          poolId: account.gatewayPoolId ?? account.templateGatewayPoolId,
+          filter: (gateway) => gatewaySupportsAccountType(sessionAccountType, supportedTypesOf(gateway.capabilities)),
+          unavailableMessage: `No online gateway in this account's pool can run ${accountTypeName(sessionAccountType)} sessions. Check that the pool's gateways are online and up to date${browserImageHint(sessionAccountType)}.`
         },
         async (gatewayId) => {
           const attemptGatewayDetails = await gatewayV2Service.getPAMConnectionDetails({
@@ -585,7 +626,7 @@ export const pamWebAccessServiceFactory = ({
           return {
             gatewayDetails: attemptGatewayDetails,
             server: await setupGatewayProxy({
-              protocol: isRdp ? GatewayProxyProtocol.PamRdpBrowser : GatewayProxyProtocol.Pam,
+              protocol: tunnelProtocol,
               ...attemptGatewayDetails,
               longLived: true,
               eager: true
@@ -618,8 +659,9 @@ export const pamWebAccessServiceFactory = ({
       const boundSendMessage = (msg: TWebSocketServerMessage) => sendMessage(socket, msg);
       const boundSendSessionEnd = (reason: SessionEndReason) =>
         sendMessage(socket, { type: TerminalServerMessageType.SessionEnd, reason });
+      // The handler only learns that the tunnel closed; the gateway reports its own reason when it ends the session
       const handlerCleanup = () => {
-        if (!cleanedUp) void cleanup();
+        if (!cleanedUp) void cleanup(PamSessionEndCause.GatewayClosed);
       };
 
       const ctx: TSessionContext = {
@@ -644,9 +686,9 @@ export const pamWebAccessServiceFactory = ({
         releaseEarlyBuffer();
       }
 
-      // RDP sessions are activated by the gateway after credential exchange,
+      // RDP and browser sessions are activated by the gateway after credential exchange,
       // not by the web access service.
-      if (!isRdp) {
+      if (!isRdp && !isBrowser) {
         await pamSessionDAL.activateSession(session.id);
       }
 
@@ -672,7 +714,7 @@ export const pamWebAccessServiceFactory = ({
         if (idleTimer) clearTimeout(idleTimer);
         idleTimer = setTimeout(() => {
           if (!cleanedUp) {
-            void cleanup();
+            void cleanup(PamSessionEndCause.Idle);
             sendSessionEndAndClose(socket, SessionEndReason.IdleTimeout);
           }
         }, WS_IDLE_TIMEOUT_MS);
@@ -701,7 +743,7 @@ export const pamWebAccessServiceFactory = ({
           if (!sessionId || cleanedUp) return;
           try {
             if (!(await pamSessionDAL.isSessionTerminated(sessionId)) || cleanedUp) return;
-            await cleanup();
+            await cleanup(PamSessionEndCause.Terminated);
             sendSessionEndAndClose(socket, SessionEndReason.Terminated);
           } catch (err) {
             logger.error(err, `Failed to check session termination [sessionId=${sessionId}]`);
@@ -715,7 +757,7 @@ export const pamWebAccessServiceFactory = ({
 
       expiryTimer = setTimeout(() => {
         if (!cleanedUp) {
-          void cleanup();
+          void cleanup(PamSessionEndCause.Completed);
           sendSessionEndAndClose(socket, SessionEndReason.SessionCompleted);
         }
       }, sessionDurationMs);
@@ -727,11 +769,11 @@ export const pamWebAccessServiceFactory = ({
 
       socket.on("error", (err: Error) => {
         logger.error(err, "WebSocket error");
-        void cleanup();
+        void cleanup(PamSessionEndCause.Error);
       });
     } catch (err) {
       logger.error(err, "Failed to establish web access session");
-      await cleanup();
+      await cleanup(PamSessionEndCause.SetupFailed);
       sendSessionEndAndClose(socket, SessionEndReason.SetupFailed);
     }
   };

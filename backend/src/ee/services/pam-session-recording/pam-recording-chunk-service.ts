@@ -1,5 +1,6 @@
 import RE2 from "re2";
 
+import { crypto } from "@app/lib/crypto/cryptography";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -38,6 +39,27 @@ type TPamSessionChunkServiceFactoryDep = {
 };
 
 export type TPamSessionChunkServiceFactory = ReturnType<typeof pamSessionChunkServiceFactory>;
+
+// The gateway matches on these names to decide whether to retry, drop, or treat a chunk as already stored,
+// so they are a contract like PamUploadTokenRejection.
+export const PamChunkRejection = {
+  AlreadyRecorded: "PamChunkAlreadyRecorded",
+  Conflict: "PamChunkConflict",
+  HashMismatch: "PamChunkHashMismatch",
+  ObjectMismatch: "PamChunkObjectMismatch"
+} as const;
+
+const BASE64_RE = new RE2(/^[A-Za-z0-9+/]*={0,2}$/);
+
+const decodeSha256 = (value: string, field: string) => {
+  const digest = BASE64_RE.test(value) ? Buffer.from(value, "base64") : null;
+  if (!digest || digest.length !== 32) {
+    throw new BadRequestError({ message: `${field} must be a base64-encoded SHA-256 digest (32 bytes)` });
+  }
+  return digest;
+};
+
+const sha256Of = (data: Buffer) => crypto.nativeCrypto.createHash("sha256").update(data).digest();
 
 function assertGatewayActor(actor: OrgServiceActor) {
   if (actor.type !== ActorType.IDENTITY && actor.type !== ActorType.GATEWAY) {
@@ -140,12 +162,14 @@ export const pamSessionChunkServiceFactory = ({
       chunkIndex,
       ciphertextBytes,
       isKeyframe,
+      ciphertextSha256Base64,
       uploadToken
     }: {
       sessionId: string;
       chunkIndex: number;
       ciphertextBytes: number;
       isKeyframe?: boolean;
+      ciphertextSha256Base64?: string;
       uploadToken: string;
     },
     actor: OrgServiceActor
@@ -178,6 +202,17 @@ export const pamSessionChunkServiceFactory = ({
       });
     }
 
+    if (ciphertextSha256Base64 !== undefined) decodeSha256(ciphertextSha256Base64, "ciphertextSha256");
+
+    // A registered chunk is final: handing out another PUT URL for it would let its object be replaced.
+    // Keyframes are separate objects registered alongside their chunk, so they are not covered here.
+    if (!isKeyframe && (await pamSessionEventChunkDAL.findByChunkIndexPrimary(sessionId, chunkIndex))) {
+      throw new BadRequestError({
+        name: PamChunkRejection.AlreadyRecorded,
+        message: `Chunk ${chunkIndex} of session '${sessionId}' is already recorded and cannot be replaced`
+      });
+    }
+
     const provider = PAM_RECORDING_STORAGE_FACTORY_MAP[config.backend]();
     const presigned = await provider.mintPresignedPut({
       config,
@@ -185,7 +220,8 @@ export const pamSessionChunkServiceFactory = ({
       sessionId,
       chunkIndex,
       ciphertextBytes,
-      isKeyframe
+      isKeyframe,
+      ciphertextSha256Base64
     });
 
     return presigned;
@@ -241,7 +277,6 @@ export const pamSessionChunkServiceFactory = ({
       });
     }
 
-    const BASE64_RE = new RE2(/^[A-Za-z0-9+/]*={0,2}$/);
     if (!BASE64_RE.test(ciphertextSha256Base64) || !BASE64_RE.test(ivBase64)) {
       throw new BadRequestError({ message: "Invalid base64 in chunk metadata" });
     }
@@ -268,6 +303,12 @@ export const pamSessionChunkServiceFactory = ({
           message: `Declared ciphertextBytes does not match body length [declared=${ciphertextBytes}, actual=${ciphertext.length}]`
         });
       }
+      if (!crypto.nativeCrypto.timingSafeEqual(sha256Of(ciphertext), ciphertextSha256)) {
+        throw new BadRequestError({
+          name: PamChunkRejection.HashMismatch,
+          message: `Chunk ${chunkIndex} of session '${sessionId}' does not match its declared SHA-256`
+        });
+      }
     }
 
     const externalChunkObjectKey =
@@ -275,13 +316,40 @@ export const pamSessionChunkServiceFactory = ({
         ? buildExternalChunkObjectKey(config?.keyPrefix, session.projectId, sessionId, chunkIndex, false)
         : null;
 
+    // The bytes went straight to the bucket, so check what landed there before registering the metadata.
+    if (externalChunkObjectKey && config) {
+      const provider = PAM_RECORDING_STORAGE_FACTORY_MAP[config.backend]();
+      const stored = provider.describeObject
+        ? await provider.describeObject({ config, objectKey: externalChunkObjectKey })
+        : undefined;
+      if (stored === null) {
+        throw new BadRequestError({
+          name: PamChunkRejection.ObjectMismatch,
+          message: `Chunk ${chunkIndex} of session '${sessionId}' was not found in the recording bucket`
+        });
+      }
+      if (stored && stored.sizeBytes !== ciphertextBytes) {
+        throw new BadRequestError({
+          name: PamChunkRejection.ObjectMismatch,
+          message: `Chunk ${chunkIndex} of session '${sessionId}' in the bucket is ${stored.sizeBytes} bytes, not the declared ${ciphertextBytes}`
+        });
+      }
+      if (stored?.sha256Base64 && stored.sha256Base64 !== ciphertextSha256Base64) {
+        throw new BadRequestError({
+          name: PamChunkRejection.HashMismatch,
+          message: `Chunk ${chunkIndex} of session '${sessionId}' in the bucket does not match its declared SHA-256`
+        });
+      }
+    }
+
     const externalKeyframeObjectKey =
       backend === PamRecordingStorageBackend.AwsS3 && keyframeObjectKey
         ? buildExternalChunkObjectKey(config?.keyPrefix, session.projectId, sessionId, chunkIndex, true)
         : null;
 
+    let result: Awaited<ReturnType<typeof pamSessionEventChunkDAL.insertOrGetExisting>>;
     try {
-      await pamSessionEventChunkDAL.insertIgnoreDuplicate({
+      result = await pamSessionEventChunkDAL.insertOrGetExisting({
         sessionId,
         chunkIndex,
         startElapsedMs,
@@ -302,6 +370,15 @@ export const pamSessionChunkServiceFactory = ({
         `Chunk insert failed [sessionId=${sessionId}] [chunkIndex=${chunkIndex}]`
       );
       throw err;
+    }
+
+    // A gateway retrying a chunk it already registered sends the same digest, which stays a success.
+    // A different digest for a registered index would rewrite the recording, so it is refused.
+    if (!result.inserted && result.chunk && !result.chunk.ciphertextSha256.equals(ciphertextSha256)) {
+      throw new BadRequestError({
+        name: PamChunkRejection.Conflict,
+        message: `Chunk ${chunkIndex} of session '${sessionId}' is already recorded with different content`
+      });
     }
 
     return { ok: true as const, projectId: session.projectId, accountId: session.accountId, storageBackend: backend };

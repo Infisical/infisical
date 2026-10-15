@@ -32,6 +32,7 @@ import {
   PamResourcePermissionActions,
   PamResourcePermissionSub,
   PamSessionStatus,
+  SessionChannelType,
   useGetPamSessionById,
   usePamAccountTypeMap
 } from "@app/hooks/api/pam";
@@ -45,6 +46,7 @@ import { PamDetailSheet } from "../../components/PamDetailSheet";
 import { capitalize, formatDuration, STATUS_BADGE } from "../constants";
 
 const RdpReplayView = lazy(() => import("./RdpReplayView/RdpReplayView"));
+const BrowserReplayView = lazy(() => import("./BrowserReplayView/BrowserReplayView"));
 
 type Props = {
   sessionId?: string;
@@ -87,6 +89,8 @@ const getLogText = (log: TPamSessionLog): string => {
   if ("data" in log) {
     // resize events carry window dimensions, not terminal content. skip them
     if (log.eventType === "resize") return "";
+    // browser events carry whole screen frames, which the replay view decodes itself
+    if (log.channelType === SessionChannelType.Browser) return "";
     const data = decodeBase64Utf8(log.data);
     return log.rendered ? data.trim() : cleanLegacyTerminalOutput(data);
   }
@@ -448,7 +452,16 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
     session.accountType === PamAccountType.Windows ||
     session.accountType === PamAccountType.WindowsAd;
 
-  const tabs = isRdpSession
+  let replayView: ReactNode = null;
+  if (isRdpSession) {
+    replayView = <RdpReplayView events={filteredEvents} isStreaming={isActive} />;
+  } else if (session.accountType === PamAccountType.WebApp) {
+    replayView = (
+      <BrowserReplayView key={session.id} events={filteredEvents} isStreaming={isActive} />
+    );
+  }
+
+  const tabs = replayView
     ? [
         {
           value: "recording",
@@ -481,7 +494,7 @@ export const SessionDetailSheet = ({ sessionId, isOpen, onOpenChange, onTerminat
                         </div>
                       }
                     >
-                      <RdpReplayView events={filteredEvents} isStreaming={isActive} />
+                      {replayView}
                     </Suspense>
                   )}
                 </CardContent>

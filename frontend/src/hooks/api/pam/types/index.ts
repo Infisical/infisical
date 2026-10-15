@@ -173,6 +173,7 @@ export type TPamAccountTypeMetadata = {
   name: string;
   icon: string;
   supportsWebAccess: boolean;
+  supportsCliAccess: boolean;
   requiresGateway: boolean;
   supportsDependencies: boolean;
   connectionStringSchemes?: string[];
@@ -275,7 +276,7 @@ export type TPamCommandLog = {
 
 export type TSessionEvent = {
   timestamp: string;
-  eventType: "input" | "output" | "resize" | "error";
+  eventType: "input" | "output" | "resize" | "error" | "browser";
   channelType?: SessionChannelType;
   data: string;
   // set by gateways that render the terminal before recording. absent on older recordings, whose data is raw terminal bytes

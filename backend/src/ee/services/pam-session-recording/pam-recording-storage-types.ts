@@ -30,7 +30,26 @@ export type TPamRecordingMintPresignedPut = (input: {
   chunkIndex: number;
   ciphertextBytes: number;
   isKeyframe?: boolean;
-}) => Promise<{ url: string; objectKey: string; expiresInSeconds: number; method: "PUT" }>;
+  // When set, the URL only accepts a body with this SHA-256, and `headers` names what the uploader must send
+  ciphertextSha256Base64?: string;
+}) => Promise<{
+  url: string;
+  objectKey: string;
+  expiresInSeconds: number;
+  method: "PUT";
+  headers?: Record<string, string>;
+}>;
+
+export type TPamRecordingStoredObject = {
+  sizeBytes: number;
+  // Present only when the object was uploaded with a SHA-256 checksum
+  sha256Base64?: string;
+};
+
+export type TPamRecordingDescribeObject = (input: {
+  config: TPamRecordingResolvedConfig;
+  objectKey: string;
+}) => Promise<TPamRecordingStoredObject | null>;
 
 export type TPamRecordingMintPresignedGet = (input: {
   config: TPamRecordingResolvedConfig;
@@ -47,6 +66,8 @@ export type TPamRecordingStorageProvider = () => {
   validateConfig: TPamRecordingValidateConfig;
   mintPresignedPut: TPamRecordingMintPresignedPut;
   mintPresignedGet: TPamRecordingMintPresignedGet;
+  // Object-storage backends only: what was actually written under a key, so metadata can be checked against it
+  describeObject?: TPamRecordingDescribeObject;
   deleteSession: TPamRecordingDeleteSession;
 };
 

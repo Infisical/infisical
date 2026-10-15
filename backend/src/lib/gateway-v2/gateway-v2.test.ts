@@ -95,6 +95,7 @@ type TFakeRelay = {
   relayHost: string;
   tunnelsOpened: () => number;
   tunnelsClosed: () => number;
+  negotiatedProtocols: () => (string | false | null)[];
   close: () => Promise<void>;
 };
 
@@ -105,8 +106,13 @@ type TFakeRelay = {
  */
 const startFakeRelay = async ({
   gatewayIdentity,
-  gatewayCertificate
-}: { gatewayIdentity?: string; gatewayCertificate?: { cert: string; key: string } } = {}): Promise<TFakeRelay> => {
+  gatewayCertificate,
+  alpnProtocols = ["infisical-tcp-proxy"]
+}: {
+  gatewayIdentity?: string;
+  gatewayCertificate?: { cert: string; key: string };
+  alpnProtocols?: string[];
+} = {}): Promise<TFakeRelay> => {
   const port = await freePort();
   const relayHost = `127.0.0.1:${port}`;
   const altNames: TAltName[] = [
@@ -123,6 +129,7 @@ const startFakeRelay = async ({
 
   let opened = 0;
   let closed = 0;
+  const negotiated: (string | false | null)[] = [];
   const live = new Set<tls.TLSSocket>();
 
   const server = tls.createServer(
@@ -137,10 +144,11 @@ const startFakeRelay = async ({
         ca: caPem,
         requestCert: true,
         rejectUnauthorized: false,
-        ALPNProtocols: ["infisical-tcp-proxy"]
+        ALPNProtocols: alpnProtocols
       });
       inner.on("secure", () => {
         opened += 1;
+        negotiated.push(inner.alpnProtocol);
       });
       // Echo, so a claimed tunnel can be shown to still carry traffic.
       inner.on("data", (chunk: Buffer) => inner.write(chunk));
@@ -161,6 +169,7 @@ const startFakeRelay = async ({
     relayHost,
     tunnelsOpened: () => opened,
     tunnelsClosed: () => closed,
+    negotiatedProtocols: () => [...negotiated],
     close: () =>
       new Promise<void>((resolve) => {
         for (const socket of live) socket.destroy();
@@ -320,6 +329,35 @@ describe("setupGatewayProxy", () => {
       await expect(connectAndEcho(server.port)).resolves.toBe("ping");
       await server.cleanup();
 
+      await drainChannels(1);
+    });
+  });
+
+  describe("selecting the gateway handler", () => {
+    let relay: TFakeRelay;
+
+    beforeEach(async () => {
+      relay = await startFakeRelay({
+        alpnProtocols: ["infisical-pam-proxy", "infisical-pam-rdp-browser", "infisical-pam-browser"]
+      });
+    });
+
+    afterEach(async () => {
+      await relay.close();
+    });
+
+    test("negotiates the browser-session protocol for a web app tunnel", async () => {
+      const server = await setupGatewayProxy({
+        ...argsFor(relay.relayHost),
+        protocol: GatewayProxyProtocol.PamBrowser,
+        eager: true,
+        longLived: true
+      });
+      await waitFor(() => relay.tunnelsOpened() === 1);
+
+      expect(relay.negotiatedProtocols()).toEqual(["infisical-pam-browser"]);
+
+      await server.cleanup();
       await drainChannels(1);
     });
   });
