@@ -185,6 +185,7 @@ type Props = {
   onAccessInsightsUpgrade: (onGranted: () => void) => void;
   onExpandedChange?: (isExpanded: boolean) => void;
   lastEdited?: Pick<SecretV3RawSanitized, "createdAt" | "updatedAt" | "version">;
+  timestampField?: "createdAt" | "updatedAt";
 };
 
 export const SecretEditTableRow = ({
@@ -219,6 +220,7 @@ export const SecretEditTableRow = ({
   isPendingCreate,
   isPendingDelete,
   lastEdited,
+  timestampField,
   onBatchRevert,
   hasPendingChange,
   hasPendingValueChange,
@@ -2267,7 +2269,7 @@ export const SecretEditTableRow = ({
               </div>
               {commentPopoverContent}
             </Popover>
-            <SecretLastEditedTime secret={lastEdited} />
+            <SecretLastEditedTime secret={lastEdited} field={timestampField} />
           </div>
         </TableCell>
         <TableCell

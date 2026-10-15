@@ -5,6 +5,7 @@ import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
 type Props = {
   secret?: Pick<SecretV3RawSanitized, "createdAt" | "updatedAt" | "version">;
+  field?: "createdAt" | "updatedAt";
 };
 
 const formatLastEdited = (date: Date) => {
@@ -15,8 +16,9 @@ const formatLastEdited = (date: Date) => {
   return format(date, isThisYear(date) ? "MMM d" : "MMM d, yyyy");
 };
 
-export const SecretLastEditedTime = ({ secret }: Props) => {
+export const SecretLastEditedTime = ({ secret, field = "updatedAt" }: Props) => {
   if (!secret?.updatedAt) return null;
+  const shownAt = new Date(secret[field]);
   const updatedAt = new Date(secret.updatedAt);
 
   return (
@@ -26,7 +28,7 @@ export const SecretLastEditedTime = ({ secret }: Props) => {
           type="button"
           className="ml-auto shrink-0 rounded-sm whitespace-nowrap text-muted tabular-nums focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
         >
-          {formatLastEdited(updatedAt)}
+          {formatLastEdited(shownAt)}
         </button>
       </TooltipTrigger>
       <TooltipContent side="left">
