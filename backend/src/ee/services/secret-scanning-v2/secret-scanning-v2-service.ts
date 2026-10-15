@@ -41,6 +41,7 @@ import {
   TSecretScanningDataSource,
   TSecretScanningDataSourceCredentials,
   TSecretScanningDataSourceInput,
+  TSecretScanningDataSourceTypeAndConfig,
   TSecretScanningDataSourceWithConnection,
   TSecretScanningDataSourceWithDetails,
   TSecretScanningFinding,
@@ -76,7 +77,7 @@ export type TSecretScanningV2ServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   secretScanningV2Queue: Pick<
     TSecretScanningV2QueueServiceFactory,
-    "queueDataSourceFullScan" | "queueResourceDiffScan"
+    "queueDataSourceFullScan" | "queueResourceDiffScan" | "handleResourcePushEvent"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
@@ -339,7 +340,7 @@ export const secretScanningV2ServiceFactory = ({
       // A data source created with an empty include list has nothing to scan yet; queueing would only fail.
       if (
         payload.isHistoricalScanEnabled &&
-        doesDataSourceIncludeResources(payload as TSecretScanningDataSourceInput)
+        doesDataSourceIncludeResources(payload as TSecretScanningDataSourceTypeAndConfig)
       ) {
         try {
           await secretScanningV2Queue.queueDataSourceFullScan(
@@ -524,12 +525,12 @@ export const secretScanningV2ServiceFactory = ({
 
     if (
       doesConfigUpdateIncludeNewResources(
-        dataSource as TSecretScanningDataSourceInput,
-        updatedDataSource as TSecretScanningDataSourceInput
+        dataSource as TSecretScanningDataSourceTypeAndConfig,
+        updatedDataSource as TSecretScanningDataSourceTypeAndConfig
       )
     ) {
       const isNewlyIncluded = (resource: { name: string }) =>
-        !isResourceIncludedByConfig(dataSource as TSecretScanningDataSourceInput, resource.name);
+        !isResourceIncludedByConfig(dataSource as TSecretScanningDataSourceTypeAndConfig, resource.name);
       const updatedDataSourceWithConnection = {
         ...updatedDataSource,
         connection
@@ -822,7 +823,7 @@ export const secretScanningV2ServiceFactory = ({
     const resources = rawResources
       .map((resource) => ({
         ...resource,
-        isIncluded: isResourceIncludedByConfig(dataSource as TSecretScanningDataSourceInput, resource.name)
+        isIncluded: isResourceIncludedByConfig(dataSource as TSecretScanningDataSourceTypeAndConfig, resource.name)
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
 

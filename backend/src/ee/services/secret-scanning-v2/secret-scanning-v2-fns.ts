@@ -33,8 +33,8 @@ import { SecretScanningDataSource, SecretScanningFindingSeverity } from "./secre
 import {
   TCloneRepository,
   TGetFindingsPayload,
-  TSecretScanningDataSourceInput,
-  TSecretScanningDataSourceListItem
+  TSecretScanningDataSourceListItem,
+  TSecretScanningDataSourceTypeAndConfig
 } from "./secret-scanning-v2-types";
 
 const SECRET_SCANNING_SOURCE_LIST_OPTIONS: Record<SecretScanningDataSource, TSecretScanningDataSourceListItem> = {
@@ -47,7 +47,7 @@ export const listSecretScanningDataSourceOptions = () => {
   return Object.values(SECRET_SCANNING_SOURCE_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
 };
 
-export const doesDataSourceIncludeResources = (dataSource: TSecretScanningDataSourceInput) => {
+export const doesDataSourceIncludeResources = (dataSource: TSecretScanningDataSourceTypeAndConfig) => {
   switch (dataSource.type) {
     case SecretScanningDataSource.GitHub:
     case SecretScanningDataSource.Bitbucket:
@@ -60,7 +60,7 @@ export const doesDataSourceIncludeResources = (dataSource: TSecretScanningDataSo
 };
 
 // null means the config includes every resource the connection can see
-const getIncludedResourceNames = (dataSource: Pick<TSecretScanningDataSourceInput, "type" | "config">) => {
+const getIncludedResourceNames = (dataSource: TSecretScanningDataSourceTypeAndConfig) => {
   let names: string[] | undefined;
 
   switch (dataSource.type) {
@@ -80,17 +80,17 @@ const getIncludedResourceNames = (dataSource: Pick<TSecretScanningDataSourceInpu
 };
 
 export const isResourceIncludedByConfig = (
-  dataSource: Pick<TSecretScanningDataSourceInput, "type" | "config">,
+  dataSource: TSecretScanningDataSourceTypeAndConfig,
   resourceName: string
 ) => {
   const names = getIncludedResourceNames(dataSource);
   return names === null || names.includes(resourceName);
 };
 
-export const getConfigIncludingAllResources = <T extends Pick<TSecretScanningDataSourceInput, "type" | "config">>(
+export const getConfigIncludingAllResources = <T extends { type: SecretScanningDataSource; config: unknown }>(
   dataSource: T
 ): T => {
-  const { type, config } = dataSource as Pick<TSecretScanningDataSourceInput, "type" | "config">;
+  const { type, config } = dataSource as TSecretScanningDataSourceTypeAndConfig;
 
   switch (type) {
     case SecretScanningDataSource.GitHub:
@@ -105,8 +105,8 @@ export const getConfigIncludingAllResources = <T extends Pick<TSecretScanningDat
 };
 
 export const doesConfigUpdateIncludeNewResources = (
-  current: Pick<TSecretScanningDataSourceInput, "type" | "config">,
-  next: Pick<TSecretScanningDataSourceInput, "type" | "config">
+  current: TSecretScanningDataSourceTypeAndConfig,
+  next: TSecretScanningDataSourceTypeAndConfig
 ) => {
   const currentNames = getIncludedResourceNames(current);
   if (currentNames === null) return false;
