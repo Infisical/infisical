@@ -4,6 +4,8 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { ActionProjectType, TSecretFolders } from "@app/db/schemas";
 import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
+import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -686,6 +688,19 @@ export const pitServiceFactory = ({
       }
     }
 
+    await scanSecretPolicyViolations(
+      projectId,
+      secretPath,
+      [...(changes.secrets?.create ?? []), ...(changes.secrets?.update ?? [])]
+        .filter((secret) => secret.secretValue !== undefined)
+        .map((secret) => ({
+          secretKey: "newSecretName" in secret && secret.newSecretName ? secret.newSecretName : secret.secretKey,
+          secretValue: secret.secretValue as string
+        })),
+      project.secretDetectionIgnoreValues || []
+    );
+
+    let environmentName = environment;
     const response = await folderCommitDAL.transaction(async (trx) => {
       const targetFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath, trx);
       if (!targetFolder)
@@ -693,6 +708,7 @@ export const pitServiceFactory = ({
           message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
           name: "CreateManySecret"
         });
+      environmentName = targetFolder.environment.name;
       const commitChanges: TCommitResourceChangeDTO[] = [];
       const folders: { created: TSecretFolders[]; updated: TSecretFolders[]; deleted: TSecretFolders[] } = {
         created: [],
@@ -902,6 +918,7 @@ export const pitServiceFactory = ({
           actorId,
           secrets: changes.secrets?.create ?? [],
           tx: trx,
+          skipPostProcessing: true,
           commitChanges
         });
         secrets.created = newSecrets;
@@ -936,6 +953,7 @@ export const pitServiceFactory = ({
           secrets: changes.secrets?.update ?? [],
           mode: SecretUpdateMode.FailOnNotFound,
           tx: trx,
+          skipPostProcessing: true,
           commitChanges
         });
         secrets.updated = updatedSecrets;
@@ -969,6 +987,7 @@ export const pitServiceFactory = ({
           actorId,
           secrets: changes.secrets?.delete ?? [],
           tx: trx,
+          skipPostProcessing: true,
           commitChanges
         });
         secrets.deleted = deletedSecrets;
@@ -1013,6 +1032,37 @@ export const pitServiceFactory = ({
         secretMutationEvents
       };
     });
+
+    const secretSyncEvents = [
+      { type: ProjectEvents.SecretCreate, secrets: response.secrets.created },
+      { type: ProjectEvents.SecretUpdate, secrets: response.secrets.updated },
+      { type: ProjectEvents.SecretDelete, secrets: response.secrets.deleted }
+    ].filter((event) => event.secrets.length > 0);
+    if (secretSyncEvents.length > 0) {
+      try {
+        await secretQueueService.syncSecrets({
+          actor,
+          actorId,
+          secretPath,
+          projectId,
+          orgId: actorOrgId,
+          environmentSlug: environment,
+          environmentName,
+          events: secretSyncEvents.map((event) => ({
+            type: event.type,
+            secretKeys: event.secrets.map((secret) => secret.secretKey),
+            projectId,
+            secretPath,
+            environment
+          }))
+        });
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to queue secret sync for commit [projectId=${projectId}] [secretPath=${secretPath}]`
+        );
+      }
+    }
 
     if ("approval" in response && response.approval) {
       try {

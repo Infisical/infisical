@@ -1861,6 +1861,11 @@ export const SECRET_COMMITS = {
     foldersCreate: "Folders to create inside the folder at secretPath.",
     foldersUpdate: "Folders to rename or re-describe, identified by ID.",
     foldersDelete: "Folders to delete, identified by ID.",
+    secretMetadata: "Key-value metadata to attach to the secret. Set isEncrypted to store a value encrypted.",
+    secretMetadataUpdate:
+      "The complete list of key-value metadata for the secret. When sent, it replaces the existing metadata. When the update goes to an approval request, send the full list: omitting it clears the secret's metadata when the request is merged.",
+    secretValueHidden:
+      "True when you can see the secret exists but cannot read its value. The returned value is masked in that case.",
     folderId: "The ID of the folder.",
     folderName: "The name of the folder.",
     folderDescription: "An optional description label for the folder.",

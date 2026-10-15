@@ -2914,8 +2914,13 @@ export const secretV2BridgeServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     tx: providedTx,
-    commitChanges
-  }: TDeleteManySecretDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
+    commitChanges,
+    skipPostProcessing = false
+  }: TDeleteManySecretDTO & {
+    tx?: Knex;
+    commitChanges?: TCommitResourceChangeDTO[];
+    skipPostProcessing?: boolean;
+  }) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -2997,29 +3002,34 @@ export const secretV2BridgeServiceFactory = ({
         ? await executeBulkDelete(providedTx)
         : await secretDAL.transaction(executeBulkDelete);
 
-      await secretQueueService.syncSecrets({
-        actor,
-        actorId,
-        secretPath,
-        projectId,
-        orgId: actorOrgId,
-        environmentSlug: folder.environment.slug,
-        environmentName: folder.environment.name,
-        events: [
-          {
-            type: ProjectEvents.SecretDelete,
-            secretKeys: secretsDeleted.map((sec) => sec.key),
-            projectId,
-            secretPath,
-            environment
-          }
-        ]
-      });
+      if (!skipPostProcessing) {
+        await secretQueueService.syncSecrets({
+          actor,
+          actorId,
+          secretPath,
+          projectId,
+          orgId: actorOrgId,
+          environmentSlug: folder.environment.slug,
+          environmentName: folder.environment.name,
+          events: [
+            {
+              type: ProjectEvents.SecretDelete,
+              secretKeys: secretsDeleted.map((sec) => sec.key),
+              projectId,
+              secretPath,
+              environment
+            }
+          ]
+        });
+      }
 
-      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
+      const { decryptor: secretManagerDecryptor } = await kmsService.createCipherPairWithDataKey(
+        {
+          type: KmsDataKey.SecretManager,
+          projectId
+        },
+        providedTx
+      );
       return secretsDeleted.map((el) => {
         const secretToDeleteMatch = secretsToDelete.find(
           (i) => i.key === el.key && (i.type || SecretType.Shared) === el.type

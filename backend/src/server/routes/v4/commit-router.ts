@@ -23,12 +23,29 @@ const SecretValueSchema = z.string().transform((val) => (val.at(-1) === "\n" ? `
 const FolderNameSchema = z
   .string()
   .trim()
+  .max(255)
   .refine((name) => isValidFolderName(name), {
     message: "Invalid folder name. Only alphanumeric characters, dashes, and underscores are allowed."
   })
   .describe(SECRET_COMMITS.CREATE.folderName);
 
-const CommitSecretSchema = secretRawSchema.extend({ secretValueHidden: z.boolean() });
+const CommitSecretSchema = secretRawSchema.extend({
+  secretValueHidden: z.boolean().describe(SECRET_COMMITS.CREATE.secretValueHidden)
+});
+
+const CommitApprovalSchema = SecretApprovalRequestsSchema.pick({
+  id: true,
+  slug: true,
+  policyId: true,
+  folderId: true,
+  status: true,
+  hasMerged: true,
+  commitMessage: true,
+  committerUserId: true,
+  committerIdentityId: true,
+  createdAt: true,
+  updatedAt: true
+});
 
 const CommitFolderSchema = SecretFoldersSchema.pick({
   id: true,
@@ -64,7 +81,7 @@ export const registerCommitRouter = async (server: FastifyZodProvider) => {
       ],
       body: z
         .object({
-          projectId: z.string().trim().min(1).max(64).describe(SECRET_COMMITS.CREATE.projectId),
+          projectId: z.string().trim().uuid().describe(SECRET_COMMITS.CREATE.projectId),
           environment: z.string().trim().min(1).max(64).describe(SECRET_COMMITS.CREATE.environment),
           secretPath: z
             .string()
@@ -82,7 +99,9 @@ export const registerCommitRouter = async (server: FastifyZodProvider) => {
                   secretValue: SecretValueSchema.describe(RAW_SECRETS.CREATE.secretValue),
                   secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
                   skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
-                  secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
+                  secretMetadata: ResourceMetadataWithEncryptionSchema.optional().describe(
+                    SECRET_COMMITS.CREATE.secretMetadata
+                  ),
                   tagIds: z.string().uuid().array().max(100).optional().describe(RAW_SECRETS.CREATE.tagIds)
                 })
                 .array()
@@ -96,7 +115,9 @@ export const registerCommitRouter = async (server: FastifyZodProvider) => {
                   secretValue: SecretValueSchema.optional().describe(RAW_SECRETS.UPDATE.secretValue),
                   secretComment: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.secretComment),
                   skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.UPDATE.skipMultilineEncoding),
-                  secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
+                  secretMetadata: ResourceMetadataWithEncryptionSchema.optional().describe(
+                    SECRET_COMMITS.CREATE.secretMetadataUpdate
+                  ),
                   tagIds: z.string().uuid().array().max(100).optional().describe(RAW_SECRETS.UPDATE.tagIds)
                 })
                 .array()
@@ -163,7 +184,7 @@ export const registerCommitRouter = async (server: FastifyZodProvider) => {
       response: {
         201: z.object({
           commitId: z.string().uuid().nullable().describe(SECRET_COMMITS.CREATE.commitId),
-          approval: SecretApprovalRequestsSchema.nullable().describe(SECRET_COMMITS.CREATE.approval),
+          approval: CommitApprovalSchema.nullable().describe(SECRET_COMMITS.CREATE.approval),
           secrets: z
             .object({
               created: CommitSecretSchema.array(),
