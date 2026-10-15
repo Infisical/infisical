@@ -1010,11 +1010,27 @@ export const SecretEditTableRow = ({
       secretTags: ["*"]
     })
   );
+  const savePendingRow = async () => {
+    if (!onPendingSave) return;
+    const pendingChangeId = batchStore
+      .getState()
+      .pendingChanges.secrets.find((c) => c.secretKey === secretName)?.id;
+    if (batchAutoApplyTimer.current) {
+      clearTimeout(batchAutoApplyTimer.current);
+      applyBatchEditsRef.current?.();
+    }
+    setIsSavingPendingChange.on();
+    try {
+      await onPendingSave(environment, secretName, pendingChangeId);
+    } finally {
+      setIsSavingPendingChange.off();
+    }
+  };
   const handleEditShortcut = useSecretInputActionShortcuts({
-    isActive: isDirtyState,
-    isDisabled: isSubmitting,
+    isActive: isBatchMode ? isPendingBatchChange || isDirty : isDirtyState,
+    isDisabled: isSubmitting || isSavingPendingChange,
     isSaveDisabled: isCreatable ? !canCreate : !canEditSecretValue,
-    onSave: submitForm,
+    onSave: isBatchMode ? savePendingRow : submitForm,
     onUndo: handleFormReset
   });
   // personal overrides are only visible to their owner, so describe access on the secret suffices to manage them
@@ -1525,21 +1541,7 @@ export const SecretEditTableRow = ({
                       className="size-7 border-0 hover:text-success"
                       size="xs"
                       isDisabled={!isAllowed || isSavingPendingChange}
-                      onClick={async () => {
-                        const pendingChangeId = batchStore
-                          .getState()
-                          .pendingChanges.secrets.find((c) => c.secretKey === secretName)?.id;
-                        if (batchAutoApplyTimer.current) {
-                          clearTimeout(batchAutoApplyTimer.current);
-                          applyBatchEditsRef.current?.();
-                        }
-                        setIsSavingPendingChange.on();
-                        try {
-                          await onPendingSave(environment, secretName, pendingChangeId);
-                        } finally {
-                          setIsSavingPendingChange.off();
-                        }
-                      }}
+                      onClick={savePendingRow}
                     >
                       <SaveIcon />
                     </IconButton>

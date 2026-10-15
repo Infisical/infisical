@@ -57,6 +57,8 @@ import {
   useGetOrCreateFolder,
   useGetWsTags
 } from "@app/hooks/api";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { SecretType } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
 
@@ -144,15 +146,6 @@ type Props = {
     onDirtyChange: (isDirty: boolean) => void;
     onSubmit: (changes: TSecretEditChanges) => Promise<void>;
   };
-  onBatchSecretCreate?: (params: {
-    env: string;
-    key: string;
-    value: string;
-    comment?: string;
-    skipMultilineEncoding?: boolean;
-    tags?: { id: string; slug: string }[];
-    metadata?: { key: string; value: string; isEncrypted?: boolean }[];
-  }) => void;
   // Called after the user actually creates a secret (non-batch path) so the parent can run the
   // activation nudge. The parent owns the nudge hook + modal state, so this stays a callback.
   onSecretCreated?: () => void;
@@ -168,7 +161,6 @@ export const CreateSecretForm = ({
   onClose,
   isBatchMode,
   editSecret,
-  onBatchSecretCreate,
   onSecretCreated,
   onUploadSecrets
 }: Props) => {
@@ -271,6 +263,7 @@ export const CreateSecretForm = ({
   } = useFieldArray({ control, name: "secrets" });
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
+  const { mutateAsync: createCommit } = useCreateCommit();
   const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
   const { data: projectTags, isPending: isTagsLoading } = useGetWsTags(
     canReadTags ? projectId : ""
@@ -338,29 +331,6 @@ export const CreateSecretForm = ({
       countBucket: overviewCountBucket(secrets.length * selectedEnv.length)
     };
     const attempt = telemetry.startFlow(flow);
-    if (isBatchMode && onBatchSecretCreate) {
-      secrets.forEach((secret) => {
-        const filteredMetadata = secret.metadata
-          ?.filter((metadata) => metadata.key && metadata.value)
-          .map(({ key, value, isEncrypted }) => ({ key, value, isEncrypted }));
-        selectedEnv.forEach((env) => {
-          onBatchSecretCreate({
-            env: env.slug,
-            key: secret.key,
-            value: secret.value || "",
-            comment: secret.comment || undefined,
-            skipMultilineEncoding: secret.skipMultilineEncoding || undefined,
-            tags: secret.tags?.map((tag) => ({ id: tag.value, slug: tag.label })),
-            metadata: filteredMetadata?.length ? filteredMetadata : undefined
-          });
-        });
-      });
-      attempt.flow({ ...flow, phase: "staged" });
-      onClose();
-      reset();
-      return;
-    }
-
     await Promise.all(
       selectedEnv.map(async (env) => {
         if (secretPath !== "/") {
@@ -389,6 +359,60 @@ export const CreateSecretForm = ({
       attempt.flow({ ...flow, phase: "failed" });
       throw error;
     });
+
+    if (selectedEnv.length === 1 && secrets.length > 1) {
+      const result = await createCommit({
+        projectId,
+        environment: selectedEnv[0].slug,
+        secretPath,
+        message: "",
+        pendingChanges: {
+          folders: [],
+          secrets: secrets.map((secret) => {
+            const filteredMetadata = secret.metadata
+              ?.filter((metadata) => metadata.key && metadata.value)
+              .map(({ key, value, isEncrypted }) => ({ key, value, isEncrypted }));
+            return {
+              id: crypto.randomUUID(),
+              resourceType: "secret" as const,
+              type: PendingAction.Create as const,
+              secretKey: secret.key,
+              secretValue: secret.value || "",
+              secretComment: secret.comment || undefined,
+              skipMultilineEncoding: secret.skipMultilineEncoding || undefined,
+              tags: secret.tags?.map((tag) => ({ id: tag.value, slug: tag.label })),
+              secretMetadata: filteredMetadata?.length ? filteredMetadata : undefined,
+              timestamp: Date.now()
+            };
+          })
+        }
+      }).catch((error) => {
+        attempt.flow({ ...flow, commitKind: "batch", phase: "failed" });
+        throw error;
+      });
+      attempt.flow({
+        ...flow,
+        commitKind: "batch",
+        phase: result.approval ? "approval-requested" : "response-received"
+      });
+      if (result.approval) {
+        createNotification({
+          type: "info",
+          text: "Requested changes have been sent for review"
+        });
+      } else {
+        createNotification({
+          type: "success",
+          text: `${result.secrets.created.length} secrets created`
+        });
+        onSecretCreated?.();
+      }
+      if (attempt.isCurrent() && formOwner.current.invocation === invocation) {
+        onClose();
+        reset();
+      }
+      return;
+    }
 
     const promises = selectedEnv.flatMap((env) =>
       secrets.map(async (secret) => {

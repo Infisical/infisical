@@ -1226,6 +1226,16 @@ const OverviewPageContent = () => {
   const hasPendingBatchChanges =
     isSingleEnvView && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0);
 
+  const [recentQuickAddKeys, setRecentQuickAddKeys] = useState<string[]>([]);
+  const hadPendingBatchChangesRef = useRef(hasPendingBatchChanges);
+  useEffect(() => {
+    if (hadPendingBatchChangesRef.current && !hasPendingBatchChanges) setRecentQuickAddKeys([]);
+    hadPendingBatchChangesRef.current = hasPendingBatchChanges;
+  }, [hasPendingBatchChanges]);
+  useEffect(() => {
+    setRecentQuickAddKeys([]);
+  }, [secretPath, singleVisibleEnv?.slug]);
+
   useEffect(() => {
     if (hasPendingBatchChanges) {
       resetSelectedEntries();
@@ -1993,9 +2003,10 @@ const OverviewPageContent = () => {
     value: string,
     type = SecretType.Shared,
     comment = "",
-    source: "row" | "quick-add" = "row"
+    source: "row" | "quick-add" = "row",
+    isDirectSave = false
   ) => {
-    if (isSingleEnvView && type !== SecretType.Personal) {
+    if (isSingleEnvView && type !== SecretType.Personal && !isDirectSave) {
       addPendingChange(
         {
           id: crypto.randomUUID(),
@@ -2312,17 +2323,25 @@ const OverviewPageContent = () => {
     // If resource filter is active, secrets are excluded, and no tag filter is active, don't add pending creates
     if (isFilteredByResources && !filter.secret && !activeTagSlugs.length) return secKeys;
 
-    const result = [...secKeys];
+    const recentKeys = new Set(recentQuickAddKeys);
+    const result = secKeys.filter((key) => !recentKeys.has(key));
     const searchLower = searchFilter.toLowerCase();
+    const matchesSearch = (key: string) => !searchLower || key.toLowerCase().includes(searchLower);
+    const pendingCreateKeys = new Set<string>();
     pendingChanges.secrets.forEach((change) => {
-      if (change.type === PendingAction.Create && !result.includes(change.secretKey)) {
-        if (!searchLower || change.secretKey.toLowerCase().includes(searchLower)) {
-          result.unshift(change.secretKey);
-        }
+      if (change.type !== PendingAction.Create) return;
+      pendingCreateKeys.add(change.secretKey);
+      if (!recentKeys.has(change.secretKey) && !result.includes(change.secretKey)) {
+        if (matchesSearch(change.secretKey)) result.unshift(change.secretKey);
       }
+    });
+    recentQuickAddKeys.forEach((key) => {
+      if ((secKeys.includes(key) || pendingCreateKeys.has(key)) && matchesSearch(key))
+        result.push(key);
     });
     return result;
   }, [
+    recentQuickAddKeys,
     secKeys,
     isSingleEnvView,
     pendingChanges.secrets,
@@ -3311,8 +3330,7 @@ const OverviewPageContent = () => {
   }, [tableRef, tableView, isTableEmpty, columnKey, savedWidths?.join(",")]);
 
   let quickAddSaveLabel: string | undefined;
-  if (isSingleEnvView) quickAddSaveLabel = "Add Pending Change";
-  else if (visibleEnvs.length > 1) quickAddSaveLabel = "Add to all environments";
+  if (visibleEnvs.length > 1) quickAddSaveLabel = "Add to all environments";
 
   if (!isProjectV3)
     return (
@@ -4299,16 +4317,21 @@ const OverviewPageContent = () => {
                               existingSecretKeys={mergedSecKeys}
                               onActivityChange={handleTableRowActivityChange}
                               saveLabel={quickAddSaveLabel}
-                              onCreateSecret={(environment, key, value, comment) =>
-                                handleSecretCreate(
+                              onCreateSecret={(environment, key, value, comment, isDirectSave) => {
+                                if (isSingleEnvView)
+                                  setRecentQuickAddKeys((prev) =>
+                                    prev.includes(key) ? prev : [...prev, key]
+                                  );
+                                return handleSecretCreate(
                                   environment,
                                   key,
                                   value,
                                   SecretType.Shared,
                                   comment,
-                                  "quick-add"
-                                )
-                              }
+                                  "quick-add",
+                                  isDirectSave
+                                );
+                              }}
                               onPasteSecrets={(env) => {
                                 overviewTelemetry.flow({
                                   action: "import",
@@ -4430,29 +4453,11 @@ const OverviewPageContent = () => {
             secretPath={secretPath}
             defaultSelectedEnvs={filteredEnvs}
             onClose={() => handlePopUpClose("addSecretsInAllEnvs")}
-            isBatchMode={isSingleEnvView}
             onSecretCreated={checkSecretsActivation}
             onUploadSecrets={(env) => {
               setImportParsedSecrets(env ?? null);
               handlePopUpClose("addSecretsInAllEnvs");
               handlePopUpOpen("importSecrets");
-            }}
-            onBatchSecretCreate={(params) => {
-              addPendingChange(
-                {
-                  id: crypto.randomUUID(),
-                  resourceType: "secret",
-                  type: PendingAction.Create,
-                  secretKey: params.key,
-                  secretValue: params.value,
-                  secretComment: params.comment,
-                  skipMultilineEncoding: params.skipMultilineEncoding ?? undefined,
-                  tags: params.tags,
-                  secretMetadata: params.metadata,
-                  timestamp: Date.now()
-                },
-                { projectId, environment: params.env, secretPath }
-              );
             }}
           />
         </SheetContent>
