@@ -660,8 +660,8 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
                       )}
                       <TableCell>{generateCommitText(commits, isReplicated, true)}</TableCell>
                       <TableCell title={environmentDisplayName}>{environmentDisplayName}</TableCell>
-                      <TableCell title={policy.secretPath} className="text-muted">
-                        {policy.secretPath}
+                      <TableCell title={policy.secretPath}>
+                        <span className="text-muted">{policy.secretPath}</span>
                       </TableCell>
                       <TableCell>
                         {committerUser || committerIdentity ? (
