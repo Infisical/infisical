@@ -8,6 +8,7 @@ import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRol
 import { seedData1 } from "@app/db/seed-data";
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
+import { agentVaultMemberValueDALFactory } from "@app/ee/services/agent-vault-member-value/agent-vault-member-value-dal";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
 import {
   AGENT_VAULT_MAX_PROXIES_PER_ORG,
@@ -52,7 +53,7 @@ initLogger();
 
 const authHeader = { authorization: `Bearer ${jwtAuthToken}` };
 
-const inject = (method: "GET" | "POST" | "PATCH" | "DELETE", url: string, body?: Record<string, unknown>) =>
+const inject = (method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", url: string, body?: Record<string, unknown>) =>
   testServer.inject({ method, url, headers: authHeader, ...(body ? { body } : {}) });
 
 const createOrgIdentity = async (name: string) => {
@@ -234,10 +235,30 @@ const createMemberIdentity = async (name: string) => {
 
   return {
     id: identity.id,
-    as: (method: "GET" | "POST" | "PATCH", url: string, body?: Record<string, unknown>) =>
+    as: (method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", url: string, body?: Record<string, unknown>) =>
       testServer.inject({ method, url, headers: { authorization: `Bearer ${token}` }, ...(body ? { body } : {}) }),
     cleanup: () => inject("DELETE", `/api/v1/identities/${identity.id}`)
   };
+};
+
+// Enrollment only checks that it is a live CA. ECDSA P-256, because the FIPS image refuses Ed25519.
+const createProxyCaPem = async () => {
+  const algorithm = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+  const keys = await globalThis.crypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
+  const certificate = await x509.X509CertificateGenerator.createSelfSigned({
+    name: "CN=Agent Vault Variables Test CA",
+    serialNumber: "01",
+    notBefore: new Date(Date.now() - 60_000),
+    notAfter: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    signingAlgorithm: algorithm,
+    keys,
+    extensions: [
+      new x509.BasicConstraintsExtension(true, undefined, true),
+      // eslint-disable-next-line no-bitwise
+      new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true)
+    ]
+  });
+  return certificate.toString("pem");
 };
 
 const createAccessBundle = async (name: string) => {
@@ -454,7 +475,12 @@ describe("Agent Vault V1 Router", async () => {
         service: { id: string; hostPattern: string; credential: Record<string, unknown> };
       };
       expect(service.hostPattern).toBe("API.GitHub.com");
-      expect(service.credential).toEqual({ type: "bearer", headerName: "Authorization", headerPrefix: "Bearer" });
+      expect(service.credential).toEqual({
+        type: "bearer",
+        headerName: "Authorization",
+        headerPrefix: "Bearer",
+        memberProvidedFields: []
+      });
       expect(res.payload).not.toContain("ghp_secret_value");
 
       const detail = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
@@ -486,7 +512,8 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(rotated.payload).service.credential).toEqual({
         type: "bearer",
         headerName: "DD-API-KEY",
-        headerPrefix: ""
+        headerPrefix: "",
+        memberProvidedFields: []
       });
       expect((await sealed()).equals(before)).toBe(false);
 
@@ -509,7 +536,7 @@ describe("Agent Vault V1 Router", async () => {
       const { service } = JSON.parse(created.payload) as {
         service: { id: string; credential: Record<string, unknown> };
       };
-      expect(service.credential).toEqual({ type: "basic" });
+      expect(service.credential).toEqual({ type: "basic", memberProvidedFields: [] });
       expect(created.payload).not.toContain("sk_live_key");
 
       const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${service.id}`;
@@ -811,26 +838,6 @@ describe("Agent Vault V1 Router", async () => {
 
     const referencesByField = (references: TReference[]) =>
       references.map((reference) => `${reference.field}:${reference.key}`).sort();
-
-    // Enrollment only checks that it is a live CA. ECDSA P-256, because the FIPS image refuses Ed25519.
-    const createProxyCaPem = async () => {
-      const algorithm = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
-      const keys = await globalThis.crypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
-      const certificate = await x509.X509CertificateGenerator.createSelfSigned({
-        name: "CN=Agent Vault Variables Test CA",
-        serialNumber: "01",
-        notBefore: new Date(Date.now() - 60_000),
-        notAfter: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        signingAlgorithm: algorithm,
-        keys,
-        extensions: [
-          new x509.BasicConstraintsExtension(true, undefined, true),
-          // eslint-disable-next-line no-bitwise
-          new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true)
-        ]
-      });
-      return certificate.toString("pem");
-    };
 
     type TResolved = {
       services: {
@@ -1736,11 +1743,443 @@ describe("Agent Vault V1 Router", async () => {
         expect(listed.statusCode).toBe(403);
         expect(listed.payload).not.toContain("admin_only_value");
         expect(listed.payload).not.toContain("TOKEN");
-        expect((await member.asIdentity("GET", `${variablesUrl}/${variable.id}/value`)).statusCode).toBe(403);
+        // By id, a shared variable reads to a member like one that does not exist, as another member's personal one does.
+        expect((await member.asIdentity("GET", `${variablesUrl}/${variable.id}/value`)).statusCode).toBe(404);
+        expect((await member.asIdentity("DELETE", `${variablesUrl}/${variable.id}`)).statusCode).toBe(404);
         expect((await member.asIdentity("POST", variablesUrl, { key: "MINE", value: "x" })).statusCode).toBe(403);
       } finally {
         await deleteUaIdentity(member.id);
       }
+    });
+  });
+
+  describe("member-provided values", async () => {
+    const servicesUrl = (accessBundleId: string) => `/api/v1/agent-vault/access-bundles/${accessBundleId}/services`;
+    const membersUrl = (accessBundleId: string) => `/api/v1/agent-vault/access-bundles/${accessBundleId}/members`;
+    const memberValuesUrl = (accessBundleId: string, serviceId: string) =>
+      `${servicesUrl(accessBundleId)}/${serviceId}/personal-values`;
+    const variablesUrl = "/api/v1/agent-vault/variables";
+    const personalVariablesUrl = `${variablesUrl}?scope=personal`;
+
+    // Personal variable keys are unique per owner, and the seeded admin owns them across every test here.
+    beforeEach(async () => {
+      const project = await testDb("projects")
+        .where({ orgId: seedData1.organization.id, type: ProjectType.AgentVault })
+        .first();
+      if (!project) return;
+      const variableIds = testDb("agent_vault_variables")
+        .where({ projectId: project.id })
+        .where((owned) => {
+          void owned.whereNotNull("userId").orWhereNotNull("identityId");
+        })
+        .select("id");
+      await testDb("agent_vault_member_value_references").whereIn("variableId", variableIds).del();
+      await testDb("agent_vault_variables").whereIn("id", variableIds).del();
+    });
+
+    type TResolvedService = {
+      name: string;
+      credential: Record<string, string>;
+      memberValuesMissing: boolean;
+    };
+
+    type TMemberValues = {
+      isConfigured: boolean;
+      fields: { field: string; isSet: boolean; variableReferences: { variableId: string; key: string }[] }[];
+    };
+
+    const enrollProxy = async (name: string) => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name });
+      expect(created.statusCode).toBe(200);
+      const { token } = JSON.parse(created.payload) as { token: string };
+      const login = await testServer.inject({
+        method: "POST",
+        url: "/api/v1/agent-vault/proxy/login",
+        body: { method: ResourceAuthMethodType.Token, token, rootCaCertificate: await createProxyCaPem() }
+      });
+      expect(login.statusCode).toBe(200);
+      const { accessToken } = JSON.parse(login.payload) as { accessToken: string };
+
+      return async (sessionToken: string, serviceName: string) => {
+        const resolved = await testServer.inject({
+          method: "POST",
+          url: "/api/v1/agent-vault/proxy/resolve",
+          headers: { authorization: `Bearer ${accessToken}`, "x-infisical-agent-session": sessionToken }
+        });
+        expect(resolved.statusCode).toBe(200);
+        const { services } = JSON.parse(resolved.payload) as { services: TResolvedService[] };
+        return services.find((service) => service.name === serviceName)!;
+      };
+    };
+
+    const mintSession = async (
+      as: (method: "POST", url: string, body: Record<string, unknown>) => ReturnType<typeof inject>,
+      accessBundleName: string
+    ) => {
+      const mint = await as("POST", "/api/v1/agent-vault/sessions", { accessBundles: [accessBundleName], ttl: "1h" });
+      expect(mint.statusCode).toBe(200);
+      return (JSON.parse(mint.payload) as { session: { token: string } }).session.token;
+    };
+
+    const createService = async (accessBundleId: string, body: Record<string, unknown>) => {
+      const res = await inject("POST", servicesUrl(accessBundleId), body);
+      expect(res.statusCode).toBe(200);
+      return (
+        JSON.parse(res.payload) as {
+          service: { id: string; name: string; credential: { type: string; memberProvidedFields?: string[] } };
+        }
+      ).service;
+    };
+
+    // The caller's status for each service, as the bundle read returns it.
+    const statusesOf = async (
+      as: (method: "GET", url: string) => ReturnType<typeof inject>,
+      accessBundleId: string
+    ) => {
+      const res = await as("GET", `/api/v1/agent-vault/access-bundles/${accessBundleId}`);
+      expect(res.statusCode).toBe(200);
+      const { accessBundle } = JSON.parse(res.payload) as {
+        accessBundle: { services: { id: string; personalValues: TMemberValues | null }[] };
+      };
+      return new Map(accessBundle.services.map((service) => [service.id, service.personalValues]));
+    };
+
+    // The bundles granted to the caller that still require their values, with the services that do.
+    const pendingOf = async (as: (method: "GET", url: string) => ReturnType<typeof inject>) => {
+      const res = await as("GET", "/api/v1/agent-vault/access-bundles?requiresSetup=true&limit=100");
+      expect(res.statusCode).toBe(200);
+      const { accessBundles } = JSON.parse(res.payload) as {
+        accessBundles: { id: string; servicesRequiringSetup: string[] }[];
+      };
+      return new Map(accessBundles.map((bundle) => [bundle.id, bundle.servicesRequiringSetup]));
+    };
+
+    const setValues = (
+      as: (method: "PUT", url: string, body: Record<string, unknown>) => ReturnType<typeof inject>,
+      accessBundleId: string,
+      serviceId: string,
+      values: Record<string, string>
+    ) =>
+      as("PUT", memberValuesUrl(accessBundleId, serviceId), {
+        values: Object.entries(values).map(([field, value]) => ({ field, value }))
+      });
+
+    test("a member-provided token comes from whoever the session belongs to", async () => {
+      const bundle = await createAccessBundle("mp-bearer");
+      const service = await createService(bundle.id, {
+        name: "datadog",
+        hostPattern: "api.datadoghq.com",
+        credential: { type: "bearer", headerName: "DD-API-KEY", memberProvidedFields: ["credential-value"] }
+      });
+      expect(service.credential.memberProvidedFields).toEqual(["credential-value"]);
+
+      const both = await inject("POST", servicesUrl(bundle.id), {
+        name: "datadog-both",
+        hostPattern: "api.us5.datadoghq.com",
+        credential: { type: "bearer", value: "admin_value", memberProvidedFields: ["credential-value"] }
+      });
+      expect(both.statusCode).toBe(422);
+
+      const member = await createMemberIdentity(`mp-bearer-member-${Date.now()}`);
+      try {
+        expect((await inject("POST", membersUrl(bundle.id), { machineIdentityIds: [member.id] })).statusCode).toBe(200);
+
+        expect((await statusesOf(member.as, bundle.id)).get(service.id)).toEqual({
+          isConfigured: false,
+          fields: [expect.objectContaining({ field: "credential-value", isSet: false })]
+        });
+        expect((await pendingOf(member.as)).get(bundle.id)).toEqual(["datadog"]);
+        // The creator is granted the bundle, so it is one of the admin's own too.
+        expect((await statusesOf(inject, bundle.id)).get(service.id)?.isConfigured).toBe(false);
+        expect((await pendingOf(inject)).get(bundle.id)).toEqual(["datadog"]);
+
+        const resolve = await enrollProxy("mp-bearer");
+        const adminSession = await mintSession(inject, bundle.name);
+        const memberSession = await mintSession(member.as, bundle.name);
+
+        const unset = await resolve(adminSession, "datadog");
+        expect(unset.memberValuesMissing).toBe(true);
+        expect(unset.credential).toEqual({ type: "passthrough" });
+
+        const set = await setValues(member.as, bundle.id, service.id, { "credential-value": "member_token" });
+        expect(set.statusCode).toBe(200);
+        expect(JSON.parse(set.payload).personalValues).toMatchObject({ isConfigured: true });
+        expect(set.payload).not.toContain("member_token");
+
+        expect(await resolve(memberSession, "datadog")).toMatchObject({
+          memberValuesMissing: false,
+          credential: { type: "bearer", headerName: "DD-API-KEY", headerPrefix: "", value: "member_token" }
+        });
+        expect((await resolve(adminSession, "datadog")).memberValuesMissing).toBe(true);
+
+        expect((await setValues(inject, bundle.id, service.id, { "credential-value": "admin_token" })).statusCode).toBe(
+          200
+        );
+        expect((await resolve(adminSession, "datadog")).credential.value).toBe("admin_token");
+        expect((await resolve(memberSession, "datadog")).credential.value).toBe("member_token");
+
+        const wrongField = await setValues(member.as, bundle.id, service.id, { "credential-username": "x" });
+        expect(wrongField.statusCode).toBe(400);
+        expect((await member.as("PUT", memberValuesUrl(bundle.id, service.id), { values: [] })).statusCode).toBe(422);
+        expect((await statusesOf(member.as, bundle.id)).get(service.id)?.isConfigured).toBe(true);
+        expect((await pendingOf(member.as)).has(bundle.id)).toBe(false);
+
+        const removed = await member.as("DELETE", memberValuesUrl(bundle.id, service.id));
+        expect(removed.statusCode).toBe(200);
+        expect(JSON.parse(removed.payload).personalValues.isConfigured).toBe(false);
+        expect((await resolve(memberSession, "datadog")).memberValuesMissing).toBe(true);
+        expect((await member.as("DELETE", memberValuesUrl(bundle.id, service.id))).statusCode).toBe(404);
+      } finally {
+        await member.cleanup();
+      }
+    });
+
+    test("a member's own variables fill their values, and nobody else's do", async () => {
+      const bundle = await createAccessBundle("mp-variables");
+      const service = await createService(bundle.id, {
+        name: "github",
+        hostPattern: "api.github.com",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+
+      const member = await createMemberIdentity(`mp-variables-member-${Date.now()}`);
+      try {
+        expect((await inject("POST", membersUrl(bundle.id), { machineIdentityIds: [member.id] })).statusCode).toBe(200);
+
+        const adminVariable = await inject("POST", variablesUrl, {
+          scope: "personal",
+          key: "MY_TOKEN",
+          value: "admin_secret"
+        });
+        expect(adminVariable.statusCode).toBe(200);
+        const adminVariableId = (JSON.parse(adminVariable.payload) as { variable: { id: string } }).variable.id;
+
+        // The same key, owned by someone else, is a different variable.
+        const created = await member.as("POST", variablesUrl, {
+          scope: "personal",
+          key: "MY_TOKEN",
+          value: "member_secret"
+        });
+        expect(created.statusCode).toBe(200);
+        const memberVariableId = (JSON.parse(created.payload) as { variable: { id: string } }).variable.id;
+        expect(
+          (await member.as("POST", variablesUrl, { scope: "personal", key: "MY_TOKEN", value: "again" })).statusCode
+        ).toBe(400);
+
+        const unknown = await setValues(member.as, bundle.id, service.id, { "credential-value": "{{NOPE}}" });
+        expect(unknown.statusCode).toBe(400);
+        expect(JSON.parse(unknown.payload).message).toContain("no personal variable named 'NOPE'");
+
+        const set = await setValues(member.as, bundle.id, service.id, { "credential-value": "token {{MY_TOKEN}}" });
+        expect(set.statusCode).toBe(200);
+        expect(JSON.parse(set.payload).personalValues.fields).toEqual([
+          expect.objectContaining({
+            field: "credential-value",
+            isSet: true,
+            variableReferences: [{ variableId: memberVariableId, key: "MY_TOKEN" }]
+          })
+        ]);
+
+        const resolve = await enrollProxy("mp-variables");
+        const memberSession = await mintSession(member.as, bundle.name);
+        expect((await resolve(memberSession, "github")).credential.value).toBe("token member_secret");
+
+        const memberList = await member.as("GET", personalVariablesUrl);
+        expect(JSON.parse(memberList.payload).variables).toEqual([
+          expect.objectContaining({
+            key: "MY_TOKEN",
+            usedBy: [expect.objectContaining({ id: service.id, accessBundleName: bundle.name })]
+          })
+        ]);
+        expect(memberList.payload).not.toContain("member_secret");
+        const adminList = await inject("GET", personalVariablesUrl);
+        expect(JSON.parse(adminList.payload).variables).toEqual([
+          expect.objectContaining({ id: adminVariableId, usedBy: [] })
+        ]);
+
+        // Personal variables never show among the shared ones, and a member can't list those.
+        const sharedList = await inject("GET", variablesUrl);
+        expect(sharedList.statusCode).toBe(200);
+        expect(
+          (JSON.parse(sharedList.payload) as { variables: { id: string }[] }).variables.map((variable) => variable.id)
+        ).not.toContain(adminVariableId);
+        expect((await member.as("GET", variablesUrl)).statusCode).toBe(403);
+        expect(JSON.parse(created.payload).variable.scope).toBe("personal");
+
+        // Another actor's variable reads exactly like one that does not exist, an admin's included.
+        expect((await member.as("GET", `${variablesUrl}/${adminVariableId}/value`)).statusCode).toBe(404);
+        expect((await inject("GET", `${variablesUrl}/${memberVariableId}/value`)).statusCode).toBe(404);
+        const revealed = await member.as("GET", `${variablesUrl}/${memberVariableId}/value`);
+        expect(JSON.parse(revealed.payload).value).toBe("member_secret");
+
+        const inUse = await member.as("DELETE", `${variablesUrl}/${memberVariableId}`);
+        expect(inUse.statusCode).toBe(409);
+        expect(JSON.parse(inUse.payload).message).toContain("'github'");
+
+        expect((await member.as("PATCH", `${variablesUrl}/${memberVariableId}`, { value: "rotated" })).statusCode).toBe(
+          200
+        );
+        expect((await resolve(memberSession, "github")).credential.value).toBe("token rotated");
+      } finally {
+        await member.cleanup();
+      }
+    });
+
+    test("a basic credential can leave one half to each member, and changing that starts members over", async () => {
+      const bundle = await createAccessBundle("mp-basic");
+      const service = await createService(bundle.id, {
+        name: "pagerduty",
+        hostPattern: "api.pagerduty.com",
+        credential: { type: "basic", password: "admin_pw", memberProvidedFields: ["credential-username"] }
+      });
+      expect(service.credential.memberProvidedFields).toEqual(["credential-username"]);
+
+      expect((await setValues(inject, bundle.id, service.id, { "credential-username": "admin_user" })).statusCode).toBe(
+        200
+      );
+      const resolve = await enrollProxy("mp-basic");
+      const session = await mintSession(inject, bundle.name);
+      expect((await resolve(session, "pagerduty")).credential).toEqual({
+        type: "basic",
+        username: "admin_user",
+        password: "admin_pw"
+      });
+
+      const stored = () => testDb("agent_vault_member_values").where({ serviceId: service.id });
+      expect(await stored()).toHaveLength(1);
+
+      // Taking the username back starts it empty and keeps the admin's password.
+      const takenBack = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+        credential: { type: "basic", memberProvidedFields: [] }
+      });
+      expect(takenBack.statusCode).toBe(200);
+      expect(JSON.parse(takenBack.payload).service.credential.memberProvidedFields).toEqual([]);
+      expect(await stored()).toHaveLength(0);
+      expect(await resolve(session, "pagerduty")).toMatchObject({
+        memberValuesMissing: false,
+        credential: { type: "basic", username: "", password: "admin_pw" }
+      });
+
+      const handedOver = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+        credential: { type: "basic", memberProvidedFields: ["credential-username", "credential-value"] }
+      });
+      expect(handedOver.statusCode).toBe(200);
+      expect((await testDb("agent_vault_services").where({ id: service.id }).first()).encryptedCredential).toBeNull();
+      expect((await resolve(session, "pagerduty")).memberValuesMissing).toBe(true);
+
+      const half = await setValues(inject, bundle.id, service.id, { "credential-username": "only_user" });
+      expect(half.statusCode).toBe(400);
+      expect(JSON.parse(half.payload).message).toContain("password");
+      expect(
+        (await setValues(inject, bundle.id, service.id, { "credential-username": "u", "credential-value": "p" }))
+          .statusCode
+      ).toBe(200);
+      expect((await resolve(session, "pagerduty")).credential).toEqual({ type: "basic", username: "u", password: "p" });
+
+      // A bearer service with no token and nothing left to members is not a credential at all.
+      const noToken = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+        credential: { type: "bearer" }
+      });
+      expect(noToken.statusCode).toBe(400);
+    });
+
+    test("losing a bundle clears the values a member saved for it, and keeps their variables", async () => {
+      const bundle = await createAccessBundle("mp-revoke");
+      const service = await createService(bundle.id, {
+        name: "slack",
+        hostPattern: "slack.com",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+
+      const member = await createMemberIdentity(`mp-revoke-member-${Date.now()}`);
+      try {
+        expect((await inject("POST", membersUrl(bundle.id), { machineIdentityIds: [member.id] })).statusCode).toBe(200);
+        expect(
+          (await member.as("POST", variablesUrl, { scope: "personal", key: "SLACK_TOKEN", value: "xoxb" })).statusCode
+        ).toBe(200);
+        expect(
+          (await setValues(member.as, bundle.id, service.id, { "credential-value": "{{SLACK_TOKEN}}" })).statusCode
+        ).toBe(200);
+        // The admin's own values are not the revoked member's to lose.
+        expect((await setValues(inject, bundle.id, service.id, { "credential-value": "admin" })).statusCode).toBe(200);
+
+        expect((await inject("DELETE", membersUrl(bundle.id), { machineIdentityIds: [member.id] })).statusCode).toBe(
+          200
+        );
+        expect(
+          await testDb("agent_vault_member_values").where({ serviceId: service.id, identityId: member.id })
+        ).toHaveLength(0);
+        expect(
+          await testDb("agent_vault_member_values").where({ serviceId: service.id, userId: seedData1.id })
+        ).toHaveLength(1);
+        expect(await testDb("agent_vault_variables").where({ identityId: member.id })).toHaveLength(1);
+
+        expect((await inject("POST", membersUrl(bundle.id), { machineIdentityIds: [member.id] })).statusCode).toBe(200);
+        expect((await statusesOf(member.as, bundle.id)).get(service.id)?.isConfigured).toBe(false);
+
+        // Leaving Agent Vault clears them too.
+        expect((await setValues(member.as, bundle.id, service.id, { "credential-value": "again" })).statusCode).toBe(
+          200
+        );
+        expect(
+          (await inject("DELETE", "/api/v1/agent-vault/members", { machineIdentityIds: [member.id] })).statusCode
+        ).toBe(200);
+        expect(await testDb("agent_vault_member_values").where({ identityId: member.id })).toHaveLength(0);
+      } finally {
+        await member.cleanup();
+      }
+    });
+
+    test("an admin is asked for values only on the bundles granted to them", async () => {
+      const ungranted = await createAccessBundle("mp-mine-ungranted");
+      const service = await createService(ungranted.id, {
+        name: "openai",
+        hostPattern: "api.openai.com",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+      expect((await inject("DELETE", membersUrl(ungranted.id), { userIds: [seedData1.id] })).statusCode).toBe(200);
+
+      const listed = await inject("GET", "/api/v1/agent-vault/access-bundles?search=mp-mine&limit=100");
+      expect(JSON.parse(listed.payload).accessBundles).toEqual([
+        expect.objectContaining({ id: ungranted.id, servicesRequiringSetup: [] })
+      ]);
+      expect((await pendingOf(inject)).has(ungranted.id)).toBe(false);
+      expect((await inject("GET", "/api/v1/agent-vault/access-bundles?requiresSetup=maybe")).statusCode).toBe(422);
+      // Opening the bundle still shows what a session from it would need.
+      expect((await statusesOf(inject, ungranted.id)).get(service.id)?.isConfigured).toBe(false);
+    });
+
+    test("a service out of reach is a 404, and one without member-provided fields takes no values", async () => {
+      const bundle = await createAccessBundle("mp-reach");
+      const memberService = await createService(bundle.id, {
+        name: "anthropic",
+        hostPattern: "api.anthropic.com",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+      const adminService = await createService(bundle.id, {
+        name: "mistral",
+        hostPattern: "api.mistral.ai",
+        credential: { type: "bearer", value: "admin_only" }
+      });
+
+      const member = await createMemberIdentity(`mp-reach-member-${Date.now()}`);
+      try {
+        expect((await setValues(member.as, bundle.id, memberService.id, { "credential-value": "x" })).statusCode).toBe(
+          404
+        );
+        expect((await member.as("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`)).statusCode).toBe(404);
+        expect((await pendingOf(member.as)).size).toBe(0);
+        // A service named under another bundle reads as missing too.
+        const other = await createAccessBundle("mp-reach-other");
+        expect((await setValues(inject, other.id, memberService.id, { "credential-value": "x" })).statusCode).toBe(404);
+      } finally {
+        await member.cleanup();
+      }
+
+      const refused = await setValues(inject, bundle.id, adminService.id, { "credential-value": "x" });
+      expect(refused.statusCode).toBe(400);
+      expect(JSON.parse(refused.payload).message).toContain("doesn't take any values from its members");
+      expect((await statusesOf(inject, bundle.id)).get(adminService.id)).toBeNull();
     });
   });
 
@@ -2884,6 +3323,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
         agentVaultVariableDAL: agentVaultVariableDALFactory(testDb),
+        agentVaultMemberValueDAL: agentVaultMemberValueDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
@@ -3015,6 +3455,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
         agentVaultVariableDAL: agentVaultVariableDALFactory(testDb),
+        agentVaultMemberValueDAL: agentVaultMemberValueDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
@@ -3182,6 +3623,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
         agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
         agentVaultVariableDAL: agentVaultVariableDALFactory(testDb),
+        agentVaultMemberValueDAL: agentVaultMemberValueDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
@@ -3921,6 +4363,7 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
           agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
           agentVaultVariableDAL: agentVaultVariableDALFactory(testDb),
+          agentVaultMemberValueDAL: agentVaultMemberValueDALFactory(testDb),
           agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
           agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),
@@ -4020,6 +4463,7 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultServiceCustomHeaderDAL: agentVaultServiceCustomHeaderDALFactory(testDb),
           agentVaultServiceSubstitutionDAL: agentVaultServiceSubstitutionDALFactory(testDb),
           agentVaultVariableDAL: agentVaultVariableDALFactory(testDb),
+          agentVaultMemberValueDAL: agentVaultMemberValueDALFactory(testDb),
           agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
           agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),

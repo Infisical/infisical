@@ -15,6 +15,7 @@ import {
   TAgentVaultGrantedMember,
   TAgentVaultMemberWriteResult,
   TAgentVaultMintedSession,
+  TAgentVaultPersonalValues,
   TAgentVaultProxy,
   TAgentVaultProxySettingsDTO,
   TAgentVaultService,
@@ -25,6 +26,8 @@ import {
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
   TCreateAgentVaultVariableDTO,
+  TDeleteAgentVaultPersonalValuesDTO,
+  TSetAgentVaultPersonalValuesDTO,
   TUpdateAgentVaultAccessBundleDTO,
   TUpdateAgentVaultMemberRolesDTO,
   TUpdateAgentVaultServiceDTO,
@@ -393,7 +396,8 @@ export const useUpdateAgentVaultSessionLogSettings = () => {
   });
 };
 
-// A rename changes the keys each service's variableReferences reports, so the bundles refresh too.
+// A rename changes the keys each service's variableReferences, and each member value's, reports, so those refresh
+// too.
 const invalidateVariables = (queryClient: ReturnType<typeof useQueryClient>, orgId: string) => {
   markAgentVaultVariablesChanged(orgId);
   return Promise.all([
@@ -416,7 +420,10 @@ export const useCreateAgentVaultVariable = () => {
     onSuccess: (variable) => {
       // Known before the refetch lands, so a reference to it that was just inserted isn't flagged.
       markAgentVaultVariablesChanged(currentOrg.id);
-      queryClient.setQueryData(agentVaultKeys.variableKeyStatus(currentOrg.id, variable.key), true);
+      queryClient.setQueryData(
+        agentVaultKeys.variableKeyStatus(currentOrg.id, variable.scope, variable.key),
+        true
+      );
       return invalidateVariables(queryClient, currentOrg.id);
     }
   });
@@ -461,3 +468,50 @@ export const useRevealAgentVaultVariableValue = () =>
       return data.value;
     }
   });
+
+// The status shows on the bundle read and the bundle list, and Used By on personal variables follows the references.
+const invalidatePersonalValues = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string,
+  accessBundleId: string
+) =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundle(orgId, accessBundleId) }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId) }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(orgId) })
+  ]);
+
+export const useSetAgentVaultPersonalValues = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      accessBundleId,
+      serviceId,
+      ...params
+    }: TSetAgentVaultPersonalValuesDTO) => {
+      const { data } = await apiRequest.put<{ personalValues: TAgentVaultPersonalValues }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}/personal-values`,
+        params
+      );
+      return data.personalValues;
+    },
+    onSuccess: (_, { accessBundleId }) =>
+      invalidatePersonalValues(queryClient, currentOrg.id, accessBundleId)
+  });
+};
+
+export const useDeleteAgentVaultPersonalValues = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accessBundleId, serviceId }: TDeleteAgentVaultPersonalValuesDTO) => {
+      const { data } = await apiRequest.delete<{ personalValues: TAgentVaultPersonalValues }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}/personal-values`
+      );
+      return data.personalValues;
+    },
+    onSuccess: (_, { accessBundleId }) =>
+      invalidatePersonalValues(queryClient, currentOrg.id, accessBundleId)
+  });
+};

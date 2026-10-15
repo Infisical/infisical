@@ -18,8 +18,9 @@ never in anything the agent holds.
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
 agent-vault-access-bundle/   bundles, services, credential encryption, grants
-agent-vault-variable/        product-wide variables and the reads behind Used By
+agent-vault-variable/        shared and personal variables and the reads behind Used By
 agent-vault-member/          product membership (list, add, role, remove)
+agent-vault-member-value/    each actor's own values for the fields a service leaves to members
 agent-vault-session/         mint, revoke, list, get
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
 agent-vault-proxy/           login (enrollment), heartbeat, resolve
@@ -193,7 +194,7 @@ path decides what a service can reach, so it stays literal.
   UPDATE` and then reads the references; a save takes the rows it is about to reference `FOR SHARE` right before
   inserting them (`insertReferenceRows`). So the delete waits for an in-flight save and refuses with a 409 naming
   each service and its bundle, and a save whose variable went first fails with a 400. Create serialises on a
-  per-project advisory lock for the cap and the key check; the `(projectId, key)` unique index is the backstop.
+  per-project advisory lock for the cap and the key check; the shared-key partial unique index is the backstop.
 - A stored value never comes back in any form, a lone `{{KEY}}` included. The sheet lists the keys a stored
   field uses under the field and keeps the field masked until it is retyped. Settled: putting a lone
   reference back in its field made it the one stored field that shows, and left a field mixing text with a
@@ -235,10 +236,63 @@ path decides what a service can reach, so it stays literal.
   query can land on a different replica. An id with no variable behind it on either stays as text and is
   logged rather than dropping the service, which would also drop the service's method and path restrictions.
   Values saved before variables existed hold no id tokens, so they pass through untouched.
-- Admin only, reads included: every `/agent-vault/variables` route checks `Edit` on access bundles, which a member lacks,
+- Shared variables are admin only, reads included: their routes check `Edit` on access bundles, which a member lacks,
   and the bundle read gives a member its services without `variableReferences` (left out, not empty, since
   an empty list would claim they use none). Every value is sealed and no response but the value route returns
   one. That route is a GET with no-store headers and one audit event per read.
+
+## Member-provided values
+
+An admin can leave a credential field to each member: the bearer token, or either half of a basic credential
+(`memberProvidedFields` on the service, named like variable references: `credential-value` is a token or a password,
+`credential-username` a username). Custom header and substitution values can't be member-provided yet, but every
+member-value shape already carries the reference tables' target columns and field descriptors, so they can join
+without a migration or an API change. Each actor saves their own **member values** for the service, one row per
+field, and a session uses the values of whoever it belongs to. Every actor, admins included, also keeps **personal
+variables**, rows of `agent_vault_variables` with an owner, that only their own member values can reference.
+
+- **Don't call these "personal credentials".** Variables are due to be renamed credentials, so "credential" is
+  reserved for them; a member's input for a service is a *value*.
+- **The column is NULL, never `{}`, for a credential the admin sets in full**, like `allowedMethods`. The
+  service's sealed secret holds only the admin's fields, so a bearer token left to members stores no secret at
+  all and the column is NULL. Code that reads `encryptedCredential` NULL as passthrough has to check
+  `memberProvidedFields` first.
+- **One variables resource, two scopes.** `scope` on `/agent-vault/variables` (`shared`, the default, or
+  `personal`) picks the list and the owner of a new one; every variable read and lock in the DAL takes an owner
+  (`null` for shared) so a shared lookup never matches a personal key, and resolve expands each kind only against
+  its own. By id, a variable the caller may not act on is a 404, never a 403: someone else's personal one, and a
+  shared one for a member. Shared keys are unique per project (500 cap), personal ones per owner (100 cap), each
+  enforced by a partial unique index plus an advisory lock per project or per owner.
+- **Everything personal is scoped to the caller, never to an id the caller sends.** No route names another actor,
+  so an admin can't list, read or set anyone else's variables or values. The owner is a user or a machine identity
+  (`ownerOf`); the UI only covers users for now, but resolve and the API already work for an identity's own
+  sessions.
+- **Resolve fills member fields last**: the admin's fields are expanded against shared variables first, then each
+  member value against the session actor's personal variables only, so neither is ever expanded twice and a
+  personal `{{KEY}}` can't reach a shared variable. A service whose actor hasn't set every member-provided field
+  goes out with `memberValuesMissing: true` and a passthrough credential. The proxy refuses it with a 403 (CLI
+  change); an older proxy that ignores the flag forwards the request without a credential, never with the admin's.
+- **A PUT replaces the actor's whole set for the service**, and must send exactly the service's member-provided
+  fields. The save takes the service row `FOR SHARE` and re-checks the fields it validated against, so an admin
+  changing them either waits for it or makes it 409.
+- **Changing which fields are member-provided, or the credential type, deletes every member's values for the
+  service** in the same transaction that writes the service row.
+- **Losing a bundle clears what an actor saved for its services** (`clearMemberValuesAfterRevoke`), so a later grant
+  starts from nothing. It runs on a bundle revoke and on removal from Agent Vault, for the actors the revoke named
+  and the members of a named group, and skips anyone who still holds the bundle through another grant. Admins
+  reach every bundle without a grant, so the cleanup never sweeps actors the revoke didn't name. Grants that end
+  outside Agent Vault (SCIM, group edits, the generic project routes) don't run it; stale values there are never
+  used without access, since resolve only reaches live bundles. Personal variables survive all of this.
+- Personal variables follow the shared variables' reference rules: sealed text names them by id, a reference row
+  per member value (`agent_vault_member_value_references`, a deferred foreign key), the delete takes the variable
+  row `FOR UPDATE` and a member values save takes the rows it references `FOR SHARE`. Used By on a variable reads
+  both reference tables; any one variable only ever appears in one of them.
+- **The API calls them personal values**, the UI's word: a sub-resource of the service
+  (`PUT`/`DELETE .../services/:serviceId/personal-values`), always the caller's own, with no collection route. The
+  tables and this module keep "member value". Reads ride along: the bundle read puts the caller's status on each
+  service (`personalValues`, null when nothing is member-provided), and the bundle list gives `servicesRequiringSetup` per bundle
+  plus a `requiresSetup=true` filter for the sidebar and banners. Both count only the bundles granted to the caller,
+  so an admin isn't nagged about bundles they reach only by role; the bundle read still shows them.
 
 ## Credentials at rest
 

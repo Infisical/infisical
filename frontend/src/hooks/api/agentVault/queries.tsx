@@ -14,7 +14,7 @@ import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 import { VARIABLE_KEY_MAX_LENGTH, VARIABLE_KEY_RE } from "@app/helpers/agentVaultVariables";
 
-import { AgentVaultMemberType } from "./enums";
+import { AgentVaultMemberType, AgentVaultVariableScope } from "./enums";
 import {
   createSessionLogChunkCache,
   decryptSessionLogPage,
@@ -101,8 +101,8 @@ export const agentVaultKeys = {
   variables: (orgId: string) => [...agentVaultKeys.all(orgId), "variables"] as const,
   variableList: (orgId: string, params: TListAgentVaultVariablesDTO) =>
     [...agentVaultKeys.variables(orgId), "list", params] as const,
-  variableKeyStatus: (orgId: string, key: string) =>
-    [...agentVaultKeys.variables(orgId), "key-status", key] as const,
+  variableKeyStatus: (orgId: string, scope: AgentVaultVariableScope, key: string) =>
+    [...agentVaultKeys.variables(orgId), "key-status", scope, key] as const,
   members: (orgId: string) => [...agentVaultKeys.all(orgId), "members"] as const,
   memberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
     [...agentVaultKeys.members(orgId), params] as const,
@@ -226,6 +226,11 @@ export const useListAgentVaultAccessBundles = (params: TListAgentVaultAccessBund
     placeholderData: (prev) => prev
   });
 };
+
+// The sidebar and the access bundle list ask the same question, so they share one cached answer. One page holds them
+// all in practice: it is only the bundles granted to the caller that still require their values.
+export const useListAgentVaultAccessBundlesRequiringSetup = () =>
+  useListAgentVaultAccessBundles({ requiresSetup: true, limit: 100 });
 
 export const useGetAgentVaultAccessBundle = (accessBundleId: string) => {
   const { currentOrg } = useOrganization();
@@ -587,10 +592,14 @@ const MISSING_RECHECK_MS = 30_000;
 // Whether each key exists. Each key's answer is cached on its own, so a key checked once isn't asked about again
 // until a variable changes, but the keys still to check go out together through the keys filter, in batches of
 // the API's maximum, rather than a request each. Only keys whose answer has arrived are in either set.
-export const useAgentVaultVariableKeyStatus = (keys: readonly string[], enabled = true) => {
+export const useAgentVaultVariableKeyStatus = (
+  keys: readonly string[],
+  enabled = true,
+  scope = AgentVaultVariableScope.Shared
+) => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
-  const statusKey = (key: string) => agentVaultKeys.variableKeyStatus(currentOrg.id, key);
+  const statusKey = (key: string) => agentVaultKeys.variableKeyStatus(currentOrg.id, scope, key);
   const possibleKeys = keys.filter(isPossibleVariableKey);
   const impossibleKeys = keys.filter((key) => !isPossibleVariableKey(key));
 
@@ -644,6 +653,7 @@ export const useAgentVaultVariableKeyStatus = (keys: readonly string[], enabled 
     queryKey: [
       ...agentVaultKeys.variables(currentOrg.id),
       "key-status-batch",
+      scope,
       changeCount,
       recheckMissingAt,
       unchecked
@@ -653,6 +663,7 @@ export const useAgentVaultVariableKeyStatus = (keys: readonly string[], enabled 
       for (let i = 0; i < unchecked.length; i += KEY_LOOKUP_BATCH_SIZE) {
         // eslint-disable-next-line no-await-in-loop
         const page = await fetchAgentVaultVariables({
+          scope,
           keys: unchecked.slice(i, i + KEY_LOOKUP_BATCH_SIZE),
           limit: KEY_LOOKUP_BATCH_SIZE
         });

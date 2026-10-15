@@ -35,6 +35,10 @@ import { resolveUsersBySsoExternalId } from "@app/services/user-alias/user-alias
 
 import { resolveAgentVaultActorNames, TAgentVaultActorName } from "../agent-vault/agent-vault-actor-name-fns";
 import { AgentVaultMemberType } from "../agent-vault/agent-vault-enums";
+import {
+  clearMemberValuesAfterRevoke,
+  TClearMemberValuesDeps
+} from "../agent-vault-member-value/agent-vault-member-value-fns";
 import { TAgentVaultMemberDALFactory } from "./agent-vault-member-dal";
 
 type TAgentVaultMembershipServiceFactoryDep = {
@@ -49,7 +53,7 @@ type TAgentVaultMembershipServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
-};
+} & TClearMemberValuesDeps;
 
 export type TAgentVaultMembershipServiceFactory = ReturnType<typeof agentVaultMembershipServiceFactory>;
 
@@ -135,7 +139,10 @@ export const agentVaultMembershipServiceFactory = ({
   userAliasDAL,
   orgDAL,
   permissionService,
-  usageMeteringService
+  usageMeteringService,
+  agentVaultMemberValueDAL,
+  userGroupMembershipDAL,
+  identityGroupMembershipDAL
 }: TAgentVaultMembershipServiceFactoryDep) => {
   const getActorPermission = (projectId: string, ctx: TGenericPermission) =>
     permissionService.getProjectPermission({
@@ -650,6 +657,18 @@ export const agentVaultMembershipServiceFactory = ({
 
       // membership_roles cascades on the membership FK, so the roles go with these rows.
       await membershipDAL.delete({ $in: { id: membershipIds } }, tx);
+
+      // Their bundle grants went above. Their own variables stay, as they would if they only lost a bundle.
+      await clearMemberValuesAfterRevoke(
+        { agentVaultMemberValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+        {
+          projectId,
+          userIds: named(held, AgentVaultMemberType.User),
+          identityIds: named(held, AgentVaultMemberType.MachineIdentity),
+          groupIds: named(held, AgentVaultMemberType.Group)
+        },
+        tx
+      );
 
       return {
         removed: held.map((actor) => ({

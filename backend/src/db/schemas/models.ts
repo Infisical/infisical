@@ -280,6 +280,8 @@ export enum TableName {
   AgentVaultServiceSubstitution = "agent_vault_service_substitutions",
   AgentVaultVariable = "agent_vault_variables",
   AgentVaultServiceVariableReference = "agent_vault_service_variable_references",
+  AgentVaultMemberValue = "agent_vault_member_values",
+  AgentVaultMemberValueReference = "agent_vault_member_value_references",
   AgentVaultSession = "agent_vault_sessions",
   AgentVaultSessionAccessBundle = "agent_vault_session_access_bundles",
   AgentVaultProxy = "agent_vault_proxies",
