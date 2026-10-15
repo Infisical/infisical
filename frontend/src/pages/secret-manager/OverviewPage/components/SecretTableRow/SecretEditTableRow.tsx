@@ -176,7 +176,7 @@ type Props = {
   isPendingCreate?: boolean;
   isPendingDelete?: boolean;
   onBatchRevert?: (env: string, key: string) => void;
-  onPendingSave?: (env: string, key: string) => Promise<void>;
+  onPendingSave?: (env: string, key: string, pendingChangeId?: string) => Promise<void>;
   hasPendingChange?: boolean;
   hasPendingValueChange?: boolean;
   pendingKeyName?: string;
@@ -1526,13 +1526,16 @@ export const SecretEditTableRow = ({
                       size="xs"
                       isDisabled={!isAllowed || isSavingPendingChange}
                       onClick={async () => {
+                        const pendingChangeId = batchStore
+                          .getState()
+                          .pendingChanges.secrets.find((c) => c.secretKey === secretName)?.id;
                         if (batchAutoApplyTimer.current) {
                           clearTimeout(batchAutoApplyTimer.current);
                           applyBatchEditsRef.current?.();
                         }
                         setIsSavingPendingChange.on();
                         try {
-                          await onPendingSave(environment, secretName);
+                          await onPendingSave(environment, secretName, pendingChangeId);
                         } finally {
                           setIsSavingPendingChange.off();
                         }

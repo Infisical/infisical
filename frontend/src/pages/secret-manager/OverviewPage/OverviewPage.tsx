@@ -2697,10 +2697,12 @@ const OverviewPageContent = () => {
   );
 
   const handlePendingSecretSave = useCallback(
-    async (env: string, key: string) => {
+    async (env: string, key: string, pendingChangeId?: string) => {
       const pendingSecret = batchStoreApi
         .getState()
-        .pendingChanges.secrets.find((c) => c.secretKey === key);
+        .pendingChanges.secrets.find((c) =>
+          pendingChangeId ? c.id === pendingChangeId : c.secretKey === key
+        );
       if (!pendingSecret) return;
       await savePendingChanges({ secrets: [pendingSecret], folders: [] }, "", "row");
       const isDraftUnchanged = batchStoreApi

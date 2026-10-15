@@ -110,7 +110,7 @@ type Props = {
   }[];
   isSingleEnvSecretsVisible?: boolean;
   onBatchRevert?: (env: string, key: string) => void;
-  onPendingSave?: (env: string, key: string) => Promise<void>;
+  onPendingSave?: (env: string, key: string, pendingChangeId?: string) => Promise<void>;
   isSelectionDisabled?: boolean;
   onCopySecret?: (request: {
     source: { id: string; name: string; path: string; isValueHidden: boolean };
