@@ -120,6 +120,9 @@ export enum AWSRegion {
   // Canada
   CA_CENTRAL_1 = "ca-central-1", // Central
 
+  // Mexico
+  MX_CENTRAL_1 = "mx-central-1", // Central
+
   // Europe
   EU_CENTRAL_1 = "eu-central-1", // Frankfurt
   EU_CENTRAL_2 = "eu-central-2", // Zurich
