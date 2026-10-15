@@ -16,9 +16,25 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 const ReturnPathSchema = z
   .string()
   .trim()
+  .max(2048)
   .startsWith("/")
   .refine((path) => !path.startsWith("//") && !path.startsWith("/\\"), {
     message: "must be a relative path"
+  })
+  .refine(
+    (path) =>
+      [...path].every((character) => {
+        const codePoint = character.charCodeAt(0);
+        return codePoint > 31 && codePoint !== 127 && character !== "\\";
+      }),
+    { message: "must not contain control characters or backslashes" }
+  )
+  .transform((path) => {
+    const url = new URL(path, "https://infisical.invalid");
+    return `${url.pathname}${url.search}${url.hash}`;
+  })
+  .refine((path) => !path.split(/[?#]/)[0].includes("//"), {
+    message: "must not contain repeated path separators"
   })
   .optional();
 
@@ -252,7 +268,7 @@ const BillingV2PreviewSchema = z.object({
 // subscription id comes back (the DB mirror catches up via webhook, so the UI refetches overview).
 const BillingV2MutationResultSchema = z.object({ subscriptionId: z.string().optional() });
 
-// Product and plan keys are short catalog identifiers (e.g. "secrets_management", "advanced").
+// Product and plan keys are short catalog identifiers (e.g. "secrets_manager", "advanced").
 const BillingV2KeySchema = z.string().trim().min(1).max(64);
 
 const BillingV2QuantitiesSchema = z.record(z.string().trim(), z.number().int().min(0));
@@ -708,8 +724,9 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     schema: {
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
-        productId: z.string().trim(),
-        plan: z.string().trim()
+        productId: z.string().trim().min(1).max(255),
+        plan: z.string().trim().min(1).max(255),
+        returnPath: ReturnPathSchema
       }),
       response: {
         200: z.object({
@@ -728,6 +745,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         actor: buildActor(req.permission),
         productId: req.body.productId,
         plan: req.body.plan,
+        returnPath: req.body.returnPath,
         email
       });
 

@@ -9,4 +9,5 @@ export { KempLoadMasterPkiSyncDestinationSection } from "./KempLoadMasterPkiSync
 export { LinuxServerPkiSyncDestinationSection } from "./LinuxServerPkiSyncDestinationSection";
 export { NetScalerPkiSyncDestinationSection } from "./NetScalerPkiSyncDestinationSection";
 export { NutanixPrismCentralPkiSyncDestinationSection } from "./NutanixPrismCentralPkiSyncDestinationSection";
+export { PaloAltoNetworksPkiSyncDestinationSection } from "./PaloAltoNetworksPkiSyncDestinationSection";
 export { WindowsServerPkiSyncDestinationSection } from "./WindowsServerPkiSyncDestinationSection";

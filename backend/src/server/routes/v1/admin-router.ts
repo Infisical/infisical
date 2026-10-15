@@ -986,6 +986,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: false,
+      operationId: "adminBootstrap",
       body: z.object({
         email: z.string().email().trim().min(1),
         password: z.string().trim().min(1),

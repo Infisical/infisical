@@ -18,6 +18,7 @@ import { DatadogApiKeyRotationReviewFields } from "./DatadogApiKeyRotationReview
 import { DatadogApplicationKeySecretRotationReviewFields } from "./DatadogApplicationKeySecretRotationReviewFields";
 import { DbtServiceTokenRotationReviewFields } from "./DbtServiceTokenRotationReviewFields";
 import { FireworksApiKeyRotationReviewFields } from "./FireworksApiKeyRotationReviewFields";
+import { GcpServiceAccountKeyRotationReviewFields } from "./GcpServiceAccountKeyRotationReviewFields";
 import { HpIloRotationReviewFields } from "./HpIloRotationReviewFields";
 import { LdapPasswordRotationReviewFields } from "./LdapPasswordRotationReviewFields";
 import { LiteLLMApiKeyRotationReviewFields } from "./LiteLLMApiKeyRotationReviewFields";
@@ -63,7 +64,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.SnowflakeUserKeyPair]: SnowflakeUserKeyPairRotationReviewFields,
   [SecretRotation.CloudflareApiToken]: CloudflareApiTokenRotationReviewFields,
   [SecretRotation.CloudflareR2AccessKey]: CloudflareR2AccessKeyRotationReviewFields,
-  [SecretRotation.StripeApiKey]: StripeApiKeyRotationReviewFields
+  [SecretRotation.StripeApiKey]: StripeApiKeyRotationReviewFields,
+  [SecretRotation.GcpServiceAccountKey]: GcpServiceAccountKeyRotationReviewFields
 };
 
 export const SecretRotationV2ReviewFields = () => {

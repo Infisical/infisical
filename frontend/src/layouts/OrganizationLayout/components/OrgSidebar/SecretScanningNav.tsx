@@ -2,15 +2,19 @@ import { Cable, Database, FileText, Search, Settings, Shield } from "lucide-reac
 
 import {
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission,
   useSubscription
 } from "@app/context";
 import { ProjectPermissionSecretScanningFindingActions } from "@app/context/ProjectPermissionContext/types";
-import { useGetSecretScanningUnresolvedFindingCount } from "@app/hooks/api/secretScanningV2";
+import {
+  useGetSecretScanningInstanceState,
+  useGetSecretScanningUnresolvedFindingCount
+} from "@app/hooks/api/secretScanningV2";
 
 import { ProjectNavList } from "./ProjectNavLink";
-import { PROJECT_ACCESS_CONTROL_SUBMENU, SECRET_SCANNING_SETTINGS_SUBMENU } from "./submenus";
+import { getSecretScanningSettingsSubmenu, PROJECT_ACCESS_CONTROL_SUBMENU } from "./submenus";
 import type { NavItem, Submenu } from "./types";
 
 export const SecretScanningNav = ({
@@ -19,8 +23,10 @@ export const SecretScanningNav = ({
   onSubmenuOpen: (submenu: Submenu) => void;
 }) => {
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
+  const { data: instanceState } = useGetSecretScanningInstanceState(currentOrg.id);
 
   const { data: unresolvedFindings } = useGetSecretScanningUnresolvedFindingCount(
     currentProject.id,
@@ -56,7 +62,7 @@ export const SecretScanningNav = ({
       label: "Settings",
       icon: Settings,
       pathSuffix: "settings",
-      submenu: SECRET_SCANNING_SETTINGS_SUBMENU
+      submenu: getSecretScanningSettingsSubmenu(Boolean(instanceState?.isMultiInstance))
     }
   ];
   return <ProjectNavList items={items} onSubmenuOpen={onSubmenuOpen} />;

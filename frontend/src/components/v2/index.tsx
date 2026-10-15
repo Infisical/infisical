@@ -1,7 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 export * from "./Accordion";
 export * from "./Alert";
-export * from "./Breadcrumb";
 export * from "./Button";
 export * from "./Card";
 export * from "./Checkbox";
@@ -17,8 +16,6 @@ export * from "./HoverCardv2";
 export * from "./IconButton";
 export * from "./Input";
 export * from "./Modal";
-export * from "./NoticeBannerV2";
-export * from "./PageHeader";
 export * from "./Pagination";
 export * from "./SecretInput";
 export * from "./Select";

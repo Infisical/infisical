@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -162,11 +162,14 @@ const Content = ({ role, onClose }: ContentProps) => {
           </Button>
         </DialogFooter>
       </form>
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.duplicate-org-role"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not include custom roles. To unlock this feature, please upgrade to Infisical Advanced plan."
+        intent={{
+          ...CustomRolesUpgradeIntent,
+          isEnterpriseFeature: false
+        }}
       />
     </>
   );

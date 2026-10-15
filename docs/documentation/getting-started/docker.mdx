@@ -46,7 +46,7 @@ Prerequisites:
     Next, modify the start command of your Dockerfile:
 
     ```dockerfile
-    CMD ["infisical", "run", "--", "[your service start command]"]
+    CMD ["infisical", "sm", "run", "--", "[your service start command]"]
     ```
 
     ## Launch
@@ -80,7 +80,7 @@ Prerequisites:
     WORKDIR /app
 
     # Modify the start command of your Dockerfile
-    CMD ["infisical", "run", "--", "npm run start"]
+    CMD ["infisical", "sm", "run", "--", "npm run start"]
     ```
     
     </Tab>
@@ -118,7 +118,7 @@ Prerequisites:
     Next, modify the start commands of your Dockerfiles:
 
     ```dockerfile
-    CMD ["infisical", "run", "--", "[your service start command]"]
+    CMD ["infisical", "sm", "run", "--", "[your service start command]"]
     ```
     
     ## Example Dockerfile
@@ -142,7 +142,7 @@ Prerequisites:
     WORKDIR /app
 
     # Modify the start command of your Dockerfile
-    CMD ["infisical", "run", "--", "[your service start command]"]
+    CMD ["infisical", "sm", "run", "--", "[your service start command]"]
     ```
     
     ## Docker Compose file modification

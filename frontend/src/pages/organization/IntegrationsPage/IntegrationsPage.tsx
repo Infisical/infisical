@@ -3,7 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
 import {
-  AlertTitle,
+  AlertDescription,
   DismissableAlert,
   PageHeader,
   Tabs,
@@ -32,9 +32,9 @@ const AppConnectionsTab = withPermission(
         actionKey="app_connections_project_scope_banner_dismissed"
       >
         <InfoIcon />
-        <AlertTitle>
+        <AlertDescription>
           App connections can also be created and managed independently in projects now.
-        </AlertTitle>
+        </AlertDescription>
       </DismissableAlert>
       <AppConnectionsTable />
     </>

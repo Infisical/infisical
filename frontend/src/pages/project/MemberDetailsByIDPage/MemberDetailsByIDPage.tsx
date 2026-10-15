@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -46,7 +46,12 @@ import {
   useSubscription,
   useUser
 } from "@app/context";
-import { getProjectBaseURL, supportsAssumePrivileges } from "@app/helpers/project";
+import {
+  getProjectBaseURL,
+  getProjectLabel,
+  hidesProjects,
+  supportsAssumePrivileges
+} from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace, useGetWorkspaceUserDetails } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
@@ -100,7 +105,9 @@ export const Page = () => {
       orgId: currentOrg.id
     });
     createNotification({
-      text: "Successfully removed user from project",
+      text: `Successfully removed user from ${
+        currentProject?.type === ProjectType.CertificateManager ? "Certificate Manager" : "project"
+      }`,
       type: "success"
     });
     navigate({
@@ -145,6 +152,7 @@ export const Page = () => {
 
   const isOwnProjectMembershipDetails = currentUserId === membershipDetails?.user?.id;
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const projectLabel = getProjectLabel(currentProject?.type);
   const isSecretManager = currentProject.type === ProjectType.SecretManager;
   const hasFolderRbacPlan = Boolean(subscription?.secretsFolderRbac);
   const canAssumePrivileges = !isCertManager && supportsAssumePrivileges(currentProject.type);
@@ -164,11 +172,7 @@ export const Page = () => {
           <PageHeader
             scope={currentProject.type}
             title={memberDisplayName}
-            description={
-              isCertManager
-                ? "Configure and manage certificate manager access control"
-                : "Configure and manage project access control"
-            }
+            description={`Configure and manage ${projectLabel.toLowerCase()} access control`}
             backLink={
               <Link
                 to={`${getProjectBaseURL(currentProject.type)}/access-management`}
@@ -181,7 +185,7 @@ export const Page = () => {
                 }}
               >
                 <ChevronLeftIcon aria-hidden className="size-4" />
-                {isCertManager ? "Users" : "Project Users"}
+                {hidesProjects(currentProject?.type) ? "Users" : "Project Users"}
               </Link>
             }
           >
@@ -196,13 +200,14 @@ export const Page = () => {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Badge variant="info" className="ml-2">
-                      <InfoIcon /> {isCertManager ? "Your membership" : "Your project membership"}
+                      <InfoIcon />{" "}
+                      {hidesProjects(currentProject?.type)
+                        ? "Your membership"
+                        : "Your project membership"}
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                    {isCertManager
-                      ? "You cannot modify your own membership. Ask a Certificate Manager admin to make changes to your membership."
-                      : "You cannot modify your own membership. Ask a project admin to make changes to your membership."}
+                    {`You cannot modify your own membership. Ask a ${hidesProjects(currentProject?.type) ? projectLabel : "project"} admin to make changes to your membership.`}
                   </TooltipContent>
                 </Tooltip>
               ) : (
@@ -267,9 +272,7 @@ export const Page = () => {
                           isDisabled={!isAllowed}
                           onClick={() => handlePopUpOpen("removeMember")}
                         >
-                          {isCertManager
-                            ? "Remove User From Certificate Manager"
-                            : "Remove User From Project"}
+                          {`Remove User From ${projectLabel}`}
                         </DropdownMenuItem>
                       )}
                     </ProjectPermissionCan>
@@ -320,7 +323,7 @@ export const Page = () => {
             onOpenChange={(isOpen) => {
               handlePopUpToggle("removeMember", isOpen);
             }}
-            title={`Remove ${memberDisplayName} from the ${isCertManager ? "certificate manager" : "project"}?`}
+            title={`Remove ${memberDisplayName} from the ${projectLabel.toLowerCase()}?`}
             description={
               <Alert variant="danger" appearance="borderless">
                 <AlertDescription>
@@ -339,12 +342,14 @@ export const Page = () => {
             actorType={ActorType.USER}
             actorId={(popUp.assumePrivileges.data as { userId: string })?.userId}
           />
-          <UpgradePlanModal
+          <UpgradeGate
             paywallKey="project.member-details-by-id"
             isOpen={popUp.upgradePlan.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-            text={popUp.upgradePlan?.data?.text}
-            isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
+            intent={{
+              ...CustomRolesUpgradeIntent,
+              isEnterpriseFeature: Boolean(popUp.upgradePlan?.data?.isEnterpriseFeature)
+            }}
           />
           {isPermissionAuditOpen && (
             <MemberPermissionAuditSheet

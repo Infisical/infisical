@@ -4,11 +4,7 @@ import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
-import {
-  assertChannelConfigValid,
-  getChannelDefinition,
-  mergeChannelConfigWithStored
-} from "./alert-channel-config-fns";
+import { getChannelDefinition, mergeChannelConfigWithStored, parseChannelConfig } from "./alert-channel-config-fns";
 import { decryptChannelConfig, getAlertChannelCipher } from "./alert-channel-crypto-fns";
 import { TAlertChannelDALFactory } from "./alert-channel-dal";
 import { TAlertChannelServiceFactory } from "./alert-channel-service";
@@ -94,8 +90,7 @@ export const alertChannelTestServiceFactory = ({
     const incoming = dto.config ?? {};
 
     if (!dto.channelId) {
-      assertChannelConfigValid(definition, dto.channelType, incoming);
-      return { config: incoming, channelName: null };
+      return parseChannelConfig(definition, dto.channelType, incoming);
     }
 
     const channel = await alertChannelDAL.findById(dto.channelId);
@@ -117,8 +112,7 @@ export const alertChannelTestServiceFactory = ({
     const stored = decryptChannelConfig<Record<string, unknown>>(channel.encryptedConfig, decryptor);
 
     const merged = mergeChannelConfigWithStored(dto.channelType, incoming, stored);
-    assertChannelConfigValid(definition, dto.channelType, merged);
-    return { config: merged, channelName: channel.name };
+    return parseChannelConfig(definition, dto.channelType, merged);
   };
 
   const $resolveRecipients = async (
@@ -209,7 +203,6 @@ export const alertChannelTestServiceFactory = ({
       resourceId: dto.resourceId
     });
 
-    let alertName: string | null = null;
     if (dto.alertId) {
       const alert = await alertDAL.findActiveById(dto.alertId);
       if (
@@ -221,7 +214,6 @@ export const alertChannelTestServiceFactory = ({
       ) {
         throw new NotFoundError({ message: `Alert with ID '${dto.alertId}' was not found in this scope` });
       }
-      alertName = alert.name;
     }
 
     await provider.assertPermission({
@@ -237,10 +229,10 @@ export const alertChannelTestServiceFactory = ({
       await provider.assertChannelTypesAllowed?.({ orgId: dto.actorOrgId, channelTypes: [dto.channelType] });
     }
 
-    const { config, channelName } = await $resolveConfig(dto, projectId);
+    const config = await $resolveConfig(dto, projectId);
     const resourceName = await getAlertResourceName(provider, dto.actorOrgId, dto.resourceId);
     const result = await $sendTest(dto, projectId, provider, config);
-    return { ...result, projectId, resourceName, alertName, channelName };
+    return { ...result, projectId, resourceName };
   };
 
   return { testChannel };

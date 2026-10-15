@@ -13,6 +13,7 @@ import {
   TSamlConfigs
 } from "@app/db/schemas";
 import { bootstrapAgentVaultProject } from "@app/ee/services/agent-vault-project/agent-vault-project-bootstrap";
+import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -33,6 +34,7 @@ import {
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
+import { bootstrapSecretScanningProject } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-bootstrap";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -148,6 +150,7 @@ type TOrgServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "invalidateCache">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -187,7 +190,8 @@ export const orgServiceFactory = ({
   certificatePolicyDAL,
   usageMeteringService,
   pamSessionDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  auditLogSettingsService
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -418,7 +422,7 @@ export const orgServiceFactory = ({
       });
     }
 
-    return orgDAL.transaction(async (tx) => {
+    const upgradedOrg = await orgDAL.transaction(async (tx) => {
       const org = await orgDAL.findById(actorOrgId, tx);
       if (org.shouldUseNewPrivilegeSystem) {
         throw new BadRequestError({
@@ -441,6 +445,12 @@ export const orgServiceFactory = ({
         tx
       );
     });
+
+    // Denials only get recorded on the new privilege system, so bust the cache or denials right
+    // after upgrading get missed. Never throws, since the upgrade has already committed.
+    await auditLogSettingsService.invalidateCache(actorOrgId);
+
+    return upgradedOrg;
   };
 
   /*
@@ -792,6 +802,19 @@ export const orgServiceFactory = ({
         tx
       );
 
+      // Orgs created from the admin console have no creator; their admins are invited afterwards, so the
+      // project is left to the lazy resolver, which makes every org admin a project admin.
+      if (userId) {
+        await bootstrapSecretScanningProject(
+          {
+            orgId: org.id,
+            adminUserIds: [userId]
+          },
+          { projectDAL, membershipDAL, membershipRoleDAL },
+          tx
+        );
+      }
+
       return org;
     };
 
@@ -861,19 +884,19 @@ export const orgServiceFactory = ({
       await licenseService.cancelOrgSubscription(orgId);
     }
 
+    // Outside the transaction: the cleanup runs its own queries per project, and inside it each
+    // concurrent delete would hold one pooled connection while waiting on a second.
+    const projects = await projectDAL.find({ orgId });
+    for await (const project of projects) {
+      await fnDeleteProjectSecretReminders(project.id, {
+        secretDAL,
+        reminderService,
+        projectBotService,
+        folderDAL
+      });
+    }
+
     const response = await orgDAL.transaction(async (tx) => {
-      const projects = await projectDAL.find({ orgId }, { tx });
-
-      for await (const project of projects) {
-        await fnDeleteProjectSecretReminders(project.id, {
-          secretDAL,
-          secretV2BridgeDAL,
-          reminderService,
-          projectBotService,
-          folderDAL
-        });
-      }
-
       const deletedOrg = await orgDAL.deleteById(orgId, tx);
 
       // Generate new tokens without the organization ID present

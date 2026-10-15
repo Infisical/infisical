@@ -1,0 +1,61 @@
+---
+title: "Findings"
+description: "Review the secrets Infisical finds in your repositories."
+---
+
+A finding is a secret that a scan found in one of your [data sources](/documentation/platform/secret-scanning/scan-repositories). To see the findings from every data source, go to **Secret Scanning** > **Findings**.
+
+![findings](/images/platform/secret-scanning/secret-scanning-findings.png)
+
+## What a finding contains
+
+To see the details of a finding, select its row:
+
+- **Description**: What the matching rule detects, such as a type of API key
+- **File**: The path of the file that contains the secret
+- **Commit**, **Author**, **Email**, and **Commit Message**: The commit that added the secret, and who made it
+- **Start Line**, **End Line**, **Start Column**, and **End Column**: Where the secret is in the file
+- **Link**: A link to the file at that commit, on GitHub, GitLab, or Bitbucket
+
+If a later scan finds the same secret in the same place, Infisical keeps the existing finding and its status instead of adding a new one.
+
+## Finding statuses
+
+Every new finding starts as **Unresolved**. After you review a finding, change its status to one of the following:
+
+- **Resolved**: You've dealt with the leak, for example by revoking the secret
+- **False Positive**: The value isn't a secret
+- **Ignore**: The value is a secret, but you've decided it's safe to leave, such as a test credential
+
+The status is only a record of your review, and doesn't change how Infisical scans. To stop a value from being reported in the first place, ignore it in the [scanning configuration](/documentation/platform/secret-scanning/configuration#ignore-one-line).
+
+## Change a finding's status
+
+<Steps>
+  <Step>
+    Go to **Secret Scanning** > **Findings**.
+  </Step>
+  <Step>
+    Select the finding's row, then select **Update Status**.
+
+    To change several findings at once, select the checkbox on each finding's row, then select **Update Status** below the table.
+  </Step>
+  <Step>
+    Select a **Status**. Optionally, enter a **Comment** that explains your decision.
+  </Step>
+  <Step>
+    Select **Update Status**.
+  </Step>
+</Steps>
+
+Your comment appears as **Remarks** in the finding's details, and when you hover over the finding's status.
+
+## Notifications about new findings
+
+When a scan finds secrets, Infisical sends an email and an in-app notification to every member with the **Admin** role in Secret Scanning. The notification links to the findings from that scan. If a scan fails, the same members get a notification with the error instead.
+
+If a scan of a new push finds secrets, Infisical also notifies the author of the commit if they're a member. If the push has commits from more than one author, Infisical notifies only one of them.
+
+<Note>
+  If you self-host Infisical, scan notifications need an [email service](/self-hosting/configuration/envars#email-service) configured. Without one, Infisical doesn't send the email or the in-app notification.
+</Note>

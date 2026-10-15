@@ -65,7 +65,7 @@ import {
   useProjectPermission,
   useUser
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getProjectBaseURL, hidesProjects } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
@@ -165,7 +165,7 @@ export const MemberRoleDetailsSection = ({
     <>
       <Card>
         <CardHeader>
-          <CardTitle>{isCertManager ? "Roles" : "Project Roles"}</CardTitle>
+          <CardTitle>{hidesProjects(currentProject?.type) ? "Roles" : "Project Roles"}</CardTitle>
           <CardDescription>Manage roles assigned to this user</CardDescription>
           {!isOwnProjectMembershipDetails && hasRoles && (
             <CardAction>
@@ -457,8 +457,9 @@ export const MemberRoleDetailsSection = ({
           <SheetHeader className="border-b">
             <SheetTitle>Roles</SheetTitle>
             <SheetDescription>
-              Select one or more of the pre-defined or custom roles to configure project
-              permissions.
+              {isCertManager
+                ? "Select one or more of the pre-defined or custom roles to configure Certificate Manager permissions."
+                : "Select one or more of the pre-defined or custom roles to configure project permissions."}
             </SheetDescription>
           </SheetHeader>
           <MemberMultiRoleModify

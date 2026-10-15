@@ -216,7 +216,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     envId: string;
     enforcementLevel: string;
     allowedSelfApprovals: boolean;
-    secretPath?: string | null | undefined;
+    secretPath: string;
     deletedAt?: Date | null | undefined;
     maxTimePeriod?: string | null;
   }>;

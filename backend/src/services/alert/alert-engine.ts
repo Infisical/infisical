@@ -301,7 +301,13 @@ export const alertEngineFactory = ({
 
   const runAlertForEvent = async (
     alert: TAlerts,
-    input: { eventId: string; eventType: string; targetIds: string[]; payload: Record<string, unknown> }
+    input: {
+      eventId: string;
+      eventType: string;
+      occurredAt: Date;
+      targetIds: string[];
+      payload: Record<string, unknown>;
+    }
   ): Promise<AlertDispatchOutcome> => {
     const provider = $getProvider(alert, "findEventTargets");
     if (!provider?.findEventTargets) return AlertDispatchOutcome.NoProvider;
@@ -311,7 +317,9 @@ export const alertEngineFactory = ({
       alertHistoryDAL.findDeliveredChannelIdsForEvent(alert.id, input.eventId)
     ]);
     const skip = new Set(alreadyDelivered);
-    const channels = enabledChannels.filter((channel) => !skip.has(channel.id));
+    const channels = enabledChannels.filter(
+      (channel) => !skip.has(channel.id) && new Date(channel.createdAt) <= new Date(input.occurredAt)
+    );
     if (channels.length === 0) return AlertDispatchOutcome.NoChannels;
 
     const resolved = await provider.findEventTargets({

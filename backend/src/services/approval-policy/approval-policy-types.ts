@@ -3,8 +3,10 @@ import { Knex } from "knex";
 import { TApprovalPolicies, TApprovalRequestGrants, TApprovalRequests } from "@app/db/schemas";
 import { Event } from "@app/ee/services/audit-log/audit-log-types";
 import { ResourcePermissionApprovalPolicyActions } from "@app/ee/services/permission/resource-permission";
+import { TSecretChangeRequestData } from "@app/ee/services/secret-change-global-request-bridge/secret-change-global-request-bridge-types";
 import { OrgServiceActor } from "@app/lib/types";
 import { TNotification } from "@app/lib/workflow-integrations/types";
+import { TEventInput } from "@app/services/event-outbox/event-outbox-types";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { TPostHogEvent } from "@app/services/telemetry/telemetry-types";
@@ -42,24 +44,43 @@ import {
   TPamAccessRequest,
   TPamAccessRequestData
 } from "./pam-access/pam-access-policy-types";
+import {
+  TSecretAccessPolicy,
+  TSecretAccessPolicyConditions,
+  TSecretAccessPolicyConstraints,
+  TSecretAccessPolicyInputs,
+  TSecretAccessRequest,
+  TSecretAccessRequestData
+} from "./secret-access/secret-access-policy-types";
 
 export type TApprovalActor = Pick<OrgServiceActor, "id" | "type" | "authMethod" | "orgId">;
 
 export type TApprovalSubjectActor = Pick<TApprovalActor, "id" | "type">;
 
-export type TApprovalPolicy = TPamAccessPolicy | TCertRequestPolicy | TCodeSigningPolicy;
-export type TApprovalPolicyInputs = TPamAccessPolicyInputs | TCertRequestPolicyInputs | TCodeSigningPolicyInputs;
+export type TApprovalPolicy = TPamAccessPolicy | TCertRequestPolicy | TCodeSigningPolicy | TSecretAccessPolicy;
+export type TApprovalPolicyInputs =
+  | TPamAccessPolicyInputs
+  | TCertRequestPolicyInputs
+  | TCodeSigningPolicyInputs
+  | TSecretAccessPolicyInputs;
 export type TApprovalPolicyConditions =
   | TPamAccessPolicyConditions
   | TCertRequestPolicyConditions
-  | TCodeSigningPolicyConditions;
+  | TCodeSigningPolicyConditions
+  | TSecretAccessPolicyConditions;
 export type TApprovalPolicyConstraints =
   | TPamAccessPolicyConstraints
   | TCertRequestPolicyConstraints
-  | TCodeSigningPolicyConstraints;
+  | TCodeSigningPolicyConstraints
+  | TSecretAccessPolicyConstraints;
 
-export type TApprovalRequest = TPamAccessRequest | TCertRequestRequest | TCodeSigningRequest;
-export type TApprovalRequestData = TPamAccessRequestData | TCertRequestRequestData | TCodeSigningRequestData;
+export type TApprovalRequest = TPamAccessRequest | TCertRequestRequest | TCodeSigningRequest | TSecretAccessRequest;
+export type TApprovalRequestData =
+  | TPamAccessRequestData
+  | TCertRequestRequestData
+  | TCodeSigningRequestData
+  | TSecretChangeRequestData
+  | TSecretAccessRequestData;
 
 // Bypass-affordance fields the service stamps onto every request response.
 export type TBypassAffordances = {
@@ -125,7 +146,8 @@ export interface TUpdatePolicyDTO {
 export interface TCreateRequestDTO {
   scope: ApprovalPolicyScope;
   scopeId: string;
-  requestData: TApprovalRequest["requestData"]["requestData"];
+  // Secret access and secret change requests are created in their bridges, not through this DTO.
+  requestData: Exclude<TApprovalRequestData, TSecretAccessRequestData | TSecretChangeRequestData>;
   justification?: TApprovalRequest["justification"];
   requestDuration?: string | null;
   // Set by a caller that decides the request in the same breath (break-glass), so approvers are not
@@ -215,6 +237,8 @@ export type TApprovalResource<
     comment?: string;
     bypassReason?: string;
   }) => Promise<TApprovalNotification | null>;
+  // The domain event a lifecycle event owes; called inside the transaction, so it must not touch the database.
+  buildEvent?: (args: { event: ApprovalNotificationEvent; request: TApprovalRequests }) => TEventInput | null;
   // Narrows the notified approvers to those still eligible, for a type where an approver row can
   // outlive the membership behind it.
   filterActiveApprovers?: (

@@ -47,6 +47,15 @@ import { netScalerPkiSyncFactory } from "./netscaler/netscaler-pki-sync-fns";
 import { NUTANIX_PRISM_CENTRAL_PKI_SYNC_LIST_OPTION } from "./nutanix-prism-central/nutanix-prism-central-pki-sync-constants";
 import { nutanixPrismCentralPkiSyncFactory } from "./nutanix-prism-central/nutanix-prism-central-pki-sync-fns";
 import {
+  PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATIONS,
+  PALO_ALTO_NETWORKS_PKI_SYNC_LIST_OPTION,
+  PALO_ALTO_NETWORKS_SSL_TLS_PROFILE_PKI_SYNC_LIST_OPTION
+} from "./palo-alto-networks/palo-alto-networks-pki-sync-constants";
+import {
+  assertPaloAltoNetworksUnlinkKeepsProfileCertificate,
+  paloAltoNetworksPkiSyncFactory
+} from "./palo-alto-networks/palo-alto-networks-pki-sync-fns";
+import {
   buildManagedCertificateNameRegexSource,
   certificateNameSchemaAllowsMultipleCertificates,
   SHORT_UUID_NAME_REGEX_FRAGMENT,
@@ -54,6 +63,7 @@ import {
 } from "./pki-sync-certificate-name-fns";
 import { PkiSync } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
+import { isExportFormatBlockedByFips, PkiSyncExportFormat } from "./pki-sync-export-fns";
 import { hasAnyPkiSyncFilter, PKI_SYNC_FILTER_KINDS, TPkiSyncFilterKind } from "./pki-sync-filter-fns";
 import { getHealthCheckCommand } from "./pki-sync-health-check-command-fns";
 import {
@@ -68,6 +78,7 @@ import {
   TCertificateMap,
   THealthCheckTarget,
   TPkiSyncFilters,
+  TPkiSyncRemovalOptions,
   TPkiSyncSyncResult,
   TPkiSyncWithCredentials
 } from "./pki-sync-types";
@@ -83,6 +94,8 @@ const PKI_SYNC_LIST_OPTIONS = {
   [PkiSync.GcpCertificateManager]: GCP_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION,
   [PkiSync.CloudflareCustomCertificate]: CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_LIST_OPTION,
   [PkiSync.NetScaler]: NETSCALER_PKI_SYNC_LIST_OPTION,
+  [PkiSync.PaloAltoNetworks]: PALO_ALTO_NETWORKS_PKI_SYNC_LIST_OPTION,
+  [PkiSync.PaloAltoNetworksSslTlsProfile]: PALO_ALTO_NETWORKS_SSL_TLS_PROFILE_PKI_SYNC_LIST_OPTION,
   [PkiSync.F5BigIp]: F5_BIG_IP_PKI_SYNC_LIST_OPTION,
   [PkiSync.KempLoadMaster]: KEMP_LOADMASTER_PKI_SYNC_LIST_OPTION,
   [PkiSync.LinuxServer]: LINUX_SERVER_PKI_SYNC_LIST_OPTION,
@@ -105,16 +118,41 @@ export const assertPkiSyncLicense = async (
   }
 };
 
+const SERVER_PKI_SYNC_DESTINATIONS = new Set<PkiSync>([PkiSync.LinuxServer, PkiSync.WindowsServer]);
+
 export const listPkiSyncOptions = () => {
+  const unsupportedExportFormats = Object.values(PkiSyncExportFormat).filter(isExportFormatBlockedByFips);
   return Object.values(PKI_SYNC_LIST_OPTIONS)
     .map((option) => {
       const additionalConnections = getPkiSyncConnectionApps(option.destination).filter(
         (app) => app !== option.connection
       );
-      return additionalConnections.length ? { ...option, additionalConnections } : option;
+      return {
+        ...option,
+        ...(additionalConnections.length ? { additionalConnections } : {}),
+        ...(SERVER_PKI_SYNC_DESTINATIONS.has(option.destination) && unsupportedExportFormats.length
+          ? { unsupportedExportFormats }
+          : {})
+      };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 };
+
+export const isPkiSyncSerialisedPerConnection = (destination: PkiSync) =>
+  PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATIONS.includes(destination);
+
+type TPkiSyncUnlinkAssertion = (args: {
+  pkiSync: { syncOptions: unknown; destinationConfig: unknown };
+  remainingCertificateCount: number;
+  unlinkedAtDestinationCount: number;
+  removalOptions?: TPkiSyncRemovalOptions;
+}) => void;
+
+const PKI_SYNC_UNLINK_ASSERTIONS: Partial<Record<PkiSync, TPkiSyncUnlinkAssertion>> = {
+  [PkiSync.PaloAltoNetworksSslTlsProfile]: assertPaloAltoNetworksUnlinkKeepsProfileCertificate
+};
+
+export const getPkiSyncUnlinkAssertion = (destination: PkiSync) => PKI_SYNC_UNLINK_ASSERTIONS[destination];
 
 export const getPkiSyncProviderCapabilities = (destination: PkiSync) => {
   const providerOption = PKI_SYNC_LIST_OPTIONS[destination];
@@ -237,6 +275,10 @@ export const PkiSyncFns = {
           "NetScaler does not support importing certificates into Infisical (private keys cannot be extracted)"
         );
       }
+      case PkiSync.PaloAltoNetworks:
+      case PkiSync.PaloAltoNetworksSslTlsProfile: {
+        throw new Error("Palo Alto Networks does not support importing certificates into Infisical");
+      }
       case PkiSync.F5BigIp: {
         throw new Error("F5 BIG-IP does not support importing certificates into Infisical");
       }
@@ -345,6 +387,16 @@ export const PkiSyncFns = {
           gatewayPoolService: dependencies.gatewayPoolService
         });
         return netScalerPkiSync.syncCertificates(pkiSync, certificateMap);
+      }
+      case PkiSync.PaloAltoNetworks:
+      case PkiSync.PaloAltoNetworksSslTlsProfile: {
+        const paloAltoNetworksPkiSync = paloAltoNetworksPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
+        });
+        return paloAltoNetworksPkiSync.syncCertificates(pkiSync, certificateMap);
       }
       case PkiSync.F5BigIp: {
         checkPkiSyncDestination(pkiSync, PkiSync.F5BigIp as PkiSync);
@@ -461,12 +513,25 @@ export const PkiSyncFns = {
     pkiSync: THealthCheckTarget,
     dependencies: {
       certificateSyncDAL: TCertificateSyncDALFactory;
-      certificateDAL: Pick<TCertificateDALFactory, "findActiveCertificatesByIds">;
+      certificateDAL: Pick<TCertificateDALFactory, "findActiveCertificatesByIds" | "find">;
       gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
       gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
       keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
     }
   ): Promise<void> => {
+    if (
+      pkiSync.destination === PkiSync.PaloAltoNetworks ||
+      pkiSync.destination === PkiSync.PaloAltoNetworksSslTlsProfile
+    ) {
+      await paloAltoNetworksPkiSyncFactory({
+        certificateDAL: dependencies.certificateDAL,
+        certificateSyncDAL: dependencies.certificateSyncDAL,
+        gatewayV2Service: dependencies.gatewayV2Service,
+        gatewayPoolService: dependencies.gatewayPoolService
+      }).testReachability(pkiSync as unknown as TPkiSyncWithCredentials);
+      return;
+    }
+
     if (pkiSync.destination === PkiSync.LinuxServer) {
       const linuxServerPkiSync = linuxServerPkiSyncFactory({
         certificateSyncDAL: dependencies.certificateSyncDAL,
@@ -506,6 +571,7 @@ export const PkiSyncFns = {
       certificateSyncDAL: TCertificateSyncDALFactory;
       certificateDAL: TCertificateDALFactory;
       certificateMap: TCertificateMap;
+      removalOptions?: TPkiSyncRemovalOptions;
       gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
       gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
       keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
@@ -600,6 +666,20 @@ export const PkiSyncFns = {
         await netScalerPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,
           certificateMap: dependencies.certificateMap
+        });
+        break;
+      }
+      case PkiSync.PaloAltoNetworks:
+      case PkiSync.PaloAltoNetworksSslTlsProfile: {
+        const paloAltoNetworksPkiSync = paloAltoNetworksPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
+        });
+        await paloAltoNetworksPkiSync.removeCertificates(pkiSync, certificateNames, {
+          certificateMap: dependencies.certificateMap,
+          removalOptions: dependencies.removalOptions
         });
         break;
       }

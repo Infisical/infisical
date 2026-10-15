@@ -269,6 +269,13 @@ export const appConnections = [
     category: "Networking & DNS",
   },
   {
+    name: "UltraDNS",
+    slug: "ultradns",
+    path: "/integrations/app-connections/ultradns",
+    description: "Learn how to connect Infisical to UltraDNS for ACME DNS validation.",
+    category: "Networking & DNS",
+  },
+  {
     name: "Windmill",
     slug: "windmill",
     path: "/integrations/app-connections/windmill",
@@ -585,11 +592,27 @@ export const appConnections = [
     category: "Networking & DNS",
   },
   {
+    name: "HPE iLO",
+    slug: "hpe-ilo",
+    path: "/integrations/app-connections/hpe-ilo",
+    description:
+      "Learn how to connect HPE iLO to manage iLO local accounts with Infisical.",
+    category: "Networking & DNS",
+  },
+  {
     name: "NetScaler",
     slug: "netscaler",
     path: "/integrations/app-connections/netscaler",
     description:
       "Learn how to connect NetScaler to deploy and manage certificates with Infisical.",
+    category: "Networking & DNS",
+  },
+  {
+    name: "Palo Alto Networks",
+    slug: "palo-alto-networks",
+    path: "/integrations/app-connections/palo-alto-networks",
+    description:
+      "Learn how to connect Palo Alto Networks firewalls and Panorama to deploy certificates with Infisical.",
     category: "Networking & DNS",
   },
   {
@@ -659,5 +682,13 @@ export const appConnections = [
     description:
       "Learn how to connect Spacelift to pull secrets from Infisical.",
     category: "DevOps Tools",
+  },
+  {
+    name: "Keeper",
+    slug: "keeper",
+    path: "/integrations/app-connections/keeper",
+    description:
+      "Learn how to connect Keeper Commander Service Mode to sync secrets from Infisical.",
+    category: "Security",
   },
 ];

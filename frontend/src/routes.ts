@@ -263,7 +263,7 @@ const secretManagerIntegrationsRedirect = route("/integrations", [
   )
 ]);
 
-const certManagerRoutes = route("/organizations/$orgId/projects/cert-manager/$projectId", [
+const certManagerRoutes = route("/organizations/$orgId/cert-manager", [
   layout("cert-manager-layout", "cert-manager/layout.tsx", [
     index("cert-manager/DashboardPage/route-index.tsx"),
     route("/overview", "cert-manager/DashboardPage/route.tsx"),
@@ -338,8 +338,9 @@ const kmsRoutes = route("/organizations/$orgId/projects/kms/$projectId", [
   ])
 ]);
 
-const secretScanningRoutes = route("/organizations/$orgId/projects/secret-scanning/$projectId", [
+const secretScanningRoutes = route("/organizations/$orgId/secret-scanning", [
   layout("secret-scanning-layout", "secret-scanning/layout.tsx", [
+    index("redirects/secret-scanning-index-redirect.tsx"),
     route("/data-sources", [
       index("secret-scanning/SecretScanningDataSourcesPage/route.tsx"),
       route("/$type/$dataSourceId", "secret-scanning/SecretScanningDataSourceByIdPage/route.tsx")
@@ -418,6 +419,13 @@ const organizationRoutes = route("/organizations/$orgId", [
     route(
       "/project-templates/$templateId",
       "organization/ProductSettingsPage/SecretsManagement/project-templates/route.tsx"
+    )
+  ]),
+  route("/projects/product-settings/$type", [
+    index("organization/ProductSettingsPage/ProjectTemplates/route.tsx"),
+    route(
+      "/project-templates/$templateId",
+      "organization/ProductSettingsPage/ProjectTemplates/project-templates/route.tsx"
     )
   ]),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
@@ -514,8 +522,16 @@ export const routes = rootRoute("root.tsx", [
         secretManagerRoutes,
         secretManagerIntegrationsRedirect,
         certManagerRoutes,
+        route(
+          "/organizations/$orgId/projects/cert-manager/$projectId/$",
+          "redirects/cert-manager-project-url-redirect.tsx"
+        ),
         kmsRoutes,
         secretScanningRoutes,
+        route(
+          "/organizations/$orgId/projects/secret-scanning/$projectId/$",
+          "redirects/secret-scanning-project-url-redirect.tsx"
+        ),
         pamRoutes,
         agentVaultRoutes
       ])

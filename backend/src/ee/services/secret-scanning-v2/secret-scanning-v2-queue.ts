@@ -930,7 +930,6 @@ export const secretScanningV2QueueServiceFactory = ({
             : {
                 dataSourceName: dataSource.name,
                 resourceName,
-                projectName: project.name,
                 timestamp,
                 errorMessage: payload.errorMessage,
                 url: encodeURI(
@@ -1046,7 +1045,7 @@ export const secretScanningV2QueueServiceFactory = ({
     async (job) => {
       await handleDiffScan(job as Parameters<typeof handleDiffScan>[0]);
     },
-    { concurrency: 5 }
+    { concurrency: 2 }
   );
 
   queueService.start(QueueName.SecretScanningV2, async (job) => {

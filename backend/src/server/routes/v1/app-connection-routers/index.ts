@@ -43,7 +43,9 @@ import { registerGoDaddyConnectionRouter } from "./godaddy-connection-router";
 import { registerHasuraCloudConnectionRouter } from "./hasura-cloud-connection-router";
 import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
 import { registerHerokuConnectionRouter } from "./heroku-connection-router";
+import { registerHpeIloConnectionRouter } from "./hpe-ilo-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
+import { registerKeeperConnectionRouter } from "./keeper-connection-router";
 import { registerKempLoadMasterConnectionRouter } from "./kemp-loadmaster-connection-router";
 import { registerLaravelForgeConnectionRouter } from "./laravel-forge-connection-router";
 import { registerLdapConnectionRouter } from "./ldap-connection-router";
@@ -62,6 +64,7 @@ import { registerOnaConnectionRouter } from "./ona-connection-router";
 import { registerOpenRouterConnectionRouter } from "./open-router-connection-router";
 import { registerOpenAIConnectionRouter } from "./openai-connection-router";
 import { registerOvhConnectionRouter } from "./ovh-connection-router";
+import { registerPaloAltoNetworksConnectionRouter } from "./palo-alto-networks-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerPowerDnsConnectionRouter } from "./powerdns-connection-router";
 import { registerQoveryConnectionRouter } from "./qovery-connection-router";
@@ -80,6 +83,7 @@ import { registerTeamCityConnectionRouter } from "./teamcity-connection-router";
 import { registerTerraformCloudConnectionRouter } from "./terraform-cloud-router";
 import { registerTravisCIConnectionRouter } from "./travis-ci-connection-router";
 import { registerTriggerDevConnectionRouter } from "./trigger-dev-connection-router";
+import { registerUltraDNSConnectionRouter } from "./ultradns-connection-router";
 import { registerVenafiConnectionRouter } from "./venafi-connection-router";
 import { registerVenafiTppConnectionRouter } from "./venafi-tpp-connection-router";
 import { registerVercelConnectionRouter } from "./vercel-connection-router";
@@ -127,6 +131,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.GitLab]: registerGitLabConnectionRouter,
     [AppConnection.Cloudflare]: registerCloudflareConnectionRouter,
     [AppConnection.DNSMadeEasy]: registerDNSMadeEasyConnectionRouter,
+    [AppConnection.UltraDNS]: registerUltraDNSConnectionRouter,
     [AppConnection.Bitbucket]: registerBitbucketConnectionRouter,
     [AppConnection.Zabbix]: registerZabbixConnectionRouter,
     [AppConnection.Railway]: registerRailwayConnectionRouter,
@@ -155,6 +160,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.ExternalInfisical]: registerExternalInfisicalConnectionRouter,
     [AppConnection.Doppler]: registerDopplerConnectionRouter,
     [AppConnection.NetScaler]: registerNetScalerConnectionRouter,
+    [AppConnection.PaloAltoNetworks]: registerPaloAltoNetworksConnectionRouter,
     [AppConnection.KempLoadMaster]: registerKempLoadMasterConnectionRouter,
     [AppConnection.Anthropic]: registerAnthropicConnectionRouter,
     [AppConnection.OVH]: registerOvhConnectionRouter,
@@ -176,5 +182,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.NutanixPrismCentral]: registerNutanixPrismCentralConnectionRouter,
     [AppConnection.Spacelift]: registerSpaceliftConnectionRouter,
     [AppConnection.Daytona]: registerDaytonaConnectionRouter,
-    [AppConnection.Stripe]: registerStripeConnectionRouter
+    [AppConnection.Stripe]: registerStripeConnectionRouter,
+    [AppConnection.Keeper]: registerKeeperConnectionRouter,
+    [AppConnection.HpeIloRedFish]: registerHpeIloConnectionRouter
   };

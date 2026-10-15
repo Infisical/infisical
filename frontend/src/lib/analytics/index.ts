@@ -33,6 +33,7 @@ export const analytics = {
 
 export { AnalyticsEvent };
 export type {
+  BillingCancellationAction,
   FolderAccessGrantSheetSource,
   SecretsAddResourceAction,
   SecretsAddResourceMenuLevel,

@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { ProjectLimitUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
@@ -77,6 +77,7 @@ import {
   OrgPermissionProjectActions,
   OrgPermissionSecretsManagementInsightsActions
 } from "@app/context/OrgPermissionContext/types";
+import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
 import {
   getProjectHomePage,
   getProjectLucideIcon,
@@ -84,6 +85,7 @@ import {
   PROJECT_TILE_STYLE,
   urlSlugToProjectType
 } from "@app/helpers/project";
+import { setSecretScanningActiveProjectCookie } from "@app/helpers/secretScanningActiveProject";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -106,6 +108,7 @@ import {
   ProjectVersion,
   SearchProjectSortBy
 } from "@app/hooks/api/projects/types";
+import { useGetSecretScanningProjectId } from "@app/hooks/api/secretScanningV2";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import {
@@ -114,6 +117,10 @@ import {
 } from "@app/pages/organization/ProjectsPage/components/ProjectListToggle";
 
 import { ProjectSearchInput } from "./ProjectSearchInput";
+
+// Single-project products: their one project always exists by the time this list renders, so creating
+// another is refused.
+const PROJECT_TYPES_BLOCKED_CREATION: ProjectType[] = [ProjectType.SecretScanning];
 
 enum ProjectsViewMode {
   GRID = "grid",
@@ -243,15 +250,39 @@ export const ProjectTypePage = () => {
   useEffect(() => {
     if (projectType === ProjectType.CertificateManager) {
       if (certManagerInstance?.activeProjectId) {
+        setCertManagerActiveProjectCookie(orgId, certManagerInstance.activeProjectId);
         navigate({
-          to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
-          params: { orgId, projectId: certManagerInstance.activeProjectId }
+          to: "/organizations/$orgId/cert-manager/overview",
+          params: { orgId }
         });
       } else if (certManagerInstance && !certManagerInstance.activeProjectId) {
         setIsCertManagerSetupOpen(true);
       }
     }
   }, [projectType, certManagerInstance, orgId, navigate]);
+
+  // Resolving also creates the project for older orgs that never opened Secret Scanning. Non-members land
+  // on the product's access page, which offers joining or requesting access.
+  const { data: secretScanningProjectId, isError: isSecretScanningProjectError } =
+    useGetSecretScanningProjectId(orgId, {
+      enabled: projectType === ProjectType.SecretScanning
+    });
+
+  useEffect(() => {
+    if (projectType !== ProjectType.SecretScanning) return;
+
+    if (secretScanningProjectId) {
+      setSecretScanningActiveProjectCookie(orgId, secretScanningProjectId);
+      navigate({
+        to: "/organizations/$orgId/secret-scanning/data-sources",
+        params: { orgId }
+      });
+    } else if (isSecretScanningProjectError) {
+      // Failed queries are not reported globally, so without this the page would stay blank.
+      createNotification({ type: "error", text: "Couldn't open Secret Scanning. Try again." });
+      navigate({ to: "/organizations/$orgId/projects", params: { orgId } });
+    }
+  }, [projectType, secretScanningProjectId, isSecretScanningProjectError, orgId, navigate]);
 
   useEffect(() => {
     if (projectType === ProjectType.PAM) {
@@ -290,7 +321,11 @@ export const ProjectTypePage = () => {
     );
   }
 
-  if (projectType === ProjectType.PAM || projectType === ProjectType.AgentVault) {
+  if (
+    projectType === ProjectType.PAM ||
+    projectType === ProjectType.AgentVault ||
+    projectType === ProjectType.SecretScanning
+  ) {
     return null;
   }
 
@@ -382,11 +417,11 @@ const ProjectTypeContent = ({
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
         projectType={projectType}
       />
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.project-type"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You have reached the maximum number of projects allowed on your current plan. Upgrade to Infisical Pro plan to add more projects."
+        intent={ProjectLimitUpgradeIntent}
       />
     </div>
   );
@@ -1259,29 +1294,31 @@ const Toolbar = ({
             <ListIcon />
           </IconButton>
         </ButtonGroup>
-        <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
-          {(isOldProjectV1Allowed) => (
-            <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
-              {(isAllowed) => (
-                <Button
-                  isDisabled={!isAllowed && !isOldProjectV1Allowed}
-                  size="sm"
-                  variant="project"
-                  onClick={() => {
-                    if (isAddingProjectsAllowed) {
-                      onAddNewProject();
-                    } else {
-                      onUpgradePlan();
-                    }
-                  }}
-                >
-                  <PlusIcon />
-                  New Project
-                </Button>
-              )}
-            </OrgPermissionCan>
-          )}
-        </OrgPermissionCan>
+        {!PROJECT_TYPES_BLOCKED_CREATION.includes(projectType) && (
+          <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Workspace}>
+            {(isOldProjectV1Allowed) => (
+              <OrgPermissionCan I={OrgPermissionActions.Create} an={OrgPermissionSubjects.Project}>
+                {(isAllowed) => (
+                  <Button
+                    isDisabled={!isAllowed && !isOldProjectV1Allowed}
+                    size="sm"
+                    variant="project"
+                    onClick={() => {
+                      if (isAddingProjectsAllowed) {
+                        onAddNewProject();
+                      } else {
+                        onUpgradePlan();
+                      }
+                    }}
+                  >
+                    <PlusIcon />
+                    New Project
+                  </Button>
+                )}
+              </OrgPermissionCan>
+            )}
+          </OrgPermissionCan>
+        )}
       </div>
     </div>
   );
@@ -1301,7 +1338,6 @@ const EmptyState = ({
   isAddingProjectsAllowed: boolean;
 }) => {
   const typeTitle = getProjectTitle(projectType);
-
   return (
     <Empty className="border">
       <EmptyHeader>

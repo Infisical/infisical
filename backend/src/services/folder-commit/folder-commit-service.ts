@@ -998,7 +998,7 @@ export const folderCommitServiceFactory = ({
       await createFolderCheckpoint({ folderId: data.folderId, folderCommitId: newCommit.id, tx });
       if (folderCommitQueueService) {
         if (!folder.parentId) {
-          const previousTreeCommit = await folderTreeCheckpointDAL.findLatestByEnvId(folder.envId);
+          const previousTreeCommit = await folderTreeCheckpointDAL.findLatestByEnvId(folder.envId, tx);
           if (!previousTreeCommit) {
             await folderCommitQueueService.createFolderTreeCheckpoint(folder.envId, newCommit.id, tx);
           }

@@ -3,7 +3,10 @@ import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { MoreHorizontalIcon, PlusIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  CertificateDiscoveryUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -95,15 +98,15 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "createJob",
     "editJob",
-    "deleteJob",
-    "upgradePlan"
+    "deleteJob"
   ] as const);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const handleCreateJob = () => {
     if (!subscription.pkiDiscovery) {
-      handlePopUpOpen("upgradePlan", {
-        isEnterpriseFeature: true,
-        text: "Certificate discovery is available on Infisical's Enterprise plan."
+      openUpgradeGate({
+        intent: CertificateDiscoveryUpgradeIntent,
+        paywallKey: "cert-manager.discovery-jobs"
       });
       return;
     }
@@ -215,10 +218,9 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
                     className="cursor-pointer"
                     onClick={() =>
                       navigate({
-                        to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery/$discoveryId",
+                        to: "/organizations/$orgId/cert-manager/discovery/$discoveryId",
                         params: {
                           orgId: currentOrg.id,
-                          projectId,
                           discoveryId: discovery.id
                         }
                       })
@@ -353,12 +355,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
         discoveryName={(popUp.deleteJob.data as TPkiDiscovery)?.name || ""}
       />
 
-      <UpgradePlanModal
-        paywallKey="cert-manager.discovery-jobs"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { text: string })?.text}
-      />
+      {upgradeGate}
     </Card>
   );
 };

@@ -200,7 +200,10 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
       permissions: formRolePermission2API(permissionsForm)
     });
     reset({ ...updatedRole, permissions: rolePermission2Form(updatedRole.permissions) });
-    createNotification({ type: "success", text: `Project role "${updatedRole.name}" updated` });
+    createNotification({
+      type: "success",
+      text: `${currentProject.type === ProjectType.CertificateManager ? "Role" : "Project role"} "${updatedRole.name}" updated`
+    });
   };
 
   // Expand accordion items that have validation errors

@@ -87,6 +87,13 @@ import {
   TFireworksApiKeyRotationWithConnection
 } from "./fireworks-api-key";
 import {
+  TGcpServiceAccountKeyRotation,
+  TGcpServiceAccountKeyRotationGeneratedCredentials,
+  TGcpServiceAccountKeyRotationInput,
+  TGcpServiceAccountKeyRotationListItem,
+  TGcpServiceAccountKeyRotationWithConnection
+} from "./gcp-service-account-key";
+import {
   THpIloRotation,
   THpIloRotationGeneratedCredentials,
   THpIloRotationInput,
@@ -239,7 +246,8 @@ export type TSecretRotationV2 =
   | TSnowflakeUserKeyPairRotation
   | TCloudflareApiTokenRotation
   | TCloudflareR2AccessKeyRotation
-  | TStripeApiKeyRotation;
+  | TStripeApiKeyRotation
+  | TGcpServiceAccountKeyRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -270,7 +278,8 @@ export type TSecretRotationV2WithConnection =
   | TSnowflakeUserKeyPairRotationWithConnection
   | TCloudflareApiTokenRotationWithConnection
   | TCloudflareR2AccessKeyRotationWithConnection
-  | TStripeApiKeyRotationWithConnection;
+  | TStripeApiKeyRotationWithConnection
+  | TGcpServiceAccountKeyRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -297,7 +306,8 @@ export type TSecretRotationV2GeneratedCredentials =
   | TSnowflakeUserKeyPairRotationGeneratedCredentials
   | TCloudflareApiTokenRotationGeneratedCredentials
   | TCloudflareR2AccessKeyRotationGeneratedCredentials
-  | TStripeApiKeyRotationGeneratedCredentials;
+  | TStripeApiKeyRotationGeneratedCredentials
+  | TGcpServiceAccountKeyRotationGeneratedCredentials;
 
 export type TSecretRotationV2Input =
   | TPostgresCredentialsRotationInput
@@ -328,7 +338,8 @@ export type TSecretRotationV2Input =
   | TSnowflakeUserKeyPairRotationInput
   | TCloudflareApiTokenRotationInput
   | TCloudflareR2AccessKeyRotationInput
-  | TStripeApiKeyRotationInput;
+  | TStripeApiKeyRotationInput
+  | TGcpServiceAccountKeyRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -359,7 +370,8 @@ export type TSecretRotationV2ListItem =
   | TSnowflakeUserKeyPairRotationListItem
   | TCloudflareApiTokenRotationListItem
   | TCloudflareR2AccessKeyRotationListItem
-  | TStripeApiKeyRotationListItem;
+  | TStripeApiKeyRotationListItem
+  | TGcpServiceAccountKeyRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters =
   | TLdapPasswordRotationInput["temporaryParameters"]

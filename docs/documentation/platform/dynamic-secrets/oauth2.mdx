@@ -1,0 +1,163 @@
+---
+title: "OAuth 2.0"
+description: "Learn how to issue short-lived OAuth 2.0 access tokens from any authorization server that supports the client credentials grant."
+---
+
+The OAuth 2.0 dynamic secret issues an access token from your authorization server each time someone creates a lease. Use it when an application needs a token for an API protected by Okta, Keycloak, Auth0, Salesforce, or any other standards-compliant authorization server, and you don't want to share the client secret itself.
+
+Infisical requests each token with the [client credentials grant](https://datatracker.ietf.org/doc/html/rfc6749#section-4.4) and revokes the token through your authorization server's [token revocation endpoint](https://datatracker.ietf.org/doc/html/rfc7009) when the lease ends. To learn how leases work across providers, see [Dynamic secrets](/documentation/platform/dynamic-secrets/overview).
+
+## Prerequisites
+
+- An authorization server that supports the client credentials grant and lets clients revoke their own access tokens through an [RFC 7009](https://datatracker.ietf.org/doc/html/rfc7009) revocation endpoint
+- A client registered on that authorization server that's allowed to use the client credentials grant, and its client ID and client secret
+- The token endpoint URL and revocation endpoint URL of the authorization server, both using `https`
+- A [role](/documentation/platform/access-controls/role-based-access-controls) in the Infisical project that lets you create dynamic secrets
+
+
+## How token lifetime works
+
+Your authorization server decides how long each access token is valid, not Infisical. If a lease lasted longer than its token, the token would stop working before the lease ended, so Infisical checks that each lease ends before its token expires:
+
+- When you save the dynamic secret, Infisical requests a test token, checks the **Default TTL** and **Max TTL** against the test token's lifetime, and then revokes the test token
+- When you create a lease, Infisical checks the lease TTL against the lifetime of the token it just issued
+
+Infisical reads the lifetime from the `expires_in` field of the token response. If the response has no `expires_in` and the token is a JWT, Infisical reads the token's `exp` claim instead. If neither is present, Infisical can't tell how long the token lasts and skips the check.
+
+## Step 1: Create the dynamic secret
+
+<Steps>
+  <Step>
+    In your project, go to the environment and folder where you want the dynamic secret, then select **Add New** > **Add Dynamic Secret**.
+  </Step>
+  <Step>
+    Select **OAuth 2.0**.
+  </Step>
+  <Step>
+    Fill in the form:
+
+    <ParamField path="Secret Name" type="string" required>
+      The name you use to refer to the dynamic secret.
+    </ParamField>
+
+    <ParamField path="Default TTL" type="string" required>
+      How long a lease lasts if the person creating it doesn't choose a TTL (for example, `30m`). It must be shorter than the lifetime of the tokens your authorization server issues.
+    </ParamField>
+
+    <ParamField path="Max TTL" type="string">
+      The longest TTL anyone can request for a lease (for example, `1h`). It must be shorter than the lifetime of the tokens your authorization server issues.
+    </ParamField>
+
+    <ParamField path="Token URL" type="string" required>
+      The token endpoint of your authorization server (for example, `https://auth.example.com/oauth2/token`).
+    </ParamField>
+
+    <ParamField path="Revocation URL" type="string" required>
+      The token revocation endpoint of your authorization server (for example, `https://auth.example.com/oauth2/revoke`).
+    </ParamField>
+
+    <ParamField path="Client Authentication" type="string" required default="HTTP Basic Header">
+      How Infisical sends the client ID and client secret to the token and revocation endpoints. Pick the method your authorization server lists in `token_endpoint_auth_methods_supported`, or the one you chose when you registered the client:
+
+      - **HTTP Basic Header**: sends them in an `Authorization: Basic` header
+      - **Request Body**: sends them as the `client_id` and `client_secret` form parameters
+    </ParamField>
+
+    <ParamField path="Client ID" type="string" required>
+      The ID of the client that requests tokens.
+    </ParamField>
+
+    <ParamField path="Client Secret" type="string" required>
+      The secret of the client that requests tokens. When you edit the dynamic secret, leave this blank to keep the current secret.
+    </ParamField>
+
+    <ParamField path="Scope" type="string">
+      The scopes to request, separated by spaces (for example, `read:orders write:orders`). If you leave this blank, the authorization server grants the client's default scopes.
+    </ParamField>
+
+    <ParamField path="Extra Parameters" type="list">
+      Additional parameters to send with each token request, such as `audience` for Auth0 or `resource` for servers that support [resource indicators](https://datatracker.ietf.org/doc/html/rfc8707). Select **Add Parameter** and enter a **Name** and **Value** for each one. You can add up to 20. Infisical sets `grant_type`, `scope`, and the client credentials itself, so you can't add those.
+    </ParamField>
+  </Step>
+  <Step>
+    Select **Submit**.
+
+    Before Infisical saves the dynamic secret, it requests a test token, checks your TTLs against the token's lifetime, and revokes the test token. If any of those steps fails, Infisical shows the error from your authorization server and doesn't save the dynamic secret.
+  </Step>
+</Steps>
+
+## Step 2: Create a lease
+
+<Steps>
+  <Step>
+    In the row for the dynamic secret, select **Generate Lease**.
+  </Step>
+  <Step>
+    Enter a **Default TTL** for the lease, then select **Provision Lease**.
+  </Step>
+  <Step>
+    Copy the values Infisical shows:
+
+    - `ACCESS_TOKEN`: the access token
+    - `TOKEN_TYPE`: the token type, usually `Bearer` (only if the authorization server returns one)
+    - `EXPIRES_AT`: when the token expires, in ISO 8601 format (only if Infisical could read the lifetime)
+    - `SCOPE`: the scopes the authorization server granted (only if the authorization server returns them)
+
+    <Warning>
+      Infisical shows the access token only once. Copy it before you close the dialog.
+    </Warning>
+  </Step>
+</Steps>
+
+## Revoke a lease
+
+Select the dynamic secret to see its leases, then select **Revoke lease** next to a lease to revoke its token before the lease expires. When a lease expires, Infisical revokes its token automatically.
+
+OAuth 2.0 leases can't be renewed, because an authorization server can't extend a token it already issued. To keep access, create a new lease before the current one expires.
+
+If the revocation endpoint returns an error, Infisical marks the lease as failed and retries later. The error appears next to the lease.
+
+## Configuration examples
+
+These examples show the values to enter in [Step 1](#step-1-create-the-dynamic-secret) for two common authorization servers.
+
+<AccordionGroup>
+  <Accordion title="Salesforce">
+    In Salesforce, [configure an external client app for the client credentials flow](https://help.salesforce.com/s/articleView?id=xcloud.meta_configure_client_credentials_flow_for_external_client_apps.htm&language=en_US&type=5): select **Enable Client Credentials Flow**, then choose an integration user in **Run As**. Every lease acts as that user, so give the user only the permissions your applications need.
+
+    Enter these values, replacing `<my-domain>` with your org's My Domain:
+
+    - **Token URL**: `https://<my-domain>.my.salesforce.com/services/oauth2/token`
+    - **Revocation URL**: `https://<my-domain>.my.salesforce.com/services/oauth2/revoke`
+    - **Client Authentication**: **HTTP Basic Header** or **Request Body** (Salesforce accepts both)
+    - **Client ID**: the app's consumer key
+    - **Client Secret**: the app's consumer secret
+    - **Scope**: leave blank, because Salesforce doesn't accept scopes in the token request and grants the scopes selected on the app instead
+
+    The client credentials flow doesn't work with `login.salesforce.com` or `test.salesforce.com`, so both URLs must use your My Domain.
+
+    Salesforce doesn't report how long its access tokens last, so Infisical can't check your TTLs. Each token lasts as long as your org's session timeout, so set **Max TTL** to that timeout or less.
+  </Accordion>
+  <Accordion title="Linear">
+    In Linear, create or edit an [OAuth2 application](https://linear.app/developers/oauth-2-0-authentication) and turn on client credentials tokens for it.
+
+    Enter these values:
+
+    - **Token URL**: `https://api.linear.app/oauth/token`
+    - **Revocation URL**: `https://api.linear.app/oauth/revoke`
+    - **Client Authentication**: **HTTP Basic Header** or **Request Body** (Linear accepts both)
+    - **Client ID**: the application's client ID
+    - **Client Secret**: the application's client secret
+    - **Scope**: the Linear scopes to request, separated by commas instead of spaces (for example, `read,write`)
+
+    Linear access tokens last 30 days, so **Default TTL** and **Max TTL** can be up to `30d`. Linear allows up to 1,000 active client credentials tokens per application, so an application can't have more than 1,000 leases at once.
+  </Accordion>
+</AccordionGroup>
+
+## Frequently asked questions
+
+<AccordionGroup>
+  <Accordion title="Does revoking a lease stop every API from accepting the token?">
+    Not always. If the token is a JWT, some APIs check its signature and `exp` claim themselves instead of asking the authorization server whether the token is still valid. Those APIs keep accepting a revoked token until it expires. Keep your TTLs and your authorization server's token lifetime short if your APIs work this way.
+  </Accordion>
+</AccordionGroup>

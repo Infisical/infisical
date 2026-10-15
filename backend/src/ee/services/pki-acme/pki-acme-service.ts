@@ -41,10 +41,15 @@ import {
   TCertificateIssuanceQueueFactory,
   TIssueCertificateFromProfileJobData
 } from "@app/services/certificate-authority/certificate-issuance-queue";
+import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "@app/services/certificate-common/certificate-csr-utils";
+import {
+  recordCertificateIssuanceFailure,
+  tagErrorWithCertificateRequest
+} from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { validateCertificateRequestLicense } from "@app/services/certificate-common/certificate-utils";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
@@ -61,6 +66,7 @@ import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certi
 import { TAcmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
+import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -185,11 +191,12 @@ type TPkiAcmeServiceFactoryDep = {
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
   acmeChallengeService: Pick<TPkiAcmeChallengeServiceFactory, "markChallengeAsReady">;
   pkiAcmeQueueService: Pick<TPkiAcmeQueueServiceFactory, "queueChallengeValidation">;
-  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog" | "createCollapsedAuditLog">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "findStepsByPolicyId">;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "createRequestFromPolicy" | "matchPolicy">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "create" | "updateById" | "transitionFromPending">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
+  pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   acmeEnrollmentConfigDAL: Pick<TAcmeEnrollmentConfigDALFactory, "findById">;
 };
 
@@ -219,6 +226,7 @@ export const pkiAcmeServiceFactory = ({
   approvalPolicyService,
   certificateRequestDAL,
   pkiApplicationProfileDAL,
+  pkiApplicationDAL,
   acmeEnrollmentConfigDAL
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
   const validateAcmeProfile = async (
@@ -1209,15 +1217,68 @@ export const pkiAcmeServiceFactory = ({
       // rejected finalization leaves the order in `ready` and the client can retry with a
       // corrected CSR. This mirrors the previous behaviour, where these errors rolled the
       // enclosing transaction back.
-      const certificateRequest = extractCertificateRequestFromCSR(csr);
+      const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
+      if (!ca) {
+        throw new NotFoundError({ message: "Certificate Authority not found" });
+      }
+      const finalizeCaType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
+
+      const finalizeAccount = await acmeAccountDAL.findByProjectIdAndAccountId(profile.id, accountId);
+      const accountApplicationProfileId = (finalizeAccount as { applicationProfileId?: string | null } | null)
+        ?.applicationProfileId;
+      const accountApplicationId = accountApplicationProfileId
+        ? await acmeAccountDAL.findApplicationIdByJunctionId(accountApplicationProfileId)
+        : null;
+
+      let csrCommonName: string | undefined;
+      const $recordFinalizeFailure = (error: unknown) =>
+        recordCertificateIssuanceFailure(
+          { auditLogService, pkiApplicationDAL },
+          {
+            auditLogInfo: {
+              ...auditLogInfo,
+              actor: { type: ActorType.ACME_ACCOUNT, metadata: { profileId, accountId } }
+            },
+            projectId: profile.projectId,
+            error,
+            metadata: {
+              operation:
+                finalizeCaType === CaType.INTERNAL
+                  ? CertificateIssuanceOperation.SIGN
+                  : CertificateIssuanceOperation.ORDER,
+              enrollmentType: EnrollmentType.ACME,
+              certificateProfileId: profileId,
+              profileName: profile.slug,
+              caId: ca.id,
+              caName: ca.name,
+              commonName: csrCommonName,
+              applicationId: accountApplicationId
+            }
+          }
+        );
+
+      const certificateRequest = await (async () => {
+        try {
+          return extractCertificateRequestFromCSR(csr);
+        } catch (error) {
+          await $recordFinalizeFailure(error);
+          throw error;
+        }
+      })();
+      csrCommonName = certificateRequest.commonName;
+
+      const $rejectCsr = async (message: string) => {
+        const error = new AcmeBadCSRError({ message });
+        await $recordFinalizeFailure(error);
+        return error;
+      };
+
       const allowedSanTypes = new Set([
         CertSubjectAlternativeNameType.DNS_NAME,
         CertSubjectAlternativeNameType.IP_ADDRESS
       ]);
       if (certificateRequest.subjectAlternativeNames?.some((san) => !allowedSanTypes.has(san.type))) {
-        throw new AcmeBadCSRError({
-          message: "Invalid CSR: Only DNS and IP subject alternative names are supported"
-        });
+        throw await $rejectCsr("Invalid CSR: Only DNS and IP subject alternative names are supported");
       }
 
       // Build a set of "type:value" pairs from CSR SANs to match against authorized identifiers
@@ -1252,7 +1313,7 @@ export const pkiAcmeServiceFactory = ({
         csrIdentifierPairs.size !== authIdentifierPairs.size ||
         ![...authIdentifierPairs].every((id) => csrIdentifierPairs.has(id))
       ) {
-        throw new AcmeBadCSRError({ message: "Invalid CSR: Common name + SANs mismatch with order identifiers" });
+        throw await $rejectCsr("Invalid CSR: Common name + SANs mismatch with order identifiers");
       }
 
       // Issuance context. These are reads only, and they deliberately run outside a transaction:
@@ -1261,21 +1322,7 @@ export const pkiAcmeServiceFactory = ({
       // TODO: ideally, this should be doen with onRequest: verifyAuth([AuthMode.ACME_JWS_SIGNATURE]), instead?
       const { ownerOrgId: actorOrgId } = (await certificateProfileDAL.findByIdWithOwnerOrgId(profileId))!;
 
-      const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
-      if (!ca) {
-        throw new NotFoundError({ message: "Certificate Authority not found" });
-      }
-
       assertCaInProfileProject(ca, profile);
-
-      const finalizeCaType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
-
-      const finalizeAccount = await acmeAccountDAL.findByProjectIdAndAccountId(profile.id, accountId);
-      const accountApplicationProfileId = (finalizeAccount as { applicationProfileId?: string | null } | null)
-        ?.applicationProfileId;
-      const accountApplicationId = accountApplicationProfileId
-        ? await acmeAccountDAL.findApplicationIdByJunctionId(accountApplicationProfileId)
-        : null;
 
       const matchedApprovalPolicy = (await approvalPolicyService.matchPolicy(
         ApprovalPolicyType.CertRequest,
@@ -1314,7 +1361,10 @@ export const pkiAcmeServiceFactory = ({
               resolvedCustomExtensions: validationResult.resolvedCustomExtensions,
               policySteps: await approvalPolicyDAL.findStepsByPolicyId(matchedApprovalPolicy.id)
             };
-          })()
+          })().catch(async (error: unknown) => {
+            await $recordFinalizeFailure(error);
+            throw error;
+          })
         : undefined;
 
       // Claims the order under a row lock and asserts it is still finalizable. The approval path
@@ -1336,134 +1386,140 @@ export const pkiAcmeServiceFactory = ({
 
       if (approvalContext) {
         const { approvalPolicy, policy, policySteps } = approvalContext;
+        const $recordApprovalFailure = async (error: unknown) => {
+          if (!(error instanceof AcmeOrderNotReadyError)) await $recordFinalizeFailure(error);
+          throw error;
+        };
 
         // No signing happens on this path, so it keeps its original single-transaction shape: the
         // claim, the certificate request, its approval request and the status flip stay atomic.
-        await acmeOrderDAL.transaction(async (tx) => {
-          const finalizingOrder = await $claimOrderForFinalization(tx);
+        await acmeOrderDAL
+          .transaction(async (tx) => {
+            const finalizingOrder = await $claimOrderForFinalization(tx);
 
-          const requesterName = `ACME Account (${accountId})`;
+            const requesterName = `ACME Account (${accountId})`;
 
-          const ttl = finalizingOrder.notAfter
-            ? (() => {
-                const notBefore = finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : new Date();
-                const notAfter = new Date(finalizingOrder.notAfter);
-                const diffMs = notAfter.getTime() - notBefore.getTime();
-                const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-                return `${diffDays}d`;
-              })()
-            : resolveEffectiveTtl({
-                requestTtl: undefined,
-                profileDefaultTtlDays: profile.defaults?.ttlDays,
-                policyMaxValidity: policy?.validity?.max,
-                flowDefaultTtl: "47d"
-              });
+            const ttl = finalizingOrder.notAfter
+              ? (() => {
+                  const notBefore = finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : new Date();
+                  const notAfter = new Date(finalizingOrder.notAfter);
+                  const diffMs = notAfter.getTime() - notBefore.getTime();
+                  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+                  return `${diffDays}d`;
+                })()
+              : resolveEffectiveTtl({
+                  requestTtl: undefined,
+                  profileDefaultTtlDays: profile.defaults?.ttlDays,
+                  policyMaxValidity: policy?.validity?.max,
+                  flowDefaultTtl: "47d"
+                });
 
-          const altNames = certificateRequest.subjectAlternativeNames?.map((san) => ({
-            type: san.type,
-            value: san.value
-          }));
+            const altNames = certificateRequest.subjectAlternativeNames?.map((san) => ({
+              type: san.type,
+              value: san.value
+            }));
 
-          // Create certificate request record
-          const certRequest = await certificateRequestDAL.create(
-            {
-              projectId: profile.projectId,
-              profileId: profile.id,
-              applicationId: accountApplicationId ?? null,
-              commonName: certificateRequest.commonName || null,
-              altNames: altNames ? JSON.stringify(altNames) : null,
-              keyUsages: certificateRequest.keyUsages || null,
-              extendedKeyUsages: certificateRequest.extendedKeyUsages || null,
-              notBefore: finalizingOrder.notBefore || null,
-              notAfter: finalizingOrder.notAfter || null,
-              ...extractAlgorithmsFromCSR(csr),
-              ttl,
-              enrollmentType: EnrollmentType.ACME,
-              status: CertificateRequestStatus.PENDING_APPROVAL,
-              customExtensions: approvalContext?.resolvedCustomExtensions
-                ? JSON.stringify(approvalContext.resolvedCustomExtensions)
-                : null,
-              organization: certificateRequest.organization || null,
-              organizationalUnit: certificateRequest.organizationalUnit || null,
-              country: certificateRequest.country || null,
-              state: certificateRequest.state || null,
-              locality: certificateRequest.locality || null,
-              domainComponents: certificateRequest.domainComponents
-                ? certificateRequest.domainComponents.join(",")
-                : null,
-              basicConstraints: certificateRequest.basicConstraints
-                ? JSON.stringify(certificateRequest.basicConstraints)
-                : null,
-              acmeOrderId: orderId,
-              csr
-            },
-            tx
-          );
+            // Create certificate request record
+            const certRequest = await certificateRequestDAL.create(
+              {
+                projectId: profile.projectId,
+                profileId: profile.id,
+                applicationId: accountApplicationId ?? null,
+                commonName: certificateRequest.commonName || null,
+                altNames: altNames ? JSON.stringify(altNames) : null,
+                keyUsages: certificateRequest.keyUsages || null,
+                extendedKeyUsages: certificateRequest.extendedKeyUsages || null,
+                notBefore: finalizingOrder.notBefore || null,
+                notAfter: finalizingOrder.notAfter || null,
+                ...extractAlgorithmsFromCSR(csr),
+                ttl,
+                enrollmentType: EnrollmentType.ACME,
+                status: CertificateRequestStatus.PENDING_APPROVAL,
+                customExtensions: approvalContext?.resolvedCustomExtensions
+                  ? JSON.stringify(approvalContext.resolvedCustomExtensions)
+                  : null,
+                organization: certificateRequest.organization || null,
+                organizationalUnit: certificateRequest.organizationalUnit || null,
+                country: certificateRequest.country || null,
+                state: certificateRequest.state || null,
+                locality: certificateRequest.locality || null,
+                domainComponents: certificateRequest.domainComponents
+                  ? certificateRequest.domainComponents.join(",")
+                  : null,
+                basicConstraints: certificateRequest.basicConstraints
+                  ? JSON.stringify(certificateRequest.basicConstraints)
+                  : null,
+                acmeOrderId: orderId,
+                csr
+              },
+              tx
+            );
 
-          const requestData: TCertRequestRequestData = {
-            profileId,
-            profileName: profile.slug,
-            certificateRequest: {
-              commonName: certificateRequest.commonName,
-              organization: certificateRequest.organization,
-              organizationalUnit: certificateRequest.organizationalUnit,
-              country: certificateRequest.country,
-              state: certificateRequest.state,
-              locality: certificateRequest.locality,
-              domainComponents: certificateRequest.domainComponents,
-              keyUsages: certificateRequest.keyUsages,
-              extendedKeyUsages: certificateRequest.extendedKeyUsages,
-              altNames,
-              validity: { ttl },
-              notBefore: finalizingOrder.notBefore?.toISOString(),
-              notAfter: finalizingOrder.notAfter?.toISOString(),
-              signatureAlgorithm: undefined,
-              keyAlgorithm: undefined,
-              basicConstraints: certificateRequest.basicConstraints
-            },
-            certificateRequestId: certRequest.id
-          };
-
-          const expiresAt = approvalPolicy.maxRequestTtl
-            ? new Date(Date.now() + ms(approvalPolicy.maxRequestTtl))
-            : null;
-
-          const { request: approvalRequest } = await approvalPolicyService.createRequestFromPolicy({
-            projectId: profile.projectId,
-            organizationId: actorOrgId,
-            policy: { ...approvalPolicy, steps: policySteps },
-            requestData,
-            justification: `ACME certificate request for ${certificateRequest.commonName || profile.slug}`,
-            expiresAt,
-            requesterUserId: null,
-            machineIdentityId: null,
-            requesterName,
-            requesterEmail: "",
-            tx
-          });
-
-          await certificateRequestDAL.updateById(
-            certRequest.id,
-            {
-              approvalRequestId: approvalRequest.id
-            },
-            tx
-          );
-
-          // Return the order in processing status - client will poll until approved
-          await acmeOrderDAL.updateById(orderId, { status: AcmeOrderStatus.Processing, csr }, tx);
-
-          logger.info(
-            {
-              certificateRequestId: certRequest.id,
-              approvalRequestId: approvalRequest.id,
+            const requestData: TCertRequestRequestData = {
               profileId,
               profileName: profile.slug,
-              orderId
-            },
-            "ACME certificate request requires approval"
-          );
-        });
+              certificateRequest: {
+                commonName: certificateRequest.commonName,
+                organization: certificateRequest.organization,
+                organizationalUnit: certificateRequest.organizationalUnit,
+                country: certificateRequest.country,
+                state: certificateRequest.state,
+                locality: certificateRequest.locality,
+                domainComponents: certificateRequest.domainComponents,
+                keyUsages: certificateRequest.keyUsages,
+                extendedKeyUsages: certificateRequest.extendedKeyUsages,
+                altNames,
+                validity: { ttl },
+                notBefore: finalizingOrder.notBefore?.toISOString(),
+                notAfter: finalizingOrder.notAfter?.toISOString(),
+                signatureAlgorithm: undefined,
+                keyAlgorithm: undefined,
+                basicConstraints: certificateRequest.basicConstraints
+              },
+              certificateRequestId: certRequest.id
+            };
+
+            const expiresAt = approvalPolicy.maxRequestTtl
+              ? new Date(Date.now() + ms(approvalPolicy.maxRequestTtl))
+              : null;
+
+            const { request: approvalRequest } = await approvalPolicyService.createRequestFromPolicy({
+              projectId: profile.projectId,
+              organizationId: actorOrgId,
+              policy: { ...approvalPolicy, steps: policySteps },
+              requestData,
+              justification: `ACME certificate request for ${certificateRequest.commonName || profile.slug}`,
+              expiresAt,
+              requesterUserId: null,
+              machineIdentityId: null,
+              requesterName,
+              requesterEmail: "",
+              tx
+            });
+
+            await certificateRequestDAL.updateById(
+              certRequest.id,
+              {
+                approvalRequestId: approvalRequest.id
+              },
+              tx
+            );
+
+            // Return the order in processing status - client will poll until approved
+            await acmeOrderDAL.updateById(orderId, { status: AcmeOrderStatus.Processing, csr }, tx);
+
+            logger.info(
+              {
+                certificateRequestId: certRequest.id,
+                approvalRequestId: approvalRequest.id,
+                profileId,
+                profileName: profile.slug,
+                orderId
+              },
+              "ACME certificate request requires approval"
+            );
+          })
+          .catch($recordApprovalFailure);
       } else {
         // Commit the claim on its own so the connection is released before signing starts.
         const finalizingOrder = await acmeOrderDAL.transaction(async (tx) => {
@@ -1503,7 +1559,6 @@ export const pkiAcmeServiceFactory = ({
           certIssuanceJobData = result.certIssuanceJobData;
         } catch (exp) {
           logger.error(exp, "Failed to sign certificate");
-          // TODO: audit log the error
           if (issuedCertificateId) {
             // The certificate is already issued and committed, and its certificate request is marked
             // ISSUED against this order, so marking the order invalid here would strand a real
@@ -1514,6 +1569,7 @@ export const pkiAcmeServiceFactory = ({
               message: "Failed to finalize certificate issuance"
             });
           }
+          await $recordFinalizeFailure(exp);
           await acmeOrderDAL.updateById(orderId, {
             csr,
             status: AcmeOrderStatus.Invalid,
@@ -1534,7 +1590,15 @@ export const pkiAcmeServiceFactory = ({
       if (certIssuanceJobData) {
         // We commit the order writes before queuing the job, otherwise the job may fail with a
         // not-found error.
-        await certificateIssuanceQueue.queueCertificateIssuance(certIssuanceJobData);
+        try {
+          await certificateIssuanceQueue.queueCertificateIssuance(certIssuanceJobData);
+        } catch (error) {
+          if (certIssuanceJobData.certificateRequestId) {
+            tagErrorWithCertificateRequest(error, certIssuanceJobData.certificateRequestId);
+          }
+          await $recordFinalizeFailure(error);
+          throw error;
+        }
       }
       const updatedOrder = (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId))!;
       const finalizedCsr = extractCertificateRequestFromCSR(updatedOrder.csr!);

@@ -3,13 +3,11 @@ import { useTranslation } from "react-i18next";
 import { FileText } from "lucide-react";
 
 import { PageHeader } from "@app/components/v3";
-import { useProject } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { LogsSection } from "@app/pages/organization/AuditLogsPage/components";
+import { ProjectAuditLogsTabs } from "@app/pages/project/AuditLogsPage/components";
 
 export const AgentVaultAuditLogsPage = () => {
   const { t } = useTranslation();
-  const { currentProject } = useProject();
 
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
@@ -22,7 +20,7 @@ export const AgentVaultAuditLogsPage = () => {
         title="Audit Logs"
         description="Review Agent Vault activity for security and compliance."
       />
-      <LogsSection pageView project={currentProject} />
+      <ProjectAuditLogsTabs variant="av" />
     </div>
   );
 };

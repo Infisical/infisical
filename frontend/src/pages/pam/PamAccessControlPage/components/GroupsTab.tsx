@@ -5,7 +5,6 @@ import { MoreHorizontalIcon, PencilIcon, Plus, SearchIcon, Trash2Icon } from "lu
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { HighlightText } from "@app/components/utilities/HighlightText";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -32,6 +31,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { DeleteConfirmDialog } from "@app/components/v3/platform";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { useListWorkspaceGroups } from "@app/hooks/api";
@@ -219,15 +219,16 @@ export const GroupsTab = () => {
         }}
       />
 
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={!!groupToRemove}
-        onChange={(isOpen) => {
+        onOpenChange={(isOpen) => {
           if (!isOpen) setGroupToRemove(null);
         }}
         title={`Remove ${groupToRemove?.group.name ?? "group"}?`}
-        deleteKey="remove"
-        buttonText="Remove"
-        onDeleteApproved={handleDeleteGroup}
+        description="This action is irreversible."
+        confirmKey="remove"
+        confirmLabel="Remove"
+        onConfirm={handleDeleteGroup}
       />
     </div>
   );

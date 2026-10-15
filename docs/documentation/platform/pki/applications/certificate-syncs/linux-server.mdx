@@ -40,12 +40,14 @@ Deploy certificates from Infisical to a directory on a Linux server over SSH. Fi
             - **Trusted Host Keys**: Optional. Paste the output of `ssh-keyscan <host>`. When set, the sync only connects if the host presents one of these keys.
 
         5. Configure the **Sync Options**:
-            - **Export Format**: Choose **PEM** to write separate certificate, chain, and key files, or **PKCS#12** to write a single password-protected `.pfx` bundle.
+            - **Export Format**: Choose **PEM** to write separate certificate, chain, and key files, **PKCS#12** to write a single password-protected `.pfx` bundle, or **Java KeyStore** to write a password-protected `.jks` keystore.
             - **Certificate File Extension**: For PEM, choose `.pem` (default) or `.crt` for the certificate and chain files. Both hold the same PEM-encoded content, so pick the one the consuming service expects.
             - **Combine Certificate and Chain**: For PEM, write the leaf certificate followed by the chain in a single file (a full-chain file, as nginx expects) and skip the separate chain file.
             - **File Permissions** and **Private Key Permissions**: Octal modes for the delivered certificate and chain files (default `644`) and for the private key file (default `600`).
             - **Owner** and **Group**: Optionally set the owner and group on the delivered files. Changing ownership requires the connection user to be root or to have passwordless sudo.
-            - **PKCS#12 Password**: Required when the export format is PKCS#12. It protects the delivered bundle.
+            - **PKCS#12 Password** or **JKS Password**: Required when the export format is PKCS#12 or Java KeyStore. It protects the delivered bundle or keystore.
+            - **Keystore Alias**: For PKCS#12 and Java KeyStore, the alias of the private key entry, such as the value Tomcat expects in `certificateKeyAlias`. Leave it empty to use the base file name from the certificate name schema.
+            - **Include Truststore**: For Java KeyStore, also write a `.truststore.jks` file that holds the issuing CAs and the root CA as trusted certificates. It uses the same password as the keystore.
             - **Include Private Key**: For PEM, controls whether the private key is written alongside the certificate. The sync fails for a certificate whose key is not available, for example one issued from an external CSR.
             - **Include Root CA in Certificate Chain**: Include the root CA in the delivered chain. Leave it off when the consuming service only needs the intermediates.
             - **Enable Removal of Certificates**: Delete the delivered files from the server when a certificate is removed from the sync, revoked, or expired.
@@ -142,6 +144,18 @@ The file extension is set by the export format, not by the name schema. The name
 
 **PKCS#12** writes a single password-protected `.pfx` bundle that contains the certificate, chain, and private key.
 
+**Java KeyStore** writes a password-protected `.jks` keystore for Java servers such as Tomcat, WebLogic, and JBoss. The keystore holds one private key entry with the certificate, chain, and private key, and the key uses the same password as the keystore. If you turn on **Include Truststore**, the sync also writes a `.truststore.jks` file with each issuing CA and the root CA as trusted certificates. The truststore includes the root CA even when **Include Root CA in Certificate Chain** is off, and it never includes the certificate itself.
+
+Infisical writes a new keystore on every sync instead of adding to the file on the host. After a renewal, the keystore holds only the new certificate under the same alias, so old entries don't build up. Point your Java server at a keystore that only this sync writes to, because anything else in that file is replaced on the next sync.
+
+<Note>
+  Java KeyStore stores aliases in lowercase, so an alias of `Tomcat` is saved as `tomcat`. Java looks up aliases without regard to case, so configuring `Tomcat` in your server still finds the entry.
+</Note>
+
+<Warning>
+  Java KeyStore isn't available when Infisical runs in FIPS mode, because the format can only protect private keys with cryptography that isn't FIPS-approved. Use PEM instead.
+</Warning>
+
 For a certificate whose common name is `app.example.com`, synced to `/etc/ssl/certs` with the default `{{commonName}}` name schema, the delivered files are:
 
 ```text
@@ -152,6 +166,10 @@ PEM (.pem extension)
 
 PKCS#12
   /etc/ssl/certs/app.example.com.pfx
+
+Java KeyStore
+  /etc/ssl/certs/app.example.com.jks             keystore
+  /etc/ssl/certs/app.example.com.truststore.jks  truststore (when delivered)
 ```
 
 ## How it works
@@ -192,7 +210,7 @@ svc-infisical ALL=(root) NOPASSWD: /usr/bin/systemctl reload nginx
 Only Application Admins can set either command, so treat that role as access to the target server.
 
 <Warning>
-  The rendered command is visible in the target server's process table while it runs. This only matters if you reference `{{pkcs12Password}}`, and only to accounts that already have a shell on the server the sync writes private keys to.
+  The rendered command is visible in the target server's process table while it runs. This only matters if you reference `{{exportPassword}}`, and only to accounts that already have a shell on the server the sync writes private keys to.
 </Warning>
 
 ### Health check
@@ -229,7 +247,7 @@ Write a check that answers a question rather than one that changes something. `t
     ```
   </Step>
   <Step title="Test it, then save the sync">
-    **Test check** runs the check against the host straight away, so you can see the result without waiting for a sync. It resolves variables against the certificates linked to the sync, so it works once at least one is selected and tells you if none is. `{{pkcs12Password}}` is the exception: the export password only exists once a saved sync delivers a certificate, so a test always rejects it.
+    **Test check** runs the check against the host straight away, so you can see the result without waiting for a sync. It resolves variables against the certificates linked to the sync, so it works once at least one is selected and tells you if none is. `{{exportPassword}}` is the exception: the export password only exists once a saved sync delivers a certificate, so a test always rejects it.
 
     Save the sync once the check passes. On a real run, a failing check fails the sync without delivering anything, and the reason appears as the sync's last error.
   </Step>

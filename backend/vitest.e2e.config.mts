@@ -88,6 +88,21 @@ export default defineConfig({
       {
         find: /^@app\/lib\/aws\/s3$/,
         replacement: path.resolve(__dirname, "./e2e-test/fakes/s3")
+      },
+      // Pass-through wrappers that hand a spec the real job, to run on demand. Only
+      // server/routes/index.ts imports either specifier.
+      {
+        find: /^@app\/services\/reminder\/reminder-queue$/,
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/reminder-queue")
+      },
+      {
+        find: /^@app\/services\/event-outbox\/event-outbox-queue$/,
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/event-outbox-queue")
+      },
+      // Only audit-log-stream-outbox-service.ts imports this specifier.
+      {
+        find: "./audit-log-stream-outbox-constants",
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/audit-log-stream-outbox-constants")
       }
     ]
   },

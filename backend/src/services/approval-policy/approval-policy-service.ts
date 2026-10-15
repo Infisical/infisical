@@ -27,6 +27,7 @@ import {
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
@@ -109,6 +110,7 @@ type TApprovalPolicyServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
+  eventEmitter: TEventEmitter;
   resources: TApprovalResourceRegistry;
 };
 
@@ -136,6 +138,7 @@ export const approvalPolicyServiceFactory = ({
   smtpService,
   userDAL,
   groupDAL,
+  eventEmitter,
   resources
 }: TApprovalPolicyServiceFactoryDep) => {
   const $resource = (policyType: ApprovalPolicyType) => {
@@ -167,6 +170,11 @@ export const approvalPolicyServiceFactory = ({
       { ...args, approvers: args.approvers ?? [], resource: $resource(args.request.type as ApprovalPolicyType) },
       $notificationDeps
     );
+
+  const $emitEvent = async (args: { event: ApprovalNotificationEvent; request: TApprovalRequests }, tx: Knex) => {
+    const event = resources[args.request.type as ApprovalPolicyType]?.buildEvent?.(args);
+    if (event) await eventEmitter.emit(event, tx);
+  };
 
   const $buildDecorationContext = (actor: TApprovalActor): TDecorationContext => {
     let cached: Promise<Set<string>> | null = null;
@@ -360,6 +368,14 @@ export const approvalPolicyServiceFactory = ({
     }
   };
 
+  const $assertPolicyType = (storedType: string, policyType: ApprovalPolicyType) => {
+    if (storedType !== policyType) {
+      throw new BadRequestError({
+        message: `Policy type mismatch: expected ${policyType}, got ${storedType}`
+      });
+    }
+  };
+
   const $verifyProjectUserMembership = async (userIds: string[], orgId: string, projectId: string) => {
     const uniqueUserIds = [...new Set(userIds)];
     if (uniqueUserIds.length === 0) return;
@@ -476,6 +492,7 @@ export const approvalPolicyServiceFactory = ({
         throw new BadRequestError({ message: `Bypassing approval is not supported for ${policyType} requests` });
       }
 
+      await $emitEvent({ event: ApprovalNotificationEvent.Bypassed, request: approvedRequest }, tx);
       return result;
     });
 
@@ -758,7 +775,7 @@ export const approvalPolicyServiceFactory = ({
     return { policies, projectId };
   };
 
-  const getById = async (policyId: string, actor: TApprovalActor) => {
+  const getById = async (policyId: string, actor: TApprovalActor, policyType: ApprovalPolicyType) => {
     const policy = await approvalPolicyDAL.findById(policyId);
     if (!policy) {
       throw new ForbiddenRequestError({ message: "Policy not found" });
@@ -772,6 +789,8 @@ export const approvalPolicyServiceFactory = ({
       ResourcePermissionApprovalPolicyActions.Read,
       policy.type as ApprovalPolicyType
     );
+
+    $assertPolicyType(policy.type, policyType);
 
     const [steps, bypassers] = await Promise.all([
       approvalPolicyDAL.findStepsByPolicyId(policyId),
@@ -793,7 +812,8 @@ export const approvalPolicyServiceFactory = ({
       enforcementLevel,
       bypassers
     }: TUpdatePolicyDTO,
-    actor: TApprovalActor
+    actor: TApprovalActor,
+    policyType: ApprovalPolicyType
   ) => {
     const policy = await approvalPolicyDAL.findById(policyId);
     if (!policy) {
@@ -811,6 +831,8 @@ export const approvalPolicyServiceFactory = ({
       ResourcePermissionApprovalPolicyActions.Edit,
       policy.type as ApprovalPolicyType
     );
+
+    $assertPolicyType(policy.type, policyType);
 
     if (
       !resources[policy.type as ApprovalPolicyType]?.isBreakGlassEligible &&
@@ -928,7 +950,7 @@ export const approvalPolicyServiceFactory = ({
     };
   };
 
-  const deleteById = async (policyId: string, actor: TApprovalActor) => {
+  const deleteById = async (policyId: string, actor: TApprovalActor, policyType: ApprovalPolicyType) => {
     const policy = await approvalPolicyDAL.findById(policyId);
     if (!policy) {
       throw new ForbiddenRequestError({ message: "Policy not found" });
@@ -942,6 +964,8 @@ export const approvalPolicyServiceFactory = ({
       ResourcePermissionApprovalPolicyActions.Delete,
       policy.type as ApprovalPolicyType
     );
+
+    $assertPolicyType(policy.type, policyType);
 
     const cancelled = await approvalPolicyDAL.transaction(async (tx) => {
       const rows = await approvalRequestDAL.update(
@@ -1002,7 +1026,10 @@ export const approvalPolicyServiceFactory = ({
         approvalRequestStepsDAL,
         approvalRequestStepEligibleApproversDAL
       },
-      tx
+      tx,
+      skipApproverNotification
+        ? undefined
+        : (request, trx) => $emitEvent({ event: ApprovalNotificationEvent.Requested, request }, trx)
     );
 
     if (!skipApproverNotification) {
@@ -1417,6 +1444,7 @@ export const approvalPolicyServiceFactory = ({
           );
 
           await resource.postApprovalTxRoutine?.(completedReq as TApprovalRequest, tx);
+          await $emitEvent({ event: ApprovalNotificationEvent.Approved, request: completedReq }, tx);
 
           return { updatedRequest: completedReq, nextStepToNotify: null };
         }
@@ -1539,13 +1567,14 @@ export const approvalPolicyServiceFactory = ({
         tx
       );
 
-      await approvalRequestDAL.updateById(
+      const rejected = await approvalRequestDAL.updateById(
         requestId,
         {
           status: ApprovalRequestStatus.Rejected
         },
         tx
       );
+      await $emitEvent({ event: ApprovalNotificationEvent.Rejected, request: rejected }, tx);
     });
 
     const finalSteps = await approvalRequestDAL.findStepsByRequestId(requestId);
@@ -1685,6 +1714,12 @@ export const approvalPolicyServiceFactory = ({
 
     if (!$isRequester(request, actor)) {
       throw new ForbiddenRequestError({ message: "You are not the requester of this request" });
+    }
+
+    if (request.type === ApprovalPolicyType.SecretAccess) {
+      throw new BadRequestError({
+        message: "This is a secret access request. Manage it from the access requests instead."
+      });
     }
 
     const [updatedRequest] = await approvalRequestDAL.update(
@@ -1831,6 +1866,13 @@ export const approvalPolicyServiceFactory = ({
 
     const request = grant.requestId ? await approvalRequestDAL.findById(grant.requestId) : null;
     const assertDomainCanRevoke = resources[grantPolicyType]?.assertCanRevokeGrant;
+
+    // Secret access grants are managed by the secret-access-approval-global-request-bridge service
+    if (grantPolicyType === ApprovalPolicyType.SecretAccess) {
+      throw new BadRequestError({
+        message: "This grant is for a secret access request. Revoke it from the access request instead."
+      });
+    }
 
     if (assertDomainCanRevoke) {
       await assertDomainCanRevoke({ grant, request, actor });
@@ -2356,7 +2398,7 @@ export const approvalPolicyServiceFactory = ({
 
     const hasApprovers = steps.some((step) => step.approvers.length > 0);
     if (!hasApprovers) {
-      if (existing) await deleteById(existing.id, actor);
+      if (existing) await deleteById(existing.id, actor, policyType);
       return { policyId: existing?.id ?? null };
     }
 
@@ -2364,7 +2406,7 @@ export const approvalPolicyServiceFactory = ({
     const bypassFields = bypassers ? { bypassers } : {};
 
     if (existing) {
-      const { policy } = await updateById(existing.id, { steps: policySteps, ...bypassFields }, actor);
+      const { policy } = await updateById(existing.id, { steps: policySteps, ...bypassFields }, actor, policyType);
       return { policyId: policy.id };
     }
 

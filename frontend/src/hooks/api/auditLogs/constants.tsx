@@ -120,10 +120,6 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.UPDATE_ALERT]: "Update alert",
   [EventType.DELETE_ALERT]: "Delete alert",
   [EventType.TEST_ALERT_CHANNEL]: "Test alert channel",
-  [EventType.CREATE_PKI_APPLICATION_ALERT]: "Create application alert",
-  [EventType.UPDATE_PKI_APPLICATION_ALERT]: "Update application alert",
-  [EventType.DELETE_PKI_APPLICATION_ALERT]: "Delete application alert",
-  [EventType.TEST_PKI_APPLICATION_ALERT_CHANNEL]: "Test application alert channel",
   [EventType.CREATE_PKI_COLLECTION]: "Create PKI collection",
   [EventType.GET_PKI_COLLECTION]: "Get PKI collection",
   [EventType.UPDATE_PKI_COLLECTION]: "Update PKI collection",
@@ -356,6 +352,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.PAM_FOLDER_CREATE]: "Create PAM Folder",
   [EventType.PAM_FOLDER_UPDATE]: "Update PAM Folder",
   [EventType.PAM_FOLDER_DELETE]: "Delete PAM Folder",
+  [EventType.ORG_ADMIN_ACCESS_PAM_FOLDER]: "Org admin accessed PAM folder",
   [EventType.PAM_PRODUCT_MEMBER_ADD]: "Add PAM Product Member",
   [EventType.PAM_PRODUCT_MEMBER_UPDATE]: "Update PAM Product Member",
   [EventType.PAM_PRODUCT_MEMBER_REMOVE]: "Remove PAM Product Member",
@@ -393,6 +390,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.ISSUE_CERTIFICATE_FROM_PROFILE]: "Issue Certificate From Profile",
   [EventType.SIGN_CERTIFICATE_FROM_PROFILE]: "Sign Certificate From Profile",
   [EventType.ORDER_CERTIFICATE_FROM_PROFILE]: "Order Certificate From Profile",
+  [EventType.CERTIFICATE_ISSUANCE_FAILED]: "Certificate Issuance Failed",
   [EventType.GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE]:
     "Get Certificate Profile Latest Active Bundle",
 
@@ -497,7 +495,9 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.AGENT_VAULT_PROXY_UPDATE]: "Update proxy",
   [EventType.AGENT_VAULT_PROXY_REVOKE]: "Revoke proxy access",
   [EventType.AGENT_VAULT_PROXY_DELETE]: "Delete proxy",
-  [EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE]: "Update session log settings"
+  [EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE]: "Update session log settings",
+  [EventType.PERMISSION_DENIED]: "Permission denied",
+  [EventType.UPDATE_AUDIT_LOG_SETTINGS]: "Update audit log settings"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
@@ -521,6 +521,7 @@ export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
     EventType.PAM_FOLDER_CREATE,
     EventType.PAM_FOLDER_UPDATE,
     EventType.PAM_FOLDER_DELETE,
+    EventType.ORG_ADMIN_ACCESS_PAM_FOLDER,
     EventType.PAM_PRODUCT_MEMBER_ADD,
     EventType.PAM_PRODUCT_MEMBER_UPDATE,
     EventType.PAM_PRODUCT_MEMBER_REMOVE,

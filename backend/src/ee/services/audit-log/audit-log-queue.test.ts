@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { QueueName } from "@app/queue";
 
 import { auditLogQueueServiceFactory } from "./audit-log-queue";
+import { MAX_AUDIT_LOG_EXPIRES_AT } from "./audit-log-retention-fns";
 
 // Mutable config the mocked getConfig() returns. CLICKHOUSE_AUDIT_LOG_ENABLED is read once at
 // factory construction; AUDIT_LOG_STREAMS_ENABLED is read per consumer run.
@@ -91,12 +92,17 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, gener
     findById: vi.fn<(id: string) => Promise<Record<string, unknown> | undefined>>(async () => undefined)
   };
   const licenseService = {
-    getPlan: vi.fn<(orgId: string) => Promise<{ auditLogsRetentionDays: number }>>(async () => ({
+    getPlan: vi.fn<(orgId: string) => Promise<{ auditLogsRetentionDays: number | null }>>(async () => ({
       auditLogsRetentionDays: 30
     }))
   };
   const auditLogStreamOutboxService = {
     enqueueForLogs: vi.fn<(logs: unknown[]) => Promise<void>>(async () => undefined)
+  };
+  const auditLogSettingsService = {
+    getEffectiveSettings: vi.fn<(orgId: string, projectId?: string | null) => Promise<Record<string, unknown> | null>>(
+      async () => null
+    )
   };
   const clickhouseClient = clickhouse
     ? {
@@ -111,6 +117,7 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, gener
     queueService: queueService as never,
     projectDAL: projectDAL as never,
     licenseService: licenseService as never,
+    auditLogSettingsService: auditLogSettingsService as never,
     auditLogStreamOutboxService: auditLogStreamOutboxService as never,
     clickhouseClient: clickhouseClient as never,
     keyStore: keyStore as never
@@ -125,6 +132,7 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, gener
     projectDAL,
     licenseService,
     auditLogStreamOutboxService,
+    auditLogSettingsService,
     clickhouseClient,
     consumer: startHandlers.get(QueueName.AuditLogClickHouseBatch)!
   };
@@ -223,6 +231,27 @@ describe("audit-log-queue pushToLog", () => {
     expect(keyStore.streamAdd).not.toHaveBeenCalled();
   });
 
+  test("keeps logs until the expiry cap when the plan's retention is unlimited (null)", async () => {
+    const { service, keyStore, licenseService } = await createHarness();
+    licenseService.getPlan.mockResolvedValueOnce({ auditLogsRetentionDays: null });
+
+    await service.pushToLog(dto({ orgId: "org-unlimited" }) as never);
+
+    expect(pushedEntry(keyStore).expiresAt).toBe(MAX_AUDIT_LOG_EXPIRES_AT.toISOString());
+  });
+
+  test("applies the project-level retention under an unlimited plan", async () => {
+    const { service, keyStore, projectDAL, licenseService } = await createHarness();
+    projectDAL.findById.mockResolvedValueOnce({ id: "p1", orgId: "org-1", name: "proj", auditLogsRetentionDays: 5 });
+    licenseService.getPlan.mockResolvedValueOnce({ auditLogsRetentionDays: null });
+
+    await service.pushToLog(dto({ orgId: undefined, projectId: "p1" }) as never);
+
+    const parsed = pushedEntry(keyStore);
+    const ttl = new Date(parsed.expiresAt as string).getTime() - new Date(parsed.createdAt as string).getTime();
+    expect(ttl).toBe(5 * MS_IN_DAY);
+  });
+
   test("never throws when streamAdd fails", async () => {
     const { service, keyStore } = await createHarness();
     keyStore.streamAdd.mockRejectedValueOnce(new Error("redis down"));
@@ -236,6 +265,102 @@ describe("audit-log-queue pushToLog", () => {
 
     await expect(service.pushToLog(dto({ orgId: "o" }) as never)).resolves.toBeUndefined();
     expect(keyStore.streamAdd).not.toHaveBeenCalled();
+  });
+
+  test("pushToLogOrThrow rejects when streamAdd fails", async () => {
+    const { service, keyStore } = await createHarness();
+    keyStore.streamAdd.mockRejectedValueOnce(new Error("redis down"));
+
+    await expect(service.pushToLogOrThrow(dto({ orgId: "o" }) as never)).rejects.toThrow("redis down");
+  });
+});
+
+describe("audit-log-queue event class settings", () => {
+  const settings = (overrides: Record<string, unknown> = {}) => ({
+    org: {},
+    shouldUseNewPrivilegeSystem: true,
+    ...overrides
+  });
+
+  test("drops an authentication event when the org disabled the class", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings({ org: { authentication: false } }));
+
+    await service.pushToLog(dto({ event: { type: "user-login", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).not.toHaveBeenCalled();
+  });
+
+  test("stores an authentication event when the class is enabled", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings({ org: { authentication: true } }));
+
+    await service.pushToLog(dto({ event: { type: "user-login", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+  });
+
+  test("records management and data-access events without looking up settings", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+
+    await service.pushToLog(dto({ event: { type: "update-secret", metadata: {} } }) as never);
+    await service.pushToLog(dto({ event: { type: "get-secrets", metadata: {} } }) as never);
+    await service.pushToLog(dto({ projectId: "p1", event: { type: "get-secrets", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(3);
+    expect(auditLogSettingsService.getEffectiveSettings).not.toHaveBeenCalled();
+  });
+
+  test("a project event uses the project's own setting, never the org's", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockImplementation(async (_orgId, projectId) =>
+      settings({ org: { authentication: false }, project: projectId === "p-off" ? { authentication: false } : {} })
+    );
+
+    await service.pushToLog(dto({ projectId: "p-none", event: { type: "user-login", metadata: {} } }) as never);
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+
+    await service.pushToLog(dto({ projectId: "p-off", event: { type: "user-login", metadata: {} } }) as never);
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+    expect(auditLogSettingsService.getEffectiveSettings).toHaveBeenLastCalledWith(expect.any(String), "p-off");
+  });
+
+  test("an org-scoped event ignores project settings", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(
+      settings({ org: {}, project: { authentication: false } })
+    );
+
+    await service.pushToLog(dto({ event: { type: "user-login", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+  });
+
+  test("drops a permission denial when no scope has turned authorization on", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings());
+
+    await service.pushToLog(dto({ event: { type: "permission-denied", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).not.toHaveBeenCalled();
+  });
+
+  test("records an authentication event when no scope has a setting", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(settings());
+
+    await service.pushToLog(dto({ event: { type: "user-login", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
+  });
+
+  test("records the event when the settings lookup returns nothing", async () => {
+    const { service, keyStore, auditLogSettingsService } = await createHarness();
+    auditLogSettingsService.getEffectiveSettings.mockResolvedValueOnce(null);
+
+    await service.pushToLog(dto({ event: { type: "permission-denied", metadata: {} } }) as never);
+
+    expect(keyStore.streamAdd).toHaveBeenCalledTimes(1);
   });
 });
 

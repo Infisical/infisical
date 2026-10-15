@@ -9,10 +9,20 @@ import {
 import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { buildCertificateNameSchemaTestName } from "@app/services/pki-sync/pki-sync-certificate-name-fns";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
-import { PemCertificateExtension, PkiSyncExportFormat } from "@app/services/pki-sync/pki-sync-export-fns";
+import {
+  EXPORT_PASSWORD_BLANK_MESSAGE,
+  isBlankExportPassword,
+  isKeystoreExportFormat,
+  KEYSTORE_PASSWORD_REQUIRED_MESSAGE,
+  PemCertificateExtension,
+  PkiSyncExportFormat
+} from "@app/services/pki-sync/pki-sync-export-fns";
 import {
   BaseHealthCheckTestSchema,
+  ExportPasswordSchema,
   HostCommandSchema,
+  IncludeTruststoreSchema,
+  KeystoreAliasSchema,
   PkiSyncFiltersField,
   PkiSyncSchema,
   PkiSyncTargetHostSchema,
@@ -63,6 +73,8 @@ export const LinuxServerPkiSyncOptionsSchema = z.object({
   exportFormat: z.nativeEnum(PkiSyncExportFormat).default(PkiSyncExportFormat.Pem),
   pemCertificateExtension: z.nativeEnum(PemCertificateExtension).default(PemCertificateExtension.Pem),
   combineCertificateChain: z.boolean().default(false),
+  keystoreAlias: KeystoreAliasSchema,
+  includeTruststore: IncludeTruststoreSchema,
   fileMode: z
     .string()
     .trim()
@@ -108,10 +120,10 @@ export const LinuxServerPkiSyncOptionsSchema = z.object({
     )
 });
 
-// Sync-level secrets (the PKCS#12 export password) accepted on create/update. Stored encrypted in
+// Sync-level secrets (the PKCS#12 / JKS export password) accepted on create/update. Stored encrypted in
 // pki_syncs.encryptedCredentials and never returned.
 export const LinuxServerPkiSyncCredentialsSchema = z.object({
-  exportPassword: z.string().min(1).optional()
+  exportPassword: ExportPasswordSchema.optional()
 });
 
 export const LinuxServerPkiSyncSchema = PkiSyncSchema.extend({
@@ -135,11 +147,18 @@ export const CreateLinuxServerPkiSyncSchema = z
     filters: PkiSyncFiltersField
   })
   .superRefine((data, ctx) => {
-    if (data.syncOptions.exportFormat === PkiSyncExportFormat.Pkcs12 && !data.credentials?.exportPassword) {
+    if (!isKeystoreExportFormat(data.syncOptions.exportFormat)) return;
+    if (!data.credentials?.exportPassword) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["credentials", "exportPassword"],
-        message: "A password is required when the export format is PKCS#12"
+        message: KEYSTORE_PASSWORD_REQUIRED_MESSAGE
+      });
+    } else if (isBlankExportPassword(data.credentials.exportPassword)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["credentials", "exportPassword"],
+        message: EXPORT_PASSWORD_BLANK_MESSAGE
       });
     }
   });

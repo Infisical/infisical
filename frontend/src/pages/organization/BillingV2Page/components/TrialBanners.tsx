@@ -83,7 +83,9 @@ export const TrialBanners = ({
   const isSuperseded = (trial: BillingV2Trial): boolean => {
     const entitlement = overview.entitlements[trial.productKey];
     return Boolean(
-      entitlement?.trialPlan || entitlement?.isTrialing || entitlement?.status === "active"
+      entitlement?.trialPlan ||
+        entitlement?.isTrialing ||
+        (entitlement?.status === "active" && entitlement.planTier !== trial.basePlanTier)
     );
   };
   const reverted = overview.trials
