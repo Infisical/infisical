@@ -16,6 +16,7 @@ import {
 import "../../utils/ScrollEdgeFade.css";
 
 const NO_ITEMS: string[] = [];
+const DEFAULT_PASTE_DELIMITER = /[\n\r, ]/;
 
 type TagsInputProps = Omit<
   React.ComponentPropsWithoutRef<"input">,
@@ -31,6 +32,8 @@ type TagsInputProps = Omit<
   onValidationError?: (reason: string | null) => void;
   /** Flags a committed tag as invalid without refusing it, so it stays visible and removable. */
   isTagInvalid?: (tag: string) => boolean;
+  /** What splits a pasted list into separate tags. Defaults to commas, spaces and newlines. */
+  pasteDelimiter?: RegExp;
   inputValue?: string;
   onInputValueChange?: (draft: string) => void;
   className?: string;
@@ -46,6 +49,7 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
       validateTag,
       onValidationError,
       isTagInvalid,
+      pasteDelimiter = DEFAULT_PASTE_DELIMITER,
       inputValue,
       onInputValueChange,
       className,
@@ -100,13 +104,12 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
 
     const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
       const pasted = event.clipboardData.getData("text");
-      const splitOn = /[\n\r, ]/;
-      if (!splitOn.test(pasted)) return;
+      if (!pasteDelimiter.test(pasted)) return;
 
       event.preventDefault();
 
       const parts = pasted
-        .split(splitOn)
+        .split(pasteDelimiter)
         .map((part) => part.trim())
         .filter(Boolean);
 

@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { isValidEmail, parseEmailList } from "@app/helpers/email";
+import { EMAIL_LIST_DELIMITER, isValidEmail, parseEmailList } from "@app/helpers/email";
 
 import { TagsInput, type TagsInputProps } from "../../generic/TagsInput";
 
@@ -25,6 +25,7 @@ const EmailInput = React.forwardRef<HTMLInputElement, EmailInputProps>(
       autoComplete={autoComplete}
       onValueChange={(next) => onValueChange(parseEmailList(next))}
       isTagInvalid={(email) => !isValidEmail(email)}
+      pasteDelimiter={EMAIL_LIST_DELIMITER}
       {...props}
     />
   )

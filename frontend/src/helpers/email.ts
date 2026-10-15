@@ -90,11 +90,13 @@ export const normalizeEmail = (email: string) => email.trim().toLowerCase();
 // Splits pasted or typed text on commas, semicolons and whitespace, normalizes each address, and
 // drops duplicates while keeping the first occurrence's order. EmailInput runs every change through
 // this, so a value held by a form is always a clean, deduplicated list.
+export const EMAIL_LIST_DELIMITER = /[\s,;]+/;
+
 export const parseEmailList = (values: string[]) =>
   Array.from(
     new Set(
       values
-        .flatMap((value) => value.split(/[\s,;]+/))
+        .flatMap((value) => value.split(EMAIL_LIST_DELIMITER))
         .map(normalizeEmail)
         .filter(Boolean)
     )
