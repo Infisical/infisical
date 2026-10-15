@@ -11,6 +11,7 @@ import {
   FieldDescription,
   FieldError,
   Label,
+  SheetFooter,
   Stepper,
   StepperList,
   StepperStep,
@@ -337,16 +338,8 @@ export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange, onCa
           </aside>
         </div>
 
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+        <SheetFooter className="shrink-0 items-center justify-between border-t">
           <div className="flex items-center gap-3">
-            <Button
-              variant="project"
-              type="submit"
-              isPending={isLoading}
-              isDisabled={!isDirty || isLoading}
-            >
-              {isCheckingDuplicate ? "Checking..." : "Save"}
-            </Button>
             <Button
               variant="outline"
               type="button"
@@ -376,8 +369,16 @@ export const EditSecretSyncForm = ({ secretSync, onComplete, onDirtyChange, onCa
             >
               Next
             </Button>
+            <Button
+              variant="project"
+              type="submit"
+              isPending={isLoading}
+              isDisabled={!isDirty || isLoading}
+            >
+              {isCheckingDuplicate ? "Checking..." : "Save"}
+            </Button>
           </div>
-        </div>
+        </SheetFooter>
       </form>
 
       <DuplicateDestinationConfirmationModal

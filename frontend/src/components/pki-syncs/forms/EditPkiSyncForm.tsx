@@ -20,6 +20,7 @@ import {
   FieldContent,
   FieldDescription,
   Label,
+  SheetFooter,
   Stepper,
   StepperList,
   StepperStep,
@@ -474,16 +475,8 @@ export const EditPkiSyncForm = ({
           </aside>
         </div>
 
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+        <SheetFooter className="shrink-0 items-center justify-between border-t">
           <div className="flex items-center gap-3">
-            <Button
-              variant="project"
-              type="submit"
-              isPending={isSubmitting}
-              isDisabled={!isDirty || isSubmitting || isDetectingPaloAltoNetworksDevice}
-            >
-              Save
-            </Button>
             <Button
               variant="outline"
               type="button"
@@ -513,8 +506,16 @@ export const EditPkiSyncForm = ({
             >
               Next
             </Button>
+            <Button
+              variant="project"
+              type="submit"
+              isPending={isSubmitting}
+              isDisabled={!isDirty || isSubmitting || isDetectingPaloAltoNetworksDevice}
+            >
+              Save
+            </Button>
           </div>
-        </div>
+        </SheetFooter>
       </form>
 
       <AlertDialog
