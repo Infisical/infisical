@@ -244,6 +244,7 @@ export const CreateSecretScanningDataSourceForm = ({
   const onSubmit = async ({ connection, ...formData }: TSecretScanningDataSourceForm) => {
     const dataSource = await createDataSource.mutateAsync({
       ...formData,
+      isDiscoveryEnabled: formData.isDiscoveryEnabled && doesDataSourceSupportDiscovery(formData),
       connectionId: connection?.id,
       projectId: currentProject.id
     });

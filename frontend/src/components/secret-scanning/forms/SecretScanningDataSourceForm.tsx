@@ -7,7 +7,10 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { Button } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
+import {
+  doesDataSourceSupportDiscovery,
+  SECRET_SCANNING_DATA_SOURCE_MAP
+} from "@app/helpers/secretScanningV2";
 import {
   SecretScanningDataSource,
   TSecretScanningDataSource
@@ -73,7 +76,11 @@ export const SecretScanningDataSourceForm = ({
     reValidateMode: "onChange"
   });
 
-  const onSubmit = async ({ connection, ...formData }: TSecretScanningDataSourceForm) => {
+  const onSubmit = async ({ connection, ...form }: TSecretScanningDataSourceForm) => {
+    const formData = {
+      ...form,
+      isDiscoveryEnabled: form.isDiscoveryEnabled && doesDataSourceSupportDiscovery(form)
+    };
     const mutation = dataSource
       ? updateDataSource.mutateAsync({
           dataSourceId: dataSource.id,

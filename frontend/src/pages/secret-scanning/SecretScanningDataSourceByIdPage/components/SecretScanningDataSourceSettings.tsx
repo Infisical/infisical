@@ -255,7 +255,7 @@ export const SecretScanningDataSourceSettings = ({ dataSource, onDeleted }: Prop
                   <Toggle
                     id={`data-source-${name}`}
                     variant="project"
-                    checked={dataSource[name]}
+                    checked={dataSource[name] && !isDisabled}
                     onCheckedChange={(checked) => handleToggle(name, label, checked)}
                     disabled={!canEdit || isDisabled || updateDataSource.isPending}
                     aria-labelledby={`data-source-${name}-title`}
