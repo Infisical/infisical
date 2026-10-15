@@ -611,17 +611,31 @@
             "icon": "lock",
             "pages": [
               "documentation/platform/kms/overview",
+              "documentation/platform/kms/concepts",
               {
-                "group": "Infisical KMS",
+                "group": "Keys",
+                "pages": [
+                  "documentation/platform/kms/keys",
+                  "documentation/platform/kms/encrypt-decrypt",
+                  "documentation/platform/kms/sign-verify",
+                  "documentation/platform/kms/mac",
+                  "documentation/platform/kms/key-rotation",
+                  "documentation/platform/kms/export-import"
+                ]
+              },
+              {
+                "group": "KMIP",
+                "pages": [
+                  "documentation/platform/kms/kmip",
+                  "documentation/platform/kms/kmip-server",
+                  "documentation/platform/kms/kmip-clients",
+                  "documentation/platform/kms/kmip-dell-poweredge"
+                ]
+              },
+              {
+                "group": "Integrations",
                 "pages": [
                   "documentation/platform/kms/kubernetes-encryption",
-                  {
-                    "group": "KMIP integration",
-                    "pages": [
-                      "documentation/platform/kms/kmip",
-                      "documentation/platform/kms/kmip-dell-poweredge"
-                    ]
-                  },
                   "documentation/platform/kms/sigstore-cosign"
                 ]
               }
@@ -4436,7 +4450,7 @@
                 "boost": 0.25,
                 "pages": [
                   {
-                    "group": "Keys",
+                    "group": "Key management",
                     "pages": [
                       "api-reference/endpoints/kms/keys/list",
                       "api-reference/endpoints/kms/keys/get-by-id",

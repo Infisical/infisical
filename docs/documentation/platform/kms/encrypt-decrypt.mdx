@@ -1,0 +1,112 @@
+---
+title: "Encrypt and decrypt data"
+sidebarTitle: "Encrypt and decrypt"
+description: "Encrypt and decrypt data with a key in Infisical KMS."
+---
+
+To encrypt data, send it to Infisical with an Encrypt/Decrypt key, and Infisical returns the ciphertext. To read the data again, send the ciphertext back with the same key. Infisical doesn't store your data or the ciphertext.
+
+## Prerequisites
+
+- An [Encrypt/Decrypt key](/documentation/platform/kms/keys#create-a-key)
+- A role that can use the key, such as **Member** or **Cryptographic Operator** (see [Who can use a key](/documentation/platform/kms/keys#who-can-use-a-key))
+
+## Encrypt data
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step>
+        In your KMS project, go to **Overview**, select the options menu on the key's row, then select **Encrypt Data**.
+
+        ![kms key options](/images/platform/kms/infisical-kms/kms-key-options.png)
+      </Step>
+      <Step>
+        Enter your data in **Data (Plaintext)**. If your data is already Base64 encoded, turn on **Data is Base64 encoded**.
+
+        ![kms encrypt data](/images/platform/kms/infisical-kms/kms-encrypt-data.png)
+      </Step>
+      <Step>
+        Select **Encrypt**, then copy the ciphertext from **Encrypted Data (Ciphertext)**.
+
+        ![kms encrypted data](/images/platform/kms/infisical-kms/kms-encrypted-data.png)
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Base64 encode your data, then call [the encrypt endpoint](/api-reference/endpoints/kms/encryption/encrypt) with the key's ID:
+
+    ```bash
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/kms/keys/<key-id>/encrypt \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "plaintext": "SGVsbG8sIFdvcmxkIQ=="
+      }'
+    ```
+
+    <Note>
+      If you use EU Cloud or self-host Infisical, replace `https://app.infisical.com` with `https://eu.infisical.com` or the address of your instance.
+    </Note>
+
+    The response contains the ciphertext:
+
+    ```json
+    {
+      "ciphertext": "<base64-encoded-ciphertext>"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Decrypt data
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step>
+        In your KMS project, go to **Overview**, select the options menu on the row of the key that encrypted the data, then select **Decrypt Data**.
+
+        ![kms key options](/images/platform/kms/infisical-kms/kms-decrypt-options.png)
+      </Step>
+      <Step>
+        Paste the ciphertext into **Encrypted Data (ciphertext)**. If the data you encrypted was plain text, turn on **Decode Base64**, so Infisical shows the text instead of its Base64 encoding.
+
+        ![kms decrypt data](/images/platform/kms/infisical-kms/kms-decrypt-data.png)
+      </Step>
+      <Step>
+        Select **Decrypt**, then copy your data from **Decrypted Data (plaintext)**.
+
+        ![kms decrypted data](/images/platform/kms/infisical-kms/kms-decrypted-data.png)
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Call [the decrypt endpoint](/api-reference/endpoints/kms/encryption/decrypt) with the ID of the key that encrypted the data:
+
+    ```bash
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/kms/keys/<key-id>/decrypt \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "ciphertext": "<base64-encoded-ciphertext>"
+      }'
+    ```
+
+    <Note>
+      If you use EU Cloud or self-host Infisical, replace `https://app.infisical.com` with `https://eu.infisical.com` or the address of your instance.
+    </Note>
+
+    The response contains your data, Base64 encoded:
+
+    ```json
+    {
+      "plaintext": "SGVsbG8sIFdvcmxkIQ=="
+    }
+    ```
+  </Tab>
+</Tabs>
+
+If you [rotated the key](/documentation/platform/kms/key-rotation) after you encrypted the data, Infisical still decrypts it with the key version that encrypted it.
