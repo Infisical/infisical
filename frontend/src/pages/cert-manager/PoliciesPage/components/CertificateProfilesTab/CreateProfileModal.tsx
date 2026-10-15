@@ -16,6 +16,7 @@ import {
   FieldContent,
   FieldDescription,
   FieldError,
+  FieldFeedback,
   FieldLabel,
   FilterableSelect,
   Input,
@@ -1094,7 +1095,7 @@ export const CreateProfileModal = ({
                       control={control}
                       name="slug"
                       render={({ field, fieldState: { error } }) => (
-                        <Field>
+                        <Field data-invalid={Boolean(error)}>
                           <FieldLabel>
                             Name <span className="text-danger">*</span>
                           </FieldLabel>
@@ -1104,13 +1105,15 @@ export const CreateProfileModal = ({
                               onChange={(event) =>
                                 field.onChange(normalizeSlugInput(event.target.value))
                               }
+                              aria-describedby="certificate-profile-name-feedback"
                               placeholder="your-profile-name"
                               isError={Boolean(error)}
                             />
-                            <FieldDescription>
-                              Use lowercase letters, numbers, and hyphens. Spaces become hyphens.
-                            </FieldDescription>
-                            <FieldError errors={[error]} />
+                            <FieldFeedback
+                              id="certificate-profile-name-feedback"
+                              description="Use lowercase letters, numbers, and hyphens. Spaces become hyphens."
+                              error={error?.message}
+                            />
                           </FieldContent>
                         </Field>
                       )}
