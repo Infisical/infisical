@@ -1509,7 +1509,6 @@ func (e LoginWithUniversalAuth500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
-<<<<<<< HEAD
 // Defines values for ListProjectSecretsDetailsParamsOrderBy.
 const (
 	Name ListProjectSecretsDetailsParamsOrderBy = "name"
@@ -1519,24 +1518,12 @@ const (
 func (e ListProjectSecretsDetailsParamsOrderBy) Valid() bool {
 	switch e {
 	case Name:
-=======
-// Defines values for ListEmailDomains400JSONResponseBodyStatusCode.
-const (
-	ListEmailDomains400JSONResponseBodyStatusCodeN400 ListEmailDomains400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the ListEmailDomains400JSONResponseBodyStatusCode enum.
-func (e ListEmailDomains400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case ListEmailDomains400JSONResponseBodyStatusCodeN400:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
 // Defines values for ListProjectSecretsDetailsParamsOrderDirection.
 const (
 	ListProjectSecretsDetailsParamsOrderDirectionAsc  ListProjectSecretsDetailsParamsOrderDirection = "asc"
@@ -2722,24 +2709,12 @@ func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations26ParametersP
 	case AllZones:
 		return true
 	case Zones:
-=======
-// Defines values for ListEmailDomains401JSONResponseBodyStatusCode.
-const (
-	ListEmailDomains401JSONResponseBodyStatusCodeN401 ListEmailDomains401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the ListEmailDomains401JSONResponseBodyStatusCode enum.
-func (e ListEmailDomains401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case ListEmailDomains401JSONResponseBodyStatusCodeN401:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
 // Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations26Type.
 const (
 	CloudflareApiToken ListProjectSecretsDetails200JSONResponseBodySecretRotations26Type = "cloudflare-api-token"
@@ -2749,24 +2724,12 @@ const (
 func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations26Type) Valid() bool {
 	switch e {
 	case CloudflareApiToken:
-=======
-// Defines values for ListEmailDomains403JSONResponseBodyStatusCode.
-const (
-	ListEmailDomains403JSONResponseBodyStatusCodeN403 ListEmailDomains403JSONResponseBodyStatusCode = 403
-)
-
-// Valid indicates whether the value is a known member of the ListEmailDomains403JSONResponseBodyStatusCode enum.
-func (e ListEmailDomains403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case ListEmailDomains403JSONResponseBodyStatusCodeN403:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
 // Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations27ConnectionApp.
 const (
 	ListProjectSecretsDetails200JSONResponseBodySecretRotations27ConnectionAppCloudflare ListProjectSecretsDetails200JSONResponseBodySecretRotations27ConnectionApp = "cloudflare"
@@ -2776,24 +2739,12 @@ const (
 func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations27ConnectionApp) Valid() bool {
 	switch e {
 	case ListProjectSecretsDetails200JSONResponseBodySecretRotations27ConnectionAppCloudflare:
-=======
-// Defines values for ListEmailDomains404JSONResponseBodyStatusCode.
-const (
-	ListEmailDomains404JSONResponseBodyStatusCodeN404 ListEmailDomains404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the ListEmailDomains404JSONResponseBodyStatusCode enum.
-func (e ListEmailDomains404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case ListEmailDomains404JSONResponseBodyStatusCodeN404:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
 // Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersAccessLevel.
 const (
 	ObjectRead      ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersAccessLevel = "object-read"
@@ -2806,24 +2757,12 @@ func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersA
 	case ObjectRead:
 		return true
 	case ObjectReadWrite:
-=======
-// Defines values for ListEmailDomains422JSONResponseBodyStatusCode.
-const (
-	ListEmailDomains422JSONResponseBodyStatusCodeN422 ListEmailDomains422JSONResponseBodyStatusCode = 422
-)
-
-// Valid indicates whether the value is a known member of the ListEmailDomains422JSONResponseBodyStatusCode enum.
-func (e ListEmailDomains422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case ListEmailDomains422JSONResponseBodyStatusCodeN422:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
 // Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersBucketsJurisdiction.
 const (
 	Default ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersBucketsJurisdiction = "default"
@@ -2839,24 +2778,12 @@ func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations27ParametersB
 	case Eu:
 		return true
 	case Fedramp:
-=======
-// Defines values for ListEmailDomains500JSONResponseBodyStatusCode.
-const (
-	ListEmailDomains500JSONResponseBodyStatusCodeN500 ListEmailDomains500JSONResponseBodyStatusCode = 500
-)
-
-// Valid indicates whether the value is a known member of the ListEmailDomains500JSONResponseBodyStatusCode enum.
-func (e ListEmailDomains500JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case ListEmailDomains500JSONResponseBodyStatusCodeN500:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
 // Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations27Type.
 const (
 	CloudflareR2AccessKey ListProjectSecretsDetails200JSONResponseBodySecretRotations27Type = "cloudflare-r2-access-key"
@@ -2866,24 +2793,12 @@ const (
 func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations27Type) Valid() bool {
 	switch e {
 	case CloudflareR2AccessKey:
-=======
-// Defines values for CreateEmailDomain400JSONResponseBodyStatusCode.
-const (
-	CreateEmailDomain400JSONResponseBodyStatusCodeN400 CreateEmailDomain400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the CreateEmailDomain400JSONResponseBodyStatusCode enum.
-func (e CreateEmailDomain400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateEmailDomain400JSONResponseBodyStatusCodeN400:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
 // Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations28ConnectionApp.
 const (
 	Stripe ListProjectSecretsDetails200JSONResponseBodySecretRotations28ConnectionApp = "stripe"
@@ -2893,24 +2808,12 @@ const (
 func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations28ConnectionApp) Valid() bool {
 	switch e {
 	case Stripe:
-=======
-// Defines values for CreateEmailDomain401JSONResponseBodyStatusCode.
-const (
-	CreateEmailDomain401JSONResponseBodyStatusCodeN401 CreateEmailDomain401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the CreateEmailDomain401JSONResponseBodyStatusCode enum.
-func (e CreateEmailDomain401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateEmailDomain401JSONResponseBodyStatusCodeN401:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
 // Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions.
 const (
 	AccountLinkWrite                            ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "account_link_write"
@@ -3391,24 +3294,12 @@ func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersP
 	case WebhookRead:
 		return true
 	case WebhookWrite:
-=======
-// Defines values for CreateEmailDomain403JSONResponseBodyStatusCode.
-const (
-	CreateEmailDomain403JSONResponseBodyStatusCodeN403 CreateEmailDomain403JSONResponseBodyStatusCode = 403
-)
-
-// Valid indicates whether the value is a known member of the CreateEmailDomain403JSONResponseBodyStatusCode enum.
-func (e CreateEmailDomain403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateEmailDomain403JSONResponseBodyStatusCodeN403:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
 // Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations28Type.
 const (
 	StripeApiKey ListProjectSecretsDetails200JSONResponseBodySecretRotations28Type = "stripe-api-key"
@@ -3418,24 +3309,12 @@ const (
 func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations28Type) Valid() bool {
 	switch e {
 	case StripeApiKey:
-=======
-// Defines values for CreateEmailDomain404JSONResponseBodyStatusCode.
-const (
-	CreateEmailDomain404JSONResponseBodyStatusCodeN404 CreateEmailDomain404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the CreateEmailDomain404JSONResponseBodyStatusCode enum.
-func (e CreateEmailDomain404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateEmailDomain404JSONResponseBodyStatusCodeN404:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
 // Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations29ConnectionApp.
 const (
 	Gcp ListProjectSecretsDetails200JSONResponseBodySecretRotations29ConnectionApp = "gcp"
@@ -3445,24 +3324,12 @@ const (
 func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations29ConnectionApp) Valid() bool {
 	switch e {
 	case Gcp:
-=======
-// Defines values for CreateEmailDomain422JSONResponseBodyStatusCode.
-const (
-	CreateEmailDomain422JSONResponseBodyStatusCodeN422 CreateEmailDomain422JSONResponseBodyStatusCode = 422
-)
-
-// Valid indicates whether the value is a known member of the CreateEmailDomain422JSONResponseBodyStatusCode enum.
-func (e CreateEmailDomain422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateEmailDomain422JSONResponseBodyStatusCodeN422:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
 // Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type.
 const (
 	GcpServiceAccountKey ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type = "gcp-service-account-key"
@@ -3472,24 +3339,12 @@ const (
 func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type) Valid() bool {
 	switch e {
 	case GcpServiceAccountKey:
-=======
-// Defines values for CreateEmailDomain500JSONResponseBodyStatusCode.
-const (
-	CreateEmailDomain500JSONResponseBodyStatusCodeN500 CreateEmailDomain500JSONResponseBodyStatusCode = 500
-)
-
-// Valid indicates whether the value is a known member of the CreateEmailDomain500JSONResponseBodyStatusCode enum.
-func (e CreateEmailDomain500JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateEmailDomain500JSONResponseBodyStatusCodeN500:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
 // Defines values for ListProjectSecretsDetails400JSONResponseBodyStatusCode.
 const (
 	ListProjectSecretsDetails400JSONResponseBodyStatusCodeN400 ListProjectSecretsDetails400JSONResponseBodyStatusCode = 400
@@ -3499,24 +3354,12 @@ const (
 func (e ListProjectSecretsDetails400JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case ListProjectSecretsDetails400JSONResponseBodyStatusCodeN400:
-=======
-// Defines values for VerifyEmailDomain400JSONResponseBodyStatusCode.
-const (
-	VerifyEmailDomain400JSONResponseBodyStatusCodeN400 VerifyEmailDomain400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the VerifyEmailDomain400JSONResponseBodyStatusCode enum.
-func (e VerifyEmailDomain400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case VerifyEmailDomain400JSONResponseBodyStatusCodeN400:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
 // Defines values for ListProjectSecretsDetails401JSONResponseBodyStatusCode.
 const (
 	ListProjectSecretsDetails401JSONResponseBodyStatusCodeN401 ListProjectSecretsDetails401JSONResponseBodyStatusCode = 401
@@ -3526,24 +3369,12 @@ const (
 func (e ListProjectSecretsDetails401JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case ListProjectSecretsDetails401JSONResponseBodyStatusCodeN401:
-=======
-// Defines values for VerifyEmailDomain401JSONResponseBodyStatusCode.
-const (
-	VerifyEmailDomain401JSONResponseBodyStatusCodeN401 VerifyEmailDomain401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the VerifyEmailDomain401JSONResponseBodyStatusCode enum.
-func (e VerifyEmailDomain401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case VerifyEmailDomain401JSONResponseBodyStatusCodeN401:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
 // Defines values for ListProjectSecretsDetails403JSONResponseBodyStatusCode.
 const (
 	ListProjectSecretsDetails403JSONResponseBodyStatusCodeN403 ListProjectSecretsDetails403JSONResponseBodyStatusCode = 403
@@ -3553,24 +3384,12 @@ const (
 func (e ListProjectSecretsDetails403JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case ListProjectSecretsDetails403JSONResponseBodyStatusCodeN403:
-=======
-// Defines values for VerifyEmailDomain403JSONResponseBodyStatusCode.
-const (
-	VerifyEmailDomain403JSONResponseBodyStatusCodeN403 VerifyEmailDomain403JSONResponseBodyStatusCode = 403
-)
-
-// Valid indicates whether the value is a known member of the VerifyEmailDomain403JSONResponseBodyStatusCode enum.
-func (e VerifyEmailDomain403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case VerifyEmailDomain403JSONResponseBodyStatusCodeN403:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
 // Defines values for ListProjectSecretsDetails404JSONResponseBodyStatusCode.
 const (
 	ListProjectSecretsDetails404JSONResponseBodyStatusCodeN404 ListProjectSecretsDetails404JSONResponseBodyStatusCode = 404
@@ -3580,24 +3399,12 @@ const (
 func (e ListProjectSecretsDetails404JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case ListProjectSecretsDetails404JSONResponseBodyStatusCodeN404:
-=======
-// Defines values for VerifyEmailDomain404JSONResponseBodyStatusCode.
-const (
-	VerifyEmailDomain404JSONResponseBodyStatusCodeN404 VerifyEmailDomain404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the VerifyEmailDomain404JSONResponseBodyStatusCode enum.
-func (e VerifyEmailDomain404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case VerifyEmailDomain404JSONResponseBodyStatusCodeN404:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
 // Defines values for ListProjectSecretsDetails422JSONResponseBodyStatusCode.
 const (
 	ListProjectSecretsDetails422JSONResponseBodyStatusCodeN422 ListProjectSecretsDetails422JSONResponseBodyStatusCode = 422
@@ -3607,24 +3414,12 @@ const (
 func (e ListProjectSecretsDetails422JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case ListProjectSecretsDetails422JSONResponseBodyStatusCodeN422:
-=======
-// Defines values for VerifyEmailDomain422JSONResponseBodyStatusCode.
-const (
-	VerifyEmailDomain422JSONResponseBodyStatusCodeN422 VerifyEmailDomain422JSONResponseBodyStatusCode = 422
-)
-
-// Valid indicates whether the value is a known member of the VerifyEmailDomain422JSONResponseBodyStatusCode enum.
-func (e VerifyEmailDomain422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case VerifyEmailDomain422JSONResponseBodyStatusCodeN422:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
 // Defines values for ListProjectSecretsDetails500JSONResponseBodyStatusCode.
 const (
 	ListProjectSecretsDetails500JSONResponseBodyStatusCodeN500 ListProjectSecretsDetails500JSONResponseBodyStatusCode = 500
@@ -3634,7 +3429,267 @@ const (
 func (e ListProjectSecretsDetails500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case ListProjectSecretsDetails500JSONResponseBodyStatusCodeN500:
-=======
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListEmailDomains400JSONResponseBodyStatusCode.
+const (
+	ListEmailDomains400JSONResponseBodyStatusCodeN400 ListEmailDomains400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListEmailDomains400JSONResponseBodyStatusCode enum.
+func (e ListEmailDomains400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListEmailDomains400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListEmailDomains401JSONResponseBodyStatusCode.
+const (
+	ListEmailDomains401JSONResponseBodyStatusCodeN401 ListEmailDomains401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListEmailDomains401JSONResponseBodyStatusCode enum.
+func (e ListEmailDomains401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListEmailDomains401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListEmailDomains403JSONResponseBodyStatusCode.
+const (
+	ListEmailDomains403JSONResponseBodyStatusCodeN403 ListEmailDomains403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListEmailDomains403JSONResponseBodyStatusCode enum.
+func (e ListEmailDomains403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListEmailDomains403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListEmailDomains404JSONResponseBodyStatusCode.
+const (
+	ListEmailDomains404JSONResponseBodyStatusCodeN404 ListEmailDomains404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListEmailDomains404JSONResponseBodyStatusCode enum.
+func (e ListEmailDomains404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListEmailDomains404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListEmailDomains422JSONResponseBodyStatusCode.
+const (
+	ListEmailDomains422JSONResponseBodyStatusCodeN422 ListEmailDomains422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListEmailDomains422JSONResponseBodyStatusCode enum.
+func (e ListEmailDomains422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListEmailDomains422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListEmailDomains500JSONResponseBodyStatusCode.
+const (
+	ListEmailDomains500JSONResponseBodyStatusCodeN500 ListEmailDomains500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListEmailDomains500JSONResponseBodyStatusCode enum.
+func (e ListEmailDomains500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListEmailDomains500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateEmailDomain400JSONResponseBodyStatusCode.
+const (
+	CreateEmailDomain400JSONResponseBodyStatusCodeN400 CreateEmailDomain400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateEmailDomain400JSONResponseBodyStatusCode enum.
+func (e CreateEmailDomain400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateEmailDomain400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateEmailDomain401JSONResponseBodyStatusCode.
+const (
+	CreateEmailDomain401JSONResponseBodyStatusCodeN401 CreateEmailDomain401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateEmailDomain401JSONResponseBodyStatusCode enum.
+func (e CreateEmailDomain401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateEmailDomain401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateEmailDomain403JSONResponseBodyStatusCode.
+const (
+	CreateEmailDomain403JSONResponseBodyStatusCodeN403 CreateEmailDomain403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateEmailDomain403JSONResponseBodyStatusCode enum.
+func (e CreateEmailDomain403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateEmailDomain403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateEmailDomain404JSONResponseBodyStatusCode.
+const (
+	CreateEmailDomain404JSONResponseBodyStatusCodeN404 CreateEmailDomain404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateEmailDomain404JSONResponseBodyStatusCode enum.
+func (e CreateEmailDomain404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateEmailDomain404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateEmailDomain422JSONResponseBodyStatusCode.
+const (
+	CreateEmailDomain422JSONResponseBodyStatusCodeN422 CreateEmailDomain422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateEmailDomain422JSONResponseBodyStatusCode enum.
+func (e CreateEmailDomain422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateEmailDomain422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateEmailDomain500JSONResponseBodyStatusCode.
+const (
+	CreateEmailDomain500JSONResponseBodyStatusCodeN500 CreateEmailDomain500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateEmailDomain500JSONResponseBodyStatusCode enum.
+func (e CreateEmailDomain500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateEmailDomain500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailDomain400JSONResponseBodyStatusCode.
+const (
+	VerifyEmailDomain400JSONResponseBodyStatusCodeN400 VerifyEmailDomain400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailDomain400JSONResponseBodyStatusCode enum.
+func (e VerifyEmailDomain400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyEmailDomain400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailDomain401JSONResponseBodyStatusCode.
+const (
+	VerifyEmailDomain401JSONResponseBodyStatusCodeN401 VerifyEmailDomain401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailDomain401JSONResponseBodyStatusCode enum.
+func (e VerifyEmailDomain401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyEmailDomain401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailDomain403JSONResponseBodyStatusCode.
+const (
+	VerifyEmailDomain403JSONResponseBodyStatusCodeN403 VerifyEmailDomain403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailDomain403JSONResponseBodyStatusCode enum.
+func (e VerifyEmailDomain403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyEmailDomain403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailDomain404JSONResponseBodyStatusCode.
+const (
+	VerifyEmailDomain404JSONResponseBodyStatusCodeN404 VerifyEmailDomain404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailDomain404JSONResponseBodyStatusCode enum.
+func (e VerifyEmailDomain404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyEmailDomain404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailDomain422JSONResponseBodyStatusCode.
+const (
+	VerifyEmailDomain422JSONResponseBodyStatusCodeN422 VerifyEmailDomain422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailDomain422JSONResponseBodyStatusCode enum.
+func (e VerifyEmailDomain422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyEmailDomain422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for VerifyEmailDomain500JSONResponseBodyStatusCode.
 const (
 	VerifyEmailDomain500JSONResponseBodyStatusCodeN500 VerifyEmailDomain500JSONResponseBodyStatusCode = 500
@@ -3644,7 +3699,6 @@ const (
 func (e VerifyEmailDomain500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case VerifyEmailDomain500JSONResponseBodyStatusCodeN500:
->>>>>>> main
 		return true
 	default:
 		return false
@@ -9066,17 +9120,6 @@ func (e CreateSecretImport500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
-<<<<<<< HEAD
-// Defines values for CreateProjectRole400JSONResponseBodyStatusCode.
-const (
-	CreateProjectRole400JSONResponseBodyStatusCodeN400 CreateProjectRole400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the CreateProjectRole400JSONResponseBodyStatusCode enum.
-func (e CreateProjectRole400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateProjectRole400JSONResponseBodyStatusCodeN400:
-=======
 // Defines values for GetCurrentUser400JSONResponseBodyStatusCode.
 const (
 	GetCurrentUser400JSONResponseBodyStatusCodeN400 GetCurrentUser400JSONResponseBodyStatusCode = 400
@@ -9086,24 +9129,12 @@ const (
 func (e GetCurrentUser400JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case GetCurrentUser400JSONResponseBodyStatusCodeN400:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
-// Defines values for CreateProjectRole401JSONResponseBodyStatusCode.
-const (
-	CreateProjectRole401JSONResponseBodyStatusCodeN401 CreateProjectRole401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the CreateProjectRole401JSONResponseBodyStatusCode enum.
-func (e CreateProjectRole401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateProjectRole401JSONResponseBodyStatusCodeN401:
-=======
 // Defines values for GetCurrentUser401JSONResponseBodyStatusCode.
 const (
 	GetCurrentUser401JSONResponseBodyStatusCodeN401 GetCurrentUser401JSONResponseBodyStatusCode = 401
@@ -9113,24 +9144,12 @@ const (
 func (e GetCurrentUser401JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case GetCurrentUser401JSONResponseBodyStatusCodeN401:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
-// Defines values for CreateProjectRole403JSONResponseBodyStatusCode.
-const (
-	CreateProjectRole403JSONResponseBodyStatusCodeN403 CreateProjectRole403JSONResponseBodyStatusCode = 403
-)
-
-// Valid indicates whether the value is a known member of the CreateProjectRole403JSONResponseBodyStatusCode enum.
-func (e CreateProjectRole403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateProjectRole403JSONResponseBodyStatusCodeN403:
-=======
 // Defines values for GetCurrentUser403JSONResponseBodyStatusCode.
 const (
 	GetCurrentUser403JSONResponseBodyStatusCodeN403 GetCurrentUser403JSONResponseBodyStatusCode = 403
@@ -9140,24 +9159,12 @@ const (
 func (e GetCurrentUser403JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case GetCurrentUser403JSONResponseBodyStatusCodeN403:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
-// Defines values for CreateProjectRole404JSONResponseBodyStatusCode.
-const (
-	CreateProjectRole404JSONResponseBodyStatusCodeN404 CreateProjectRole404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the CreateProjectRole404JSONResponseBodyStatusCode enum.
-func (e CreateProjectRole404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateProjectRole404JSONResponseBodyStatusCodeN404:
-=======
 // Defines values for GetCurrentUser404JSONResponseBodyStatusCode.
 const (
 	GetCurrentUser404JSONResponseBodyStatusCodeN404 GetCurrentUser404JSONResponseBodyStatusCode = 404
@@ -9167,24 +9174,12 @@ const (
 func (e GetCurrentUser404JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case GetCurrentUser404JSONResponseBodyStatusCodeN404:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
-// Defines values for CreateProjectRole422JSONResponseBodyStatusCode.
-const (
-	CreateProjectRole422JSONResponseBodyStatusCodeN422 CreateProjectRole422JSONResponseBodyStatusCode = 422
-)
-
-// Valid indicates whether the value is a known member of the CreateProjectRole422JSONResponseBodyStatusCode enum.
-func (e CreateProjectRole422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateProjectRole422JSONResponseBodyStatusCodeN422:
-=======
 // Defines values for GetCurrentUser422JSONResponseBodyStatusCode.
 const (
 	GetCurrentUser422JSONResponseBodyStatusCodeN422 GetCurrentUser422JSONResponseBodyStatusCode = 422
@@ -9194,24 +9189,12 @@ const (
 func (e GetCurrentUser422JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case GetCurrentUser422JSONResponseBodyStatusCodeN422:
->>>>>>> main
 		return true
 	default:
 		return false
 	}
 }
 
-<<<<<<< HEAD
-// Defines values for CreateProjectRole500JSONResponseBodyStatusCode.
-const (
-	CreateProjectRole500JSONResponseBodyStatusCodeN500 CreateProjectRole500JSONResponseBodyStatusCode = 500
-)
-
-// Valid indicates whether the value is a known member of the CreateProjectRole500JSONResponseBodyStatusCode enum.
-func (e CreateProjectRole500JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateProjectRole500JSONResponseBodyStatusCodeN500:
-=======
 // Defines values for GetCurrentUser500JSONResponseBodyStatusCode.
 const (
 	GetCurrentUser500JSONResponseBodyStatusCodeN500 GetCurrentUser500JSONResponseBodyStatusCode = 500
@@ -9221,7 +9204,96 @@ const (
 func (e GetCurrentUser500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case GetCurrentUser500JSONResponseBodyStatusCodeN500:
->>>>>>> main
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectRole400JSONResponseBodyStatusCode.
+const (
+	CreateProjectRole400JSONResponseBodyStatusCodeN400 CreateProjectRole400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectRole400JSONResponseBodyStatusCode enum.
+func (e CreateProjectRole400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectRole400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectRole401JSONResponseBodyStatusCode.
+const (
+	CreateProjectRole401JSONResponseBodyStatusCodeN401 CreateProjectRole401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectRole401JSONResponseBodyStatusCode enum.
+func (e CreateProjectRole401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectRole401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectRole403JSONResponseBodyStatusCode.
+const (
+	CreateProjectRole403JSONResponseBodyStatusCodeN403 CreateProjectRole403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectRole403JSONResponseBodyStatusCode enum.
+func (e CreateProjectRole403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectRole403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectRole404JSONResponseBodyStatusCode.
+const (
+	CreateProjectRole404JSONResponseBodyStatusCodeN404 CreateProjectRole404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectRole404JSONResponseBodyStatusCode enum.
+func (e CreateProjectRole404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectRole404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectRole422JSONResponseBodyStatusCode.
+const (
+	CreateProjectRole422JSONResponseBodyStatusCodeN422 CreateProjectRole422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectRole422JSONResponseBodyStatusCode enum.
+func (e CreateProjectRole422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectRole422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateProjectRole500JSONResponseBodyStatusCode.
+const (
+	CreateProjectRole500JSONResponseBodyStatusCodeN500 CreateProjectRole500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateProjectRole500JSONResponseBodyStatusCode enum.
+func (e CreateProjectRole500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateProjectRole500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -12060,7 +12132,6 @@ type LoginWithUniversalAuth422JSONResponseBodyStatusCode float32
 // LoginWithUniversalAuth500JSONResponseBodyStatusCode defines parameters for LoginWithUniversalAuth.
 type LoginWithUniversalAuth500JSONResponseBodyStatusCode float32
 
-<<<<<<< HEAD
 // ListProjectSecretsDetailsParams defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetailsParams struct {
 	// ProjectId The ID of the project to list secrets/folders from.
@@ -13334,6 +13405,9 @@ type ListProjectSecretsDetails200JSONResponseBodySecretRotations15 struct {
 
 		// Name The name for the generated OpenRouter API key.
 		Name string `json:"name"`
+
+		// WorkspaceId The optional ID of the OpenRouter workspace to create API keys in. If omitted, OpenRouter creates keys in the account's Default workspace.
+		WorkspaceId *string `json:"workspaceId,omitempty"`
 	} `json:"parameters"`
 	ProjectId   string `json:"projectId"`
 	RotateAtUtc struct {
@@ -14334,7 +14408,7 @@ type ListProjectSecretsDetails422JSONResponseBodyStatusCode float32
 
 // ListProjectSecretsDetails500JSONResponseBodyStatusCode defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetails500JSONResponseBodyStatusCode float32
-=======
+
 // ListEmailDomains400JSONResponseBodyStatusCode defines parameters for ListEmailDomains.
 type ListEmailDomains400JSONResponseBodyStatusCode float32
 
@@ -14394,7 +14468,6 @@ type VerifyEmailDomain422JSONResponseBodyStatusCode float32
 
 // VerifyEmailDomain500JSONResponseBodyStatusCode defines parameters for VerifyEmailDomain.
 type VerifyEmailDomain500JSONResponseBodyStatusCode float32
->>>>>>> main
 
 // CreateGroupJSONBody defines parameters for CreateGroup.
 type CreateGroupJSONBody struct {
@@ -16396,7 +16469,24 @@ type CreateSecretImport422JSONResponseBodyStatusCode float32
 // CreateSecretImport500JSONResponseBodyStatusCode defines parameters for CreateSecretImport.
 type CreateSecretImport500JSONResponseBodyStatusCode float32
 
-<<<<<<< HEAD
+// GetCurrentUser400JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
+type GetCurrentUser400JSONResponseBodyStatusCode float32
+
+// GetCurrentUser401JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
+type GetCurrentUser401JSONResponseBodyStatusCode float32
+
+// GetCurrentUser403JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
+type GetCurrentUser403JSONResponseBodyStatusCode float32
+
+// GetCurrentUser404JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
+type GetCurrentUser404JSONResponseBodyStatusCode float32
+
+// GetCurrentUser422JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
+type GetCurrentUser422JSONResponseBodyStatusCode float32
+
+// GetCurrentUser500JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
+type GetCurrentUser500JSONResponseBodyStatusCode float32
+
 // CreateProjectRoleJSONBody defines parameters for CreateProjectRole.
 type CreateProjectRoleJSONBody struct {
 	// Description The description for the role.
@@ -16451,25 +16541,6 @@ type CreateProjectRole422JSONResponseBodyStatusCode float32
 
 // CreateProjectRole500JSONResponseBodyStatusCode defines parameters for CreateProjectRole.
 type CreateProjectRole500JSONResponseBodyStatusCode float32
-=======
-// GetCurrentUser400JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
-type GetCurrentUser400JSONResponseBodyStatusCode float32
-
-// GetCurrentUser401JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
-type GetCurrentUser401JSONResponseBodyStatusCode float32
-
-// GetCurrentUser403JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
-type GetCurrentUser403JSONResponseBodyStatusCode float32
-
-// GetCurrentUser404JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
-type GetCurrentUser404JSONResponseBodyStatusCode float32
-
-// GetCurrentUser422JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
-type GetCurrentUser422JSONResponseBodyStatusCode float32
-
-// GetCurrentUser500JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
-type GetCurrentUser500JSONResponseBodyStatusCode float32
->>>>>>> main
 
 // LoginV3JSONBody defines parameters for LoginV3.
 type LoginV3JSONBody struct {
@@ -21736,12 +21807,11 @@ type ClientInterface interface {
 	// Login with Universal Auth for machine identity.
 	LoginWithUniversalAuth(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-<<<<<<< HEAD
 	// ListProjectSecretsDetails performs a GET /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request.
 	//
 	// List project secrets details.
 	ListProjectSecretsDetails(ctx context.Context, params *ListProjectSecretsDetailsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-=======
+
 	// ListEmailDomains performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
 	ListEmailDomains(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -21755,7 +21825,6 @@ type ClientInterface interface {
 
 	// VerifyEmailDomain performs a POST /api/v1/email-domains/{emailDomainId}/verify (the `VerifyEmailDomain` operationId) request.
 	VerifyEmailDomain(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
->>>>>>> main
 
 	// CreateGroupWithBody performs a POST /api/v1/groups (the `CreateGroup` operationId) request,
 	// with any type of body and a specified content type.
@@ -22105,7 +22174,11 @@ type ClientInterface interface {
 	// Create secret imports.
 	CreateSecretImport(ctx context.Context, body CreateSecretImportJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-<<<<<<< HEAD
+	// GetCurrentUser performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
+	//
+	// Retrieve the current user on the request.
+	GetCurrentUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateProjectRoleWithBody performs a POST /api/v2/workspace/{projectId}/roles (the `CreateProjectRole` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -22117,12 +22190,6 @@ type ClientInterface interface {
 	//
 	// Create a project role.
 	CreateProjectRole(ctx context.Context, projectId string, body CreateProjectRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-=======
-	// GetCurrentUser performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
-	//
-	// Retrieve the current user on the request.
-	GetCurrentUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
->>>>>>> main
 
 	// LoginV3WithBody performs a POST /api/v3/auth/login (the `LoginV3` operationId) request,
 	// with any type of body and a specified content type.
@@ -22507,13 +22574,21 @@ func (c *Client) LoginWithUniversalAuth(ctx context.Context, body LoginWithUnive
 	return c.Client.Do(req)
 }
 
-<<<<<<< HEAD
 // ListProjectSecretsDetails performs a GET /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request.
 //
 // List project secrets details.
 func (c *Client) ListProjectSecretsDetails(ctx context.Context, params *ListProjectSecretsDetailsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListProjectSecretsDetailsRequest(c.Server, params)
-=======
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListEmailDomains performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
 func (c *Client) ListEmailDomains(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListEmailDomainsRequest(c.Server)
@@ -22558,7 +22633,6 @@ func (c *Client) CreateEmailDomain(ctx context.Context, body CreateEmailDomainJS
 // VerifyEmailDomain performs a POST /api/v1/email-domains/{emailDomainId}/verify (the `VerifyEmailDomain` operationId) request.
 func (c *Client) VerifyEmailDomain(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewVerifyEmailDomainRequest(c.Server, emailDomainId)
->>>>>>> main
 	if err != nil {
 		return nil, err
 	}
@@ -23677,7 +23751,21 @@ func (c *Client) CreateSecretImport(ctx context.Context, body CreateSecretImport
 	return c.Client.Do(req)
 }
 
-<<<<<<< HEAD
+// GetCurrentUser performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
+//
+// Retrieve the current user on the request.
+func (c *Client) GetCurrentUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetCurrentUserRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // CreateProjectRoleWithBody performs a POST /api/v2/workspace/{projectId}/roles (the `CreateProjectRole` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -23700,13 +23788,6 @@ func (c *Client) CreateProjectRoleWithBody(ctx context.Context, projectId string
 // Create a project role.
 func (c *Client) CreateProjectRole(ctx context.Context, projectId string, body CreateProjectRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateProjectRoleRequest(c.Server, projectId, body)
-=======
-// GetCurrentUser performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
-//
-// Retrieve the current user on the request.
-func (c *Client) GetCurrentUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetCurrentUserRequest(c.Server)
->>>>>>> main
 	if err != nil {
 		return nil, err
 	}
@@ -24524,13 +24605,8 @@ func NewLoginWithUniversalAuthRequestWithBody(server string, contentType string,
 	return req, nil
 }
 
-<<<<<<< HEAD
 // NewListProjectSecretsDetailsRequest constructs an http.Request for the ListProjectSecretsDetails method
 func NewListProjectSecretsDetailsRequest(server string, params *ListProjectSecretsDetailsParams) (*http.Request, error) {
-=======
-// NewListEmailDomainsRequest constructs an http.Request for the ListEmailDomains method
-func NewListEmailDomainsRequest(server string) (*http.Request, error) {
->>>>>>> main
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -24538,11 +24614,7 @@ func NewListEmailDomainsRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-<<<<<<< HEAD
 	operationPath := fmt.Sprintf("/api/v1/dashboard/secrets-details")
-=======
-	operationPath := fmt.Sprintf("/api/v1/email-domains")
->>>>>>> main
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -24552,7 +24624,6 @@ func NewListEmailDomainsRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-<<<<<<< HEAD
 	if params != nil {
 		// queryValues collects non-styled parameters (passthrough, JSON)
 		// that are safe to round-trip through url.Values.Encode().
@@ -24752,8 +24823,6 @@ func NewListEmailDomainsRequest(server string) (*http.Request, error) {
 		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
-=======
->>>>>>> main
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
@@ -24762,8 +24831,33 @@ func NewListEmailDomainsRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-<<<<<<< HEAD
-=======
+// NewListEmailDomainsRequest constructs an http.Request for the ListEmailDomains method
+func NewListEmailDomainsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/email-domains")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewCreateEmailDomainRequest calls the generic CreateEmailDomain builder with application/json body
 func NewCreateEmailDomainRequest(server string, body CreateEmailDomainJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -24838,7 +24932,6 @@ func NewVerifyEmailDomainRequest(server string, emailDomainId openapi_types.UUID
 	return req, nil
 }
 
->>>>>>> main
 // NewCreateGroupRequest calls the generic CreateGroup builder with application/json body
 func NewCreateGroupRequest(server string, body CreateGroupJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -27259,7 +27352,33 @@ func NewCreateSecretImportRequestWithBody(server string, contentType string, bod
 	return req, nil
 }
 
-<<<<<<< HEAD
+// NewGetCurrentUserRequest constructs an http.Request for the GetCurrentUser method
+func NewGetCurrentUserRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v2/users/me")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewCreateProjectRoleRequest calls the generic CreateProjectRole builder with application/json body
 func NewCreateProjectRoleRequest(server string, projectId string, body CreateProjectRoleJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -27282,22 +27401,12 @@ func NewCreateProjectRoleRequestWithBody(server string, projectId string, conten
 		return nil, err
 	}
 
-=======
-// NewGetCurrentUserRequest constructs an http.Request for the GetCurrentUser method
-func NewGetCurrentUserRequest(server string) (*http.Request, error) {
-	var err error
-
->>>>>>> main
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-<<<<<<< HEAD
 	operationPath := fmt.Sprintf("/api/v2/workspace/%s/roles", pathParam0)
-=======
-	operationPath := fmt.Sprintf("/api/v2/users/me")
->>>>>>> main
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -27307,20 +27416,13 @@ func NewGetCurrentUserRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-<<<<<<< HEAD
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
-=======
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
->>>>>>> main
 	if err != nil {
 		return nil, err
 	}
 
-<<<<<<< HEAD
 	req.Header.Add("Content-Type", contentType)
 
-=======
->>>>>>> main
 	return req, nil
 }
 
@@ -28495,14 +28597,13 @@ type ClientWithResponsesInterface interface {
 	// Login with Universal Auth for machine identity.
 	LoginWithUniversalAuthWithResponse(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginWithUniversalAuthResponse, error)
 
-<<<<<<< HEAD
 	// ListProjectSecretsDetailsWithResponse performs a GET /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request.
 	//
 	// List project secrets details.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	ListProjectSecretsDetailsWithResponse(ctx context.Context, params *ListProjectSecretsDetailsParams, reqEditors ...RequestEditorFn) (*ListProjectSecretsDetailsResponse, error)
-=======
+
 	// ListEmailDomainsWithResponse performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -28522,7 +28623,6 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	VerifyEmailDomainWithResponse(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*VerifyEmailDomainResponse, error)
->>>>>>> main
 
 	// CreateGroupWithBodyWithResponse performs a POST /api/v1/groups (the `CreateGroup` operationId) request,
 	// with any type of body and a specified content type.
@@ -28972,7 +29072,13 @@ type ClientWithResponsesInterface interface {
 	// Create secret imports.
 	CreateSecretImportWithResponse(ctx context.Context, body CreateSecretImportJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSecretImportResponse, error)
 
-<<<<<<< HEAD
+	// GetCurrentUserWithResponse performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
+	//
+	// Retrieve the current user on the request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetCurrentUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCurrentUserResponse, error)
+
 	// CreateProjectRoleWithBodyWithResponse performs a POST /api/v2/workspace/{projectId}/roles (the `CreateProjectRole` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -28986,14 +29092,6 @@ type ClientWithResponsesInterface interface {
 	//
 	// Create a project role.
 	CreateProjectRoleWithResponse(ctx context.Context, projectId string, body CreateProjectRoleJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectRoleResponse, error)
-=======
-	// GetCurrentUserWithResponse performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
-	//
-	// Retrieve the current user on the request.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	GetCurrentUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCurrentUserResponse, error)
->>>>>>> main
 
 	// LoginV3WithBodyWithResponse performs a POST /api/v3/auth/login (the `LoginV3` operationId) request,
 	// with any type of body and a specified content type.
@@ -30746,16 +30844,11 @@ func (r LoginWithUniversalAuthResponse) ContentType() string {
 	return ""
 }
 
-<<<<<<< HEAD
 type ListProjectSecretsDetailsResponse struct {
-=======
-type ListEmailDomainsResponse struct {
->>>>>>> main
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
-<<<<<<< HEAD
 		DynamicSecrets *[]struct {
 			CreatedAt     time.Time           `json:"createdAt"`
 			DefaultTTL    string              `json:"defaultTTL"`
@@ -30994,70 +31087,10 @@ type ListEmailDomainsResponse struct {
 		Message    string                                                 `json:"message"`
 		ReqId      string                                                 `json:"reqId"`
 		StatusCode ListProjectSecretsDetails500JSONResponseBodyStatusCode `json:"statusCode"`
-=======
-		EmailDomains []struct {
-			CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-			CreatedAt              time.Time          `json:"createdAt"`
-			Domain                 string             `json:"domain"`
-			Id                     openapi_types.UUID `json:"id"`
-			OrgId                  openapi_types.UUID `json:"orgId"`
-			Status                 *string            `json:"status,omitempty"`
-			UpdatedAt              time.Time          `json:"updatedAt"`
-			VerificationCode       string             `json:"verificationCode"`
-			VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-			VerificationRecordName string             `json:"verificationRecordName"`
-			VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
-		} `json:"emailDomains"`
-	}
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *struct {
-		Details    interface{}                                   `json:"details,omitempty"`
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode ListEmailDomains400JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode ListEmailDomains401JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *struct {
-		Details    interface{}                                   `json:"details,omitempty"`
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode ListEmailDomains403JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode ListEmailDomains404JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON422 the response for an HTTP 422 `application/json` response
-	JSON422 *struct {
-		Error      string                                        `json:"error"`
-		Message    interface{}                                   `json:"message,omitempty"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode ListEmailDomains422JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode ListEmailDomains500JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 	}
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
-<<<<<<< HEAD
 func (r ListProjectSecretsDetailsResponse) GetJSON200() *struct {
 	DynamicSecrets *[]struct {
 		CreatedAt     time.Time           `json:"createdAt"`
@@ -31253,7 +31286,167 @@ func (r ListProjectSecretsDetailsResponse) GetJSON200() *struct {
 		Name        string `json:"name"`
 		Path        string `json:"path"`
 	} `json:"usedBySecretSyncs,omitempty"`
-=======
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListProjectSecretsDetailsResponse) GetJSON400() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListProjectSecretsDetails400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListProjectSecretsDetailsResponse) GetJSON401() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListProjectSecretsDetails401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListProjectSecretsDetailsResponse) GetJSON403() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListProjectSecretsDetails403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListProjectSecretsDetailsResponse) GetJSON404() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListProjectSecretsDetails404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListProjectSecretsDetailsResponse) GetJSON422() *struct {
+	Error      string                                                 `json:"error"`
+	Message    interface{}                                            `json:"message,omitempty"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListProjectSecretsDetails422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListProjectSecretsDetailsResponse) GetJSON500() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode ListProjectSecretsDetails500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListProjectSecretsDetailsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListProjectSecretsDetailsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListProjectSecretsDetailsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListProjectSecretsDetailsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListEmailDomainsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		EmailDomains []struct {
+			CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
+			CreatedAt              time.Time          `json:"createdAt"`
+			Domain                 string             `json:"domain"`
+			Id                     openapi_types.UUID `json:"id"`
+			OrgId                  openapi_types.UUID `json:"orgId"`
+			Status                 *string            `json:"status,omitempty"`
+			UpdatedAt              time.Time          `json:"updatedAt"`
+			VerificationCode       string             `json:"verificationCode"`
+			VerificationMethod     *string            `json:"verificationMethod,omitempty"`
+			VerificationRecordName string             `json:"verificationRecordName"`
+			VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+		} `json:"emailDomains"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode ListEmailDomains400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode ListEmailDomains401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode ListEmailDomains403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode ListEmailDomains404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode ListEmailDomains422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode ListEmailDomains500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r ListEmailDomainsResponse) GetJSON200() *struct {
 	EmailDomains []struct {
 		CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
@@ -31268,138 +31461,79 @@ func (r ListEmailDomainsResponse) GetJSON200() *struct {
 		VerificationRecordName string             `json:"verificationRecordName"`
 		VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
 	} `json:"emailDomains"`
->>>>>>> main
 } {
 	return r.JSON200
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
-<<<<<<< HEAD
-func (r ListProjectSecretsDetailsResponse) GetJSON400() *struct {
-	Details    interface{}                                            `json:"details,omitempty"`
-	Error      string                                                 `json:"error"`
-	Message    string                                                 `json:"message"`
-	ReqId      string                                                 `json:"reqId"`
-	StatusCode ListProjectSecretsDetails400JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 func (r ListEmailDomainsResponse) GetJSON400() *struct {
 	Details    interface{}                                   `json:"details,omitempty"`
 	Error      string                                        `json:"error"`
 	Message    string                                        `json:"message"`
 	ReqId      string                                        `json:"reqId"`
 	StatusCode ListEmailDomains400JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 } {
 	return r.JSON400
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
-<<<<<<< HEAD
-func (r ListProjectSecretsDetailsResponse) GetJSON401() *struct {
-	Error      string                                                 `json:"error"`
-	Message    string                                                 `json:"message"`
-	ReqId      string                                                 `json:"reqId"`
-	StatusCode ListProjectSecretsDetails401JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 func (r ListEmailDomainsResponse) GetJSON401() *struct {
 	Error      string                                        `json:"error"`
 	Message    string                                        `json:"message"`
 	ReqId      string                                        `json:"reqId"`
 	StatusCode ListEmailDomains401JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 } {
 	return r.JSON401
 }
 
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
-<<<<<<< HEAD
-func (r ListProjectSecretsDetailsResponse) GetJSON403() *struct {
-	Details    interface{}                                            `json:"details,omitempty"`
-	Error      string                                                 `json:"error"`
-	Message    string                                                 `json:"message"`
-	ReqId      string                                                 `json:"reqId"`
-	StatusCode ListProjectSecretsDetails403JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 func (r ListEmailDomainsResponse) GetJSON403() *struct {
 	Details    interface{}                                   `json:"details,omitempty"`
 	Error      string                                        `json:"error"`
 	Message    string                                        `json:"message"`
 	ReqId      string                                        `json:"reqId"`
 	StatusCode ListEmailDomains403JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 } {
 	return r.JSON403
 }
 
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
-<<<<<<< HEAD
-func (r ListProjectSecretsDetailsResponse) GetJSON404() *struct {
-	Error      string                                                 `json:"error"`
-	Message    string                                                 `json:"message"`
-	ReqId      string                                                 `json:"reqId"`
-	StatusCode ListProjectSecretsDetails404JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 func (r ListEmailDomainsResponse) GetJSON404() *struct {
 	Error      string                                        `json:"error"`
 	Message    string                                        `json:"message"`
 	ReqId      string                                        `json:"reqId"`
 	StatusCode ListEmailDomains404JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 } {
 	return r.JSON404
 }
 
 // GetJSON422 returns the response for an HTTP 422 `application/json` response
-<<<<<<< HEAD
-func (r ListProjectSecretsDetailsResponse) GetJSON422() *struct {
-	Error      string                                                 `json:"error"`
-	Message    interface{}                                            `json:"message,omitempty"`
-	ReqId      string                                                 `json:"reqId"`
-	StatusCode ListProjectSecretsDetails422JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 func (r ListEmailDomainsResponse) GetJSON422() *struct {
 	Error      string                                        `json:"error"`
 	Message    interface{}                                   `json:"message,omitempty"`
 	ReqId      string                                        `json:"reqId"`
 	StatusCode ListEmailDomains422JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 } {
 	return r.JSON422
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
-<<<<<<< HEAD
-func (r ListProjectSecretsDetailsResponse) GetJSON500() *struct {
-	Error      string                                                 `json:"error"`
-	Message    string                                                 `json:"message"`
-	ReqId      string                                                 `json:"reqId"`
-	StatusCode ListProjectSecretsDetails500JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 func (r ListEmailDomainsResponse) GetJSON500() *struct {
 	Error      string                                        `json:"error"`
 	Message    string                                        `json:"message"`
 	ReqId      string                                        `json:"reqId"`
 	StatusCode ListEmailDomains500JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 } {
 	return r.JSON500
 }
 
 // GetBody returns the raw response body bytes
-<<<<<<< HEAD
-func (r ListProjectSecretsDetailsResponse) GetBody() []byte {
-=======
 func (r ListEmailDomainsResponse) GetBody() []byte {
->>>>>>> main
 	return r.Body
 }
 
 // Status returns HTTPResponse.Status
-<<<<<<< HEAD
-func (r ListProjectSecretsDetailsResponse) Status() string {
-=======
 func (r ListEmailDomainsResponse) Status() string {
->>>>>>> main
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -31407,11 +31541,7 @@ func (r ListEmailDomainsResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-<<<<<<< HEAD
-func (r ListProjectSecretsDetailsResponse) StatusCode() int {
-=======
 func (r ListEmailDomainsResponse) StatusCode() int {
->>>>>>> main
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -31419,9 +31549,6 @@ func (r ListEmailDomainsResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-<<<<<<< HEAD
-func (r ListProjectSecretsDetailsResponse) ContentType() string {
-=======
 func (r ListEmailDomainsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
@@ -31773,7 +31900,6 @@ func (r VerifyEmailDomainResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r VerifyEmailDomainResponse) ContentType() string {
->>>>>>> main
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -40883,76 +41009,11 @@ func (r CreateSecretImportResponse) ContentType() string {
 	return ""
 }
 
-<<<<<<< HEAD
-type CreateProjectRoleResponse struct {
-=======
 type GetCurrentUserResponse struct {
->>>>>>> main
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
-<<<<<<< HEAD
-		Role struct {
-			CreatedAt   time.Time          `json:"createdAt"`
-			Description *string            `json:"description,omitempty"`
-			Id          openapi_types.UUID `json:"id"`
-			Name        string             `json:"name"`
-			Permissions []struct {
-				Action     CreateProjectRole200JSONResponseBody_Role_Permissions_Action   `json:"action"`
-				Conditions interface{}                                                    `json:"conditions,omitempty"`
-				Inverted   *bool                                                          `json:"inverted,omitempty"`
-				Subject    *CreateProjectRole200JSONResponseBody_Role_Permissions_Subject `json:"subject,omitempty"`
-			} `json:"permissions"`
-			ProjectId string    `json:"projectId"`
-			Slug      string    `json:"slug"`
-			UpdatedAt time.Time `json:"updatedAt"`
-		} `json:"role"`
-	}
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *struct {
-		Details    interface{}                                    `json:"details,omitempty"`
-		Error      string                                         `json:"error"`
-		Message    string                                         `json:"message"`
-		ReqId      string                                         `json:"reqId"`
-		StatusCode CreateProjectRole400JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *struct {
-		Error      string                                         `json:"error"`
-		Message    string                                         `json:"message"`
-		ReqId      string                                         `json:"reqId"`
-		StatusCode CreateProjectRole401JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *struct {
-		Details    interface{}                                    `json:"details,omitempty"`
-		Error      string                                         `json:"error"`
-		Message    string                                         `json:"message"`
-		ReqId      string                                         `json:"reqId"`
-		StatusCode CreateProjectRole403JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *struct {
-		Error      string                                         `json:"error"`
-		Message    string                                         `json:"message"`
-		ReqId      string                                         `json:"reqId"`
-		StatusCode CreateProjectRole404JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON422 the response for an HTTP 422 `application/json` response
-	JSON422 *struct {
-		Error      string                                         `json:"error"`
-		Message    interface{}                                    `json:"message,omitempty"`
-		ReqId      string                                         `json:"reqId"`
-		StatusCode CreateProjectRole422JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *struct {
-		Error      string                                         `json:"error"`
-		Message    string                                         `json:"message"`
-		ReqId      string                                         `json:"reqId"`
-		StatusCode CreateProjectRole500JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 		User struct {
 			AuthMethods                       *[]string          `json:"authMethods,omitempty"`
 			ConsecutiveFailedMfaAttempts      *float32           `json:"consecutiveFailedMfaAttempts,omitempty"`
@@ -41032,29 +41093,10 @@ type GetCurrentUserResponse struct {
 		Message    string                                      `json:"message"`
 		ReqId      string                                      `json:"reqId"`
 		StatusCode GetCurrentUser500JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 	}
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
-<<<<<<< HEAD
-func (r CreateProjectRoleResponse) GetJSON200() *struct {
-	Role struct {
-		CreatedAt   time.Time          `json:"createdAt"`
-		Description *string            `json:"description,omitempty"`
-		Id          openapi_types.UUID `json:"id"`
-		Name        string             `json:"name"`
-		Permissions []struct {
-			Action     CreateProjectRole200JSONResponseBody_Role_Permissions_Action   `json:"action"`
-			Conditions interface{}                                                    `json:"conditions,omitempty"`
-			Inverted   *bool                                                          `json:"inverted,omitempty"`
-			Subject    *CreateProjectRole200JSONResponseBody_Role_Permissions_Subject `json:"subject,omitempty"`
-		} `json:"permissions"`
-		ProjectId string    `json:"projectId"`
-		Slug      string    `json:"slug"`
-		UpdatedAt time.Time `json:"updatedAt"`
-	} `json:"role"`
-=======
 func (r GetCurrentUserResponse) GetJSON200() *struct {
 	User struct {
 		AuthMethods                       *[]string          `json:"authMethods,omitempty"`
@@ -41091,138 +41133,79 @@ func (r GetCurrentUserResponse) GetJSON200() *struct {
 		UpdatedAt            time.Time  `json:"updatedAt"`
 		Username             string     `json:"username"`
 	} `json:"user"`
->>>>>>> main
 } {
 	return r.JSON200
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
-<<<<<<< HEAD
-func (r CreateProjectRoleResponse) GetJSON400() *struct {
-	Details    interface{}                                    `json:"details,omitempty"`
-	Error      string                                         `json:"error"`
-	Message    string                                         `json:"message"`
-	ReqId      string                                         `json:"reqId"`
-	StatusCode CreateProjectRole400JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 func (r GetCurrentUserResponse) GetJSON400() *struct {
 	Details    interface{}                                 `json:"details,omitempty"`
 	Error      string                                      `json:"error"`
 	Message    string                                      `json:"message"`
 	ReqId      string                                      `json:"reqId"`
 	StatusCode GetCurrentUser400JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 } {
 	return r.JSON400
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
-<<<<<<< HEAD
-func (r CreateProjectRoleResponse) GetJSON401() *struct {
-	Error      string                                         `json:"error"`
-	Message    string                                         `json:"message"`
-	ReqId      string                                         `json:"reqId"`
-	StatusCode CreateProjectRole401JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 func (r GetCurrentUserResponse) GetJSON401() *struct {
 	Error      string                                      `json:"error"`
 	Message    string                                      `json:"message"`
 	ReqId      string                                      `json:"reqId"`
 	StatusCode GetCurrentUser401JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 } {
 	return r.JSON401
 }
 
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
-<<<<<<< HEAD
-func (r CreateProjectRoleResponse) GetJSON403() *struct {
-	Details    interface{}                                    `json:"details,omitempty"`
-	Error      string                                         `json:"error"`
-	Message    string                                         `json:"message"`
-	ReqId      string                                         `json:"reqId"`
-	StatusCode CreateProjectRole403JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 func (r GetCurrentUserResponse) GetJSON403() *struct {
 	Details    interface{}                                 `json:"details,omitempty"`
 	Error      string                                      `json:"error"`
 	Message    string                                      `json:"message"`
 	ReqId      string                                      `json:"reqId"`
 	StatusCode GetCurrentUser403JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 } {
 	return r.JSON403
 }
 
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
-<<<<<<< HEAD
-func (r CreateProjectRoleResponse) GetJSON404() *struct {
-	Error      string                                         `json:"error"`
-	Message    string                                         `json:"message"`
-	ReqId      string                                         `json:"reqId"`
-	StatusCode CreateProjectRole404JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 func (r GetCurrentUserResponse) GetJSON404() *struct {
 	Error      string                                      `json:"error"`
 	Message    string                                      `json:"message"`
 	ReqId      string                                      `json:"reqId"`
 	StatusCode GetCurrentUser404JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 } {
 	return r.JSON404
 }
 
 // GetJSON422 returns the response for an HTTP 422 `application/json` response
-<<<<<<< HEAD
-func (r CreateProjectRoleResponse) GetJSON422() *struct {
-	Error      string                                         `json:"error"`
-	Message    interface{}                                    `json:"message,omitempty"`
-	ReqId      string                                         `json:"reqId"`
-	StatusCode CreateProjectRole422JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 func (r GetCurrentUserResponse) GetJSON422() *struct {
 	Error      string                                      `json:"error"`
 	Message    interface{}                                 `json:"message,omitempty"`
 	ReqId      string                                      `json:"reqId"`
 	StatusCode GetCurrentUser422JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 } {
 	return r.JSON422
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
-<<<<<<< HEAD
-func (r CreateProjectRoleResponse) GetJSON500() *struct {
-	Error      string                                         `json:"error"`
-	Message    string                                         `json:"message"`
-	ReqId      string                                         `json:"reqId"`
-	StatusCode CreateProjectRole500JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 func (r GetCurrentUserResponse) GetJSON500() *struct {
 	Error      string                                      `json:"error"`
 	Message    string                                      `json:"message"`
 	ReqId      string                                      `json:"reqId"`
 	StatusCode GetCurrentUser500JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 } {
 	return r.JSON500
 }
 
 // GetBody returns the raw response body bytes
-<<<<<<< HEAD
-func (r CreateProjectRoleResponse) GetBody() []byte {
-=======
 func (r GetCurrentUserResponse) GetBody() []byte {
->>>>>>> main
 	return r.Body
 }
 
 // Status returns HTTPResponse.Status
-<<<<<<< HEAD
-func (r CreateProjectRoleResponse) Status() string {
-=======
 func (r GetCurrentUserResponse) Status() string {
->>>>>>> main
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -41230,11 +41213,7 @@ func (r GetCurrentUserResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-<<<<<<< HEAD
-func (r CreateProjectRoleResponse) StatusCode() int {
-=======
 func (r GetCurrentUserResponse) StatusCode() int {
->>>>>>> main
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -41242,11 +41221,186 @@ func (r GetCurrentUserResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-<<<<<<< HEAD
-func (r CreateProjectRoleResponse) ContentType() string {
-=======
 func (r GetCurrentUserResponse) ContentType() string {
->>>>>>> main
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateProjectRoleResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Role struct {
+			CreatedAt   time.Time          `json:"createdAt"`
+			Description *string            `json:"description,omitempty"`
+			Id          openapi_types.UUID `json:"id"`
+			Name        string             `json:"name"`
+			Permissions []struct {
+				Action     CreateProjectRole200JSONResponseBody_Role_Permissions_Action   `json:"action"`
+				Conditions interface{}                                                    `json:"conditions,omitempty"`
+				Inverted   *bool                                                          `json:"inverted,omitempty"`
+				Subject    *CreateProjectRole200JSONResponseBody_Role_Permissions_Subject `json:"subject,omitempty"`
+			} `json:"permissions"`
+			ProjectId string    `json:"projectId"`
+			Slug      string    `json:"slug"`
+			UpdatedAt time.Time `json:"updatedAt"`
+		} `json:"role"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateProjectRole400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateProjectRole401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateProjectRole403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateProjectRole404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                         `json:"error"`
+		Message    interface{}                                    `json:"message,omitempty"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateProjectRole422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateProjectRole500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateProjectRoleResponse) GetJSON200() *struct {
+	Role struct {
+		CreatedAt   time.Time          `json:"createdAt"`
+		Description *string            `json:"description,omitempty"`
+		Id          openapi_types.UUID `json:"id"`
+		Name        string             `json:"name"`
+		Permissions []struct {
+			Action     CreateProjectRole200JSONResponseBody_Role_Permissions_Action   `json:"action"`
+			Conditions interface{}                                                    `json:"conditions,omitempty"`
+			Inverted   *bool                                                          `json:"inverted,omitempty"`
+			Subject    *CreateProjectRole200JSONResponseBody_Role_Permissions_Subject `json:"subject,omitempty"`
+		} `json:"permissions"`
+		ProjectId string    `json:"projectId"`
+		Slug      string    `json:"slug"`
+		UpdatedAt time.Time `json:"updatedAt"`
+	} `json:"role"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateProjectRoleResponse) GetJSON400() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateProjectRole400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateProjectRoleResponse) GetJSON401() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateProjectRole401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateProjectRoleResponse) GetJSON403() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateProjectRole403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateProjectRoleResponse) GetJSON404() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateProjectRole404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateProjectRoleResponse) GetJSON422() *struct {
+	Error      string                                         `json:"error"`
+	Message    interface{}                                    `json:"message,omitempty"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateProjectRole422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateProjectRoleResponse) GetJSON500() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateProjectRole500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateProjectRoleResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateProjectRoleResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateProjectRoleResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateProjectRoleResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -44527,7 +44681,6 @@ func (c *ClientWithResponses) LoginWithUniversalAuthWithResponse(ctx context.Con
 	return ParseLoginWithUniversalAuthResponse(rsp)
 }
 
-<<<<<<< HEAD
 // ListProjectSecretsDetailsWithResponse performs a GET /api/v1/dashboard/secrets-details (the `ListProjectSecretsDetails` operationId) request.
 //
 // List project secrets details.
@@ -44539,7 +44692,8 @@ func (c *ClientWithResponses) ListProjectSecretsDetailsWithResponse(ctx context.
 		return nil, err
 	}
 	return ParseListProjectSecretsDetailsResponse(rsp)
-=======
+}
+
 // ListEmailDomainsWithResponse performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -44582,7 +44736,6 @@ func (c *ClientWithResponses) VerifyEmailDomainWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseVerifyEmailDomainResponse(rsp)
->>>>>>> main
 }
 
 // CreateGroupWithBodyWithResponse performs a POST /api/v1/groups (the `CreateGroup` operationId) request,
@@ -45489,7 +45642,19 @@ func (c *ClientWithResponses) CreateSecretImportWithResponse(ctx context.Context
 	return ParseCreateSecretImportResponse(rsp)
 }
 
-<<<<<<< HEAD
+// GetCurrentUserWithResponse performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
+//
+// Retrieve the current user on the request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetCurrentUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCurrentUserResponse, error) {
+	rsp, err := c.GetCurrentUser(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCurrentUserResponse(rsp)
+}
+
 // CreateProjectRoleWithBodyWithResponse performs a POST /api/v2/workspace/{projectId}/roles (the `CreateProjectRole` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -45514,19 +45679,6 @@ func (c *ClientWithResponses) CreateProjectRoleWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParseCreateProjectRoleResponse(rsp)
-=======
-// GetCurrentUserWithResponse performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
-//
-// Retrieve the current user on the request.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetCurrentUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCurrentUserResponse, error) {
-	rsp, err := c.GetCurrentUser(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetCurrentUserResponse(rsp)
->>>>>>> main
 }
 
 // LoginV3WithBodyWithResponse performs a POST /api/v3/auth/login (the `LoginV3` operationId) request,
@@ -46924,24 +47076,15 @@ func ParseLoginWithUniversalAuthResponse(rsp *http.Response) (*LoginWithUniversa
 	return response, nil
 }
 
-<<<<<<< HEAD
 // ParseListProjectSecretsDetailsResponse parses an HTTP response from a ListProjectSecretsDetailsWithResponse call
 func ParseListProjectSecretsDetailsResponse(rsp *http.Response) (*ListProjectSecretsDetailsResponse, error) {
-=======
-// ParseListEmailDomainsResponse parses an HTTP response from a ListEmailDomainsWithResponse call
-func ParseListEmailDomainsResponse(rsp *http.Response) (*ListEmailDomainsResponse, error) {
->>>>>>> main
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-<<<<<<< HEAD
 	response := &ListProjectSecretsDetailsResponse{
-=======
-	response := &ListEmailDomainsResponse{
->>>>>>> main
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -46949,7 +47092,6 @@ func ParseListEmailDomainsResponse(rsp *http.Response) (*ListEmailDomainsRespons
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
-<<<<<<< HEAD
 			DynamicSecrets *[]struct {
 				CreatedAt     time.Time           `json:"createdAt"`
 				DefaultTTL    string              `json:"defaultTTL"`
@@ -47144,7 +47286,107 @@ func ParseListEmailDomainsResponse(rsp *http.Response) (*ListEmailDomainsRespons
 				Name        string `json:"name"`
 				Path        string `json:"path"`
 			} `json:"usedBySecretSyncs,omitempty"`
-=======
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListProjectSecretsDetails400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListProjectSecretsDetails401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListProjectSecretsDetails403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListProjectSecretsDetails404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    interface{}                                            `json:"message,omitempty"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListProjectSecretsDetails422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode ListProjectSecretsDetails500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListEmailDomainsResponse parses an HTTP response from a ListEmailDomainsWithResponse call
+func ParseListEmailDomainsResponse(rsp *http.Response) (*ListEmailDomainsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListEmailDomainsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
 			EmailDomains []struct {
 				CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
 				CreatedAt              time.Time          `json:"createdAt"`
@@ -47158,7 +47400,6 @@ func ParseListEmailDomainsResponse(rsp *http.Response) (*ListEmailDomainsRespons
 				VerificationRecordName string             `json:"verificationRecordName"`
 				VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
 			} `json:"emailDomains"`
->>>>>>> main
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -47167,19 +47408,11 @@ func ParseListEmailDomainsResponse(rsp *http.Response) (*ListEmailDomainsRespons
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest struct {
-<<<<<<< HEAD
-			Details    interface{}                                            `json:"details,omitempty"`
-			Error      string                                                 `json:"error"`
-			Message    string                                                 `json:"message"`
-			ReqId      string                                                 `json:"reqId"`
-			StatusCode ListProjectSecretsDetails400JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 			Details    interface{}                                   `json:"details,omitempty"`
 			Error      string                                        `json:"error"`
 			Message    string                                        `json:"message"`
 			ReqId      string                                        `json:"reqId"`
 			StatusCode ListEmailDomains400JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -47188,17 +47421,10 @@ func ParseListEmailDomainsResponse(rsp *http.Response) (*ListEmailDomainsRespons
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest struct {
-<<<<<<< HEAD
-			Error      string                                                 `json:"error"`
-			Message    string                                                 `json:"message"`
-			ReqId      string                                                 `json:"reqId"`
-			StatusCode ListProjectSecretsDetails401JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 			Error      string                                        `json:"error"`
 			Message    string                                        `json:"message"`
 			ReqId      string                                        `json:"reqId"`
 			StatusCode ListEmailDomains401JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -47207,19 +47433,11 @@ func ParseListEmailDomainsResponse(rsp *http.Response) (*ListEmailDomainsRespons
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
 		var dest struct {
-<<<<<<< HEAD
-			Details    interface{}                                            `json:"details,omitempty"`
-			Error      string                                                 `json:"error"`
-			Message    string                                                 `json:"message"`
-			ReqId      string                                                 `json:"reqId"`
-			StatusCode ListProjectSecretsDetails403JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 			Details    interface{}                                   `json:"details,omitempty"`
 			Error      string                                        `json:"error"`
 			Message    string                                        `json:"message"`
 			ReqId      string                                        `json:"reqId"`
 			StatusCode ListEmailDomains403JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -47228,17 +47446,10 @@ func ParseListEmailDomainsResponse(rsp *http.Response) (*ListEmailDomainsRespons
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest struct {
-<<<<<<< HEAD
-			Error      string                                                 `json:"error"`
-			Message    string                                                 `json:"message"`
-			ReqId      string                                                 `json:"reqId"`
-			StatusCode ListProjectSecretsDetails404JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 			Error      string                                        `json:"error"`
 			Message    string                                        `json:"message"`
 			ReqId      string                                        `json:"reqId"`
 			StatusCode ListEmailDomains404JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -47247,17 +47458,10 @@ func ParseListEmailDomainsResponse(rsp *http.Response) (*ListEmailDomainsRespons
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest struct {
-<<<<<<< HEAD
-			Error      string                                                 `json:"error"`
-			Message    interface{}                                            `json:"message,omitempty"`
-			ReqId      string                                                 `json:"reqId"`
-			StatusCode ListProjectSecretsDetails422JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 			Error      string                                        `json:"error"`
 			Message    interface{}                                   `json:"message,omitempty"`
 			ReqId      string                                        `json:"reqId"`
 			StatusCode ListEmailDomains422JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -47266,12 +47470,6 @@ func ParseListEmailDomainsResponse(rsp *http.Response) (*ListEmailDomainsRespons
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest struct {
-<<<<<<< HEAD
-			Error      string                                                 `json:"error"`
-			Message    string                                                 `json:"message"`
-			ReqId      string                                                 `json:"reqId"`
-			StatusCode ListProjectSecretsDetails500JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 			Error      string                                        `json:"error"`
 			Message    string                                        `json:"message"`
 			ReqId      string                                        `json:"reqId"`
@@ -47504,7 +47702,6 @@ func ParseVerifyEmailDomainResponse(rsp *http.Response) (*VerifyEmailDomainRespo
 			Message    string                                         `json:"message"`
 			ReqId      string                                         `json:"reqId"`
 			StatusCode VerifyEmailDomain500JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -53255,24 +53452,15 @@ func ParseCreateSecretImportResponse(rsp *http.Response) (*CreateSecretImportRes
 	return response, nil
 }
 
-<<<<<<< HEAD
-// ParseCreateProjectRoleResponse parses an HTTP response from a CreateProjectRoleWithResponse call
-func ParseCreateProjectRoleResponse(rsp *http.Response) (*CreateProjectRoleResponse, error) {
-=======
 // ParseGetCurrentUserResponse parses an HTTP response from a GetCurrentUserWithResponse call
 func ParseGetCurrentUserResponse(rsp *http.Response) (*GetCurrentUserResponse, error) {
->>>>>>> main
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-<<<<<<< HEAD
-	response := &CreateProjectRoleResponse{
-=======
 	response := &GetCurrentUserResponse{
->>>>>>> main
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -53280,23 +53468,6 @@ func ParseGetCurrentUserResponse(rsp *http.Response) (*GetCurrentUserResponse, e
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
-<<<<<<< HEAD
-			Role struct {
-				CreatedAt   time.Time          `json:"createdAt"`
-				Description *string            `json:"description,omitempty"`
-				Id          openapi_types.UUID `json:"id"`
-				Name        string             `json:"name"`
-				Permissions []struct {
-					Action     CreateProjectRole200JSONResponseBody_Role_Permissions_Action   `json:"action"`
-					Conditions interface{}                                                    `json:"conditions,omitempty"`
-					Inverted   *bool                                                          `json:"inverted,omitempty"`
-					Subject    *CreateProjectRole200JSONResponseBody_Role_Permissions_Subject `json:"subject,omitempty"`
-				} `json:"permissions"`
-				ProjectId string    `json:"projectId"`
-				Slug      string    `json:"slug"`
-				UpdatedAt time.Time `json:"updatedAt"`
-			} `json:"role"`
-=======
 			User struct {
 				AuthMethods                       *[]string          `json:"authMethods,omitempty"`
 				ConsecutiveFailedMfaAttempts      *float32           `json:"consecutiveFailedMfaAttempts,omitempty"`
@@ -53332,7 +53503,6 @@ func ParseGetCurrentUserResponse(rsp *http.Response) (*GetCurrentUserResponse, e
 				UpdatedAt            time.Time  `json:"updatedAt"`
 				Username             string     `json:"username"`
 			} `json:"user"`
->>>>>>> main
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -53341,19 +53511,11 @@ func ParseGetCurrentUserResponse(rsp *http.Response) (*GetCurrentUserResponse, e
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest struct {
-<<<<<<< HEAD
-			Details    interface{}                                    `json:"details,omitempty"`
-			Error      string                                         `json:"error"`
-			Message    string                                         `json:"message"`
-			ReqId      string                                         `json:"reqId"`
-			StatusCode CreateProjectRole400JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 			Details    interface{}                                 `json:"details,omitempty"`
 			Error      string                                      `json:"error"`
 			Message    string                                      `json:"message"`
 			ReqId      string                                      `json:"reqId"`
 			StatusCode GetCurrentUser400JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -53362,17 +53524,10 @@ func ParseGetCurrentUserResponse(rsp *http.Response) (*GetCurrentUserResponse, e
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest struct {
-<<<<<<< HEAD
-			Error      string                                         `json:"error"`
-			Message    string                                         `json:"message"`
-			ReqId      string                                         `json:"reqId"`
-			StatusCode CreateProjectRole401JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 			Error      string                                      `json:"error"`
 			Message    string                                      `json:"message"`
 			ReqId      string                                      `json:"reqId"`
 			StatusCode GetCurrentUser401JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -53381,19 +53536,11 @@ func ParseGetCurrentUserResponse(rsp *http.Response) (*GetCurrentUserResponse, e
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
 		var dest struct {
-<<<<<<< HEAD
-			Details    interface{}                                    `json:"details,omitempty"`
-			Error      string                                         `json:"error"`
-			Message    string                                         `json:"message"`
-			ReqId      string                                         `json:"reqId"`
-			StatusCode CreateProjectRole403JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 			Details    interface{}                                 `json:"details,omitempty"`
 			Error      string                                      `json:"error"`
 			Message    string                                      `json:"message"`
 			ReqId      string                                      `json:"reqId"`
 			StatusCode GetCurrentUser403JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -53402,17 +53549,10 @@ func ParseGetCurrentUserResponse(rsp *http.Response) (*GetCurrentUserResponse, e
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
 		var dest struct {
-<<<<<<< HEAD
-			Error      string                                         `json:"error"`
-			Message    string                                         `json:"message"`
-			ReqId      string                                         `json:"reqId"`
-			StatusCode CreateProjectRole404JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 			Error      string                                      `json:"error"`
 			Message    string                                      `json:"message"`
 			ReqId      string                                      `json:"reqId"`
 			StatusCode GetCurrentUser404JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -53421,17 +53561,10 @@ func ParseGetCurrentUserResponse(rsp *http.Response) (*GetCurrentUserResponse, e
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest struct {
-<<<<<<< HEAD
-			Error      string                                         `json:"error"`
-			Message    interface{}                                    `json:"message,omitempty"`
-			ReqId      string                                         `json:"reqId"`
-			StatusCode CreateProjectRole422JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 			Error      string                                      `json:"error"`
 			Message    interface{}                                 `json:"message,omitempty"`
 			ReqId      string                                      `json:"reqId"`
 			StatusCode GetCurrentUser422JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -53440,17 +53573,126 @@ func ParseGetCurrentUserResponse(rsp *http.Response) (*GetCurrentUserResponse, e
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest struct {
-<<<<<<< HEAD
-			Error      string                                         `json:"error"`
-			Message    string                                         `json:"message"`
-			ReqId      string                                         `json:"reqId"`
-			StatusCode CreateProjectRole500JSONResponseBodyStatusCode `json:"statusCode"`
-=======
 			Error      string                                      `json:"error"`
 			Message    string                                      `json:"message"`
 			ReqId      string                                      `json:"reqId"`
 			StatusCode GetCurrentUser500JSONResponseBodyStatusCode `json:"statusCode"`
->>>>>>> main
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateProjectRoleResponse parses an HTTP response from a CreateProjectRoleWithResponse call
+func ParseCreateProjectRoleResponse(rsp *http.Response) (*CreateProjectRoleResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateProjectRoleResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Role struct {
+				CreatedAt   time.Time          `json:"createdAt"`
+				Description *string            `json:"description,omitempty"`
+				Id          openapi_types.UUID `json:"id"`
+				Name        string             `json:"name"`
+				Permissions []struct {
+					Action     CreateProjectRole200JSONResponseBody_Role_Permissions_Action   `json:"action"`
+					Conditions interface{}                                                    `json:"conditions,omitempty"`
+					Inverted   *bool                                                          `json:"inverted,omitempty"`
+					Subject    *CreateProjectRole200JSONResponseBody_Role_Permissions_Subject `json:"subject,omitempty"`
+				} `json:"permissions"`
+				ProjectId string    `json:"projectId"`
+				Slug      string    `json:"slug"`
+				UpdatedAt time.Time `json:"updatedAt"`
+			} `json:"role"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateProjectRole400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateProjectRole401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateProjectRole403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateProjectRole404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    interface{}                                    `json:"message,omitempty"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateProjectRole422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateProjectRole500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
