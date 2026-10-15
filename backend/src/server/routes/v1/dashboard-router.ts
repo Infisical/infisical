@@ -2007,6 +2007,14 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         return { valueOverride: secret.secretValue };
       }
 
+      void server.services.secretReadActivity.recordRead({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        projectId,
+        secretIds: [secret.id],
+        referencesExpanded: false
+      });
+
       await server.services.auditLog.createAuditLog({
         projectId,
         ...req.auditLogInfo,

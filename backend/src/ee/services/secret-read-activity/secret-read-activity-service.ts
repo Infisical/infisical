@@ -1,12 +1,4 @@
-import { SecretType, TableName, TSecretFolders } from "@app/db/schemas";
-import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
-import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
-import { hasAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
-import {
-  isAuditLogEventEnabled,
-  TAuditLogSettingsServiceFactory
-} from "@app/ee/services/audit-log/audit-log-settings-service";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { SecretType, TableName, TSecretReadActivityInsert } from "@app/db/schemas";
 import { DAY_IN_MS } from "@app/ee/services/audit-report/audit-report-fns";
 import { reviveDates } from "@app/ee/services/insights/insights-fns";
 import { checkInsightsPermission } from "@app/ee/services/insights/insights-service";
@@ -20,8 +12,11 @@ import { ProjectPermissionSecretActions } from "@app/ee/services/permission/proj
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { groupBy } from "@app/lib/fn";
+import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
+import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
+import { NotFoundError } from "@app/lib/errors";
+import { chunkArray, groupBy } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -29,42 +24,64 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { buildFolderIdMap, buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
-import { TSecretFolderVersionDALFactory } from "@app/services/secret-folder/secret-folder-version-dal";
+import { ReservedFolders } from "@app/services/secret-folder/secret-folder-types";
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
+import { TSecretReadActivityDALFactory } from "./secret-read-activity-dal";
 import {
   classifySecretReads,
   computeSecretReach,
   indexSecretReads,
-  SECRET_READ_EVENT_TYPES,
+  normalizeSecretPath,
   toLocationKey
 } from "./secret-read-activity-fns";
 import {
+  SecretReadObjectType,
   SecretReadStatus,
   TGetSecretReadActivityDTO,
   TListUnusedSecretAccessDTO,
   TReadActivityScope,
+  TRecordBulkSecretReadDTO,
+  TRecordSecretReadDTO,
   TSecretReachGraph,
+  TSecretReaderType,
+  TSecretReadStreamEntry,
   TUnusedSecretAccess
 } from "./secret-read-activity-types";
 
 const SECRET_READ_ACTIVITY_WINDOW_DAYS = 30;
+const SECRET_READ_RETENTION_DAYS = 90;
+const SECRET_READ_GATE_TTL_SECONDS = 25 * 60 * 60;
+const SECRET_READ_STREAM_MAX_LENGTH = 100_000;
+const SECRET_READ_FLUSH_BATCH_SIZE = 1000;
+const SECRET_READ_FLUSH_MAX_ENTRIES = 50_000;
+const SECRET_READ_CONSUMER_LOCK_TTL_MS = 60_000;
+const SECRET_READ_STREAM_ENTRY_MAX_SECRETS = 1000;
 
 type TSecretReadActivityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "getEffectiveSettings">;
-  auditLogDAL: Pick<TAuditLogDALFactory, "findLastSecretReads">;
-  clickhouseAuditLogDAL?: Pick<TClickHouseAuditLogDALFactory, "findLastSecretReads">;
+  secretReadActivityDAL: TSecretReadActivityDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
-  folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "find">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByIds">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findSecretReferencesByProjectId">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl">;
+  keyStore: Pick<
+    TKeyStoreFactory,
+    | "setItemWithExpiry"
+    | "getItem"
+    | "ttl"
+    | "setItemWithExpiryNX"
+    | "deleteItem"
+    | "streamAdd"
+    | "streamCollect"
+    | "streamTrim"
+    | "acquireLock"
+  >;
+  cronJob: TCronJobFactory;
 };
 
 export type TSecretReadActivityServiceFactory = ReturnType<typeof secretReadActivityServiceFactory>;
@@ -72,36 +89,16 @@ export type TSecretReadActivityServiceFactory = ReturnType<typeof secretReadActi
 export const secretReadActivityServiceFactory = ({
   permissionService,
   licenseService,
-  auditLogSettingsService,
-  auditLogDAL,
-  clickhouseAuditLogDAL,
+  secretReadActivityDAL,
   folderDAL,
-  folderVersionDAL,
   projectEnvDAL,
   secretImportDAL,
   secretV2BridgeDAL,
   kmsService,
-  keyStore
+  keyStore,
+  cronJob
 }: TSecretReadActivityServiceFactoryDep) => {
-  const $getReadActivity = async ({ projectId, orgId, windowDays, secret: requestedSecret }: TReadActivityScope) => {
-    const settings = await auditLogSettingsService.getEffectiveSettings(orgId, projectId);
-    if (!isAuditLogEventEnabled(settings, EventType.GET_SECRETS, projectId)) {
-      throw new BadRequestError({
-        message:
-          "Secret reads are not recorded for this project because data access audit logging is turned off. Turn it on in the project's audit log settings to see read activity."
-      });
-    }
-    const plan = await licenseService.getPlan(orgId);
-    if (!hasAuditLogRetention(plan)) {
-      throw new BadRequestError({
-        message: "Your plan does not retain audit logs, so secret read activity is unavailable."
-      });
-    }
-    const now = new Date();
-    const windowStart = new Date(
-      now.getTime() - Math.min(windowDays, plan.auditLogsRetentionDays ?? windowDays) * DAY_IN_MS
-    );
-
+  const $loadProjectTree = async (projectId: string) => {
     const [folders, environments] = await Promise.all([
       folderDAL.findByProjectId(projectId),
       projectEnvDAL.find({ projectId })
@@ -117,30 +114,323 @@ export const secretReadActivityServiceFactory = ({
       const env = folderById[folderId] && envById.get(folderById[folderId].envId);
       return env ? { environment: env.slug, secretPath: pathOf(folderId) } : undefined;
     };
-    const ancestryOf = (folderId: string) => {
-      const chain: string[] = [];
-      let folder: TSecretFolders | undefined = folderById[folderId];
-      while (folder && !chain.includes(folder.id)) {
-        chain.push(folder.id);
-        folder = folder.parentId ? folderById[folder.parentId] : undefined;
+    const folderIdByLocation = new Map(
+      folders.flatMap((folder) => {
+        const location = locationOf(folder.id);
+        return location ? [[toLocationKey(location), folder.id] as const] : [];
+      })
+    );
+    return { folders, folderById, envById, pathOf, locationOf, folderIdByLocation };
+  };
+
+  let trackingStartedAt: Promise<Date | undefined> | undefined;
+  const $getTrackingStartedAt = () => {
+    trackingStartedAt ??= secretReadActivityDAL.findTrackingStartedAt().catch((error) => {
+      trackingStartedAt = undefined;
+      throw error;
+    });
+    return trackingStartedAt;
+  };
+
+  const $isTrackedReader = (actor: ActorType): actor is TSecretReaderType =>
+    actor === ActorType.USER || actor === ActorType.IDENTITY;
+
+  // Called once a read's response is built and never awaited by it. Only the first matching read per reader
+  // per day reaches the stream, so a client polling every minute costs one Redis call per read.
+  const $record = async (
+    { actor, actorId, projectId }: { actor: TSecretReaderType; actorId: string; projectId: string },
+    scope: string,
+    reads: Pick<
+      TSecretReadStreamEntry,
+      "environment" | "secretPath" | "recursive" | "secretIds" | "referencesExpanded"
+    >[]
+  ) => {
+    const readAt = new Date();
+    const gateKey = KeyStorePrefixes.SecretReadActivityGate(readAt.toISOString().slice(0, 10), actorId, scope);
+
+    try {
+      if (!(await keyStore.setItemWithExpiryNX(gateKey, SECRET_READ_GATE_TTL_SECONDS, 1))) return;
+      for (const read of reads) {
+        const entry: TSecretReadStreamEntry = {
+          actorType: actor,
+          actorId,
+          projectId,
+          readAt: readAt.toISOString(),
+          ...read
+        };
+        // eslint-disable-next-line no-await-in-loop
+        await keyStore.streamAdd(
+          KeyStorePrefixes.SecretReadActivityStream,
+          "*",
+          { data: JSON.stringify(entry) },
+          SECRET_READ_STREAM_MAX_LENGTH
+        );
       }
-      return chain;
+    } catch (error) {
+      // Left in place, the gate would hide the rest of today's reads of this scope.
+      await keyStore.deleteItem(gateKey).catch(() => undefined);
+      logger.warn(error, `Failed to record secret read [projectId=${projectId}] [actorId=${actorId}]`);
+    }
+  };
+
+  const recordRead = async ({ actor, actorId, projectId, secretIds, referencesExpanded }: TRecordSecretReadDTO) => {
+    if (!$isTrackedReader(actor) || !secretIds.length) return;
+
+    const uniqueSecretIds = [...new Set(secretIds)].sort();
+    await $record(
+      { actor, actorId, projectId },
+      `secrets:${String(referencesExpanded)}:${generateCacheKeyFromData(uniqueSecretIds)}`,
+      chunkArray(uniqueSecretIds, SECRET_READ_STREAM_ENTRY_MAX_SECRETS).map((chunk) => ({
+        secretIds: chunk,
+        referencesExpanded
+      }))
+    );
+  };
+
+  // A read that returned whole folders (no filters, imports and references included) is recorded against
+  // them. A narrower one is recorded against the secrets it returned, so the secrets it left out are not
+  // credited.
+  const recordBulkRead = async ({
+    actor,
+    actorId,
+    projectId,
+    environment,
+    secretPath,
+    recursive,
+    isFiltered,
+    includeImports,
+    expandSecretReferences,
+    notModified,
+    secrets,
+    imports = []
+  }: TRecordBulkSecretReadDTO) => {
+    if (!$isTrackedReader(actor)) return;
+
+    if (!isFiltered && includeImports && expandSecretReferences) {
+      const normalizedPath = normalizeSecretPath(secretPath);
+      await $record(
+        { actor, actorId, projectId },
+        `folder:${projectId}:${environment}:${normalizedPath}:${String(recursive)}`,
+        [{ environment, secretPath: normalizedPath, recursive }]
+      );
+      return;
+    }
+
+    // A 304 carries no secrets. ETags are stored per UTC day, so each client's first read of the day gets a
+    // full response, and that one is recorded.
+    if (notModified) return;
+
+    await recordRead({
+      actor,
+      actorId,
+      projectId,
+      secretIds: [...secrets, ...imports.flatMap((secretImport) => secretImport.secrets)]
+        .filter((secret) => !secret.secretValueHidden)
+        .map((secret) => secret.id),
+      referencesExpanded: expandSecretReferences
+    });
+  };
+
+  // A single read through a replication import returns the copy, which is checked against the reader's access
+  // to the secret it was copied from, so the read is credited to that secret.
+  const $findReplicatedSourceIds = async (tree: Awaited<ReturnType<typeof $loadProjectTree>>, secretIds: string[]) => {
+    const importIdByReplicaFolderId = new Map(
+      tree.folders
+        .filter((folder) => folder.isReserved && folder.name.startsWith(ReservedFolders.SecretReplication))
+        .map((folder) => [folder.id, folder.name.slice(ReservedFolders.SecretReplication.length)])
+    );
+    if (!importIdByReplicaFolderId.size) return new Map<string, string>();
+
+    // Looked up by folder, so the query is bounded by the replicas rather than by how many secrets were read.
+    const readSecretIds = new Set(secretIds);
+    const copies = (
+      await secretV2BridgeDAL.find({
+        $in: { [`${TableName.SecretV2}.folderId` as "folderId"]: [...importIdByReplicaFolderId.keys()] }
+      })
+    ).filter((secret) => readSecretIds.has(secret.id));
+    if (!copies.length) return new Map<string, string>();
+
+    const imports = await secretImportDAL.findByIds([
+      ...new Set(copies.map((copy) => importIdByReplicaFolderId.get(copy.folderId) as string))
+    ]);
+    const sourceFolderIdByImportId = new Map(
+      imports.flatMap((secretImport) => {
+        const folderId = tree.folderIdByLocation.get(
+          toLocationKey({ environment: secretImport.importEnv.slug, secretPath: secretImport.importPath })
+        );
+        return folderId ? [[secretImport.id, folderId] as const] : [];
+      })
+    );
+    const sources = await secretV2BridgeDAL.find({
+      $in: { [`${TableName.SecretV2}.folderId` as "folderId"]: [...new Set(sourceFolderIdByImportId.values())] },
+      [`${TableName.SecretV2}.type` as "type"]: SecretType.Shared
+    });
+    const sourceIdByFolderAndKey = new Map(sources.map((source) => [`${source.folderId}:${source.key}`, source.id]));
+
+    return new Map(
+      copies.flatMap((copy) => {
+        const sourceFolderId = sourceFolderIdByImportId.get(importIdByReplicaFolderId.get(copy.folderId) as string);
+        const sourceId = sourceFolderId && sourceIdByFolderAndKey.get(`${sourceFolderId}:${copy.key}`);
+        return sourceId ? [[copy.id, sourceId] as const] : [];
+      })
+    );
+  };
+
+  const $resolveProjectReads = async (projectId: string, reads: TSecretReadStreamEntry[]) => {
+    const tree = await $loadProjectTree(projectId);
+    const subtrees = new Map<string, string[]>();
+    const subtreeOf = (folderId: string) => {
+      if (!subtrees.has(folderId)) {
+        const prefix = tree.pathOf(folderId) === "/" ? "/" : `${tree.pathOf(folderId)}/`;
+        const { envId } = tree.folderById[folderId];
+        subtrees.set(
+          folderId,
+          tree.folders
+            .filter(
+              (folder) =>
+                folder.envId === envId &&
+                !folder.isReserved &&
+                (folder.id === folderId || tree.pathOf(folder.id).startsWith(prefix))
+            )
+            .map((folder) => folder.id)
+        );
+      }
+      return subtrees.get(folderId) as string[];
     };
 
-    const requestedFolder =
-      requestedSecret &&
-      folders.find(
-        (folder) =>
-          locationOf(folder.id)?.environment === requestedSecret.environment &&
-          pathOf(folder.id) === requestedSecret.secretPath
+    const rows: TSecretReadActivityInsert[] = [];
+    const toRow = (read: TSecretReadStreamEntry, objectType: SecretReadObjectType, objectId: string) => ({
+      objectId,
+      objectType,
+      actorId: read.actorId,
+      actorType: read.actorType,
+      lastReadAt: new Date(read.readAt)
+    });
+
+    reads.forEach((read) => {
+      if (read.environment === undefined || read.secretPath === undefined) return;
+      const folderId = tree.folderIdByLocation.get(
+        toLocationKey({ environment: read.environment, secretPath: read.secretPath })
       );
-    if (requestedSecret && !requestedFolder) {
+      if (!folderId) return;
+      (read.recursive ? subtreeOf(folderId) : [folderId]).forEach((id) =>
+        rows.push(toRow(read, SecretReadObjectType.Folder, id))
+      );
+    });
+
+    const secretReads = reads.filter((read) => read.secretIds?.length);
+    if (secretReads.length) {
+      const sourceIdByCopyId = await $findReplicatedSourceIds(
+        tree,
+        secretReads.flatMap((read) => read.secretIds as string[])
+      );
+      secretReads.forEach((read) => {
+        const objectType = read.referencesExpanded
+          ? SecretReadObjectType.Secret
+          : SecretReadObjectType.SecretUnexpanded;
+        (read.secretIds as string[]).forEach((secretId) =>
+          rows.push(toRow(read, objectType, sourceIdByCopyId.get(secretId) ?? secretId))
+        );
+      });
+    }
+    return rows;
+  };
+
+  // Entries are trimmed only after they are written, so a failed batch is retried on the next run; the upsert
+  // makes the retry harmless.
+  const $flushReadStream = async () => {
+    const { entries, lastId } = await keyStore.streamCollect(
+      KeyStorePrefixes.SecretReadActivityStream,
+      SECRET_READ_FLUSH_BATCH_SIZE,
+      SECRET_READ_FLUSH_MAX_ENTRIES
+    );
+    if (!entries.length || !lastId) return;
+
+    if (entries.length >= SECRET_READ_FLUSH_MAX_ENTRIES) {
+      logger.warn(
+        `secret-read-activity: stream backlog hit the collection ceiling [collected=${entries.length}] [maxEntries=${SECRET_READ_FLUSH_MAX_ENTRIES}]; the oldest reads risk being dropped by the stream's MAXLEN cap`
+      );
+    }
+
+    const reads = entries.flatMap(([, fields]) => {
+      try {
+        return [JSON.parse(fields[fields.indexOf("data") + 1]) as TSecretReadStreamEntry];
+      } catch (error) {
+        logger.error(error, "secret-read-activity: Skipping unparseable stream entry");
+        return [];
+      }
+    });
+
+    const rows: TSecretReadActivityInsert[] = [];
+    for (const [projectId, projectReads] of Object.entries(groupBy(reads, (read) => read.projectId))) {
+      // eslint-disable-next-line no-await-in-loop
+      rows.push(...(await $resolveProjectReads(projectId, projectReads)));
+    }
+    await secretReadActivityDAL.upsertLastReads(rows);
+    await keyStore.streamTrim(KeyStorePrefixes.SecretReadActivityStream, lastId, true);
+    logger.info(`secret-read-activity: Flushed read stream [entries=${entries.length}] [rows=${rows.length}]`);
+  };
+
+  // A run can outlast the next fire under load. The upsert makes overlap harmless, but it doubles the work when
+  // the stream is already behind, so a run that finds the lock held skips and leaves the backlog to the next one.
+  const $consumeReadStream = async () => {
+    let lock;
+    try {
+      lock = await keyStore.acquireLock(
+        [KeyStorePrefixes.SecretReadActivityConsumerLock],
+        SECRET_READ_CONSUMER_LOCK_TTL_MS,
+        { retryCount: 0 }
+      );
+    } catch {
+      return;
+    }
+    try {
+      await $flushReadStream();
+    } finally {
+      await lock.release();
+    }
+  };
+
+  const init = () => {
+    const appCfg = getConfig();
+    cronJob.register({
+      name: CronJobName.SecretReadActivityFlush,
+      pattern: "* * * * *",
+      runHashTtlS: 60 * 60,
+      enabled: !appCfg.isSecondaryInstance,
+      handler: $consumeReadStream
+    });
+    cronJob.register({
+      name: CronJobName.SecretReadActivityPrune,
+      pattern: "15 1 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
+      enabled: !appCfg.isSecondaryInstance,
+      handler: async () => {
+        const deleted = await secretReadActivityDAL.pruneOlderThan(
+          new Date(Date.now() - SECRET_READ_RETENTION_DAYS * DAY_IN_MS)
+        );
+        logger.info(`cron[${CronJobName.SecretReadActivityPrune}]: pruned ${deleted} rows`);
+      }
+    });
+  };
+
+  const $getReadActivity = async ({ projectId, windowDays, secret: requestedSecret }: TReadActivityScope) => {
+    const windowStart = new Date(Date.now() - windowDays * DAY_IN_MS);
+    const tree = await $loadProjectTree(projectId);
+    const { folders, folderById, locationOf, pathOf } = tree;
+
+    const requestedFolderId =
+      requestedSecret &&
+      tree.folderIdByLocation.get(
+        toLocationKey({ environment: requestedSecret.environment, secretPath: requestedSecret.secretPath })
+      );
+    if (requestedSecret && !requestedFolderId) {
       throw new NotFoundError({
         message: `Folder with path '${requestedSecret.secretPath}' in environment '${requestedSecret.environment}' not found`
       });
     }
-    const scopeFolderIds = requestedFolder
-      ? [requestedFolder.id]
+    const scopeFolderIds = requestedFolderId
+      ? [requestedFolderId]
       : folders.filter((folder) => !folder.isReserved).map((folder) => folder.id);
 
     const referencesByLocation = groupBy(
@@ -208,9 +498,7 @@ export const secretReadActivityServiceFactory = ({
                 toLocationKey({ environment: folderById[folderId].envId, secretPath: pathOf(folderId) })
               ] ?? []
             ).map((secretImport) => secretImport.folderId)
-          : [],
-      getParentFolderId: (folderId) => folderById[folderId]?.parentId,
-      getLocation: locationOf
+          : []
     };
 
     const targets = scopeFolderIds.flatMap((folderId) => {
@@ -224,36 +512,23 @@ export const secretReadActivityServiceFactory = ({
         .map((secret) => ({ secret, ...location }));
     });
     const reaches = targets.map(({ secret }) => computeSecretReach(secret, graph));
-    const auditLogStore =
-      getConfig().CLICKHOUSE_AUDIT_LOG_ENABLED && clickhouseAuditLogDAL ? clickhouseAuditLogDAL : auditLogDAL;
     const reads = indexSecretReads(
-      await auditLogStore.findLastSecretReads({
-        orgId,
-        projectId,
-        eventTypes: SECRET_READ_EVENT_TYPES,
-        environments: [...new Set(reaches.flatMap((reach) => [...reach.environments]))],
-        startDate: windowStart.toISOString(),
-        endDate: now.toISOString()
-      })
+      await secretReadActivityDAL.findLastReads(
+        [...new Set(reaches.flatMap((reach) => [...reach.folderIds, ...reach.secretIds]))],
+        windowStart
+      )
     );
 
-    // A read can only match the secret's current path once that path exists, so the window starts no
-    // earlier than the last time the secret, its folders or its environment were created, renamed or moved.
-    // Folder versions are written on each of those.
-    const lastPathChangeAt = new Map<string, number>();
-    const chainFolderIds = [...new Set(scopeFolderIds.flatMap(ancestryOf))];
-    chainFolderIds.forEach((folderId) => lastPathChangeAt.set(folderId, folderById[folderId].createdAt.getTime()));
-    (await folderVersionDAL.find({ $in: { folderId: chainFolderIds } })).forEach(({ folderId, createdAt }) =>
-      lastPathChangeAt.set(folderId, Math.max(lastPathChangeAt.get(folderId) ?? 0, createdAt.getTime()))
-    );
-
+    // Reads are matched by folder and secret ids, so renames do not matter. A move creates new ids, so the
+    // window starts no earlier than the secret and its folder were created, nor before tracking began.
+    const trackingStart = (await $getTrackingStartedAt())?.getTime() ?? 0;
     return targets.map(({ secret, environment, secretPath }, index) => {
       const trackedSince = new Date(
         Math.max(
           windowStart.getTime(),
+          trackingStart,
           secret.createdAt.getTime(),
-          envById.get(folderById[secret.folderId].envId)?.updatedAt.getTime() ?? 0,
-          ...ancestryOf(secret.folderId).map((folderId) => lastPathChangeAt.get(folderId) ?? 0)
+          folderById[secret.folderId].createdAt.getTime()
         )
       );
       return {
@@ -274,7 +549,6 @@ export const secretReadActivityServiceFactory = ({
 
     const [activity] = await $getReadActivity({
       projectId,
-      orgId: actor.orgId,
       windowDays: SECRET_READ_ACTIVITY_WINDOW_DAYS,
       secret: { environment, secretPath, secretName }
     });
@@ -295,7 +569,7 @@ export const secretReadActivityServiceFactory = ({
 
   // Everyone who can read a secret's value but has not read it, ranked by the secrets with the most of them.
   const $computeUnusedSecretAccess = async (projectId: string, orgId: string) => {
-    const activities = await $getReadActivity({ projectId, orgId, windowDays: SECRET_READ_ACTIVITY_WINDOW_DAYS });
+    const activities = await $getReadActivity({ projectId, windowDays: SECRET_READ_ACTIVITY_WINDOW_DAYS });
     const { userPermissions, identityPermissions } = await permissionService.getProjectPermissions(projectId, orgId);
     // Principals with identical rules always get the same answer, so each distinct rule set is checked once.
     const principalGroups = Object.values(
@@ -328,8 +602,7 @@ export const secretReadActivityServiceFactory = ({
           )
           .flat()
           .flatMap((principal) => {
-            const read = reads.get(`${principal.actorType}:${principal.id}`);
-            if (read?.status === SecretReadStatus.Read) return [];
+            if (reads.has(`${principal.actorType}:${principal.id}`)) return [];
             return {
               secretKey: secret.key,
               environment,
@@ -337,8 +610,8 @@ export const secretReadActivityServiceFactory = ({
               principalType: principal.actorType,
               principalId: principal.id,
               principalName: principal.name,
-              readStatus: read?.status ?? SecretReadStatus.NoReads,
-              lastReadAt: read?.lastReadAt ?? null,
+              readStatus: SecretReadStatus.NoReads,
+              lastReadAt: null,
               trackedSince
             };
           })
@@ -385,5 +658,5 @@ export const secretReadActivityServiceFactory = ({
     };
   };
 
-  return { getSecretReadActivity, listUnusedSecretAccess };
+  return { init, recordRead, recordBulkRead, getSecretReadActivity, listUnusedSecretAccess };
 };

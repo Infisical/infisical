@@ -1,6 +1,6 @@
-import { formatDistanceToNow } from "date-fns";
+import { differenceInCalendarDays } from "date-fns";
 
-import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { Badge } from "@app/components/v3";
 import { SecretReadStatus } from "@app/hooks/api/secrets/types";
 
 type Props = {
@@ -8,22 +8,17 @@ type Props = {
   lastReadAt?: string | null;
 };
 
+// Only a reader's first read of the day is recorded, so the time of day would understate later reads.
+const formatReadDay = (lastReadAt: string) => {
+  const days = differenceInCalendarDays(new Date(), new Date(lastReadAt));
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return `${days} days ago`;
+};
+
 export const SecretReadStatusBadge = ({ status, lastReadAt }: Props) => {
   if (status === SecretReadStatus.Read && lastReadAt) {
-    return <span>{formatDistanceToNow(new Date(lastReadAt))} ago</span>;
-  }
-  if (status === SecretReadStatus.PossiblyRead && lastReadAt) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Badge variant="warning">Possibly read</Badge>
-        </TooltipTrigger>
-        <TooltipContent>
-          A parent folder was read {formatDistanceToNow(new Date(lastReadAt))} ago. That returns
-          this secret only if the read was recursive.
-        </TooltipContent>
-      </Tooltip>
-    );
+    return <span>{formatReadDay(lastReadAt)}</span>;
   }
   return <Badge variant="danger">No reads</Badge>;
 };

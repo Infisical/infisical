@@ -1078,13 +1078,31 @@ only at some later merge, so read with `FINAL` when an exact count matters.
 
 ### Secret Read Activity
 
-`ee/services/secret-read-activity/` answers "who has read this secret" from audit logs, for the
-per-secret access sheet and the Insights Unused Secret Access card. A bulk read only records a folder, so a
-read counts when it reaches the secret through that folder, an import of it, or a secret referencing it
-(imports and references check the reader's own access to the source, so revoking it would break them).
-A read of a parent folder is only a possible read, since whether it was recursive is not logged. Reads
-are matched on paths, and a rename or move changes the path, so only reads after the secret's current
-path existed count (`trackedSince`, from folder versions, the secret's and environment's timestamps).
+`ee/services/secret-read-activity/` answers "who has read this secret" for the per-secret access sheet and
+the Insights Unused Secret Access card. It does not use audit logs: ClickHouse is optional on self-hosted
+and the events cannot say which folders a recursive read returned. Instead it keeps its own table,
+`secret_read_activity`, one row per (object, reader) holding the last read time.
+
+- **Write path.** Read routes call `recordBulkRead` / `recordRead` with `void`, so they never fail or slow a
+  read. A bulk read that returned whole folders (no tag or metadata filter, imports and references included)
+  records its folder, plus every non-reserved subfolder when recursive, and does so even on a 304. A
+  narrower bulk read records the ids of the secrets it returned, so the secrets it left out are not credited.
+  A narrow 304 carries no secrets and records nothing, which is safe only because ETags are stored per UTC day,
+  so each client's first read of the day is a full response. Single reads record the secret. A read with
+  references unexpanded is stored as `secret-unexpanded` and credits only that secret, not the values it
+  references, which is why `objectType` is part of the primary key. A Redis `SET NX` gate (25h TTL) keyed on
+  the reader, the day and the request (or the hash of the returned ids) lets only the first identical read
+  per day through. It is keyed on the request, not the ETag, since older clients never send one. Gated reads go to a
+  Redis stream drained the way the audit log ingest stream is (collect, write, then trim, under a
+  non-blocking lock), by the `SecretReadActivityFlush` cron every minute into an upsert.
+- **No foreign keys and no index on `lastReadAt`.** Rows of deleted objects stop updating and the daily
+  `SecretReadActivityPrune` cron removes anything older than 90 days, walking the primary key. Keeping
+  `lastReadAt` out of every index keeps the daily upsert a HOT update. A move creates new ids, so the window
+  starts no earlier than the secret's and its folder's creation (`trackedSince`), nor before the table existed.
+- **Read path.** A read counts when it reaches the secret through its folder, an import of it, a secret
+  referencing it, or the source of a replication import (imports and references check the reader's own access
+  to the source, so revoking it would break them). The card computes the whole project once and caches it for
+  5 minutes, grouping principals by identical rules so each rule set is checked once per secret.
 
 ### Audit Log Event Classes and Settings
 

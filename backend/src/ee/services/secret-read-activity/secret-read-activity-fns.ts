@@ -1,24 +1,21 @@
-import { TLastSecretRead } from "@app/ee/services/audit-log/audit-log-dal";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { TSecretReadActivity } from "@app/db/schemas";
 import { groupBy, prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 
 import {
+  SecretReadObjectType,
   SecretReadStatus,
   TReachSecret,
   TSecretLocation,
   TSecretReach,
   TSecretReachGraph,
-  TSecretReadActivity
+  TSecretReaderType,
+  TSecretReadResult
 } from "./secret-read-activity-types";
 
-export const SECRET_READ_EVENT_TYPES = [
-  EventType.GET_SECRETS,
-  EventType.GET_SECRET,
-  EventType.DASHBOARD_GET_SECRET_VALUE
-];
+export const normalizeSecretPath = (secretPath: string) => removeTrailingSlash(prefixWithSlash(secretPath));
 
 export const toLocationKey = ({ environment, secretPath }: TSecretLocation) =>
-  `${environment}:${removeTrailingSlash(prefixWithSlash(secretPath))}`;
+  `${environment}:${normalizeSecretPath(secretPath)}`;
 
 // Imports and references check the reader's own access to the source secret, so a read through either
 // one uses that access and must count.
@@ -47,72 +44,36 @@ export const computeSecretReach = (secret: TReachSecret, graph: TSecretReachGrap
     }
   }
 
-  const reach: TSecretReach = {
-    secretKey: secret.key,
-    secretIds,
-    locations: new Set(),
-    parentLocations: new Set(),
-    environments: new Set()
-  };
-  folderIds.forEach((folderId) => {
-    const location = graph.getLocation(folderId);
-    if (!location) return;
-    reach.locations.add(toLocationKey(location));
-    reach.environments.add(location.environment);
-  });
-  folderIds.forEach((folderId) => {
-    const visited = new Set<string>();
-    let parentId = graph.getParentFolderId(folderId);
-    while (parentId && !visited.has(parentId)) {
-      visited.add(parentId);
-      const location = graph.getLocation(parentId);
-      if (location && !reach.locations.has(toLocationKey(location))) {
-        reach.parentLocations.add(toLocationKey(location));
-      }
-      parentId = graph.getParentFolderId(parentId);
-    }
-  });
-  return reach;
+  return { secretId: secret.id, secretIds, folderIds };
 };
 
-export const indexSecretReads = (reads: TLastSecretRead[]) => {
-  const singleReads = reads.filter((read) => read.secretId);
-  return {
-    bySecretId: groupBy(singleReads, (read) => read.secretId as string),
-    // A single read by name through a replication import returns a copy with its own ID, so single reads are
-    // also matched by name at the location they were made.
-    byLocationAndKey: groupBy(singleReads, (read) => `${toLocationKey(read)}:${read.secretKey}`),
-    byLocation: groupBy(
-      reads.filter((read) => !read.secretId),
-      (read) => toLocationKey(read)
-    )
-  };
-};
+export const indexSecretReads = (reads: TSecretReadActivity[]) => groupBy(reads, (read) => read.objectId);
 
-// Reads before trackedSince are ignored: the secret, or the path it lives at, did not exist yet.
+// Reads before trackedSince are ignored: the secret or its folder did not exist yet.
 export const classifySecretReads = (
-  reads: ReturnType<typeof indexSecretReads>,
+  readsByObjectId: ReturnType<typeof indexSecretReads>,
   reach: TSecretReach,
   trackedSince: Date
 ) => {
-  const activity = new Map<string, TSecretReadActivity>();
-  const record = (status: SecretReadStatus, matches: TLastSecretRead[] = []) => {
-    matches.forEach((read) => {
-      if (read.lastReadAt < trackedSince) return;
-      const key = `${read.actor}:${read.actorId}`;
+  const activity = new Map<string, TSecretReadResult>();
+  const record = (objectType: SecretReadObjectType, objectId: string) => {
+    (readsByObjectId[objectId] ?? []).forEach((read) => {
+      if (read.objectType !== objectType || read.lastReadAt < trackedSince) return;
+      const key = `${read.actorType}:${read.actorId}`;
       const current = activity.get(key);
-      // Definite reads are recorded first, so a possible read never replaces one.
-      if (!current || (current.status === status && read.lastReadAt > current.lastReadAt)) {
-        activity.set(key, { actorType: read.actor, actorId: read.actorId, status, lastReadAt: read.lastReadAt });
+      if (!current || read.lastReadAt > current.lastReadAt) {
+        activity.set(key, {
+          actorType: read.actorType as TSecretReaderType,
+          actorId: read.actorId,
+          status: SecretReadStatus.Read,
+          lastReadAt: read.lastReadAt
+        });
       }
     });
   };
 
-  reach.secretIds.forEach((secretId) => record(SecretReadStatus.Read, reads.bySecretId[secretId]));
-  reach.locations.forEach((location) => {
-    record(SecretReadStatus.Read, reads.byLocation[location]);
-    record(SecretReadStatus.Read, reads.byLocationAndKey[`${location}:${reach.secretKey}`]);
-  });
-  reach.parentLocations.forEach((location) => record(SecretReadStatus.PossiblyRead, reads.byLocation[location]));
+  reach.secretIds.forEach((secretId) => record(SecretReadObjectType.Secret, secretId));
+  record(SecretReadObjectType.SecretUnexpanded, reach.secretId);
+  reach.folderIds.forEach((folderId) => record(SecretReadObjectType.Folder, folderId));
   return activity;
 };

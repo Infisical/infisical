@@ -207,6 +207,7 @@ import { secretChangeGlobalPolicyBridgeDALFactory } from "@app/ee/services/secre
 import { secretChangeGlobalPolicyBridgeServiceFactory } from "@app/ee/services/secret-change-global-policy-bridge/secret-change-global-policy-bridge-service";
 import { secretChangeGlobalRequestBridgeDALFactory } from "@app/ee/services/secret-change-global-request-bridge/secret-change-global-request-bridge-dal";
 import { secretChangeGlobalRequestBridgeServiceFactory } from "@app/ee/services/secret-change-global-request-bridge/secret-change-global-request-bridge-service";
+import { secretReadActivityDALFactory } from "@app/ee/services/secret-read-activity/secret-read-activity-dal";
 import { secretReadActivityServiceFactory } from "@app/ee/services/secret-read-activity/secret-read-activity-service";
 import { secretReplicationServiceFactory } from "@app/ee/services/secret-replication/secret-replication-service";
 import { secretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
@@ -3484,16 +3485,14 @@ export const registerRoutes = async (
   const secretReadActivityService = secretReadActivityServiceFactory({
     permissionService,
     licenseService,
-    auditLogSettingsService,
-    auditLogDAL,
-    clickhouseAuditLogDAL,
+    secretReadActivityDAL: secretReadActivityDALFactory(db),
     folderDAL,
-    folderVersionDAL,
     projectEnvDAL,
     secretImportDAL,
     secretV2BridgeDAL,
     kmsService,
-    keyStore
+    keyStore,
+    cronJob
   });
 
   const insightsService = insightsServiceFactory({
@@ -4566,6 +4565,7 @@ export const registerRoutes = async (
   projectCleanupQueue.init();
   usageEventQueue.init();
   healthAlert.init();
+  secretReadActivityService.init();
   alertQueue.init();
   eventOutboxQueue.init();
   auditLogStreamOutboxQueue.init();

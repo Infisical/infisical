@@ -226,6 +226,24 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
       const { secrets, imports, etag, notModified } = result;
 
+      // Recorded before the 304 return: a client polling with an ETag is still using the secrets it holds.
+      if (req.query.viewSecretValue) {
+        void server.services.secretReadActivity.recordBulkRead({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          projectId,
+          environment,
+          secretPath,
+          recursive: req.query.recursive,
+          isFiltered: Boolean(req.query.tagSlugs?.length || req.query.metadataFilter?.length),
+          includeImports: req.query.includeImports,
+          expandSecretReferences: req.query.expandSecretReferences,
+          notModified,
+          secrets,
+          imports
+        });
+      }
+
       if (etag) {
         void reply.header("ETag", etag);
       }
@@ -381,6 +399,16 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         includeImports: req.query.includeImports,
         version: req.query.version
       });
+
+      if (req.query.viewSecretValue) {
+        void server.services.secretReadActivity.recordRead({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          projectId,
+          secretIds: [secret.id],
+          referencesExpanded: req.query.expandSecretReferences
+        });
+      }
 
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -1576,6 +1604,16 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretPath,
         environment
       });
+
+      if (value !== undefined) {
+        void server.services.secretReadActivity.recordRead({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          projectId,
+          secretIds: [secret.id],
+          referencesExpanded: true
+        });
+      }
 
       await server.services.auditLog.createAuditLog({
         projectId,

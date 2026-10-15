@@ -164,7 +164,6 @@ export type TGetSecretReadActivityDTO = Omit<TGetSecretAccessListDTO, "includeAl
 
 export enum SecretReadStatus {
   Read = "read",
-  PossiblyRead = "possibly-read",
   NoReads = "no-reads"
 }
 

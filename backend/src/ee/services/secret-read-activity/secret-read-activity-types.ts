@@ -1,29 +1,35 @@
-import { TLastSecretRead } from "@app/ee/services/audit-log/audit-log-dal";
 import { OrderByDirection } from "@app/lib/types";
+import { ActorType } from "@app/services/auth/auth-type";
 
 export enum SecretReadStatus {
   Read = "read",
-  // Only a parent folder was read. That returns the secret only if the read was recursive, which the
-  // audit log does not record.
-  PossiblyRead = "possibly-read",
   NoReads = "no-reads"
 }
 
-export type TSecretReadActivity = {
-  actorType: TLastSecretRead["actor"];
+// A bulk read that returned whole folders is recorded against them. Anything narrower, and every single read,
+// is recorded against the secrets it returned, as unexpanded when their references were not resolved: those
+// handed over only the secret itself, not the values it references.
+export enum SecretReadObjectType {
+  Folder = "folder",
+  Secret = "secret",
+  SecretUnexpanded = "secret-unexpanded"
+}
+
+export type TSecretReaderType = ActorType.USER | ActorType.IDENTITY;
+
+export type TSecretReadResult = {
+  actorType: TSecretReaderType;
   actorId: string;
   status: SecretReadStatus;
   lastReadAt: Date;
 };
 
-// Everything whose read hands over this secret's value: the secret, every secret that references it,
+// Everything whose read hands over this secret's value: the secret and every secret that references it,
 // and every folder that holds one of those or imports one that does.
 export type TSecretReach = {
-  secretKey?: string;
+  secretId: string;
   secretIds: Set<string>;
-  locations: Set<string>;
-  parentLocations: Set<string>;
-  environments: Set<string>;
+  folderIds: Set<string>;
 };
 
 export type TReachSecret = { id: string; folderId: string; key?: string };
@@ -33,8 +39,44 @@ export type TSecretLocation = { environment: string; secretPath: string };
 export type TSecretReachGraph = {
   getReferencers: (secret: TReachSecret) => TReachSecret[];
   getImporterFolderIds: (folderId: string) => string[];
-  getParentFolderId: (folderId: string) => string | null | undefined;
-  getLocation: (folderId: string) => TSecretLocation | undefined;
+};
+
+type TSecretReader = {
+  actor: ActorType;
+  actorId: string;
+  projectId: string;
+};
+
+export type TRecordSecretReadDTO = TSecretReader & {
+  secretIds: string[];
+  referencesExpanded: boolean;
+};
+
+type TReturnedSecret = { id: string; secretValueHidden: boolean };
+
+export type TRecordBulkSecretReadDTO = TSecretReader & {
+  environment: string;
+  secretPath: string;
+  recursive: boolean;
+  isFiltered: boolean;
+  includeImports: boolean;
+  expandSecretReferences: boolean;
+  notModified?: boolean;
+  secrets: TReturnedSecret[];
+  imports?: { secrets: TReturnedSecret[] }[];
+};
+
+// What the request path appends to the stream; the consumer resolves it to folders and secrets.
+export type TSecretReadStreamEntry = {
+  actorType: TSecretReaderType;
+  actorId: string;
+  projectId: string;
+  readAt: string;
+  environment?: string;
+  secretPath?: string;
+  recursive?: boolean;
+  secretIds?: string[];
+  referencesExpanded?: boolean;
 };
 
 export type TGetSecretReadActivityDTO = {
@@ -47,7 +89,6 @@ export type TGetSecretReadActivityDTO = {
 // Without a secret, the whole project is in scope.
 export type TReadActivityScope = {
   projectId: string;
-  orgId: string;
   windowDays: number;
   secret?: Omit<TGetSecretReadActivityDTO, "projectId">;
 };
@@ -56,7 +97,7 @@ export type TUnusedSecretAccess = {
   secretKey: string;
   environment: string;
   secretPath: string;
-  principalType: TLastSecretRead["actor"];
+  principalType: TSecretReaderType;
   principalId: string;
   principalName: string;
   readStatus: SecretReadStatus;
