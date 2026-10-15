@@ -123,7 +123,10 @@ export const secretScanningV2ServiceFactory = ({
       try {
         await lock.release();
       } catch (error) {
-        logger.warn(error, `secretScanningV2Service: Failed to release data source lock [dataSourceId=${dataSourceId}]`);
+        logger.warn(
+          error,
+          `secretScanningV2Service: Failed to release data source lock [dataSourceId=${dataSourceId}]`
+        );
       }
     }
   };

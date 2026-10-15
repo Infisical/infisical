@@ -76,7 +76,8 @@ export const KeyStorePrefixes = {
   StripeConnectionRefreshLock: (connectionId: string) => `stripe-connection-refresh-mutex-${connectionId}` as const,
   PamAccountRotationLock: (accountId: string) => `pam-account-rotation-mutex-${accountId}` as const,
   SecretScanningFullScanLease: (resourceId: string) => `secret-scanning-v2-full-scan-lease-${resourceId}` as const,
-  SecretScanningDataSourceLock: (dataSourceId: string) => `secret-scanning-v2-data-source-mutex-${dataSourceId}` as const,
+  SecretScanningDataSourceLock: (dataSourceId: string) =>
+    `secret-scanning-v2-data-source-mutex-${dataSourceId}` as const,
   IdentityLockoutLock: (lockoutKey: string) => `identity-lockout-lock-${lockoutKey}` as const,
   CaOrderCertificateForSubscriberLock: (subscriberId: string) =>
     `ca-order-certificate-for-subscriber-lock-${subscriberId}` as const,
