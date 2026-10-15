@@ -174,7 +174,10 @@ const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
           )}
         />
       </div>
-      <SheetFooter className="border-t">
+      <SheetFooter className="justify-end border-t">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
         <Button
           type="submit"
           variant={scopeVariant}
@@ -182,9 +185,6 @@ const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
           isDisabled={isSubmitting}
         >
           Create
-        </Button>
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
         </Button>
       </SheetFooter>
       <UpgradeGate
