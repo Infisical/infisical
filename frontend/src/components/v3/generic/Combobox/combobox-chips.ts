@@ -11,9 +11,10 @@ export const COMBOBOX_CHIPS_CLASS = [
 ].join(" ");
 
 /** Scrolls sideways when the chips stay on one line, and wraps to a capped height otherwise. */
-export const comboboxChipsViewportClass = (singleLine?: boolean) =>
+export const comboboxChipsViewportClass = (singleLine?: boolean, hideScrollbar?: boolean) =>
   [
-    "scroll-edge-fade flex thin-scrollbar min-w-0 flex-1 items-center gap-1",
+    "scroll-edge-fade flex min-w-0 flex-1 items-center gap-1",
+    hideScrollbar ? "no-scrollbar" : "thin-scrollbar",
     singleLine ? "overflow-x-auto" : "max-h-24 flex-wrap overflow-y-auto"
   ].join(" ");
 

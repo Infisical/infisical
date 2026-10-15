@@ -102,6 +102,8 @@ type ComboboxCreationConfig<TOption> =
 
 type ComboboxSharedProps<TOption> = {
   options?: readonly TOption[];
+  /** `sm` is a shorter control with badge-sized chips, for dense rows. */
+  size?: "md" | "sm";
   getOptionValue: (option: TOption) => string;
   getOptionLabel: (option: TOption) => string;
   getOptionKeywords?: (option: TOption) => readonly string[];
@@ -141,7 +143,7 @@ type ComboboxSharedProps<TOption> = {
 
 type ComboboxInputProps = Omit<
   React.ComponentPropsWithoutRef<"input">,
-  "children" | "disabled" | "multiple" | "onChange" | "type" | "value"
+  "children" | "disabled" | "multiple" | "onChange" | "size" | "type" | "value"
 >;
 
 type ComboboxSingleValueProps<TOption> = {
@@ -255,6 +257,7 @@ type ComboboxTrailingSlotProps = {
   canClear: boolean;
   clearAriaLabel: string;
   isBusy: boolean;
+  size?: "md" | "sm";
   className?: string;
   onClear: () => void;
 };
@@ -263,9 +266,11 @@ const ComboboxTrailingSlot = ({
   canClear,
   clearAriaLabel,
   isBusy,
+  size = "md",
   className,
   onClear
 }: ComboboxTrailingSlotProps) => {
+  const iconClassName = size === "sm" ? "size-3.5" : "size-4";
   let state = "chevron";
   if (canClear) state = "clear";
   if (isBusy) state = "loading";
@@ -275,11 +280,14 @@ const ComboboxTrailingSlot = ({
       data-slot="combobox-trailing-slot"
       data-state={state}
       className={cn(
-        "pointer-events-none flex size-7 shrink-0 items-center justify-center text-accent",
+        "pointer-events-none flex shrink-0 items-center justify-center text-accent",
+        size === "sm" ? "size-6" : "size-7",
         className
       )}
     >
-      {state === "loading" && <Loader2Icon aria-hidden="true" className="size-4 animate-spin" />}
+      {state === "loading" && (
+        <Loader2Icon aria-hidden="true" className={cn(iconClassName, "animate-spin")} />
+      )}
       {state === "clear" && (
         <button
           type="button"
@@ -290,10 +298,10 @@ const ComboboxTrailingSlot = ({
           onClick={onClear}
           className="pointer-events-auto flex size-full items-center justify-center rounded-md text-muted outline-none hover:bg-foreground/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <XIcon aria-hidden="true" className="size-4" />
+          <XIcon aria-hidden="true" className={iconClassName} />
         </button>
       )}
-      {state === "chevron" && <ChevronDownIcon aria-hidden="true" className="size-4" />}
+      {state === "chevron" && <ChevronDownIcon aria-hidden="true" className={iconClassName} />}
     </div>
   );
 };
@@ -913,6 +921,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     onPopupOpenChange,
     portalContainer: portalContainerProp,
     variant = "default",
+    size = "md",
     className,
     contentClassName,
     onInputValueChange,
@@ -1212,7 +1221,8 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
                 preventComboboxFormSubmit(event);
               }}
               className={cn(
-                "h-9 w-full bg-transparent py-2 pr-9 text-sm text-foreground transition-[color,box-shadow] outline-none placeholder:text-muted",
+                "w-full bg-transparent text-sm text-foreground transition-[color,box-shadow] outline-none placeholder:text-muted",
+                size === "sm" ? "h-7 py-1 pr-7" : "h-9 py-2 pr-9",
                 "data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50",
                 variant === "default" &&
                   "rounded-md border border-border pl-2.5 hover:border-foreground/20 focus:border-ring focus:ring-[3px] focus:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
@@ -1226,6 +1236,7 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
               <span
                 className={cn(
                   "pointer-events-none absolute inset-y-0 right-9 left-2.5 flex min-w-0 items-center truncate text-sm text-foreground",
+                  size === "sm" && "right-7",
                   isDisabled && "opacity-50"
                 )}
               >
@@ -1269,7 +1280,8 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
           </ComboboxPopup>
         </ComboboxPrimitive.Root>
         <ComboboxTrailingSlot
-          className="absolute top-1 right-1 z-10"
+          className={cn("absolute z-10", size === "sm" ? "top-0.5 right-0.5" : "top-1 right-1")}
+          size={size}
           isBusy={isLoading || isCreationPending}
           canClear={Boolean(
             isClearable && !isDisabled && (value != null || (isEditing && search.length > 0))
@@ -1313,6 +1325,7 @@ const MultipleCombobox = <TOption,>({
   modal: modalProp,
   onPopupOpenChange,
   portalContainer: portalContainerProp,
+  size = "md",
   className,
   contentClassName,
   onInputValueChange,
@@ -1598,11 +1611,12 @@ const MultipleCombobox = <TOption,>({
               COMBOBOX_CHIPS_CLASS,
               singleLine ? "items-center" : "items-start",
               value.length > 0 ? "p-1 pr-8" : "py-1 pr-8 pl-2.5",
+              size === "sm" && cn("min-h-7 py-0.5 pr-7", value.length > 0 ? "pl-1" : "pl-2"),
               className
             )}
           >
             <div
-              className={comboboxChipsViewportClass(singleLine)}
+              className={comboboxChipsViewportClass(singleLine, size === "sm")}
               ref={setViewportRef}
               data-scroll-edge-axis={singleLine ? "horizontal" : "vertical"}
               data-scrollable-start={scrollEdges.start}
@@ -1618,7 +1632,7 @@ const MultipleCombobox = <TOption,>({
                       return (
                         <ComboboxPrimitive.Chip
                           key={getOptionValue(option)}
-                          className={COMBOBOX_CHIP_CLASS}
+                          className={cn(COMBOBOX_CHIP_CLASS, size === "sm" && "h-5 gap-0.5 px-1")}
                         >
                           <span className={COMBOBOX_CHIP_LABEL_CLASS}>
                             {renderValue?.(option) ?? label}
@@ -1626,7 +1640,10 @@ const MultipleCombobox = <TOption,>({
                           {!isDisabled && (
                             <ComboboxPrimitive.ChipRemove
                               aria-label={`Remove ${label}`}
-                              className={COMBOBOX_CHIP_REMOVE_CLASS}
+                              className={cn(
+                                COMBOBOX_CHIP_REMOVE_CLASS,
+                                size === "sm" && "size-3.5"
+                              )}
                             >
                               <XIcon className="size-3" />
                             </ComboboxPrimitive.ChipRemove>
@@ -1654,7 +1671,7 @@ const MultipleCombobox = <TOption,>({
                   onKeyDown?.(event);
                   preventComboboxFormSubmit(event);
                 }}
-                className={COMBOBOX_CHIPS_INPUT_CLASS}
+                className={cn(COMBOBOX_CHIPS_INPUT_CLASS, size === "sm" && "h-5")}
                 {...inputProps}
               />
             </div>
@@ -1700,7 +1717,8 @@ const MultipleCombobox = <TOption,>({
           </ComboboxPopup>
         </ComboboxPrimitive.Root>
         <ComboboxTrailingSlot
-          className="absolute top-1 right-1 z-10"
+          className={cn("absolute z-10", size === "sm" ? "top-0.5 right-0.5" : "top-1 right-1")}
+          size={size}
           isBusy={isLoading || isCreationPending}
           canClear={isClearable && !isDisabled && (value.length > 0 || search.length > 0)}
           clearAriaLabel={clearAriaLabel}
