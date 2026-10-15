@@ -29,6 +29,7 @@ import {
 import {
   getCertificateDisplayName,
   isPaloAltoNetworksPkiSync,
+  PALO_ALTO_NETWORKS_PRIVATE_KEY_NOTE,
   PKI_SYNC_MAP
 } from "@app/helpers/pkiSyncs";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -170,8 +171,9 @@ const getFormSteps = (
     title: "Certificates",
     subtitle: "Describe the certificates this sync holds.",
     rightLabel: "CERTIFICATES",
-    rightDescription:
-      "Anything in the application matching these filters is synced as it is issued, and anything that stops matching is no longer synced. Nothing changes until you save."
+    rightDescription: `Anything in the application matching these filters is synced as it is issued, and anything that stops matching is no longer synced. Nothing changes until you save.${
+      isPaloAltoNetworksPkiSync(destination) ? `\n\n${PALO_ALTO_NETWORKS_PRIVATE_KEY_NOTE}` : ""
+    }`
   });
 
   steps.push({
