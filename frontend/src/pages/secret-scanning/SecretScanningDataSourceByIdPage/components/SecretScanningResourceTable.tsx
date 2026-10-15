@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { ChevronDownIcon, FolderGitIcon, LockIcon, SearchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -34,51 +33,19 @@ import {
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
-import { usePagination, useResetPageHelper } from "@app/hooks";
+import { useDebounce, usePagination, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
-  SecretScanningScanStatus,
+  SecretScanningResourceOrderBy,
   TSecretScanningDataSource,
-  TSecretScanningResourceWithDetails,
   useListSecretScanningResources
 } from "@app/hooks/api/secretScanningV2";
 
 import { AddSecretScanningResourcesButton } from "./AddSecretScanningResourcesButton";
 import { SecretScanningResourceRow } from "./SecretScanningResourceRow";
 
-enum ResourcesOrderBy {
-  Name = "name",
-  Findings = "findings",
-  LastScanned = "last-scanned"
-}
-
 const SKELETON_ROWS = ["first", "second", "third"];
 const SKELETON_CELLS = ["name", "status", "last-scan", "actions"];
-
-const sortResources = (
-  a: TSecretScanningResourceWithDetails,
-  b: TSecretScanningResourceWithDetails,
-  orderBy: ResourcesOrderBy
-) => {
-  switch (orderBy) {
-    case ResourcesOrderBy.Findings:
-      if (a.unresolvedFindings === 0 && a.lastScanStatus === SecretScanningScanStatus.Failed)
-        return 1;
-      if (b.unresolvedFindings === 0 && b.lastScanStatus === SecretScanningScanStatus.Failed)
-        return -1;
-
-      return b.unresolvedFindings - a.unresolvedFindings;
-    case ResourcesOrderBy.LastScanned:
-      if (!a.lastScannedAt && !b.lastScannedAt) return 0;
-      if (!a.lastScannedAt) return 1;
-      if (!b.lastScannedAt) return -1;
-
-      return new Date(b.lastScannedAt).getTime() - new Date(a.lastScannedAt).getTime();
-    case ResourcesOrderBy.Name:
-    default:
-      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
-  }
-};
 
 type Props = {
   dataSource: TSecretScanningDataSource;
@@ -93,15 +60,6 @@ export const SecretScanningResourcesTable = ({ dataSource, onViewFindings }: Pro
     ProjectPermissionSub.SecretScanningDataSources
   );
 
-  const { data: resources = [], isPending } = useListSecretScanningResources(
-    { dataSourceId: dataSource.id, type: dataSource.type },
-    {
-      refetchInterval: 30000,
-      enabled: canReadResources
-    }
-  );
-  const isLoading = canReadResources && isPending;
-
   const {
     search,
     setSearch,
@@ -115,44 +73,64 @@ export const SecretScanningResourcesTable = ({ dataSource, onViewFindings }: Pro
     orderBy,
     setOrderDirection,
     setOrderBy
-  } = usePagination<ResourcesOrderBy>(ResourcesOrderBy.Name, { initPerPage: 20 });
+  } = usePagination<SecretScanningResourceOrderBy>(SecretScanningResourceOrderBy.Name, {
+    initPerPage: 20
+  });
 
-  const filteredResources = useMemo(() => {
-    const searchValue = search.trim().toLowerCase();
+  const [debouncedSearch] = useDebounce(search.trim());
 
-    return resources
-      .filter(({ name }) => name.toLowerCase().includes(searchValue))
-      .sort((a, b) =>
-        orderDirection === OrderByDirection.ASC
-          ? sortResources(a, b, orderBy)
-          : sortResources(b, a, orderBy)
-      );
-  }, [resources, orderDirection, search, orderBy]);
+  const { data, isPending } = useListSecretScanningResources(
+    {
+      dataSourceId: dataSource.id,
+      type: dataSource.type,
+      search: debouncedSearch || undefined,
+      orderBy,
+      orderDirection,
+      offset,
+      limit: perPage
+    },
+    {
+      refetchInterval: 30000,
+      enabled: canReadResources
+    }
+  );
+  const isLoading = canReadResources && isPending;
+  const resources = data?.resources ?? [];
+  const totalCount = data?.totalCount ?? 0;
 
   useResetPageHelper({
-    totalCount: filteredResources.length,
+    totalCount,
     offset,
     setPage
   });
 
   const resourceDetails = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
 
-  const handleSortChange = (column: ResourcesOrderBy) => {
+  const handleSortChange = (column: SecretScanningResourceOrderBy) => {
     if (column === orderBy) {
       toggleOrderDirection();
       return;
     }
 
     setOrderBy(column);
-    setOrderDirection(OrderByDirection.ASC);
+    // status ascends from what needs attention first; last scan starts at the most recent
+    setOrderDirection(
+      column === SecretScanningResourceOrderBy.LastScanned
+        ? OrderByDirection.DESC
+        : OrderByDirection.ASC
+    );
   };
 
-  const getSortDirection = (column: ResourcesOrderBy): TableSortDirection => {
+  const getSortDirection = (column: SecretScanningResourceOrderBy): TableSortDirection => {
     if (orderBy !== column) return "none";
     return orderDirection === OrderByDirection.ASC ? "ascending" : "descending";
   };
 
-  const renderSortableHead = (column: ResourcesOrderBy, label: string, className?: string) => {
+  const renderSortableHead = (
+    column: SecretScanningResourceOrderBy,
+    label: string,
+    className?: string
+  ) => {
     const direction = getSortDirection(column);
     return (
       <TableHead
@@ -190,15 +168,15 @@ export const SecretScanningResourcesTable = ({ dataSource, onViewFindings }: Pro
       );
     }
 
-    if (resources.length) {
+    if (debouncedSearch) {
       return (
         <Empty className="border">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <SearchIcon />
             </EmptyMedia>
-            <EmptyTitle>No {resourceDetails.pluralNoun} match your filters</EmptyTitle>
-            <EmptyDescription>Try a different search term or status filter.</EmptyDescription>
+            <EmptyTitle>No {resourceDetails.pluralNoun} match your search</EmptyTitle>
+            <EmptyDescription>Try a different search term.</EmptyDescription>
           </EmptyHeader>
         </Empty>
       );
@@ -249,15 +227,19 @@ export const SecretScanningResourcesTable = ({ dataSource, onViewFindings }: Pro
         </div>
       </CardHeader>
       <CardContent>
-        {!isLoading && !filteredResources.length ? (
+        {!isLoading && !resources.length ? (
           renderEmpty()
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                {renderSortableHead(ResourcesOrderBy.Name, resourceDetails.singularTitle, "w-1/2")}
-                {renderSortableHead(ResourcesOrderBy.Findings, "Status")}
-                {renderSortableHead(ResourcesOrderBy.LastScanned, "Last Scan")}
+                {renderSortableHead(
+                  SecretScanningResourceOrderBy.Name,
+                  resourceDetails.singularTitle,
+                  "w-1/2"
+                )}
+                {renderSortableHead(SecretScanningResourceOrderBy.Status, "Status")}
+                {renderSortableHead(SecretScanningResourceOrderBy.LastScanned, "Last Scan")}
                 <TableHead variant="action" />
               </TableRow>
             </TableHeader>
@@ -273,22 +255,20 @@ export const SecretScanningResourcesTable = ({ dataSource, onViewFindings }: Pro
                   </TableRow>
                 ))}
               {!isLoading &&
-                filteredResources
-                  .slice(offset, perPage * page)
-                  .map((resource) => (
-                    <SecretScanningResourceRow
-                      key={resource.id}
-                      resource={resource}
-                      dataSource={dataSource}
-                      onViewFindings={onViewFindings}
-                    />
-                  ))}
+                resources.map((resource) => (
+                  <SecretScanningResourceRow
+                    key={resource.id}
+                    resource={resource}
+                    dataSource={dataSource}
+                    onViewFindings={onViewFindings}
+                  />
+                ))}
             </TableBody>
           </Table>
         )}
-        {!isLoading && Boolean(filteredResources.length) && (
+        {!isLoading && Boolean(totalCount) && (
           <Pagination
-            count={filteredResources.length}
+            count={totalCount}
             page={page}
             perPage={perPage}
             onChangePage={setPage}

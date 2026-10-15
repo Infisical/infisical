@@ -11,6 +11,7 @@ import {
   SecretScanningFindingOrderBy,
   SecretScanningFindingSeverity,
   SecretScanningFindingStatus,
+  SecretScanningResourceOrderBy,
   SecretScanningScanStatus,
   SecretScanningScanType
 } from "../enums";
@@ -141,6 +142,15 @@ export type TSecretScanningResourceWithDetails = {
 
 export type TListSecretScanningResourcesResponse = {
   resources: TSecretScanningResourceWithDetails[];
+  totalCount: number;
+};
+
+export type TListSecretScanningResourcesDTO = TGetSecretScanningDataSource & {
+  search?: string;
+  orderBy: SecretScanningResourceOrderBy;
+  orderDirection: OrderByDirection;
+  offset: number;
+  limit: number;
 };
 
 export type TSecretScanningResource = Pick<

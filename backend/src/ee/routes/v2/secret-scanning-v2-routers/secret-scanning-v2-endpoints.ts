@@ -3,6 +3,7 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   SecretScanningDataSource,
+  SecretScanningResourceOrderBy,
   SecretScanningScanStatus
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { SECRET_SCANNING_DATA_SOURCE_NAME_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
@@ -16,6 +17,7 @@ import {
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { ApiDocsTags, SecretScanningDataSources } from "@app/lib/api-docs";
 import { startsWithVowel } from "@app/lib/fn";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -684,7 +686,31 @@ export const registerSecretScanningEndpoints = <
       operationId: `list${sourceTypeId}DataSourceResourcesDashboard`,
       tags: [ApiDocsTags.SecretScanning],
       params: z.object({
-        dataSourceId: z.string().uuid()
+        dataSourceId: z.string().uuid().describe(SecretScanningDataSources.LIST_RESOURCES(type).dataSourceId)
+      }),
+      querystring: z.object({
+        search: z.string().trim().max(255).optional().describe(SecretScanningDataSources.LIST_RESOURCES(type).search),
+        orderBy: z
+          .nativeEnum(SecretScanningResourceOrderBy)
+          .default(SecretScanningResourceOrderBy.Name)
+          .describe(SecretScanningDataSources.LIST_RESOURCES(type).orderBy),
+        orderDirection: z
+          .nativeEnum(OrderByDirection)
+          .default(OrderByDirection.ASC)
+          .describe(SecretScanningDataSources.LIST_RESOURCES(type).orderDirection),
+        offset: z.coerce
+          .number()
+          .int()
+          .min(0)
+          .default(0)
+          .describe(SecretScanningDataSources.LIST_RESOURCES(type).offset),
+        limit: z.coerce
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .default(100)
+          .describe(SecretScanningDataSources.LIST_RESOURCES(type).limit)
       }),
       response: {
         200: z.object({
@@ -693,7 +719,8 @@ export const registerSecretScanningEndpoints = <
             lastScanStatus: z.nativeEnum(SecretScanningScanStatus).nullish(),
             lastScanStatusMessage: z.string().nullish(),
             unresolvedFindings: z.number()
-          }).array()
+          }).array(),
+          totalCount: z.number()
         })
       }
     },
@@ -701,9 +728,9 @@ export const registerSecretScanningEndpoints = <
     handler: async (req) => {
       const { dataSourceId } = req.params;
 
-      const { resources, projectId } =
+      const { resources, totalCount, projectId } =
         await server.services.secretScanningV2.listSecretScanningResourcesWithDetailsByDataSourceId(
-          { dataSourceId, type },
+          { dataSourceId, type, ...req.query },
           req.permission
         );
 
@@ -721,7 +748,7 @@ export const registerSecretScanningEndpoints = <
         }
       });
 
-      return { resources };
+      return { resources, totalCount };
     }
   });
 

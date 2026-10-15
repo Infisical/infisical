@@ -70,7 +70,11 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { bitbucketSecretScanningService } from "./bitbucket/bitbucket-secret-scanning-service";
 import { gitlabSecretScanningService } from "./gitlab/gitlab-secret-scanning-service";
-import { TListSecretScanningFindingsFilter, TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
+import {
+  TListSecretScanningFindingsFilter,
+  TListSecretScanningResourcesFilter,
+  TSecretScanningV2DALFactory
+} from "./secret-scanning-v2-dal";
 import { TSecretScanningV2QueueServiceFactory } from "./secret-scanning-v2-queue";
 
 export type TSecretScanningV2ServiceFactoryDep = {
@@ -1132,7 +1136,7 @@ export const secretScanningV2ServiceFactory = ({
   };
 
   const listSecretScanningResourcesWithDetailsByDataSourceId = async (
-    { type, dataSourceId }: TFindSecretScanningDataSourceByIdDTO,
+    { type, dataSourceId, ...filter }: TFindSecretScanningDataSourceByIdDTO & TListSecretScanningResourcesFilter,
     actor: OrgServiceActor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -1169,9 +1173,16 @@ export const secretScanningV2ServiceFactory = ({
         message: `Secret Scanning Data Source with ID "${dataSourceId}" is not configured for ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]}`
       });
 
-    const resources = await secretScanningV2DAL.resources.findWithDetails({ dataSourceId });
+    const { resources, totalCount } = await secretScanningV2DAL.resources.findWithDetailsByDataSourceId(
+      dataSourceId,
+      filter
+    );
 
-    return { resources: resources as TSecretScanningResourceWithDetails[], projectId: dataSource.projectId };
+    return {
+      resources: resources as TSecretScanningResourceWithDetails[],
+      totalCount,
+      projectId: dataSource.projectId
+    };
   };
 
   const listSecretScanningScansWithDetailsByDataSourceId = async (

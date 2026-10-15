@@ -13,6 +13,7 @@ import {
   TListSecretScanningDataSources,
   TListSecretScanningFindingsDTO,
   TListSecretScanningFindingsResponse,
+  TListSecretScanningResourcesDTO,
   TListSecretScanningResourcesResponse,
   TListSecretScanningScansResponse,
   TSecretScanningAvailableResource,
@@ -22,7 +23,6 @@ import {
   TSecretScanningDataSourceResponse,
   TSecretScanningDataSourceWithDetails,
   TSecretScanningResource,
-  TSecretScanningResourceWithDetails,
   TSecretScanningScanWithDetails
 } from "./types";
 
@@ -59,6 +59,11 @@ export const secretScanningV2Keys = {
     ...secretScanningV2Keys.dataSource(),
     "resources",
     dataSourceId
+  ],
+  listResourcesWithParams: ({ dataSourceId, ...params }: TListSecretScanningResourcesDTO) => [
+    ...secretScanningV2Keys.listResources(dataSourceId),
+    "dashboard",
+    params
   ],
   listScans: (dataSourceId: string) => [
     ...secretScanningV2Keys.dataSource(),
@@ -245,26 +250,30 @@ export const useGetSecretScanningDataSource = (
 };
 
 export const useListSecretScanningResources = (
-  { dataSourceId, type }: TGetSecretScanningDataSource,
+  params: TListSecretScanningResourcesDTO,
   options?: Omit<
     UseQueryOptions<
-      TSecretScanningResourceWithDetails[],
+      TListSecretScanningResourcesResponse,
       unknown,
-      TSecretScanningResourceWithDetails[],
-      ReturnType<typeof secretScanningV2Keys.listResources>
+      TListSecretScanningResourcesResponse,
+      ReturnType<typeof secretScanningV2Keys.listResourcesWithParams>
     >,
     "queryKey" | "queryFn"
   >
 ) => {
+  const { dataSourceId, type, ...query } = params;
+
   return useQuery({
-    queryKey: secretScanningV2Keys.listResources(dataSourceId),
+    queryKey: secretScanningV2Keys.listResourcesWithParams(params),
     queryFn: async () => {
       const { data } = await apiRequest.get<TListSecretScanningResourcesResponse>(
-        `/api/v2/secret-scanning/data-sources/${type}/${dataSourceId}/resources-dashboard`
+        `/api/v2/secret-scanning/data-sources/${type}/${dataSourceId}/resources-dashboard`,
+        { params: query }
       );
 
-      return data.resources;
+      return data;
     },
+    placeholderData: keepPreviousData,
     ...options
   });
 };

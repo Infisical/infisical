@@ -31,6 +31,12 @@ export enum SecretScanningFindingOrderBy {
   Status = "status"
 }
 
+export enum SecretScanningResourceOrderBy {
+  Name = "name",
+  Status = "status",
+  LastScanned = "lastScanned"
+}
+
 export enum SecretScanningFindingSeverity {
   High = "high",
   Medium = "medium",
