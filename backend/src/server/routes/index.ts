@@ -361,6 +361,9 @@ import { eventOutboxDALFactory } from "@app/services/event-outbox/event-outbox-d
 import { eventOutboxQueueFactory } from "@app/services/event-outbox/event-outbox-queue";
 import { eventOutboxRegistryFactory } from "@app/services/event-outbox/event-outbox-registry";
 import { eventOutboxServiceFactory } from "@app/services/event-outbox/event-outbox-service";
+import { externalApprovalPolicyDALFactory } from "@app/services/external-approval/external-approval-policy-dal";
+import { externalApprovalRequestDALFactory } from "@app/services/external-approval/external-approval-request-dal";
+import { externalApprovalServiceFactory } from "@app/services/external-approval/external-approval-service";
 import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
@@ -857,6 +860,8 @@ export const registerRoutes = async (
   const approvalPolicyBypassersDAL = approvalPolicyBypassersDALFactory(db);
   const approvalPolicySecretEnvironmentDAL = approvalPolicySecretEnvironmentDALFactory(db);
   const approvalRequestDAL = approvalRequestDALFactory(db);
+  const externalApprovalPolicyDAL = externalApprovalPolicyDALFactory(db);
+  const externalApprovalRequestDAL = externalApprovalRequestDALFactory(db);
   const secretChangeGlobalPolicyBridgeDAL = secretChangeGlobalPolicyBridgeDALFactory(db);
   const roleDAL = roleDALFactory(db);
   const pkiAlertHistoryDAL = pkiAlertHistoryDALFactory(db);
@@ -3319,6 +3324,15 @@ export const registerRoutes = async (
     keyStore
   });
 
+  const externalApprovalService = externalApprovalServiceFactory({
+    externalApprovalPolicyDAL,
+    externalApprovalRequestDAL,
+    approvalPolicyDAL,
+    approvalRequestDAL,
+    appConnectionDAL,
+    appConnectionService
+  });
+
   const agentVaultSessionLogService = agentVaultSessionLogServiceFactory({
     agentVaultSessionLogConfigDAL,
     agentVaultSessionDAL,
@@ -4776,6 +4790,7 @@ export const registerRoutes = async (
     convertor: convertorService,
     pkiAlertV2: pkiAlertV2Service,
     approvalPolicy: approvalPolicyService,
+    externalApproval: externalApprovalService,
     appConnectionCredentialRotation: appConnectionCredentialRotationService,
     caAutoRenewalQueue
   });
