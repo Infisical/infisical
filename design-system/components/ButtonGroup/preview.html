@@ -1,0 +1,36 @@
+<!-- @dsCard group="Actions" height=184 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>ButtonGroup</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+function Demo() {
+  var B = I.Button;
+  return h('div', { className: 'ifs-stack', style: { gap: 18 } },
+    h('div', { className: 'ifs-row', style: { gap: 32, alignItems: 'flex-start' } },
+      h('div', { className: 'ifs-stack', style: { gap: 8 } }, cap('Attached'),
+        h(I.ButtonGroup, { label: 'Value' }, h(B, { icon: 'copy' }, 'Copy'), h(B, { icon: 'eye' }, 'Reveal'), h(B, { icon: 'history' }, 'History'))),
+      h('div', { className: 'ifs-stack', style: { gap: 8 } }, cap('Split'),
+        h(I.ButtonGroup, { label: 'Approve request' }, h(B, { variant: 'primary' }, 'Approve'),
+          h(I.DropdownMenu, { align: 'end', label: 'Approve options', trigger: h(B, { variant: 'primary', icon: 'chev-down', iconOnly: true, 'aria-label': 'More approve options' }),
+            items: [{ label: 'Approve for 1 hour' }, { label: 'Approve and notify Sarah Lin' }, { type: 'separator' }, { label: 'Approve with comment' }] }))),
+      h('div', { className: 'ifs-stack', style: { gap: 8 } }, cap('Toolbar'),
+        h(I.ButtonGroup, { variant: 'toolbar', label: 'Value tools' },
+          h(B, { variant: 'ghost', size: 'sm', icon: 'copy', iconOnly: true, 'aria-label': 'Copy value' }), h(B, { variant: 'ghost', size: 'sm', icon: 'eye', iconOnly: true, 'aria-label': 'Reveal value' }),
+          h(I.Separator, { orientation: 'vertical' }),
+          h(B, { variant: 'ghost', size: 'sm', icon: 'history', iconOnly: true, 'aria-label': 'View history' }), h(B, { variant: 'ghost', size: 'sm', icon: 'link', iconOnly: true, 'aria-label': 'Create reference' }),
+          h(I.Separator, { orientation: 'vertical' }),
+          h(B, { variant: 'ghost', size: 'sm', icon: 'trash', iconOnly: true, 'aria-label': 'Delete secret' })))),
+    h('div', { className: 'ifs-row', style: { gap: 32, alignItems: 'flex-start' } },
+      h('div', { className: 'ifs-stack', style: { gap: 8 } }, cap('Spaced footer'),
+        h(I.ButtonGroup, { variant: 'spaced' }, h(B, null, 'Cancel'), h(B, { variant: 'primary' }, 'Save changes')))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

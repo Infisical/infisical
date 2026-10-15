@@ -1,0 +1,32 @@
+<!-- @dsCard group="Forms" height=180 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Checkbox</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+var scopes = ['Read metrics', 'Read logs', 'Write monitors'];
+function Demo() {
+  var s = React.useState([true, true, false]), on = s[0], setOn = s[1];
+  var n = on.filter(Boolean).length;
+  return h('div', { className: 'ifs-row', style: { gap: 56, alignItems: 'flex-start' } },
+    h('div', { className: 'ifs-stack', style: { gap: 10 } }, cap('States'),
+      h('div', { className: 'ifs-row', style: { gap: 16 } },
+        h(I.Checkbox, { 'aria-label': 'Off' }), h(I.Checkbox, { defaultChecked: true, 'aria-label': 'On' }), h(I.Checkbox, { indeterminate: true, 'aria-label': 'Mixed' }),
+        h(I.Checkbox, { disabled: true, 'aria-label': 'Disabled off' }), h(I.Checkbox, { disabled: true, checked: true, 'aria-label': 'Disabled on' }))),
+    h('div', { className: 'ifs-stack', style: { gap: 10 } }, cap('Parent and children, try it'),
+      h(I.Checkbox, { label: 'All Datadog scopes', checked: n === 3, indeterminate: n > 0 && n < 3, onChange: function () { var all = n < 3; setOn([all, all, all]); } }),
+      h('div', { className: 'ifs-stack', style: { gap: 10, paddingLeft: 28 } }, scopes.map(function (t, i) {
+        return h(I.Checkbox, { key: t, label: t, checked: on[i], onChange: function (v) { var c = on.slice(); c[i] = v; setOn(c); } });
+      }))),
+    h('div', { className: 'ifs-stack', style: { gap: 10, maxWidth: 280 } }, cap('With a description'),
+      h(I.Checkbox, { label: 'Mask values in logs', description: 'Replaces secret values with their key name in every log line.', defaultChecked: true })));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

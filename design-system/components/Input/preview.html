@@ -1,0 +1,28 @@
+<!-- @dsCard group="Forms" height=698 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Input</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+function Demo() {
+  function cell(t, node) { return h('div', { className: 'ifs-stack', style: { gap: 6 } }, cap(t), node); }
+  return h('div', { className: 'ifs-stack', style: { gap: 18, maxWidth: 440 } },
+    cell('Empty', h(I.Input, { placeholder: 'stripe_api_key', mono: true, 'aria-label': 'Key' })),
+    cell('Filled', h(I.Input, { defaultValue: 'acme-platform', 'aria-label': 'Project' })),
+    cell('Error', h(I.Input, { defaultValue: 'stripe key', invalid: true, mono: true, 'aria-label': 'Key' })),
+    cell('Disabled', h(I.Input, { defaultValue: 'Inherited from staging', disabled: true, 'aria-label': 'Value source' })),
+    cell('Read only', h(I.Input, { defaultValue: 'vault.internal', readOnly: true, mono: true, 'aria-label': 'Host' })),
+    cell('Search, with a shortcut', h(I.Input, { icon: 'search', kbd: 'mod+K', placeholder: 'Search secrets', 'aria-label': 'Search secrets' })),
+    cell('Search, small, with a shortcut', h(I.Input, { size: 'sm', icon: 'search', kbd: '/', placeholder: 'Filter by name', 'aria-label': 'Filter secrets' })),
+    cell('Secret value: nested actions grouped 4px apart', h(I.SecretInput, { value: 'sk_demo_51Hc9dAcmeK2mQx7Rw', 'aria-label': 'Value of stripe_api_key' })),
+    cell('Secret value, small', h(I.SecretInput, { size: 'sm', value: 'sk_demo_51Hc9dAcmeK2mQx7Rw', 'aria-label': 'Value of stripe_api_key' })));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

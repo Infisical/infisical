@@ -1,0 +1,81 @@
+<!-- @dsCard group="Data display" height=880 subtitle="A playground: framed, plain, bare; md, sm; static, link or button rows; multiple selection; sections, loading, empty, footer" -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>List</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)', minWidth: 64 } }, t); }
+function k(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+var ROWS = [
+  { id: 'stripe_api_key', icon: 'key', desc: 'Live key for charges and refunds', meta: '2m', badge: 'prod', section: 'now' },
+  { id: 'datadog_api_key', icon: 'agent', desc: 'Read by on-call-agent for 1 hour', meta: '14m', section: 'now' },
+  { id: 'vault.internal', icon: 'cert', tone: 'warn', desc: 'Certificate expires in 12 days', meta: '1h', section: 'now' },
+  { id: 'postgres_url', icon: 'key', desc: 'Rotated by the Atlas integration', meta: 'Sep 24', resolved: true, section: 'earlier' },
+  { id: 'legacy_smtp_password', icon: 'lock', desc: 'Read only, managed by terraform-cloud', meta: 'Aug 2', disabled: true, section: 'earlier' },
+];
+
+function Control(p) {
+  return h('div', { className: 'ifs-row', style: { gap: 10, flexWrap: 'nowrap' } }, cap(p.label),
+    h(I.Tabs, { variant: 'segmented', label: p.label, value: p.value, onChange: p.onChange, tabs: p.options.map(function (o) { return { value: o[0], label: o[1] }; }) }));
+}
+
+function Demo() {
+  var B = I.Button;
+  function st(v) { return React.useState(v); }
+  var w = st('fit'), variant = st('framed'), size = st('md'), rows = st('links'), selection = st('none');
+  var sections = st(true), loading = st(false), empty = st(false), footer = st(true);
+  var cur = st('datadog_api_key'), sel = st([]), note = st('');
+  var sm = size[0] === 'sm';
+  function open(r) { return function (e) { if (e && e.preventDefault) e.preventDefault(); cur[1](r.id); note[1]('Opened ' + r.id); }; }
+  function menu(r) {
+    return h(I.DropdownMenu, { align: 'end', width: 200, label: 'Actions for ' + r.id,
+      trigger: h(B, { variant: 'ghost', size: 'sm', icon: 'more', iconOnly: true, 'aria-label': 'Actions for ' + r.id, disabled: r.disabled }),
+      items: [{ label: 'Copy key', icon: 'copy' }, { label: 'View history', icon: 'history' }, { type: 'separator' }, { label: 'Delete', icon: 'trash', danger: true }] });
+  }
+  function item(r) {
+    var mode = rows[0];
+    return h(I.Item, { key: r.id, value: r.id, icon: r.icon, tone: r.tone, title: k(r.id), badge: r.badge ? h(I.Badge, { tone: 'solid', size: 'sm', mono: true }, r.badge) : null,
+      description: r.desc, meta: r.meta, resolved: r.resolved, disabled: r.disabled, actions: menu(r),
+      current: mode !== 'static' && cur[0] === r.id,
+      href: mode === 'links' ? '#' + r.id : undefined, onClick: mode === 'links' ? open(r) : mode === 'buttons' ? open(r) : undefined });
+  }
+  var shown = empty[0] || loading[0] ? [] : ROWS;
+  var kids = sections[0] && shown.length
+    ? [h(I.ListSection, { key: 'now', label: 'Needs you', meta: '3' }, shown.filter(function (r) { return r.section === 'now'; }).map(item)),
+       h(I.ListSection, { key: 'earlier', label: 'Earlier' }, shown.filter(function (r) { return r.section === 'earlier'; }).map(item))]
+    : shown.map(item);
+  var multiple = selection[0] === 'multiple';
+  var bar = multiple
+    ? h('div', { className: 'ifs-row', style: { gap: 12, minHeight: 32, flexWrap: 'nowrap' } },
+        h('span', { style: { fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' } }, sel[0].length ? sel[0].length + ' selected' : 'None selected'),
+        sel[0].length ? h(B, { variant: 'link', size: 'sm', onClick: function () { sel[1]([]); } }, 'Clear') : null)
+    : null;
+  return h('div', { className: 'ifs-stack', style: { gap: 18 } },
+    h('div', { className: 'ifs-stack', style: { gap: 8 } },
+      h(Control, { label: 'Width', value: w[0], onChange: w[1], options: [['fit', 'Fit'], ['480', '480px'], ['320', '320px']] }),
+      h(Control, { label: 'Variant', value: variant[0], onChange: variant[1], options: [['framed', 'Framed'], ['plain', 'Plain'], ['bare', 'Bare']] }),
+      h(Control, { label: 'Size', value: size[0], onChange: size[1], options: [['md', 'md'], ['sm', 'sm']] }),
+      h(Control, { label: 'Rows', value: rows[0], onChange: rows[1], options: [['static', 'Static'], ['links', 'Links'], ['buttons', 'Buttons']] }),
+      h(Control, { label: 'Selection', value: selection[0], onChange: selection[1], options: [['none', 'None'], ['multiple', 'Multiple']] }),
+      h('div', { className: 'ifs-row', style: { gap: 18, paddingTop: 2 } }, cap('Show'),
+        h(I.Checkbox, { label: 'Sections', checked: sections[0], onChange: sections[1] }),
+        h(I.Checkbox, { label: 'Footer', checked: footer[0], onChange: footer[1] }),
+        h(I.Checkbox, { label: 'Loading', checked: loading[0], onChange: loading[1] }),
+        h(I.Checkbox, { label: 'Empty', checked: empty[0], onChange: empty[1] }))),
+    h('div', { className: 'ifs-stack', style: { gap: 10, width: w[0] === 'fit' ? '100%' : w[0] + 'px', maxWidth: '100%', transition: 'width var(--ifs-slide)' } },
+      bar,
+      h(I.List, { variant: variant[0], size: size[0], label: 'Secrets in acme-platform', title: 'Secrets', action: h('a', { href: '#', className: 'ifs-link', style: { color: 'var(--text2)', fontSize: 12.5 } }, 'View all'),
+        selection: selection[0], selectedIds: sel[0], onSelectionChange: sel[1], loading: loading[0], loadingRows: 3,
+        empty: h(I.EmptyState, { variant: 'compact', icon: 'check-c', title: 'Nothing needs you right now.' }),
+        footer: footer[0] && !loading[0] && !empty[0] ? h(B, { variant: 'link', size: 'sm' }, 'View all 24 secrets') : null }, kids),
+      h('div', { className: 'ifs-row', style: { gap: 8, fontSize: 12.5, lineHeight: '18px', color: 'var(--muted)' } },
+        h('span', { 'aria-live': 'polite', style: { color: 'var(--text2)' } }, note[0]),
+        rows[0] !== 'static' || multiple ? h('span', null, h(I.Kbd, { keys: '↑' }), ' ', h(I.Kbd, { keys: '↓' }), ' move between rows; Tab reaches each row’s menu') : null)));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

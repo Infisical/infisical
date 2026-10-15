@@ -1,0 +1,57 @@
+<!-- @dsCard group="Data display" height=1380 subtitle="The layout of one object: slots, sizes, the boxes it sits in, and what it carries" -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Item</title>
+<style>
+  .demo-box { box-sizing: border-box; padding: 14px 16px; border: 1px dashed var(--control); }
+  .demo-anatomy .ifs-item__lead, .demo-anatomy .ifs-item__title, .demo-anatomy .ifs-item__badge, .demo-anatomy .ifs-item__desc,
+  .demo-anatomy .ifs-item__meta, .demo-anatomy .ifs-item__actions { outline: 1px dashed var(--muted); outline-offset: 2px; }
+  .demo-slot { font-family: var(--font-mono); font-size: 11.5px; line-height: 16px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function k(t) { return h('span', { key: t, className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+function cell(t, node) { return h('div', { className: 'ifs-stack', style: { gap: 8, minWidth: 0 } }, cap(t), node); }
+
+function Demo() {
+  var B = I.Button, A = I.Avatar;
+  var w = React.useState('fit'), width = w[0], setWidth = w[1];
+  var t = React.useState('gh'), tile = t[0], setTile = t[1];
+  var approve = [h(B, { key: 1, size: 'sm' }, 'View diff'), h(B, { key: 2, size: 'sm', variant: 'primary' }, 'Approve')];
+  return h('div', { className: 'ifs-stack', style: { gap: 16 } },
+    h('div', { className: 'ifs-row', style: { gap: 10 } }, cap('Width'),
+      h(I.Tabs, { variant: 'segmented', label: 'Preview width', value: width, onChange: setWidth, tabs: [{ value: 'fit', label: 'Fit' }, { value: '480', label: '480px' }, { value: '320', label: '320px' }] })),
+    h('div', { className: 'ifs-stack', style: { gap: 24, width: width === 'fit' ? '100%' : width + 'px', maxWidth: '100%', transition: 'width var(--ifs-slide)' } },
+      cell('Anatomy: Item is a layout, never a box. Each slot is outlined.',
+        h('div', { className: 'ifs-stack', style: { gap: 10 } },
+          h('div', { className: 'demo-box demo-anatomy' },
+            h(I.Item, { icon: 'key', title: [k('stripe_api_key'), ' changed in production'], badge: h(I.Badge, { tone: 'solid', size: 'sm', mono: true }, 'prod'),
+              description: 'Jadden wants to update the value. Needs one approval under prod-changes.', meta: '2m', actions: approve })),
+          h('div', { className: 'ifs-row demo-slot', style: { gap: 14 } }, ['lead', 'title', 'badge', 'meta', 'description', 'actions'].map(function (n) { return h('span', { key: n }, n); })))),
+      cell('Sizes: md, and sm for one-line rows',
+        h('div', { className: 'ifs-stack', style: { gap: 10 } },
+          h('div', { className: 'demo-box' }, h(I.Item, { icon: 'cert', tone: 'warn', title: [k('vault.internal'), ' expires in 12 days'], description: 'Auto-renew is off for this certificate.', meta: '1h', actions: h(B, { size: 'sm' }, 'Renew now') })),
+          h('div', { className: 'demo-box', style: { paddingTop: 8, paddingBottom: 8 } }, h(I.Item, { size: 'sm', media: h(A, { kind: 'machine', size: 24 }), title: k('github-actions'), badge: h(I.Badge, { size: 'sm' }, 'Machine'), meta: '10:30' })))),
+      cell('What else it carries: unread, an error line, a body',
+        h('div', { className: 'ifs-stack', style: { gap: 10 } },
+          h('div', { className: 'demo-box' }, h(I.Item, { unread: true, icon: 'agent', title: ['on-call-agent wants ', k('datadog_api_key')], description: 'Read only for 1 hour. The agent never sees the key.', meta: '14m',
+            actions: [h(B, { key: 1, size: 'sm' }, 'Deny'), h(B, { key: 2, size: 'sm', variant: 'accent' }, 'Grant for 1 hour')] })),
+          h('div', { className: 'demo-box' }, h(I.Item, { icon: 'sync', tone: 'bad', title: 'Sync to Vercel', description: 'Syncs 14 secrets from production on every push.',
+            error: 'The Vercel token expired on Sep 23. Reconnect to resume syncing.', meta: '09:12', actions: h(B, { size: 'sm' }, 'Reconnect') })),
+          h('div', { className: 'demo-box' }, h(I.Item, { icon: 'history', title: ['Rotating ', k('stripe_api_key')], description: 'Step 2 of 3: updating Vercel and GitHub Actions.', meta: 'now' },
+            h(I.Progress, { value: 66, 'aria-label': 'Rotation progress' }))))),
+      cell('One layout, many boxes: each of these is an Item inside',
+        h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 16, alignItems: 'start' } },
+          cell('Card, plain header', h(I.Card, { variant: 'plain', media: h(I.Media, null, 'GH'), title: 'GitHub Actions', description: 'Syncs 14 secrets from staging on every push to main.', action: h(I.Badge, { tone: 'ok', size: 'sm', dot: true }, 'Synced') })),
+          cell('Tile', h(I.Tile, { media: h(I.Media, null, 'GH'), title: 'GitHub Actions', description: 'Connected, 2 syncs', selected: tile === 'gh', onClick: function () { setTile(tile === 'gh' ? '' : 'gh'); } })),
+          cell('Identity', h('div', { className: 'demo-box' }, h(I.Identity, { kind: 'machine', name: 'github-actions', mono: true, description: 'Machine identity, read' }))),
+          cell('A List row', h(I.List, { label: 'Syncs' }, h(I.Item, { icon: 'sync', title: 'Vercel', description: 'Last sync today, 10:30', meta: h(I.Badge, { tone: 'ok', size: 'sm', dot: true }, 'Synced') })))))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

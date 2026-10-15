@@ -1,0 +1,26 @@
+<!-- @dsCard group="Code" height=500 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Code</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function cell(t, node) { return h('div', { className: 'ifs-stack', style: { gap: 8, minWidth: 0 } }, cap(t), node); }
+function frame(node) { return h('div', { style: { border: '1px solid var(--line)', minWidth: 0 } }, node); }
+
+var yaml = 'spec:\n  resyncInterval: 60\n  authentication:\n    universalAuth:\n      secretsScope:\n        # one environment, one folder\n        envSlug: prod\n        secretsPath: "/payments"';
+function Demo() {
+  var C = I.Code;
+  return h('div', { className: 'ifs-stack', style: { gap: 24, maxWidth: 560 } },
+    h(React.Fragment, null,
+      cell('Inline, in a sentence', h('p', { style: { margin: 0, fontSize: 14, lineHeight: '22px', color: 'var(--text2)' } },
+        'Run ', h(C, null, 'infisical login'), ' once, then start the app with ', h(C, null, 'infisical run --env=prod -- npm start'), '. It injects ', h(C, null, 'STRIPE_WEBHOOK_SECRET'), ' and 13 other secrets.')),
+      cell('Block, bare, for CodeBlock and your own frames', frame(h(C, { block: true, language: 'bash', code: 'infisical login\ninfisical run --env=prod --path=/payments -- npm run start' })))),
+    cell('Line numbers and highlighted lines', frame(h(C, { block: true, language: 'yaml', lineNumbers: true, highlight: [7, 8], code: yaml }))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

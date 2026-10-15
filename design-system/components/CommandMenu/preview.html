@@ -1,0 +1,106 @@
+<!-- @dsCard group="Composites" height=700 subtitle="Global navigation and search: mod+K, grouped results, a search that loads, pages to drill into, empty" -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>CommandMenu</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function tile(t) { return h(I.Media, { size: 20 }, t); }
+
+// Secrets live on the server: typing two or more characters runs a search that answers after 450ms.
+var SECRETS = ['stripe_api_key', 'stripe_webhook_signing_secret', 'stripe_publishable_key', 'datadog_api_key', 'postgres_url', 'redis_password', 'session_signing_key', 'sentry_dsn', 'github_app_private_key', 'openai_api_key'];
+var ENVS = { stripe_api_key: 'production', stripe_webhook_signing_secret: 'production', stripe_publishable_key: 'staging', datadog_api_key: 'production', postgres_url: 'production', redis_password: 'staging', session_signing_key: 'production', sentry_dsn: 'development', github_app_private_key: 'production', openai_api_key: 'development' };
+
+function useSecretSearch(initial) {
+  var q = React.useState(initial || ''), query = q[0], setQuery = q[1];
+  var r = React.useState({ q: '', items: [] }), res = r[0], setRes = r[1];
+  React.useEffect(function () {
+    var t = query.trim().toLowerCase();
+    if (t.length < 2) { setRes({ q: t, items: [] }); return undefined; }
+    var timer = setTimeout(function () {
+      setRes({ q: t, items: SECRETS.filter(function (k) { return k.indexOf(t) >= 0 || t.split(/\s+/).every(function (w) { return k.indexOf(w) >= 0; }); }) });
+    }, 450);
+    return function () { clearTimeout(timer); };
+  }, [query]);
+  var t = query.trim().toLowerCase();
+  return { query: query, setQuery: setQuery, loading: t.length >= 2 && res.q !== t, items: res.q === t ? res.items : [] };
+}
+
+function groups(say, secrets) {
+  function go(label) { return function () { say('Opened ' + label); }; }
+  return [
+    { id: 'pages', label: 'Go to', items: [
+      { id: 'home', label: 'Home', icon: 'home', shortcut: 'G then H', onSelect: go('Home') },
+      { id: 'secrets', label: 'Secrets', icon: 'key', shortcut: 'G then S', keywords: ['env', 'variables'], onSelect: go('Secrets') },
+      { id: 'certs', label: 'Certificates', icon: 'cert', shortcut: 'G then C', keywords: ['pki', 'tls'], onSelect: go('Certificates') },
+      { id: 'access', label: 'Access', icon: 'user', keywords: ['members', 'identities', 'roles'], onSelect: go('Access') },
+      { id: 'audit', label: 'Audit logs', icon: 'history', keywords: ['events', 'activity'], onSelect: go('Audit logs') },
+      { id: 'settings', label: 'Project settings', icon: 'settings', onSelect: go('Project settings') }] },
+    { id: 'secrets', label: 'Secrets in acme-platform', meta: secrets.length ? String(secrets.length) : null, searchOnly: true, items: secrets.map(function (k) {
+      return { id: 's-' + k, label: k, mono: true, icon: 'key', description: ENVS[k], onSelect: go(k) };
+    }) },
+    { id: 'projects', label: 'Projects', limit: 3, items: [
+      { id: 'p1', label: 'acme-platform', mono: true, media: tile('AP'), meta: '412 secrets', onSelect: go('acme-platform') },
+      { id: 'p2', label: 'payments', mono: true, media: tile('PA'), meta: '86 secrets', onSelect: go('payments') },
+      { id: 'p3', label: 'data-pipeline', mono: true, media: tile('DP'), meta: '140 secrets', onSelect: go('data-pipeline') },
+      { id: 'p4', label: 'mobile-app', mono: true, media: tile('MA'), meta: '38 secrets', onSelect: go('mobile-app') }] },
+    { id: 'actions', label: 'Actions', items: [
+      { id: 'add', label: 'Add secret', icon: 'plus', shortcut: 'C', keywords: ['create', 'new'], onSelect: go('Add secret') },
+      { id: 'invite', label: 'Invite member', icon: 'user', keywords: ['add', 'people'], onSelect: go('Invite member') },
+      { id: 'rotate', label: 'Rotate a secret', icon: 'sync', keywords: ['rotation'], onSelect: go('Rotate a secret') },
+      { id: 'org', label: 'Switch organization', icon: 'globe', page: 'orgs', keywords: ['team', 'workspace'] }] },
+  ];
+}
+function pages(say) {
+  return { orgs: { title: 'Organizations', placeholder: 'Find an organization', groups: [
+    { items: [
+      { id: 'acme', label: 'Acme Corp', media: h(I.Avatar, { kind: 'org', name: 'Acme Corp', size: 20 }), meta: 'Current', onSelect: function () { say('Stayed in Acme Corp'); } },
+      { id: 'globex', label: 'Globex', media: h(I.Avatar, { kind: 'org', name: 'Globex', size: 20 }), meta: 'Pro', onSelect: function () { say('Switched to Globex'); } },
+      { id: 'initech', label: 'Initech', media: h(I.Avatar, { kind: 'org', name: 'Initech', size: 20 }), meta: 'Free', onSelect: function () { say('Switched to Initech'); } }] },
+    { label: 'Actions', items: [{ id: 'new-org', label: 'Create organization', icon: 'plus', onSelect: function () { say('Opened Create organization'); } }] }] } };
+}
+var RECENT = function (say) { return [
+  { id: 'r1', label: 'stripe_api_key', mono: true, icon: 'key', description: 'production', meta: 'Secret', onSelect: function () { say('Opened stripe_api_key'); } },
+  { id: 'r2', label: 'Audit logs', icon: 'history', meta: 'Page', onSelect: function () { say('Opened Audit logs'); } }]; };
+
+// The live menu in a dialog: the button, or mod+K anywhere in this card.
+function Live(p) {
+  var o = React.useState(false), open = o[0], setOpen = o[1];
+  var s = useSecretSearch('');
+  return h('div', { className: 'ifs-stack', style: { gap: 8 } }, cap('The dialog: click, or press the shortcut'),
+    h('div', { className: 'ifs-row', style: { gap: 12, flexWrap: 'nowrap' } },
+      h('div', { style: { flex: '1 1 auto', maxWidth: 280, minWidth: 0 } }, h(I.SearchTrigger, { label: 'Search or jump to', onClick: function () { setOpen(true); } }))),
+    h(I.CommandMenu, { open: open, onOpenChange: function (v) { setOpen(v); if (!v) s.setQuery(''); }, groups: groups(p.say, s.items), pages: pages(p.say), recent: RECENT(p.say),
+      loading: s.loading, onQueryChange: function (v, pg) { if (!pg) s.setQuery(v); }, emptyHint: 'Search secret keys, projects, pages and actions.', footer: 'acme-platform' }));
+}
+
+// The same panel in place, one state at a time.
+var STATES = [
+  { value: 'browse', label: 'Browse' }, { value: 'search', label: 'Search' }, { value: 'page', label: 'A page' }, { value: 'empty', label: 'No results' }];
+function Inline(p) {
+  var st = React.useState('browse'), state = st[0], setState = st[1];
+  var init = state === 'search' ? 'stripe' : state === 'empty' ? 'stripe_live_old' : '';
+  return h('div', { className: 'ifs-stack', style: { gap: 10 } },
+    h('div', { className: 'ifs-row', style: { gap: 10 } }, cap('In place, try each'),
+      h(I.Tabs, { variant: 'segmented', label: 'State', value: state, onChange: setState, tabs: STATES })),
+    h(InlineMenu, { key: state, init: init, page: state === 'page' ? 'orgs' : undefined, say: p.say }));
+}
+function InlineMenu(p) {
+  var s = useSecretSearch(p.init);
+  return h(I.CommandMenu, { inline: true, width: 600, defaultQuery: p.init, defaultPage: p.page, groups: groups(p.say, s.items), pages: pages(p.say), recent: RECENT(p.say),
+    loading: s.loading, onQueryChange: function (v, pg) { if (!pg) s.setQuery(v); }, emptyHint: 'Search secret keys, projects, pages and actions.', maxHeight: 332 });
+}
+
+function Demo() {
+  var m = React.useState(''), msg = m[0], setMsg = m[1];
+  return h('div', { className: 'ifs-stack', style: { gap: 24, maxWidth: 600 } },
+    h(Live, { say: setMsg }),
+    h(Inline, { say: setMsg }),
+    h('p', { role: 'status', style: { margin: 0, minHeight: 18, fontSize: 12.5, lineHeight: '18px', color: 'var(--muted)' } }, msg ? msg + '.' : 'Up and Down move, Enter opens. Switch organization opens a page; Backspace goes back.'));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

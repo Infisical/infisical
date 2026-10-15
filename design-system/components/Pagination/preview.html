@@ -1,0 +1,25 @@
+<!-- @dsCard group="Navigation" height=174 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Pagination</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+function Demo() {
+  var s = React.useState(2), page = s[0], setPage = s[1];
+  var z = React.useState(25), size = z[0], setSize = z[1];
+  function cell(t, node) { return h('div', { className: 'ifs-stack', style: { gap: 8 } }, cap(t), node); }
+  return h('div', { className: 'ifs-stack', style: { gap: 18 } },
+    cell('Numbered, try it', h(I.Pagination, { page: page, onPageChange: setPage, total: 412, pageSize: size, pageSizeOptions: [25, 50, 100], onPageSizeChange: function (n) { setSize(n); setPage(1); } })),
+    h('div', { className: 'ifs-row', style: { gap: 56, alignItems: 'flex-start' } },
+      cell('Compact', h(I.Pagination, { variant: 'compact', defaultPage: 2, pageCount: 17 })),
+      cell('Load more', h(I.Pagination, { variant: 'more', total: 412, pageSize: 25, defaultPage: 2 }))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

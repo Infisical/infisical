@@ -1,0 +1,24 @@
+<!-- @dsCard group="Feedback" height=233 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Skeleton</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+function Demo() {
+  var S = I.Skeleton;
+  function cell(t, node) { return h('div', { className: 'ifs-stack', style: { gap: 10 } }, cap(t), node); }
+  function tr(i) { return h('div', { key: i, className: 'ifs-row', style: { flexWrap: 'nowrap', gap: 12, height: 40, borderTop: i ? '1px solid var(--line-soft)' : 0 } }, h(S, { width: 18, height: 18 }), h(S, { width: '40%', height: 12 }), h(S, { width: 72, height: 12, style: { marginLeft: 'auto' } }), h(S, { width: 22, height: 22 })); }
+  return h('div', { 'aria-busy': 'true', style: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 32, alignItems: 'start' } },
+    cell('Text', h('div', { className: 'ifs-stack', style: { gap: 12 } }, h(S, { width: '55%', height: 18 }), h(S, { lines: 3 }))),
+    cell('Item', h('div', { className: 'ifs-stack', style: { gap: 14 } }, [0, 1].map(function (i) { return h('div', { key: i, className: 'ifs-row', style: { flexWrap: 'nowrap', gap: 14 } }, h(S, { width: 40, height: 40 }), h('div', { className: 'ifs-stack', style: { gap: 8, flexGrow: 1 } }, h(S, { width: '70%', height: 12 }), h(S, { width: '45%', height: 10 }))); }))),
+    cell('Table rows', h('div', null, [0, 1, 2, 3].map(tr))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

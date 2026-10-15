@@ -1,0 +1,58 @@
+<!-- @dsCard group="Utilities" height=512 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>AnimatedCollapse</title>
+<style>
+  .demo-disclose .ifs-icon { transition: transform var(--ifs-slide); }
+  .demo-disclose[aria-expanded="true"] .ifs-icon { transform: rotate(90deg); }
+  .demo-acc { display: flex; align-items: center; gap: 10px; width: 100%; height: 44px; padding: 0 14px; box-sizing: border-box; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; text-align: left; cursor: pointer; }
+  .demo-acc:hover { background: color-mix(in srgb, currentColor var(--hover), transparent); }
+  .demo-acc:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+  .demo-acc .ifs-icon { color: var(--muted); transition: transform var(--ifs-slide); }
+  .demo-acc[aria-expanded="true"] .ifs-icon { transform: rotate(90deg); }
+  @media (prefers-reduced-motion: reduce) { .demo-acc .ifs-icon, .demo-disclose .ifs-icon { transition: none; } }
+</style>
+</head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+var sections = [
+  { k: 'what', t: 'What syncs', d: ['14 secrets from ', mono('/payments'), ' in production, on every change.'] },
+  { k: 'where', t: 'Where they go', d: ['Vercel project ', mono('acme-web'), ', Production and Preview targets.'] },
+  { k: 'fail', t: 'If a sync fails', d: 'Infisical retries 3 times over 10 minutes, then alerts prod-changes and keeps the last good values in Vercel.' },
+];
+function Demo() {
+  var r = React.useState(true), rotate = r[0], setRotate = r[1];
+  var a = React.useState(false), adv = a[0], setAdv = a[1];
+  var o = React.useState('what'), openK = o[0], setOpenK = o[1];
+  return h('div', { className: 'ifs-stack', style: { gap: 28, maxWidth: 440 } },
+    h('div', { className: 'ifs-stack', style: { gap: 10 } }, cap('A setting that reveals its options'),
+      h(I.Card, { variant: 'plain' }, h('div', null,
+        h(I.Switch, { layout: 'row', label: 'Rotate automatically', description: 'Issues a new value and retires the old one.', checked: rotate, onChange: setRotate }),
+        h(I.AnimatedCollapse, { open: rotate, id: 'rot' },
+          h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, paddingTop: 4 } },
+            h(I.Field, { label: 'Rotate every' }, h(I.Select, { defaultValue: '30', options: [{ value: '7', label: '7 days' }, { value: '30', label: '30 days' }, { value: '90', label: '90 days' }] })),
+            h(I.Field, { label: 'Window, UTC' }, h(I.Input, { mono: true, defaultValue: '02:00' })))),
+        h('div', { style: { paddingTop: 14 } },
+          h(I.Button, { variant: 'ghost', size: 'sm', icon: 'chev-right', className: 'demo-disclose', 'aria-expanded': adv, 'aria-controls': 'adv', onClick: function () { setAdv(!adv); }, style: { marginLeft: -10 } }, 'Advanced')),
+        h(I.AnimatedCollapse, { open: adv, id: 'adv' },
+          h('div', { style: { paddingTop: 4 } },
+            h(I.Switch, { layout: 'row', label: 'Keep the old value for 24 hours', defaultChecked: true }),
+            h(I.Switch, { layout: 'row', label: 'Notify prod-changes' })))))),
+    h('div', { className: 'ifs-stack', style: { gap: 10 } }, cap('Sections, one open at a time'),
+      h('div', { className: 'ifs-items' }, h('div', { className: 'ifs-items__inner' }, sections.map(function (s, i) {
+        var open = openK === s.k;
+        return h('div', { key: s.k, style: { borderTop: i ? '1px solid var(--line-soft)' : 0 } },
+          h('button', { type: 'button', className: 'demo-acc', 'aria-expanded': open, 'aria-controls': 'sec-' + s.k, onClick: function () { setOpenK(open ? null : s.k); } }, h(I.Icon, { name: 'chev-right', size: 16 }), s.t),
+          h(I.AnimatedCollapse, { open: open, id: 'sec-' + s.k },
+            h('p', { style: { margin: 0, padding: '0 16px 16px 40px', fontSize: 13.5, lineHeight: '20px', color: 'var(--text2)' } }, s.d)));
+      })))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

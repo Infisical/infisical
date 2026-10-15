@@ -1,0 +1,215 @@
+<!-- @dsCard group="Data display" height=2720 subtitle="Interactive; basic, striped and bordered; sizing and overflow; virtual rows with load more" -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Table</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+function code(t) { return h('code', { className: 'ifs-mono', style: { fontSize: 12, color: 'var(--ink)' } }, t); }
+function Section(p) {
+  return h('section', { className: 'ifs-stack', style: { gap: 14, position: 'relative' } },
+    h('div', { className: 'ifs-stack', style: { gap: 2 } },
+      h('h3', { style: { margin: 0, fontSize: 16, lineHeight: '22px', fontWeight: 600 } }, p.title),
+      h('p', { style: { margin: 0, fontSize: 13, lineHeight: '18px', color: 'var(--muted)', maxWidth: 620 } }, p.note)),
+    p.children);
+}
+function owner(name, kind) {
+  return [h(I.Avatar, { key: 'a', kind: kind === 'p' ? 'person' : kind === 'a' ? 'agent' : 'machine', name: kind === 'p' ? name : undefined, size: 22 }),
+    h('span', { key: 't', className: 'ifs-table__text' + (kind === 'p' ? '' : ' ifs-mono'), style: { color: 'var(--ink)' } }, name)];
+}
+
+/* ------------------------------------------------------------------ 1. Interactive */
+var SECRETS = [
+  ['stripe_api_key', 'Rotating', [1, 1, 1], 'Sep 24, 10:30', 'Jadden', 'p'],
+  ['stripe_webhook_signing_secret_live', '', [1, 1, 1], 'Sep 24, 09:12', 'Sarah Lin', 'p'],
+  ['datadog_api_key', '', [1, 1, 1], 'Sep 23, 16:02', 'Sarah Lin', 'p'],
+  ['session_signing_key', 'Rotating', [1, 1, 0], 'Sep 22, 09:14', 'rotation-service', 'm'],
+  ['github_app_private_key', '', [0, 1, 1], 'Sep 21, 18:40', 'James Okoro', 'p'],
+  ['redis_password', '', [1, 1, 1], 'Sep 20, 11:45', 'James Okoro', 'p'],
+  ['aws_access_key_id', 'Dynamic', [1, 1, 1], 'Sep 19, 07:05', 'github-actions', 'm'],
+  ['postgres_url', 'Dynamic', [1, 0, 0], 'Sep 18, 08:30', 'github-actions', 'm'],
+  ['sentry_dsn', '', [1, 1, 1], 'Sep 17, 14:22', 'Priya Raman', 'p'],
+  ['sendgrid_api_key', '', [1, 1, 0], 'Sep 15, 13:20', 'Sarah Lin', 'p'],
+  ['openai_api_key', '', [1, 0, 0], 'Sep 14, 10:01', 'on-call-agent', 'a'],
+  ['launchdarkly_sdk_key', '', [1, 1, 1], 'Sep 12, 16:48', 'Priya Raman', 'p'],
+  ['twilio_auth_token', 'Rotating', [1, 1, 1], 'Sep 11, 09:30', 'rotation-service', 'm'],
+  ['jwt_signing_secret', 'Rotating', [1, 1, 0], 'Sep 10, 12:15', 'rotation-service', 'm'],
+  ['segment_write_key', '', [1, 1, 1], 'Sep 9, 17:52', 'Marcus Chen', 'p'],
+  ['algolia_admin_key', '', [1, 1, 1], 'Sep 8, 11:11', 'Marcus Chen', 'p'],
+  ['slack_bot_token', '', [1, 0, 1], 'Sep 5, 15:40', 'Jadden', 'p'],
+  ['mongodb_readonly_replica_connection_string', 'Dynamic', [1, 1, 1], 'Sep 4, 08:02', 'github-actions', 'm'],
+  ['mapbox_public_token', '', [1, 1, 1], 'Sep 3, 13:37', 'Priya Raman', 'p'],
+  ['cloudflare_api_token', '', [1, 1, 0], 'Sep 2, 10:20', 'James Okoro', 'p'],
+  ['pagerduty_routing_key', '', [0, 0, 1], 'Aug 30, 19:05', 'on-call-agent', 'a'],
+  ['vercel_deploy_hook', '', [1, 1, 1], 'Aug 28, 09:44', 'github-actions', 'm'],
+  ['smtp_password', '', [1, 1, 1], 'Aug 26, 16:16', 'Sarah Lin', 'p'],
+  ['encryption_master_key', '', [1, 1, 1], 'Aug 21, 07:58', 'Jadden', 'p'],
+].map(function (s, i) { return { id: s[0], kind: s[1], envs: s[2], updated: s[3], ts: 100 - i, owner: s[4], o: s[5] }; });
+
+function Interactive() {
+  var B = I.Button;
+  var st = React.useState(SECRETS), all = st[0], setAll = st[1];
+  var q0 = React.useState(''), q = q0[0], setQ = q0[1];
+  var v0 = React.useState('all'), view = v0[0], setView = v0[1];
+  var s0 = React.useState([]), sel = s0[0], setSel = s0[1];
+  var o0 = React.useState({ key: 'ts', dir: 'desc' }), sort = o0[0], setSort = o0[1];
+  var p0 = React.useState(1), page = p0[0], setPage = p0[1];
+  var n0 = React.useState(null), notice = n0[0], setNotice = n0[1];
+  var size = 6;
+  var missing = all.filter(function (r) { return !r.envs[2]; });
+  var term = q.trim().toLowerCase();
+  var rows = (view === 'missing' ? missing : all).filter(function (r) { return !term || r.id.indexOf(term) >= 0; });
+  rows = rows.slice().sort(function (a, b) { var x = a[sort.key], y = b[sort.key]; return (x < y ? -1 : x > y ? 1 : 0) * (sort.dir === 'asc' ? 1 : -1); });
+  var count = Math.max(1, Math.ceil(rows.length / size)), pg = Math.min(page, count);
+  var shown = rows.slice((pg - 1) * size, pg * size);
+  function remove(ids) {
+    var before = all;
+    setAll(all.filter(function (r) { return ids.indexOf(r.id) < 0; }));
+    setSel(sel.filter(function (i) { return ids.indexOf(i) < 0; }));
+    setNotice({ n: ids.length, key: ids.length === 1 ? ids[0] : null, undo: function () { setAll(before); setNotice(null); } });
+  }
+  function menu(r) {
+    return h(I.DropdownMenu, { align: 'end', width: 200, label: 'Actions for ' + r.id, trigger: h(B, { variant: 'ghost', size: 'sm', icon: 'more', iconOnly: true, 'aria-label': 'Actions for ' + r.id }),
+      items: [{ label: 'Copy key', icon: 'copy', shortcut: '⌘C' }, { label: 'View history', icon: 'history' }, { label: 'Open in dev', icon: 'external' }, { type: 'separator' },
+        { label: 'Delete', icon: 'trash', danger: true, onSelect: function () { remove([r.id]); } }] });
+  }
+  var cols = [
+    { key: 'id', header: 'Name', sortable: true, maxWidth: 240, render: function (r) { return [h('span', { key: 'n', className: 'ifs-table__primary' }, r.id), r.kind ? h(I.Badge, { key: 'b', tone: 'soft', size: 'sm' }, r.kind) : null]; } },
+    { key: 'dev', header: 'Dev', align: 'center', minWidth: 56, render: function (r) { return h(I.EnvMark, { present: !!r.envs[0], env: 'dev' }); } },
+    { key: 'staging', header: 'Staging', align: 'center', minWidth: 56, render: function (r) { return h(I.EnvMark, { present: !!r.envs[1], env: 'staging' }); } },
+    { key: 'prod', header: 'Prod', align: 'center', minWidth: 56, render: function (r) { return h(I.EnvMark, { present: !!r.envs[2], env: 'prod' }); } },
+    { key: 'ts', header: 'Updated', sortable: true, render: function (r) { return r.updated; } },
+    { key: 'owner', header: 'Owner', maxWidth: 160, render: function (r) { return owner(r.owner, r.o); } },
+    { key: 'act', header: 'Actions', actions: true, render: menu },
+  ];
+  var bar = sel.length
+    ? h('div', { className: 'ifs-row', style: { height: 36, gap: 12, flexWrap: 'nowrap' } },
+      h('span', { style: { fontWeight: 600, whiteSpace: 'nowrap' } }, sel.length + ' selected'), h(B, { variant: 'link', size: 'sm', onClick: function () { setSel([]); } }, 'Clear selection'), h('span', { style: { flexGrow: 1 } }),
+      h(B, { icon: 'folder' }, 'Move to folder'), h(B, { variant: 'danger-ghost', icon: 'trash', onClick: function () { remove(sel); } }, 'Delete'))
+    : h('div', { className: 'ifs-row', style: { height: 36, gap: 10, flexWrap: 'nowrap' } },
+      h('div', { style: { width: 240, flexShrink: 1, minWidth: 140 } }, h(I.Input, { icon: 'search', placeholder: 'Filter by name', 'aria-label': 'Filter secrets', value: q, onChange: function (e) { setQ(e.target.value); setPage(1); } })),
+      h(I.Tabs, { variant: 'segmented', label: 'Show', value: view, onChange: function (v) { setView(v); setPage(1); setSel([]); }, tabs: [{ value: 'all', label: 'All', count: all.length }, { value: 'missing', label: 'Missing in prod', count: missing.length }] }),
+      h('span', { style: { flexGrow: 1 } }), h(B, { icon: 'plus', variant: 'primary' }, 'Add secret'));
+  var empty = h(I.EmptyState, { variant: 'compact', title: term ? 'No secrets match “' + q.trim() + '”.' : 'Every secret is in production.', actions: term ? h(B, { size: 'sm', variant: 'link', onClick: function () { setQ(''); } }, 'Clear filter') : null });
+  return h('div', { className: 'ifs-stack', style: { gap: 14 } }, bar,
+    h(I.Table, { label: 'Secrets in acme-platform', columns: cols, rows: shown, selectable: true, selectedIds: sel, onSelectionChange: setSel, rowLabel: function (r) { return r.id; }, sort: sort, onSortChange: function (s) { setSort(s); setPage(1); }, empty: empty }),
+    h(I.Pagination, { variant: 'compact', page: pg, onPageChange: setPage, total: rows.length, pageSize: size, pageCount: count }),
+    notice ? h('div', { style: { position: 'absolute', right: 0, bottom: 44, width: 340, zIndex: 5 } }, h(I.ToastStack, { inline: true },
+      h(I.Toast, { key: notice.n + (notice.key || ''), tone: 'ok', title: notice.key ? h('span', null, 'Deleted ', mono(notice.key)) : 'Deleted ' + notice.n + ' secrets', description: 'You can restore them from history for 30 days.', action: { label: 'Undo', onClick: notice.undo }, onDismiss: function () { setNotice(null); }, duration: 8000 }))) : null);
+}
+
+/* ------------------------------------------------------------------ 2. Patterns and sizing */
+var IDS = [
+  { id: 'github-actions', kind: 'machine', auth: 'OIDC', project: 'acme-platform', last: 'Today, 10:30', reads: 14203, status: ['ok', 'Active'] },
+  { id: 'k8s-prod-operator', kind: 'machine', auth: 'Kubernetes', project: 'payments', last: 'Today, 10:28', reads: 88410, status: ['ok', 'Active'] },
+  { id: 'on-call-agent', kind: 'agent', auth: 'Token', project: 'acme-platform', last: 'Yesterday, 23:12', reads: 312, status: ['warn', 'Expiring'] },
+];
+var ID_COLS = [
+  { key: 'id', header: 'Identity', render: function (r) { return [h(I.Avatar, { key: 'a', kind: r.kind, size: 22 }), h('span', { key: 'n', className: 'ifs-table__primary' }, r.id)]; } },
+  { key: 'auth', header: 'Auth method' },
+  { key: 'project', header: 'Project', render: function (r) { return h('span', { className: 'ifs-table__text ifs-mono', style: { fontSize: 13 } }, r.project); } },
+  { key: 'last', header: 'Last used' },
+  { key: 'reads', header: 'Reads, 30d', align: 'end', render: function (r) { return r.reads.toLocaleString('en-US'); } },
+  { key: 'status', header: 'Status', render: function (r) { return h(I.Badge, { tone: r.status[0], size: 'sm', dot: true }, r.status[1]); } },
+];
+var VERSIONS = [
+  { id: 'stripe_api_key', desc: 'Live secret key for charges and refunds, used by billing-api and the nightly reconciliation job', v: 'v15', rot: '30d', by: 'rotation-service' },
+  { id: 'postgres_url', desc: 'Primary database, read and write', v: 'v3', rot: 'Dynamic', by: 'github-actions' },
+  { id: 'mongodb_readonly_replica_connection_string', desc: 'Analytics replica in us-east-1, read only, rotated by the Atlas integration', v: 'v128', rot: '7d', by: 'Priya Raman' },
+];
+var V_COLS = [
+  { key: 'id', header: 'Key', primary: true },
+  { key: 'desc', header: 'Description', maxWidth: 220 },
+  { key: 'v', header: 'V' },
+  { key: 'rot', header: 'Rotation' },
+  { key: 'by', header: 'Changed by' },
+];
+function Patterns() {
+  var w0 = React.useState(0), width = w0[0], setWidth = w0[1];
+  var box = React.useRef(null);
+  React.useEffect(function () {
+    var el = box.current; if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    var ro = new ResizeObserver(function () { setWidth(el.offsetWidth); }); ro.observe(el);
+    return function () { ro.disconnect(); };
+  }, []);
+  function one(title, variant) {
+    return h('div', { className: 'ifs-stack', style: { gap: 8 } }, cap(title), h(I.Table, { label: 'Machine identities, ' + (variant || 'basic'), variant: variant, columns: ID_COLS, rows: IDS }));
+  }
+  return h('div', { className: 'ifs-stack', style: { gap: 22 } },
+    one('Basic, the default: a rule between rows'),
+    one('Striped: every other row on row-done, no rules; for long rows read across', 'striped'),
+    one('Bordered: rules between columns too; for dense comparisons and numbers', 'bordered'),
+    h('div', { className: 'ifs-stack', style: { gap: 8, marginTop: 6 } },
+      h('div', { className: 'ifs-row', style: { gap: 10 } }, cap('Sizing and overflow, drag the corner'), h('span', { className: 'ifs-mono', style: { fontSize: 11, color: 'var(--muted)' } }, width ? width + 'px' : '')),
+      h('div', { ref: box, style: { resize: 'horizontal', overflow: 'hidden', width: 480, minWidth: 260, maxWidth: '100%', paddingRight: 14, paddingBottom: 14, boxSizing: 'border-box', outline: '1px dashed var(--control)', outlineOffset: 4 } },
+        h(I.Table, { label: 'Secret versions', columns: V_COLS, rows: VERSIONS })),
+      h('p', { style: { margin: '4px 0 0', fontSize: 12.5, lineHeight: '18px', color: 'var(--muted)', maxWidth: 620 } },
+        'Columns fit their widest cell, header included. ', code('V'), ' is shorter than the 64px floor (', code('size-cell-min'), ') and stays at it. ', code('Description'), ' stops at ', code('maxWidth: 220'),
+        ' and truncates; hover it for the full text. ', code('Key'), ' grows into spare width. Narrower than its columns, the table scrolls sideways; cells never squeeze or wrap.')));
+}
+
+/* ------------------------------------------------------------------ 3. Virtual rows, load more */
+var TOTAL = 12408, BATCH = 500, VIEW = 360, STEP = 240, VIEW_MAX = 840;
+var ACTORS = [['Sarah Lin', 'p'], ['github-actions', 'm'], ['James Okoro', 'p'], ['k8s-prod-operator', 'm'], ['on-call-agent', 'a'], ['Priya Raman', 'p'], ['terraform-cloud', 'm'], ['Jadden', 'p']];
+var EVENTS = ['secret.read', 'secret.read', 'secret.read', 'secret.updated', 'identity.login', 'access.granted', 'secret.rotated', 'integration.synced'];
+var PATHS = ['/payments/stripe_api_key', '/platform/postgres_url', '/platform/redis_password', '/billing/sendgrid_api_key', '/infra/aws_access_key_id', '/platform/datadog_api_key', '/payments/stripe_webhook_signing_secret_live', '/infra/cloudflare_api_token'];
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+function events(from, n) {
+  var out = [], t = Date.UTC(2026, 8, 24, 10, 30, 12) / 1000;
+  for (var i = from; i < from + n && i < TOTAL; i++) {
+    var x = Math.imul(i + 7, 2654435761) >>> 0, s = t - i * 211 - (x % 180), d = new Date(s * 1000);
+    var a = ACTORS[x % ACTORS.length];
+    out.push({ id: 'ev' + i, n: i, time: ['Sep', 'Aug'][d.getUTCMonth() === 8 ? 0 : 1] + ' ' + d.getUTCDate() + ', ' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds()),
+      actor: a[0], o: a[1], event: EVENTS[(x >>> 3) % EVENTS.length], path: PATHS[(x >>> 6) % PATHS.length], ip: '10.' + ((x >>> 9) % 40) + '.' + ((x >>> 13) % 250) + '.' + ((x >>> 17) % 250) });
+  }
+  return out;
+}
+function Virtual() {
+  var r0 = React.useState(function () { return events(0, BATCH); }), rows = r0[0], setRows = r0[1];
+  var l0 = React.useState(false), loading = l0[0], setLoading = l0[1];
+  var v0 = React.useState(VIEW), view = v0[0], setView = v0[1];
+  var d0 = React.useState(0), dom = d0[0], setDom = d0[1];
+  var wrap = React.useRef(null);
+  React.useEffect(function () {
+    var el = wrap.current; if (!el) return undefined;
+    function count() { setDom(el.querySelectorAll('.ifs-table__body > [role="row"]').length); }
+    count();
+    var mo = new MutationObserver(count); mo.observe(el, { childList: true, subtree: true });
+    return function () { mo.disconnect(); };
+  }, []);
+  // Each press shows more of the table at once: the viewport grows by five rows (up to 840px) while the next batch loads.
+  function more() {
+    setView(function (v) { return Math.min(VIEW_MAX, v + STEP); });
+    setLoading(true);
+    setTimeout(function () { setRows(function (cur) { return cur.concat(events(cur.length, BATCH)); }); setLoading(false); }, 700);
+  }
+  var left = TOTAL - rows.length;
+  var cols = [
+    { key: 'time', header: 'Time', render: function (r) { return h('span', { className: 'ifs-mono', style: { fontSize: 12.5, color: 'var(--muted)' } }, r.time); } },
+    { key: 'actor', header: 'Actor', width: 156, render: function (r) { return owner(r.actor, r.o); } },
+    { key: 'event', header: 'Event', width: 140, render: function (r) { return h('span', { className: 'ifs-table__text ifs-mono', style: { fontSize: 12.5, color: 'var(--ink)' } }, r.event); } },
+    { key: 'path', header: 'Resource', grow: true, maxWidth: 220, render: function (r) { return h('span', { className: 'ifs-table__text ifs-mono', style: { fontSize: 12.5 } }, r.path); } },
+  ];
+  return h('div', { ref: wrap, className: 'ifs-stack', style: { gap: 12 } },
+    h('div', { className: 'ifs-row', style: { justifyContent: 'space-between', gap: 16 } },
+      h('span', { style: { fontSize: 14, fontWeight: 600 } }, 'Audit log ', h('span', { style: { fontWeight: 400, color: 'var(--muted)' } }, 'last 30 days')),
+      h('span', { 'aria-live': 'polite', style: { fontSize: 12.5, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' } }, 'Showing ' + rows.length.toLocaleString('en-US') + ' of ' + TOTAL.toLocaleString('en-US') + ' · ' + dom + ' rows in the page')),
+    h(I.Table, { label: 'Audit log', columns: cols, rows: rows, height: view, virtual: true,
+      loadMore: left > 0 ? { label: 'Load ' + Math.min(BATCH, left) + ' more', onClick: more, loading: loading } : undefined }));
+}
+
+function Demo() {
+  return h('div', { className: 'ifs-stack', style: { gap: 32 } },
+    h(Section, { title: 'Interactive', note: 'Filter, sort by name or date, select for bulk actions, open a row menu, delete with undo, and page through. Long names stop at the column’s maxWidth and truncate. Narrower than its columns, the table scrolls sideways under the pinned actions column, which keeps every row menu in reach.' }, h(Interactive)),
+    h(I.Separator, { soft: true }),
+    h(Section, { title: 'Cell patterns', note: 'The same rows three ways. Pick one per table and keep it for the page.' }, h(Patterns)),
+    h(I.Separator, { soft: true }),
+    h(Section, { title: 'Virtual rows, load more', note: 'A fixed height with a sticky header. Only the rows in view are in the page, so thousands scroll smoothly. The end fades out under a floating button that fetches the next batch and grows the view by five rows, up to 840px.' }, h(Virtual)));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

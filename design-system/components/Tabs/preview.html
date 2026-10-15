@@ -1,0 +1,60 @@
+<!-- @dsCard group="Navigation" height=482 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Tabs</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+function key(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13, color: 'var(--ink)' } }, t); }
+
+function rows(list) {
+  return h('div', { className: 'ifs-stack', style: { gap: 0 } }, list.map(function (r, i) {
+    var text = typeof r[1] === 'string', clip = { minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+    return h('div', { key: i, className: 'ifs-row', style: { justifyContent: 'space-between', flexWrap: 'nowrap', height: 40, borderTop: i ? '1px solid var(--line-soft)' : 0, fontSize: 13.5 } },
+      h('span', { style: Object.assign({ color: 'var(--muted)', flexShrink: text ? 0 : 1 }, clip) }, r[0]),
+      text ? h('span', { style: clip }, r[1]) : h('span', { className: 'ifs-row', style: { gap: 8, flexWrap: 'nowrap', whiteSpace: 'nowrap', flexShrink: 0 } }, r[1]));
+  }));
+}
+function cell(t, node) { return h('div', { className: 'ifs-stack', style: { gap: 8, minWidth: 0 } }, cap(t), node); }
+function Demo() {
+  var synced = h(I.Badge, { tone: 'ok', size: 'sm', dot: true }, 'Synced 10:30');
+  var tabs = [
+    { value: 'over', label: 'Overview', content: rows([['Value', h('span', { className: 'ifs-mono', style: { letterSpacing: '0.08em', color: 'var(--text2)' } }, '••••••••••••')], ['Environment', h(I.Badge, { tone: 'solid', size: 'sm', mono: true }, 'prod')], ['Last rotated', 'Sep 2, by rotation-service']]) },
+    { value: 'ver', label: 'Versions', count: 15, content: rows([[h('span', { className: 'ifs-mono', style: { color: 'var(--ink)', fontWeight: 600 } }, 'v15'), ['Jadden, Sep 24 ', h(I.Badge, { key: 'b', tone: 'soft', size: 'sm' }, 'Current')]], [h('span', { className: 'ifs-mono', style: { color: 'var(--ink)', fontWeight: 600 } }, 'v14'), 'Sarah Lin, Sep 2'], [h('span', { className: 'ifs-mono', style: { color: 'var(--ink)', fontWeight: 600 } }, 'v13'), 'rotation-service, Aug 3']]) },
+    { value: 'acc', label: 'Access', content: rows([['Sarah Lin', 'Admin'], ['github-actions', 'Read'], ['on-call-agent', 'Read, until 11:42']]) },
+    { value: 'syn', label: 'Syncs', count: 2, content: rows([['Vercel', synced], ['GitHub Actions', synced]]) },
+    { value: 'ref', label: 'References', count: 3, content: rows([[key('BILLING_KEY'), 'production'], [key('CHECKOUT_STRIPE'), 'production'], [key('STRIPE_TEST'), 'staging']]) },
+    { value: 'aud', label: 'Audit log', content: rows([['Revealed', 'Sarah Lin, 10:02'], ['Synced to Vercel', 'Today, 10:30'], ['Rotated', 'Sep 2, rotation-service']]) },
+  ];
+  var env = { development: ['138', '0', '12'], staging: ['402', '1', '9'], production: ['412', '3', '4'] };
+  function envPanel(k) { return rows([['Secrets', h('b', { style: { fontVariantNumeric: 'tabular-nums' } }, env[k][0])], ['Missing compared to development', h('b', null, env[k][1])], ['Changed this week', h('b', null, env[k][2])]]); }
+  var settings = [
+    { value: 'general', label: 'General', content: rows([['Name', 'acme-platform'], ['Slug', mono('acme-platform')], ['Default environment', 'Development']]) },
+    { value: 'access', label: 'Access', count: 3, content: rows([['Sarah Lin', 'Admin'], ['prod-changes', 'Approvers'], ['github-actions', 'Read']]) },
+    { value: 'integrations', label: 'Integrations', count: 2, content: rows([['Vercel', synced], ['GitHub Actions', synced]]) },
+    { value: 'webhooks', label: 'Webhooks', content: rows([['Slack, #secrets-audit', 'On every change'], ['PagerDuty', 'On a failed sync']]) },
+    { value: 'audit', label: 'Audit log', content: rows([['Retention', '90 days'], ['Last export', 'Sep 26, by Sarah Lin'], ['Stream to', mono('datadog')]]) },
+  ];
+  var reqs = [
+    { f: 'needs', k: 'datadog_api_key', m: 'on-call-agent, 1 hour' },
+    { f: 'needs', k: 'stripe_api_key', m: 'Changed in production' },
+    { f: 'exp', k: 'db_password', m: 'Jadden, until 11:42' },
+    { f: 'done', k: 'sendgrid_api_key', m: 'Approved Sep 26' },
+  ];
+  function reqPanel(f) { return rows(reqs.filter(function (r) { return f === 'all' || r.f === f; }).map(function (r) { return [key(r.k), r.m]; })); }
+  function n(f) { return reqs.filter(function (r) { return f === 'all' || r.f === f; }).length; }
+  return h('div', { style: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '32px 40px', alignItems: 'start' } },
+    cell('Underline, for sections of one object; scrolls when full', h(I.Tabs, { label: 'Secret details', tabs: tabs })),
+    cell('Segmented, for the same view', h(I.Tabs, { variant: 'segmented', label: 'Environment', defaultValue: 'production',
+      tabs: [{ value: 'development', label: 'Development', content: envPanel('development') }, { value: 'staging', label: 'Staging', content: envPanel('staging') }, { value: 'production', label: 'Production', content: envPanel('production') }] })),
+    cell('Underline, vertical, for many sections', h(I.Tabs, { orientation: 'vertical', label: 'Project settings', defaultValue: 'access', tabs: settings })),
+    cell('Segmented, vertical, with counts', h(I.Tabs, { variant: 'segmented', orientation: 'vertical', label: 'Filter requests', defaultValue: 'needs',
+      tabs: [{ value: 'all', label: 'All', count: n('all'), content: reqPanel('all') }, { value: 'needs', label: 'Needs action', count: n('needs'), content: reqPanel('needs') }, { value: 'exp', label: 'Expiring', count: n('exp'), content: reqPanel('exp') }] })));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

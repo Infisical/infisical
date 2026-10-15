@@ -1,0 +1,22 @@
+<!-- @dsCard group="Code" height=354 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Snippet</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function cell(t, node) { return h('div', { className: 'ifs-stack', style: { gap: 6, minWidth: 0 } }, cap(t), node); }
+
+function Demo() {
+  return h('div', { className: 'ifs-stack', style: { gap: 20, maxWidth: 440 } },
+    cell('A command, with a prompt that is never copied', h(I.Snippet, { prompt: '$', value: 'npm install @infisical/sdk', 'aria-label': 'Install command' })),
+    h(I.Field, { label: 'Webhook URL', description: 'Paste it into Stripe, under Developers, Webhooks.' }, h(I.Snippet, { value: 'https://app.infisical.com/api/v1/webhooks/stripe/wh_7Hc2aK9dQx' })),
+    cell('Small, long value ends in an ellipsis until focused', h('div', { style: { maxWidth: 280 } }, h(I.Snippet, { size: 'sm', prompt: '$', value: 'infisical export --env=prod --path=/payments --format=dotenv > .env', 'aria-label': 'Export command' }))),
+    cell('A secret value is a SecretInput, never a Snippet', h(I.SecretInput, { value: 'whsec_demo_9f2Kd8Qa7Lm', 'aria-label': 'Value of STRIPE_WEBHOOK_SECRET' })));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

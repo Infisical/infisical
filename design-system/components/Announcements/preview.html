@@ -1,0 +1,46 @@
+<!-- @dsCard group="Composites" height=640 subtitle="What's new: cards that cycle in a dialog, each with media made of real components, dots, Back and Next" -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Announcements</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function k(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+function surface(child, style) { return h('div', { style: Object.assign({ width: '100%', background: 'var(--surface)', border: '1px solid var(--line)', boxShadow: 'var(--shadow-raised)' }, style) }, child); }
+
+// Each card's media is real components on the tint ground, made inert: a CommandMenu, list rows, an approval, a snippet.
+var ITEMS = [
+  { id: 'cmdk', eyebrow: 'Navigation · Sep 29', title: 'Jump to anything from one search',
+    description: h('p', null, 'Press ', h(I.Kbd, { keys: 'mod+K', size: 'sm' }), ' on any page for pages, projects, secrets and actions, ranked as you type.'),
+    action: { label: 'Read the docs', href: '#docs', external: true },
+    media: h(I.CommandMenu, { inline: true, defaultQuery: 'stri', footer: false, maxHeight: 110, groups: [{ label: 'Secrets', items: [
+      { id: 1, label: 'stripe_api_key', mono: true, icon: 'key', description: 'production' }, { id: 2, label: 'stripe_webhook_signing_secret', mono: true, icon: 'key' }] }] }) },
+  { id: 'rotation', eyebrow: 'Secrets · Sep 24', title: 'Rotate Postgres credentials on a schedule',
+    description: h('p', null, 'Infisical creates a new user, updates every sync, then drops the old one, so nothing restarts.'),
+    media: surface(h(I.List, { variant: 'bare', size: 'sm', label: 'Rotation' },
+      h(I.Item, { icon: 'sync', tone: 'ok', title: k('postgres_url'), badge: h(I.Badge, { tone: 'ok', size: 'sm', dot: true }, 'Rotated'), meta: '10:30' }),
+      h(I.Item, { icon: 'clock', title: 'Next rotation', meta: 'Oct 6' }))) },
+  { id: 'jit', eyebrow: 'Access · Sep 18', title: 'Agents can ask for access just in time',
+    description: h('p', null, 'An agent asks for one secret for an hour and you grant it from the approval queue. The agent never sees the value.'),
+    media: surface(h('div', { style: { padding: '10px 12px' } }, h(I.Item, { media: h(I.Avatar, { kind: 'agent', size: 32 }), title: [k('on-call-agent'), ' wants ', k('datadog_api_key')], description: 'Read only for 1 hour',
+      actions: [h(I.Button, { key: 1, size: 'sm' }, 'Deny'), h(I.Button, { key: 2, size: 'sm', variant: 'accent' }, 'Grant for 1 hour')] }))) },
+  { id: 'share', eyebrow: 'Sharing · Sep 10', title: 'Share a secret with a link that expires',
+    description: h('p', null, 'Links open once, or until a date you pick. The value is encrypted in the browser and never stored in plain text.'),
+    action: { label: 'Share a secret', onClick: function () {} },
+    media: h('div', { className: 'ifs-stack', style: { gap: 8, width: '100%' } }, h(I.Snippet, { value: 'https://app.infisical.com/shared/9f2c41b04d8e#k=7Qx', 'aria-label': 'Share link' }),
+      h('div', { className: 'ifs-row', style: { gap: 6 } }, h(I.Badge, { size: 'sm' }, 'Expires after 1 view'), h(I.Badge, { size: 'sm', mono: true }, 'Oct 1'))) },
+];
+
+function Demo() {
+  var o = React.useState(true), open = o[0], setOpen = o[1];
+  var s = React.useState({}), seen = s[0], setSeen = s[1];
+  var unseen = ITEMS.filter(function (x) { return !seen[x.id]; }).length;
+  return h('div', { style: { minHeight: 600 } },
+    h(I.Button, { icon: 'megaphone', onClick: function () { setOpen(true); } }, "What's new", unseen ? h('span', { style: { display: 'inline-flex', marginLeft: 8 } }, h(I.Count, { 'aria-label': unseen + ' unread' }, unseen)) : null),
+    h(I.Announcements, { open: open, onOpenChange: setOpen, items: ITEMS, onSeen: function (id) { setSeen(function (x) { if (x[id]) return x; var n = Object.assign({}, x); n[id] = true; return n; }); } }));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

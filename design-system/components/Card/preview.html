@@ -1,0 +1,34 @@
+<!-- @dsCard group="Data display" height=880 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Card</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+function Demo() {
+  var s = React.useState('gh'), pick = s[0], setPick = s[1];
+  var w = React.useState('fit'), width = w[0], setWidth = w[1];
+  function tile(k, m, t, d) { return h(I.Tile, { key: k, media: h(I.Media, null, m), title: t, description: d, selected: pick === k, onClick: function () { setPick(k); } }); }
+  return h('div', { className: 'ifs-stack', style: { gap: 16 } },
+    h('div', { className: 'ifs-row', style: { gap: 10 } }, cap('Width'),
+      h(I.Tabs, { variant: 'segmented', label: 'Preview width', value: width, onChange: setWidth, tabs: [{ value: 'fit', label: 'Fit' }, { value: '480', label: '480px' }, { value: '320', label: '320px' }] })),
+    h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 20, alignItems: 'start', width: width === 'fit' ? '100%' : width + 'px', maxWidth: '100%', transition: 'width var(--ifs-slide)' } },
+      h('div', { className: 'ifs-stack', style: { gap: 8, minWidth: 0 } }, cap('Framed, the default'),
+        h(I.Card, { title: 'Posture', action: h('a', { href: '#', className: 'ifs-link', style: { color: 'var(--text2)', fontSize: 12.5 } }, 'View report') },
+          h(I.DataList, { items: [['Secrets across 3 environments', '412'], ['Missing in production', '3'], ['Rotations due this week', '5'], ['Certificates expiring in 30 days', '2']] }))),
+      h('div', { className: 'ifs-stack', style: { gap: 8, minWidth: 0 } }, cap('Plain, for a standalone object'),
+        h(I.Card, { variant: 'plain', media: h(I.Media, null, 'GH'), title: 'GitHub Actions', description: 'Syncs 14 secrets from staging on every push to main.', action: h(I.Badge, { tone: 'ok', size: 'sm', dot: true }, 'Synced'),
+          footer: [h(I.Button, { key: 1, variant: 'ghost', size: 'sm' }, 'Pause'), h(I.Button, { key: 2, size: 'sm' }, 'Configure')] },
+          h(I.DataList, { variant: 'meta', items: [['Last sync', 'Today, 10:30'], ['Repository', h(I.MiddleTruncate, { mono: true, keepEnd: 10, style: { fontSize: 13 } }, 'acme/platform-infrastructure')]] }))),
+      h('div', { className: 'ifs-stack', style: { gap: 8, gridColumn: '1 / -1', minWidth: 0 } }, cap('Tile, try it'),
+        h('div', { className: 'ifs-tiles' },
+          tile('v', 'V', 'Vercel', 'Not connected'), tile('aws', 'AWS', 'AWS Secrets Manager', 'Not connected'), tile('gh', 'GH', 'GitHub Actions', 'Connected, 2 syncs')))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!-- @dsCard group="Forms" height=510 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Field</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+function Demo() {
+  var v = React.useState('0'), days = v[0], setDays = v[1];
+  var bad = !(Number(days) >= 1 && Number(days) <= 365);
+  return h('div', { className: 'ifs-stack', style: { gap: 20, maxWidth: 440 } },
+    h(I.Field, { label: 'Secret key', description: 'Uppercase letters, numbers and underscores.' }, h(I.Input, { mono: true, defaultValue: 'STRIPE_WEBHOOK_SECRET' })),
+    h(I.Field, { label: 'Rotation interval', error: bad ? 'Enter a number of days from 1 to 365.' : null, description: bad ? null : 'The next rotation runs at 02:00 UTC.' },
+      h(I.InputGroup, { value: days, onChange: function (e) { setDays(e.target.value); }, suffix: 'days' })),
+    h(I.Field, { label: 'Description', optional: true }, h(I.Input, { multiline: true, placeholder: 'What uses this secret?' })),
+    h(I.Field, { label: 'Environments', group: true, description: 'Production changes wait for approval.' },
+      h('div', { className: 'ifs-row', style: { gap: '12px 20px' } }, h(I.Checkbox, { label: 'Development', defaultChecked: true }), h(I.Checkbox, { label: 'Staging', defaultChecked: true }), h(I.Checkbox, { label: 'Production' }))),
+    h(I.Field, { label: 'Default environment', description: 'Used by the CLI when no --env flag is passed.', orientation: 'horizontal' },
+      h(I.Select, { defaultValue: 'dev', options: [{ value: 'dev', label: 'Development' }, { value: 'stg', label: 'Staging' }, { value: 'prod', label: 'Production' }] })));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

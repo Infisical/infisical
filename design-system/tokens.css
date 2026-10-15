@@ -1,0 +1,288 @@
+/* Infisical 2.0, generated from tokens.json by scripts/build.mjs. Do not edit. */
+
+@font-face {
+  font-family: "Archivo";
+  src: url("fonts/Archivo-Latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Archivo";
+  src: url("fonts/Archivo-Italic-Latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("fonts/GeistMono-Latin.woff2") format("woff2");
+  font-weight: 400 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root,
+[data-theme="light"] {
+  --frame: #010101;
+  --frame-soft: #ecebe5;
+  --surface: #fbfbf9;
+  --inset: var(--surface);
+  --sidebar: var(--tint);
+  --sidebar-line: var(--line);
+  --sidebar-hover: var(--line-soft);
+  --sidebar-current: #d9d8d3;
+  --paper: #f4f3ee;
+  --tint: #f1f0ea;
+  --row-done: #f6f5f1;
+  --select: #eeede6;
+  --line-soft: #e6e5e0;
+  --line: #d8d8d4;
+  --control: #b0b0a9;
+  --faint: #8e9291;
+  --muted: #565654;
+  --text2: #2f3234;
+  --ink: #010101;
+  --on-ink: #ffffff;
+  --accent: #e3ef59;
+  --accent-2: #d3de42;
+  --on-accent: #010101;
+  --accent-wash: #f7facc;
+  --accent-line: #dddd8e;
+  --accent-fg: var(--ink);
+  --mark: #010101;
+  --ok: #2b5945;
+  --ok-deep: #1f4232;
+  --ok-bg: #e2eae5;
+  --ok-wash: #eef3f0;
+  --ok-line: #c7d6cd;
+  --warn: #7a5300;
+  --warn-deep: #4d3500;
+  --warn-bg: #f2e6c8;
+  --warn-wash: #f8f2e2;
+  --warn-line: #e3d2a4;
+  --bad: #c0231b;
+  --bad-deep: #6b1510;
+  --bad-bg: #f7deda;
+  --bad-wash: #faeeec;
+  --bad-line: #edc3bd;
+  --bad-control: #e2a09c;
+  --on-bad: #ffffff;
+  --bad-hover: #9e1b14;
+  --info: #1f4e79;
+  --info-deep: #143556;
+  --info-bg: #dfe7ef;
+  --info-wash: #eef3f8;
+  --info-line: #c3d1df;
+  --sw-on: #010101;
+  --sw-knob-on: #e3ef59;
+  --toast-bg: var(--surface);
+  --toast-line: var(--line);
+  --toast-text: var(--ink);
+  --toast-muted: var(--muted);
+  --toast-ok: var(--ok);
+  --toast-bad: var(--bad);
+  --scrim: rgba(1, 1, 1, 0.38);
+  --shadow-raised: 0 1px 2px rgba(14, 16, 20, 0.05);
+  --shadow-pop: 0 16px 40px rgba(1, 1, 1, 0.14), 0 2px 6px rgba(1, 1, 1, 0.08);
+}
+
+[data-theme="dark"] {
+  --frame: #010101;
+  --frame-soft: #010101;
+  --surface: #0b0b0b;
+  --inset: var(--surface);
+  --sidebar: var(--frame);
+  --sidebar-line: var(--line-soft);
+  --sidebar-hover: var(--tint);
+  --sidebar-current: #2c2c2b;
+  --paper: #121212;
+  --tint: #1c1c1c;
+  --row-done: #101010;
+  --select: #262626;
+  --line-soft: #1e2022;
+  --line: #2f3234;
+  --control: #3f4245;
+  --faint: #8e9291;
+  --muted: #b0b0a9;
+  --text2: #d8d8d4;
+  --ink: #f1f0ea;
+  --on-ink: #010101;
+  --accent: #e7f256;
+  --accent-2: #d5e03a;
+  --on-accent: #010101;
+  --accent-wash: #1c1e10;
+  --accent-line: #3d4220;
+  --accent-fg: var(--accent);
+  --mark: #e7f256;
+  --ok: #8fc7a4;
+  --ok-deep: #bfe3cc;
+  --ok-bg: #14231b;
+  --ok-wash: #101b15;
+  --ok-line: #25402f;
+  --warn: #e8c26a;
+  --warn-deep: #f3d99a;
+  --warn-bg: #2b2210;
+  --warn-wash: #1c170c;
+  --warn-line: #463819;
+  --bad: #ff5a4f;
+  --bad-deep: #ffc0b9;
+  --bad-bg: #331311;
+  --bad-wash: #1d0e0d;
+  --bad-line: #5a221e;
+  --bad-control: #712c28;
+  --on-bad: #010101;
+  --bad-hover: #ff7b72;
+  --info: #8fb4de;
+  --info-deep: #c4d9ef;
+  --info-bg: #121e2b;
+  --info-wash: #0e1620;
+  --info-line: #243a52;
+  --sw-on: #e7f256;
+  --sw-knob-on: #010101;
+  --toast-bg: #1e2022;
+  --toast-line: #2f3234;
+  --toast-text: #f1f0ea;
+  --toast-muted: #b0b0a9;
+  --toast-ok: #8fc7a4;
+  --toast-bad: #ff7a70;
+  --scrim: rgba(0, 0, 0, 0.62);
+  --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+:root {
+  --space-2: 2px;
+  --space-3: 3px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-14: 14px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-44: 44px;
+  --space-48: 48px;
+  --size-badge-sm: 18px;
+  --size-count: 20px;
+  --size-badge: 22px;
+  --size-control-sm: 32px;
+  --size-control-md: 36px;
+  --size-control-lg: 40px;
+  --size-nested-sm: 24px;
+  --size-nested-md: 28px;
+  --size-nested-lg: 32px;
+  --size-cell-min: 64px;
+  --size-text-min: 160px;
+  --size-tile-min: 208px;
+  --radius-xs: 1px;
+  --radius-sm: 1.5px;
+  --radius-control: 2px;
+  --radius-pop: 2.5px;
+  --radius-card: 3px;
+  --radius-panel: 4px;
+  --radius-inset: 1px;
+  --corners: 0;
+  --opacity-nudge: 20%;
+  --opacity-nudge-dark: 20%;
+  --opacity-hover: 6%;
+  --opacity-hover-dark: 12%;
+  --opacity-press: 10%;
+  --opacity-press-dark: 18%;
+  --font-sans: Archivo, "Helvetica Neue", Helvetica, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, Menlo, monospace;
+}
+
+.display {
+  font-family: var(--font-sans);
+  font-size: 44px;
+  line-height: 44px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+
+.title-lg {
+  font-family: var(--font-sans);
+  font-size: 28px;
+  line-height: 32px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+.title {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.title-sm {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+}
+
+.body-lg {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+}
+
+.body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+.label {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+.small {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+}
+
+.caption {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+}
+
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+}
+
+.mono-sm {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+}

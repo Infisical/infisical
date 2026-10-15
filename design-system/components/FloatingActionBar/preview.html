@@ -1,0 +1,58 @@
+<!-- @dsCard group="Composites" height=632 subtitle="Bulk actions over a selection: count, select all, actions that overflow into More, clear; enters and leaves on the slide curve" -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>FloatingActionBar</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function k(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+var ROWS = [
+  ['stripe_api_key', 'production', 'Sep 24'], ['stripe_webhook_signing_secret', 'production', 'Sep 24'], ['datadog_api_key', 'production', 'Sep 23'],
+  ['session_signing_key', 'staging', 'Sep 22'], ['redis_password', 'staging', 'Sep 20'], ['sentry_dsn', 'development', 'Sep 17'],
+  ['openai_api_key', 'development', 'Sep 14'], ['twilio_auth_token', 'production', 'Sep 11']].map(function (r) { return { id: r[0], env: r[1], when: r[2] }; });
+var TOTAL = 412;
+
+function Demo() {
+  var w = React.useState('fit'), width = w[0], setWidth = w[1];
+  var r = React.useState(ROWS), rows = r[0], setRows = r[1];
+  var s = React.useState([]), sel = s[0], setSel = s[1];
+  var a = React.useState(false), all = a[0], setAll = a[1];
+  var b = React.useState(null), busy = b[0], setBusy = b[1];
+  var n = React.useState(null), note = n[0], setNote = n[1];
+  var count = all ? TOTAL - (ROWS.length - rows.length) : sel.length;
+  function clear() { setSel([]); setAll(false); }
+  function run(key, label, then) {
+    setBusy(key);
+    setTimeout(function () { setBusy(null); if (then) then(); setNote({ text: label }); }, 900);
+  }
+  function remove() {
+    var before = rows, ids = all ? rows.map(function (x) { return x.id; }) : sel, nDel = count;
+    setRows(rows.filter(function (x) { return ids.indexOf(x.id) < 0; })); clear();
+    setNote({ text: 'Deleted ' + nDel + (nDel === 1 ? ' secret' : ' secrets') + '. You can restore them from history for 30 days', undo: function () { setRows(before); setNote(null); } });
+  }
+  var actions = [
+    { id: 'move', label: 'Move to folder', icon: 'folder', onClick: function () { setNote({ text: 'Pick a folder for ' + count + ' secrets' }); } },
+    { id: 'rotate', label: busy === 'rotate' ? 'Rotating' : 'Rotate', icon: 'sync', loading: busy === 'rotate', onClick: function () { run('rotate', 'Rotated ' + count + (count === 1 ? ' secret' : ' secrets')); } },
+    { id: 'export', label: 'Export', icon: 'download', onClick: function () { setNote({ text: 'Exported ' + count + ' keys as .env' }); } },
+    { id: 'delete', label: 'Delete', icon: 'trash', danger: true, onClick: remove }];
+  var more = [{ id: 'copy', label: 'Copy keys', icon: 'copy' }, { id: 'sync', label: 'Add to a sync', icon: 'link' }];
+  return h('div', { className: 'ifs-stack', style: { gap: 14 } },
+    h('div', { className: 'ifs-row', style: { gap: 10 } }, cap('Width'),
+      h(I.Tabs, { variant: 'segmented', label: 'Preview width', value: width, onChange: setWidth, tabs: [{ value: 'fit', label: 'Fit' }, { value: '480', label: '480px' }, { value: '340', label: '340px' }] })),
+    h('div', { style: { position: 'relative', width: width === 'fit' ? '100%' : width + 'px', maxWidth: '100%', paddingBottom: 72, transition: 'width var(--ifs-slide)' } },
+      h(I.List, { title: 'Secrets', size: 'sm', action: h('span', { style: { fontVariantNumeric: 'tabular-nums' } }, rows.length + ' of ' + (TOTAL - (ROWS.length - rows.length))), selection: 'multiple',
+          selectedIds: all ? rows.map(function (x) { return x.id; }) : sel, onSelectionChange: function (ids) { setAll(false); setSel(ids); },
+          empty: h(I.EmptyState, { variant: 'compact', icon: 'key', title: 'No secrets left on this page.' }) },
+        rows.map(function (x) { return h(I.Item, { key: x.id, value: x.id, title: k(x.id), badge: h(I.Badge, { size: 'sm', mono: true }, x.env), meta: x.when }); })),
+      h(I.FloatingActionBar, { placement: 'contained', count: count, total: TOTAL - (ROWS.length - rows.length), onSelectAll: function () { setAll(true); }, onClear: clear, actions: actions, moreActions: more })),
+    h('p', { role: 'status', className: 'ifs-row', style: { margin: 0, gap: 10, minHeight: 20, fontSize: 12.5, lineHeight: '18px', color: 'var(--muted)' } },
+      note ? [h('span', { key: 't' }, note.text + '.'), note.undo ? h(I.Button, { key: 'u', variant: 'link', size: 'sm', onClick: note.undo }, 'Undo') : null]
+        : 'Select rows to bring the bar in. Narrow the width to push actions into More.'));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

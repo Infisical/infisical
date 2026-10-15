@@ -1,0 +1,25 @@
+<!-- @dsCard group="Overlays" height=440 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Tooltip</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+function Demo() {
+  var B = I.Button;
+  // one per row; each bubble has its own room on the side it opens toward
+  function row(t, pad, node) { return h('div', { className: 'ifs-stack', style: { gap: 8 } }, cap(t), h('div', { style: Object.assign({ display: 'flex' }, pad) }, node)); }
+  return h('div', { className: 'ifs-stack', style: { gap: 22 } },
+    row('Top, with a shortcut', { paddingTop: 40, paddingLeft: 48 }, h(I.Tooltip, { content: 'Copy value', shortcut: '\u2318C', defaultOpen: true }, h(B, { variant: 'ghost', icon: 'copy', iconOnly: true, 'aria-label': 'Copy value' }))),
+    row('Right', null, h(I.Tooltip, { content: 'View history', side: 'right', defaultOpen: true }, h(B, { icon: 'history', iconOnly: true, 'aria-label': 'View history' }))),
+    row('Bottom, wrapping to two lines', { paddingBottom: 54, paddingLeft: 72 }, h(I.Tooltip, { content: 'Only prod-changes members can approve', wrap: true, side: 'bottom', defaultOpen: true }, h(B, { variant: 'ghost', icon: 'info', iconOnly: true, 'aria-label': 'Who can approve' }))),
+    row('On hover or focus, try it', { paddingLeft: 48 }, h(I.Tooltip, { content: 'Reveal value' }, h(B, { variant: 'ghost', icon: 'eye', iconOnly: true, 'aria-label': 'Reveal value' }))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

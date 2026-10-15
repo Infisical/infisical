@@ -1,0 +1,27 @@
+<!-- @dsCard group="Data display" height=498 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Kbd</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function cell(t, node) { return h('div', { className: 'ifs-stack', style: { gap: 10, minWidth: 0 } }, cap(t), node); }
+
+function Demo() {
+  var K = I.Kbd;
+  return h('div', { className: 'ifs-stack', style: { gap: 22, maxWidth: 440 } },
+    cell('Keys and combinations', h('div', { className: 'ifs-row', style: { gap: 14 } }, h(K, { keys: '⌘K' }), h(K, { keys: 'mod+shift+P', platform: 'mac' }), h(K, { keys: 'esc' }), h(K, { keys: 'enter' }), h(K, { keys: '/' }))),
+    cell('mod follows the platform', h('div', { className: 'ifs-row', style: { gap: 14 } },
+      h('span', { className: 'ifs-row', style: { gap: 8, fontSize: 13, color: 'var(--text2)' } }, 'macOS', h(K, { keys: 'mod+K', platform: 'mac' })),
+      h('span', { className: 'ifs-row', style: { gap: 8, fontSize: 13, color: 'var(--text2)' } }, 'Windows, Linux', h(K, { keys: 'mod+K', platform: 'other' })))),
+    cell('A sequence', h('div', { className: 'ifs-row', style: { gap: 14 } }, h(K, { keys: 'G then S' }), h(K, { keys: 'G then E' }))),
+    cell('In a sentence', h('p', { style: { margin: 0, fontSize: 14, lineHeight: '24px', color: 'var(--text2)' } }, 'Press ', h(K, { keys: '⌘K' }), ' to search, or ', h(K, { keys: 'G then S' }), ' to open Secrets.')),
+    cell('In a field, small', h(I.Input, { icon: 'search', kbd: '/', placeholder: 'Search secrets', 'aria-label': 'Search secrets' })),
+    cell('In a tooltip, on ink', h('div', { style: { paddingTop: 36, paddingLeft: 48, display: 'flex' } }, h(I.Tooltip, { content: 'Copy value', shortcut: '⌘C', defaultOpen: true }, h(I.Button, { variant: 'ghost', icon: 'copy', iconOnly: true, 'aria-label': 'Copy value' })))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

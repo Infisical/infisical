@@ -1,0 +1,442 @@
+[
+  {
+    "name": "AccessList",
+    "group": "Patterns",
+    "subtitle": "Who can reach a project: rows open a member, multiple selection with a bulk bar, a locked owner",
+    "height": 500,
+    "pattern": true,
+    "readme": true
+  },
+  {
+    "name": "ActivityLog",
+    "group": "Patterns",
+    "subtitle": "Who did what, in one-line rows grouped by day, with load more",
+    "height": 590,
+    "pattern": true,
+    "readme": true
+  },
+  {
+    "name": "Alert",
+    "group": "Feedback",
+    "subtitle": null,
+    "height": 396,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "AlertDialog",
+    "group": "Overlays",
+    "subtitle": null,
+    "height": 414,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "AnimatedCollapse",
+    "group": "Utilities",
+    "subtitle": null,
+    "height": 512,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Announcements",
+    "group": "Composites",
+    "subtitle": "What's new: cards that cycle in a dialog, each with media made of real components, dots, Back and Next",
+    "height": 640,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "ApprovalQueue",
+    "group": "Patterns",
+    "subtitle": "Requests waiting on you: unread, pending, resolved with undo, failed with retry",
+    "height": 622,
+    "pattern": true,
+    "readme": true
+  },
+  {
+    "name": "Avatar",
+    "group": "Data display",
+    "subtitle": null,
+    "height": 268,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Badge",
+    "group": "Data display",
+    "subtitle": null,
+    "height": 172,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Breadcrumb",
+    "group": "Navigation",
+    "subtitle": null,
+    "height": 414,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Button",
+    "group": "Actions",
+    "subtitle": null,
+    "height": 186,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "ButtonGroup",
+    "group": "Actions",
+    "subtitle": null,
+    "height": 184,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Card",
+    "group": "Data display",
+    "subtitle": null,
+    "height": 880,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Checkbox",
+    "group": "Forms",
+    "subtitle": null,
+    "height": 180,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Code",
+    "group": "Code",
+    "subtitle": null,
+    "height": 500,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "CodeBlock",
+    "group": "Code",
+    "subtitle": null,
+    "height": 1107,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Combobox",
+    "group": "Forms",
+    "subtitle": null,
+    "height": 326,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "CommandMenu",
+    "group": "Composites",
+    "subtitle": "Global navigation and search: mod+K, grouped results, a search that loads, pages to drill into, empty",
+    "height": 700,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Cover",
+    "group": null,
+    "subtitle": null,
+    "height": 288,
+    "pattern": false,
+    "readme": false
+  },
+  {
+    "name": "DataGrid",
+    "group": "Data display",
+    "subtitle": "Table editor with unsaved changes; read-only query result",
+    "height": 1160,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Dialog",
+    "group": "Overlays",
+    "subtitle": null,
+    "height": 501,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "DropdownMenu",
+    "group": "Actions",
+    "subtitle": null,
+    "height": 698,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "EmptyState",
+    "group": "Feedback",
+    "subtitle": null,
+    "height": 418,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Field",
+    "group": "Forms",
+    "subtitle": null,
+    "height": 510,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "FileTree",
+    "group": "Navigation",
+    "subtitle": null,
+    "height": 922,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "FloatingActionBar",
+    "group": "Composites",
+    "subtitle": "Bulk actions over a selection: count, select all, actions that overflow into More, clear; enters and leaves on the slide curve",
+    "height": 632,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Icon",
+    "group": "Data display",
+    "subtitle": null,
+    "height": 342,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Input",
+    "group": "Forms",
+    "subtitle": null,
+    "height": 698,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "InputGroup",
+    "group": "Forms",
+    "subtitle": null,
+    "height": 478,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Item",
+    "group": "Data display",
+    "subtitle": "The layout of one object: slots, sizes, the boxes it sits in, and what it carries",
+    "height": 1380,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Json",
+    "group": "Code",
+    "subtitle": null,
+    "height": 703,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Kbd",
+    "group": "Data display",
+    "subtitle": null,
+    "height": 498,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "List",
+    "group": "Data display",
+    "subtitle": "A playground: framed, plain, bare; md, sm; static, link or button rows; multiple selection; sections, loading, empty, footer",
+    "height": 880,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Loader",
+    "group": "Feedback",
+    "subtitle": "A Spinner with its label: inline, base and page",
+    "height": 560,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "MiddleTruncate",
+    "group": "Utilities",
+    "subtitle": null,
+    "height": 350,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "MultiSelect",
+    "group": "Forms",
+    "subtitle": null,
+    "height": 690,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "MultiStep",
+    "group": "Composites",
+    "subtitle": "Tasks in steps: a dialog that grows from its trigger and resizes to each step, a sheet beside the list, a card in the page",
+    "height": 1070,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "PageHeader",
+    "group": "Composites",
+    "subtitle": "Page-level breadcrumb: the eyebrow over a page title, a folder path that collapses, an object's page with badges and tabs",
+    "height": 824,
+    "pattern": true,
+    "readme": true
+  },
+  {
+    "name": "Pagination",
+    "group": "Navigation",
+    "subtitle": null,
+    "height": 174,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Popover",
+    "group": "Overlays",
+    "subtitle": null,
+    "height": 310,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Progress",
+    "group": "Feedback",
+    "subtitle": null,
+    "height": 220,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Select",
+    "group": "Forms",
+    "subtitle": null,
+    "height": 628,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Separator",
+    "group": "Data display",
+    "subtitle": null,
+    "height": 460,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "SettingsCard",
+    "group": "Composites",
+    "subtitle": "Settings that save: fields in the content, status and Save in the footer; saving, saved, a failed save, rows, read only, locked, danger",
+    "height": 2090,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Sheet",
+    "group": "Overlays",
+    "subtitle": null,
+    "height": 600,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Sidebar",
+    "group": "Composites",
+    "subtitle": "The app's navigation: collapse, search and invite at the top, a Home / Organization switch, counts, a group of pages, and one button for you, the organization and the theme; collapses to a rail",
+    "height": 770,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Skeleton",
+    "group": "Feedback",
+    "subtitle": null,
+    "height": 233,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Snippet",
+    "group": "Code",
+    "subtitle": null,
+    "height": 354,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Spinner",
+    "group": "Feedback",
+    "subtitle": "Inline, base and page",
+    "height": 270,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Switch",
+    "group": "Forms",
+    "subtitle": null,
+    "height": 254,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Table",
+    "group": "Data display",
+    "subtitle": "Interactive; basic, striped and bordered; sizing and overflow; virtual rows with load more",
+    "height": 2720,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Tabs",
+    "group": "Navigation",
+    "subtitle": null,
+    "height": 482,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Toast",
+    "group": "Feedback",
+    "subtitle": null,
+    "height": 309,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "Tooltip",
+    "group": "Overlays",
+    "subtitle": null,
+    "height": 440,
+    "pattern": false,
+    "readme": true
+  },
+  {
+    "name": "TopBar",
+    "group": "Composites",
+    "subtitle": "Product-level breadcrumb: the organization, project and environment you are in, each a switcher; search and tools on the right",
+    "height": 512,
+    "pattern": false,
+    "readme": true
+  }
+]

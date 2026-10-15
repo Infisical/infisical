@@ -1,0 +1,61 @@
+<!-- @dsCard group="Patterns" height=622 page subtitle="Requests waiting on you: unread, pending, resolved with undo, failed with retry" -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>ApprovalQueue</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function k(t) { return h('span', { key: t, className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+// Each request moves through new (unread), pending (its button is busy), then resolved (stays in place on row-done, with undo)
+// or failed (an error line and retry). Rows open the request; the two actions act on it without opening it.
+var START = {
+  diff: { state: 'new' }, grant: { state: 'new' }, cert: { state: 'idle' }, sync: { state: 'resolved' },
+};
+function Demo() {
+  var B = I.Button;
+  var s = React.useState(START), st = s[0], setSt = s[1];
+  var c = React.useState(''), cur = c[0], setCur = c[1];
+  var tries = React.useRef(0);
+  function set(id, v) { setSt(function (o) { var n = Object.assign({}, o); n[id] = Object.assign({}, o[id], v); return n; }); }
+  function run(id, then) { set(id, { state: 'pending', busy: then.busy }); setTimeout(function () { set(id, then.next()); }, 900); }
+  function open(id) { return function (e) { e.preventDefault(); setCur(id); if (st[id].state === 'new') set(id, { state: 'idle' }); }; }
+  var waiting = ['diff', 'grant', 'cert'].filter(function (id) { return st[id].state !== 'resolved'; }).length;
+  function row(id, p) {
+    var x = st[id];
+    return h(I.Item, Object.assign({ key: id, href: '#request-' + id, onClick: open(id), current: cur === id, unread: x.state === 'new', resolved: x.state === 'resolved' }, p(x)));
+  }
+  return h('div', { className: 'ifs-stack', style: { gap: 12, maxWidth: 720 } },
+    h(I.List, { title: 'Needs you', actionsPlacement: 'below', action: h('span', { style: { fontVariantNumeric: 'tabular-nums' } }, waiting ? waiting + ' waiting' : 'All clear'),
+        footer: h(B, { variant: 'link', size: 'sm' }, 'View history') },
+      row('diff', function (x) {
+        return x.state === 'resolved'
+          ? { icon: 'key', title: [k('stripe_api_key'), ' change approved'], description: 'Applied to production at 10:32.', meta: 'now', actions: h(B, { size: 'sm', variant: 'link', onClick: function () { set('diff', { state: 'idle' }); } }, 'Undo') }
+          : { icon: 'key', title: [k('stripe_api_key'), ' changed in production'], description: 'Jadden wants to update the value. Needs one approval under prod-changes.', meta: '2m',
+              actions: [h(B, { key: 1, size: 'sm' }, 'View diff'), h(B, { key: 2, size: 'sm', variant: 'primary', loading: x.state === 'pending', onClick: function () { run('diff', { next: function () { return { state: 'resolved' }; } }); } }, x.state === 'pending' ? 'Approving' : 'Approve')] };
+      }),
+      row('grant', function (x) {
+        return x.state === 'resolved'
+          ? { icon: 'agent', title: ['Granted ', k('datadog_api_key'), ' to on-call-agent'], description: 'Read only until 11:46. The agent never sees the key.', meta: 'now', actions: h(B, { size: 'sm', variant: 'link', onClick: function () { set('grant', { state: 'idle' }); } }, 'Revoke') }
+          : { icon: 'agent', title: ['on-call-agent wants ', k('datadog_api_key')], description: 'Read only for 1 hour. The agent never sees the key.', meta: '14m',
+              actions: [h(B, { key: 1, size: 'sm', disabled: x.state === 'pending' }, 'Deny'), h(B, { key: 2, size: 'sm', variant: 'accent', loading: x.state === 'pending', onClick: function () { run('grant', { next: function () { return { state: 'resolved' }; } }); } }, x.state === 'pending' ? 'Granting' : 'Grant for 1 hour')] };
+      }),
+      row('cert', function (x) {
+        if (x.state === 'resolved') return { icon: 'cert', title: [k('vault.internal'), ' renewal requested'], description: 'Replaces the current certificate when issued.', meta: 'now', actions: h(B, { size: 'sm', variant: 'link', onClick: function () { set('cert', { state: 'idle', error: null }); } }, 'Undo') };
+        var failed = x.state === 'failed';
+        return { icon: 'cert', tone: failed ? 'bad' : 'warn', title: [k('vault.internal'), ' expires in 12 days'], description: 'Auto-renew is off for this certificate.', meta: '1h',
+          error: failed ? 'Renewal failed. The ACME account key expired on Sep 23. Update it, then retry.' : null,
+          actions: h(B, { size: 'sm', loading: x.state === 'pending', onClick: function () { tries.current += 1; var n = tries.current; run('cert', { next: function () { return n === 1 ? { state: 'failed' } : { state: 'resolved' }; } }); } },
+            x.state === 'pending' ? 'Renewing' : failed ? 'Retry' : 'Renew now') };
+      }),
+      row('sync', function () {
+        return { icon: 'sync', tone: 'ok', title: 'Sync to Vercel restored', description: 'Reconnected by Sarah Lin. 14 secrets synced.', meta: '09:40' };
+      })),
+    h('p', { style: { margin: 0, fontSize: 12.5, lineHeight: '18px', color: 'var(--muted)' } }, cur ? h('span', { 'aria-live': 'polite' }, 'Opened request ', h('span', { className: 'ifs-mono' }, cur), '. ') : null,
+      'Approve or grant to see a request go pending, then resolve in place with undo. Renew now fails once, then succeeds on retry.'));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

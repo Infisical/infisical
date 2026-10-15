@@ -1,0 +1,25 @@
+<!-- @dsCard group="Overlays" height=501 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Dialog</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+function Demo() {
+  var s = React.useState(true), open = s[0], setOpen = s[1];
+  function close() { setOpen(false); }
+  return h('div', { style: { minHeight: 480 } }, h(I.Button, { variant: 'primary', icon: 'plus', onClick: function () { setOpen(true); } }, 'Add secret'),
+    h(I.Dialog, { open: open, onOpenChange: setOpen, title: 'Add secret', description: 'Adds the secret to the environments you pick. Production changes wait for approval.',
+      footer: [h(I.Button, { key: 1, onClick: close }, 'Cancel'), h(I.Button, { key: 2, variant: 'primary', onClick: close }, 'Add secret')] },
+      h(I.Field, { label: 'Key', description: 'Uppercase letters, numbers and underscores.' }, h(I.Input, { mono: true, defaultValue: 'STRIPE_WEBHOOK_SECRET' })),
+      h(I.Field, { label: 'Value' }, h(I.SecretInput, { value: 'whsec_demo_7f3a9Kc2Acme' })),
+      h(I.Field, { label: 'Environments', group: true }, h('div', { className: 'ifs-row', style: { gap: 20 } }, h(I.Checkbox, { label: 'Development', defaultChecked: true }), h(I.Checkbox, { label: 'Staging', defaultChecked: true }), h(I.Checkbox, { label: 'Production' })))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

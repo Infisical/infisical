@@ -1,0 +1,54 @@
+<!-- @dsCard group="Patterns" height=500 page subtitle="Who can reach a project: rows open a member, multiple selection with a bulk bar, a locked owner" -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>AccessList</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function k(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+var PEOPLE = [
+  { id: 'jadden', name: 'Jadden', kind: 'person', role: 'Owner', desc: 'Owner. Transfer ownership to remove.', used: '2m', owner: true },
+  { id: 'sarah', name: 'Sarah Lin', kind: 'person', role: 'Admin', desc: 'Added Sep 2 by Jadden', used: '1h' },
+  { id: 'gha', name: 'github-actions', kind: 'machine', role: 'Read', desc: 'Machine identity, OIDC', used: '10:30' },
+  { id: 'agent', name: 'on-call-agent', kind: 'agent', role: 'Read, 1 hour', desc: 'Granted by Sarah Lin, until 11:46', used: '10:14' },
+  { id: 'james', name: 'James Okoro', kind: 'person', role: 'Write', desc: 'Added Aug 19 by Sarah Lin', used: 'Sep 24' },
+];
+function Demo() {
+  var B = I.Button;
+  var m = React.useState(PEOPLE), members = m[0], setMembers = m[1];
+  var s = React.useState([]), sel = s[0], setSel = s[1];
+  var c = React.useState('sarah'), cur = c[0], setCur = c[1];
+  var n = React.useState(null), notice = n[0], setNotice = n[1];
+  function revoke(ids) {
+    var before = members;
+    setMembers(members.filter(function (p) { return ids.indexOf(p.id) < 0; })); setSel([]);
+    setNotice({ n: ids.length, undo: function () { setMembers(before); setNotice(null); } });
+  }
+  function menu(p) {
+    return h(I.DropdownMenu, { align: 'end', width: 200, label: 'Actions for ' + p.name,
+      trigger: h(B, { variant: 'ghost', size: 'sm', icon: 'more', iconOnly: true, 'aria-label': 'Actions for ' + p.name, disabled: p.owner }),
+      items: [{ label: 'Change role', icon: 'user' }, { label: 'View activity', icon: 'history' }, { type: 'separator' }, { label: 'Revoke access', icon: 'trash', danger: true, onSelect: function () { revoke([p.id]); } }] });
+  }
+  var bar = sel.length
+    ? h('div', { className: 'ifs-row', style: { gap: 12, height: 36, flexWrap: 'nowrap' } },
+        h('span', { style: { fontWeight: 600, whiteSpace: 'nowrap' } }, sel.length + ' selected'), h(B, { variant: 'link', size: 'sm', onClick: function () { setSel([]); } }, 'Clear'),
+        h('span', { style: { flexGrow: 1 } }), h(B, { variant: 'danger-ghost', size: 'sm', icon: 'trash', onClick: function () { revoke(sel); } }, 'Revoke access'))
+    : h('div', { className: 'ifs-row', style: { gap: 12, height: 36, flexWrap: 'nowrap' } },
+        h('span', { style: { fontSize: 13, color: 'var(--muted)' } }, members.length + ' with access to ', k('payments')), h('span', { style: { flexGrow: 1 } }), h(B, { size: 'sm', icon: 'plus', variant: 'primary' }, 'Add member'));
+  return h('div', { className: 'ifs-stack', style: { gap: 12, maxWidth: 720 } }, bar,
+    h(I.List, { title: 'Members', label: 'Members of payments', selection: 'multiple', selectedIds: sel, onSelectionChange: setSel,
+        empty: h(I.EmptyState, { variant: 'compact', icon: 'user', title: 'Nobody else can reach payments.' }) },
+      members.map(function (p) {
+        return h(I.Item, { key: p.id, value: p.id, selectable: !p.owner, href: '#member-' + p.id, onClick: function (e) { e.preventDefault(); setCur(p.id); }, current: cur === p.id,
+          media: h(I.Avatar, { kind: p.kind, name: p.kind === 'person' ? p.name : undefined, label: p.name, size: 32 }),
+          title: p.kind === 'person' ? p.name : k(p.name), badge: h(I.Badge, { tone: p.owner ? 'solid' : 'soft', size: 'sm' }, p.role),
+          description: p.desc, meta: p.used, actions: menu(p) });
+      })),
+    notice ? h('div', { className: 'ifs-row', role: 'status', style: { gap: 10, fontSize: 13 } }, 'Revoked access for ' + notice.n + (notice.n === 1 ? ' member.' : ' members.'), h(B, { variant: 'link', size: 'sm', onClick: notice.undo }, 'Undo')) : null);
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

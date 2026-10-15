@@ -1,0 +1,33 @@
+<!-- @dsCard group="Actions" height=698 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>DropdownMenu</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+function Demo() {
+  var B = I.Button;
+  var s = React.useState({ owner: true, updated: true, envs: false }), cols = s[0], setCols = s[1];
+  var d = React.useState('name'), density = d[0], setDensity = d[1];
+  function flip(k) { return function () { var n = Object.assign({}, cols); n[k] = !n[k]; setCols(n); }; }
+  // one per row; each open menu gets its own room so it never covers the next example
+  return h('div', { className: 'ifs-stack', style: { gap: 24 } },
+    h('div', { className: 'ifs-stack', style: { gap: 8, paddingBottom: 268 } }, cap('Actions on a secret'),
+      h(I.DropdownMenu, { defaultOpen: true, label: 'Secret actions', trigger: h(B, { variant: 'ghost', icon: 'more', iconOnly: true, 'aria-label': 'Actions for stripe_api_key' }),
+        items: [{ label: 'Copy value', icon: 'copy', shortcut: '\u2318C' }, { label: 'Reveal value', icon: 'eye', shortcut: '\u2318R' }, { label: 'View history', icon: 'history' },
+          { type: 'separator' }, { label: 'Move to folder', icon: 'folder', submenu: true }, { label: 'Create reference', icon: 'link' }, { label: 'Sync now', icon: 'sync', disabled: true },
+          { type: 'separator' }, { label: 'Delete secret', icon: 'trash', danger: true }] })),
+    h('div', { className: 'ifs-stack', style: { gap: 8, paddingBottom: 250 } }, cap('Settings that stay open'),
+      h(I.DropdownMenu, { defaultOpen: true, label: 'Table view', width: 208, trigger: h(B, { size: 'sm', icon: 'settings' }, 'View'),
+        items: [{ type: 'label', label: 'Columns' }, { type: 'checkbox', label: 'Owner', checked: cols.owner, onSelect: flip('owner') }, { type: 'checkbox', label: 'Updated', checked: cols.updated, onSelect: flip('updated') },
+          { type: 'checkbox', label: 'Environments', checked: cols.envs, onSelect: flip('envs') }, { type: 'separator' }, { type: 'label', label: 'Sort by' },
+          { type: 'radio', label: 'Name', checked: density === 'name', onSelect: function () { setDensity('name'); } }, { type: 'radio', label: 'Last updated', checked: density === 'updated', onSelect: function () { setDensity('updated'); } }] })));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

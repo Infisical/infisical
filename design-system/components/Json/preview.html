@@ -1,0 +1,33 @@
+<!-- @dsCard group="Code" height=703 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Json</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function cell(t, node) { return h('div', { className: 'ifs-stack', style: { gap: 8, minWidth: 0 } }, cap(t), node); }
+
+var event = {
+  id: 'evt_8f2c41', event: 'secret.updated', createdAt: '2026-09-24T10:30:12Z',
+  actor: { type: 'user', name: 'Sarah Lin', email: 'sarah@acme.dev' },
+  project: 'acme-platform', environment: 'prod',
+  secret: { key: 'STRIPE_WEBHOOK_SECRET', path: '/payments', version: 15, value: 'whsec_demo_9f2Kd8Qa7Lm', tags: ['payments', 'rotating'] },
+  approval: { policy: 'prod-changes', required: 1, approvedBy: ['James Okoro'] },
+  ip: '203.0.113.24', userAgent: 'infisical-cli/0.31.1',
+};
+var sync = { integration: 'vercel', project: 'acme-web', targets: ['production', 'preview'], secrets: 14, lastSync: { at: '2026-09-24T10:30:00Z', ok: true, durationMs: 812 }, retries: null };
+function Demo() {
+  var s = React.useState(2), depth = s[0], setDepth = s[1];
+  var all = depth > 2;
+  var toggle = h(I.Button, { variant: 'ghost', size: 'sm', onClick: function () { setDepth(all ? 2 : 99); } }, all ? 'Collapse' : 'Expand all');
+  return h('div', { className: 'ifs-stack', style: { gap: 24, maxWidth: 560 } },
+    cell('In a CodeBlock; the secret value is redacted, on screen and when copied', h(I.CodeBlock, { label: 'evt_8f2c41.json', icon: 'file', actions: toggle },
+      h(I.Json, { key: depth, value: event, defaultExpandDepth: depth, redact: ['value'], maxLines: 16, label: 'Audit event evt_8f2c41' }))),
+    cell('Bare, one level open', h('div', { style: { border: '1px solid var(--line)' } }, h(I.Json, { value: sync, defaultExpandDepth: 1, label: 'Vercel sync' }))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

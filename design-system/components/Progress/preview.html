@@ -1,0 +1,23 @@
+<!-- @dsCard group="Feedback" height=220 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Progress</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+function Demo() {
+  return h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '26px 40px' } },
+    h(I.Progress, { label: 'Syncing to GitHub Actions', valueLabel: '9 of 14', value: 9, max: 14 }),
+    h(I.Progress, { label: 'Checking 412 secrets for leaks', valueLabel: 'About 1 min' }),
+    h(I.Progress, { label: 'Secrets', valueLabel: '412 of 500', value: 412, max: 500, tone: 'auto' }),
+    h(I.Progress, { label: 'Agent calls today', valueLabel: '10,400 of 10,000, over', value: 10400, max: 10000, tone: 'auto' }),
+    h('div', { style: { gridColumn: '1 / -1' } }, h(I.ProgressSteps, { label: 'Rotating stripe_api_key', steps: ['Generate', 'Propagate', 'Verify', 'Revoke old'], current: 2 })));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

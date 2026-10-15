@@ -1,0 +1,58 @@
+<!-- @dsCard group="Navigation" height=922 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>FileTree</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function cell(t, node) { return h('div', { className: 'ifs-stack', style: { gap: 8, minWidth: 0 } }, cap(t), node); }
+function keys(n) { return n + ' keys'; }
+
+var repo = [
+  { id: 'gh', name: '.github', children: [{ id: 'gh/wf', name: 'workflows', children: [{ id: 'gh/wf/deploy', name: 'deploy.yml' }, { id: 'gh/wf/ci', name: 'ci.yml' }] }] },
+  { id: 'apps', name: 'apps', children: [
+    { id: 'apps/api', name: 'api', children: [{ id: 'apps/api/env', name: '.env.example', icon: 'key', meta: keys(9) }, { id: 'apps/api/main', name: 'main.go' }] },
+    { id: 'apps/web', name: 'web', children: [
+      { id: 'apps/web/env', name: '.env.production', icon: 'key', meta: keys(12) },
+      { id: 'apps/web/flags', name: 'feature-flags.production.override.json' },
+      { id: 'apps/web/next', name: 'next.config.mjs' }] }] },
+  { id: 'infra', name: 'infra', children: [{ id: 'infra/main', name: 'main.tf' }, { id: 'infra/vars', name: 'variables.tf' }] },
+  { id: 'k8s', name: 'k8s', children: [{ id: 'k8s/secret', name: 'infisical-secret.yaml' }] },
+  { id: 'readme', name: 'README.md' },
+];
+var folders = [
+  { id: '/', name: '/', children: [
+    { id: '/payments', name: 'payments', children: [
+      { id: '/payments/stripe', name: 'stripe', children: [
+        { id: '/payments/stripe/webhooks', name: 'webhooks', children: [{ id: '/payments/stripe/webhooks/checkout-session-completed-legacy', name: 'checkout-session-completed-legacy', children: [] }] },
+        { id: '/payments/stripe/connect', name: 'connect', children: [] }] },
+      { id: '/payments/adyen', name: 'adyen', children: [] }] },
+    { id: '/web', name: 'web', children: [{ id: '/web/preview', name: 'preview', children: [] }] },
+    { id: '/billing', name: 'billing', children: [] },
+    { id: '/infra', name: 'infra', children: [{ id: '/infra/terraform', name: 'terraform', children: [] }, { id: '/infra/kubernetes', name: 'kubernetes', children: [] }] },
+    { id: '/shared', name: 'shared', children: [], disabled: true, label: 'shared, read only' }] },
+];
+function Demo() {
+  var s = React.useState('apps/web/env'), file = s[0], setFile = s[1];
+  var d = React.useState('/payments/stripe/webhooks'), dest = d[0], setDest = d[1];
+  return h('div', { className: 'ifs-stack', style: { gap: 28, maxWidth: 440 } },
+    cell('In a card', h(I.Card, { title: 'Repository files', action: h('span', { className: 'ifs-mono', style: { fontSize: 12 } }, 'acme/platform@main'), flush: true },
+      h(I.FileTree, { label: 'Files in acme/platform', items: repo, defaultExpanded: ['apps', 'apps/web', 'gh'], selected: file, onSelect: function (id) { setFile(id); }, selectable: 'files' }))),
+    cell('In a popover, where space is short', h('div', { style: { paddingBottom: 356 } },
+      h(I.Popover, { defaultOpen: true, width: 288, title: h('span', null, 'Move ', h('span', { className: 'ifs-mono' }, 'stripe_api_key')), trigger: h(I.Button, { icon: 'folder' }, 'Move to folder') },
+        function (api) {
+          return [
+            h('div', { key: 't', style: { margin: '0 -8px', borderTop: '1px solid var(--line-soft)', borderBottom: '1px solid var(--line-soft)' } },
+              h(I.FileTree, { label: 'Folders in production', size: 'sm', maxHeight: 196, foldersOnly: true, items: folders, selectable: 'folders',
+                defaultExpanded: ['/', '/payments', '/payments/stripe', '/payments/stripe/webhooks'], selected: dest, onSelect: function (id) { setDest(id); } })),
+            h('div', { key: 'p', className: 'ifs-row', style: { gap: 6, flexWrap: 'nowrap', fontSize: 12.5, color: 'var(--muted)' } }, 'To', h(I.MiddleTruncate, { mono: true, keepEnd: 20, style: { color: 'var(--ink)' } }, dest)),
+            h('div', { key: 'a', className: 'ifs-popover__footer' }, h(I.Button, { size: 'sm', onClick: api.close }, 'Cancel'), h(I.Button, { size: 'sm', variant: 'primary', onClick: api.close }, 'Move here')),
+          ];
+        }))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

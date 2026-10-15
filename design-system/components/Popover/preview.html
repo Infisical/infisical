@@ -1,0 +1,26 @@
+<!-- @dsCard group="Overlays" height=310 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Popover</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+function Demo() {
+  return h('div', { className: 'ifs-row', style: { alignItems: 'flex-start' } },
+    h(I.Popover, { defaultOpen: true, title: 'Rotation schedule', description: 'stripe_api_key rotates at 02:00 UTC.', trigger: h(I.Button, { icon: 'clock' }, 'Every 30 days') },
+      function (api) {
+        return [
+          h(I.Field, { key: 'f', label: 'Rotate every' }, h(I.Select, { defaultValue: '30', options: [{ value: '7', label: '7 days' }, { value: '30', label: '30 days' }, { value: '90', label: '90 days' }] })),
+          h(I.Checkbox, { key: 'c', label: 'Notify prod-changes', defaultChecked: true }),
+          h('div', { key: 'a', className: 'ifs-popover__footer' }, h(I.Button, { size: 'sm', onClick: api.close }, 'Cancel'), h(I.Button, { size: 'sm', variant: 'primary', onClick: api.close }, 'Save')),
+        ];
+      }));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!-- @dsCard group="Composites" height=770 subtitle="The app's navigation: collapse, search and invite at the top, a Home / Organization switch, counts, a group of pages, and one button for you, the organization and the theme; collapses to a rail" -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Sidebar</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+
+var SPACES = [
+  { id: 'home', label: 'Home', icon: 'apps', sections: [
+    { items: [
+      { id: 'home', label: 'Home', icon: 'home', href: '#home' },
+      { id: 'inbox', label: 'Needs you', icon: 'inbox', href: '#inbox', count: 4 }] },
+    { id: 'products', label: 'Products', items: [
+      { id: 'secrets', label: 'Secrets', icon: 'key', children: [
+        { id: 'secrets-overview', label: 'Overview', href: '#secrets' },
+        { id: 'secrets-integrations', label: 'Integrations', href: '#integrations' },
+        { id: 'secrets-rotation', label: 'Rotation', href: '#rotation' },
+        { id: 'secrets-approvals', label: 'Approvals', href: '#approvals', count: 2 },
+        { id: 'secrets-scanning', label: 'Secret scanning', href: '#scanning', count: 1 }] },
+      { id: 'certs', label: 'Certificates', icon: 'cert', href: '#certs' },
+      { id: 'ssh', label: 'SSH', icon: 'terminal', href: '#ssh' },
+      { id: 'kms', label: 'KMS', icon: 'lock', href: '#kms' }] }] },
+  { id: 'org', label: 'Organization', icon: 'building', sections: [
+    { items: [
+      { id: 'integrations', label: 'Integrations', icon: 'link', href: '#org-integrations' },
+      { id: 'access', label: 'Access', icon: 'user', children: [
+        { id: 'access-members', label: 'Members', href: '#members' },
+        { id: 'access-identities', label: 'Machine identities', href: '#identities' },
+        { id: 'access-roles', label: 'Roles', href: '#roles' }] },
+      { id: 'audit', label: 'Audit logs', icon: 'history', href: '#audit' },
+      { id: 'billing', label: 'Billing', icon: 'file', href: '#billing' },
+      { id: 'settings', label: 'Settings', icon: 'settings', href: '#settings' }] }] },
+];
+var SECTIONS = [].concat.apply([], SPACES.map(function (x) { return x.sections; }));
+var ORGS = [
+  { value: 'acme', label: 'Acme Corp', media: h(I.Avatar, { kind: 'org', name: 'Acme Corp', size: 20 }), meta: 'Enterprise' },
+  { value: 'globex', label: 'Globex', media: h(I.Avatar, { kind: 'org', name: 'Globex', size: 20 }), meta: 'Pro' },
+  { value: 'initech', label: 'Initech', media: h(I.Avatar, { kind: 'org', name: 'Initech', size: 20 }), meta: 'Free' }];
+var PLAN = { acme: 'Enterprise', globex: 'Pro', initech: 'Free' };
+var NAME = { acme: 'Acme Corp', globex: 'Globex', initech: 'Initech' };
+function labelOf(id) {
+  var found = null;
+  function walk(items) { items.forEach(function (it) { if (it.id === id) found = it.label; if (it.children) walk(it.children); }); }
+  SECTIONS.forEach(function (s) { walk(s.items); });
+  return found || id;
+}
+
+function Nav(p) {
+  var c = React.useState(p.start || 'secrets-overview'), cur = c[0], setCur = c[1];
+  var o = React.useState('acme'), org = o[0], setOrg = o[1];
+  var w = React.useState(3), unseen = w[0], setUnseen = w[1];
+  var t = React.useState('system'), theme = t[0], setTheme = t[1];
+  function nav(it, e) { if (e && e.preventDefault) e.preventDefault(); setCur(it.id); if (p.say) p.say('Opened ' + (typeof it.label === 'string' ? it.label : it.id)); }
+  var cmdItems = [];
+  SECTIONS.forEach(function (s) { s.items.forEach(function (it) { (it.children || [it]).forEach(function (x) { cmdItems.push({ id: x.id, label: it.children ? it.label + ': ' + x.label : x.label, icon: it.icon, onSelect: function () { nav(x); } }); }); }); });
+  return h('div', { style: { height: p.height || 640, display: 'flex' } },
+    h(I.Sidebar, {
+      spaces: SPACES, current: cur, onNavigate: nav, defaultCollapsed: p.collapsed,
+      org: { name: NAME[org], plan: PLAN[org], options: ORGS, value: org, onChange: function (v) { setOrg(v); if (p.say) p.say('Switched to ' + NAME[v]); },
+        actions: [{ label: 'Create organization', icon: 'plus' }] },
+      search: { onClick: function () { p.openSearch(cmdItems); } },
+      invite: { onClick: function () { if (p.say) p.say('Opened Invite members'); } },
+      footerItems: [
+        { id: 'whatsnew', label: "What's new", icon: 'megaphone', count: unseen || null, onClick: function () { setUnseen(0); if (p.say) p.say("Opened What's new"); } },
+        { id: 'docs', label: 'Docs', icon: 'file', href: '#docs', external: true }],
+      theme: { value: theme, onChange: function (v) { setTheme(v); if (p.say) p.say('Theme: ' + v); } },
+      user: { name: 'Jadden', email: 'jadden@acme.dev', onClick: function () { if (p.say) p.say('Opened Personal settings'); }, items: [
+        { label: 'Sign out', onSelect: function () { if (p.say) p.say('Signed out'); } }] },
+    }));
+}
+
+function Demo() {
+  var m = React.useState(''), msg = m[0], setMsg = m[1];
+  var s = React.useState(null), cmd = s[0], setCmd = s[1];
+  return h('div', { className: 'ifs-stack', style: { gap: 12 } },
+    h('div', { className: 'ifs-row', style: { gap: 16, alignItems: 'flex-start', flexWrap: 'nowrap' } },
+      h('div', { className: 'ifs-stack', style: { gap: 8 } }, cap('Expanded, 224px'), h(Nav, { say: setMsg, openSearch: setCmd })),
+      h('div', { className: 'ifs-stack', style: { gap: 8 } }, cap('Rail'), h(Nav, { say: setMsg, openSearch: setCmd, collapsed: true, start: 'secrets-approvals' }))),
+    h('p', { role: 'status', style: { margin: 0, minHeight: 18, fontSize: 12.5, lineHeight: '18px', color: 'var(--muted)' } }, msg ? msg + '.' : 'Switch between Home and Organization, open Secrets, collapse either one from the top. The button at the bottom holds the organization, the theme and you.'),
+    h(I.CommandMenu, { open: !!cmd, onOpenChange: function (v) { if (!v) setCmd(null); }, hotkey: false, groups: [{ label: 'Go to', items: cmd || [] }] }));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

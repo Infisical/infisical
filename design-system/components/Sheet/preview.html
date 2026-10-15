@@ -1,0 +1,33 @@
+<!-- @dsCard group="Overlays" height=600 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Sheet</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+function Demo() {
+  var s = React.useState(true), open = s[0], setOpen = s[1];
+  var B = I.Button;
+  function close() { setOpen(false); }
+  function ver(v, who, when, cur) {
+    return h('div', { className: 'ifs-row', style: { gap: 10, height: 40, borderTop: v === 'v15' ? 0 : '1px solid var(--line-soft)', flexWrap: 'nowrap' } },
+      h('span', { className: 'ifs-mono', style: { fontSize: 12.5, fontWeight: 600 } }, v), h(I.Avatar, { name: who, size: 20 }), h('span', { style: { fontSize: 13.5 } }, who), h('span', { style: { fontSize: 13, color: 'var(--muted)' } }, when),
+      h('span', { style: { marginLeft: 'auto', display: 'inline-flex' } }, cur ? h(I.Badge, { tone: 'soft', size: 'sm' }, 'Current') : h(B, { variant: 'link', size: 'sm' }, 'Restore')));
+  }
+  return h('div', { style: { minHeight: 580 } }, h(B, { icon: 'key', onClick: function () { setOpen(true); } }, 'Open stripe_api_key'),
+    h(I.Sheet, { open: open, onOpenChange: setOpen, eyebrow: 'Secret', title: 'stripe_api_key', monoTitle: true,
+      meta: [h(I.Badge, { key: 1, tone: 'solid', size: 'sm', mono: true }, 'prod'), h(I.Badge, { key: 2, tone: 'ok', size: 'sm', dot: true }, 'Synced'), h(I.Badge, { key: 3, tone: 'soft', size: 'sm', mono: true }, 'v15')],
+      actions: h(B, { variant: 'ghost', size: 'sm', icon: 'more', iconOnly: true, 'aria-label': 'More actions' }),
+      footer: [h(B, { key: 1, variant: 'danger-ghost', icon: 'trash' }, 'Delete'), h('div', { key: 2, className: 'ifs-sheet__footer-end' }, h(B, { onClick: close }, 'Cancel'), h(B, { variant: 'primary', onClick: close }, 'Save changes'))] },
+      h(I.Field, { label: 'Value' }, h(I.SecretInput, { value: 'sk_demo_51Hc9dAcmeK2mQx7Rw' })),
+      h(I.DataList, { variant: 'props', items: [['Environment', h('span', { className: 'ifs-mono', style: { fontSize: 12.5 } }, 'production')], ['Updated', 'Sep 24, 10:30 by Jadden'], ['Rotation', 'Every 30 days, next Oct 2'], ['Syncs to', 'Vercel, GitHub Actions']] }),
+      h('div', { className: 'ifs-stack', style: { gap: 6 } }, h('span', { style: { fontSize: 13, lineHeight: '18px', fontWeight: 600 } }, 'Versions'), h('div', null, ver('v15', 'Jadden', 'Sep 24', true), ver('v14', 'Sarah Lin', 'Sep 2')))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

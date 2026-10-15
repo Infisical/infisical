@@ -1,0 +1,38 @@
+<!-- @dsCard group="Feedback" height=270 subtitle="Inline, base and page" -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Spinner</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+function cell(t, node, extra) { return h('div', { className: 'ifs-stack', style: Object.assign({ gap: 10 }, extra) }, cap(t), node); }
+// The inline Spinner's four steps, drawn still at 3x: each pixel steps 6, 4, 2px and the pair always adds up to 8.
+function Frame(p) {
+  function px(c, s) { var o = c + (8 - s) / 2; return h('rect', { x: o, y: (8 - s) / 2, width: s, height: s }); }
+  return h('div', { className: 'ifs-stack', style: { gap: 6, alignItems: 'center' } },
+    h('svg', { width: 48, height: 24, viewBox: '0 0 16 8', 'aria-hidden': true, style: { display: 'block', fill: 'currentColor', shapeRendering: 'crispEdges' } }, px(0, p.a), px(8, p.b)),
+    h('span', { className: 'ifs-mono', style: { fontSize: 11, lineHeight: '14px', color: 'var(--muted)' } }, p.t));
+}
+
+function Demo() {
+  var B = I.Button;
+  return h('div', { className: 'ifs-stack', style: { gap: 26 } },
+    h('div', { className: 'ifs-row', style: { gap: 48, alignItems: 'flex-start' } },
+      cell('Inline, 16 by 8', h('div', { style: { height: 24, display: 'flex', alignItems: 'center' } }, h(I.Spinner, { label: 'Loading' }))),
+      cell('Two pixels trade size, 1.2s', h('div', { className: 'ifs-row', style: { gap: 18, color: 'var(--ink)' } },
+        h(Frame, { a: 6, b: 2, t: '0.4s' }), h(Frame, { a: 4, b: 4, t: '0.2s' }), h(Frame, { a: 2, b: 6, t: '0.4s' }), h(Frame, { a: 4, b: 4, t: '0.2s' }))),
+      cell('Base, 47 by 23', h('div', { style: { height: 24, display: 'flex', alignItems: 'center' } }, h(I.Spinner, { size: 'base', label: 'Loading' }))),
+      cell('Page, 159 by 79, assembles once', h(I.Spinner, { size: 'page', label: 'Loading' }))),
+    h('div', { className: 'ifs-row', style: { gap: 48, alignItems: 'flex-start' } },
+      cell('Inline status, as a Loader', h('span', { style: { fontSize: 13.5, lineHeight: '20px', color: 'var(--text2)' } }, h(I.Loader, { size: 'inline', label: 'Syncing 14 secrets' }))),
+      cell('In a toast', h('div', { style: { width: 280 } }, h(I.Toast, { loading: true, title: 'Syncing 14 secrets', description: 'To Vercel and GitHub Actions.' }))),
+      cell('Link button', h(B, { variant: 'link', loading: true }, 'Retrying sync')),
+      cell('On ink', h('span', { className: 'ifs-row', style: { gap: 8, height: 32, padding: '0 12px', background: 'var(--ink)', color: 'var(--on-ink)', fontSize: 13, fontWeight: 500 } }, h(I.Spinner, null), 'Connecting'))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

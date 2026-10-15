@@ -1,0 +1,45 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Infisical 2.0</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--surface); color: var(--ink); font-family: var(--font-sans); overflow: hidden; }
+  .cover { position: relative; width: 960px; height: 288px; overflow: hidden; }
+  .art { position: absolute; top: 0; left: 480px; width: 480px; height: 288px; }
+  .art svg { display: block; width: 480px; height: 288px; }
+  .slab { fill: var(--ink); }
+  .accent { fill: var(--accent); }
+  .band { fill: var(--control); }
+  .dot { fill: var(--sw-knob-on); rx: calc(var(--radius-xs) * var(--corners)); }
+  .blk { rx: calc(var(--radius-card) * var(--corners)); }
+  .words { position: absolute; left: var(--space-40); bottom: var(--space-32); max-width: 440px; }
+  .name { margin: 0; font-size: 104px; line-height: .95; font-weight: 500; letter-spacing: -0.03em; color: var(--ink); }
+  .tag { margin: var(--space-12) 0 0 2px; font-size: 14px; line-height: 20px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="cover">
+<div class="art" aria-hidden="true">
+<svg viewBox="480 0 480 288" width="480" height="288">
+<!--
+  blocks      ink 344x216 slab bled off the top and right (the near-black frame) . accent 96x96 satellite (the app tile, approvals) . control 344x40 band bled right (the borders) . about 35% of 960x288
+  arrangement one tall slab with a satellite and a strip; accent and band share a bottom edge; space-16 gutters between all three
+  pattern     a square dot grid, from "Geist Mono for everything a machine reads" and the 4px spacing grid: 32 dots, space-4 wide at a space-16 pitch, in sw-knob-on (the accent in light, black in dark) cut into the slab
+  scales      sides in space-8 multiples; gutters and pitch space-16; dots space-4; corners radius-card and radius-xs times corners, so square by default
+-->
+<rect class="slab blk" x="624" y="-8" width="344" height="216"/>
+<rect class="accent blk" x="512" y="168" width="96" height="96"/>
+<rect class="band blk" x="624" y="224" width="344" height="40"/>
+<rect class="dot" x="648" y="136" width="4" height="4"/><rect class="dot" x="664" y="136" width="4" height="4"/><rect class="dot" x="680" y="136" width="4" height="4"/><rect class="dot" x="696" y="136" width="4" height="4"/><rect class="dot" x="712" y="136" width="4" height="4"/><rect class="dot" x="728" y="136" width="4" height="4"/><rect class="dot" x="744" y="136" width="4" height="4"/><rect class="dot" x="760" y="136" width="4" height="4"/><rect class="dot" x="648" y="152" width="4" height="4"/><rect class="dot" x="664" y="152" width="4" height="4"/><rect class="dot" x="680" y="152" width="4" height="4"/><rect class="dot" x="696" y="152" width="4" height="4"/><rect class="dot" x="712" y="152" width="4" height="4"/><rect class="dot" x="728" y="152" width="4" height="4"/><rect class="dot" x="744" y="152" width="4" height="4"/><rect class="dot" x="760" y="152" width="4" height="4"/><rect class="dot" x="648" y="168" width="4" height="4"/><rect class="dot" x="664" y="168" width="4" height="4"/><rect class="dot" x="680" y="168" width="4" height="4"/><rect class="dot" x="696" y="168" width="4" height="4"/><rect class="dot" x="712" y="168" width="4" height="4"/><rect class="dot" x="728" y="168" width="4" height="4"/><rect class="dot" x="744" y="168" width="4" height="4"/><rect class="dot" x="760" y="168" width="4" height="4"/><rect class="dot" x="648" y="184" width="4" height="4"/><rect class="dot" x="664" y="184" width="4" height="4"/><rect class="dot" x="680" y="184" width="4" height="4"/><rect class="dot" x="696" y="184" width="4" height="4"/><rect class="dot" x="712" y="184" width="4" height="4"/><rect class="dot" x="728" y="184" width="4" height="4"/><rect class="dot" x="744" y="184" width="4" height="4"/><rect class="dot" x="760" y="184" width="4" height="4"/>
+</svg>
+</div>
+<div class="words">
+<h1 class="name">Infisical<br>2.0</h1>
+<p class="tag">A quiet, square interface for secrets, certificates and access.</p>
+</div>
+</div>
+</body>
+</html>

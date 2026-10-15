@@ -1,0 +1,28 @@
+<!-- @dsCard group="Forms" height=326 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Combobox</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+var envs = [
+  { value: 'production', label: 'production', meta: '412' }, { value: 'production-eu', label: 'production-eu', meta: '398' },
+  { value: 'staging', label: 'staging', meta: '402' }, { value: 'development', label: 'development', meta: '138' }, { value: 'qa-sandbox', label: 'qa-sandbox', meta: '51' },
+];
+function Demo() {
+  var o = React.useState(envs), opts = o[0], setOpts = o[1];
+  function create(q) { setOpts(opts.concat([{ value: q, label: q, meta: '0' }])); }
+  return h('div', { className: 'ifs-stack', style: { gap: 18, maxWidth: 440 } },
+    h('div', { className: 'ifs-stack', style: { gap: 6, paddingBottom: 150 } }, cap('Filter and create'),
+      h(I.Combobox, { options: opts, mono: true, defaultQuery: 'pro', defaultOpen: true, onCreate: create, placeholder: 'Find an environment', 'aria-label': 'Environment' })),
+    h('div', { className: 'ifs-stack', style: { gap: 6 } }, cap('Several at once'),
+      h(I.Combobox, { options: envs, multiple: true, mono: true, defaultValue: ['production', 'staging'], placeholder: 'Add environments', 'aria-label': 'Sync to environments' })));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!-- @dsCard group="Data display" height=1160 subtitle="Table editor with unsaved changes; read-only query result" -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>DataGrid</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+function Section(p) {
+  return h('section', { className: 'ifs-stack', style: { gap: 14 } },
+    h('div', { className: 'ifs-stack', style: { gap: 2 } },
+      h('h3', { style: { margin: 0, fontSize: 16, lineHeight: '22px', fontWeight: 600 } }, p.title),
+      h('p', { style: { margin: 0, fontSize: 13, lineHeight: '18px', color: 'var(--muted)', maxWidth: 640 } }, p.note)),
+    p.children);
+}
+function rnd(i, k) { var x = Math.imul((i + 1) * 2654435761 ^ (k + 1) * 40503, 0x85ebca6b) >>> 0; x ^= x >>> 13; x = Math.imul(x, 0xc2b2ae35) >>> 0; return (x ^ (x >>> 16)) >>> 0; }
+function hex(i, k, n) { var s = ''; while (s.length < n) { s += rnd(i, k + s.length).toString(16); } return s.slice(0, n); }
+function uuid(i) { var s = hex(i, 1, 32); return s.slice(0, 8) + '-' + s.slice(8, 12) + '-4' + s.slice(13, 16) + '-a' + s.slice(17, 20) + '-' + s.slice(20, 32); }
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+function stamp(t) { var d = new Date(t * 1000); return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()) + ' ' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds()) + '+00'; }
+
+/* ------------------------------------------------------------------ 1. Table editor */
+var KEYS = ['stripe_api_key', 'postgres_url', 'redis_password', 'datadog_api_key', 'sendgrid_api_key', 'session_signing_key', 'aws_access_key_id', 'github_app_private_key', 'jwt_signing_secret', 'twilio_auth_token', 'openai_api_key', 'sentry_dsn'];
+var ENVS = ['dev', 'staging', 'prod'];
+var WHO = ['sarah.lin', 'jadden', 'james.okoro', 'rotation-service', 'github-actions', 'priya.raman'];
+var NOW = Date.UTC(2026, 8, 24, 10, 30, 0) / 1000;
+function version(i) {
+  var r = rnd(i, 7), key = KEYS[r % KEYS.length], rot = (r >>> 5) % 3 === 0;
+  var created = NOW - i * 3607 - (r % 900);
+  var meta = (r >>> 9) % 4 === 0 ? null : (r >>> 9) % 4 === 1 ? { source: 'ui' } : (r >>> 9) % 4 === 2 ? { source: 'api', client: 'terraform', run: 'run-' + hex(i, 3, 8) } : { source: 'rotation', provider: 'stripe', window: '30d' };
+  return { id: uuid(i), secret_key: key, environment: ENVS[(r >>> 3) % 3], version: 1 + ((r >>> 11) % 40), value_sha256: hex(i, 9, 64), rotated: rot,
+    expires_at: rot ? stamp(created + 30 * 86400) : null, created_by: WHO[(r >>> 14) % WHO.length], metadata: meta, created_at: stamp(created) };
+}
+var BASE = []; for (var i = 0; i < 240; i++) BASE.push(version(i));
+var EDIT_COLS = [
+  { key: 'id', type: 'uuid', primaryKey: true, maxWidth: 124 },
+  { key: 'secret_key', type: 'text' },
+  { key: 'environment', type: 'text' },
+  { key: 'version', type: 'int4' },
+  { key: 'rotated', type: 'bool' },
+  { key: 'expires_at', type: 'timestamptz', nullable: true },
+  { key: 'metadata', type: 'jsonb', nullable: true, maxWidth: 220 },
+  { key: 'created_by', type: 'text' },
+  { key: 'value_sha256', type: 'text', maxWidth: 150, editable: false },
+  { key: 'created_at', type: 'timestamptz', editable: false },
+];
+function Editor() {
+  var B = I.Button;
+  var b0 = React.useState(BASE), base = b0[0], setBase = b0[1];
+  var e0 = React.useState({}), edits = e0[0], setEdits = e0[1];
+  var a0 = React.useState([]), added = a0[0], setAdded = a0[1];
+  var s0 = React.useState(null), sel = s0[0], setSel = s0[1];
+  var v0 = React.useState(false), saving = v0[0], setSaving = v0[1];
+  var n0 = React.useState(null), note = n0[0], setNote = n0[1];
+  var o0 = React.useState({ key: 'created_at', dir: 'desc' }), sort = o0[0], setSort = o0[1];
+  var c0 = React.useState(0), copied = c0[0], setCopied = c0[1], ct = React.useRef(0);
+  function onCopy(t, n) { setCopied(n); clearTimeout(ct.current); ct.current = setTimeout(function () { setCopied(0); }, 2400); }
+  var rows = base.concat(added).map(function (r) { return edits[r.id] ? Object.assign({}, r, edits[r.id]) : r; });
+  rows.sort(function (a, b) { if (a.__new !== b.__new) return a.__new ? 1 : -1; var x = a[sort.key], y = b[sort.key]; if (x == null) return 1; if (y == null) return -1; x = typeof x === 'object' ? JSON.stringify(x) : x; y = typeof y === 'object' ? JSON.stringify(y) : y; return (x < y ? -1 : x > y ? 1 : 0) * (sort.dir === 'asc' ? 1 : -1); });
+  var dirty = {};
+  Object.keys(edits).forEach(function (id) { dirty[id] = edits[id]; });
+  added.forEach(function (r) { dirty[r.id] = Object.assign({}, r); });
+  var count = Object.keys(edits).reduce(function (n, id) { return n + Object.keys(edits[id]).length; }, 0) + added.length;
+  function onChange(list) {
+    var next = Object.assign({}, edits);
+    list.forEach(function (c) {
+      var orig = base.filter(function (r) { return r.id === c.rowId; })[0];
+      if (!orig) { setAdded(function (cur) { return cur.map(function (r) { if (r.id !== c.rowId) return r; var n = Object.assign({}, r); n[c.key] = c.value; return n; }); }); return; }
+      var e = Object.assign({}, next[c.rowId]);
+      if (JSON.stringify(orig[c.key]) === JSON.stringify(c.value)) delete e[c.key]; else e[c.key] = c.value;
+      if (Object.keys(e).length) next[c.rowId] = e; else delete next[c.rowId];
+    });
+    setEdits(next); setNote(null);
+  }
+  function addRow() {
+    var i = 1000 + added.length;
+    setAdded(added.concat([{ id: uuid(i), __new: true, secret_key: 'new_secret', environment: 'dev', version: 1, value_sha256: hex(i, 9, 64), rotated: false, expires_at: null, created_by: 'jadden', metadata: null, created_at: stamp(NOW) }]));
+    setNote(null);
+  }
+  function discard() { setEdits({}); setAdded([]); }
+  function save() {
+    setSaving(true);
+    setTimeout(function () {
+      var n = count;
+      setBase(base.map(function (r) { return edits[r.id] ? Object.assign({}, r, edits[r.id]) : r; }).concat(added.map(function (r) { var c = Object.assign({}, r); delete c.__new; return c; })));
+      setEdits({}); setAdded([]); setSaving(false); setNote('Saved ' + n + (n === 1 ? ' change' : ' changes'));
+    }, 900);
+  }
+  function selLabel(sel) {
+    if (!sel) return 'No selection';
+    var r = sel.rows, c = sel.columns, nr = r[1] - r[0] + 1, nc = c[1] - c[0] + 1;
+    if (nr === rows.length && nc === EDIT_COLS.length) return 'All ' + nr + ' rows';
+    if (nc === EDIT_COLS.length) return nr === 1 ? 'Row ' + (r[0] + 1) : 'Rows ' + (r[0] + 1) + '–' + (r[1] + 1);
+    if (nr === rows.length) return nc === 1 ? EDIT_COLS[c[0]].key + ', every row' : nc + ' columns, every row';
+    if (nr === 1 && nc === 1) return EDIT_COLS[sel.active.column].key + ', row ' + (sel.active.row + 1);
+    return nr + ' × ' + nc + ' cells';
+  }
+  var selText = selLabel(sel);
+  var right = count
+    ? [h('span', { key: 'n', className: 'ifs-row', style: { gap: 8, fontSize: 13, color: 'var(--text2)' } }, h('span', { style: { width: 8, height: 8, background: 'var(--warn)', flexShrink: 0 } }), count + (count === 1 ? ' unsaved change' : ' unsaved changes')),
+      h(B, { key: 'd', variant: 'ghost', size: 'sm', onClick: discard, disabled: saving }, 'Discard'), h(B, { key: 's', variant: 'primary', size: 'sm', loading: saving, onClick: save }, 'Save changes')]
+    : [note ? h('span', { key: 'ok', className: 'ifs-row', style: { gap: 6, fontSize: 13, color: 'var(--ok)' } }, h(I.Icon, { name: 'check-c', size: 16 }), note) : null,
+      h(B, { key: 'a', size: 'sm', icon: 'plus', onClick: addRow }, 'Add row')];
+  return h('div', { className: 'ifs-stack', style: { gap: 10 } },
+    h('div', { className: 'ifs-row', style: { height: 32, gap: 12, flexWrap: 'nowrap' } },
+      h('span', { className: 'ifs-mono', style: { fontSize: 13, whiteSpace: 'nowrap' } }, h('span', { style: { color: 'var(--muted)' } }, 'public.'), 'secret_versions'),
+      h(I.Badge, { size: 'sm', tone: 'soft' }, rows.length + ' rows'),
+      h('span', { style: { flexGrow: 1 } }), right),
+    h(I.DataGrid, { label: 'public.secret_versions', columns: EDIT_COLS, rows: rows, editable: true, onCellsChange: onChange, dirty: dirty, height: 356, sort: sort, onSortChange: setSort, onSelectionChange: setSel,
+      onCopy: onCopy,
+      footer: [h('span', { key: 1 }, rows.length + ' rows'), h('span', { key: 2 }, selText), h('span', { key: 3, style: { marginLeft: 'auto' } }, copied ? 'Copied ' + copied + (copied === 1 ? ' cell' : ' cells') : 'Double-click or type to edit · ⌘C copies as TSV')] }));
+}
+
+/* ------------------------------------------------------------------ 2. Query result */
+var SQL = "select s.key, s.environment, count(*) as reads, count(distinct r.actor) as readers,\n       max(r.read_at) as last_read, percentile_cont(0.95) within group (order by r.ms) as p95_ms\nfrom secret_reads r join secrets s on s.id = r.secret_id\nwhere r.read_at > now() - interval '7 days'\ngroup by 1, 2 order by reads desc limit 8;";
+var RESULT = [
+  ['stripe_api_key', 'prod', 184203, 14, '2026-09-24 10:29:58+00', 3.4],
+  ['postgres_url', 'prod', 98412, 9, '2026-09-24 10:30:01+00', 2.1],
+  ['redis_password', 'prod', 61877, 6, '2026-09-24 10:29:44+00', 1.8],
+  ['datadog_api_key', 'prod', 20455, 22, '2026-09-24 10:27:12+00', 2.6],
+  ['stripe_api_key', 'staging', 8120, 11, '2026-09-24 09:58:30+00', 4.9],
+  ['session_signing_key', 'prod', 7302, 3, '2026-09-24 10:12:05+00', null],
+  ['sendgrid_api_key', 'prod', 2210, 2, '2026-09-23 22:41:19+00', 12.7],
+  ['openai_api_key', 'dev', 96, 1, '2026-09-20 16:03:44+00', null],
+].map(function (r, i) { return { id: 'q' + i, key: r[0], environment: r[1], reads: r[2], readers: r[3], last_read: r[4], p95_ms: r[5] }; });
+var Q_COLS = [
+  { key: 'key', type: 'text' },
+  { key: 'environment', type: 'text' },
+  { key: 'reads', type: 'int8', format: function (v) { return v == null ? null : v.toLocaleString('en-US'); } },
+  { key: 'readers', type: 'int8' },
+  { key: 'p95_ms', type: 'float8', nullable: true, format: function (v) { return v == null ? null : v.toFixed(1); } },
+  { key: 'last_read', type: 'timestamptz' },
+];
+function Query() {
+  return h('div', { className: 'ifs-stack', style: { gap: 10 } },
+    h('div', { style: { position: 'relative', background: 'var(--tint)', border: '1px solid var(--line)', padding: '12px 14px' } },
+      h('pre', { className: 'ifs-mono', style: { margin: 0, fontSize: 12.5, lineHeight: '19px', color: 'var(--text2)', whiteSpace: 'pre', overflowX: 'auto' } }, SQL)),
+    h(I.DataGrid, { label: 'Query result', columns: Q_COLS, rows: RESULT, footer: [h('span', { key: 1 }, '8 rows'), h('span', { key: 2 }, '42 ms'), h('span', { key: 3, style: { marginLeft: 'auto' } }, 'Read only')] }));
+}
+
+function Demo() {
+  return h('div', { className: 'ifs-stack', style: { gap: 32 } },
+    h(Section, { title: 'Table editor', note: 'Click a cell, drag or shift-click for a range, click a row number or a column name for the whole row or column. Arrows move, Enter or typing edits, Delete clears to NULL, and paste fills from the active cell. Edited cells hold until Save. Drag a column edge to resize; double-click it to fit.' }, h(Editor)),
+    h(I.Separator, { soft: true }),
+    h(Section, { title: 'Query result', note: 'Read only, no fixed height: the grid is as tall as its rows. NULL reads as NULL, numbers align right in tabular figures, and every column fits its widest value.' }, h(Query)));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

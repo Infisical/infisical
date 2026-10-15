@@ -1,0 +1,67 @@
+<!-- @dsCard group="Composites" height=512 subtitle="Product-level breadcrumb: the organization, project and environment you are in, each a switcher; search and tools on the right" -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>TopBar</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function tile(t) { return h(I.Media, { size: 20 }, t); }
+
+var ORGS = [
+  { value: 'acme', label: 'Acme Corp', media: h(I.Avatar, { kind: 'org', name: 'Acme Corp', size: 20 }), meta: 'Enterprise' },
+  { value: 'globex', label: 'Globex', media: h(I.Avatar, { kind: 'org', name: 'Globex', size: 20 }), meta: 'Pro' }];
+var PROJECTS = [
+  { value: 'acme-platform', label: 'acme-platform', mono: true, media: tile('AP'), meta: '412', metaMono: true, group: 'Secrets' },
+  { value: 'payments', label: 'payments', mono: true, media: tile('PA'), meta: '86', metaMono: true, group: 'Secrets' },
+  { value: 'data-pipeline', label: 'data-pipeline', mono: true, media: tile('DP'), meta: '140', metaMono: true, group: 'Secrets' },
+  { value: 'mobile-app', label: 'mobile-app', mono: true, media: tile('MA'), meta: '38', metaMono: true, group: 'Secrets' },
+  { value: 'edge-certs', label: 'edge-certs', mono: true, media: tile('EC'), meta: '24', metaMono: true, group: 'Certificates' },
+  { value: 'internal-pki', label: 'internal-pki', mono: true, media: tile('IP'), meta: '9', metaMono: true, group: 'Certificates' },
+  { value: 'ssh-bastion', label: 'ssh-bastion', mono: true, media: tile('SB'), meta: '3', metaMono: true, group: 'SSH' },
+  { value: 'build-kms', label: 'build-kms', mono: true, media: tile('BK'), meta: '12', metaMono: true, group: 'KMS' }];
+var ENVS = [
+  { value: 'dev', label: 'development', mono: true, media: h(I.EnvMark, { present: true }), meta: '402', metaMono: true },
+  { value: 'staging', label: 'staging', mono: true, media: h(I.EnvMark, { present: true }), meta: '402', metaMono: true },
+  { value: 'prod', label: 'production', mono: true, media: h(I.EnvMark, { present: true }), meta: '409', metaMono: true }];
+var ENV_LABEL = { dev: 'development', staging: 'staging', prod: 'production' };
+
+function Bar(p) {
+  var B = I.Button;
+  var o = React.useState('acme'), org = o[0], setOrg = o[1];
+  var pr = React.useState('acme-platform'), proj = pr[0], setProj = pr[1];
+  var e = React.useState('prod'), env = e[0], setEnv = e[1];
+  function find(list, v) { var f = null; list.forEach(function (x) { if (x.value === v) f = x; }); return f; }
+  var crumbs = [];
+  if (p.withOrg) crumbs.push({ label: find(ORGS, org).label, media: h(I.Avatar, { kind: 'org', name: find(ORGS, org).label, size: 20 }),
+    menu: { label: 'Switch organization', options: ORGS, value: org, onChange: setOrg, actions: [{ label: 'Create organization', icon: 'plus' }] } });
+  crumbs.push({ label: proj, mono: true, media: find(PROJECTS, proj).media,
+    menu: { label: 'Switch project', placeholder: 'Find a project', options: PROJECTS, value: proj, onChange: setProj, width: 300, actions: [{ label: 'Create project', icon: 'plus' }, { label: 'View all projects', icon: 'folder' }] } });
+  crumbs.push({ label: ENV_LABEL[env], mono: true, menu: { label: 'Switch environment', options: ENVS, value: env, onChange: setEnv, width: 240, actions: [{ label: 'Manage environments', icon: 'settings' }] } });
+  crumbs.push({ label: 'Secrets' });
+  return h(I.TopBar, { breadcrumb: crumbs,
+    actions: [
+      h(I.SearchTrigger, { key: 's', onClick: function () {} }),
+      h(I.Tooltip, { key: 'n', content: 'Notifications' }, h(B, { variant: 'ghost', size: 'sm', icon: 'bell', iconOnly: true, 'aria-label': 'Notifications, 2 unread' })),
+      h(I.DropdownMenu, { key: 'u', align: 'end', width: 200, label: 'Account', trigger: h('button', { type: 'button', className: 'ifs-iconbtn', style: { width: 32, height: 32 }, 'aria-label': 'Account' }, h(I.Avatar, { name: 'Jadden', size: 24 })),
+        items: [{ label: 'Profile', icon: 'user' }, { type: 'separator' }, { label: 'Sign out' }] })] });
+}
+
+function Demo() {
+  var w = React.useState('fit'), width = w[0], setWidth = w[1];
+  function frame(child) {
+    return h('div', { style: { width: width === 'fit' ? '100%' : width + 'px', maxWidth: '100%', border: '1px solid var(--line)', background: 'var(--inset)', transition: 'width var(--ifs-slide)', '--ifs-inset-pad': '24px' } },
+      child,
+      h('div', { style: { padding: '24px 24px 28px' } }, h(I.PageHeader, { size: 'md', title: 'Secrets', description: '412 secrets across 3 environments.' })));
+  }
+  return h('div', { className: 'ifs-stack', style: { gap: 18 } },
+    h('div', { className: 'ifs-row', style: { gap: 10 } }, cap('Width'),
+      h(I.Tabs, { variant: 'segmented', label: 'Preview width', value: width, onChange: setWidth, tabs: [{ value: 'fit', label: 'Fit' }, { value: '440', label: '440px' }, { value: '340', label: '340px' }] })),
+    h('div', { className: 'ifs-stack', style: { gap: 8 } }, cap('With no sidebar: organization, project, environment, page'), frame(h(Bar, { withOrg: true }))),
+    h('div', { className: 'ifs-stack', style: { gap: 8 } }, cap('Beside the sidebar, which holds the organization'), frame(h(Bar, null))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!-- @dsCard group="Forms" height=254 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Switch</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+function Demo() {
+  return h('div', { className: 'ifs-row', style: { gap: 56, alignItems: 'flex-start' } },
+    h('div', { className: 'ifs-stack', style: { gap: 10 } }, cap('States'),
+      h('div', { className: 'ifs-row', style: { gap: 16 } },
+        h(I.Switch, { 'aria-label': 'Off' }), h(I.Switch, { defaultChecked: true, 'aria-label': 'On' }),
+        h(I.Switch, { disabled: true, 'aria-label': 'Disabled off' }), h(I.Switch, { disabled: true, checked: true, 'aria-label': 'Disabled on' }),
+        h(I.Switch, { size: 'sm', defaultChecked: true, 'aria-label': 'Small on' })),
+      h('div', { style: { height: 6 } }), h(I.Switch, { label: 'Show values by default', defaultChecked: false })),
+    h('div', { className: 'ifs-stack', style: { gap: 0, width: 420 } }, cap('Settings rows, try it'),
+      h(I.Switch, { layout: 'row', label: 'Require approval for production', description: 'Changes wait for someone in prod-changes.', defaultChecked: true }),
+      h(I.Switch, { layout: 'row', label: 'Auto-renew certificates', description: 'Renews 30 days before expiry.' }),
+      h(I.Switch, { layout: 'row', label: 'Mask values in logs', description: 'Applies to the CLI and every integration.', defaultChecked: true })));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

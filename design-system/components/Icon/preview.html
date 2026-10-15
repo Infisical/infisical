@@ -1,0 +1,19 @@
+<!-- @dsCard group="Data display" height=342 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Icon</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function Demo() {
+  return h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(10, minmax(0, 1fr))', gap: '14px 8px' } }, I.iconNames.map(function (n) {
+    return h('div', { key: n, className: 'ifs-stack', style: { gap: 6, alignItems: 'center' } },
+      h('span', { style: { width: 36, height: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--line-soft)', color: 'var(--ink)' } }, h(I.Icon, { name: n, size: 18 })),
+      h('span', { className: 'ifs-mono', style: { fontSize: 10.5, color: 'var(--muted)', fontWeight: 400, whiteSpace: 'nowrap' } }, n));
+  }));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

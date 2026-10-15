@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Infisical 2.0</title>
+<!-- Serve this folder over HTTP to view it (previews are fetched): `npx serve design-system` or `python3 -m http.server -d design-system`. -->
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="components/bundle.css">
+<style>
+  .gallery { max-width: 1120px; margin: 0 auto; padding: var(--space-40) var(--space-24) var(--space-48); }
+  .gallery__bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-12); margin: var(--space-24) 0 var(--space-32); }
+  .gallery__bar label { display: inline-flex; align-items: center; gap: var(--space-6); font-size: 13px; color: var(--text2); }
+  .gallery__bar select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--control); height: var(--size-control-sm); padding: 0 var(--space-8); }
+  .gallery__nav { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-12); font-size: 13px; }
+  .gallery__nav a { color: var(--text2); }
+  .gallery__group { margin-top: var(--space-44); }
+  .gallery__group > h2 { margin: 0 0 var(--space-12); }
+  .gallery__card { margin-bottom: var(--space-24); border: 1px solid var(--line); background: var(--surface); }
+  .gallery__head { display: flex; align-items: baseline; gap: var(--space-12); padding: var(--space-12) var(--space-16); border-bottom: 1px solid var(--line-soft); }
+  .gallery__head p { margin: 0; flex: 1; color: var(--muted); font-size: 13px; }
+  .gallery__card iframe { display: block; width: 100%; border: 0; }
+</style>
+</head>
+<body>
+<main class="gallery">
+  <div id="cover"></div>
+  <div class="gallery__bar">
+    <label>Theme
+      <select id="theme"><option value="light">Light</option><option value="dark">Dark</option></select>
+    </label>
+    <label>Corners
+      <select id="corners"><option value="0">Square</option><option value="1">Soft</option></select>
+    </label>
+    <a class="ifs-link" href="README.md">Brand book (README.md)</a>
+  </div>
+  <nav class="gallery__nav" id="nav" aria-label="Component groups"></nav>
+  <div id="groups"></div>
+</main>
+<script>
+  var REACT = "https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js";
+  var REACT_DOM = "https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js";
+  var GROUP_ORDER = ["Actions", "Forms", "Data display", "Navigation", "Feedback", "Overlays", "Code", "Utilities", "Composites", "Patterns"];
+  var sources = {};
+  var frames = [];
+  var onScreen = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) { if (entry.isIntersecting) fit(entry.target); });
+  });
+
+  function settings() {
+    return { theme: document.getElementById("theme").value, corners: document.getElementById("corners").value };
+  }
+
+  // Every preview expects the frame to have loaded tokens.css, bundle.css, React and bundle.js first.
+  function frameDoc(name, source) {
+    var s = settings();
+    var base = new URL("components/" + name + "/", location.href).href;
+    var head = '<base href="' + base + '">' +
+      '<link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../bundle.css">' +
+      '<script src="' + REACT + '"><\/script><script src="' + REACT_DOM + '"><\/script><script src="../bundle.js"><\/script>';
+    return source
+      .replace(/^<!--[^\n]*-->\n/, "")
+      .replace("<html", '<html data-theme="' + s.theme + '" style="--corners: ' + s.corners + '"')
+      .replace("<head>", "<head>" + head);
+  }
+
+  function fit(frame) {
+    var doc = frame.contentDocument;
+    if (!doc || !doc.body) return;
+    frame.style.height = Math.max(doc.body.scrollHeight, 40) + "px";
+  }
+
+  function mount(frame) {
+    frame.srcdoc = frameDoc(frame.dataset.name, sources[frame.dataset.name]);
+  }
+
+  function preview(entry) {
+    var frame = document.createElement("iframe");
+    frame.title = entry.name + " preview";
+    frame.dataset.name = entry.name;
+    frame.style.height = entry.height + "px";
+    // Browsers throttle offscreen frames, so a ResizeObserver alone misses previews that render below the fold:
+    // refit shortly after each load and whenever a frame scrolls into view.
+    frame.addEventListener("load", function () {
+      fit(frame);
+      new ResizeObserver(function () { fit(frame); }).observe(frame.contentDocument.body);
+      [100, 500, 1500].forEach(function (ms) { setTimeout(function () { fit(frame); }, ms); });
+    });
+    onScreen.observe(frame);
+    frames.push(frame);
+    fetch("components/" + entry.name + "/preview.html")
+      .then(function (r) { return r.text(); })
+      .then(function (text) { sources[entry.name] = text; mount(frame); });
+    return frame;
+  }
+
+  function card(entry) {
+    var el = document.createElement("section");
+    el.className = "gallery__card";
+    el.id = entry.name;
+    var head = document.createElement("div");
+    head.className = "gallery__head";
+    var title = document.createElement("h3");
+    title.className = "label";
+    title.style.margin = "0";
+    title.textContent = entry.name;
+    var sub = document.createElement("p");
+    sub.textContent = entry.subtitle || "";
+    head.append(title, sub);
+    if (entry.readme) {
+      var link = document.createElement("a");
+      link.className = "ifs-link";
+      link.href = "components/" + entry.name + "/README.md";
+      link.textContent = "Guidelines";
+      head.append(link);
+    }
+    el.append(head, preview(entry));
+    return el;
+  }
+
+  fetch("components/catalog.json")
+    .then(function (r) { return r.json(); })
+    .then(function (catalog) {
+      var cover = catalog.find(function (e) { return e.name === "Cover"; });
+      if (cover) {
+        var frame = preview(cover);
+        document.getElementById("cover").append(frame);
+      }
+      var groups = {};
+      catalog.filter(function (e) { return e.group; }).forEach(function (e) { (groups[e.group] = groups[e.group] || []).push(e); });
+      var names = Object.keys(groups).sort(function (a, b) {
+        var ia = GROUP_ORDER.indexOf(a), ib = GROUP_ORDER.indexOf(b);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+      });
+      var nav = document.getElementById("nav"), root = document.getElementById("groups");
+      names.forEach(function (group) {
+        var id = "group-" + group.toLowerCase().replace(/\s+/g, "-");
+        var a = document.createElement("a");
+        a.href = "#" + id;
+        a.textContent = group;
+        nav.append(a);
+        var section = document.createElement("section");
+        section.className = "gallery__group";
+        section.id = id;
+        var h = document.createElement("h2");
+        h.className = "title";
+        h.textContent = group;
+        section.append(h);
+        groups[group].forEach(function (entry) { section.append(card(entry)); });
+        root.append(section);
+      });
+    });
+
+  ["theme", "corners"].forEach(function (id) {
+    document.getElementById(id).addEventListener("change", function () {
+      var s = settings();
+      document.documentElement.dataset.theme = s.theme;
+      document.documentElement.style.setProperty("--corners", s.corners);
+      frames.forEach(function (frame) { if (sources[frame.dataset.name]) mount(frame); });
+    });
+  });
+</script>
+</body>
+</html>

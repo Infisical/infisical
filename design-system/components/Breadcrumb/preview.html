@@ -1,0 +1,34 @@
+<!-- @dsCard group="Navigation" height=414 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Breadcrumb</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+var PROJECTS = ['acme-platform', 'payments', 'data-pipeline'].map(function (v) { return { value: v, label: v, mono: true, media: h(I.Media, { size: 20 }, v.slice(0, 2).toUpperCase()) }; });
+function Product() {
+  var s = React.useState('acme-platform'), proj = s[0], setProj = s[1];
+  var e = React.useState('production'), env = e[0], setEnv = e[1];
+  return h(I.Breadcrumb, { variant: 'product', label: 'Location', items: [
+    { label: proj, mono: true, media: h(I.Media, { size: 20 }, proj.slice(0, 2).toUpperCase()), menu: { label: 'Switch project', options: PROJECTS, value: proj, onChange: setProj, actions: [{ label: 'Create project', icon: 'plus' }] } },
+    { label: env, mono: true, menu: { label: 'Switch environment', width: 220, value: env, onChange: setEnv, options: ['development', 'staging', 'production'].map(function (v) { return { value: v, label: v, mono: true }; }) } },
+    { label: 'Secrets' }] });
+}
+
+function Demo() {
+  function cell(t, node) { return h('div', { className: 'ifs-stack', style: { gap: 8 } }, cap(t), node); }
+  return h('div', { className: 'ifs-stack', style: { gap: 20 } },
+    cell('Product level, each level switches, try it', h('div', { style: { minHeight: 32 } }, h(Product))),
+    cell('Default', h(I.Breadcrumb, { items: [{ label: 'Acme Corp', href: '#' }, { label: 'acme-platform', href: '#', mono: true }, { label: 'Secrets', href: '#' }, { label: 'stripe_api_key', mono: true }] })),
+    cell('Path, with an environment', h(I.Breadcrumb, { separator: 'chevron', label: 'Secret path', items: [{ label: h(I.Badge, { tone: 'solid', size: 'sm', mono: true }, 'production'), href: '#' }, { label: 'payments', href: '#', mono: true }, { label: 'stripe', href: '#', mono: true }, { label: 'webhooks', mono: true }] })),
+    cell('Collapsed, try it', h(I.Breadcrumb, { maxItems: 3, separator: 'chevron', items: [{ label: 'Acme Corp', href: '#' }, { label: 'acme-platform', href: '#', mono: true }, { label: 'production', href: '#', mono: true }, { label: 'payments', href: '#', mono: true }, { label: 'stripe', mono: true }] })),
+    cell('Eyebrow, above a title', h('div', { className: 'ifs-stack', style: { gap: 6 } }, h(I.Breadcrumb, { variant: 'eyebrow', items: [{ label: 'Acme Corp', href: '#' }, { label: 'acme-platform' }] }), h('span', { style: { fontSize: 28, lineHeight: '32px', fontWeight: 500, letterSpacing: '-0.025em' } }, 'Secrets'))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

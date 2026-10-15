@@ -1,0 +1,65 @@
+<!-- @dsCard group="Code" height=1107 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>CodeBlock</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function cell(t, node) { return h('div', { className: 'ifs-stack', style: { gap: 8, minWidth: 0 } }, cap(t), node); }
+
+var login = 'export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id="$CLIENT_ID" --client-secret="$CLIENT_SECRET" --plain --silent)\ninfisical run --env=prod --path=/payments --watch -- npm run start';
+var sdk = [
+  'import { InfisicalSDK } from "@infisical/sdk";',
+  '',
+  'const client = new InfisicalSDK({ siteUrl: "https://app.infisical.com" });',
+  '',
+  'await client.auth().universalAuth.login({',
+  '  clientId: process.env.INFISICAL_CLIENT_ID,',
+  '  clientSecret: process.env.INFISICAL_CLIENT_SECRET,',
+  '});',
+  '',
+  '// read one secret from production',
+  'const secret = await client.secrets().getSecret({',
+  '  environment: "prod",',
+  '  projectId: "acme-platform",',
+  '  secretPath: "/payments",',
+  '  secretName: "STRIPE_WEBHOOK_SECRET",',
+  '});',
+].join('\n');
+var crd = [
+  'apiVersion: secrets.infisical.com/v1alpha1',
+  'kind: InfisicalSecret',
+  'metadata:',
+  '  name: payments-secrets',
+  '  namespace: payments',
+  'spec:',
+  '  hostAPI: https://app.infisical.com/api',
+  '  resyncInterval: 60',
+  '  authentication:',
+  '    universalAuth:',
+  '      secretsScope:',
+  '        projectSlug: acme-platform',
+  '        envSlug: prod',
+  '        secretsPath: "/payments"',
+  '      credentialsRef:',
+  '        secretName: universal-auth-credentials',
+  '        secretNamespace: payments',
+  '  managedSecretReference:',
+  '    secretName: payments-managed',
+  '    secretNamespace: payments',
+].join('\n');
+function Demo() {
+  var B = I.Button;
+  var download = h(I.Tooltip, { content: 'Download file' }, h(B, { variant: 'ghost', size: 'sm', icon: 'download', iconOnly: true, 'aria-label': 'Download file' }));
+  return h('div', { className: 'ifs-stack', style: { gap: 24, maxWidth: 560 } },
+    h(React.Fragment, null,
+      cell('A command, wrapping', h(I.CodeBlock, { label: 'Terminal', icon: 'terminal', language: 'bash', wrap: true, code: login })),
+      cell('SDK, with a height limit', h(I.CodeBlock, { label: 'index.ts', icon: 'file', language: 'ts', maxLines: 9, code: sdk }))),
+    cell('A file: line numbers, highlighted lines, an extra action', h(I.CodeBlock, { label: 'k8s/payments/infisical-secret.yaml', icon: 'file', language: 'yaml', lineNumbers: true, highlight: [12, 13, 14], actions: download, code: crd })));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

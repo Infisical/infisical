@@ -1,0 +1,38 @@
+<!-- @dsCard group="Utilities" height=350 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>MiddleTruncate</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+
+var values = [
+  { t: 'STRIPE_WEBHOOK_SECRET_PRODUCTION' },
+  { t: 'STRIPE_WEBHOOK_SECRET_STAGING' },
+  { t: '/payments/stripe/webhooks/checkout/signing_secret' },
+  { t: 'acme-platform-7f3c9e1b2a4d.vault.internal' },
+  { t: 'apps/web/src/config/feature-flags.production.override.json', end: 14 },
+];
+function Demo() {
+  var s = React.useState(200), w = s[0], setW = s[1];
+  var row = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 24, alignItems: 'center', height: 36, borderTop: '1px solid var(--line-soft)', padding: '0 14px' };
+  var end = { minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--muted)' };
+  return h('div', { className: 'ifs-stack', style: { gap: 14 } },
+    h('div', { className: 'ifs-row', style: { gap: 14 } }, cap('Column width'),
+      h('input', { type: 'range', min: 96, max: 360, value: w, onChange: function (e) { setW(Number(e.target.value)); }, 'aria-label': 'Column width', style: { width: 220, accentColor: 'var(--ink)' } }),
+      h('span', { className: 'ifs-mono', style: { fontSize: 12, color: 'var(--text2)', fontVariantNumeric: 'tabular-nums' } }, w + 'px')),
+    h('div', { className: 'ifs-items', style: { width: 'fit-content', maxWidth: '100%' } }, h('div', { className: 'ifs-items__inner', style: { width: w * 2 + 52, maxWidth: '100%', boxSizing: 'border-box' } },
+      h('div', { style: Object.assign({}, row, { borderTop: 0, height: 32 }) }, h('span', { className: 'ifs-eyebrow' }, 'Middle, keeps both ends'), h('span', { className: 'ifs-eyebrow' }, 'End, for comparison')),
+      values.map(function (v, i) {
+        return h('div', { key: i, className: 'ifs-mono', style: Object.assign({}, row, { fontSize: 13 }) },
+          h(I.MiddleTruncate, { keepEnd: v.end, style: { color: 'var(--ink)' } }, v.t),
+          h('span', { style: end }, v.t));
+      }))),
+    h('p', { style: { margin: 0, fontSize: 12.5, lineHeight: '18px', color: 'var(--muted)', maxWidth: 560 } }, 'Two keys that differ only at the end still read apart. The file name keeps its last 14 characters with keepEnd. Hover a cut value for the full text; copying it copies all of it.'));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

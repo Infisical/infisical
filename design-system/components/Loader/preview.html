@@ -1,0 +1,37 @@
+<!-- @dsCard group="Feedback" height=560 subtitle="A Spinner with its label: inline, base and page" -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Loader</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+function cell(t, node, extra) { return h('div', { className: 'ifs-stack', style: Object.assign({ gap: 10, minWidth: 0 }, extra) }, cap(t), node); }
+function Box(p) { return h('div', { style: Object.assign({ background: 'var(--tint)', padding: 3 }, p.style) }, h('div', { style: { background: 'var(--surface)', boxShadow: '0 0 0 1px var(--line) inset', height: p.height || 160, display: 'flex', alignItems: 'center', justifyContent: 'center' } }, p.children)); }
+
+function Demo() {
+  var run = React.useState(0), n = run[0], setN = run[1];
+  var B = I.Button;
+  return h('div', { className: 'ifs-stack', style: { gap: 22 } },
+    h('div', { className: 'ifs-row', style: { gap: 40, alignItems: 'flex-start' } },
+      cell('Buttons sweep a halftone band, not the Spinner', h('div', { className: 'ifs-stack', style: { gap: 10 } },
+        h('div', { className: 'ifs-row' }, h(B, { variant: 'primary', loading: true }, 'Saving'), h(B, { loading: true }, 'Checking'), h(B, { variant: 'accent', loading: true }, 'Granting')),
+        h('div', { className: 'ifs-row' }, h(B, { size: 'sm', loading: true }, 'Syncing'), h(B, { variant: 'ghost', loading: true, icon: 'sync' }, 'Refreshing'), h(B, { variant: 'ghost', loading: true, iconOnly: true, icon: 'sync', 'aria-label': 'Syncing' }), h(B, { variant: 'link', loading: true }, 'Retrying')),
+        h('div', { className: 'ifs-row' }, h(B, { variant: 'primary', loading: true, icon: 'plus', style: { width: 220 } }, 'Creating project')),
+        h('div', { style: { height: 8 } }),
+        cap('Inline, in a row'),
+        h('div', { className: 'ifs-row', style: { gap: 12, width: 300, height: 40, padding: '0 14px', boxSizing: 'border-box', border: '1px solid var(--line)', fontSize: 13.5, color: 'var(--muted)' } },
+          h('span', { className: 'ifs-mono', style: { fontSize: 13, color: 'var(--ink)' } }, 'stripe_api_key'), h(I.Loader, { size: 'inline', label: 'Rotating' })))),
+      cell('Base, in a card', h(Box, { style: { width: 260 } }, h(I.Loader, { label: 'Loading secrets' })))),
+    h('div', { className: 'ifs-row', style: { gap: 24, alignItems: 'flex-start' } },
+      cell(h('span', { className: 'ifs-row', style: { gap: 10 } }, 'Page, assembles once', h(B, { size: 'sm', variant: 'ghost', icon: 'sync', onClick: function () { setN(n + 1); } }, 'Replay')),
+        h(Box, { height: 200, style: { width: 360 } }, h(I.Loader, { key: n, size: 'page', label: 'Loading acme-platform', description: 'Large projects can take up to a minute.' }))),
+      cell('Dark', h('div', { 'data-theme': 'dark', style: { background: 'var(--surface)', color: 'var(--ink)', width: 260, height: 206, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 } },
+        h(I.Loader, { label: 'Loading certificates' }), h(B, { variant: 'primary', loading: true }, 'Saving')))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

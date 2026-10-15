@@ -1,0 +1,128 @@
+<!-- @dsCard group="Composites" height=1070 subtitle="Tasks in steps: a dialog that grows from its trigger and resizes to each step, a sheet beside the list, a card in the page" -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>MultiStep</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function note(t) { return h('p', { style: { margin: 0, fontSize: 12.5, lineHeight: '18px', color: 'var(--muted)', maxWidth: 560 } }, t); }
+function k(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+function wait(ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); }
+var ENV_TABS = [{ value: 'development', label: 'Development' }, { value: 'staging', label: 'Staging' }, { value: 'production', label: 'Production' }];
+
+/* ------------------------------------------------ 1. Dialog: connect an integration, grown from its tile */
+function Connect(p) {
+  var o = React.useState(false), open = o[0], setOpen = o[1];
+  var f = React.useState({ repo: '', branch: 'main', env: 'production', path: '/', push: true }), form = f[0], setForm = f[1];
+  var e = React.useState(null), err = e[0], setErr = e[1];
+  function set(key, v) { var n = Object.assign({}, form); n[key] = v; setForm(n); if (key === 'repo') setErr(null); }
+  var steps = [
+    { id: 'repo', title: 'Repository', width: 440, description: 'Which repository reads these secrets in its workflows.',
+      validate: function () {
+        if (!form.repo.trim()) { setErr('Enter a repository.'); return false; }
+        if (!/^[\w.-]+\/[\w.-]+$/.test(form.repo.trim())) { setErr('Use owner/name, like acme/platform.'); return false; }
+        return wait(600).then(function () { return true; });
+      },
+      content: h(React.Fragment, null,
+        h(I.Field, { label: 'Repository', error: err, description: 'owner/name on github.com' }, h(I.Input, { mono: true, placeholder: 'acme/platform', value: form.repo, onChange: function (x) { set('repo', x.target.value); } })),
+        h(I.Field, { label: 'Branch' }, h(I.Input, { mono: true, value: form.branch, onChange: function (x) { set('branch', x.target.value); } }))) },
+    { id: 'scope', title: 'Secrets', width: 540, description: 'The environment and folder the workflow reads from. Each sync reads one.',
+      content: h(React.Fragment, null,
+        h(I.Field, { label: 'Environment', group: true }, h('div', null, h(I.Tabs, { variant: 'segmented', label: 'Environment', value: form.env, onChange: function (v) { set('env', v); }, tabs: ENV_TABS }))),
+        h(I.Field, { label: 'Folder' }, h(I.InputGroup, { mono: true, prefix: form.env + ':', value: form.path, onChange: function (x) { set('path', x.target.value); } })),
+        h(I.Checkbox, { label: 'Sync on every push to ' + (form.branch || 'main'), description: 'Otherwise only when a workflow asks.', checked: form.push, onChange: function (v) { set('push', v); } })) },
+    { id: 'review', title: 'Review', width: 440, description: 'Nothing changes in the repository until you connect.',
+      content: h(React.Fragment, null,
+        h(I.DataList, { variant: 'props', items: [['Repository', k(form.repo || 'acme/platform')], ['Branch', k(form.branch)], ['Reads', k(form.env + ':' + form.path)], ['Syncs', form.push ? 'On every push' : 'On request']] }),
+        h(I.Alert, { tone: 'info' }, 'Workflows read secrets at run time. Values never land in the repository.')) },
+  ];
+  var c = React.useState(null), connected = c[0], setConnected = c[1];
+  var trigger = h(I.Tile, { media: h(I.Media, null, 'GH'), title: 'GitHub Actions', description: connected ? 'Connected to ' + connected : 'Not connected', onClick: function () { setOpen(true); } });
+  return h(I.MultiStep, { variant: 'dialog', title: 'Connect GitHub Actions', trigger: trigger, open: open, onOpenChange: setOpen, steps: steps, completeLabel: 'Connect',
+    onComplete: function () { return wait(900).then(function () { setOpen(false); setConnected(form.repo); p.say('Connected GitHub Actions to ' + form.repo); }); } });
+}
+
+/* ------------------------------------------------ 2. Sheet: import secrets beside the list */
+var SOURCES = [['env', 'ENV', '.env file', 'Paste or drop a file'], ['1p', '1P', '1Password', 'A vault you can read'], ['aws', 'AWS', 'AWS Secrets Manager', 'Through an IAM role'], ['vault', 'HV', 'HashiCorp Vault', 'A KV v2 mount']];
+var SAMPLE = 'STRIPE_API_KEY=sk_demo_51Hc9d\nSTRIPE_WEBHOOK_SECRET=whsec_demo_7f3a9K\nDATADOG_API_KEY=9c2e41b04d8e\n# comments are skipped\nSENTRY_DSN=https://o4507.ingest.sentry.io/12';
+function parseEnv(t) { return t.split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l && l[0] !== '#' && /^[A-Za-z_][\w]*=/.test(l); }).map(function (l) { return l.slice(0, l.indexOf('=')); }); }
+function Import(p) {
+  var o = React.useState(false), open = o[0], setOpen = o[1];
+  var s = React.useState(null), src = s[0], setSrc = s[1];
+  var t = React.useState(SAMPLE), text = t[0], setText = t[1];
+  var en = React.useState('staging'), env = en[0], setEnv = en[1];
+  var keys = parseEnv(text);
+  var steps = [
+    { id: 'source', title: 'Source', description: 'Where the secrets come from.', validate: function () { return src ? true : 'Pick a source to continue.'; },
+      content: h('div', { className: 'ifs-stack', style: { gap: 8 } }, SOURCES.map(function (x) {
+        return h(I.Tile, { key: x[0], media: h(I.Media, null, x[1]), title: x[2], description: x[3], selected: src === x[0], onClick: function () { setSrc(x[0]); } });
+      })) },
+    { id: 'file', title: 'Values', description: 'One KEY=value a line. Comments and blank lines are skipped.', validate: function () { return keys.length ? true : 'Add at least one KEY=value line.'; },
+      content: h(I.Field, { label: '.env contents', description: keys.length + (keys.length === 1 ? ' secret found' : ' secrets found') }, h(I.Input, { multiline: true, mono: true, rows: 7, value: text, onChange: function (x) { setText(x.target.value); } })) },
+    { id: 'review', title: 'Review', description: 'Existing keys keep their history; their new value becomes the next version.',
+      content: h(React.Fragment, null,
+        h(I.Field, { label: 'Into', group: true }, h('div', null, h(I.Tabs, { variant: 'segmented', label: 'Environment', value: env, onChange: setEnv, tabs: ENV_TABS }))),
+        h(I.List, { variant: 'plain', size: 'sm', label: 'Secrets to import' }, keys.map(function (key, i) {
+          return h(I.Item, { key: key, title: k(key), meta: i === 0 ? h(I.Badge, { tone: 'warn', size: 'sm' }, 'Overwrites') : h(I.Badge, { tone: 'soft', size: 'sm' }, 'New') });
+        }))) },
+  ];
+  return h(React.Fragment, null,
+    h('div', null, h(I.Button, { icon: 'upload', onClick: function () { setOpen(true); } }, 'Import secrets')),
+    h(I.MultiStep, { variant: 'sheet', eyebrow: 'acme-platform', title: 'Import secrets', open: open, onOpenChange: setOpen, steps: steps,
+      completeLabel: 'Import ' + keys.length + (keys.length === 1 ? ' secret' : ' secrets'),
+      onComplete: function () { return wait(900).then(function () { setOpen(false); p.say('Imported ' + keys.length + ' secrets into ' + env); }); } }));
+}
+
+/* ------------------------------------------------ 3. Page: create a machine identity */
+var AUTH = [['universal', 'UA', 'Universal auth', 'A client ID and secret'], ['oidc', 'OIDC', 'OIDC', 'GitHub, GitLab, any issuer'], ['k8s', 'K8S', 'Kubernetes', 'A service account token'], ['aws', 'IAM', 'AWS IAM', 'A signed caller identity']];
+function Identity() {
+  var f = React.useState({ name: '', desc: '', auth: 'oidc', project: 'acme-platform', role: 'read' }), form = f[0], setForm = f[1];
+  var e = React.useState(null), err = e[0], setErr = e[1];
+  var st = React.useState(0), step = st[0], setStep = st[1];
+  var d = React.useState(false), done = d[0], setDone = d[1];
+  function set(key, v) { var n = Object.assign({}, form); n[key] = v; setForm(n); if (key === 'name') setErr(null); }
+  if (done) {
+    return h('div', { style: { border: '1px solid var(--line)', background: 'var(--surface)' } },
+      h(I.EmptyState, { icon: 'machine', title: h('span', null, k(form.name), ' can read acme-platform'), description: 'It signs in with ' + AUTH.filter(function (x) { return x[0] === form.auth; })[0][2] + '. Its first sign in shows in the audit log.',
+        actions: h(I.Button, { onClick: function () { setDone(false); setStep(0); setForm({ name: '', desc: '', auth: 'oidc', project: 'acme-platform', role: 'read' }); } }, 'Create another') }));
+  }
+  var steps = [
+    { id: 'details', title: 'Details', summary: form.name || 'A name for what runs as it', heading: 'Name the identity', description: 'Machines and agents read secrets as an identity. Name it after what runs as it.',
+      validate: function () { if (!/^[a-z0-9][a-z0-9-]{2,}$/.test(form.name)) { setErr(form.name ? 'Lowercase letters, numbers and dashes, 3 or more.' : 'Enter a name.'); return false; } return true; },
+      content: h(React.Fragment, null,
+        h(I.Field, { label: 'Name', error: err, description: 'Lowercase letters, numbers and dashes.' }, h(I.Input, { mono: true, placeholder: 'github-deployer', value: form.name, onChange: function (x) { set('name', x.target.value); } })),
+        h(I.Field, { label: 'Description', optional: true }, h(I.Input, { placeholder: 'Deploys acme-platform from main', value: form.desc, onChange: function (x) { set('desc', x.target.value); } }))) },
+    { id: 'auth', title: 'Authentication', summary: step > 1 ? AUTH.filter(function (x) { return x[0] === form.auth; })[0][2] : 'How it signs in', heading: 'How it signs in', description: 'Pick the method your runtime already has. You can add more later.',
+      content: h('div', { className: 'ifs-tiles', style: { '--tile-min': '220px' } }, AUTH.map(function (x) {
+        return h(I.Tile, { key: x[0], media: h(I.Media, null, x[1]), title: x[2], description: x[3], selected: form.auth === x[0], onClick: function () { set('auth', x[0]); } });
+      })) },
+    { id: 'access', title: 'Access', summary: step > 2 ? form.project + ', ' + form.role : 'A project and a role', heading: 'What it can reach', description: 'Start narrow. Access can widen later with an approval.',
+      content: h(React.Fragment, null,
+        h(I.Field, { label: 'Project' }, h(I.Select, { value: form.project, onChange: function (v) { set('project', v); }, options: [{ value: 'acme-platform', label: 'acme-platform' }, { value: 'payments', label: 'payments' }, { value: 'data-pipeline', label: 'data-pipeline' }] })),
+        h(I.Field, { label: 'Role' }, h(I.Select, { value: form.role, onChange: function (v) { set('role', v); }, options: [{ value: 'read', label: 'Read', description: 'Secrets, no values in logs' }, { value: 'write', label: 'Write' }, { value: 'admin', label: 'Admin' }] }))) },
+    { id: 'review', title: 'Review', summary: 'Check, then create', heading: 'Create ' + (form.name || 'the identity'), description: 'Nothing can sign in as it until you create it.',
+      content: h(I.DataList, { variant: 'props', items: [['Name', k(form.name || '')], ['Signs in with', AUTH.filter(function (x) { return x[0] === form.auth; })[0][2]], ['Project', k(form.project)], ['Role', form.role === 'read' ? 'Read' : form.role === 'write' ? 'Write' : 'Admin']] }) },
+  ];
+  return h(I.MultiStep, { variant: 'page', title: 'Create machine identity', steps: steps, step: step, onStepChange: setStep, completeLabel: 'Create identity',
+    onCancel: function () { setStep(0); }, onComplete: function () { return wait(900).then(function () { setDone(true); }); } });
+}
+
+function Demo() {
+  var m = React.useState(''), msg = m[0], setMsg = m[1];
+  function cell(t, n, node) { return h('section', { className: 'ifs-stack', style: { gap: 10 } }, h('div', { className: 'ifs-stack', style: { gap: 2 } }, cap(t), n ? note(n) : null), node); }
+  return h('div', { className: 'ifs-stack', style: { gap: 32, maxWidth: 880 } },
+    cell('Dialog, grown from its trigger', 'Open GitHub Actions: the tile becomes the dialog, the dialog resizes to each step, and closing shrinks it back into the tile.',
+      h('div', { className: 'ifs-tiles', style: { maxWidth: 720 } },
+        h(Connect, { say: setMsg }),
+        h(I.Tile, { media: h(I.Media, null, 'V'), title: 'Vercel', description: 'Connected, 2 syncs' }),
+        h(I.Tile, { media: h(I.Media, null, 'AWS'), title: 'AWS Secrets Manager', description: 'Not connected' }))),
+    cell('Sheet, beside the list', 'For a task that changes the list behind it.', h(Import, { say: setMsg })),
+    cell('In the page', 'A vertical step list beside the card; narrower than 640px, the steps bar above it. Try Continue with the name empty.', h(Identity)),
+    h('p', { role: 'status', style: { margin: 0, minHeight: 18, fontSize: 12.5, lineHeight: '18px', color: 'var(--muted)' } }, msg ? msg + '.' : ''));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

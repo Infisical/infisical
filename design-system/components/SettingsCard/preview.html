@@ -1,0 +1,87 @@
+<!-- @dsCard group="Composites" height=2090 subtitle="Settings that save: fields in the content, status and Save in the footer; saving, saved, a failed save, rows, read only, locked, danger" -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>SettingsCard</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function wait(ms, fail) { return new Promise(function (ok, no) { setTimeout(function () { if (fail) no(new Error(fail)); else ok(); }, ms); }); }
+
+// One saved value and its draft: dirty while they differ, and a save moves the draft into saved.
+function useDraft(initial) {
+  var s = React.useState(initial), saved = s[0], setSaved = s[1];
+  var d = React.useState(initial), draft = d[0], setDraft = d[1];
+  var dirty = JSON.stringify(saved) !== JSON.stringify(draft);
+  return { saved: saved, draft: draft, setDraft: setDraft, dirty: dirty, commit: function () { setSaved(draft); }, reset: function () { setDraft(saved); } };
+}
+
+function Name() {
+  var n = useDraft('acme-platform');
+  return h(I.SettingsCard, { title: 'Project name', description: 'Shown in the dashboard, the CLI and audit logs.', hint: 'Letters, numbers and dashes, 3 to 32 characters.',
+    dirty: n.dirty, onDiscard: n.reset, onSave: function () { return wait(800).then(n.commit); } },
+    h(I.Field, { label: 'Name' }, h(I.Input, { mono: true, value: n.draft, onChange: function (e) { n.setDraft(e.target.value); } })));
+}
+
+function Slug() {
+  var n = useDraft('acme-platform');
+  var e = React.useState(null), err = e[0], setErr = e[1];
+  function save() {
+    if (n.draft === 'payments') return wait(700, 'payments is taken in Acme Corp. Pick another slug.').catch(function (x) { setErr('Taken in Acme Corp'); throw x; });
+    return wait(700).then(n.commit);
+  }
+  return h(I.SettingsCard, { title: 'Project slug', description: 'Part of every URL and API path. Changing it breaks links people saved.', hint: 'Try payments to see a save fail.',
+    dirty: n.dirty, onDiscard: function () { setErr(null); n.reset(); }, onSave: save, saveLabel: 'Change slug' },
+    h(I.Field, { label: 'Slug', error: err }, h(I.InputGroup, { mono: true, prefix: 'app.infisical.com/', value: n.draft, onChange: function (x) { setErr(null); n.setDraft(x.target.value); } })));
+}
+
+function Defaults() {
+  var n = useDraft({ approval: true, mask: true, rotate: '30' });
+  function set(k, v) { var o = Object.assign({}, n.draft); o[k] = v; n.setDraft(o); }
+  return h(I.SettingsCard, { title: 'Secret defaults', description: 'Applied to new secrets in every environment of acme-platform.', dirty: n.dirty, onDiscard: n.reset, onSave: function () { return wait(800).then(n.commit); }, saveLabel: 'Save defaults' },
+    h(I.Switch, { layout: 'row', label: 'Require approval in production', description: 'Changes wait for one approval under prod-changes.', checked: n.draft.approval, onChange: function (v) { set('approval', v); } }),
+    h(I.Switch, { layout: 'row', label: 'Mask values in logs', description: 'Agents and CI see the key, never the value.', checked: n.draft.mask, onChange: function (v) { set('mask', v); } }),
+    h(I.Field, { orientation: 'horizontal', label: 'Rotate every', description: 'Secrets with a rotation provider.' },
+      h(I.Select, { value: n.draft.rotate, onChange: function (v) { set('rotate', v); }, options: [{ value: '7', label: '7 days' }, { value: '30', label: '30 days' }, { value: '90', label: '90 days' }, { value: 'never', label: 'Never' }] })));
+}
+
+function Id() {
+  return h(I.SettingsCard, { title: 'Project ID', description: 'Use it with the CLI and the API.', hint: h('span', null, 'In the CLI: ', h(I.Code, null, 'infisical run --projectId')) },
+    h(I.Snippet, { value: 'proj_7f3a9c2e41b04d8e', 'aria-label': 'Project ID' }));
+}
+
+function Locked() {
+  return h(I.SettingsCard, { title: 'Audit log retention', description: 'How long events stay searchable before they are archived.', action: h(I.Badge, { tone: 'soft', size: 'sm' }, 'Admins'), locked: 'Only organization admins can change retention. Ask Sarah Lin.' },
+    h(I.Field, { orientation: 'horizontal', label: 'Keep events for' }, h(I.Select, { value: '365', options: [{ value: '90', label: '90 days' }, { value: '365', label: '1 year' }] })),
+    h(I.Switch, { layout: 'row', label: 'Stream to your SIEM', description: 'Sends every event to Datadog as it happens.', checked: true }));
+}
+
+function Danger() {
+  var o = React.useState(false), open = o[0], setOpen = o[1];
+  var d = React.useState(false), gone = d[0], setGone = d[1];
+  return h(React.Fragment, null,
+    h(I.SettingsCard, { tone: 'danger', title: 'Delete project', description: gone ? 'Deleted. It stays restorable for 30 days.' : 'Deletes acme-platform, its 412 secrets and every sync. You can restore it for 30 days.',
+      hint: 'Stops syncing to Vercel and GitHub Actions right away.', actions: h(I.Button, { variant: 'destructive', size: 'sm', icon: 'trash', disabled: gone, onClick: function () { setOpen(true); } }, 'Delete project') }),
+    h(I.AlertDialog, { open: open, onOpenChange: setOpen, title: 'Delete acme-platform?', description: 'This removes 412 secrets from every environment and stops syncing them. You can restore the project for 30 days.', confirmText: 'acme-platform', confirmLabel: 'Delete project', onConfirm: function () { setGone(true); } }));
+}
+
+function Loading() {
+  return h(I.SettingsCard, { title: 'Default environment', description: 'Where new secrets land when no environment is given.', loading: true, dirty: false, onSave: function () {} });
+}
+
+function Demo() {
+  function cell(t, node) { return h('div', { className: 'ifs-stack', style: { gap: 8, minWidth: 0 } }, cap(t), node); }
+  return h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 24, alignItems: 'start', maxWidth: 980 } },
+    cell('One field. Edit it, then save', h(Name)),
+    cell('A save that fails', h(Slug)),
+    cell('Rows that save together', h(Defaults)),
+    cell('Read only, nothing to save', h(Id)),
+    cell('Locked, with the reason', h(Locked)),
+    cell('Loading', h(Loading)),
+    cell('Danger', h(Danger)));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!-- @dsCard group="Patterns" height=590 page subtitle="Who did what, in one-line rows grouped by day, with load more" -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>ActivityLog</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function k(t) { return h('span', { key: t, className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+var KIND = { p: ['person', 'Person'], m: ['machine', 'Machine'], a: ['agent', 'Agent'] };
+var TODAY = [
+  ['Sarah Lin', 'p', 'updated', 'stripe_api_key', '10:32'],
+  ['github-actions', 'm', 'read', 'postgres_url', '10:30'],
+  ['on-call-agent', 'a', 'was granted', 'datadog_api_key', '10:14'],
+  ['Jadden', 'p', 'requested a change to', 'stripe_webhook_signing_secret_live', '09:58'],
+];
+var YESTERDAY = [
+  ['k8s-prod-operator', 'm', 'read', 'redis_password', '23:12'],
+  ['James Okoro', 'p', 'rotated', 'session_signing_key', '18:40'],
+];
+var MORE = [
+  ['terraform-cloud', 'm', 'created', 'cloudflare_api_token', '16:02'],
+  ['Priya Raman', 'p', 'deleted', 'legacy_smtp_password', '14:22'],
+  ['release-bot', 'a', 'read', 'sentry_dsn', '11:05'],
+];
+function row(r, i) {
+  var kind = KIND[r[1]], who = r[1] === 'p' ? r[0] : k(r[0]);
+  return h(I.Item, { key: r[0] + i, media: h(I.Avatar, { kind: kind[0], name: r[1] === 'p' ? r[0] : undefined, label: r[0], size: 24 }),
+    title: [h('span', { key: 'w' }, who), ' ' + r[2] + ' ', k(r[3])], badge: h(I.Badge, { size: 'sm' }, kind[1]), meta: r[4] });
+}
+function Demo() {
+  var s = React.useState(false), more = s[0], setMore = s[1];
+  var l = React.useState(false), loading = l[0], setLoading = l[1];
+  function load() { setLoading(true); setTimeout(function () { setLoading(false); setMore(true); }, 800); }
+  var earlier = more ? YESTERDAY.concat(MORE) : YESTERDAY;
+  return h('div', { className: 'ifs-stack', style: { gap: 12, maxWidth: 560 } },
+    h(I.List, { variant: 'plain', size: 'sm', label: 'Activity in acme-platform', loading: loading, loadingRows: 2,
+        footer: more ? h('span', { style: { color: 'var(--muted)', fontSize: 12.5 } }, 'Showing 9 of 9 events') : h(I.Button, { variant: 'link', size: 'sm', loading: loading, onClick: load }, loading ? 'Loading' : 'Load 3 more') },
+      h(I.ListSection, { label: 'Today', meta: TODAY.length + ' events' }, TODAY.map(row)),
+      h(I.ListSection, { label: 'Yesterday', meta: earlier.length + ' events' }, earlier.map(row))),
+    h('p', { style: { margin: 0, fontSize: 12.5, lineHeight: '18px', color: 'var(--muted)' } },
+      'One line per event: the actor and what happened as the title, the kind of actor as a badge, the time as meta. Long names truncate first; hover shows the full line.'));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

@@ -1,0 +1,1438 @@
+@import url("https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Geist+Mono:wght@400..600&display=swap");
+/* Infisical 2.0 components. Every color, shadow and radius comes from tokens.css.
+   Radii are always calc(var(--radius-*) * var(--corners)) so the system is square until a container sets --corners: 1.
+   States never use shadows. An action's hover and pressed ground is its own foreground (currentColor) at --hover or --press, so a neutral
+   action hovers neutral and a danger action hovers bad; never select or another color. Icons take their label's color. Text fields focus with an ink border and a 3px nudge outline; everything else focuses with a 2px ink outline.
+   Accent fills (Count, the accent Button and Badge, the agent Avatar, the app tile) are plain yellow with no edge: the fill is a highlight, and the on-accent text on it carries the contrast. In the sidebar the current page is neutral and only counts take the accent.
+   Standalone cards and tiles select with a 1px ink border; connected rows (tables, item groups, menus) select with color. Shadows are depth only. */
+
+body { margin: 0; font-family: var(--font-sans); font-size: 14px; line-height: 20px; color: var(--ink); background: var(--surface); -webkit-font-smoothing: antialiased; }
+@keyframes ifs-skel { 0%, 100% { opacity: 1; } 50% { opacity: .42; } }
+@keyframes ifs-slide { 0% { transform: translateX(-110%); } 100% { transform: translateX(330%); } }
+@media (prefers-reduced-motion: reduce) { .ifs-skeleton, .ifs-progress__slider { animation: none !important; } }
+/* nudge: the soft 3px outline on focused and open fields, ink or bad when invalid. Fields at rest have none. Opacity per theme from tokens.css. */
+:root, [data-theme] { --nudge: var(--opacity-nudge, 20%); }
+/* hover and press: an action's ground is its foreground at these opacities, mixed over whatever it sits on. Per theme from tokens.css. */
+:root, [data-theme] { --hover: var(--opacity-hover, 6%); --press: var(--opacity-press, 10%); }
+[data-theme="dark"] { --hover: var(--opacity-hover-dark, 12%); --press: var(--opacity-press-dark, 18%); }
+/* slide: the one curve for motion that follows a choice (tab indicators, collapsing regions, tree and JSON chevrons) */
+:root { --ifs-slide: 200ms cubic-bezier(.2, 0, 0, 1); }
+[data-theme="dark"] { --nudge: var(--opacity-nudge-dark, 20%); }
+.ifs-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* layout helpers used by previews and handy in apps */
+.ifs-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.ifs-stack { display: flex; flex-direction: column; gap: 12px; }
+.ifs-demo { box-sizing: border-box; padding: 20px; }
+.ifs-mono { font-family: var(--font-mono); font-weight: 500; }
+.ifs-eyebrow { font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; font-stretch: 106%; color: var(--muted); }
+.ifs-link { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.ifs-link:hover { color: var(--text2); text-decoration-thickness: 2px; }
+.ifs-link:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* icon */
+.ifs-icon { flex-shrink: 0; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+/* kbd: flat key caps, one per key, 2px apart. In controls, menus and tooltips they are small (18px, 16px on ink).
+   Modifier symbols (⌘ ⇧ ⌥ ⌃ ↵ ⌫) draw a step larger so they read at the size of the letters beside them. */
+.ifs-kbd { display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; vertical-align: middle; font: inherit; line-height: 1; white-space: nowrap; }
+.ifs-kbd__key { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: 20px; height: 20px; padding: 0 5px; border: 1px solid var(--line); border-radius: calc(var(--radius-sm) * var(--corners)); background: var(--tint); color: var(--muted); font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; line-height: 1; }
+.ifs-kbd__key--sym { font-size: 13px; }
+.ifs-kbd__then { padding: 0 3px; font-size: 11.5px; color: var(--muted); }
+.ifs-kbd--sm .ifs-kbd__key { min-width: 18px; height: 18px; padding: 0 4px; font-size: 11px; }
+.ifs-kbd--sm .ifs-kbd__key--sym { font-size: 12px; }
+.ifs-kbd--sm .ifs-kbd__then { font-size: 11px; }
+.ifs-tooltip .ifs-kbd__key { min-width: 16px; height: 16px; padding: 0 3px; border-color: color-mix(in srgb, var(--on-ink) 30%, transparent); background: transparent; color: color-mix(in srgb, var(--on-ink) 78%, transparent); font-size: 10.5px; }
+.ifs-tooltip .ifs-kbd__key--sym { font-size: 11.5px; }
+.ifs-tooltip .ifs-kbd__then { color: color-mix(in srgb, var(--on-ink) 78%, transparent); }
+/* spinner: the infinity. `inline` is two pixels that trade size against each other, an abstract infinity in the text color.
+   `base` and `page` draw the mark on a pixel grid in `mark`, with a lit run looping the figure eight; `page` assembles first. */
+@keyframes ifs-sp-pair { 0% { transform: none; } 33.333% { transform: scale(.6667); } 50% { transform: scale(.3333); } 83.333% { transform: scale(.6667); } 100% { transform: scale(.6667); } }
+@keyframes ifs-sp-trail { 0% { fill-opacity: 1; animation-timing-function: steps(4, end); } 42% { fill-opacity: .16; } 100% { fill-opacity: .16; } }
+@keyframes ifs-sp-in { from { opacity: 0; transform: translate(var(--dx, 0), var(--dy, 0)) scale(.25); } to { opacity: 1; transform: none; } }
+.ifs-spinner { display: block; flex-shrink: 0; overflow: visible; }
+.ifs-spinner rect { fill: currentColor; }
+.ifs-spinner--inline rect { transform-box: fill-box; transform-origin: center; animation: ifs-sp-pair 1.2s steps(1, end) infinite; }
+.ifs-spinner--inline rect + rect { animation-delay: -.6s; }
+.ifs-spinner--base, .ifs-spinner--page { color: var(--mark, var(--ink)); }
+.ifs-spinner--base rect, .ifs-spinner--page rect { rx: calc(var(--radius-xs) * var(--corners)); }
+.ifs-spinner--base rect { animation: ifs-sp-trail 1.6s linear infinite; }
+.ifs-spinner--page rect { transform-box: fill-box; transform-origin: center; animation: ifs-sp-in .64s cubic-bezier(.16, 1, .3, 1) backwards, ifs-sp-trail 2.4s linear infinite; }
+/* loader: a status that wraps a Spinner with its label. base and page center in the space the content will take; inline sits in a row of text */
+.ifs-loader { display: inline-flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.ifs-loader--page { display: flex; box-sizing: border-box; width: 100%; min-height: 100%; flex: 1 1 auto; justify-content: center; gap: 0; padding: 40px 20px; }
+.ifs-loader--inline { flex-direction: row; gap: 8px; text-align: start; vertical-align: middle; }
+.ifs-loader__label { font-size: 13px; line-height: 18px; color: var(--muted); }
+.ifs-loader--inline .ifs-loader__label { font-size: inherit; line-height: inherit; color: inherit; }
+.ifs-loader--page .ifs-loader__label { margin-top: 28px; font-size: 16px; line-height: 22px; font-weight: 600; color: var(--ink); }
+.ifs-loader__desc { margin-top: 6px; max-width: 40ch; font-size: 13px; line-height: 18px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .ifs-spinner rect { animation: none !important; fill-opacity: 1; opacity: 1; transform: none; } .ifs-spinner--inline rect { transform: scale(.6667); } }
+/* busy button: a halftone band on the 3px pixel grid sweeps left to right, one cell per step, 84px every 1.2s. Each band is one 84 by 3 tile
+   (a 28-cell row of the grid), so moving it a cell at a time keeps every dot on the grid. The band is 42px wide: 12px edges and an 18px core.
+   Filled buttons (primary, secondary, accent, destructive): the band sits ABOVE the content in white with mix-blend-mode: difference, so it
+   inverts whatever it crosses. On the fill it reads as dots (1px at the edges, 2px in the core); on the label and icon it cuts them into the same dots.
+   Ghost and danger-ghost have no fill to blend with, so the band MASKS their content (.ifs-btn__body): 1px holes at the edges, 2px dots of it in the core.
+   Link buttons show the inline Spinner. Use mask longhands. */
+@keyframes ifs-ht { from { -webkit-mask-position: 0 0; mask-position: 0 0; } to { -webkit-mask-position: 84px 0; mask-position: 84px 0; } }
+.ifs-btn[aria-busy="true"] { position: relative; isolation: isolate; overflow: hidden; --ifs-ht: .16; }
+.ifs-btn__body { display: inline-flex; align-items: center; justify-content: center; gap: inherit; min-width: 0; }
+.ifs-btn[aria-busy="true"]::after { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: #fff; opacity: var(--ifs-ht); mix-blend-mode: difference; -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='3'%3E%3Cpath fill-rule='evenodd' d='M21.5 .5h1v1h-1zM24.5 .5h1v1h-1zM27.5 .5h1v1h-1zM30.5 .5h1v1h-1zM33 0h2v2h-2zM36 0h2v2h-2zM39 0h2v2h-2zM42 0h2v2h-2zM45 0h2v2h-2zM48 0h2v2h-2zM51.5 .5h1v1h-1zM54.5 .5h1v1h-1zM57.5 .5h1v1h-1zM60.5 .5h1v1h-1z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='3'%3E%3Cpath fill-rule='evenodd' d='M21.5 .5h1v1h-1zM24.5 .5h1v1h-1zM27.5 .5h1v1h-1zM30.5 .5h1v1h-1zM33 0h2v2h-2zM36 0h2v2h-2zM39 0h2v2h-2zM42 0h2v2h-2zM45 0h2v2h-2zM48 0h2v2h-2zM51.5 .5h1v1h-1zM54.5 .5h1v1h-1zM57.5 .5h1v1h-1zM60.5 .5h1v1h-1z'/%3E%3C/svg%3E"); -webkit-mask-size: 84px 3px; mask-size: 84px 3px; -webkit-mask-repeat: repeat; mask-repeat: repeat; -webkit-mask-position: 0 0; mask-position: 0 0; animation: ifs-ht 1.2s steps(28) infinite; }
+.ifs-btn--primary[aria-busy="true"], .ifs-btn--destructive[aria-busy="true"] { --ifs-ht: .3; }
+.ifs-btn--accent[aria-busy="true"] { --ifs-ht: .22; }
+.ifs-btn--ghost[aria-busy="true"]::after, .ifs-btn--danger-ghost[aria-busy="true"]::after, .ifs-btn--link[aria-busy="true"]::after { content: none; }
+.ifs-btn--link[aria-busy="true"] { overflow: visible; }
+.ifs-btn--ghost[aria-busy="true"] > .ifs-btn__body, .ifs-btn--danger-ghost[aria-busy="true"] > .ifs-btn__body { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='3'%3E%3Cpath fill-rule='evenodd' d='M0 0h21v3h-21zM21 0h3v3h-3zM21.5 .5v1h1v-1zM24 0h3v3h-3zM24.5 .5v1h1v-1zM27 0h3v3h-3zM27.5 .5v1h1v-1zM30 0h3v3h-3zM30.5 .5v1h1v-1zM33 0h2v2h-2zM36 0h2v2h-2zM39 0h2v2h-2zM42 0h2v2h-2zM45 0h2v2h-2zM48 0h2v2h-2zM51 0h3v3h-3zM51.5 .5v1h1v-1zM54 0h3v3h-3zM54.5 .5v1h1v-1zM57 0h3v3h-3zM57.5 .5v1h1v-1zM60 0h3v3h-3zM60.5 .5v1h1v-1zM63 0h21v3h-21z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='3'%3E%3Cpath fill-rule='evenodd' d='M0 0h21v3h-21zM21 0h3v3h-3zM21.5 .5v1h1v-1zM24 0h3v3h-3zM24.5 .5v1h1v-1zM27 0h3v3h-3zM27.5 .5v1h1v-1zM30 0h3v3h-3zM30.5 .5v1h1v-1zM33 0h2v2h-2zM36 0h2v2h-2zM39 0h2v2h-2zM42 0h2v2h-2zM45 0h2v2h-2zM48 0h2v2h-2zM51 0h3v3h-3zM51.5 .5v1h1v-1zM54 0h3v3h-3zM54.5 .5v1h1v-1zM57 0h3v3h-3zM57.5 .5v1h1v-1zM60 0h3v3h-3zM60.5 .5v1h1v-1zM63 0h21v3h-21z'/%3E%3C/svg%3E"); -webkit-mask-size: 84px 3px; mask-size: 84px 3px; -webkit-mask-repeat: repeat; mask-repeat: repeat; -webkit-mask-position: 0 0; mask-position: 0 0; animation: ifs-ht 1.2s steps(28) infinite; }
+/* reduced motion: the band stops. Filled buttons keep a still field of 1px dots above the content; ghost content keeps a still field of 1px holes */
+@media (prefers-reduced-motion: reduce) {
+  .ifs-btn[aria-busy="true"]::after { animation: none; -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='3' height='3'%3E%3Cpath d='M.5 .5h1v1h-1z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='3' height='3'%3E%3Cpath d='M.5 .5h1v1h-1z'/%3E%3C/svg%3E"); -webkit-mask-size: 3px 3px; mask-size: 3px 3px; }
+  .ifs-btn--ghost[aria-busy="true"] > .ifs-btn__body, .ifs-btn--danger-ghost[aria-busy="true"] > .ifs-btn__body { animation: none; -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='3' height='3'%3E%3Cpath fill-rule='evenodd' d='M0 0h3v3h-3zM.5 .5v1h1v-1z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='3' height='3'%3E%3Cpath fill-rule='evenodd' d='M0 0h3v3h-3zM.5 .5v1h1v-1z'/%3E%3C/svg%3E"); -webkit-mask-size: 3px 3px; mask-size: 3px 3px; }
+}
+
+/* ---------------------------------------------------------------- Button */
+.ifs-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 14px; box-sizing: border-box; border: 1px solid transparent; border-radius: calc(var(--radius-control) * var(--corners)); background: transparent; color: var(--ink); font: inherit; font-size: 14px; line-height: 1; font-weight: 500; white-space: nowrap; cursor: pointer; text-decoration: none; flex-shrink: 0; }
+.ifs-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ifs-btn--sm { height: 32px; padding: 0 10px; font-size: 13px; gap: 6px; }
+.ifs-btn--lg { height: 40px; padding: 0 16px; }
+.ifs-btn--icon { width: 36px; padding: 0; }
+.ifs-btn--icon.ifs-btn--sm { width: 32px; }
+.ifs-btn--icon.ifs-btn--lg { width: 40px; }
+.ifs-btn--full { width: 100%; }
+.ifs-btn--primary { background: var(--ink); border-color: var(--ink); color: var(--on-ink); font-weight: 600; }
+.ifs-btn--primary:hover:not(:disabled) { background: var(--text2); border-color: var(--text2); }
+.ifs-btn--secondary { background: var(--surface); border-color: var(--control); color: var(--ink); }
+.ifs-btn--secondary:hover:not(:disabled) { background: color-mix(in srgb, currentColor var(--hover), var(--surface)); }
+.ifs-btn--secondary:active:not(:disabled) { background: color-mix(in srgb, currentColor var(--press), var(--surface)); }
+.ifs-btn--ghost { color: var(--text2); }
+.ifs-btn--ghost:hover:not(:disabled) { background: color-mix(in srgb, currentColor var(--hover), transparent); color: var(--ink); }
+.ifs-btn--ghost:active:not(:disabled) { background: color-mix(in srgb, currentColor var(--press), transparent); color: var(--ink); }
+.ifs-btn--accent { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.ifs-btn--accent:hover:not(:disabled) { background: var(--accent-2); border-color: var(--accent-2); }
+.ifs-btn--destructive { background: var(--bad); border-color: var(--bad); color: var(--on-bad); font-weight: 600; }
+.ifs-btn--destructive:hover:not(:disabled) { background: var(--bad-hover); border-color: var(--bad-hover); }
+.ifs-btn--danger-ghost { color: var(--bad); font-weight: 600; }
+.ifs-btn--danger-ghost:hover:not(:disabled) { background: color-mix(in srgb, currentColor var(--hover), transparent); }
+.ifs-btn--danger-ghost:active:not(:disabled) { background: color-mix(in srgb, currentColor var(--press), transparent); }
+.ifs-btn--link { height: auto; padding: 0 2px; border: 0; gap: 6px; line-height: 20px; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; border-radius: calc(var(--radius-sm) * var(--corners)); }
+.ifs-btn--link:hover:not(:disabled) { color: var(--text2); text-decoration-thickness: 2px; }
+.ifs-btn--link:active:not(:disabled) { text-decoration-thickness: 2px; }
+.ifs-btn[aria-pressed="true"] { background: var(--select); border-color: var(--control); color: var(--ink); font-weight: 600; }
+.ifs-btn:disabled { cursor: not-allowed; }
+.ifs-btn--primary:disabled, .ifs-btn--accent:disabled, .ifs-btn--destructive:disabled { background: var(--line-soft); border-color: var(--line-soft); color: var(--faint); }
+.ifs-btn--secondary:disabled { background: var(--surface); border-color: var(--line); color: var(--faint); }
+.ifs-btn--ghost:disabled, .ifs-btn--danger-ghost:disabled, .ifs-btn--link:disabled { background: transparent; color: var(--faint); }
+
+/* ---------------------------------------------------------------- Button group */
+.ifs-btngroup { display: inline-flex; align-items: center; gap: 12px; }
+.ifs-btngroup--attached { gap: 0; }
+.ifs-btngroup--attached > .ifs-btn { border-radius: 0; }
+.ifs-btngroup--attached > .ifs-btn + .ifs-btn { margin-left: -1px; }
+.ifs-btngroup--attached > .ifs-btn:first-child { border-radius: calc(var(--radius-control) * var(--corners)) 0 0 calc(var(--radius-control) * var(--corners)); }
+.ifs-btngroup--attached > .ifs-btn:last-child { border-radius: 0 calc(var(--radius-control) * var(--corners)) calc(var(--radius-control) * var(--corners)) 0; }
+.ifs-btngroup--attached > .ifs-btn:only-child { border-radius: calc(var(--radius-control) * var(--corners)); }
+.ifs-btngroup--attached > .ifs-btn:focus-visible { position: relative; z-index: 1; }
+.ifs-btngroup--attached > .ifs-btn--primary + .ifs-btn--primary { margin-left: 0; border-left-color: var(--text2); }
+.ifs-btngroup--toolbar { gap: 2px; }
+.ifs-btngroup--attached > * + .ifs-anchor { margin-left: -1px; }
+.ifs-btngroup--attached > .ifs-anchor > .ifs-btn { border-radius: 0 calc(var(--radius-control) * var(--corners)) calc(var(--radius-control) * var(--corners)) 0; }
+.ifs-btngroup--attached > .ifs-btn--primary + .ifs-anchor { margin-left: 0; }
+.ifs-btngroup--attached > .ifs-btn--primary + .ifs-anchor > .ifs-btn--primary { border-left-color: var(--text2); }
+
+/* segmented track: Tabs variant="segmented". The track holds a scroller (the tablist); items never draw a selected edge, one thumb slides under them (Tabs section).
+   The scroller pads 4px and sits 1px outside the track, so items keep their 3px inset and focus outlines have room inside the scroll clip. */
+.ifs-segmented { display: flex; max-width: 100%; border-radius: calc(var(--radius-card) * var(--corners)); background: var(--tint); }
+.ifs-segmented__scroll { flex: 1 1 auto; align-items: center; gap: 4px; padding: 4px; margin: -1px; }
+.ifs-segmented--vertical { flex-direction: column; max-height: 100%; }
+.ifs-segmented--vertical .ifs-segmented__scroll { align-items: stretch; }
+.ifs-segmented__thumb { position: absolute; left: 0; top: 0; z-index: 0; box-sizing: border-box; border: 1px solid var(--control); border-radius: calc(var(--radius-control) * var(--corners)); background: var(--surface); pointer-events: none; transition: transform var(--ifs-slide), width var(--ifs-slide), height var(--ifs-slide); }
+.ifs-segmented__item { position: relative; z-index: 1; flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 32px; padding: 0 13px; box-sizing: border-box; border: 0; border-radius: calc(var(--radius-control) * var(--corners)); background: transparent; color: var(--text2); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: color var(--ifs-slide), font-weight var(--ifs-slide); }
+.ifs-segmented--vertical .ifs-segmented__item { justify-content: space-between; }
+.ifs-segmented__item:hover { color: var(--ink); }
+.ifs-segmented__item[aria-selected="true"] { color: var(--ink); font-weight: 600; }
+.ifs-segmented__item:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ifs-segmented__count { font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; color: var(--muted); }
+
+/* ---------------------------------------------------------------- Badge, count */
+.ifs-badge { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; box-sizing: border-box; border: 1px solid var(--line); border-radius: calc(var(--radius-sm) * var(--corners)); background: transparent; color: var(--muted); font-size: 12px; line-height: 1; font-weight: 500; white-space: nowrap; flex-shrink: 0; }
+.ifs-badge--sm { height: 18px; padding: 0 6px; font-size: 11px; }
+.ifs-badge--mono { font-family: var(--font-mono); font-weight: 500; }
+.ifs-badge--soft { border-color: var(--line-soft); background: var(--line-soft); color: var(--text2); font-weight: 600; }
+.ifs-badge--solid { border-color: var(--ink); background: var(--ink); color: var(--on-ink); font-weight: 600; }
+.ifs-badge--accent { border-color: var(--accent); background: var(--accent); color: var(--on-accent); font-weight: 700; }
+.ifs-badge--ok { border-color: var(--ok-line); background: var(--ok-bg); color: var(--ok); font-weight: 600; }
+.ifs-badge--warn { border-color: var(--warn-line); background: var(--warn-bg); color: var(--warn); font-weight: 600; }
+.ifs-badge--bad { border-color: var(--bad-line); background: var(--bad-bg); color: var(--bad); font-weight: 600; }
+.ifs-badge--info { border-color: var(--info-line); background: var(--info-bg); color: var(--info); font-weight: 600; }
+.ifs-badge__dot { width: 6px; height: 6px; flex-shrink: 0; border-radius: calc(var(--radius-xs) * .75 * var(--corners)); background: currentColor; }
+.ifs-count { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: calc(var(--radius-pop) * var(--corners)); background: var(--accent); color: var(--on-accent); font-size: 12px; font-weight: 700; line-height: 1; }
+.ifs-count--ink { background: var(--ink); color: var(--on-ink); }
+
+/* ---------------------------------------------------------------- Avatar */
+.ifs-avatar { --s: 32px; position: relative; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; box-sizing: border-box; width: var(--s); height: var(--s); font-size: max(9px, calc(var(--s) * .36)); font-weight: 700; line-height: 1; border-radius: calc(var(--s) * .125 * var(--corners)); background: var(--ink); color: var(--on-ink); }
+.ifs-avatar .ifs-icon { width: max(12px, calc(var(--s) * .55)); height: max(12px, calc(var(--s) * .55)); }
+.ifs-avatar--org { border-radius: calc(var(--radius-sm) * var(--corners)); }
+.ifs-avatar--machine { border-radius: calc(var(--radius-control) * var(--corners)); background: var(--tint); border: 1px solid var(--line); color: var(--text2); }
+.ifs-avatar--agent { border-radius: calc(var(--radius-control) * var(--corners)); background: var(--accent); color: var(--on-accent); }
+.ifs-avatar--fallback { background: var(--tint); border: 1px dashed var(--control); color: var(--muted); }
+.ifs-avatar--more { background: var(--tint); border: 1px solid var(--line); color: var(--text2); font-weight: 600; }
+.ifs-avatar--ring { box-shadow: 0 0 0 2px var(--surface); }
+.ifs-avatar__status { --d: max(7px, calc(var(--s) * .26)); position: absolute; right: -2px; bottom: -2px; width: var(--d); height: var(--d); border-radius: calc(var(--d) * .125 * var(--corners)); box-shadow: 0 0 0 2px var(--surface); }
+.ifs-avatar__status--ok { background: var(--ok); }
+.ifs-avatar__status--warn { background: var(--warn); }
+.ifs-avatar__status--off { background: var(--faint); }
+.ifs-avatars { display: inline-flex; align-items: center; }
+.ifs-avatars > * + * { margin-left: -6px; }
+/* ---------------------------------------------------------------- Item, the layout
+   One object's layout: lead (media), text (a head line with the title, a badge and the meta at its end, then a description, an error
+   line, a body), actions. It owns spacing, alignment and overflow, never a box. The text keeps size-text-min (160px); lead, badge, meta
+   and buttons keep their width; the title truncates before the meta; the actions drop under the text, left aligned with it, when they
+   cannot share its line. Titles and descriptions truncate
+   with their full text on hover (truncate: false lets them wrap). sm is one 24px line that never wraps. Identity, Card's plain header,
+   Tile and List rows restyle it, so their rules come after these. */
+.ifs-item { display: flex; align-items: flex-start; gap: 14px; min-width: 0; box-sizing: border-box; color: var(--ink); text-align: left; }
+.ifs-item > .ifs-item__check, .ifs-item > .ifs-item__lead { flex: none; display: flex; align-items: center; min-height: 40px; }
+.ifs-item__main { flex: 1 1 0; min-width: 0; min-height: 40px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; }
+.ifs-item__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 var(--size-text-min, 160px); }
+.ifs-item__head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ifs-item__title { flex: 0 1 auto; min-width: 0; font-size: 14px; line-height: 20px; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ifs-item__badge { flex: none; display: inline-flex; align-items: center; gap: 6px; }
+.ifs-item__desc { display: block; font-size: 12.5px; line-height: 18px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ifs-item__error { display: flex; align-items: flex-start; gap: 6px; font-size: 12.5px; line-height: 18px; color: var(--bad); }
+.ifs-item__error > .ifs-icon { margin-top: 2px; }
+.ifs-item__body { display: block; min-width: 0; padding-top: 6px; }
+/* meta ends the title line: the title truncates before it, and the description runs on under it */
+.ifs-item__meta { flex: none; margin-left: auto; display: inline-flex; align-items: center; gap: 8px; min-height: 20px; padding-left: 4px; white-space: nowrap; }
+.ifs-item__meta-text { font-family: var(--font-mono); font-size: 12px; line-height: 16px; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* the actions wrap among themselves only when a row is narrower than all of them */
+.ifs-item__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex: 0 1 auto; max-width: 100%; }
+.ifs-item--wrap .ifs-item__title, .ifs-item--wrap .ifs-item__desc { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+/* actions below: the actions always take their own row under the text, 10px below it and left aligned with it, at every width, and the
+   text takes the full width, so the meta ends the row's first line in every row. The row is at least a small control tall, so a link
+   (Undo, Revoke, Retry) holds the same height as buttons and a row keeps its height as it changes state. A leading link lines its text
+   up with the text above. */
+.ifs-item--actions-below > .ifs-item__main { flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: flex-start; }
+.ifs-item--actions-below .ifs-item__text { flex: none; }
+.ifs-item--actions-below .ifs-item__actions { justify-content: flex-start; min-height: var(--size-control-sm, 32px); }
+.ifs-item--actions-below .ifs-item__actions > .ifs-btn--link:first-child { margin-left: -2px; }
+/* unread: the title steps up to 600 behind a 6px accent-fg mark (ink in light, the accent in dark); screen readers hear "Unread" */
+.ifs-item--unread .ifs-item__title { font-weight: 600; }
+.ifs-item__dot { flex: none; width: 6px; height: 6px; background: var(--accent-fg); border-radius: calc(var(--radius-xs) * var(--corners)); }
+/* sm: one line around 24px media; nothing wraps and the title truncates first */
+.ifs-item--sm { align-items: center; gap: 10px; }
+.ifs-item--sm > .ifs-item__check, .ifs-item--sm > .ifs-item__lead { min-height: 24px; }
+.ifs-item--sm > .ifs-item__main { min-height: 24px; flex-wrap: nowrap; gap: 10px; }
+.ifs-item--sm .ifs-item__text { flex: 1 1 auto; }
+.ifs-item--sm .ifs-item__head { gap: 10px; }
+/* link and button rows: the title is the one target, stretched over its row (or over a standalone Item); the checkbox, badge, meta,
+   actions and body stay clickable above it. Focus draws the 2px ink outline 2px inside the row, so a scroller never clips it. */
+.ifs-item--linked { position: relative; }
+.ifs-item__target { display: block; padding: 0; border: 0; background: none; font-family: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.ifs-item__target::after { content: ''; position: absolute; inset: 0; }
+.ifs-item__target:focus-visible { outline: none; }
+.ifs-item__target:focus-visible::after { outline: 2px solid var(--ink); outline-offset: -2px; }
+.ifs-item__check, .ifs-item__badge, .ifs-item__meta, .ifs-item__actions, .ifs-item__body { position: relative; z-index: 1; }
+/* a selectable row with no link toggles anywhere: its checkbox stretches instead */
+.ifs-item__check--stretch { position: static; }
+.ifs-item__check--stretch .ifs-checkbox::after { content: ''; position: absolute; inset: 0; }
+
+/* Identity is an Item: an avatar, a name and one line */
+.ifs-identity.ifs-item { display: inline-flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; }
+.ifs-identity > .ifs-item__lead { min-height: 0; }
+.ifs-identity > .ifs-item__main { flex: 0 1 auto; min-height: 0; flex-wrap: nowrap; }
+.ifs-identity .ifs-item__text { flex: 0 1 auto; gap: 1px; }
+.ifs-identity .ifs-item__title { font-weight: 600; }
+.ifs-identity .ifs-item__desc { line-height: 17px; }
+
+/* ---------------------------------------------------------------- Checkbox, switch */
+.ifs-choice { display: inline-flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 14px; line-height: 20px; }
+.ifs-choice__text { display: flex; flex-direction: column; gap: 2px; padding-top: 0; }
+.ifs-choice__label { font-weight: 500; color: var(--ink); }
+.ifs-choice__desc { font-size: 12.5px; line-height: 18px; color: var(--muted); }
+.ifs-choice--disabled { cursor: not-allowed; }
+.ifs-choice--disabled .ifs-choice__label { color: var(--faint); }
+.ifs-checkbox { width: 18px; height: 18px; margin-top: 0; flex-shrink: 0; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--muted); border-radius: calc(var(--radius-xs) * var(--corners)); background: var(--surface); color: var(--on-ink); cursor: pointer; }
+.ifs-checkbox[aria-checked="true"], .ifs-checkbox[aria-checked="mixed"] { background: var(--ink); border-color: var(--ink); }
+.ifs-choice > .ifs-checkbox { margin-top: 1px; }
+.ifs-checkbox:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ifs-checkbox:disabled { background: var(--line-soft); border-color: var(--line); color: var(--faint); cursor: not-allowed; }
+.ifs-checkbox:disabled[aria-checked="true"], .ifs-checkbox:disabled[aria-checked="mixed"] { background: var(--control); border-color: var(--control); color: var(--surface); }
+.ifs-checkbox .ifs-icon { width: 13px; height: 13px; stroke-width: 2.6; }
+.ifs-switch { width: 36px; height: 20px; margin-top: 0; flex-shrink: 0; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: flex-start; padding: 2px; border: 1px solid var(--muted); border-radius: calc(var(--radius-pop) * var(--corners)); background: var(--surface); cursor: pointer; }
+.ifs-switch__knob { width: 14px; height: 14px; display: block; border-radius: calc(var(--radius-control) * .875 * var(--corners)); background: var(--muted); }
+.ifs-switch--sm { width: 28px; height: 16px; border-radius: calc(var(--radius-control) * var(--corners)); }
+.ifs-switch--sm .ifs-switch__knob { width: 10px; height: 10px; border-radius: calc(var(--radius-control) * .625 * var(--corners)); }
+.ifs-switch[aria-checked="true"] { justify-content: flex-end; background: var(--sw-on); border-color: var(--sw-on); }
+.ifs-switch[aria-checked="true"] .ifs-switch__knob { background: var(--sw-knob-on); }
+.ifs-switch:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ifs-switch:disabled { background: var(--line-soft); border-color: var(--line); cursor: not-allowed; }
+.ifs-switch:disabled .ifs-switch__knob { background: var(--line); }
+.ifs-switch:disabled[aria-checked="true"] { background: var(--control); border-color: var(--control); }
+.ifs-switch:disabled[aria-checked="true"] .ifs-switch__knob { background: var(--surface); }
+.ifs-setting { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 12px 0; }
+.ifs-setting + .ifs-setting { border-top: 1px solid var(--line-soft); }
+
+/* ---------------------------------------------------------------- Field, input, input group */
+.ifs-field { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; }
+.ifs-field--horizontal { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, min(240px, 50%)); column-gap: 24px; align-items: center; }
+.ifs-field--horizontal .ifs-field__text { display: flex; flex-direction: column; gap: 2px; }
+.ifs-label { display: flex; align-items: baseline; gap: 8px; font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink); }
+.ifs-label__optional { font-size: 12px; font-weight: 400; color: var(--muted); }
+.ifs-help { margin: 0; font-size: 12.5px; line-height: 18px; color: var(--muted); }
+.ifs-error { margin: 0; display: flex; align-items: flex-start; gap: 6px; font-size: 12.5px; line-height: 18px; font-weight: 500; color: var(--bad); }
+.ifs-error .ifs-icon { width: 14px; height: 14px; margin-top: 2px; }
+/* text fields and triggers pad 10px (--ifs-pad); beside a group of nested items the end padding is 3px, so a 28px slot sits 4px from
+   the outer edge on every side. --nested is the slot: 28px here, 24px small, 32px large. */
+.ifs-control { --ifs-pad: 10px; --nested: var(--size-nested-md, 28px); display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 var(--ifs-pad-end, var(--ifs-pad)) 0 var(--ifs-pad); box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid var(--control); border-radius: calc(var(--radius-control) * var(--corners)); background: var(--surface); color: var(--ink); font-size: 14px; overflow: hidden; }
+.ifs-control:focus-within, .ifs-control--open { border-color: var(--ink); box-shadow: none; outline: 3px solid color-mix(in srgb, var(--ink) var(--nudge), transparent); outline-offset: 0; }
+/* Invalid rests like any field, on a quieter border (bad-control, the control step in bad) with no outline, and takes the full bad border
+   and the 3px bad outline while focused or open. */
+.ifs-control--invalid { border-color: var(--bad-control); box-shadow: none; outline: none; }
+.ifs-control--invalid:focus-within, .ifs-control--invalid.ifs-control--open, .ifs-select-trigger.ifs-control--invalid:focus-visible { border-color: var(--bad); box-shadow: none; outline: 3px solid color-mix(in srgb, var(--bad) var(--nudge), transparent); outline-offset: 0; }
+.ifs-control--disabled { background: var(--tint); border-color: var(--line); color: var(--faint); }
+.ifs-control--readonly { background: var(--tint); border-color: var(--line); color: var(--text2); }
+.ifs-control--readonly:focus-within { border-color: var(--line); box-shadow: none; outline: none; }
+.ifs-control--sm { --nested: var(--size-nested-sm, 24px); height: 32px; font-size: 13px; }
+.ifs-control--lg { --nested: var(--size-nested-lg, 32px); height: 40px; }
+.ifs-control > .ifs-icon { width: 16px; height: 16px; color: var(--muted); }
+.ifs-control input, .ifs-control textarea { flex-grow: 1; min-width: 0; width: 100%; height: 100%; border: 0; padding: 0; margin: 0; background: transparent; font: inherit; color: inherit; outline: none; }
+.ifs-control input::placeholder, .ifs-control textarea::placeholder { color: var(--muted); opacity: 1; }
+.ifs-control--mono input { font-family: var(--font-mono); font-weight: 500; }
+.ifs-control--textarea { height: auto; align-items: flex-start; padding: 8px var(--ifs-pad); }
+.ifs-control--textarea textarea { min-height: 56px; resize: vertical; line-height: 20px; }
+.ifs-control__addon { display: inline-flex; align-items: center; align-self: stretch; padding: 0 10px; background: var(--tint); color: var(--muted); font-size: 13px; white-space: nowrap; flex-shrink: 0; }
+.ifs-control__addon--start { margin-left: calc(var(--ifs-pad) * -1); border-right: 1px solid var(--line); }
+.ifs-control__addon--end { margin-right: calc(var(--ifs-pad-end, var(--ifs-pad)) * -1); border-left: 1px solid var(--line); }
+.ifs-control__masked { flex-grow: 1; min-width: 0; font-family: var(--font-mono); font-size: 14px; letter-spacing: .08em; color: var(--text2); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ifs-control__value { flex-grow: 1; min-width: 0; font-family: var(--font-mono); font-size: 13.5px; font-weight: 500; color: var(--text2); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ifs-control--trail { --ifs-pad-end: 3px; }
+/* nested items: one group, slots 4px apart. Buttons fill their slot; an 18px item (a Kbd, a small Badge) centers with equal space around it */
+.ifs-control__actions { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.ifs-control__slot { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: var(--nested); height: var(--nested); padding: 0 calc((var(--nested) - var(--size-badge-sm, 18px)) / 2); flex: none; }
+.ifs-control__slot:has(> .ifs-iconbtn, > .ifs-btn, > .ifs-tooltip-anchor) { padding: 0; }
+.ifs-control .ifs-iconbtn { width: var(--nested); height: var(--nested); }
+.ifs-control--sm .ifs-iconbtn .ifs-icon { width: 14px; height: 14px; }
+.ifs-control__slot > .ifs-btn { height: var(--nested); padding: 0 8px; gap: 6px; font-size: 12.5px; }
+.ifs-control__slot > .ifs-btn--icon { width: var(--nested); padding: 0; }
+.ifs-iconbtn { width: 28px; height: 28px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: calc(var(--radius-sm) * var(--corners)); background: transparent; color: var(--muted); cursor: pointer; }
+.ifs-iconbtn:hover { background: color-mix(in srgb, currentColor var(--hover), transparent); color: var(--ink); }
+.ifs-iconbtn:active { background: color-mix(in srgb, currentColor var(--press), transparent); color: var(--ink); }
+.ifs-iconbtn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ifs-iconbtn .ifs-icon { width: 16px; height: 16px; }
+.ifs-inputgroup { display: flex; align-items: stretch; width: 100%; min-width: 0; }
+.ifs-inputgroup > .ifs-control { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.ifs-inputgroup > .ifs-btn { margin-left: -1px; border-top-left-radius: 0; border-bottom-left-radius: 0; height: auto; }
+/* a joined action: the outline wraps the whole group, not just the field */
+.ifs-inputgroup:has(> .ifs-btn) { border-radius: calc(var(--radius-control) * var(--corners)); }
+.ifs-inputgroup:has(> .ifs-btn) > .ifs-control { outline: none; }
+.ifs-inputgroup:has(> .ifs-btn):has(> .ifs-control:focus-within) { outline: 3px solid color-mix(in srgb, var(--ink) var(--nudge), transparent); outline-offset: 0; }
+.ifs-inputgroup:has(> .ifs-btn):has(> .ifs-control--invalid:focus-within) { outline: 3px solid color-mix(in srgb, var(--bad) var(--nudge), transparent); outline-offset: 0; }
+
+/* ---------------------------------------------------------------- Popups: menu, listbox, popover
+   Menus and listboxes pad 3px, so a row's hover ground sits 4px from the outer edge (like nested items in a field), and rows pad
+   7px, so their text starts 11px from the outer edge: 3 + 7 plus the border, where a field or trigger's text starts (10px plus
+   its border). A list that opens under its trigger keeps the value on the same line. Separators and the MultiSelect bar sit 3px from the
+   rows beside them (2px margin plus the 1px gap between rows), the same inset as the sides. Popovers keep their own 12px. */
+.ifs-anchor { position: relative; display: inline-flex; }
+.ifs-anchor--block { display: flex; width: 100%; }
+.ifs-pop { position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; box-sizing: border-box; min-width: 100%; padding: 3px; background: var(--surface); border: 1px solid var(--line); border-radius: calc(var(--radius-pop) * var(--corners)); box-shadow: var(--shadow-pop); display: flex; flex-direction: column; gap: 1px; color: var(--ink); }
+.ifs-pop--end { left: auto; right: 0; }
+.ifs-pop--up { top: auto; bottom: calc(100% + 6px); }
+.ifs-pop--static { position: static; }
+.ifs-option { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; padding: 0 7px; box-sizing: border-box; border: 0; border-radius: calc(var(--radius-sm) * var(--corners)); background: transparent; color: var(--ink); font: inherit; font-size: 14px; text-align: left; cursor: pointer; white-space: nowrap; }
+.ifs-option:focus-visible { outline: none; }
+.ifs-option--active, .ifs-option:hover { background: color-mix(in srgb, currentColor var(--hover), transparent); }
+.ifs-option:active { background: color-mix(in srgb, currentColor var(--press), transparent); }
+.ifs-option[aria-selected="true"] { font-weight: 600; }
+.ifs-option[aria-disabled="true"] { color: var(--faint); cursor: not-allowed; background: transparent; }
+.ifs-option--danger { color: var(--bad); }
+.ifs-option > .ifs-icon { width: 16px; height: 16px; }
+.ifs-option__label { flex-grow: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ifs-option__meta { margin-left: auto; font-size: 12px; color: var(--muted); font-weight: 400; }
+.ifs-option__meta--mono { font-family: var(--font-mono); }
+.ifs-option__meta--kbd { display: inline-flex; }
+.ifs-option__lead { width: 16px; display: inline-flex; justify-content: center; flex-shrink: 0; }
+.ifs-option__lead .ifs-icon { width: 15px; height: 15px; stroke-width: 2.2; }
+.ifs-option__radio { width: 6px; height: 6px; border-radius: calc(var(--radius-xs) * .75 * var(--corners)); background: var(--ink); }
+.ifs-option__check { margin-left: auto; width: 15px; height: 15px; stroke-width: 2.2; }
+.ifs-option mark { background: var(--accent); color: var(--on-accent); }
+.ifs-menu-label { display: flex; align-items: center; height: 28px; padding: 0 7px; font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; font-stretch: 106%; color: var(--muted); }
+.ifs-menu-sep { height: 1px; margin: 2px -3px; background: var(--line-soft); flex-shrink: 0; }
+.ifs-select-trigger { justify-content: space-between; cursor: pointer; text-align: left; font: inherit; font-size: 14px; }
+.ifs-select-trigger:focus-visible { border-color: var(--ink); box-shadow: none; outline: 3px solid color-mix(in srgb, var(--ink) var(--nudge), transparent); outline-offset: 0; }
+.ifs-select-trigger__value { flex-grow: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ifs-select-trigger__placeholder { color: var(--muted); }
+.ifs-select-trigger__stack { display: flex; flex-direction: column; gap: 1px; flex-grow: 1; min-width: 0; }
+.ifs-select-trigger__stack small { font-size: 11px; line-height: 14px; color: var(--muted); }
+.ifs-select-trigger__stack span { font-weight: 600; line-height: 18px; }
+.ifs-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px; min-height: 36px; height: auto; }
+.ifs-chip { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 2px 0 7px; box-sizing: border-box; border-radius: calc(var(--radius-sm) * var(--corners)); background: var(--line-soft); color: var(--text2); font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
+.ifs-chip button { width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: calc(var(--radius-xs) * var(--corners)); }
+.ifs-chip button:hover { color: var(--ink); }
+.ifs-chips input { flex: 1 0 80px; height: 24px; }
+.ifs-popover { width: 280px; padding: 12px; gap: 12px; }
+.ifs-popover__title { margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; }
+.ifs-popover__desc { margin: -8px 0 0; font-size: 12.5px; line-height: 18px; color: var(--muted); }
+.ifs-popover__footer { display: flex; justify-content: flex-end; gap: 12px; }
+
+/* ---------------------------------------------------------------- Tooltip */
+.ifs-tooltip-anchor { position: relative; display: inline-flex; }
+.ifs-tooltip { position: absolute; z-index: 60; display: inline-flex; align-items: center; gap: 10px; box-sizing: border-box; padding: 6px 9px; border-radius: calc(var(--radius-sm) * var(--corners)); background: var(--ink); color: var(--on-ink); font-size: 12.5px; line-height: 17px; font-weight: 500; white-space: nowrap; pointer-events: none; }
+.ifs-tooltip--wrap { white-space: normal; width: max-content; max-width: 176px; }
+.ifs-tooltip__nub { position: absolute; width: 8px; height: 8px; background: var(--ink); transform: rotate(45deg); }
+.ifs-tooltip--top { bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); }
+.ifs-tooltip--top .ifs-tooltip__nub { left: 50%; margin-left: -4px; bottom: -4px; }
+.ifs-tooltip--bottom { top: calc(100% + 8px); left: 50%; transform: translateX(-50%); }
+.ifs-tooltip--bottom .ifs-tooltip__nub { left: 50%; margin-left: -4px; top: -4px; }
+.ifs-tooltip--right { left: calc(100% + 8px); top: 50%; transform: translateY(-50%); }
+.ifs-tooltip--right .ifs-tooltip__nub { top: 50%; margin-top: -4px; left: -4px; }
+.ifs-tooltip--left { right: calc(100% + 8px); top: 50%; transform: translateY(-50%); }
+.ifs-tooltip--left .ifs-tooltip__nub { top: 50%; margin-top: -4px; right: -4px; }
+
+/* ---------------------------------------------------------------- Card */
+.ifs-card { box-sizing: border-box; width: 100%; border: 0; border-radius: calc(var(--radius-panel) * var(--corners)); background: var(--tint); padding: 0 3px 3px; }
+.ifs-card__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 40px; padding: 0 12px; }
+/* Overflow, the way tables handle it: nothing squeezes past its floor or clips. The eyebrow truncates (full text on hover) and the
+   action keeps its width; stat values keep theirs; beside a plain card's heading, the badge drops under it rather than overlap it. */
+.ifs-card__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; font-stretch: 106%; color: var(--muted); }
+.ifs-card__action { flex-shrink: 0; white-space: nowrap; font-size: 12.5px; font-weight: 500; color: var(--text2); }
+.ifs-card__body { box-sizing: border-box; padding: 0 14px; background: var(--surface); border: 1px solid var(--line); border-radius: calc(var(--radius-inset, 1px) * var(--corners)); box-shadow: var(--shadow-raised); overflow: hidden; }
+.ifs-card__body--flush { padding: 0; }
+.ifs-card--headless { padding: 3px; }
+.ifs-card--plain { padding: 0; border: 1px solid var(--line); background: var(--surface); border-radius: calc(var(--radius-card) * var(--corners)); display: flex; flex-direction: column; }
+.ifs-card--plain .ifs-card__head { display: block; height: auto; padding: 16px 18px 12px; }
+/* the plain header is an Item with card type: the action (a badge, the Item's meta) ends the title line and the title wraps beside it;
+   the description runs on under it. The heading keeps size-text-min; narrower than the media plus that floor, it drops under the media. */
+.ifs-card__item { flex-wrap: wrap; gap: 12px; }
+.ifs-card__item > .ifs-item__lead { min-height: 0; }
+.ifs-card__item > .ifs-item__main { flex: 1 1 var(--size-text-min, 160px); min-height: 0; align-items: flex-start; gap: 8px 12px; }
+.ifs-card__item .ifs-item__title { font-size: 15px; line-height: 20px; font-weight: 600; }
+.ifs-card__item .ifs-item__desc { font-size: 13px; line-height: 18px; }
+.ifs-card__item .ifs-item__head { align-items: flex-start; }
+.ifs-card__item .ifs-item__meta { min-height: 0; }
+.ifs-card--plain .ifs-card__content { min-width: 0; padding: 4px 18px 14px; font-size: 13.5px; line-height: 20px; }
+/* footer buttons never shrink; when they run out of room they wrap onto a second line, still right aligned */
+.ifs-card__footer { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px; padding: 12px 18px; border-top: 1px solid var(--line-soft); }
+.ifs-media { --s: 36px; width: var(--s); height: var(--s); flex-shrink: 0; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border-radius: calc(var(--radius-control) * var(--corners)); background: var(--tint); border: 0; color: var(--text2); font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
+.ifs-media .ifs-icon { width: 18px; height: 18px; }
+/* a tone tints the tile for status that travels with its icon: ok, warn, bad, info */
+.ifs-media--ok { background: var(--ok-bg); color: var(--ok); }
+.ifs-media--warn { background: var(--warn-bg); color: var(--warn); }
+.ifs-media--bad { background: var(--bad-bg); color: var(--bad); }
+.ifs-media--info { background: var(--info-bg); color: var(--info); }
+.ifs-tile { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; box-sizing: border-box; border: 1px solid var(--line); border-radius: calc(var(--radius-card) * var(--corners)); background: var(--surface); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.ifs-tile:hover { background: color-mix(in srgb, currentColor var(--hover), var(--surface)); border-color: var(--control); }
+.ifs-tile[aria-pressed="true"], .ifs-tile[aria-checked="true"] { background: var(--surface); border-color: var(--ink); }
+.ifs-tile:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+/* a tile is an Item inside a bordered button: names get two lines, then an ellipsis; descriptions one. The full text shows on hover. */
+.ifs-tile.ifs-item { align-items: center; gap: 12px; }
+.ifs-tile > .ifs-item__lead { min-height: 0; }
+.ifs-tile > .ifs-item__main { min-height: 0; flex-wrap: nowrap; gap: 12px; }
+.ifs-tile .ifs-item__text { flex: 1 1 auto; gap: 1px; }
+.ifs-tile .ifs-item__title { font-weight: 600; white-space: normal; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.ifs-tile .ifs-item__desc { line-height: 17px; }
+.ifs-tile .ifs-item__actions > .ifs-icon { color: var(--muted); }
+/* ifs-tiles: a grid of tiles that drops a column instead of squeezing one under size-tile-min. --tile-min overrides the floor. */
+.ifs-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--tile-min, var(--size-tile-min, 208px))), 1fr)); gap: 8px; }
+.ifs-dl { margin: 0; }
+.ifs-dl__row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line-soft); }
+.ifs-dl__row:first-child { border-top: 0; }
+/* the term wraps; the value never shrinks or clips, up to 60% of the row, then truncates with its full text on hover */
+.ifs-dl dt { min-width: 0; overflow-wrap: anywhere; font-size: 14px; line-height: 20px; color: var(--text2); }
+.ifs-dl dd { flex: none; max-width: 60%; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; font-size: 15px; line-height: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* meta: label and value pairs inside a plain card. Labels take up to 45% and wrap; values truncate with their full text on hover. */
+.ifs-meta { display: grid; grid-template-columns: fit-content(45%) minmax(0, 1fr); gap: 8px 16px; margin: 0; }
+.ifs-meta dt { min-width: 0; overflow-wrap: anywhere; color: var(--muted); }
+.ifs-meta dd { min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------------------------------------------------------------- List
+   List gives Items their behavior. framed: the tint shell around an inset surface, with a header inside the shell when it has a title;
+   plain: a bordered surface; bare: no box, for card bodies and popovers. Rows are md (13px by 16px around a 40px lead) or sm (40px tall,
+   14px sides). Link and button rows hover in the ink's own tint and press a step further; the current row and checked rows take select
+   with their text one step up; resolved rows stay in place on row-done; disabled rows go faint. No bars or edge marks. */
+.ifs-list { box-sizing: border-box; width: 100%; min-width: 0; }
+.ifs-list--framed { border-radius: calc(var(--radius-panel) * var(--corners)); background: var(--tint); padding: 3px; }
+.ifs-list--framed.ifs-list--headed { padding: 0 3px 3px; }
+.ifs-list__head { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; box-sizing: border-box; }
+/* select all lines up with the row checkboxes: 3px shell, 1px border, the row's side padding */
+.ifs-list__head--select { padding-left: 17px; }
+.ifs-list--sm .ifs-list__head--select { padding-left: 15px; }
+.ifs-list__title { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; font-stretch: 106%; color: var(--muted); }
+.ifs-list__action { margin-left: auto; flex-shrink: 0; white-space: nowrap; font-size: 12.5px; font-weight: 500; color: var(--text2); }
+.ifs-list__inner { min-width: 0; }
+.ifs-list--framed > .ifs-list__inner { background: var(--surface); border: 1px solid var(--line); border-radius: calc(var(--radius-inset, 1px) * var(--corners)); overflow: hidden; box-shadow: var(--shadow-raised); }
+.ifs-list--plain > .ifs-list__inner { background: var(--surface); border: 1px solid var(--line); border-radius: calc(var(--radius-card) * var(--corners)); overflow: hidden; }
+.ifs-list__rows { list-style: none; margin: 0; padding: 0; }
+.ifs-list__rows > li + li { border-top: 1px solid var(--line-soft); }
+.ifs-list__row { position: relative; display: block; box-sizing: border-box; padding: 13px 16px; }
+.ifs-list__row--sm { display: flex; align-items: center; box-sizing: content-box; min-height: 40px; padding: 0 14px; }
+.ifs-list__row--sm > .ifs-item { flex: 1 1 auto; }
+.ifs-list__row--interactive { cursor: pointer; }
+.ifs-list__row--interactive:hover { background: color-mix(in srgb, var(--ink) var(--hover), transparent); }
+.ifs-list__row--interactive:has(.ifs-item__target:active), .ifs-list__row--interactive:has(.ifs-item__check--stretch .ifs-checkbox:active) { background: color-mix(in srgb, var(--ink) var(--press), transparent); }
+.ifs-list__row.ifs-list__row--current, .ifs-list__row.ifs-list__row--checked { background: var(--select); }
+.ifs-list__row--current .ifs-item__desc, .ifs-list__row--checked .ifs-item__desc, .ifs-list__row--current .ifs-item__meta-text, .ifs-list__row--checked .ifs-item__meta-text { color: var(--text2); }
+.ifs-list__row--resolved { background: var(--row-done); }
+.ifs-list__row--resolved .ifs-item__title { color: var(--muted); }
+.ifs-list__row--disabled { cursor: not-allowed; }
+.ifs-list__row--disabled .ifs-item__title, .ifs-list__row--disabled .ifs-item__desc, .ifs-list__row--disabled .ifs-item__meta-text, .ifs-list__row--disabled .ifs-media { color: var(--faint); }
+.ifs-list__row--disabled .ifs-item__target { cursor: not-allowed; }
+.ifs-list__row--loading .ifs-item__title { display: flex; align-items: center; height: 20px; }
+.ifs-list__row--loading .ifs-item__desc { display: flex; align-items: center; height: 18px; }
+/* sections: an eyebrow over their rows, the section's rule above it */
+.ifs-list__section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; height: 32px; padding: 0 16px 6px; box-sizing: border-box; }
+.ifs-list--sm .ifs-list__section-head { padding: 0 14px 6px; }
+.ifs-list__section-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; font-stretch: 106%; color: var(--muted); }
+.ifs-list__section-meta { flex: none; font-size: 12px; line-height: 16px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ifs-list__empty { display: block; }
+.ifs-list__footer { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 4px 16px; box-sizing: border-box; border-top: 1px solid var(--line-soft); font-size: 13px; color: var(--text2); }
+.ifs-list--sm .ifs-list__footer { padding: 4px 14px; }
+
+/* ---------------------------------------------------------------- Table */
+/* One grid per table: the header and every row are subgrids, so a column is one shared track as wide as its widest cell,
+   never under --size-cell-min (or the column's minWidth). maxWidth caps a cell and its text truncates with an ellipsis.
+   Cells never wrap. Wider than its container, the table scrolls sideways inside the tint shell. */
+@property --ifs-fade { syntax: '<length>'; inherits: false; initial-value: 0px; }
+.ifs-table { --ifs-edge: 3px; --ifs-gap: 12px; position: relative; box-sizing: border-box; width: 100%; min-width: 0; border: 0; border-radius: calc(var(--radius-panel) * var(--corners)); background: var(--tint); }
+/* a flex scroller so its end padding counts in the scroll range: at the far right the body stops 3px short of the shell's edge */
+.ifs-table__scroll { position: relative; display: flex; flex-direction: column; align-items: flex-start; box-sizing: border-box; overflow: auto; padding: 0 3px 3px; border-radius: inherit; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: var(--control) transparent; }
+.ifs-table__scroll:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ifs-table__grid { display: grid; flex: none; column-gap: var(--ifs-gap); width: max-content; min-width: 100%; }
+/* The inset is an empty edge track at each end (--ifs-edge) plus the column gap (--ifs-gap): 3 + 12 = 15px from the body's
+   outer edge, the body's 1px border inside it. Row padding would be taken out of the edge columns instead, squeezing fixed
+   ones. Bordered tables have no gap: their cells pad themselves, and the edge is just the border. */
+.ifs-table__row { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: stretch; box-sizing: border-box; }
+.ifs-table__row > :first-child { grid-column-start: 2; }
+.ifs-table__head { height: 40px; --ifs-row-bg: var(--tint); font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; font-stretch: 106%; color: var(--muted); }
+.ifs-table__body { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-content: start; background: var(--surface); border: 1px solid var(--line); border-radius: calc(var(--radius-inset, 1px) * var(--corners)); box-shadow: var(--shadow-raised); }
+.ifs-table__body .ifs-table__row { --ifs-row-bg: var(--surface); min-height: 48px; font-size: 13.5px; line-height: 20px; color: var(--text2); background: var(--ifs-row-bg); border-top: 1px solid var(--line-soft); }
+.ifs-table__body .ifs-table__row[aria-rowindex="2"] { border-top: 0; }
+.ifs-table__body .ifs-table__row:hover { --ifs-row-bg: var(--row-done); }
+.ifs-table__cell { box-sizing: border-box; min-width: 0; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.ifs-table__cell--end { justify-content: flex-end; font-variant-numeric: tabular-nums; }
+.ifs-table__cell--center { justify-content: center; }
+.ifs-table__text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ifs-table__primary { min-width: 0; font-family: var(--font-mono); font-size: 13.5px; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ifs-table__sort { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; padding: 0; border: 0; background: transparent; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; cursor: pointer; }
+.ifs-table__sort[data-active="true"] { color: var(--ink); }
+.ifs-table__sort .ifs-icon { width: 13px; height: 13px; stroke-width: 2; }
+.ifs-table__sort:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+/* width 0 with a full min-width: the message fills the row without widening any column */
+.ifs-table__empty { grid-column: 2 / -2; width: 0; min-width: 100%; box-sizing: border-box; padding: 32px 16px; text-align: center; white-space: normal; color: var(--muted); }
+.ifs-table__spacer { grid-column: 1 / -1; }
+/* striped: alternate rows on row-done instead of rules; hover steps up to tint */
+.ifs-table--striped .ifs-table__body .ifs-table__row { border-top: 0; }
+.ifs-table--striped .ifs-table__body .ifs-table__row--alt { --ifs-row-bg: var(--row-done); }
+.ifs-table--striped .ifs-table__body .ifs-table__row:hover { --ifs-row-bg: var(--tint); }
+/* bordered: rules between columns too. Cells carry the padding so each rule sits halfway between two columns. */
+.ifs-table--bordered { --ifs-edge: 1px; --ifs-gap: 0px; }
+.ifs-table--bordered .ifs-table__cell { padding: 0 12px; }
+.ifs-table--bordered .ifs-table__cell:first-child { padding-left: 14px; }
+.ifs-table--bordered .ifs-table__cell:last-child { padding-right: 14px; }
+.ifs-table--bordered .ifs-table__cell + .ifs-table__cell { border-left: 1px solid var(--line-soft); }
+.ifs-table--bordered .ifs-table__head .ifs-table__cell + .ifs-table__cell { border-left-color: var(--line); }
+/* connected rows select with color: select ground, text one step up; after hover and stripes so it wins */
+.ifs-table .ifs-table__body .ifs-table__row[aria-selected="true"] { --ifs-row-bg: var(--select); color: var(--ink); }
+/* actions: a column of icon buttons or a menu trigger. It fits them, aligns them to the end 4px apart, and the edge track
+   and column gap leave room for their 2px focus outline. */
+.ifs-table__cell--actions { justify-content: flex-end; gap: 4px; }
+/* pinned (the last column, actions by default): sticks where it sits at rest while the table scrolls sideways (sticky
+   offsets count from inside the scroller's padding, so right is the gap plus the edge track). It reaches
+   back over the column gap (negative margin, matching padding) and paints the row's ground there, and its ::after and
+   ::before repaint what sits to its right at rest (the gap, the edge track with the body's border, the shell's 3px), so
+   content sliding underneath never shows through. They sit under the cell's content (z-index -1 in
+   its stacking context), so a focused button's outline is never covered. */
+.ifs-table__cell--pin { position: sticky; right: calc(var(--ifs-gap) + var(--ifs-edge)); z-index: 1; margin-left: calc(-1 * var(--ifs-gap)); padding-left: var(--ifs-gap); background: var(--ifs-row-bg); }
+.ifs-table__cell--pin::after, .ifs-table__cell--pin::before { z-index: -1; }
+.ifs-table__cell--pin::after { content: ""; position: absolute; top: 0; bottom: 0; left: 100%; box-sizing: border-box; width: calc(var(--ifs-gap) + var(--ifs-edge)); background: var(--ifs-row-bg); border-right: 1px solid var(--line); pointer-events: none; }
+.ifs-table__cell--pin::before { content: ""; position: absolute; top: -1px; bottom: -1px; left: calc(100% + var(--ifs-gap) + var(--ifs-edge)); width: 3px; background: var(--tint); pointer-events: none; }
+.ifs-table__head .ifs-table__cell--pin::after { border-right: 0; }
+.ifs-table__head .ifs-table__cell--pin::before { top: 0; bottom: 0; }
+/* content passing under the pinned column: a rule on its left edge instead of a fade, so the buttons stay whole */
+.ifs-table--under-pin .ifs-table__body .ifs-table__cell--pin { background: linear-gradient(var(--line-soft), var(--line-soft)) left top / 1px 100% no-repeat, var(--ifs-row-bg); }
+.ifs-table--under-pin .ifs-table__head .ifs-table__cell--pin { background: linear-gradient(var(--line), var(--line)) left top / 1px 100% no-repeat, var(--ifs-row-bg); }
+/* Edge fades: the viewport fades out where content continues past it, sideways at either end (32px) and at the bottom
+   while rows sit below it (96px). The scrollbars stay solid: --sbw and --sbh are their measured sizes. */
+@property --ifs-fade-start { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --ifs-fade-end { syntax: '<length>'; inherits: false; initial-value: 0px; }
+.ifs-table__scroll {
+  --ifs-fade: 0px; --ifs-fade-start: 0px; --ifs-fade-end: 0px;
+  -webkit-mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0), linear-gradient(to bottom, #000 calc(100% - var(--ifs-fade) - var(--sbh, 0px)), transparent calc(100% - var(--sbh, 0px))), linear-gradient(to right, transparent, #000 var(--ifs-fade-start), #000 calc(100% - var(--ifs-fade-end) - var(--sbw, 0px)), transparent calc(100% - var(--sbw, 0px)));
+  mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0), linear-gradient(to bottom, #000 calc(100% - var(--ifs-fade) - var(--sbh, 0px)), transparent calc(100% - var(--sbh, 0px))), linear-gradient(to right, transparent, #000 var(--ifs-fade-start), #000 calc(100% - var(--ifs-fade-end) - var(--sbw, 0px)), transparent calc(100% - var(--sbw, 0px)));
+  -webkit-mask-size: var(--sbw, 0px) 100%, 100% var(--sbh, 0px), 100% 100%, 100% 100%;
+  mask-size: var(--sbw, 0px) 100%, 100% var(--sbh, 0px), 100% 100%, 100% 100%;
+  -webkit-mask-position: right top, left bottom, 0 0, 0 0;
+  mask-position: right top, left bottom, 0 0, 0 0;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-composite: source-over, source-over, source-in, source-over;
+  mask-composite: add, add, intersect, add;
+  transition: height .2s cubic-bezier(.2, 0, 0, 1), --ifs-fade .2s cubic-bezier(.2, 0, 0, 1), --ifs-fade-start .2s cubic-bezier(.2, 0, 0, 1), --ifs-fade-end .2s cubic-bezier(.2, 0, 0, 1);
+}
+.ifs-table--fade-start > .ifs-table__scroll { --ifs-fade-start: 32px; }
+.ifs-table--fade-end > .ifs-table__scroll { --ifs-fade-end: 32px; }
+.ifs-table--fade > .ifs-table__scroll { --ifs-fade: 96px; }
+/* height: the header sticks and the body scrolls */
+.ifs-table--scroll .ifs-table__head { position: sticky; top: 0; z-index: 2; background: var(--tint); }
+/* loadMore: the shell's tint moves into the viewport so the whole table dissolves into the page, and a button floats over the
+   faded end. Bottom padding lets the last rows scroll clear of it. */
+.ifs-table--more { background: transparent; }
+.ifs-table--more .ifs-table__scroll { background: var(--tint); padding-bottom: 76px; }
+.ifs-table--more.ifs-table--fade > .ifs-table__scroll { --ifs-fade: 128px; }
+.ifs-table__more { position: absolute; left: 0; right: 0; bottom: 20px; z-index: 3; display: flex; justify-content: center; pointer-events: none; }
+.ifs-table__more > * { pointer-events: auto; }
+@media (prefers-reduced-motion: reduce) { .ifs-table__scroll { transition: none; } }
+/* a row menu floats out of the scroll box into the body, above everything in the table */
+.ifs-pop--float { z-index: 80; }
+.ifs-env { width: 20px; height: 20px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: calc(var(--radius-xs) * var(--corners)); }
+.ifs-env .ifs-icon { width: 12px; height: 12px; stroke-width: 2.4; }
+.ifs-env--ok { background: var(--ok-bg); border: 1px solid var(--ok-line); color: var(--ok); }
+.ifs-env--miss { background: var(--bad-bg); border: 1px solid var(--bad-line); color: var(--bad); }
+
+/* ---------------------------------------------------------------- Data grid */
+/* A spreadsheet: every value in mono on a hairline grid, a tint header and row number gutter that stick, one active cell
+   outlined in ink, a range on select. Columns size like Table's; a dragged column keeps its width until its edge is
+   double-clicked. Edited, unsaved cells sit on warn-wash until they are saved or discarded. */
+.ifs-grid { position: relative; box-sizing: border-box; width: 100%; min-width: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: calc(var(--radius-card) * var(--corners)); background: var(--surface); overflow: hidden; }
+.ifs-grid__scroll { position: relative; box-sizing: border-box; overflow: auto; outline: none; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--control) transparent; }
+.ifs-grid__table { position: relative; display: grid; width: max-content; min-width: 100%; font-family: var(--font-mono); font-size: 12.5px; line-height: 16px; font-weight: 500; color: var(--text2); font-variant-numeric: tabular-nums; }
+.ifs-grid__row { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; box-sizing: border-box; }
+.ifs-grid__head { position: sticky; top: 0; z-index: 3; height: 36px; background: var(--tint); }
+.ifs-grid__corner, .ifs-grid__num { position: sticky; left: 0; z-index: 1; box-sizing: border-box; min-width: 44px; display: flex; align-items: center; justify-content: flex-end; padding: 0 10px; background: var(--tint); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line-soft); font-size: 11px; color: var(--muted); cursor: default; user-select: none; }
+.ifs-grid__corner { z-index: 2; border-bottom-color: var(--line); }
+.ifs-grid__num--sel { background: var(--select); color: var(--ink); }
+.ifs-grid__col { position: relative; box-sizing: border-box; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 0 10px; border-right: 1px solid var(--line-soft); border-bottom: 1px solid var(--line); white-space: nowrap; color: var(--ink); font-weight: 600; cursor: default; user-select: none; }
+.ifs-grid__col--end { justify-content: flex-end; }
+.ifs-grid__col .ifs-icon { color: var(--muted); }
+.ifs-grid__col--sel { background: var(--select); }
+.ifs-grid__col--sel .ifs-grid__type { color: var(--text2); }
+.ifs-grid__name { min-width: 0; }
+.ifs-grid__type { flex-shrink: 0; font-size: 11px; font-weight: 500; color: var(--muted); }
+.ifs-grid__sort { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex-shrink: 0; margin-right: -4px; padding: 0; border: 0; border-radius: calc(var(--radius-sm) * var(--corners)); background: transparent; color: var(--muted); cursor: pointer; opacity: 0; }
+.ifs-grid__col:hover .ifs-grid__sort, .ifs-grid__sort[data-active="true"] { opacity: 1; }
+.ifs-grid__sort[data-active="true"] { color: var(--ink); }
+.ifs-grid__sort:hover { background: color-mix(in srgb, currentColor var(--hover), transparent); color: var(--ink); }
+.ifs-grid__sort .ifs-icon { color: inherit; }
+.ifs-grid__resize { position: absolute; top: 0; right: -4px; bottom: 0; z-index: 1; width: 8px; cursor: col-resize; }
+.ifs-grid__resize::after { content: ""; position: absolute; top: 6px; bottom: 6px; left: 3px; width: 2px; background: var(--ink); opacity: 0; }
+.ifs-grid__resize:hover::after, .ifs-grid__col[data-resizing="true"] .ifs-grid__resize::after { opacity: 1; }
+.ifs-grid__cell { box-sizing: border-box; min-width: 0; display: flex; align-items: center; padding: 0 10px; border-right: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); white-space: nowrap; cursor: default; user-select: none; }
+.ifs-grid__cell--end { justify-content: flex-end; }
+.ifs-grid__text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ifs-grid__null { font-size: 11px; letter-spacing: .04em; color: var(--muted); }
+.ifs-grid__fill { border-bottom: 1px solid var(--line-soft); }
+.ifs-grid__head .ifs-grid__fill { border-bottom-color: var(--line); }
+.ifs-grid__cell--dirty { background: var(--warn-wash); color: var(--ink); }
+.ifs-grid__cell--sel { background: var(--select); color: var(--ink); }
+.ifs-grid__cell--active { outline: 2px solid var(--ink); outline-offset: -2px; color: var(--ink); }
+.ifs-grid:not(:focus-within) .ifs-grid__cell--active { outline-color: var(--control); }
+.ifs-grid__cell--editing { padding: 0; background: var(--surface); }
+.ifs-grid__cell--invalid, .ifs-grid:not(:focus-within) .ifs-grid__cell--invalid { outline-color: var(--bad); }
+.ifs-grid__input { box-sizing: border-box; width: 100%; min-width: 0; height: 100%; padding: 0 10px; border: 0; background: transparent; font: inherit; color: var(--ink); outline: none; text-align: inherit; }
+.ifs-grid__cell--end .ifs-grid__input { text-align: right; }
+.ifs-grid__spacer { grid-column: 1 / -1; }
+.ifs-grid__empty { grid-column: 1 / -1; width: 0; min-width: 100%; box-sizing: border-box; padding: 28px 16px; text-align: center; font-family: var(--font-sans); font-size: 13.5px; color: var(--muted); white-space: normal; }
+.ifs-grid__footer { display: flex; align-items: center; gap: 16px; min-height: 32px; box-sizing: border-box; padding: 0 12px; border-top: 1px solid var(--line); background: var(--tint); font-family: var(--font-mono); font-size: 12px; line-height: 16px; color: var(--muted); white-space: nowrap; overflow: hidden; }
+
+/* ---------------------------------------------------------------- Separator */
+.ifs-sep { flex-shrink: 0; height: 1px; width: 100%; background: var(--line); border: 0; margin: 0; }
+.ifs-sep--soft { background: var(--line-soft); }
+.ifs-sep--vertical { width: 1px; height: 20px; margin: 0 4px; }
+.ifs-sep-label { display: flex; align-items: center; gap: 10px; width: 100%; }
+.ifs-sep-label::after, .ifs-sep-label--center::before { content: ""; flex-grow: 1; height: 1px; background: var(--line); }
+.ifs-sep-label span { font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; font-stretch: 106%; color: var(--muted); white-space: nowrap; }
+
+/* ---------------------------------------------------------------- Tabs */
+/* One indicator per tablist, the segmented thumb or the 2px underline bar, slides and resizes to the current tab, jumps included.
+   Each label sits over a hidden copy at the selected weight, so a tab is always as wide as it is when selected and nothing shifts.
+   The tablist scrolls when it runs out of room, with no scrollbar: bundle.js sets --fade-start and --fade-end (0 to 32px) and
+   data-overflow, and the mask fades only the edges that have more tabs past them. */
+.ifs-tabs { --ifs-slide: 200ms cubic-bezier(.2, 0, 0, 1); display: flex; flex-direction: column; width: 100%; min-width: 0; }
+.ifs-tabs__scroll { position: relative; isolation: isolate; display: flex; min-width: 0; min-height: 0; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: none; -ms-overflow-style: none; --fade-start: 0px; --fade-end: 0px; }
+.ifs-tabs__scroll::-webkit-scrollbar { display: none; }
+.ifs-tabs__scroll[aria-orientation="vertical"] { flex-direction: column; overflow-x: hidden; overflow-y: auto; overscroll-behavior-x: auto; }
+.ifs-tabs__scroll[data-overflow] { -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent); mask-image: linear-gradient(to right, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent); }
+.ifs-tabs__scroll[data-overflow][aria-orientation="vertical"] { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent); mask-image: linear-gradient(to bottom, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent); }
+.ifs-tab__label { display: inline-grid; justify-items: center; }
+.ifs-tab__text, .ifs-tab__ghost { grid-area: 1 / 1; }
+.ifs-tab__ghost { font-weight: 600; visibility: hidden; pointer-events: none; user-select: none; }
+/* underline: the rule belongs to the strip, outside the mask, so it never fades. The scroller pads 4px for focus outlines and pulls back by 4px. */
+.ifs-tablist { position: relative; display: flex; }
+.ifs-tablist::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--line); }
+.ifs-tablist__scroll { flex: 1 1 auto; gap: 22px; padding: 4px; margin: -4px; }
+.ifs-tablist__bar { position: absolute; left: 0; top: 0; width: 0; height: 2px; background: var(--ink); pointer-events: none; transition: transform var(--ifs-slide), width var(--ifs-slide), height var(--ifs-slide); }
+.ifs-tab { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 2px 2px; box-sizing: border-box; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: color var(--ifs-slide), font-weight var(--ifs-slide); }
+.ifs-tab:hover { color: var(--ink); }
+.ifs-tab[aria-selected="true"] { color: var(--ink); font-weight: 600; }
+.ifs-tab:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ifs-tab__count { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border-radius: calc(var(--radius-sm) * var(--corners)); background: var(--line-soft); font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; color: var(--text2); }
+.ifs-tabpanel { padding-top: 10px; }
+.ifs-tabpanel:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ifs-tabs--segmented { gap: 16px; }
+.ifs-tabs--segmented .ifs-segmented { align-self: flex-start; }
+.ifs-tabs--segmented .ifs-tabpanel { padding-top: 0; }
+/* vertical: the list stands to the left of the panel. Underline tabs keep their rule between list and panel, on the list's right edge, and the bar runs down it.
+   The list scrolls when the Tabs are given a height or max-height. */
+.ifs-tabs--vertical { flex-direction: row; align-items: stretch; gap: 24px; }
+.ifs-tabs--vertical > .ifs-tabpanel { flex: 1; min-width: 0; padding-top: 0; }
+.ifs-tabs--vertical.ifs-tabs--segmented { gap: 16px; }
+.ifs-tablist--vertical { flex: none; flex-direction: column; }
+.ifs-tablist--vertical::before { left: auto; top: 0; right: 0; bottom: 0; width: 1px; height: auto; }
+.ifs-tablist--vertical .ifs-tablist__scroll { gap: 0; }
+.ifs-tablist--vertical .ifs-tablist__bar { width: 2px; height: 0; }
+.ifs-tablist--vertical .ifs-tab { height: 36px; padding: 0 16px 0 0; justify-content: space-between; }
+.ifs-tabs--vertical .ifs-tab__label { justify-items: start; }
+@media (prefers-reduced-motion: reduce) { .ifs-segmented__thumb, .ifs-tablist__bar, .ifs-segmented__item, .ifs-tab { transition: none; } }
+
+/* ---------------------------------------------------------------- Breadcrumb */
+.ifs-crumbs ol { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; gap: 8px; font-size: 13.5px; line-height: 20px; flex-wrap: wrap; }
+.ifs-crumbs a { color: var(--text2); text-decoration: none; white-space: nowrap; border-radius: calc(var(--radius-sm) * var(--corners)); }
+.ifs-crumbs a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.ifs-crumbs a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ifs-crumbs [aria-current="page"] { font-weight: 600; color: var(--ink); white-space: nowrap; }
+.ifs-crumbs__sep { display: inline-flex; color: var(--faint); }
+.ifs-crumbs__sep .ifs-icon { width: 14px; height: 14px; }
+.ifs-crumbs__mono { font-family: var(--font-mono); font-size: 12.5px; font-weight: 500; }
+.ifs-crumbs__more { display: inline-flex; align-items: center; justify-content: center; height: 20px; padding: 0 6px; border: 1px solid var(--line); border-radius: calc(var(--radius-sm) * var(--corners)); background: var(--tint); color: var(--text2); font: inherit; font-size: 12px; cursor: pointer; }
+.ifs-crumbs--eyebrow ol { font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; font-stretch: 106%; gap: 6px; }
+.ifs-crumbs--eyebrow a, .ifs-crumbs--eyebrow [aria-current="page"] { color: var(--muted); font-weight: 500; }
+
+/* ---------------------------------------------------------------- Pagination */
+.ifs-pagination { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; }
+.ifs-pagination__info { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.ifs-pagination__pages { display: flex; align-items: center; gap: 4px; }
+.ifs-page { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 32px; padding: 0 6px; box-sizing: border-box; border: 1px solid transparent; border-radius: calc(var(--radius-control) * var(--corners)); background: transparent; color: var(--text2); font-family: var(--font-mono); font-size: 12.5px; font-weight: 500; cursor: pointer; }
+.ifs-page:hover { background: color-mix(in srgb, currentColor var(--hover), transparent); color: var(--ink); }
+.ifs-page[aria-current="page"] { border-color: var(--ink); background: var(--ink); color: var(--on-ink); font-weight: 600; }
+.ifs-page:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ifs-page--gap { cursor: default; color: var(--faint); min-width: 20px; padding: 0; }
+.ifs-page--gap:hover { background: transparent; color: var(--faint); }
+.ifs-pagination__compact { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text2); }
+.ifs-pagination__compact b { font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; color: var(--ink); }
+
+/* ---------------------------------------------------------------- Overlays: dialog, alert dialog, sheet */
+.ifs-overlay { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; background: var(--scrim); }
+.ifs-overlay--sheet { justify-content: flex-end; align-items: stretch; padding: 0; }
+.ifs-dialog { position: relative; width: 440px; max-width: 100%; max-height: 100%; box-sizing: border-box; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: calc(var(--radius-panel) * var(--corners)); box-shadow: var(--shadow-pop); display: flex; flex-direction: column; overflow: hidden; }
+.ifs-dialog:focus { outline: none; }
+.ifs-dialog__head { padding: 20px 56px 4px 20px; display: flex; flex-direction: column; gap: 6px; }
+.ifs-dialog__title { margin: 0; font-size: 18px; line-height: 24px; font-weight: 500; letter-spacing: -.02em; }
+.ifs-dialog__desc { margin: 0; font-size: 13.5px; line-height: 20px; color: var(--muted); }
+.ifs-dialog__close { position: absolute; top: 14px; right: 14px; display: flex; gap: 2px; }
+.ifs-dialog__body { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 16px; overflow: auto; }
+.ifs-dialog__footer { display: flex; justify-content: flex-end; align-items: center; gap: 12px; padding: 12px; border-top: 1px solid var(--line-soft); background: var(--paper); }
+.ifs-alertdialog { width: 420px; padding: 16px; gap: 16px; }
+.ifs-alertdialog__icon { width: 40px; height: 40px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border: 0; background: var(--bad-bg); color: var(--bad); border-radius: calc(var(--radius-pop) * var(--corners)); }
+.ifs-alertdialog__icon .ifs-icon { width: 20px; height: 20px; }
+.ifs-alertdialog__text { display: flex; flex-direction: column; gap: 8px; }
+.ifs-alertdialog__desc { margin: 0; font-size: 13.5px; line-height: 20px; color: var(--text2); }
+.ifs-alertdialog__actions { display: flex; justify-content: flex-end; gap: 12px; padding-top: 4px; }
+.ifs-sheet { position: relative; width: 440px; max-width: 100%; height: 100%; box-sizing: border-box; background: var(--surface); color: var(--ink); border-left: 1px solid var(--line); box-shadow: var(--shadow-pop); display: flex; flex-direction: column; }
+.ifs-sheet:focus { outline: none; }
+.ifs-sheet__head { padding: 20px 20px 16px; padding-right: 88px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--line-soft); }
+.ifs-sheet__title { margin: 0; font-size: 18px; line-height: 24px; font-weight: 600; }
+.ifs-sheet__title--mono { font-family: var(--font-mono); }
+.ifs-sheet__meta { display: flex; gap: 6px; margin-top: 2px; flex-wrap: wrap; }
+.ifs-sheet__body { flex-grow: 1; min-height: 0; overflow: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+.ifs-sheet__footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; border-top: 1px solid var(--line-soft); background: var(--paper); }
+.ifs-sheet__footer-end { display: flex; gap: 12px; margin-left: auto; }
+.ifs-props { margin: 0; border: 1px solid var(--line); border-radius: calc(var(--radius-card) * var(--corners)); }
+.ifs-props__row { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 40px; box-sizing: border-box; padding: 4px 14px; border-top: 1px solid var(--line-soft); }
+.ifs-props__row:first-child { border-top: 0; }
+/* labels keep their width; a long value wraps inside its side instead of pushing the label out */
+.ifs-props dt { flex: none; font-size: 13px; line-height: 20px; color: var(--muted); white-space: nowrap; }
+.ifs-props dd { min-width: 0; margin: 0; font-size: 13.5px; line-height: 20px; text-align: right; overflow-wrap: anywhere; }
+
+/* ---------------------------------------------------------------- Alert, banner */
+.ifs-alert { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 12px; align-items: start; width: 100%; box-sizing: border-box; padding: 14px 16px; border: 1px solid var(--info-line); background: var(--info-wash); border-radius: calc(var(--radius-card) * var(--corners)); }
+.ifs-alert__icon { display: inline-flex; margin-top: 1px; color: var(--info); }
+.ifs-alert__icon .ifs-icon { width: 18px; height: 18px; }
+.ifs-alert__text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ifs-alert__title { font-size: 14px; line-height: 20px; font-weight: 600; color: var(--info-deep); }
+.ifs-alert__desc { font-size: 13.5px; line-height: 20px; color: var(--text2); }
+.ifs-alert__actions { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.ifs-alert__dismiss { width: 28px; height: 28px; margin: -4px -6px 0 0; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: calc(var(--radius-sm) * var(--corners)); background: transparent; color: var(--info-deep); cursor: pointer; }
+.ifs-alert__dismiss:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ifs-alert__dismiss .ifs-icon { width: 15px; height: 15px; }
+.ifs-alert--ok { border-color: var(--ok-line); background: var(--ok-wash); }
+.ifs-alert--ok .ifs-alert__icon { color: var(--ok); }
+.ifs-alert--ok .ifs-alert__title, .ifs-alert--ok .ifs-alert__dismiss { color: var(--ok-deep); }
+.ifs-alert--warn { border-color: var(--warn-line); background: var(--warn-wash); }
+.ifs-alert--warn .ifs-alert__icon { color: var(--warn); }
+.ifs-alert--warn .ifs-alert__title, .ifs-alert--warn .ifs-alert__dismiss { color: var(--warn-deep); }
+.ifs-alert--bad { border-color: var(--bad-line); background: var(--bad-wash); }
+.ifs-alert--bad .ifs-alert__icon { color: var(--bad); }
+.ifs-alert--bad .ifs-alert__title, .ifs-alert--bad .ifs-alert__dismiss { color: var(--bad-deep); }
+.ifs-banner { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; box-sizing: border-box; padding: 0 8px 0 16px; background: var(--accent-wash); border: 1px solid var(--accent-line); color: var(--ink); border-radius: calc(var(--radius-card) * var(--corners)); }
+.ifs-banner > .ifs-icon { width: 17px; height: 17px; color: var(--accent-fg); }
+.ifs-banner__text { flex-grow: 1; font-size: 13.5px; line-height: 20px; }
+.ifs-banner__text code { font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; }
+.ifs-banner a, .ifs-banner__action { font: inherit; font-size: 13px; font-weight: 600; color: var(--accent-fg); white-space: nowrap; background: none; border: 0; padding: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.ifs-banner__dismiss { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: calc(var(--radius-sm) * var(--corners)); background: transparent; color: var(--muted); cursor: pointer; }
+.ifs-banner__dismiss .ifs-icon { width: 15px; height: 15px; }
+
+/* ---------------------------------------------------------------- Toast */
+.ifs-toasts { position: fixed; right: 16px; bottom: 16px; z-index: 70; display: flex; flex-direction: column; gap: 8px; width: 380px; max-width: calc(100% - 32px); }
+.ifs-toasts--inline { position: static; width: 100%; max-width: 380px; }
+.ifs-toast { display: flex; align-items: flex-start; gap: 12px; width: 100%; box-sizing: border-box; padding: 12px 10px 12px 14px; background: var(--toast-bg); border: 1px solid var(--toast-line); color: var(--toast-text); border-radius: calc(var(--radius-card) * var(--corners)); box-shadow: var(--shadow-pop); }
+.ifs-toast__lead { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 20px; flex-shrink: 0; }
+.ifs-toast__lead .ifs-icon { width: 18px; height: 18px; }
+.ifs-toast--ok .ifs-toast__lead { color: var(--toast-ok); }
+.ifs-toast--bad .ifs-toast__lead { color: var(--toast-bad); }
+.ifs-toast__text { display: flex; flex-direction: column; gap: 2px; flex-grow: 1; min-width: 0; }
+.ifs-toast__title { font-size: 13.5px; line-height: 20px; font-weight: 600; }
+.ifs-toast__desc { font-size: 12.5px; line-height: 17px; color: var(--toast-muted); }
+.ifs-toast__actions { display: flex; align-items: center; gap: 2px; margin: -4px 0; }
+.ifs-toast__action { height: 28px; padding: 0 8px; border: 0; border-radius: calc(var(--radius-sm) * var(--corners)); background: transparent; color: var(--accent-fg); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
+.ifs-toast__dismiss { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: calc(var(--radius-sm) * var(--corners)); background: transparent; color: var(--toast-muted); cursor: pointer; flex-shrink: 0; }
+.ifs-toast__dismiss .ifs-icon { width: 15px; height: 15px; }
+.ifs-toast__action:focus-visible, .ifs-toast__dismiss:focus-visible { outline: 2px solid var(--toast-text); outline-offset: 0; }
+.ifs-banner__dismiss:focus-visible, .ifs-banner a:focus-visible, .ifs-banner__action:focus-visible { outline: 2px solid var(--ink); outline-offset: 0; }
+
+/* ---------------------------------------------------------------- Progress */
+.ifs-progress { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.ifs-progress__labels { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ifs-progress__label { font-size: 13.5px; line-height: 18px; font-weight: 500; }
+.ifs-progress__value { font-family: var(--font-mono); font-size: 12.5px; line-height: 18px; color: var(--muted); white-space: nowrap; }
+.ifs-progress__track { position: relative; height: 6px; background: var(--line-soft); border-radius: calc(var(--radius-xs) * var(--corners)); overflow: hidden; }
+.ifs-progress__fill { display: block; height: 100%; background: var(--ink); border-radius: calc(var(--radius-xs) * var(--corners)); }
+.ifs-progress--warn .ifs-progress__fill { background: var(--warn); }
+.ifs-progress--warn .ifs-progress__value { color: var(--warn); }
+.ifs-progress--bad .ifs-progress__fill { background: var(--bad); }
+.ifs-progress--bad .ifs-progress__value { color: var(--bad); }
+.ifs-progress__slider { position: absolute; left: 0; top: 0; width: 30%; height: 100%; background: var(--ink); border-radius: calc(var(--radius-xs) * var(--corners)); animation: ifs-slide 1.5s ease-in-out infinite; }
+.ifs-steps { display: flex; gap: 4px; }
+.ifs-steps__seg { flex: 1; height: 6px; background: var(--line-soft); border-radius: calc(var(--radius-xs) * var(--corners)); }
+.ifs-steps__seg--done { background: var(--ink); }
+.ifs-steps__seg--current { background: repeating-linear-gradient(135deg, var(--ink) 0 3px, transparent 3px 6px); outline: 1px solid var(--ink); outline-offset: -1px; }
+.ifs-steps__label { flex: 1; font-size: 12px; line-height: 16px; font-weight: 500; color: var(--muted); }
+.ifs-steps__label--current { font-weight: 600; color: var(--ink); }
+
+/* ---------------------------------------------------------------- Skeleton, empty state */
+.ifs-skeleton { display: block; flex-shrink: 0; background: var(--line-soft); border-radius: calc(var(--radius-xs) * var(--corners)); animation: ifs-skel 1.4s ease-in-out infinite; }
+.ifs-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 28px 20px; }
+.ifs-empty__icon { width: 40px; height: 40px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 8px; border: 0; background: var(--tint); color: var(--text2); border-radius: calc(var(--radius-control) * var(--corners)); }
+.ifs-empty__icon .ifs-icon { width: 18px; height: 18px; }
+.ifs-empty__title { margin: 0; font-size: 16px; line-height: 22px; font-weight: 600; }
+.ifs-empty__desc { margin: 0; max-width: 320px; font-size: 13.5px; line-height: 20px; color: var(--muted); }
+.ifs-empty__actions { display: flex; gap: 8px; margin-top: 8px; }
+.ifs-empty--compact { flex-direction: row; justify-content: center; gap: 10px; padding: 16px; font-size: 13.5px; color: var(--text2); }
+.ifs-empty--compact > .ifs-icon { width: 16px; height: 16px; color: var(--muted); }
+
+/* ---------------------------------------------------------------- Code, CodeBlock, Json, Snippet
+   Code is mono. Highlighting stays neutral: structure (commands, keywords, keys) in ink at a heavier weight, values in text2,
+   punctuation and comments in muted. Hue is saved for meaning; highlighted lines take accent-wash, the highlighted-row ground. */
+.ifs-code { font-family: var(--font-mono); font-size: .9em; font-weight: 500; padding: 1px 4px; border-radius: calc(var(--radius-sm) * var(--corners)); background: var(--line-soft); color: var(--ink); overflow-wrap: anywhere; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.ifs-codeview { margin: 0; box-sizing: border-box; min-width: 0; overflow: auto; padding: 12px 0; background: var(--surface); color: var(--ink); font-family: var(--font-mono); font-size: 12.5px; line-height: 20px; font-weight: 400; tab-size: 2; scrollbar-width: thin; }
+.ifs-codeview:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.ifs-codeview > code { display: inline-block; min-width: 100%; box-sizing: border-box; font: inherit; }
+.ifs-codeview--wrap > code { display: block; }
+.ifs-code__line { display: flex; min-height: 20px; padding: 0 14px; }
+.ifs-code__line--hl { background: var(--accent-wash); }
+.ifs-codeview--ln > code { counter-reset: ifs-ln; }
+.ifs-codeview--ln .ifs-code__line { counter-increment: ifs-ln; }
+.ifs-codeview--ln .ifs-code__line::before { content: counter(ifs-ln); content: counter(ifs-ln) / ""; flex: none; width: var(--ifs-ln, 2ch); margin-right: 16px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; -webkit-user-select: none; user-select: none; }
+.ifs-code__text { white-space: pre; }
+.ifs-codeview--wrap .ifs-code__text { flex: 1; min-width: 0; padding-left: 2ch; text-indent: -2ch; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* wrapped lines break at spaces, never inside a flag, variable or key; continuation lines hang 2ch in */
+.ifs-codeview--wrap .ifs-tok--flag, .ifs-codeview--wrap .ifs-tok--var, .ifs-codeview--wrap .ifs-tok--key { white-space: nowrap; }
+.ifs-tok--keyword { color: var(--ink); font-weight: 600; }
+.ifs-tok--key { color: var(--ink); font-weight: 600; }
+.ifs-tok--string { color: var(--text2); }
+.ifs-tok--number, .ifs-tok--literal { color: var(--ink); font-weight: 500; }
+.ifs-tok--var, .ifs-tok--flag { color: var(--ink); font-weight: 500; }
+.ifs-tok--punct, .ifs-tok--comment { color: var(--muted); }
+.ifs-tok--masked { color: var(--muted); letter-spacing: .06em; }
+.ifs-codeblock { box-sizing: border-box; width: 100%; min-width: 0; border-radius: calc(var(--radius-panel) * var(--corners)); background: var(--tint); padding: 0 3px 3px; }
+.ifs-codeblock__head { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 3px 0 11px; }
+.ifs-codeblock__label { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; font-family: var(--font-mono); font-size: 12px; line-height: 16px; font-weight: 500; color: var(--text2); white-space: nowrap; overflow: hidden; }
+.ifs-codeblock__label > .ifs-icon { width: 14px; height: 14px; color: var(--muted); }
+.ifs-codeblock__actions { display: flex; align-items: center; gap: 2px; flex: none; margin-left: auto; }
+.ifs-codeblock__actions .ifs-btn--sm { height: 28px; padding: 0 8px; font-size: 12.5px; }
+.ifs-codeblock__actions .ifs-btn--sm.ifs-btn--icon { width: 28px; padding: 0; }
+.ifs-codeblock__body { box-sizing: border-box; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: calc(var(--radius-inset, 1px) * var(--corners)); box-shadow: var(--shadow-raised); overflow: hidden; }
+.ifs-json { box-sizing: border-box; min-width: 0; overflow: auto; padding: 12px 14px 12px 8px; background: var(--surface); color: var(--ink); font-family: var(--font-mono); font-size: 12.5px; line-height: 20px; font-weight: 400; scrollbar-width: thin; }
+.ifs-json__root { display: inline-block; min-width: 100%; }
+.ifs-json__line { display: flex; align-items: flex-start; min-height: 20px; white-space: pre; }
+.ifs-json--wrap .ifs-json__line { white-space: pre-wrap; overflow-wrap: anywhere; }
+.ifs-json__line--head { cursor: pointer; }
+.ifs-json__gap { flex: none; width: 16px; }
+.ifs-json__toggle { flex: none; width: 16px; height: 20px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: calc(var(--radius-xs) * var(--corners)); background: transparent; color: var(--muted); cursor: pointer; }
+.ifs-json__toggle:hover { color: var(--ink); }
+.ifs-json__toggle:focus-visible { outline: 2px solid var(--ink); outline-offset: 0; }
+.ifs-json__toggle .ifs-icon { width: 12px; height: 12px; transition: transform var(--ifs-slide); }
+.ifs-json__toggle[aria-expanded="true"] .ifs-icon { transform: rotate(90deg); }
+.ifs-json__count { margin-left: 10px; font-size: 11.5px; color: var(--muted); }
+.ifs-json__kids { margin-left: 7.5px; padding-left: 7.5px; border-left: 1px solid var(--line-soft); }
+.ifs-snippet { background: var(--tint); border-color: var(--line); }
+.ifs-snippet input { font-family: var(--font-mono); font-size: 13px; font-weight: 500; color: var(--ink); text-overflow: ellipsis; }
+.ifs-snippet input:focus { text-overflow: clip; }
+.ifs-snippet__prompt { flex: none; font-family: var(--font-mono); font-size: 13px; font-weight: 500; color: var(--muted); -webkit-user-select: none; user-select: none; }
+@media (prefers-reduced-motion: reduce) { .ifs-json__toggle .ifs-icon { transition: none; } }
+
+/* ---------------------------------------------------------------- FileTree
+   Connected rows: hover takes the row's own text color at --hover, the selected row takes select and its text steps up to ink. Rows sit inside a
+   scroller, so focus draws the 2px ink outline inside the row. Each level indents 16px; a line-soft guide runs under each open
+   folder's chevron. Names are mono (paths and file names are machine text) and middle-truncate. */
+.ifs-tree { --tree-pad: 6px; --tree-indent: 16px; box-sizing: border-box; display: flex; flex-direction: column; min-width: 0; padding: 4px; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.ifs-tree__item { display: flex; flex-direction: column; outline: none; }
+.ifs-tree__row { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px 0 calc(var(--tree-pad) + (var(--lvl) - 1) * var(--tree-indent)); box-sizing: border-box; border-radius: calc(var(--radius-sm) * var(--corners)); color: var(--text2); font-size: 13px; line-height: 18px; white-space: nowrap; cursor: pointer; -webkit-user-select: none; user-select: none; }
+.ifs-tree--sm .ifs-tree__row { height: 28px; }
+.ifs-tree__row:hover { background: color-mix(in srgb, currentColor var(--hover), transparent); }
+.ifs-tree__item[aria-selected="true"] > .ifs-tree__row { background: var(--select); color: var(--ink); }
+.ifs-tree__item[aria-selected="true"] > .ifs-tree__row .ifs-tree__name { font-weight: 600; }
+.ifs-tree__item[aria-selected="true"] > .ifs-tree__row .ifs-tree__icon, .ifs-tree__item[aria-selected="true"] > .ifs-tree__row .ifs-tree__meta { color: var(--text2); }
+.ifs-tree__item:focus-visible > .ifs-tree__row { position: relative; z-index: 1; outline: 2px solid var(--ink); outline-offset: -2px; }
+.ifs-tree__item[aria-disabled="true"] > .ifs-tree__row { color: var(--faint); cursor: not-allowed; background: transparent; }
+.ifs-tree__item[aria-disabled="true"] > .ifs-tree__row .ifs-tree__icon { color: var(--faint); }
+.ifs-tree__chev { flex: none; width: 16px; height: 16px; margin-right: -4px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); }
+.ifs-tree__chev .ifs-icon { width: 14px; height: 14px; transition: transform var(--ifs-slide); }
+.ifs-tree__row:hover .ifs-tree__chev { color: var(--ink); }
+.ifs-tree__item[aria-expanded="true"] > .ifs-tree__row .ifs-tree__chev .ifs-icon { transform: rotate(90deg); }
+.ifs-tree__icon { flex: none; width: 16px; height: 16px; color: var(--muted); }
+.ifs-tree__name { flex: 0 1 auto; min-width: 0; font-family: var(--font-mono); font-weight: 500; }
+.ifs-tree__name--end { overflow: hidden; text-overflow: ellipsis; }
+.ifs-tree__meta { flex: none; margin-left: auto; padding-left: 12px; display: inline-flex; align-items: center; font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
+.ifs-tree__group { position: relative; display: flex; flex-direction: column; }
+.ifs-tree__group::before { content: ""; position: absolute; top: 0; bottom: 0; left: calc(var(--tree-pad) + (var(--lvl) - 2) * var(--tree-indent) + 7.5px); width: 1px; background: var(--line-soft); pointer-events: none; }
+.ifs-tree__empty { padding: 16px 10px; font-size: 13px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .ifs-tree__chev .ifs-icon { transition: none; } }
+
+/* ---------------------------------------------------------------- MultiSelect
+   A Select trigger (or any button) over a listbox with checks. The bar above the options holds the count and the quick actions. */
+.ifs-mselect__pop { padding-top: 0; }
+.ifs-mselect__bar { display: flex; align-items: center; gap: 2px; height: 36px; margin: 0 -3px 2px; padding: 0 4px 0 10px; border-bottom: 1px solid var(--line-soft); flex-shrink: 0; }
+.ifs-mselect__status { flex: 1 1 auto; min-width: 0; margin-right: 8px; font-size: 12px; line-height: 16px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ifs-mselect__quick { flex: none; height: 24px; padding: 0 6px; border: 0; border-radius: calc(var(--radius-sm) * var(--corners)); background: transparent; color: var(--text2); font: inherit; font-size: 12.5px; font-weight: 500; white-space: nowrap; cursor: pointer; }
+.ifs-mselect__quick:hover:not(:disabled) { background: color-mix(in srgb, currentColor var(--hover), transparent); color: var(--ink); }
+.ifs-mselect__quick:disabled { color: var(--faint); cursor: not-allowed; }
+.ifs-mselect__quick:focus-visible { outline: 2px solid var(--ink); outline-offset: 0; }
+.ifs-option[aria-disabled="true"] > .ifs-checkbox { background: var(--line-soft); border-color: var(--line); }
+.ifs-mselect__list { display: flex; flex-direction: column; gap: 1px; max-height: 288px; overflow: auto; outline: none; scrollbar-width: thin; }
+.ifs-mselect__summary { display: flex; align-items: baseline; gap: 6px; flex: 1 1 auto; min-width: 0; }
+.ifs-mselect__summary .ifs-select-trigger__value { flex: 0 1 auto; }
+.ifs-mselect__more { flex: none; font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--muted); }
+.ifs-select-trigger__stack .ifs-mselect__summary span { line-height: 18px; }
+.ifs-select-trigger__stack .ifs-mselect__more { font-weight: 500; }
+
+/* ---------------------------------------------------------------- edge fade for vertical scrollers (bundle.js useEdgeFade) */
+.ifs-fade-y { --fade-start: 0px; --fade-end: 0px; }
+.ifs-fade-y[data-overflow] { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent); mask-image: linear-gradient(to bottom, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent); }
+
+/* ---------------------------------------------------------------- MiddleTruncate, AnimatedCollapse
+   MiddleTruncate is as wide as its full text (the hidden ghost) until its container is narrower; bundle.js fits the visible text.
+   AnimatedCollapse animates a grid row from 0fr to 1fr. The inner box clips only while it moves or while closed. */
+.ifs-mtrunc { position: relative; display: inline-flex; flex-direction: column; max-width: 100%; min-width: 0; overflow: hidden; white-space: nowrap; vertical-align: bottom; }
+.ifs-mtrunc__text { overflow: hidden; }
+.ifs-mtrunc__ghost { height: 0; overflow: hidden; visibility: hidden; }
+.ifs-mtrunc__measure { position: absolute; left: 0; top: 0; visibility: hidden; white-space: pre; pointer-events: none; }
+.ifs-mtrunc > .ifs-sr { -webkit-user-select: none; user-select: none; }
+.ifs-collapse { display: grid; grid-template-rows: 0fr; min-width: 0; visibility: hidden; transition: grid-template-rows var(--ifs-slide), visibility 0s linear 200ms; }
+.ifs-collapse[data-open] { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows var(--ifs-slide), visibility 0s; }
+.ifs-collapse__inner { min-height: 0; min-width: 0; overflow: hidden; opacity: 0; transition: opacity var(--ifs-slide); }
+.ifs-collapse[data-open] > .ifs-collapse__inner { opacity: 1; }
+.ifs-collapse[data-settled] > .ifs-collapse__inner { overflow: visible; }
+@media (prefers-reduced-motion: reduce) { .ifs-collapse, .ifs-collapse[data-open], .ifs-collapse__inner { transition: none; } }
+
+/* ---------------------------------------------------------------- hover grounds for small in-component actions
+   Dismiss buttons and toast actions take their own color at --hover too: an info alert's dismiss hovers info, a toast's Undo hovers accent-fg. */
+.ifs-alert__dismiss:hover, .ifs-banner__dismiss:hover, .ifs-toast__action:hover, .ifs-toast__dismiss:hover { background: color-mix(in srgb, currentColor var(--hover), transparent); }
+.ifs-alert__dismiss:active, .ifs-banner__dismiss:active, .ifs-toast__action:active, .ifs-toast__dismiss:active { background: color-mix(in srgb, currentColor var(--press), transparent); }
+
+/* ================================================================ Composites
+   Built from the primitives above. No new colors or sizes: grounds, rules, heights and motion are the ones the primitives use. */
+
+/* ---------------------------------------------------------------- shared: stage (slides and height), floating tooltips */
+/* StepStage: the pane slides in from the direction of travel over the slide curve while the one it replaces slides out the other way;
+   the box eases to the new pane's height (bundle.js sets it) and clips only while something moves. */
+.ifs-stage { position: relative; min-width: 0; transition: height var(--ifs-slide); }
+.ifs-stage--moving { overflow: hidden; }
+.ifs-stage__pane { min-width: 0; box-sizing: border-box; }
+.ifs-stage__pane--out { position: absolute; top: 0; left: 0; right: 0; pointer-events: none; }
+@keyframes ifs-pane-in-next { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes ifs-pane-in-prev { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+@keyframes ifs-pane-out-next { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(-24px); } }
+@keyframes ifs-pane-out-prev { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(24px); } }
+.ifs-stage__pane--in-next { animation: ifs-pane-in-next var(--ifs-slide) both; }
+.ifs-stage__pane--in-prev { animation: ifs-pane-in-prev var(--ifs-slide) both; }
+.ifs-stage__pane--out-next { animation: ifs-pane-out-next var(--ifs-slide) both; }
+.ifs-stage__pane--out-prev { animation: ifs-pane-out-prev var(--ifs-slide) both; }
+/* a Tooltip that floats into the body beside its trigger (FloatTip), so a clipping sidebar never cuts it */
+.ifs-tooltip--float { position: fixed; transform: none; z-index: 90; }
+.ifs-tooltip--float-right .ifs-tooltip__nub { top: 50%; margin-top: -4px; left: -4px; }
+.ifs-tooltip--float-bottom .ifs-tooltip__nub { left: 50%; margin-left: -4px; top: -4px; }
+.ifs-tooltip--float-top .ifs-tooltip__nub { left: 50%; margin-left: -4px; bottom: -4px; }
+.ifs-tooltip__count { font-family: var(--font-mono); font-size: 11.5px; color: color-mix(in srgb, var(--on-ink) 78%, transparent); }
+@media (prefers-reduced-motion: reduce) { .ifs-stage { transition: none; } .ifs-stage__pane--in-next, .ifs-stage__pane--in-prev, .ifs-stage__pane--out-next, .ifs-stage__pane--out-prev { animation: none; } }
+
+/* ---------------------------------------------------------------- AppTile */
+.ifs-apptile { --s: 28px; display: inline-flex; align-items: center; justify-content: center; flex: none; box-sizing: border-box; width: var(--s); height: var(--s); border-radius: calc(var(--radius-control) * var(--corners)); background: var(--accent); color: var(--on-accent); }
+.ifs-apptile svg { display: block; }
+
+/* ---------------------------------------------------------------- SearchTrigger
+   A button in a field's clothes: 32px, a line border on surface, the search icon and label in muted, the shortcut in a 24px nested
+   slot 4px from the edge. Hover steps the border to control; focus is the 2px ink outline, since it is a button. */
+.ifs-searchbtn { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; height: var(--size-control-sm, 32px); padding: 0 3px 0 9px; box-sizing: border-box; border: 1px solid var(--line); border-radius: calc(var(--radius-control) * var(--corners)); background: var(--surface); color: var(--muted); font: inherit; font-size: 13.5px; text-align: left; cursor: pointer; }
+.ifs-searchbtn:hover { border-color: var(--control); color: var(--text2); }
+.ifs-searchbtn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ifs-searchbtn > .ifs-icon { width: 16px; height: 16px; }
+.ifs-searchbtn__label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ifs-searchbtn__kbd { display: inline-flex; align-items: center; justify-content: center; flex: none; min-width: var(--size-nested-sm, 24px); height: var(--size-nested-sm, 24px); padding: 0 3px; box-sizing: border-box; }
+.ifs-searchbtn--compact { width: var(--size-control-sm, 32px); padding: 0; justify-content: center; }
+
+/* ---------------------------------------------------------------- CommandMenu
+   A 600px dialog near the top: a 52px search row, grouped results (rows 36px, their icons and text on the search icon's 15px line: the
+   list pads 3px and each row 11px), and a paper footer of key hints. The active row hovers in its own color; matches are marked in the accent. */
+.ifs-overlay--cmd { align-items: flex-start; padding-top: min(14vh, 120px); }
+.ifs-cmd { position: relative; width: 600px; max-width: 100%; max-height: 100%; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: calc(var(--radius-panel) * var(--corners)); box-shadow: var(--shadow-pop); }
+.ifs-cmd:focus { outline: none; }
+.ifs-cmd--inline { width: 100%; box-shadow: none; }
+.ifs-cmd__search { display: flex; align-items: center; gap: 10px; flex: none; height: 52px; padding: 0 12px 0 14px; box-sizing: border-box; border-bottom: 1px solid var(--line-soft); }
+.ifs-cmd__icon { width: 18px; height: 18px; color: var(--muted); }
+.ifs-cmd__back { margin-left: -6px; margin-right: -4px; }
+.ifs-cmd__scope { flex: none; display: inline-flex; align-items: center; height: 24px; max-width: 45%; padding: 0 8px; box-sizing: border-box; border-radius: calc(var(--radius-sm) * var(--corners)); background: var(--line-soft); color: var(--text2); font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ifs-cmd__input { flex: 1 1 auto; min-width: 0; height: 100%; padding: 0; border: 0; outline: none; background: transparent; color: var(--ink); font: inherit; font-size: 15px; line-height: 20px; }
+.ifs-cmd__input::placeholder { color: var(--muted); opacity: 1; }
+.ifs-cmd__spinner { color: var(--muted); }
+.ifs-cmd__esc { flex: none; }
+.ifs-cmd__list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 3px 3px 6px; scrollbar-width: thin; }
+.ifs-cmd__group + .ifs-cmd__group { margin-top: 4px; }
+.ifs-cmd__label { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; height: 30px; padding: 0 11px 6px; box-sizing: border-box; font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; font-stretch: 106%; color: var(--muted); }
+.ifs-cmd__label-meta { letter-spacing: 0; text-transform: none; font-stretch: 100%; font-size: 12px; font-variant-numeric: tabular-nums; }
+.ifs-cmd__item { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 11px; box-sizing: border-box; border-radius: calc(var(--radius-sm) * var(--corners)); color: var(--ink); font-size: 14px; line-height: 20px; cursor: pointer; }
+.ifs-cmd__item--active { background: color-mix(in srgb, currentColor var(--hover), transparent); }
+.ifs-cmd__item:active { background: color-mix(in srgb, currentColor var(--press), transparent); }
+.ifs-cmd__item--danger { color: var(--bad); }
+.ifs-cmd__item[aria-disabled="true"] { color: var(--faint); background: transparent; cursor: not-allowed; }
+.ifs-cmd__item > .ifs-icon { width: 16px; height: 16px; }
+.ifs-cmd__media { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 20px; height: 20px; }
+.ifs-cmd__text { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+.ifs-cmd__name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ifs-cmd__name.ifs-mono { font-size: 13px; }
+.ifs-cmd__desc { flex: 0 10000 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--muted); }
+.ifs-cmd__item[aria-disabled="true"] .ifs-cmd__desc { color: var(--faint); }
+.ifs-cmd__trail { flex: none; display: inline-flex; align-items: center; margin-left: auto; padding-left: 4px; }
+.ifs-cmd__meta { font-size: 12px; line-height: 16px; color: var(--muted); white-space: nowrap; }
+.ifs-cmd__meta--mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.ifs-cmd__chev { width: 15px; height: 15px; color: var(--muted); }
+.ifs-cmd mark { background: var(--accent); color: var(--on-accent); }
+.ifs-cmd__status { display: flex; align-items: center; min-height: 36px; padding: 0 11px; color: var(--text2); font-size: 13.5px; }
+.ifs-cmd__empty { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 28px 16px 26px; text-align: center; }
+.ifs-cmd__empty-title { font-size: 14px; line-height: 20px; font-weight: 500; color: var(--ink); overflow-wrap: anywhere; }
+.ifs-cmd__q { font-family: var(--font-mono); font-size: 13px; }
+.ifs-cmd__empty-hint { max-width: 40ch; font-size: 12.5px; line-height: 18px; color: var(--muted); }
+.ifs-cmd__footer { display: flex; align-items: center; gap: 16px; flex: none; min-height: 36px; padding: 0 14px; box-sizing: border-box; border-top: 1px solid var(--line-soft); background: var(--paper); font-size: 12px; line-height: 16px; color: var(--muted); white-space: nowrap; overflow: hidden; }
+.ifs-cmd__hint { display: inline-flex; align-items: center; gap: 6px; }
+.ifs-cmd__foot-end { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------------------------------------------------------------- Switcher
+   A listbox popover on the menu geometry (3px padding, rows 7px), a 36px search row on its top line like the MultiSelect bar, leads
+   at 20px, the current option checked, actions after a rule. */
+.ifs-switcher { padding-top: 3px; }
+.ifs-switcher--search { padding-top: 0; }
+.ifs-switcher-anchor { min-width: 0; max-width: 100%; }
+.ifs-switcher__search { display: flex; align-items: center; gap: 8px; flex: none; height: 36px; margin: 0 -3px 2px; padding: 0 10px; box-sizing: border-box; border-bottom: 1px solid var(--line-soft); color: var(--muted); }
+.ifs-switcher__search input { flex: 1 1 auto; min-width: 0; height: 100%; padding: 0; border: 0; outline: none; background: transparent; color: var(--ink); font: inherit; font-size: 13.5px; }
+.ifs-switcher__search input::placeholder { color: var(--muted); opacity: 1; }
+.ifs-switcher__list { display: flex; flex-direction: column; gap: 1px; max-height: 320px; overflow-y: auto; outline: none; scrollbar-width: thin; }
+.ifs-switcher__row { min-height: 36px; }
+.ifs-switcher__media { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 20px; height: 20px; }
+.ifs-switcher__action { min-height: 32px; }
+.ifs-switcher__action:not(.ifs-option--danger) { color: var(--text2); }
+.ifs-switcher__action:not(.ifs-option--danger):hover, .ifs-switcher__action.ifs-option--active:not(.ifs-option--danger) { color: var(--ink); }
+.ifs-switcher__none { color: var(--muted); cursor: default; }
+.ifs-switcher__none:hover { background: transparent; }
+.ifs-switcher mark { background: var(--accent); color: var(--on-accent); }
+
+/* ---------------------------------------------------------------- Breadcrumb, product level
+   The product's levels in a top bar: 32px targets padded 8px, which hover like ghost buttons (the crumb's own color at --hover), 20px
+   leads, a switcher chevron in muted. Ancestors are text2, the current level ink at 600. Labels truncate before anything wraps. */
+.ifs-crumbs__item { display: inline-flex; align-items: center; min-width: 0; }
+.ifs-crumbs__media { display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.ifs-crumbs__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ifs-crumbs__link, .ifs-crumbs__switch, .ifs-crumbs__here { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.ifs-crumbs__switch { height: 24px; margin: 0 -4px; padding: 0 4px; border: 0; border-radius: calc(var(--radius-sm) * var(--corners)); background: transparent; color: var(--text2); font: inherit; cursor: pointer; white-space: nowrap; }
+.ifs-crumbs__switch:hover, .ifs-crumbs__switch[aria-expanded="true"] { background: color-mix(in srgb, currentColor var(--hover), transparent); color: var(--ink); }
+.ifs-crumbs__switch:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ifs-crumbs__switch--current, .ifs-crumbs__here { color: var(--ink); font-weight: 600; }
+.ifs-crumbs__here--plain { color: var(--text2); font-weight: 500; }
+.ifs-crumbs__chev { flex: none; width: 14px; height: 14px; margin-left: -2px; color: var(--muted); }
+/* crumbs that are plain text (an ancestor with no link, when the page's title follows) keep the ancestors' color */
+.ifs-crumbs--eyebrow li > span { color: var(--muted); }
+.ifs-crumbs:not(.ifs-crumbs--eyebrow) li > span:not([aria-current]):not(.ifs-crumbs__here) { color: var(--text2); }
+.ifs-crumbs--product ol { flex-wrap: nowrap; gap: 2px; min-width: 0; font-size: 14px; line-height: 20px; }
+.ifs-crumbs--product .ifs-crumbs__sep { flex: none; padding: 0 2px; font-size: 16px; }
+.ifs-crumbs--product .ifs-crumbs__item { flex: 0 1 auto; }
+.ifs-crumbs--product .ifs-crumbs__item:last-child { flex-shrink: 0.4; }
+.ifs-crumbs--product .ifs-crumbs__item:last-child:has(> .ifs-crumbs__here) { flex-shrink: 0; }
+.ifs-crumbs--product .ifs-crumbs__link, .ifs-crumbs--product .ifs-crumbs__switch, .ifs-crumbs--product .ifs-crumbs__here { height: var(--size-control-sm, 32px); margin: 0; padding: 0 8px; border-radius: calc(var(--radius-control) * var(--corners)); font-weight: 500; }
+.ifs-crumbs--product .ifs-crumbs__switch { gap: 8px; }
+.ifs-crumbs--product .ifs-crumbs__switch--current, .ifs-crumbs--product .ifs-crumbs__here { font-weight: 600; }
+.ifs-crumbs--product .ifs-crumbs__link { color: var(--text2); text-decoration: none; }
+.ifs-crumbs--product .ifs-crumbs__link:hover { background: color-mix(in srgb, currentColor var(--hover), transparent); color: var(--ink); text-decoration: none; }
+.ifs-crumbs--product .ifs-crumbs__label { max-width: 24ch; }
+.ifs-crumbs--product .ifs-crumbs__mono { font-size: 13px; }
+.ifs-crumbs .ifs-crumbs__switch .ifs-crumbs__mono, .ifs-crumbs .ifs-crumbs__link .ifs-crumbs__mono { font-family: var(--font-mono); font-weight: 500; }
+
+/* ---------------------------------------------------------------- TopBar
+   48px across the top of the inset, on a line-soft rule. Its padding is the inset's less the crumbs' 8px, so the first crumb's text sits
+   on the inset's 40px line (--ifs-inset-pad). Narrow, the search trigger keeps only its icon. */
+.ifs-topbar { container: ifs-topbar / inline-size; display: flex; align-items: center; gap: 16px; height: 48px; min-width: 0; padding: 0 calc(var(--ifs-inset-pad, 40px) - 8px); box-sizing: border-box; border-bottom: 1px solid var(--line-soft); background: var(--inset); color: var(--ink); }
+.ifs-topbar__start { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 12px; }
+.ifs-topbar__start > .ifs-crumbs { min-width: 0; }
+.ifs-topbar__actions { flex: none; display: flex; align-items: center; gap: 4px; }
+.ifs-topbar__actions .ifs-searchbtn { width: 220px; }
+.ifs-topbar__actions > .ifs-searchbtn { margin-right: 8px; }
+@container ifs-topbar (max-width: 620px) {
+  .ifs-topbar__actions .ifs-searchbtn { width: var(--size-control-sm, 32px); padding: 0; justify-content: center; }
+  .ifs-topbar__actions > .ifs-searchbtn { margin-right: 0; }
+  .ifs-topbar__actions .ifs-searchbtn__label, .ifs-topbar__actions .ifs-searchbtn__kbd { display: none; }
+}
+/* narrow, the breadcrumb gives way from the outside in: the organization keeps only its avatar and the page crumb goes (the page's own
+   title says it), then every switcher but the deepest keeps only its lead. Hidden labels stay for screen readers. */
+@container ifs-topbar (max-width: 520px) {
+  .ifs-topbar .ifs-crumbs--product .ifs-crumbs__item:first-child:has(.ifs-crumbs__media) { flex: none; }
+  .ifs-topbar .ifs-crumbs--product .ifs-crumbs__item:first-child:has(.ifs-crumbs__media) .ifs-crumbs__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .ifs-topbar .ifs-crumbs--product .ifs-crumbs__item:last-child:has(> .ifs-crumbs__here), .ifs-topbar .ifs-crumbs--product .ifs-crumbs__sep:has(+ .ifs-crumbs__item:last-child > .ifs-crumbs__here) { display: none; }
+}
+@container ifs-topbar (max-width: 400px) {
+  .ifs-topbar .ifs-crumbs--product .ifs-crumbs__item:not(:last-child):has(.ifs-crumbs__switch .ifs-crumbs__media) { flex: none; }
+  .ifs-topbar .ifs-crumbs--product .ifs-crumbs__item:not(:last-child) .ifs-crumbs__switch:has(.ifs-crumbs__media) .ifs-crumbs__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  /* with a project switcher after it, the organization goes too; the sidebar or the menu still has it */
+  .ifs-topbar .ifs-crumbs--product .ifs-crumbs__item:first-child:has(.ifs-crumbs__media):has(~ .ifs-crumbs__item .ifs-crumbs__switch .ifs-crumbs__media),
+  .ifs-topbar .ifs-crumbs--product .ifs-crumbs__item:first-child:has(.ifs-crumbs__media):has(~ .ifs-crumbs__item .ifs-crumbs__switch .ifs-crumbs__media) + .ifs-crumbs__sep { display: none; }
+}
+
+/* ---------------------------------------------------------------- PageHeader
+   The eyebrow breadcrumb 8px above the title; the title in display (44/44, 500, -0.03em) or, at md, title-lg (28/32); badges beside
+   it; the body-lg lede in muted 10px under it (at md, body 8px under); actions 36px tall, centered on the title's first line, dropping
+   under the text when the title needs its 160px; tabs 24px below. */
+.ifs-pagehead { display: flex; flex-direction: column; min-width: 0; color: var(--ink); }
+.ifs-pagehead__crumbs { min-width: 0; margin-bottom: 8px; }
+.ifs-pagehead__main { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px 24px; min-width: 0; }
+.ifs-pagehead__text { flex: 1 1 var(--size-text-min, 160px); min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.ifs-pagehead__line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; min-width: 0; }
+.ifs-pagehead__media { display: inline-flex; flex: none; }
+.ifs-pagehead__title { margin: 0; min-width: 0; font-size: 44px; line-height: 44px; font-weight: 500; letter-spacing: -.03em; color: var(--ink); overflow-wrap: anywhere; }
+.ifs-pagehead__title--mono { font-family: var(--font-mono); letter-spacing: -.02em; }
+.ifs-pagehead__badges { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ifs-pagehead__lede { margin: 0; max-width: 64ch; font-size: 16px; line-height: 24px; color: var(--muted); }
+.ifs-pagehead__actions { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 4px; }
+.ifs-pagehead--md .ifs-pagehead__text { gap: 8px; }
+.ifs-pagehead--md .ifs-pagehead__title { font-size: 28px; line-height: 32px; letter-spacing: -.025em; }
+.ifs-pagehead--md .ifs-pagehead__title--mono { font-size: 24px; letter-spacing: -.02em; }
+.ifs-pagehead--md .ifs-pagehead__lede { font-size: 14px; line-height: 20px; }
+.ifs-pagehead--md .ifs-pagehead__actions { padding-top: 0; margin-top: -2px; }
+.ifs-pagehead__tabs { margin-top: 24px; min-width: 0; }
+
+/* ---------------------------------------------------------------- Sidebar
+   224px on `sidebar`, a 1px `sidebar-line` on its right edge. The column itself has no padding: each section pads itself, and every
+   padding and gap in it is 8px (the tools row 8px 8px 0, the nav and footer rows 0 8px, the account 8px all round, 8px between the
+   sections, between nav sections and between the tools), so the rule above the account and the rail's section rules run edge to
+   edge. The tools row is 36px: the collapse toggle at the start (it sits at the same spot in the rail), search and invite at the
+   end, 36px icon buttons with 18px icons like the rows. Rows are 36px with an 18px icon 9px in, labels in text2 at 14px;
+   the current page `sidebar-current` with ink text at 600; counts are accent Counts. Children sit 28px in on a guide under their
+   parent's icon, in 32px rows. The account button at the bottom is a 36px row too: an Identity with the organization's 20px avatar,
+   your name and the organization.
+   Collapsed, the rail is 53px (the 36px row, 8px on each side and the rule). */
+.ifs-sidebar { position: relative; display: flex; flex-direction: column; gap: 8px; flex: none; box-sizing: border-box; width: 224px; height: 100%; min-height: 0; padding: 0; overflow: hidden; background: var(--sidebar); border-right: 1px solid var(--sidebar-line); color: var(--text2); transition: width var(--ifs-slide); }
+.ifs-sidebar--collapsed { width: 53px; }
+/* edge={false}: no rule of its own, for a shell whose inset draws its own border beside it (the rail is then 52px) */
+.ifs-sidebar--edgeless { border-right: 0; }
+.ifs-sidebar--edgeless.ifs-sidebar--collapsed { width: 52px; }
+.ifs-sidebar__head { flex: none; min-width: 0; padding: 8px 8px 0; }
+.ifs-sidebar__tools { flex: none; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 8px 8px 0; }
+.ifs-sidebar__head + .ifs-sidebar__tools { padding-top: 0; }
+.ifs-sidebar__tools > .ifs-tooltip-anchor { display: inline-flex; flex: none; }
+.ifs-sidebar__tools-gap { flex: 1 1 auto; min-width: 0; }
+.ifs-sidebar__tool { width: var(--size-control-md, 36px); height: var(--size-control-md, 36px); border-radius: calc(var(--radius-control) * var(--corners)); color: var(--text2); }
+.ifs-sidebar__tool .ifs-icon { width: 18px; height: 18px; }
+.ifs-sidebar__tool:hover { background: var(--sidebar-hover); color: var(--ink); }
+.ifs-sidebar__tool:active { background: color-mix(in srgb, currentColor var(--hover), var(--sidebar-hover)); color: var(--ink); }
+.ifs-sidebar__tool:focus-visible { outline-offset: -2px; }
+.ifs-nav { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 0 8px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.ifs-nav::-webkit-scrollbar { display: none; }
+.ifs-sidebar > .ifs-nav:first-child { padding-top: 8px; }
+.ifs-sidebar > .ifs-nav:last-child { padding-bottom: 8px; }
+.ifs-nav__section { display: flex; flex-direction: column; min-width: 0; }
+.ifs-nav__heading { display: flex; align-items: center; gap: 8px; height: 28px; margin-right: -8px; padding: 0 0 0 9px; box-sizing: border-box; font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; font-stretch: 106%; color: var(--muted); white-space: nowrap; overflow: hidden; }
+/* the label's rule runs from its end to the sidebar's edge */
+.ifs-nav__heading::after { content: ""; flex: 1 1 auto; min-width: 12px; height: 1px; background: var(--sidebar-line); }
+.ifs-nav__list, .ifs-nav__sub { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ifs-nav__li { display: flex; flex-direction: column; min-width: 0; }
+.ifs-nav__li > .ifs-tooltip-anchor, .ifs-nav__li > .ifs-anchor { display: flex; }
+.ifs-nav__item { position: relative; display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; height: var(--size-control-md, 36px); padding: 0 9px; box-sizing: border-box; border: 0; border-radius: calc(var(--radius-control) * var(--corners)); background: transparent; color: var(--text2); font: inherit; font-size: 14px; line-height: 20px; font-weight: 500; text-align: left; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.ifs-nav__item:hover, .ifs-nav__item--open { background: var(--sidebar-hover); color: var(--ink); }
+.ifs-nav__item:active { background: color-mix(in srgb, currentColor var(--hover), var(--sidebar-hover)); }
+.ifs-nav__item:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.ifs-nav__item > .ifs-icon { width: 18px; height: 18px; }
+.ifs-nav__item--inside { color: var(--ink); }
+/* the current page is neutral: ink at the press step over the sidebar (sidebar-current), a step past hover, with ink text */
+.ifs-nav__item--current, .ifs-nav__item--current:hover, .ifs-nav__item--current:active { background: var(--sidebar-current); color: var(--ink); font-weight: 600; }
+.ifs-nav__item--disabled, .ifs-nav__item:disabled { color: var(--faint); background: transparent; cursor: not-allowed; }
+.ifs-nav__label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ifs-nav__badge { flex: none; display: inline-flex; }
+.ifs-nav__count { flex: none; }
+.ifs-nav__trail { flex: none; width: 14px; height: 14px; color: var(--muted); }
+.ifs-nav__chev { flex: none; width: 14px; height: 14px; color: var(--muted); transition: transform var(--ifs-slide); }
+.ifs-nav__item[aria-expanded="true"] > .ifs-nav__chev { transform: rotate(90deg); }
+.ifs-nav__item--current .ifs-nav__trail, .ifs-nav__item--current .ifs-nav__chev { color: inherit; }
+.ifs-nav__sub { position: relative; padding: 1px 0 0 28px; }
+.ifs-nav__sub::before { content: ""; position: absolute; top: 3px; bottom: 3px; left: 18px; width: 1px; background: var(--sidebar-line); pointer-events: none; }
+.ifs-nav__item--sub { height: var(--size-control-sm, 32px); font-size: 13.5px; }
+/* a count in the rail: a 6px mark at the icon's corner, ringed in the row's ground like the presence dot on avatars. It has no
+   number, so it is accent-fg (ink in light, where a bare yellow dot would vanish on the sidebar; the accent in dark) */
+.ifs-nav__dot { position: absolute; top: 6px; left: 25px; width: 6px; height: 6px; border-radius: calc(var(--radius-xs) * var(--corners)); background: var(--accent-fg); box-shadow: 0 0 0 2px var(--sidebar); pointer-events: none; }
+.ifs-nav__item:hover .ifs-nav__dot, .ifs-nav__item--open .ifs-nav__dot { box-shadow: 0 0 0 2px var(--sidebar-hover); }
+.ifs-nav__item--current .ifs-nav__dot { box-shadow: 0 0 0 2px var(--sidebar-current); }
+.ifs-nav__flyout { padding: 3px; }
+.ifs-nav__flyout .ifs-menu-label { height: 28px; }
+.ifs-nav__fly { text-decoration: none; }
+.ifs-nav__fly--current, .ifs-nav__fly--current:hover { background: color-mix(in srgb, var(--ink) var(--press), var(--surface)); color: var(--ink); font-weight: 600; }
+.ifs-nav__fly--current .ifs-option__meta { color: var(--text2); }
+.ifs-nav__fly:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.ifs-sidebar__foot { flex: none; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ifs-sidebar__foot > .ifs-nav__list { padding: 0 8px; }
+.ifs-sidebar__foot:last-child > .ifs-nav__list:last-child { padding-bottom: 8px; }
+/* the account is its own section: the rule above it runs the sidebar's full width */
+.ifs-sidebar__account { display: flex; align-items: center; min-width: 0; padding: 8px; border-top: 1px solid var(--sidebar-line); }
+.ifs-sidebar__user-anchor { flex: 1 1 auto; min-width: 0; display: flex; }
+/* the account button is a 36px row like the nav rows: an Identity whose 20px avatar sits 8px in on every side, centered on the nav
+   icons' line (18px in), with the name 9px after it so it lines up with the nav labels; the chevron ends 9px in like row trails */
+.ifs-sidebar__user { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; height: var(--size-control-md, 36px); padding: 0 9px 0 8px; box-sizing: border-box; border: 0; border-radius: calc(var(--radius-control) * var(--corners)); background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.ifs-sidebar__user:hover, .ifs-sidebar__user[aria-expanded="true"] { background: var(--sidebar-hover); }
+.ifs-sidebar__user:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.ifs-sidebar__who.ifs-identity { display: flex; flex: 1 1 auto; gap: 9px; }
+.ifs-sidebar__who > .ifs-item__main, .ifs-sidebar__who .ifs-item__text { flex: 1 1 auto; }
+.ifs-sidebar__who .ifs-item__text { gap: 0; }
+.ifs-sidebar__who .ifs-item__title { font-size: 13.5px; line-height: 18px; }
+.ifs-sidebar__who .ifs-item__desc { font-size: 12px; line-height: 16px; }
+.ifs-sidebar__user-chev { flex: none; color: var(--muted); }
+/* the account popover's header: you, above the organizations */
+.ifs-switcher--head { padding-top: 3px; }
+.ifs-switcher__head { flex: none; min-width: 0; }
+.ifs-account.ifs-identity { display: flex; padding: 6px 7px 8px; }
+.ifs-account > .ifs-item__main, .ifs-account .ifs-item__text { flex: 1 1 auto; }
+/* the account popover's foot: the theme picker, then you, as the row that opens your settings */
+.ifs-switcher__foot { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ifs-themerow { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; padding: 0 4px 0 7px; box-sizing: border-box; font-size: 14px; color: var(--ink); }
+.ifs-themepick { display: inline-flex; gap: 2px; padding: 2px; border-radius: calc(var(--radius-control) * var(--corners)); background: var(--tint); }
+.ifs-themepick > .ifs-tooltip-anchor { display: inline-flex; }
+.ifs-themepick__opt { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 24px; padding: 0; box-sizing: border-box; border: 1px solid transparent; border-radius: calc(var(--radius-sm) * var(--corners)); background: transparent; color: var(--muted); cursor: pointer; }
+.ifs-themepick__opt:hover { color: var(--ink); }
+.ifs-themepick__opt[aria-checked="true"] { background: var(--surface); border-color: var(--control); color: var(--ink); }
+.ifs-themepick__opt:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.ifs-sidebar__me-anchor { display: flex; min-width: 0; }
+.ifs-sidebar__me { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; padding: 0 9px 0 0; box-sizing: border-box; border: 0; border-radius: calc(var(--radius-sm) * var(--corners)); background: transparent; color: var(--ink); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.ifs-sidebar__me:hover { background: color-mix(in srgb, currentColor var(--hover), transparent); }
+.ifs-sidebar__me:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.ifs-sidebar__me > .ifs-account { flex: 1 1 auto; min-width: 0; padding: 6px 7px; }
+.ifs-sidebar__me-chev { flex: none; color: var(--muted); }
+.ifs-sidebar__me--static { cursor: default; }
+.ifs-sidebar__me--static:hover { background: transparent; }
+/* spaces: a segmented switch under the tools, even segments across the sidebar, on a track a step off the sidebar */
+.ifs-sidebar__spaces { flex: none; min-width: 0; padding: 0 8px; }
+.ifs-sidebar__spaces .ifs-tabs--segmented .ifs-segmented { align-self: stretch; width: 100%; background: var(--sidebar-hover); }
+.ifs-sidebar__spaces .ifs-segmented__scroll { width: 100%; }
+.ifs-sidebar__spaces .ifs-segmented__item { flex: 1 1 0; min-width: 0; padding: 0 8px; }
+.ifs-sidebar__space-dot { display: inline-block; width: 6px; height: 6px; margin-left: 6px; vertical-align: 1px; border-radius: calc(var(--radius-xs) * var(--corners)); background: var(--accent-fg); }
+.ifs-sidebar__railspaces { display: flex; flex-direction: column; gap: 2px; width: var(--size-control-md, 36px); padding: 2px; box-sizing: border-box; border-radius: calc(var(--radius-card) * var(--corners)); background: var(--sidebar-hover); }
+.ifs-sidebar__railspaces > .ifs-tooltip-anchor { display: flex; }
+.ifs-sidebar__railspace { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; box-sizing: border-box; border: 1px solid transparent; border-radius: calc(var(--radius-control) * var(--corners)); background: transparent; color: var(--text2); cursor: pointer; }
+.ifs-sidebar__railspace .ifs-icon { width: 18px; height: 18px; }
+.ifs-sidebar__railspace:hover { color: var(--ink); }
+.ifs-sidebar__railspace[aria-selected="true"] { background: var(--surface); border-color: var(--control); color: var(--ink); }
+.ifs-sidebar__railspace:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.ifs-sidebar__railspace .ifs-nav__dot { top: 4px; left: 19px; box-shadow: 0 0 0 2px var(--sidebar-hover); }
+.ifs-sidebar__railspace[aria-selected="true"] .ifs-nav__dot { box-shadow: 0 0 0 2px var(--surface); }
+/* the rail */
+.ifs-sidebar--collapsed .ifs-sidebar__tools { flex-direction: column; align-items: flex-start; gap: 1px; height: auto; }
+.ifs-sidebar--collapsed .ifs-sidebar__tools-gap { display: none; }
+.ifs-sidebar--collapsed .ifs-nav__item { width: var(--size-control-md, 36px); }
+.ifs-sidebar--collapsed .ifs-nav__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ifs-sidebar--collapsed .ifs-nav__badge, .ifs-sidebar--collapsed .ifs-nav__count, .ifs-sidebar--collapsed .ifs-nav__trail, .ifs-sidebar--collapsed .ifs-nav__chev { display: none; }
+.ifs-sidebar--collapsed .ifs-nav__heading { height: 1px; margin: 0 -8px 8px; padding: 0; background: var(--sidebar-line); color: transparent; font-size: 0; }
+.ifs-sidebar--collapsed .ifs-nav__heading::after { display: none; }
+.ifs-sidebar--collapsed .ifs-nav__section:first-child .ifs-nav__heading { display: none; }
+.ifs-sidebar--collapsed .ifs-sidebar__user-anchor { flex: none; }
+.ifs-sidebar--collapsed .ifs-sidebar__user { width: var(--size-control-md, 36px); flex: none; padding: 0 8px; }
+.ifs-sidebar--collapsed .ifs-sidebar__who > .ifs-item__main, .ifs-sidebar--collapsed .ifs-sidebar__user-chev { display: none; }
+@media (prefers-reduced-motion: reduce) { .ifs-sidebar, .ifs-nav__chev { transition: none; } }
+
+/* ---------------------------------------------------------------- SettingsCard
+   A plain card (a line border on surface) around a form. The head pads 16px 18px, the title in title-sm, its description in muted; the
+   content pads 16px 18px 18px with 16px between fields, fields capped at 480px unless they are rows. The footer is a paper shelf on a
+   line-soft rule, 12px around, status on the left (on the content's 18px line), small buttons 12px apart on the right. */
+.ifs-settings { box-sizing: border-box; width: 100%; min-width: 0; margin: 0; display: flex; flex-direction: column; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: calc(var(--radius-card) * var(--corners)); }
+.ifs-settings__head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 16px; padding: 16px 18px 0; min-width: 0; }
+.ifs-settings--bare .ifs-settings__head { padding-bottom: 16px; }
+.ifs-settings__heading { flex: 1 1 var(--size-text-min, 160px); min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.ifs-settings__title { margin: 0; font-size: 16px; line-height: 22px; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.ifs-settings__desc { margin: 0; max-width: 72ch; font-size: 13.5px; line-height: 20px; color: var(--muted); }
+.ifs-settings__action { flex: none; display: flex; align-items: center; gap: 8px; min-height: 22px; }
+.ifs-settings__content { min-width: 0; margin: 0; padding: 16px 18px 18px; border: 0; display: flex; flex-direction: column; gap: 16px; }
+.ifs-settings__content > .ifs-field:not(.ifs-field--horizontal) { max-width: 480px; }
+.ifs-settings__content > .ifs-field--horizontal + .ifs-field--horizontal { padding-top: 16px; border-top: 1px solid var(--line-soft); }
+.ifs-settings__content > .ifs-setting { padding: 0; }
+.ifs-settings__content > .ifs-setting + .ifs-setting, .ifs-settings__content > .ifs-field--horizontal + .ifs-setting, .ifs-settings__content > .ifs-setting + .ifs-field--horizontal { padding-top: 16px; border-top: 1px solid var(--line-soft); }
+/* locked: fields read like read-only fields (tint, line border, text2); checkboxes and switches take their disabled look */
+.ifs-settings__content--locked .ifs-control { background: var(--tint); border-color: var(--line); color: var(--text2); outline: none; }
+.ifs-settings__content--locked .ifs-control input, .ifs-settings__content--locked .ifs-control textarea, .ifs-settings__content--locked .ifs-select-trigger { cursor: not-allowed; }
+.ifs-settings__content--locked .ifs-choice { cursor: not-allowed; }
+.ifs-settings__footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 12px; min-height: 56px; margin-top: auto; padding: 12px 12px 12px 18px; box-sizing: border-box; border-top: 1px solid var(--line-soft); background: var(--paper); border-radius: 0 0 calc(var(--radius-card) * var(--corners)) calc(var(--radius-card) * var(--corners)); }
+.ifs-settings__status { flex: 1 1 var(--size-text-min, 160px); min-width: 0; display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; line-height: 18px; color: var(--muted); }
+.ifs-settings__status > .ifs-icon { margin-top: 2px; width: 14px; height: 14px; }
+.ifs-settings__status > .ifs-spinner { margin-top: 5px; }
+.ifs-settings__status--dirty, .ifs-settings__status--saving, .ifs-settings__status--saved { color: var(--text2); }
+.ifs-settings__status--saved > .ifs-icon { color: var(--ok); }
+.ifs-settings__status--error { color: var(--bad); font-weight: 500; }
+.ifs-settings__dot { flex: none; width: 6px; height: 6px; margin: 6px 0 0; border-radius: calc(var(--radius-xs) * var(--corners)); background: var(--warn); }
+.ifs-settings__actions { flex: none; display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.ifs-settings--danger { border-color: var(--bad-line); }
+.ifs-settings--danger .ifs-settings__footer { border-top-color: var(--bad-line); background: var(--bad-wash); }
+.ifs-settings--danger .ifs-settings__status { color: var(--text2); }
+
+/* ---------------------------------------------------------------- FloatingActionBar
+   A toast-like bar (toast-bg, a toast-line border, shadow-pop) 48px tall: 7px around small buttons, the count 14px in on the content line,
+   rules between groups. It floats 24px over the bottom of the viewport (16px in a container) and enters over the slide curve. */
+.ifs-fab-wrap { position: fixed; left: 0; right: 0; bottom: 24px; z-index: 45; display: flex; justify-content: center; padding: 0 16px; box-sizing: border-box; pointer-events: none; container: ifs-fab / inline-size; }
+.ifs-fab-wrap--contained { position: absolute; bottom: 16px; z-index: 5; }
+.ifs-fab { display: flex; align-items: center; gap: 4px; flex: none; max-width: 100%; height: 48px; padding: 7px 7px 7px 14px; box-sizing: border-box; background: var(--toast-bg); border: 1px solid var(--toast-line); border-radius: calc(var(--radius-card) * var(--corners)); box-shadow: var(--shadow-pop); color: var(--toast-text); white-space: nowrap; pointer-events: auto; animation: ifs-fab-in var(--ifs-slide) both; }
+.ifs-fab[data-state="closed"] { animation-name: ifs-fab-out; pointer-events: none; }
+.ifs-fab__measure-box { position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: hidden; visibility: hidden; pointer-events: none; }
+.ifs-fab--measure { position: absolute; left: 0; top: 0; width: max-content; max-width: none; animation: none; }
+@keyframes ifs-fab-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes ifs-fab-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(12px); } }
+.ifs-fab__count { display: inline-flex; align-items: center; gap: 8px; flex: none; margin-right: 4px; font-size: 13.5px; line-height: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ifs-fab__all { margin: 0 6px 0 2px; font-size: 13px; }
+.ifs-fab__sep { flex: none; width: 1px; height: 20px; margin: 0 4px; background: var(--toast-line); }
+.ifs-fab .ifs-btn--ghost { color: var(--toast-text); }
+.ifs-fab .ifs-btn--ghost:disabled, .ifs-fab .ifs-btn--danger-ghost:disabled { color: var(--faint); }
+.ifs-fab .ifs-btn--link { color: var(--toast-text); }
+.ifs-fab__more { display: inline-flex; }
+/* narrow: select all goes (the list's own header still selects all on the page), then the word after the count (screen readers keep it) */
+@container ifs-fab (max-width: 400px) { .ifs-fab .ifs-fab__all { display: none; } .ifs-fab .ifs-fab__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } .ifs-fab .ifs-fab__count { margin-right: 2px; } }
+@media (prefers-reduced-motion: reduce) { .ifs-fab { animation: none; } }
+
+/* ---------------------------------------------------------------- Steps
+   Horizontal: the ProgressSteps segments, 6px, done in ink, the current one hatched in ink, upcoming on line-soft, error in bad, a 12px
+   label under each (current ink at 600, done text2, upcoming muted). Vertical: 24px square markers joined by a 1px rule. */
+.ifs-stepbar { min-width: 0; }
+.ifs-stepbar__list { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; min-width: 0; }
+.ifs-stepbar__step { flex: 1 1 0; min-width: 0; display: flex; }
+.ifs-stepbar__btn { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; padding: 0; border: 0; background: transparent; color: var(--muted); font: inherit; text-align: left; }
+button.ifs-stepbar__btn { cursor: pointer; border-radius: calc(var(--radius-xs) * var(--corners)); }
+button.ifs-stepbar__btn:hover .ifs-stepbar__text { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+button.ifs-stepbar__btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ifs-stepbar__seg { display: block; height: 6px; background: var(--line-soft); border-radius: calc(var(--radius-xs) * var(--corners)); }
+.ifs-stepbar__step--done .ifs-stepbar__seg { background: var(--ink); }
+.ifs-stepbar__step--current .ifs-stepbar__seg { background: repeating-linear-gradient(135deg, var(--ink) 0 3px, transparent 3px 6px); outline: 1px solid var(--ink); outline-offset: -1px; }
+.ifs-stepbar__step--error .ifs-stepbar__seg { background: var(--bad); }
+.ifs-stepbar__label { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 12px; line-height: 16px; font-weight: 500; }
+.ifs-stepbar__text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ifs-stepbar__step--done .ifs-stepbar__label { color: var(--text2); }
+.ifs-stepbar__step--current .ifs-stepbar__label { color: var(--ink); font-weight: 600; }
+.ifs-stepbar__step--error .ifs-stepbar__label { color: var(--bad); font-weight: 600; }
+.ifs-stepbar--bare .ifs-stepbar__btn { gap: 0; }
+.ifs-steplist { min-width: 0; }
+.ifs-steplist__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ifs-steplist__step { position: relative; padding-bottom: 20px; }
+.ifs-steplist__step:last-child { padding-bottom: 0; }
+.ifs-steplist__step:not(:last-child)::after { content: ""; position: absolute; left: 11.5px; top: 28px; bottom: 4px; width: 1px; background: var(--line); pointer-events: none; }
+.ifs-steplist__step--joined::after { background: var(--ink); }
+.ifs-steplist__btn { display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 0; border: 0; background: transparent; color: var(--text2); font: inherit; text-align: left; }
+button.ifs-steplist__btn { cursor: pointer; border-radius: calc(var(--radius-sm) * var(--corners)); }
+button.ifs-steplist__btn:hover .ifs-steplist__title { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+button.ifs-steplist__btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.ifs-steplist__marker { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 24px; height: 24px; box-sizing: border-box; border: 1px solid var(--line); border-radius: calc(var(--radius-control) * var(--corners)); background: var(--surface); color: var(--muted); font-family: var(--font-mono); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.ifs-steplist__marker .ifs-icon { width: 13px; height: 13px; }
+.ifs-steplist__step--current .ifs-steplist__marker { border-color: var(--ink); color: var(--ink); font-weight: 600; }
+.ifs-steplist__step--done .ifs-steplist__marker { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
+.ifs-steplist__step--error .ifs-steplist__marker { border-color: var(--bad-line); background: var(--bad-bg); color: var(--bad); }
+.ifs-steplist__step--error .ifs-steplist__marker .ifs-icon { width: 14px; height: 14px; }
+.ifs-steplist__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding-top: 2px; }
+.ifs-steplist__title { display: flex; align-items: baseline; gap: 8px; font-size: 14px; line-height: 20px; font-weight: 500; color: var(--text2); }
+.ifs-steplist__step--current .ifs-steplist__title { color: var(--ink); font-weight: 600; }
+.ifs-steplist__step--upcoming .ifs-steplist__title { color: var(--muted); }
+.ifs-steplist__step--error .ifs-steplist__title { color: var(--bad); }
+.ifs-steplist__opt { font-size: 12px; font-weight: 400; color: var(--muted); }
+.ifs-steplist__desc { font-size: 12.5px; line-height: 18px; color: var(--muted); }
+
+/* ---------------------------------------------------------------- MultiStep
+   The footer in every container: "Step 2 of 3" (or what failed) on the left, Cancel or Back and the primary on the right, 12px apart. */
+.ifs-mstep__status { flex: 1 1 auto; min-width: 0; display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; line-height: 18px; color: var(--muted); }
+.ifs-mstep__status > .ifs-icon { margin-top: 2px; width: 14px; height: 14px; flex: none; }
+.ifs-mstep__status--error { color: var(--bad); font-weight: 500; }
+.ifs-mstep__of { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ifs-mstep__actions { flex: none; display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.ifs-mstep__footer.ifs-dialog__footer, .ifs-mstep__footer.ifs-sheet__footer { justify-content: space-between; padding-left: 20px; }
+.ifs-mstep__desc { margin: 0; font-size: 13.5px; line-height: 20px; color: var(--muted); }
+.ifs-mstep__pane { display: flex; flex-direction: column; gap: 16px; }
+.ifs-mstep__barwrap { padding-top: 14px; }
+/* sheet: the steps bar under the title in the head; the body scrolls and the pane pads it */
+.ifs-mstep--sheet .ifs-sheet__head { padding-right: 20px; padding-bottom: 16px; }
+.ifs-mstep--sheet .ifs-sheet__title, .ifs-mstep--sheet .ifs-sheet__head > .ifs-eyebrow { padding-right: 40px; }
+.ifs-mstep__sheetbody { padding: 0; gap: 0; }
+.ifs-mstep__pane--sheet { padding: 20px; gap: 20px; }
+/* dialog: a panel whose width follows the step (--ifs-mstep-w) and whose body eases to each step's height */
+.ifs-mstep--dialog { width: var(--ifs-mstep-w, 480px); transition: width var(--ifs-slide); }
+.ifs-mstep__dialog { position: relative; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; min-width: 0; transition: opacity 150ms cubic-bezier(.2, 0, 0, 1) 50ms; }
+.ifs-mstep__dhead { padding: 20px 20px 16px; border-bottom: 1px solid var(--line-soft); }
+.ifs-mstep__dhead > .ifs-dialog__title { padding-right: 36px; }
+.ifs-mstep__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.ifs-mstep__scroll.ifs-dialog__body { display: block; padding: 0; }
+.ifs-mstep__pane--dialog { padding: 16px 20px 20px; }
+/* the morph: the panel's box eases from the trigger's to its own (bundle.js sets the geometry), its content fading in behind it */
+.ifs-morph--moving { transition: left var(--ifs-slide), top var(--ifs-slide), width var(--ifs-slide), height var(--ifs-slide), background-color var(--ifs-slide), border-color var(--ifs-slide); }
+.ifs-morph--hidden > .ifs-mstep__dialog { opacity: 0; transition: opacity 100ms linear; }
+.ifs-overlay--morph { animation: ifs-scrim-in var(--ifs-slide) both; }
+.ifs-overlay--leaving { background: transparent; transition: background-color var(--ifs-slide); }
+@keyframes ifs-scrim-in { from { background-color: transparent; } }
+.ifs-morph-anchor { display: contents; }
+/* page: the step list beside a plain card; under 640px the list turns into the steps bar above the card */
+.ifs-mstep--page { container: ifs-mstep / inline-size; min-width: 0; }
+.ifs-mstep__layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 20px 40px; align-items: start; min-width: 0; }
+.ifs-mstep__rail { padding-top: 16px; }
+.ifs-mstep__bar { display: none; }
+.ifs-mstep__card { min-width: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: calc(var(--radius-card) * var(--corners)); }
+.ifs-mstep__pane:not(.ifs-mstep__pane--sheet):not(.ifs-mstep__pane--dialog) { gap: 0; }
+.ifs-mstep__head { display: flex; flex-direction: column; gap: 4px; padding: 18px 20px 0; }
+.ifs-mstep__eyebrow { font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; font-stretch: 106%; color: var(--muted); margin-bottom: 2px; }
+.ifs-mstep__title { margin: 0; font-size: 18px; line-height: 26px; font-weight: 500; letter-spacing: -.02em; color: var(--ink); }
+.ifs-mstep__lede { margin: 0; max-width: 64ch; font-size: 13.5px; line-height: 20px; color: var(--muted); }
+.ifs-mstep__fields { display: flex; flex-direction: column; gap: 16px; padding: 20px 20px 22px; min-width: 0; }
+.ifs-mstep__fields > .ifs-field:not(.ifs-field--horizontal) { max-width: 480px; }
+.ifs-mstep__card > .ifs-mstep__footer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 12px 12px 20px; border-top: 1px solid var(--line-soft); background: var(--paper); border-radius: 0 0 calc(var(--radius-card) * var(--corners)) calc(var(--radius-card) * var(--corners)); }
+@container ifs-mstep (max-width: 640px) {
+  .ifs-mstep__layout { grid-template-columns: minmax(0, 1fr); }
+  .ifs-mstep__rail { display: none; }
+  .ifs-mstep__bar { display: block; }
+}
+@media (prefers-reduced-motion: reduce) { .ifs-mstep--dialog, .ifs-mstep__dialog { transition: none; } .ifs-overlay--morph { animation: none; } }
+
+/* ---------------------------------------------------------------- Announcements
+   A 480px dialog: the card (a 196px media area on tint under a faint dot grid, its art centered, or cut at the bottom edge when taller, then its text padded 20px), then a paper footer with
+   the dots, the count, Back and Next. Cards slide and the dialog eases to each card's height. */
+.ifs-announce { width: 480px; }
+.ifs-announce__close { z-index: 2; }
+.ifs-announce__wrap { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+.ifs-announce__deck { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.ifs-announce__deck { position: relative; min-width: 0; outline: none; touch-action: pan-y; }
+.ifs-announce__media { position: relative; display: flex; align-items: safe center; justify-content: center; height: 196px; padding: 28px 32px; box-sizing: border-box; overflow: hidden; background: var(--tint); border-bottom: 1px solid var(--line-soft); isolation: isolate; }
+.ifs-announce__media::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--line); -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Cpath d='M0 0h1v1H0z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Cpath d='M0 0h1v1H0z'/%3E%3C/svg%3E"); -webkit-mask-size: 6px 6px; mask-size: 6px 6px; }
+.ifs-announce__art { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; max-width: 360px; pointer-events: none; user-select: none; }
+.ifs-announce__text { display: flex; flex-direction: column; gap: 6px; padding: 20px 20px 22px; }
+.ifs-announce__eyebrow { font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; font-stretch: 106%; color: var(--muted); }
+.ifs-announce__title { margin: 0; padding-right: 8px; font-size: 18px; line-height: 26px; font-weight: 500; letter-spacing: -.02em; color: var(--ink); }
+.ifs-announce__desc { font-size: 13.5px; line-height: 20px; color: var(--text2); }
+.ifs-announce__desc p { margin: 0; }
+.ifs-announce__desc p + p { margin-top: 8px; }
+.ifs-announce__action { margin-top: 6px; font-size: 13.5px; }
+.ifs-announce__footer { justify-content: flex-start; padding-left: 16px; }
+.ifs-announce__dots { display: flex; align-items: center; gap: 0; }
+.ifs-announce__dot { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 24px; padding: 0; border: 0; background: transparent; cursor: pointer; border-radius: calc(var(--radius-xs) * var(--corners)); }
+.ifs-announce__dot::before { content: ""; width: 6px; height: 6px; background: var(--control); border-radius: calc(var(--radius-xs) * var(--corners)); transition: background-color var(--ifs-slide), width var(--ifs-slide); }
+.ifs-announce__dot:hover::before { background: var(--muted); }
+.ifs-announce__dot[aria-current="true"]::before { width: 12px; background: var(--ink); }
+.ifs-announce__dot[aria-current="true"] { width: 22px; }
+.ifs-announce__dot:focus-visible { outline: 2px solid var(--ink); outline-offset: 0; }
+.ifs-announce__of { margin-left: 4px; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ifs-announce__nav { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+@media (prefers-reduced-motion: reduce) { .ifs-announce__dot::before { transition: none; } }

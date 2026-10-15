@@ -1,0 +1,29 @@
+<!-- @dsCard group="Actions" height=186 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Button</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+function Demo() {
+  var B = I.Button;
+  return h('div', { className: 'ifs-stack', style: { gap: 18 } },
+    h('div', { className: 'ifs-stack', style: { gap: 8 } }, cap('Variants'),
+      h('div', { className: 'ifs-row' },
+        h(B, { variant: 'primary', icon: 'plus' }, 'Add secret'), h(B, null, 'View diff'), h(B, { variant: 'ghost' }, 'Cancel'),
+        h(B, { variant: 'accent' }, 'Grant for 1 hour'), h(B, { variant: 'destructive' }, 'Revoke access'),
+        h(B, { variant: 'danger-ghost', icon: 'trash' }, 'Delete'), h(B, { variant: 'link' }, 'View sync log'))),
+    h('div', { className: 'ifs-stack', style: { gap: 8 } }, cap('Sizes, icon only, loading, disabled, pressed'),
+      h('div', { className: 'ifs-row' },
+        h(B, { variant: 'primary', size: 'sm' }, 'Approve'), h(B, { variant: 'primary' }, 'Approve'), h(B, { variant: 'primary', size: 'lg' }, 'Approve'),
+        h(B, { variant: 'ghost', icon: 'copy', iconOnly: true, 'aria-label': 'Copy value' }), h(B, { icon: 'more', iconOnly: true, 'aria-label': 'More actions' }),
+        h(B, { variant: 'primary', loading: true }, 'Saving'), h(B, { disabled: true }, 'Export'), h(B, { selected: true, icon: 'eye' }, 'Values shown'))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<!-- @dsCard group="Forms" height=478 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>InputGroup</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+function Demo() {
+  function cell(t, node) { return h('div', { className: 'ifs-stack', style: { gap: 6 } }, cap(t), node); }
+  return h('div', { className: 'ifs-stack', style: { gap: 18, maxWidth: 440 } },
+    cell('Icon and shortcut', h(I.InputGroup, { icon: 'search', kbd: '/', placeholder: 'Search secrets', 'aria-label': 'Search secrets' })),
+    cell('Prefix', h(I.InputGroup, { prefix: 'https://', defaultValue: 'vault.internal', mono: true, 'aria-label': 'Host' })),
+    cell('Suffix', h(I.InputGroup, { suffix: 'days', defaultValue: '30', 'aria-label': 'Rotation interval' })),
+    cell('Copy', h(I.InputGroup, { readOnly: true, mono: true, value: 'secret://acme-platform/prod/stripe_api_key', copyValue: 'secret://acme-platform/prod/stripe_api_key', 'aria-label': 'Reference' })),
+    cell('Joined action', h(I.InputGroup, { mono: true, placeholder: 'Paste or generate', 'aria-label': 'Value', action: h(I.Button, { icon: 'sync' }, 'Generate') })),
+    cell('Error', h(I.InputGroup, { prefix: 'https://', defaultValue: 'vault internal', invalid: true, mono: true, 'aria-label': 'Host' })));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

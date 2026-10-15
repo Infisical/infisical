@@ -1,0 +1,44 @@
+<!-- @dsCard group="Composites" height=824 subtitle="Page-level breadcrumb: the eyebrow over a page title, a folder path that collapses, an object's page with badges and tabs" -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>PageHeader</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+
+function Demo() {
+  var B = I.Button;
+  var t = React.useState('overview'), tab = t[0], setTab = t[1];
+  function cell(label, node) { return h('div', { className: 'ifs-stack', style: { gap: 12 } }, cap(label), node); }
+  return h('div', { className: 'ifs-stack', style: { gap: 32, maxWidth: 760 } },
+    cell('A top-level page: the eyebrow names where it sits, the title does not repeat',
+      h(I.PageHeader, {
+        breadcrumb: [{ label: 'Acme Corp', href: '#' }, { label: 'acme-platform', href: '#' }],
+        title: 'Secrets', description: '412 secrets across 3 environments. 3 are missing in production.',
+        actions: [h(B, { key: 1, icon: 'upload' }, 'Import'), h(B, { key: 2, variant: 'primary', icon: 'plus' }, 'Add secret')] })),
+    h(I.Separator, { soft: true }),
+    cell('A folder: its path as a breadcrumb, collapsed past four levels, try it',
+      h(I.PageHeader, {
+        size: 'md', mono: true, breadcrumbVariant: 'default', separator: 'chevron', maxItems: 4, breadcrumbLabel: 'Folder path',
+        breadcrumb: [{ label: 'Secrets', href: '#' }, { label: h(I.Badge, { tone: 'solid', size: 'sm', mono: true }, 'production'), href: '#' }, { label: 'services', href: '#', mono: true }, { label: 'payments', href: '#', mono: true }, { label: 'stripe', href: '#', mono: true }],
+        title: 'webhooks', badges: h(I.Badge, { tone: 'soft', size: 'sm' }, '14 secrets'),
+        actions: [h(B, { key: 1, icon: 'folder' }, 'New folder'), h(B, { key: 2, variant: 'primary', icon: 'plus' }, 'Add secret')] })),
+    h(I.Separator, { soft: true }),
+    cell('One object: badges beside the title, sections as tabs',
+      h(I.PageHeader, {
+        size: 'md', mono: true,
+        breadcrumb: [{ label: 'acme-platform', href: '#' }, { label: 'Production', href: '#' }, { label: 'payments', href: '#' }],
+        title: 'stripe_api_key',
+        badges: [h(I.Badge, { key: 1, tone: 'ok', size: 'sm', dot: true }, 'Synced'), h(I.Badge, { key: 2, tone: 'soft', size: 'sm', mono: true }, 'v15')],
+        description: 'Live secret key for charges and refunds. Rotates every 30 days.',
+        actions: [h(B, { key: 1, icon: 'sync' }, 'Rotate now'),
+          h(I.DropdownMenu, { key: 2, align: 'end', width: 200, label: 'More for stripe_api_key', trigger: h(B, { icon: 'more', iconOnly: true, 'aria-label': 'More for stripe_api_key' }),
+            items: [{ label: 'Copy key', icon: 'copy' }, { label: 'View history', icon: 'history' }, { type: 'separator' }, { label: 'Delete', icon: 'trash', danger: true }] })],
+        tabs: h(I.Tabs, { label: 'Secret sections', value: tab, onChange: setTab, tabs: [{ value: 'overview', label: 'Overview' }, { value: 'versions', label: 'Versions', count: 15 }, { value: 'access', label: 'Access' }, { value: 'syncs', label: 'Syncs', count: 2 }] }) })));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

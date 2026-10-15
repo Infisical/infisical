@@ -1,0 +1,25 @@
+<!-- @dsCard group="Data display" height=268 -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Avatar</title></head>
+<body>
+<div id="root" class="ifs-demo"></div>
+<script>
+var I = window.Infisical, h = React.createElement;
+function cap(t) { return h('span', { style: { fontSize: 12, lineHeight: '16px', fontWeight: 500, color: 'var(--muted)' } }, t); }
+function mono(t) { return h('span', { className: 'ifs-mono', style: { fontSize: 13 } }, t); }
+
+function Demo() {
+  var A = I.Avatar;
+  function cell(t, node) { return h('div', { className: 'ifs-stack', style: { gap: 10 } }, cap(t), node); }
+  return h('div', { className: 'ifs-row', style: { gap: 44, alignItems: 'flex-start' } },
+    cell('Kinds', h('div', { className: 'ifs-row' }, h(A, { name: 'Sarah Lin' }), h(A, { kind: 'org', initials: 'AC', label: 'Acme Corp' }), h(A, { kind: 'machine', label: 'github-actions' }), h(A, { kind: 'agent', label: 'on-call-agent' }), h(A, { kind: 'fallback', label: 'Unknown user' }))),
+    cell('Sizes', h('div', { className: 'ifs-row', style: { gap: 10 } }, [20, 24, 32, 40].map(function (s) { return h(A, { key: s, name: 'James Okoro', size: s }); }))),
+    cell('Presence', h('div', { className: 'ifs-row' }, h(A, { name: 'Jadden', status: 'ok' }), h(A, { name: 'Sarah Lin', status: 'warn' }), h(A, { name: 'James Okoro', status: 'off' }))),
+    cell('Group', h(I.AvatarGroup, { max: 4, size: 28, label: 'Approvers in prod-changes' }, h(A, { name: 'Sarah Lin' }), h(A, { name: 'Jadden' }), h(A, { name: 'James Okoro' }), h(A, { kind: 'agent', label: 'release-bot' }), h(A, { name: 'Maya Chen' }), h(A, { name: 'Luis Ortega' }))),
+    cell('Identity', h('div', { className: 'ifs-stack', style: { gap: 12 } }, h(I.Identity, { name: 'Sarah Lin', description: 'Admin, prod-changes' }), h(I.Identity, { kind: 'machine', name: 'github-actions', mono: true, description: 'Machine identity, read' }))));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>
