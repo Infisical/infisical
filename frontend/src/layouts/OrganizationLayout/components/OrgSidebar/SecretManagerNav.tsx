@@ -24,10 +24,10 @@ export const SecretManagerNav = ({
       activeMatch: /\/secrets\//
     },
     {
-      label: "Approvals",
-      icon: BookCheck,
-      pathSuffix: "approval",
-      badgeCount: pendingRequestsCount || undefined
+      label: "Access Control",
+      icon: Shield,
+      pathSuffix: "access-management",
+      activeMatch: /\/groups\/|\/identities\/|\/members\/|\/roles\//
     },
     {
       label: "Integrations",
@@ -43,16 +43,16 @@ export const SecretManagerNav = ({
       label: "Insights",
       icon: ActivityIcon,
       pathSuffix: "insights"
+    },
+    {
+      label: "Approvals",
+      icon: BookCheck,
+      pathSuffix: "approval",
+      badgeCount: pendingRequestsCount || undefined
     }
   ];
 
   const administrationItems: NavItem[] = [
-    {
-      label: "Access Control",
-      icon: Shield,
-      pathSuffix: "access-management",
-      activeMatch: /\/groups\/|\/identities\/|\/members\/|\/roles\//
-    },
     { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs" },
     { label: "Settings", icon: Settings, pathSuffix: "settings", submenu: SM_SETTINGS_SUBMENU }
   ];

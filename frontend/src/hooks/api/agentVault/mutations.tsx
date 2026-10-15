@@ -4,7 +4,6 @@ import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 
 import { ApiErrorTypes } from "../types";
-import { AgentVaultMemberType } from "./enums";
 import { agentVaultKeys } from "./queries";
 import {
   TAddAgentVaultMembersDTO,
@@ -28,6 +27,7 @@ import {
   TCreateAgentVaultSessionDTO,
   TCreateAgentVaultVariableDTO,
   TUpdateAgentVaultAccessBundleDTO,
+  TUpdateAgentVaultMemberRolesDTO,
   TUpdateAgentVaultServiceDTO,
   TUpdateAgentVaultSessionLogSettingsDTO,
   TUpdateAgentVaultVariableDTO
@@ -158,12 +158,6 @@ export const useDeleteAgentVaultService = () => {
   });
 };
 
-const ACTOR_PATH: Record<AgentVaultMemberType, string> = {
-  [AgentVaultMemberType.User]: "users",
-  [AgentVaultMemberType.Group]: "groups",
-  [AgentVaultMemberType.MachineIdentity]: "machine-identities"
-};
-
 export const useAddAgentVaultAccessBundleMembers = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
@@ -188,9 +182,9 @@ export const useRevokeAgentVaultAccessBundleMembers = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ accessBundleId, ...params }: TAddAgentVaultMembersDTO) => {
-      const { data } = await apiRequest.post<TAgentVaultMemberWriteResult<TAgentVaultActorRef>>(
-        `/api/v1/agent-vault/access-bundles/${accessBundleId}/members/revoke`,
-        params
+      const { data } = await apiRequest.delete<TAgentVaultMemberWriteResult<TAgentVaultActorRef>>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/members`,
+        { data: params }
       );
       return data;
     },
@@ -316,8 +310,6 @@ export const useRevokeAgentVaultProxyAccess = () => {
   });
 };
 
-// The member is named in the URL, so a call with no actor has nowhere to go. The role dialogs pass an
-// empty actor while closed, which cannot reach a mutation, so this only fires on a genuine mistake.
 // Removing a product member strips their bundle grants, so the bundle queries go too.
 const invalidateMembers = (queryClient: ReturnType<typeof useQueryClient>, orgId: string) => {
   queryClient.invalidateQueries({ queryKey: agentVaultKeys.members(orgId) });
@@ -341,16 +333,15 @@ export const useAddAgentVaultMembers = () => {
   });
 };
 
-export const useUpdateAgentVaultMemberRole = () => {
+export const useUpdateAgentVaultMemberRoles = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ actor, role }: { actor: TAgentVaultActorRef; role: string }) => {
-      const { data } = await apiRequest.patch<{ member: TAgentVaultWrittenMember }>(
-        `/api/v1/agent-vault/members/${ACTOR_PATH[actor.type]}/${actor.id}`,
-        { role }
-      );
-      return data.member;
+    mutationFn: async (dto: TUpdateAgentVaultMemberRolesDTO) => {
+      const { data } = await apiRequest.patch<
+        TAgentVaultMemberWriteResult<TAgentVaultWrittenMember>
+      >("/api/v1/agent-vault/members", dto);
+      return data;
     },
     onSuccess: () => invalidateMembers(queryClient, currentOrg.id)
   });
@@ -361,9 +352,9 @@ export const useRevokeAgentVaultMembers = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (dto: TAgentVaultActorIdsDTO) => {
-      const { data } = await apiRequest.post<TAgentVaultMemberWriteResult<TAgentVaultActorRef>>(
-        "/api/v1/agent-vault/members/revoke",
-        dto
+      const { data } = await apiRequest.delete<TAgentVaultMemberWriteResult<TAgentVaultActorRef>>(
+        "/api/v1/agent-vault/members",
+        { data: dto }
       );
       return data;
     },

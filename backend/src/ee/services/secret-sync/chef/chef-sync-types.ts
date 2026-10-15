@@ -26,9 +26,17 @@ export type TGetChefSecrets = {
 
 export type TChefSecret = string | number | boolean | null;
 
+export type TChefEncryptedValue = {
+  encrypted_data: string;
+  iv: string;
+  auth_tag: string;
+  version: number;
+  cipher: string;
+};
+
 export type TChefDataBagItemContent = {
   id: string;
-  [key: string]: TChefSecret;
+  [key: string]: TChefSecret | TChefEncryptedValue;
 };
 
 export type TChefSecrets = {

@@ -67,6 +67,12 @@ import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secret
 import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
 import { ApiErrorTypes, SecretType } from "@app/hooks/api/types";
 
+import {
+  overviewCountBucket,
+  overviewImportSource,
+  overviewResponsePhase,
+  useOverviewTelemetry
+} from "../../OverviewTelemetry";
 import { CsvColumnMapContent } from "./CsvColumnMapDialog";
 import {
   buildFolderTree,
@@ -121,8 +127,9 @@ type ContentProps = {
   initialStep?: "upload" | "paste";
   initialSelectedEnvironments?: { name: string; slug: string }[];
   onComplete?: (envSlugs: string[]) => void;
-  onClose: () => void;
+  onClose: () => boolean;
   onLockChange?: (isLocked: boolean) => void;
+  onImportSourceChange: (source: "paste" | "drop" | "upload") => void;
 };
 
 const ImportSecretsContent = ({
@@ -135,8 +142,10 @@ const ImportSecretsContent = ({
   initialSelectedEnvironments = [],
   onComplete,
   onClose,
-  onLockChange
+  onLockChange,
+  onImportSourceChange
 }: ContentProps) => {
+  const telemetry = useOverviewTelemetry();
   const { permission } = useProjectPermission();
   const [parsedSecrets, setParsedSecrets] = useState<TParsedEnv | null>(null);
   const [isImporting, setIsImporting] = useToggle();
@@ -144,6 +153,13 @@ const ImportSecretsContent = ({
   const abortControllerRef = useRef<AbortController | null>(null);
   const [nestedProgress, setNestedProgress] = useState<TQueueProgress | null>(null);
   const [importMethod, setImportMethod] = useState<"upload" | "paste">(initialStep);
+  const [fileInputSource, setFileInputSource] = useState<"drop" | "upload">(
+    initialFile ? "drop" : "upload"
+  );
+  const importSource = overviewImportSource(importMethod, fileInputSource === "drop");
+  useEffect(() => {
+    onImportSourceChange(importSource);
+  }, [importSource, onImportSourceChange]);
   const [isPasteDirty, setIsPasteDirty] = useState(false);
   const [csvData, setCsvData] = useState<CsvData | null>(null);
   const [visibleSecretKeys, setVisibleSecretKeys] = useState<Set<string>>(new Set());
@@ -352,6 +368,20 @@ const ImportSecretsContent = ({
     if (isImportRunningRef.current) return;
     isImportRunningRef.current = true;
     setIsImporting.on();
+    const flow = {
+      action: "import" as const,
+      resourceType: "mixed" as const,
+      source: importSource,
+      countBucket: overviewCountBucket(
+        (secretCount + (nestedImport?.folderPaths.length ?? 0)) * selectedEnvs.length
+      )
+    };
+    const attempt = telemetry.startFlow(flow);
+    let responseCount = 0;
+    let approvalCount = 0;
+    let failureCount = 0;
+    let folderResponseCount = 0;
+    let folderFailureCount = 0;
 
     try {
       const requestedSlugs = new Set<string>();
@@ -415,12 +445,18 @@ const ImportSecretsContent = ({
         const folderName = pathSegment.at(-1);
 
         if (folderName && parentPath && canCreateFolderIn(environment, parentPath)) {
-          await getOrCreateFolder({
-            projectId,
-            path: parentPath,
-            environment,
-            name: folderName
-          });
+          try {
+            await getOrCreateFolder({
+              projectId,
+              path: parentPath,
+              environment,
+              name: folderName
+            });
+          } catch (error) {
+            folderFailureCount += 1;
+            throw error;
+          }
+          folderResponseCount += 1;
         }
       };
 
@@ -551,8 +587,18 @@ const ImportSecretsContent = ({
           path,
           secrets,
           enqueue
-        );
+        ).catch((error) => {
+          if (enqueue) failureCount += 1;
+          throw error;
+        });
         const writtenCount = results.filter((r) => r.status === "fulfilled").length;
+        responseCount += results.filter(
+          (r) => r.status === "fulfilled" && !("approval" in (r.value as object))
+        ).length;
+        approvalCount += results.filter(
+          (r) => r.status === "fulfilled" && "approval" in (r.value as object)
+        ).length;
+        failureCount += results.filter((r) => r.status === "rejected").length;
         let status: "written" | "partial" | "failed" = "partial";
         if (writtenCount === results.length) status = "written";
         else if (!writtenCount) status = "failed";
@@ -612,7 +658,21 @@ const ImportSecretsContent = ({
             )
         });
         const { state, hasApproval, problems } = await runNestedImport(nestedImport, {
-          resolveFolder: (path) => resolveFolder(joinSecretPath(secretPath, path)),
+          resolveFolder: async (path) => {
+            try {
+              const result = await resolveFolder(joinSecretPath(secretPath, path));
+              if (result === "created") folderResponseCount += 1;
+              if (result === false) {
+                folderFailureCount += 1;
+                failureCount += 1;
+              }
+              return result;
+            } catch (error) {
+              folderFailureCount += 1;
+              failureCount += 1;
+              throw error;
+            }
+          },
           writeSecrets: (path, secrets) =>
             writeSecrets(env.slug, joinSecretPath(secretPath, path), secrets, enqueue)
         });
@@ -658,6 +718,7 @@ const ImportSecretsContent = ({
             successEnvSlugs.push(result.value.slug);
           }
         } else if (result.status === "rejected") {
+          failureCount += 1;
           failedEnvs.push(selectedEnvs[idx].name);
         }
       });
@@ -690,12 +751,26 @@ const ImportSecretsContent = ({
         });
       }
 
-      onClose();
+      attempt.flow({
+        ...flow,
+        phase: overviewResponsePhase(
+          responseCount + folderResponseCount,
+          approvalCount,
+          partialEnvs.length + failedEnvs.length
+        ),
+        responseCountBucket: overviewCountBucket(responseCount + folderResponseCount),
+        approvalCountBucket: overviewCountBucket(approvalCount),
+        failureCountBucket: overviewCountBucket(failureCount),
+        folderResponseCountBucket: overviewCountBucket(folderResponseCount),
+        folderFailureCountBucket: overviewCountBucket(folderFailureCount)
+      });
+      const closedCurrentInvocation = onClose();
       const completedEnvSlugs = [...successEnvSlugs, ...approvalEnvSlugs, ...partialEnvSlugs];
-      if (completedEnvSlugs.length) {
+      if (completedEnvSlugs.length && closedCurrentInvocation) {
         onComplete?.(completedEnvSlugs);
       }
     } catch (err) {
+      attempt.flow({ ...flow, phase: "failed" });
       console.error(err);
       createNotification({
         type: "error",
@@ -792,12 +867,17 @@ const ImportSecretsContent = ({
                 })}
               >
                 {(isAllowed) => (
-                  <FileDropzone
-                    isDisabled={!isAllowed}
-                    accept=".txt,.env,.yml,.yaml,.json,.csv,.pfx,.pem,.crt"
-                    description=".env, .json, .yml, .csv, .pfx, .pem, or .crt (1 MB request limit)"
-                    onFilesSelect={(files) => parseFile(files[0])}
-                  />
+                  <div
+                    onDropCapture={() => setFileInputSource("drop")}
+                    onChangeCapture={() => setFileInputSource("upload")}
+                  >
+                    <FileDropzone
+                      isDisabled={!isAllowed}
+                      accept=".txt,.env,.yml,.yaml,.json,.csv,.pfx,.pem,.crt"
+                      description=".env, .json, .yml, .csv, .pfx, .pem, or .crt (1 MB request limit)"
+                      onFilesSelect={(files) => parseFile(files[0])}
+                    />
+                  </div>
                 )}
               </ProjectPermissionCan>
             </TabsContent>
@@ -1198,11 +1278,57 @@ export const ImportSecretsSheet = ({
   initialSelectedEnvironments,
   onComplete
 }: Props) => {
+  const telemetry = useOverviewTelemetry();
+  const sourceRef = useRef<"paste" | "drop" | "upload">(
+    overviewImportSource(initialStep ?? "upload", Boolean(initialFile))
+  );
+  const [importSource, setImportSource] = useState(sourceRef.current);
+  const owner = useRef({ isOpen, telemetry, invocation: {} });
+  if (owner.current.isOpen !== isOpen || owner.current.telemetry !== telemetry)
+    owner.current = { isOpen, telemetry, invocation: {} };
+  const { invocation } = owner.current;
+  const handleImportSourceChange = useCallback(
+    (source: "paste" | "drop" | "upload") => {
+      if (sourceRef.current !== source && isOpen) {
+        telemetry.flow({
+          action: "import",
+          resourceType: "mixed",
+          source: sourceRef.current,
+          phase: "canceled"
+        });
+        owner.current.invocation = {};
+      }
+      sourceRef.current = source;
+      setImportSource(source);
+      if (isOpen)
+        telemetry.flow({ action: "import", resourceType: "mixed", source, phase: "opened" });
+    },
+    [isOpen, telemetry]
+  );
   const [isLocked, setIsLocked] = useState(false);
+  const handleLockChange = useCallback(
+    (locked: boolean) => {
+      if (owner.current.invocation === invocation) setIsLocked(locked);
+    },
+    [invocation]
+  );
   // Covers the close button, Escape and outside clicks while a nested upload is running
+  const closeSheet = (open: boolean) => {
+    if (owner.current.invocation !== invocation) return false;
+    if (!open)
+      telemetry.flow({
+        action: "import",
+        resourceType: "mixed",
+        source: importSource,
+        phase: "canceled"
+      });
+    onOpenChange(open);
+    if (!open) owner.current.invocation = {};
+    return true;
+  };
   const handleOpenChange = (open: boolean) => {
     if (!open && isLocked) return;
-    onOpenChange(open);
+    closeSheet(open);
   };
 
   return (
@@ -1217,8 +1343,9 @@ export const ImportSecretsSheet = ({
           initialStep={initialStep}
           initialSelectedEnvironments={initialSelectedEnvironments}
           onComplete={onComplete}
-          onClose={() => onOpenChange(false)}
-          onLockChange={setIsLocked}
+          onClose={() => closeSheet(false)}
+          onLockChange={handleLockChange}
+          onImportSourceChange={handleImportSourceChange}
         />
       </SheetContent>
     </Sheet>

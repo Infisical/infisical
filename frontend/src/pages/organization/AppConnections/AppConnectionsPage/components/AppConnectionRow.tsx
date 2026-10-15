@@ -41,10 +41,15 @@ import {
   buildGitHubAppUrl,
   getAppConnectionMethodDetails
 } from "@app/helpers/appConnections";
-import { getProjectBaseURL } from "@app/helpers/project";
+import {
+  getProjectBaseURL,
+  getProjectDisplayName,
+  pinProjectForNavigation
+} from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import { GitHubConnectionMethod, TAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useListGitHubApps } from "@app/hooks/api/gitHubApps";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
@@ -70,6 +75,7 @@ export const AppConnectionRow = ({
   isProjectView
 }: Props) => {
   const { currentOrg } = useOrganization();
+  const { data: certManagerInstance } = useCertManagerInstanceState();
   const {
     id,
     name,
@@ -206,11 +212,14 @@ export const AppConnectionRow = ({
                 orgId: currentOrg?.id || "",
                 projectId: project.id
               }}
+              onClick={() => {
+                if (currentOrg?.id) pinProjectForNavigation(currentOrg.id, project);
+              }}
               className="underline"
             >
               <p className="flex items-center gap-1.5 truncate">
                 <ProjectIcon className="size-3.5 text-label/75" />
-                {project.name}
+                {getProjectDisplayName(project, Boolean(certManagerInstance?.isMultiInstance))}
               </p>
             </Link>
           ) : (

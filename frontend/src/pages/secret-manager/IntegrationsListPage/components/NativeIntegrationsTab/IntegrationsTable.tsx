@@ -7,12 +7,10 @@ import {
   faClock,
   faFilter,
   faMagnifyingGlass,
-  faRotate,
-  faSearch,
   faWarning
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
+import { RefreshCwIcon, SearchIcon } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -20,19 +18,26 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-  EmptyState,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
   IconButton,
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination,
+  ProviderIcon,
   Table,
-  TableContainer,
-  TBody,
-  Th,
-  THead,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+  type TableSortDirection,
   Tooltip,
-  Tr
-} from "@app/components/v2";
-import { ProviderIcon } from "@app/components/v3";
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -232,8 +237,12 @@ export const IntegrationsTable = ({
     setOrderDirection(OrderByDirection.ASC);
   };
 
-  const getClassName = (col: IntegrationsOrderBy) =>
-    twMerge("ml-2", orderBy === col ? "" : "opacity-30");
+  const getClassName = (col: IntegrationsOrderBy) => (orderBy === col ? "" : "opacity-30");
+
+  const getSortDirection = (col: IntegrationsOrderBy): TableSortDirection => {
+    if (orderBy !== col) return "none";
+    return orderDirection === OrderByDirection.ASC ? "ascending" : "descending";
+  };
 
   const getColSortIcon = (col: IntegrationsOrderBy) =>
     orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
@@ -244,29 +253,30 @@ export const IntegrationsTable = ({
   return (
     <div>
       <div className="flex gap-2">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search integrations..."
-          className="flex-1"
-        />
+        <InputGroup className="flex-1">
+          <InputGroupAddon>
+            <FontAwesomeIcon icon={faMagnifyingGlass} />
+          </InputGroupAddon>
+          <InputGroupInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search integrations..."
+          />
+        </InputGroup>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton
-              ariaLabel="Environments"
-              variant="plain"
-              size="sm"
-              className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-border-control bg-surface-raised p-0 transition-all hover:border-project/60 hover:bg-project/10",
-                isTableFiltered && "border-project/50 text-project"
-              )}
-            >
-              <Tooltip content="Filter Integrations" className="mb-2">
-                <FontAwesomeIcon icon={faFilter} />
-              </Tooltip>
-            </IconButton>
-          </DropdownMenuTrigger>
+          <Tooltip hoverable delayDuration={50}>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <IconButton
+                  aria-label="Environments"
+                  variant={isTableFiltered ? "project" : "outline"}
+                >
+                  <FontAwesomeIcon icon={faFilter} />
+                </IconButton>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Filter Integrations</TooltipContent>
+          </Tooltip>
           <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
             <DropdownMenuLabel>Status</DropdownMenuLabel>
             {Object.values(IntegrationStatus).map((status) => (
@@ -281,12 +291,6 @@ export const IntegrationsTable = ({
                   }));
                 }}
                 key={status}
-                icon={
-                  filters.status.includes(status) && (
-                    <FontAwesomeIcon className="text-project" icon={faCheckCircle} />
-                  )
-                }
-                iconPos="right"
               >
                 <div className="flex items-center gap-2">
                   <FontAwesomeIcon
@@ -295,6 +299,9 @@ export const IntegrationsTable = ({
                   />
                   <span className="capitalize">{status.replace("-", " ")}</span>
                 </div>
+                {filters.status.includes(status) && (
+                  <FontAwesomeIcon className="ml-auto text-project" icon={faCheckCircle} />
+                )}
               </DropdownMenuItem>
             ))}
             <DropdownMenuLabel>Integration</DropdownMenuLabel>
@@ -310,12 +317,6 @@ export const IntegrationsTable = ({
                   }));
                 }}
                 key={integration}
-                icon={
-                  filters.integrations.includes(integration) && (
-                    <FontAwesomeIcon className="text-project" icon={faCheckCircle} />
-                  )
-                }
-                iconPos="right"
               >
                 <div className="flex items-center gap-2">
                   <ProviderIcon
@@ -325,6 +326,9 @@ export const IntegrationsTable = ({
                   />
                   <span className="capitalize">{cloudIntegrationMap.get(integration)!.name}</span>
                 </div>
+                {filters.integrations.includes(integration) && (
+                  <FontAwesomeIcon className="ml-auto text-project" icon={faCheckCircle} />
+                )}
               </DropdownMenuItem>
             ))}
             <DropdownMenuLabel>Environment</DropdownMenuLabel>
@@ -340,130 +344,122 @@ export const IntegrationsTable = ({
                   }));
                 }}
                 key={env.id}
-                icon={
-                  filters.environmentIds.includes(env.id) && (
-                    <FontAwesomeIcon className="text-project" icon={faCheckCircle} />
-                  )
-                }
-                iconPos="right"
               >
                 <span className="capitalize">{env.name}</span>
+                {filters.environmentIds.includes(env.id) && (
+                  <FontAwesomeIcon className="ml-auto text-project" icon={faCheckCircle} />
+                )}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <TableContainer className="mt-4">
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="w-[25%]">
-                <div className="flex items-center">
-                  Integration
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(IntegrationsOrderBy.App)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(IntegrationsOrderBy.App)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(IntegrationsOrderBy.App)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/5">
-                <div className="flex items-center">
-                  Source Path
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(IntegrationsOrderBy.SecretPath)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(IntegrationsOrderBy.SecretPath)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(IntegrationsOrderBy.SecretPath)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/5">
-                <div className="flex items-center">
-                  Source Environment
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(IntegrationsOrderBy.Environment)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(IntegrationsOrderBy.Environment)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(IntegrationsOrderBy.Environment)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/5">
-                <div className="flex items-center">
-                  Destination
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(IntegrationsOrderBy.Destination)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(IntegrationsOrderBy.Destination)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(IntegrationsOrderBy.Destination)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/5">
-                <div className="flex items-center">
-                  Status
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(IntegrationsOrderBy.Status)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(IntegrationsOrderBy.Status)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(IntegrationsOrderBy.Status)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {filteredIntegrations.slice(offset, perPage * page).map((integration) => (
-              <IntegrationRow
-                cloudIntegration={cloudIntegrationMap.get(integration.integration)!}
-                key={`integration-${integration.id}`}
-                onManualSyncIntegration={() => {
-                  syncIntegration({
-                    workspaceId,
-                    id: integration.id,
-                    lastUsed: integration.lastUsed as string
-                  });
-                }}
-                onRemoveIntegration={() => onDeleteIntegration(integration)}
-                integration={integration}
-                environment={environmentMap.get(integration.envId)}
-              />
-            ))}
-          </TBody>
-        </Table>
-        {Boolean(filteredIntegrations.length) && (
-          <Pagination
-            count={filteredIntegrations.length}
-            page={page}
-            perPage={perPage}
-            onChangePage={setPage}
-            onChangePerPage={handlePerPageChange}
-          />
-        )}
-        {!isLoading && !filteredIntegrations?.length && (
-          <EmptyState
-            title={
-              integrations.length
+      {!isLoading && !filteredIntegrations?.length ? (
+        <Empty className="mt-4 border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              {integrations.length ? <SearchIcon /> : <RefreshCwIcon />}
+            </EmptyMedia>
+            <EmptyTitle>
+              {integrations.length
                 ? "No integrations match search..."
-                : "This project has no integrations configured"
-            }
-            icon={integrations.length ? faSearch : faRotate}
-          />
-        )}
-      </TableContainer>
+                : "This project has no integrations configured"}
+            </EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <>
+          <Table containerClassName="mt-4">
+            <TableHeader>
+              <TableRow>
+                <TableHead
+                  className="w-[25%]"
+                  sortDirection={getSortDirection(IntegrationsOrderBy.App)}
+                  onSortChange={() => handleSort(IntegrationsOrderBy.App)}
+                >
+                  Integration
+                  <FontAwesomeIcon
+                    icon={getColSortIcon(IntegrationsOrderBy.App)}
+                    className={getClassName(IntegrationsOrderBy.App)}
+                  />
+                </TableHead>
+                <TableHead
+                  className="w-1/5"
+                  sortDirection={getSortDirection(IntegrationsOrderBy.SecretPath)}
+                  onSortChange={() => handleSort(IntegrationsOrderBy.SecretPath)}
+                >
+                  Source Path
+                  <FontAwesomeIcon
+                    icon={getColSortIcon(IntegrationsOrderBy.SecretPath)}
+                    className={getClassName(IntegrationsOrderBy.SecretPath)}
+                  />
+                </TableHead>
+                <TableHead
+                  className="w-1/5"
+                  sortDirection={getSortDirection(IntegrationsOrderBy.Environment)}
+                  onSortChange={() => handleSort(IntegrationsOrderBy.Environment)}
+                >
+                  Source Environment
+                  <FontAwesomeIcon
+                    icon={getColSortIcon(IntegrationsOrderBy.Environment)}
+                    className={getClassName(IntegrationsOrderBy.Environment)}
+                  />
+                </TableHead>
+                <TableHead
+                  className="w-1/5"
+                  sortDirection={getSortDirection(IntegrationsOrderBy.Destination)}
+                  onSortChange={() => handleSort(IntegrationsOrderBy.Destination)}
+                >
+                  Destination
+                  <FontAwesomeIcon
+                    icon={getColSortIcon(IntegrationsOrderBy.Destination)}
+                    className={getClassName(IntegrationsOrderBy.Destination)}
+                  />
+                </TableHead>
+                <TableHead
+                  className="w-1/5"
+                  sortDirection={getSortDirection(IntegrationsOrderBy.Status)}
+                  onSortChange={() => handleSort(IntegrationsOrderBy.Status)}
+                >
+                  Status
+                  <FontAwesomeIcon
+                    icon={getColSortIcon(IntegrationsOrderBy.Status)}
+                    className={getClassName(IntegrationsOrderBy.Status)}
+                  />
+                </TableHead>
+                <TableHead className="w-5" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredIntegrations.slice(offset, perPage * page).map((integration) => (
+                <IntegrationRow
+                  cloudIntegration={cloudIntegrationMap.get(integration.integration)!}
+                  key={`integration-${integration.id}`}
+                  onManualSyncIntegration={() => {
+                    syncIntegration({
+                      workspaceId,
+                      id: integration.id,
+                      lastUsed: integration.lastUsed as string
+                    });
+                  }}
+                  onRemoveIntegration={() => onDeleteIntegration(integration)}
+                  integration={integration}
+                  environment={environmentMap.get(integration.envId)}
+                />
+              ))}
+            </TableBody>
+          </Table>
+          {Boolean(filteredIntegrations.length) && (
+            <Pagination
+              count={filteredIntegrations.length}
+              page={page}
+              perPage={perPage}
+              onChangePage={setPage}
+              onChangePerPage={handlePerPageChange}
+            />
+          )}
+        </>
+      )}
     </div>
   );
 };

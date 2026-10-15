@@ -104,6 +104,15 @@ type SecretDeleted struct{ SecretDetail }
 func (SecretDeleted) EventName() string { return "github.secret-deleted" }
 ```
 
+## DNS records
+
+Every A query resolves to fakenet. A product that proves domain ownership reads a TXT
+record, so publish it first; it is removed when the test ends.
+
+```go
+fakenet.SetTXT(t, fixture.FakenetAdmin(t, tn), "_infisical-verification.acme.test", "value")
+```
+
 ## Test plumbing once
 
 Secret sync is tested end to end through GitHub. A new sync provider gets tests only for

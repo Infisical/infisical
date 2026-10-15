@@ -10,10 +10,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import {
-  CREDENTIAL_LABELS,
-  displayHostPattern
-} from "@app/components/agent-vault/service-sheet/serviceSchema";
+import { displayHostPattern } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import { createNotification } from "@app/components/notifications";
 import {
@@ -55,7 +52,6 @@ import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 
 enum SortColumn {
   Name = "name",
-  Credential = "credential",
   Hosts = "hosts",
   Created = "created"
 }
@@ -65,8 +61,6 @@ const SORT_COMPARATORS: Record<
   (a: TAgentVaultService, b: TAgentVaultService) => number
 > = {
   [SortColumn.Name]: (a, b) => a.name.localeCompare(b.name),
-  [SortColumn.Credential]: (a, b) =>
-    CREDENTIAL_LABELS[a.credential.type].localeCompare(CREDENTIAL_LABELS[b.credential.type]),
   [SortColumn.Hosts]: (a, b) => a.hostPattern.localeCompare(b.hostPattern),
   [SortColumn.Created]: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
 };
@@ -218,13 +212,6 @@ export const ServicesCard = ({ accessBundleId, services, canManage, onAdd, onEdi
                 <ChevronDownIcon className={sortIconClassName(SortColumn.Name)} />
               </TableHead>
               <TableHead
-                sortDirection={sortColumn === SortColumn.Credential ? sortDirection : "none"}
-                onSortChange={(direction) => handleSort(SortColumn.Credential, direction)}
-              >
-                Credential
-                <ChevronDownIcon className={sortIconClassName(SortColumn.Credential)} />
-              </TableHead>
-              <TableHead
                 sortDirection={sortColumn === SortColumn.Hosts ? sortDirection : "none"}
                 onSortChange={(direction) => handleSort(SortColumn.Hosts, direction)}
               >
@@ -250,7 +237,6 @@ export const ServicesCard = ({ accessBundleId, services, canManage, onAdd, onEdi
                     {service.name}
                   </div>
                 </TableCell>
-                <TableCell>{CREDENTIAL_LABELS[service.credential.type]}</TableCell>
                 <TableCell>
                   <HostsCell hostPattern={service.hostPattern} />
                 </TableCell>

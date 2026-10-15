@@ -64,6 +64,7 @@ import { TOpenAIConnection } from "./open-ai-connection";
 import { TOpenRouterConnection } from "./open-router-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
 import { TOvhConnection } from "./ovh-connection";
+import { TPaloAltoNetworksConnection } from "./palo-alto-networks-connection";
 import { TPostgresConnection } from "./postgres-connection";
 import { TPowerDnsConnection } from "./powerdns-connection";
 import { TQoveryConnection } from "./qovery-connection";
@@ -151,6 +152,7 @@ export * from "./open-ai-connection";
 export * from "./open-router-connection";
 export * from "./oracledb-connection";
 export * from "./ovh-connection";
+export * from "./palo-alto-networks-connection";
 export * from "./postgres-connection";
 export * from "./powerdns-connection";
 export * from "./qovery-connection";
@@ -241,6 +243,7 @@ export type TAppConnection =
   | TVenafiTppConnection
   | TExternalInfisicalConnection
   | TNetScalerConnection
+  | TPaloAltoNetworksConnection
   | TKempLoadMasterConnection
   | TDopplerConnection
   | TOvhConnection

@@ -930,7 +930,6 @@ export const secretScanningV2QueueServiceFactory = ({
             : {
                 dataSourceName: dataSource.name,
                 resourceName,
-                projectName: project.name,
                 timestamp,
                 errorMessage: payload.errorMessage,
                 url: encodeURI(

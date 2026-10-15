@@ -18,7 +18,7 @@ import {
   EmptyTitle,
   PageLoader
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization } from "@app/context";
 import {
   getSigningOperationStatusBadgeVariant,
   SigningActorType,
@@ -28,7 +28,7 @@ import {
 } from "@app/hooks/api/signers";
 
 const ROUTE_ID =
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/code-signing/$signerId/operations/$operationId" as const;
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/code-signing/$signerId/operations/$operationId" as const;
 
 const MonoValue = ({ value }: { value: string }) => (
   <DetailValue className="flex items-center gap-2 font-mono text-xs break-all">
@@ -40,7 +40,6 @@ const MonoValue = ({ value }: { value: string }) => (
 export const SigningOperationDetailPage = () => {
   const { signerId, operationId } = useParams({ from: ROUTE_ID });
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
   const { data, isPending } = useGetSigningOperation(signerId, operationId);
 
   if (isPending) return <PageLoader />;
@@ -68,8 +67,8 @@ export const SigningOperationDetailPage = () => {
       </Helmet>
 
       <Link
-        to="/organizations/$orgId/projects/cert-manager/$projectId/code-signing/$signerId"
-        params={{ orgId: currentOrg.id, projectId: currentProject.id, signerId }}
+        to="/organizations/$orgId/cert-manager/code-signing/$signerId"
+        params={{ orgId: currentOrg.id, signerId }}
         search={{ selectedTab: "activity" }}
         className="flex w-fit items-center gap-1 text-sm text-muted transition-colors hover:text-foreground"
       >

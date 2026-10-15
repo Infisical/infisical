@@ -30,3 +30,18 @@ the harness image with `NODE_ENV=development`.
   every one of them succeeds whichever branch the server sent, and the wrong one hands
   back zero values instead of an error. After unwrapping, require a field that only the
   expected branch carries before trusting the result.
+
+## Redirects and unauthenticated routes
+
+Clients follow redirects by default. When the redirect is the outcome, such as an SSO
+start or a SAML ACS answer, opt in to receiving it:
+
+```go
+browser := tn.Anonymous(t, infisical.NoRedirects()) // no token, tenant's rate-limit bucket
+res, _ := browser.RedirectSamlByOrgSlugWithResponse(ctx, tn.OrgSlug, nil)
+res.HTTPResponse.Header.Get("Location")
+res.HTTPResponse.Cookies()
+```
+
+`tn.Client(t, token, infisical.NoRedirects())` does the same for a principal. Send a
+cookie back with a per-call request editor rather than a cookie jar.

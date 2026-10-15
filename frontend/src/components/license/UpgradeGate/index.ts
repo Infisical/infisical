@@ -52,7 +52,7 @@ export {
   getSafeUpgradeReturnPath,
   HoneyTokensUpgradeIntent,
   PamAccountLimitUpgradeIntent,
-  PamSlackNotificationsUpgradeIntent,
+  PamEnterpriseAlertingUpgradeIntent,
   PamUpgradeIntent,
   PointInTimeRecoveryUpgradeIntent,
   PostQuantumCertificatesUpgradeIntent,
@@ -63,6 +63,7 @@ export {
   SecretRotationsUpgradeIntent,
   SecretsBrokeringUpgradeIntent,
   SecretScanningUpgradeIntent,
+  SecretsManagementUpgradeIntent,
   UpgradeFeature
 } from "./upgrade-intents";
 export { UpgradeGate } from "./UpgradeGate";

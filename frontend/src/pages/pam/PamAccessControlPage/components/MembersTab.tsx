@@ -5,7 +5,6 @@ import { MoreHorizontalIcon, PencilIcon, Plus, SearchIcon, Trash2Icon } from "lu
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { HighlightText } from "@app/components/utilities/HighlightText";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -32,6 +31,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { DeleteConfirmDialog } from "@app/components/v3/platform";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject, useUser } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { useGetWorkspaceUsers } from "@app/hooks/api";
@@ -253,15 +253,16 @@ export const MembersTab = () => {
 
       <InviteMemberModal isOpen={isInviteOpen} onOpenChange={setIsInviteOpen} />
 
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={!!memberToRemove}
-        onChange={(isOpen) => {
+        onOpenChange={(isOpen) => {
           if (!isOpen) setMemberToRemove(null);
         }}
         title={`Remove ${memberToRemove ? getDisplayName(memberToRemove) : "member"}?`}
-        deleteKey="remove"
-        buttonText="Remove"
-        onDeleteApproved={handleRemoveMember}
+        description="This action is irreversible."
+        confirmKey="remove"
+        confirmLabel="Remove"
+        onConfirm={handleRemoveMember}
       />
     </div>
   );

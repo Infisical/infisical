@@ -1,10 +1,9 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { HardDriveIcon, UserIcon, UsersIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { RoleOption } from "@app/components/roles";
-import { FormControl } from "@app/components/v2";
 import {
   Button,
   ButtonGroup,
@@ -13,7 +12,9 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
+  Field,
+  FieldLabel
 } from "@app/components/v3";
 import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { apiRequest } from "@app/config/request";
@@ -98,6 +99,8 @@ export const AddApplicationMemberModal = ({
   onOpenChange,
   existingMembers
 }: Props) => {
+  const memberSelectId = useId();
+  const roleSelectId = useId();
   const { currentProject } = useProject();
   const projectId = currentProject?.id ?? "";
 
@@ -304,8 +307,10 @@ export const AddApplicationMemberModal = ({
           </ButtonGroup>
 
           {type === "user" && (
-            <FormControl label="Users">
+            <Field>
+              <FieldLabel htmlFor={memberSelectId}>Users</FieldLabel>
               <FilterableSelect
+                inputId={memberSelectId}
                 isMulti
                 isLoading={usersQuery.isPending}
                 options={userOptions}
@@ -315,12 +320,14 @@ export const AddApplicationMemberModal = ({
                 formatOptionLabel={formatMemberOptionLabel}
                 noOptionsMessage={NoUserOptions}
               />
-            </FormControl>
+            </Field>
           )}
 
           {type === "identity" && (
-            <FormControl label="Machine Identities">
+            <Field>
+              <FieldLabel htmlFor={memberSelectId}>Machine Identities</FieldLabel>
               <FilterableSelect
+                inputId={memberSelectId}
                 isMulti
                 isLoading={identitiesQuery.isPending}
                 options={identityOptions}
@@ -330,12 +337,14 @@ export const AddApplicationMemberModal = ({
                 formatOptionLabel={formatMemberOptionLabel}
                 noOptionsMessage={NoIdentityOptions}
               />
-            </FormControl>
+            </Field>
           )}
 
           {type === "group" && (
-            <FormControl label="Groups">
+            <Field>
+              <FieldLabel htmlFor={memberSelectId}>Groups</FieldLabel>
               <FilterableSelect
+                inputId={memberSelectId}
                 isMulti
                 isLoading={groupsQuery.isPending}
                 options={groupOptions}
@@ -345,11 +354,13 @@ export const AddApplicationMemberModal = ({
                 formatOptionLabel={formatMemberOptionLabel}
                 noOptionsMessage={NoGroupOptions}
               />
-            </FormControl>
+            </Field>
           )}
 
-          <FormControl label="Role">
+          <Field>
+            <FieldLabel htmlFor={roleSelectId}>Role</FieldLabel>
             <FilterableSelect
+              inputId={roleSelectId}
               options={APP_ROLES}
               value={APP_ROLES.find((r) => r.slug === role) ?? null}
               onChange={(v) => {
@@ -361,7 +372,7 @@ export const AddApplicationMemberModal = ({
               components={{ Option: RoleOption }}
               isClearable={false}
             />
-          </FormControl>
+          </Field>
         </div>
 
         <DialogFooter>

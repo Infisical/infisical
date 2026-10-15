@@ -81,3 +81,19 @@ output-options:
     - addUserToGroup
     - removeUserFromGroup
     - createProjectGroupMembership
+    - getSamlConfig
+    - createSamlConfig
+    - updateSamlConfig
+    - redirectSamlByOrgSlug
+    - redirectSamlByDomain
+    - redirectSamlByConfigId
+    - redirectOrgSSO
+    - samlAcs
+    - createEmailDomain
+    - verifyEmailDomain
+    - listEmailDomains
+    - getOrganizationById
+    - listOrgMemberships
+    - getOrgMembership
+    - updateOrgMembership
+    - getCurrentUser

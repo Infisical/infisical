@@ -10,6 +10,7 @@ import {
   DocumentationLinkBadge,
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   Stepper,
@@ -244,7 +245,7 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
             </aside>
           </div>
 
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+          <SheetFooter className="shrink-0 items-center justify-between border-t">
             <span className="text-xs text-muted" />
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted">
@@ -259,7 +260,7 @@ export const CreateCaWizard = ({ isOpen, onOpenChange }: Props) => {
                 {ctaLabel}
               </Button>
             </div>
-          </div>
+          </SheetFooter>
         </div>
       </SheetContent>
     </Sheet>
