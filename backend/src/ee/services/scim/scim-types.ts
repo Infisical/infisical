@@ -61,6 +61,7 @@ export type TCreateScimUserDTO = {
   email?: string;
   firstName?: string;
   lastName?: string;
+  active: boolean;
   orgId: string;
 };
 
