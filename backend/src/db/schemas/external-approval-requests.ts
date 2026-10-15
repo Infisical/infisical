@@ -15,6 +15,7 @@ export const ExternalApprovalRequestsSchema = z.object({
   status: z.string(),
   callbackTokenHash: zodBuffer.nullable().optional(),
   statusReason: z.string().nullable().optional(),
+  providerRequestId: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
