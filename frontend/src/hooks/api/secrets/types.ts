@@ -163,7 +163,10 @@ export type TGetSecretAccessListDTO = {
 
 export type TCreateCommitResponse = {
   commitId: string | null;
-  approval: TSecretApprovalRequest | null;
+  approval: Pick<
+    TSecretApprovalRequest,
+    "id" | "slug" | "folderId" | "status" | "hasMerged" | "createdAt" | "updatedAt"
+  > | null;
   secrets: { created: SecretV3Raw[]; updated: SecretV3Raw[]; deleted: SecretV3Raw[] };
   folders: { created: TSecretFolder[]; updated: TSecretFolder[]; deleted: TSecretFolder[] };
 };

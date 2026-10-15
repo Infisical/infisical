@@ -481,6 +481,7 @@ export const SecretEditTableRow = ({
   // Serialize metadata for effect dependency since watch() returns same array ref for nested changes
   const serializedMetadata = JSON.stringify(watchedMetadata);
   const batchAutoApplyTimer = useRef<ReturnType<typeof setTimeout>>();
+  const applyBatchEditsRef = useRef<() => void>();
   const lastAppliedRef = useRef<{
     value: unknown;
     key: unknown;
@@ -522,7 +523,7 @@ export const SecretEditTableRow = ({
 
     if (!isBatchMode) return () => {};
 
-    batchAutoApplyTimer.current = setTimeout(() => {
+    applyBatchEditsRef.current = () => {
       // Skip if values haven't changed since last apply
       // Use deep comparison for tags since reset() creates new array references
       if (
@@ -694,7 +695,8 @@ export const SecretEditTableRow = ({
             }
           : {})
       });
-    }, 500);
+    };
+    batchAutoApplyTimer.current = setTimeout(() => applyBatchEditsRef.current?.(), 500);
 
     return () => {
       if (batchAutoApplyTimer.current) {
@@ -1524,6 +1526,10 @@ export const SecretEditTableRow = ({
                       size="xs"
                       isDisabled={!isAllowed || isSavingPendingChange}
                       onClick={async () => {
+                        if (batchAutoApplyTimer.current) {
+                          clearTimeout(batchAutoApplyTimer.current);
+                          applyBatchEditsRef.current?.();
+                        }
                         setIsSavingPendingChange.on();
                         try {
                           await onPendingSave(environment, secretName);

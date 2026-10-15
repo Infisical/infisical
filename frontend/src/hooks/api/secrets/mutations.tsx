@@ -577,13 +577,16 @@ export const useCreateCommit = () => {
         folders: {
           create: pendingChanges.folders
             .filter((change) => change.type === PendingAction.Create)
-            .map((change) => ({ folderName: change.folderName, description: change.description })),
+            .map((change) => ({
+              folderName: change.folderName,
+              description: change.description || undefined
+            })),
           update: pendingChanges.folders
             .filter((change) => change.type === PendingAction.Update)
             .map((change) => ({
               id: change.id,
               folderName: change.folderName,
-              description: change.description
+              description: change.description === "" ? null : change.description
             })),
           delete: pendingChanges.folders
             .filter((change) => change.type === PendingAction.Delete)
