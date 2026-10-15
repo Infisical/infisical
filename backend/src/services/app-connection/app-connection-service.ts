@@ -188,6 +188,7 @@ import { ValidateRundeckConnectionCredentialsSchema } from "./rundeck";
 import { rundeckConnectionService } from "./rundeck/rundeck-connection-service";
 import { ValidateSalesforceConnectionCredentialsSchema } from "./salesforce";
 import { salesforceConnectionService } from "./salesforce/salesforce-connection-service";
+import { ValidateServiceNowConnectionCredentialsSchema } from "./servicenow";
 import { ValidateSmbConnectionCredentialsSchema } from "./smb";
 import { ValidateSnowflakeConnectionCredentialsSchema } from "./snowflake";
 import { snowflakeConnectionService } from "./snowflake/snowflake-connection-service";
@@ -332,7 +333,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Daytona]: ValidateDaytonaConnectionCredentialsSchema,
   [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema,
   [AppConnection.Keeper]: ValidateKeeperConnectionCredentialsSchema,
-  [AppConnection.HpeIloRedFish]: ValidateHpeIloConnectionCredentialsSchema
+  [AppConnection.HpeIloRedFish]: ValidateHpeIloConnectionCredentialsSchema,
+  [AppConnection.ServiceNow]: ValidateServiceNowConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({

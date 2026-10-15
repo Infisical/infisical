@@ -263,6 +263,11 @@ import {
   SalesforceConnectionMethod,
   validateSalesforceConnectionCredentials
 } from "./salesforce";
+import {
+  getServiceNowConnectionListItem,
+  ServiceNowConnectionMethod,
+  validateServiceNowConnectionCredentials
+} from "./servicenow";
 import { getSmbConnectionListItem, SmbConnectionMethod, validateSmbConnectionCredentials } from "./smb";
 import {
   getSnowflakeConnectionListItem,
@@ -364,6 +369,10 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.MicrosoftIntune
 ];
 
+// Secret Manager connections that are not reached through a sync, rotation or external migration,
+// so none of the maps above surface them.
+const SECRET_MANAGER_APP_CONNECTIONS = [AppConnection.ServiceNow];
+
 const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
 
 export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?: ProjectType) => {
@@ -372,7 +381,8 @@ export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?
       return (
         Boolean(SECRET_SYNC_APP_CONNECTION_MAP[app]) ||
         Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[app]) ||
-        EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(app)
+        EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(app) ||
+        SECRET_MANAGER_APP_CONNECTIONS.includes(app)
       );
     case ProjectType.SecretScanning:
       return Boolean(SECRET_SCANNING_APP_CONNECTION_MAP[app]);
@@ -484,7 +494,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getDaytonaConnectionListItem(),
     getStripeConnectionListItem(),
     getKeeperConnectionListItem(),
-    getHpeIloConnectionListItem()
+    getHpeIloConnectionListItem(),
+    getServiceNowConnectionListItem()
   ]
     .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -725,7 +736,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Daytona]: validateDaytonaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Stripe]: validateStripeConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Keeper]: validateKeeperConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.HpeIloRedFish]: validateHpeIloConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.HpeIloRedFish]: validateHpeIloConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.ServiceNow]: validateServiceNowConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayV2Service);
@@ -851,6 +863,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case F5BigIpConnectionMethod.BasicAuth:
     case NutanixPrismCentralConnectionMethod.BasicAuth:
     case HpeIloConnectionMethod.BasicAuth:
+    case ServiceNowConnectionMethod.BasicAuth:
       return "Basic Auth";
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return "Machine Identity - Universal Auth";
@@ -1009,7 +1022,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Daytona]: platformManagedCredentialsNotSupported,
   [AppConnection.Stripe]: platformManagedCredentialsNotSupported,
   [AppConnection.Keeper]: platformManagedCredentialsNotSupported,
-  [AppConnection.HpeIloRedFish]: platformManagedCredentialsNotSupported
+  [AppConnection.HpeIloRedFish]: platformManagedCredentialsNotSupported,
+  [AppConnection.ServiceNow]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

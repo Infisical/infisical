@@ -94,6 +94,7 @@ import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/rai
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 import { RundeckConnectionMethod } from "@app/hooks/api/appConnections/types/rundeck-connection";
 import { SalesforceConnectionMethod } from "@app/hooks/api/appConnections/types/salesforce-connection";
+import { ServiceNowConnectionMethod } from "@app/hooks/api/appConnections/types/servicenow-connection";
 import { SmbConnectionMethod } from "@app/hooks/api/appConnections/types/smb-connection";
 import { SnowflakeConnectionMethod } from "@app/hooks/api/appConnections/types/snowflake-connection";
 import { SpaceliftConnectionMethod } from "@app/hooks/api/appConnections/types/spacelift-connection";
@@ -673,6 +674,13 @@ export const APP_CONNECTION_MAP: Record<
     image: "Daytona.png",
     category: "PLATFORM",
     description: "Organization secret access for Daytona sandboxes."
+  },
+  [AppConnection.ServiceNow]: {
+    name: "ServiceNow",
+    image: "ServiceNow.png",
+    category: "PLATFORM",
+    description: "Route access requests through ServiceNow approvals.",
+    enterprise: true
   }
 };
 
@@ -825,6 +833,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case NutanixPrismCentralConnectionMethod.BasicAuth:
     case F5BigIpConnectionMethod.BasicAuth:
     case HpeIloConnectionMethod.BasicAuth:
+    case ServiceNowConnectionMethod.BasicAuth:
       return { name: "Basic Auth", icon: LockIcon };
     case NutanixPrismCentralConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };

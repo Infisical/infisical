@@ -69,7 +69,8 @@ export const buildAppConnectionRouteContext = ({
     [AppConnection.MySql]: "MySql",
     [AppConnection.OracleDB]: "OracleDb",
     [AppConnection.MongoDB]: "MongoDb",
-    [AppConnection.TravisCI]: "TravisCI"
+    [AppConnection.TravisCI]: "TravisCI",
+    [AppConnection.ServiceNow]: "ServiceNow"
   };
   const appNameForOpId =
     operationIdPrefix +
