@@ -333,12 +333,14 @@ export const CreateSecretForm = ({
       countBucket: overviewCountBucket(secrets.length * selectedEnv.length)
     };
     const attempt = telemetry.startFlow(flow);
+    const { currentContext, pendingChanges: storedPendingChanges } = batchStore.getState();
+    const isPendingContextTargeted =
+      currentContext?.secretPath === secretPath &&
+      selectedEnv.some((env) => env.slug === currentContext?.environment);
     const reservedByPendingRename = new Set(
-      batchStore
-        .getState()
-        .pendingChanges.secrets.flatMap((change) =>
-          change.type === PendingAction.Update && change.newSecretName ? [change.newSecretName] : []
-        )
+      (isPendingContextTargeted ? storedPendingChanges.secrets : []).flatMap((change) =>
+        change.type === PendingAction.Update && change.newSecretName ? [change.newSecretName] : []
+      )
     );
     const conflictingKeys = secrets
       .map((secret) => secret.key)
