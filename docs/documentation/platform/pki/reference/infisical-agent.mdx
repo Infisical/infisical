@@ -355,7 +355,7 @@ certificates:
 
 ### Full-chain certificate file
 
-Many web servers and proxies expect the certificate and its intermediate chain in one file. Examples include NGINX, Envoy, Traefik and Caddy. With `combine-certificate-chain: true`, the agent writes the certificate followed by the chain to `certificate.path` on issuance and on every renewal. No concatenation script is needed.
+Many web servers and proxies expect the certificate and its intermediate chain in one file. Examples include NGINX, Envoy and Traefik. With `combine-certificate-chain: true`, the agent writes the certificate followed by the chain to `certificate.path` on issuance and on every renewal. No concatenation script is needed.
 
 ```yaml expandable
 version: v2
