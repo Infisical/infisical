@@ -240,9 +240,9 @@ infisical agent-vault run --access-bundle code-review --client-id <client-id> --
 
 #### `INFISICAL_AGENT_VAULT_SESSION_TOKEN`
 
-A session token created in the dashboard. Alternative to `--session-token`, and the way to keep the token off the command line.
+A session token created in the dashboard. Alternative to `--session-token`.
 
-`--session-token` wins if you pass both. Passing `--access-bundle` while this is set creates a new session and ignores the variable, with a warning: the flag was typed for this run, and an exported variable may be left over from another one.
+`--session-token` takes precedence over this variable, and so does `--access-bundle`.
 
 ```bash
 # Example
