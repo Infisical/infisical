@@ -3,7 +3,6 @@ import { ChevronDownIcon, DatabaseIcon, FilterIcon, PlusIcon, SearchIcon } from 
 import { twMerge } from "tailwind-merge";
 
 import { SecretScanningUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
-import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   CreateSecretScanningDataSourceSheet,
@@ -53,11 +52,8 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   SecretScanningDataSource,
   SecretScanningScanStatus,
-  TSecretScanningDataSource,
   TSecretScanningDataSourceWithDetails,
-  useListSecretScanningDataSources,
-  useTriggerSecretScanningDataSource,
-  useUpdateSecretScanningDataSource
+  useListSecretScanningDataSources
 } from "@app/hooks/api/secretScanningV2";
 
 import { SecretScanningDataSourceRow } from "./SecretScanningDataSourceRow";
@@ -119,9 +115,6 @@ export const SecretScanningDataSourcesSection = () => {
     }
   );
   const isLoading = subscription.secretScanning && isPending;
-
-  const triggerDataSourceScan = useTriggerSecretScanningDataSource();
-  const updateDataSource = useUpdateSecretScanningDataSource();
 
   const [typeFilter, setTypeFilter] = useState<SecretScanningDataSource[]>([]);
 
@@ -201,35 +194,6 @@ export const SecretScanningDataSourcesSection = () => {
         />
       </TableHead>
     );
-  };
-
-  const handleToggleEnableAutoScan = async (dataSource: TSecretScanningDataSource) => {
-    const isScanNewCommitsEnabled = !dataSource.isScanNewCommitsEnabled;
-
-    await updateDataSource.mutateAsync({
-      dataSourceId: dataSource.id,
-      type: dataSource.type,
-      isScanNewCommitsEnabled,
-      projectId: dataSource.projectId
-    });
-
-    createNotification({
-      text: `Scanning new commits ${isScanNewCommitsEnabled ? "enabled" : "disabled"} for "${dataSource.name}"`,
-      type: "success"
-    });
-  };
-
-  const handleTriggerScan = async (dataSource: TSecretScanningDataSource) => {
-    await triggerDataSourceScan.mutateAsync({
-      dataSourceId: dataSource.id,
-      type: dataSource.type,
-      projectId: dataSource.projectId
-    });
-
-    createNotification({
-      text: `Scan triggered for "${dataSource.name}"`,
-      type: "success"
-    });
   };
 
   const renderEmpty = () => {
@@ -382,8 +346,6 @@ export const SecretScanningDataSourcesSection = () => {
                         dataSource={dataSource}
                         onDelete={(ds) => handlePopUpOpen("deleteDataSource", ds)}
                         onEdit={(ds) => handlePopUpOpen("editDataSource", ds)}
-                        onTriggerScan={handleTriggerScan}
-                        onToggleEnableAutoScan={handleToggleEnableAutoScan}
                       />
                     ))}
               </TableBody>

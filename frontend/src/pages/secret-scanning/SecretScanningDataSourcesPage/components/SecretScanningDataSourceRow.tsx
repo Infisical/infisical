@@ -1,14 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNowStrict } from "date-fns";
-import {
-  CopyIcon,
-  MoreHorizontalIcon,
-  PauseIcon,
-  PencilIcon,
-  PlayIcon,
-  ScanSearchIcon,
-  TrashIcon
-} from "lucide-react";
+import { CopyIcon, MoreHorizontalIcon, PencilIcon, TrashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -41,32 +33,22 @@ import { DataSourceStatusBadge } from "../../components/DataSourceStatusBadge";
 type Props = {
   dataSource: TSecretScanningDataSourceWithDetails;
   onDelete: (dataSource: TSecretScanningDataSourceWithDetails) => void;
-  onTriggerScan: (dataSource: TSecretScanningDataSourceWithDetails) => void;
-  onToggleEnableAutoScan: (dataSource: TSecretScanningDataSourceWithDetails) => void;
   onEdit: (dataSource: TSecretScanningDataSourceWithDetails) => void;
 };
 
-export const SecretScanningDataSourceRow = ({
-  dataSource,
-  onDelete,
-  onEdit,
-  onTriggerScan,
-  onToggleEnableAutoScan
-}: Props) => {
+export const SecretScanningDataSourceRow = ({ dataSource, onDelete, onEdit }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const {
     id,
     name,
     description,
-    isScanNewCommitsEnabled,
     type,
     unresolvedFindings,
     resourceCount,
     lastScannedAt,
     lastScanStatus,
-    lastScanStatusMessage,
-    isDisconnected
+    lastScanStatusMessage
   } = dataSource;
   const sourceDetails = SECRET_SCANNING_DATA_SOURCE_MAP[type];
   const resourceDescription = RESOURCE_DESCRIPTION_HELPER[type];
@@ -120,7 +102,13 @@ export const SecretScanningDataSourceRow = ({
         {resourceCount === 1 ? resourceDescription.singularTitle : resourceDescription.pluralTitle}
       </TableCell>
       <TableCell>
-        {lastScannedAt ? (unresolvedFindings ?? 0) : <span className="text-muted">-</span>}
+        {lastScannedAt ? (
+          <span className={unresolvedFindings ? "text-danger" : undefined}>
+            {unresolvedFindings ?? 0}
+          </span>
+        ) : (
+          <span className="text-muted">-</span>
+        )}
       </TableCell>
       <TableCell>{renderLastScan()}</TableCell>
       <TableCell>
@@ -139,37 +127,14 @@ export const SecretScanningDataSourceRow = ({
               Copy Data Source ID
             </DropdownMenuItem>
             <ProjectPermissionCan
-              I={ProjectPermissionSecretScanningDataSourceActions.TriggerScans}
-              a={ProjectPermissionSub.SecretScanningDataSources}
-            >
-              {(isAllowed: boolean) => (
-                <DropdownMenuItem
-                  isDisabled={!isAllowed || isDisconnected}
-                  onClick={() => onTriggerScan(dataSource)}
-                >
-                  <ScanSearchIcon />
-                  Trigger Scan
-                </DropdownMenuItem>
-              )}
-            </ProjectPermissionCan>
-            <ProjectPermissionCan
               I={ProjectPermissionSecretScanningDataSourceActions.Edit}
               a={ProjectPermissionSub.SecretScanningDataSources}
             >
               {(isAllowed: boolean) => (
-                <>
-                  <DropdownMenuItem
-                    isDisabled={!isAllowed}
-                    onClick={() => onToggleEnableAutoScan(dataSource)}
-                  >
-                    {isScanNewCommitsEnabled ? <PauseIcon /> : <PlayIcon />}
-                    {isScanNewCommitsEnabled ? "Disable" : "Enable"} Scan New Commits
-                  </DropdownMenuItem>
-                  <DropdownMenuItem isDisabled={!isAllowed} onClick={() => onEdit(dataSource)}>
-                    <PencilIcon />
-                    Edit Data Source
-                  </DropdownMenuItem>
-                </>
+                <DropdownMenuItem isDisabled={!isAllowed} onClick={() => onEdit(dataSource)}>
+                  <PencilIcon />
+                  Edit Data Source
+                </DropdownMenuItem>
               )}
             </ProjectPermissionCan>
             <DropdownMenuSeparator />
