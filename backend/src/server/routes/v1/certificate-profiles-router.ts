@@ -1,4 +1,3 @@
-import RE2 from "re2";
 import { z } from "zod";
 
 import { PkiCertificateProfilesSchema } from "@app/db/schemas";
@@ -6,7 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { openApiHidden } from "@app/server/lib/schemas";
+import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -122,11 +121,7 @@ export const registerCertificateProfilesRouter = async (
           projectId: z.string().min(1).optional().describe(openApiHidden()),
           caId: z.string().uuid().optional(),
           certificatePolicyId: z.string().uuid(),
-          slug: z
-            .string()
-            .min(1)
-            .max(255)
-            .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens"),
+          slug: slugSchema({ min: 1, max: 255, field: "Slug" }),
           description: pkiDescriptionSchema.optional(),
           enrollmentType: z.nativeEnum(EnrollmentType).optional().describe(openApiHidden()),
           issuerType: z.nativeEnum(IssuerType).default(IssuerType.CA),
@@ -589,12 +584,7 @@ export const registerCertificateProfilesRouter = async (
       }),
       body: z
         .object({
-          slug: z
-            .string()
-            .min(1)
-            .max(255)
-            .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens")
-            .optional(),
+          slug: slugSchema({ min: 1, max: 255, field: "Slug" }).optional(),
           description: pkiDescriptionSchema.nullable().optional(),
           enrollmentType: z.nativeEnum(EnrollmentType).optional().describe(openApiHidden()),
           issuerType: z.nativeEnum(IssuerType).optional(),

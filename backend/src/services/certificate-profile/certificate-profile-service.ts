@@ -21,7 +21,7 @@ import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-uti
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
@@ -527,8 +527,8 @@ export const certificateProfileServiceFactory = ({
     // Check for slug uniqueness within project
     const existingSlugProfile = await certificateProfileDAL.findBySlugAndProjectId(data.slug, projectId);
     if (existingSlugProfile) {
-      throw new ForbiddenRequestError({
-        message: "Certificate profile with this name already exists in project"
+      throw new ConflictError({
+        message: `A certificate profile named '${data.slug}' already exists in this project. Choose a different name.`
       });
     }
 
@@ -816,8 +816,8 @@ export const certificateProfileServiceFactory = ({
         existingProfile.projectId
       );
       if (conflictingProfile && conflictingProfile.id !== profileId) {
-        throw new ForbiddenRequestError({
-          message: "Certificate profile with this name already exists in project"
+        throw new ConflictError({
+          message: `A certificate profile named '${data.slug}' already exists in this project. Choose a different name.`
         });
       }
     }
