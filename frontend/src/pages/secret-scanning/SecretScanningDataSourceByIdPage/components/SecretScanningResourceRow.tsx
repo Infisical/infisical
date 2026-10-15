@@ -199,7 +199,7 @@ export const SecretScanningResourceRow = ({ resource, dataSource, onViewFindings
                 This {resourceDetails.singularNoun} won&apos;t be scanned anymore, and its scans and
                 findings are permanently deleted.
                 {dataSource.isDiscoveryEnabled &&
-                  ` Discovery is on, so it's added back the next time someone pushes to it.`}
+                  " Discovery is on, so it's added back the next time someone pushes to it."}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
