@@ -272,11 +272,23 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
             <Alert variant="warning">
               <TriangleAlertIcon />
               <AlertDescription>
-                Your plan no longer includes default storage. Upgrade to see recorded logs and keep
-                recording. You can turn session logs off
-                {isOnPlan(AgentVaultSessionLogStorageType.External)
-                  ? ", or switch to external storage."
-                  : "."}
+                <p>
+                  Your plan no longer includes default storage. Upgrade to see recorded logs and
+                  keep recording. You can turn session logs off
+                  {isOnPlan(AgentVaultSessionLogStorageType.External)
+                    ? ", or switch to external storage."
+                    : "."}
+                </p>
+                <AlertAction>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    onClick={() => setUpgradeFor(AgentVaultSessionLogStorageType.Default)}
+                  >
+                    Upgrade
+                  </Button>
+                </AlertAction>
               </AlertDescription>
             </Alert>
           )}
@@ -284,9 +296,21 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
             <Alert variant="warning">
               <TriangleAlertIcon />
               <AlertDescription>
-                Your plan no longer includes external storage. Upgrade to see recorded logs and keep
-                recording. Recorded logs stay in your bucket. You can turn session logs off
-                {isDefaultUsable ? ", or switch to default storage." : "."}
+                <p>
+                  Your plan no longer includes external storage. Upgrade to see recorded logs and
+                  keep recording. Recorded logs stay in your bucket. You can turn session logs off
+                  {isDefaultUsable ? ", or switch to default storage." : "."}
+                </p>
+                <AlertAction>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    onClick={() => setUpgradeFor(AgentVaultSessionLogStorageType.External)}
+                  >
+                    Upgrade
+                  </Button>
+                </AlertAction>
               </AlertDescription>
             </Alert>
           )}

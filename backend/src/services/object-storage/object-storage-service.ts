@@ -321,7 +321,6 @@ export const objectStorageServiceFactory = ({
               }
               throw error;
             }
-            recordObjectStorageUploadMetric({ storageType, outcome: ObjectStorageUploadOutcome.Admitted, bytes });
             try {
               const url = await s3.presignCreateOnlyPut({
                 key,
@@ -331,6 +330,7 @@ export const objectStorageServiceFactory = ({
                 // Default storage deletes by an S3 lifecycle rule on this tag; a customer's bucket is theirs to manage.
                 tagging: isDefault ? $retentionTag(retentionDays) : undefined
               });
+              recordObjectStorageUploadMetric({ storageType, outcome: ObjectStorageUploadOutcome.Admitted, bytes });
               return { key, url };
             } catch (error) {
               throw wrap(error);
