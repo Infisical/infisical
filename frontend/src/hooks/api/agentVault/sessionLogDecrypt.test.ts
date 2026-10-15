@@ -289,7 +289,13 @@ describe("mergeSessionLogPages", () => {
     presignedGetUrl: `https://bucket.example/${proxyId}`
   });
   const decryptedPage = (proxyId: string, path: string) => ({
-    sessionLogs: { enabled: true, disabledReason: null, storageType: null, isRecordable: true, sessionKey: null },
+    sessionLogs: {
+      enabled: true,
+      disabledReason: null,
+      storageType: null,
+      isRecordable: true,
+      sessionKey: null
+    },
     chunks: [chunk(proxyId)],
     decrypted: {
       [sessionLogChunkKey(chunk(proxyId))]: {
