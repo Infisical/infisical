@@ -55,8 +55,9 @@ import {
   TUpdateSecretScanningFindingDTO,
   TUpsertSecretScanningConfigDTO
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -83,9 +84,12 @@ export type TSecretScanningV2ServiceFactoryDep = {
     "queueDataSourceFullScan" | "queueResourceDiffScan" | "handleResourcePushEvent"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
 };
 
 export type TSecretScanningV2ServiceFactory = ReturnType<typeof secretScanningV2ServiceFactory>;
+
+const DATA_SOURCE_LOCK_TTL_MS = 60 * 1000;
 
 export const secretScanningV2ServiceFactory = ({
   secretScanningV2DAL,
@@ -94,8 +98,36 @@ export const secretScanningV2ServiceFactory = ({
   licenseService,
   secretScanningV2Queue,
   appConnectionDAL,
-  kmsService
+  kmsService,
+  keyStore
 }: TSecretScanningV2ServiceFactoryDep) => {
+  // A data source's webhook lives both with the provider and in its stored credentials, so changes that can touch it
+  // run one at a time; two at once would each act on the same credentials and undo each other's webhook.
+  const $withDataSourceLock = async <T>(dataSourceId: string, fn: () => Promise<T>): Promise<T> => {
+    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
+    try {
+      lock = await keyStore.acquireLock(
+        [KeyStorePrefixes.SecretScanningDataSourceLock(dataSourceId)],
+        DATA_SOURCE_LOCK_TTL_MS
+      );
+    } catch {
+      throw new ConflictError({
+        message: "This data source is being changed by another request. Wait a moment and try again."
+      });
+    }
+
+    try {
+      return await fn();
+    } finally {
+      // A slow provider can outlive the TTL, and releasing an expired lock throws.
+      try {
+        await lock.release();
+      } catch (error) {
+        logger.warn(error, `secretScanningV2Service: Failed to release data source lock [dataSourceId=${dataSourceId}]`);
+      }
+    }
+  };
+
   const $checkListSecretScanningDataSourcesByProjectIdPermissions = async (
     projectId: string,
     actor: OrgServiceActor
@@ -394,7 +426,7 @@ export const secretScanningV2ServiceFactory = ({
     }
   };
 
-  const updateSecretScanningDataSource = async (
+  const $updateSecretScanningDataSource = async (
     { type, dataSourceId, isAutoScanEnabled, ...dto }: TUpdateSecretScanningDataSourceDTO,
     actor: OrgServiceActor
   ) => {
@@ -545,7 +577,7 @@ export const secretScanningV2ServiceFactory = ({
     return updatedDataSource;
   };
 
-  const deleteSecretScanningDataSource = async (
+  const $deleteSecretScanningDataSource = async (
     { type, dataSourceId }: TDeleteSecretScanningDataSourceDTO,
     actor: OrgServiceActor
   ) => {
@@ -851,13 +883,13 @@ export const secretScanningV2ServiceFactory = ({
   };
 
   const addSecretScanningResource = ({ resourceName, ...dto }: TAddSecretScanningResourceDTO, actor: OrgServiceActor) =>
-    $addSecretScanningResources({ ...dto, resourceName }, actor);
+    $withDataSourceLock(dto.dataSourceId, () => $addSecretScanningResources({ ...dto, resourceName }, actor));
 
   const addAllSecretScanningResources = (dto: TAddAllSecretScanningResourcesDTO, actor: OrgServiceActor) =>
-    $addSecretScanningResources(dto, actor);
+    $withDataSourceLock(dto.dataSourceId, () => $addSecretScanningResources(dto, actor));
 
   // Not gated on the plan: a downgraded org must still be able to remove what it added.
-  const removeSecretScanningResource = async (
+  const $removeSecretScanningResource = async (
     { type, dataSourceId, resourceId }: TRemoveSecretScanningResourceDTO,
     actor: OrgServiceActor
   ) => {
@@ -908,18 +940,23 @@ export const secretScanningV2ServiceFactory = ({
       );
     }
 
-    await secretScanningV2DAL.resources.transaction(async (tx) => {
-      if (webhook) {
-        await secretScanningV2DAL.dataSources.updateById(
-          dataSourceId,
-          { encryptedCredentials: webhook.encryptedCredentials },
-          tx
-        );
-      }
+    try {
+      await secretScanningV2DAL.resources.transaction(async (tx) => {
+        if (webhook) {
+          await secretScanningV2DAL.dataSources.updateById(
+            dataSourceId,
+            { encryptedCredentials: webhook.encryptedCredentials },
+            tx
+          );
+        }
 
-      // Cascades to the resource's scans and findings.
-      await secretScanningV2DAL.resources.deleteById(resourceId, tx);
-    });
+        // Cascades to the resource's scans and findings.
+        await secretScanningV2DAL.resources.deleteById(resourceId, tx);
+      });
+    } catch (err) {
+      await webhook?.revert();
+      throw err;
+    }
 
     await webhook?.finalize();
 
@@ -1381,6 +1418,15 @@ export const secretScanningV2ServiceFactory = ({
 
     return config;
   };
+
+  const updateSecretScanningDataSource = (dto: TUpdateSecretScanningDataSourceDTO, actor: OrgServiceActor) =>
+    $withDataSourceLock(dto.dataSourceId, () => $updateSecretScanningDataSource(dto, actor));
+
+  const deleteSecretScanningDataSource = (dto: TDeleteSecretScanningDataSourceDTO, actor: OrgServiceActor) =>
+    $withDataSourceLock(dto.dataSourceId, () => $deleteSecretScanningDataSource(dto, actor));
+
+  const removeSecretScanningResource = (dto: TRemoveSecretScanningResourceDTO, actor: OrgServiceActor) =>
+    $withDataSourceLock(dto.dataSourceId, () => $removeSecretScanningResource(dto, actor));
 
   return {
     listSecretScanningDataSourceOptions,
