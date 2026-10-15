@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { FolderGitIcon, SearchIcon } from "lucide-react";
+import { AlertTriangleIcon, FolderGitIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
@@ -46,7 +47,14 @@ export const AddSecretScanningResourceSheet = ({ dataSource, isOpen, onOpenChang
   const [search, setSearch] = useState("");
   const [pendingName, setPendingName] = useState<string | null>(null);
 
-  const { data: resources = [], isPending } = useListSecretScanningAvailableResources(
+  const {
+    data: resources = [],
+    isPending,
+    isError,
+    error,
+    isRefetching,
+    refetch
+  } = useListSecretScanningAvailableResources(
     { dataSourceId: dataSource.id, type: dataSource.type },
     { enabled: isOpen }
   );
@@ -88,11 +96,42 @@ export const AddSecretScanningResourceSheet = ({ dataSource, isOpen, onOpenChang
   const renderList = () => {
     if (isPending) {
       return (
-        <ItemGroup className="gap-2">
+        <ItemGroup>
           {["first", "second", "third"].map((row) => (
-            <Skeleton key={`available-resource-skeleton-${row}`} className="h-12 w-full" />
+            <Item key={`available-resource-skeleton-${row}`} variant="outline" size="sm">
+              <ItemContent>
+                <Skeleton className="h-4 w-48" />
+              </ItemContent>
+            </Item>
           ))}
         </ItemGroup>
+      );
+    }
+
+    // An empty list from a failed request would read as "everything is already being scanned".
+    if (isError) {
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data
+        ?.message;
+
+      return (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <AlertTriangleIcon />
+            </EmptyMedia>
+            <EmptyTitle>Couldn&apos;t load {resourceDetails.pluralNoun}</EmptyTitle>
+            <EmptyDescription>
+              {message ??
+                `Something went wrong listing ${resourceDetails.pluralNoun} from ${platform}. Try again in a moment.`}
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button variant="outline" isPending={isRefetching} onClick={() => refetch()}>
+              <RefreshCwIcon />
+              Try Again
+            </Button>
+          </EmptyContent>
+        </Empty>
       );
     }
 
@@ -119,7 +158,7 @@ export const AddSecretScanningResourceSheet = ({ dataSource, isOpen, onOpenChang
     }
 
     return (
-      <ItemGroup className="gap-2">
+      <ItemGroup>
         {availableResources.map(({ externalId, name }) => (
           <Item key={externalId} variant="outline" size="sm">
             <ItemContent className="min-w-0">
