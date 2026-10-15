@@ -3,8 +3,13 @@ on:
   workflow_dispatch:
 
 jobs:
+  freeze-check:
+    name: Release freeze check
+    uses: ./.github/workflows/release-freeze-check.yml
+
   test-helm:
     name: Test Helm Chart
+    needs: [freeze-check]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

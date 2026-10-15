@@ -12,8 +12,13 @@ env:
     TRIVY_CLI_VERSION: v0.74.0
 
 jobs:
+    freeze-check:
+        name: Release freeze check
+        uses: ./.github/workflows/release-freeze-check.yml
+
     infisical-tests:
         name: Run tests before deployment
+        needs: [freeze-check]
         # https://docs.github.com/en/actions/using-workflows/reusing-workflows#overview
         uses: ./.github/workflows/run-backend-tests.yml
 

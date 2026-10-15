@@ -1,0 +1,29 @@
+name: Release freeze check
+on:
+  workflow_call:
+
+jobs:
+  freeze-check:
+    name: Release freeze check
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Check DEPLOY_FREEZE
+        env:
+          FREEZE: ${{ vars.DEPLOY_FREEZE }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$FREEZE" ]; then
+            echo "::error::Org variable DEPLOY_FREEZE is not visible to this repository. Refusing to release."
+            exit 1
+          fi
+          if ! frozen=$(jq -r 'if (.frozen | type) == "boolean" then .frozen else error("frozen must be a boolean") end' <<<"$FREEZE"); then
+            echo "::error::DEPLOY_FREEZE is malformed. Fix it with '@bufo-ops freeze' or '@bufo-ops unfreeze'. Refusing to release."
+            exit 1
+          fi
+          if [ "$frozen" = "true" ]; then
+            echo "::error::Releases are $(jq -r '"frozen by \(.by // "unknown") at \(.at // "unknown"): \(.reason // "no reason given")"' <<<"$FREEZE")"
+            exit 1
+          fi
+          echo "Releases are not frozen."
