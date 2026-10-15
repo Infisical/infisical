@@ -17,10 +17,7 @@ import {
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
-  Button,
   Card,
-  CardContent,
-  DocumentationLinkBadge,
   IconButton,
   Separator,
   Skeleton,
@@ -114,27 +111,79 @@ export const TabbedOverviewSkeleton = ({ orgFilter }: { orgFilter?: ReactNode })
   </div>
 );
 
-const SummaryBlock = ({
+const SUMMARY_BLOCK_CLASS =
+  "flex min-w-36 flex-col gap-1 rounded-md bg-container px-3 py-2.5 text-left outline-0";
+const SUMMARY_BLOCK_ACTION_CLASS =
+  "cursor-pointer transition-colors hover:bg-container-hover focus-visible:ring-2 focus-visible:ring-ring";
+
+const SummaryBlockBody = ({
   label,
-  onClick,
+  icon,
   children
 }: {
   label: string;
-  onClick: () => void;
+  icon?: ReactNode;
   children: ReactNode;
 }) => (
-  <button
-    type="button"
-    className="flex min-w-36 cursor-pointer flex-col gap-1 rounded-md bg-container px-3 py-2.5 text-left outline-0 transition-colors hover:bg-container-hover focus-visible:ring-2 focus-visible:ring-ring"
-    onClick={onClick}
-  >
+  <>
     <span className="text-xs text-accent">{label}</span>
     <span className="flex min-w-0 items-center justify-between gap-2 text-sm">
       <span className="flex min-w-0 items-baseline gap-1.5 truncate">{children}</span>
-      <ChevronRightIcon className="size-3.5 shrink-0 text-muted" />
+      {icon}
     </span>
-  </button>
+  </>
 );
+
+const SummaryBlock = ({
+  label,
+  onClick,
+  href,
+  children
+}: {
+  label: string;
+  onClick?: () => void;
+  href?: string;
+  children: ReactNode;
+}) => {
+  if (href) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(SUMMARY_BLOCK_CLASS, SUMMARY_BLOCK_ACTION_CLASS)}
+      >
+        <SummaryBlockBody
+          label={label}
+          icon={<ExternalLink className="size-3.5 shrink-0 text-muted" />}
+        >
+          {children}
+        </SummaryBlockBody>
+      </a>
+    );
+  }
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className={cn(SUMMARY_BLOCK_CLASS, SUMMARY_BLOCK_ACTION_CLASS)}
+        onClick={onClick}
+      >
+        <SummaryBlockBody
+          label={label}
+          icon={<ChevronRightIcon className="size-3.5 shrink-0 text-muted" />}
+        >
+          {children}
+        </SummaryBlockBody>
+      </button>
+    );
+  }
+  return (
+    <div className={SUMMARY_BLOCK_CLASS}>
+      <SummaryBlockBody label={label}>{children}</SummaryBlockBody>
+    </div>
+  );
+};
 
 export const TabbedOverview = ({
   overview,
@@ -153,8 +202,7 @@ export const TabbedOverview = ({
 }: TabbedOverviewProps) => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
-  const licenseState = getSelfHostedLicenseState(subscription);
-  const licenseCopy = SELF_HOSTED_LICENSE_COPY[licenseState];
+  const licenseCopy = SELF_HOSTED_LICENSE_COPY[getSelfHostedLicenseState(subscription)];
   const refreshEntitlements = useRefreshBillingV2Entitlements();
   const [expanded, setExpanded] = useState<{ productId: string; dimensionKey?: string } | null>(
     null
@@ -203,12 +251,7 @@ export const TabbedOverview = ({
     trialNote = `${trials.length} trials · first ends ${trials[0].endsAt}`;
   }
   let accountTeamNote: { label: string; detail: string } | null = null;
-  if (isManaged) {
-    accountTeamNote = {
-      label: licenseCopy.title,
-      detail: licenseCopy.detail
-    };
-  } else if (!overview.selfServe) {
+  if (!isManaged && !overview.selfServe) {
     accountTeamNote = {
       label: "Managed Billing",
       detail:
@@ -232,9 +275,16 @@ export const TabbedOverview = ({
     summaryLeft = (
       <div className="flex flex-col gap-1">
         <span className="text-xs text-accent">Billing Method</span>
-        <span className="flex items-baseline gap-2">
+        <span className="flex items-center gap-1">
           <span className="text-lg leading-6 font-medium">{licenseCopy.method}</span>
-          <span className="text-xs text-muted">{licenseCopy.methodHint}</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton size="2xs" variant="ghost-muted" aria-label="About this license">
+                <InfoIcon />
+              </IconButton>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-80">{licenseCopy.detail}</TooltipContent>
+          </Tooltip>
         </span>
       </div>
     );
@@ -302,19 +352,15 @@ export const TabbedOverview = ({
   if (isManaged) {
     summaryRight = (
       <>
-        <span className="text-xs text-muted">
-          {billing.activeProductCount.toLocaleString()} active{" "}
-          {billing.activeProductCount === 1 ? "product" : "products"}
-        </span>
-        {licenseState === "unlicensed" && (
-          <DocumentationLinkBadge href={SELF_HOSTED_LICENSE_DOCS_URL} />
-        )}
-        <Button variant="outline" size="xs" asChild>
-          <a href={SELF_HOSTED_CONTACT_SALES_URL} target="_blank" rel="noopener noreferrer">
-            Contact Sales
-            <ExternalLink />
-          </a>
-        </Button>
+        <SummaryBlock label="Products">
+          {billing.activeProductCount.toLocaleString()} active
+        </SummaryBlock>
+        <SummaryBlock label="License" href={SELF_HOSTED_LICENSE_DOCS_URL}>
+          {licenseCopy.methodHint}
+        </SummaryBlock>
+        <SummaryBlock label="Plan Changes" href={SELF_HOSTED_CONTACT_SALES_URL}>
+          Contact Sales
+        </SummaryBlock>
       </>
     );
   }
@@ -406,14 +452,10 @@ export const TabbedOverview = ({
       </Card>
 
       {visible.length === 0 ? (
-        <Card>
-          <CardContent>
-            <CardEmpty
-              title="No products available"
-              description="Products will appear here once they're available."
-            />
-          </CardContent>
-        </Card>
+        <CardEmpty
+          title="No products available"
+          description="Products will appear here once they're available."
+        />
       ) : (
         <>
           {activeProducts.length > 0 && (

@@ -569,16 +569,12 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
             <CircleAlert />
             <AlertTitle>Plan Details Unavailable</AlertTitle>
             <AlertDescription>
-              Plan details could not be loaded.
-              {!isSelfHosted && " Try again, or contact Infisical if the problem continues."}
+              Plan details could not be loaded.{" "}
+              {isSelfHosted
+                ? licenseCopy.detail
+                : "Try again, or contact Infisical if the problem continues."}
             </AlertDescription>
           </Alert>
-          {isSelfHosted && (
-            <div className="flex flex-col gap-1 text-sm">
-              <span className="font-medium text-foreground">{licenseCopy.title}</span>
-              <span className="text-accent">{licenseCopy.detail}</span>
-            </div>
-          )}
           <DialogFooter>
             <Button
               variant="outline"
