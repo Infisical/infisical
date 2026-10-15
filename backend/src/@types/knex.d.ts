@@ -170,6 +170,12 @@ import {
   TDynamicSecrets,
   TDynamicSecretsInsert,
   TDynamicSecretsUpdate,
+  TExternalApprovalPolicies,
+  TExternalApprovalPoliciesInsert,
+  TExternalApprovalPoliciesUpdate,
+  TExternalApprovalRequests,
+  TExternalApprovalRequestsInsert,
+  TExternalApprovalRequestsUpdate,
   TExternalCertificateAuthorities,
   TExternalCertificateAuthoritiesInsert,
   TExternalCertificateAuthoritiesUpdate,
@@ -1983,6 +1989,16 @@ declare module "knex/types/tables" {
       TSecretChangeRequests,
       TSecretChangeRequestsInsert,
       TSecretChangeRequestsUpdate
+    >;
+    [TableName.ExternalApprovalPolicies]: KnexOriginal.CompositeTableType<
+      TExternalApprovalPolicies,
+      TExternalApprovalPoliciesInsert,
+      TExternalApprovalPoliciesUpdate
+    >;
+    [TableName.ExternalApprovalRequests]: KnexOriginal.CompositeTableType<
+      TExternalApprovalRequests,
+      TExternalApprovalRequestsInsert,
+      TExternalApprovalRequestsUpdate
     >;
     [TableName.PkiCertificatePolicy]: KnexOriginal.CompositeTableType<
       TPkiCertificatePolicies,

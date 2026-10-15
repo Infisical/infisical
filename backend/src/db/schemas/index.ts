@@ -58,6 +58,8 @@ export * from "./dynamic-secret-leases";
 export * from "./dynamic-secrets";
 export * from "./email-domains";
 export * from "./event-outbox";
+export * from "./external-approval-policies";
+export * from "./external-approval-requests";
 export * from "./external-certificate-authorities";
 export * from "./external-group-org-role-mappings";
 export * from "./external-kms";
