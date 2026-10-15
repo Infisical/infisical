@@ -389,7 +389,7 @@ export const CsvColumnMapContent = ({
         </table>
       </div>
       <SheetFooter className="justify-end border-t">
-        <Button variant="outline" onClick={onClose}>
+        <Button variant="outline" onClick={onClose} className="mr-auto">
           Back
         </Button>
         <Button variant="project" onClick={handleImport}>
