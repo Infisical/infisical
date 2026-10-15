@@ -29,6 +29,8 @@ type TagsInputProps = Omit<
   /** Returning a reason refuses the commit. `existing` never contains the value being checked. */
   validateTag?: (tag: string, existing: string[]) => string | null;
   onValidationError?: (reason: string | null) => void;
+  /** Flags a committed tag as invalid without refusing it, so it stays visible and removable. */
+  isTagInvalid?: (tag: string) => boolean;
   inputValue?: string;
   onInputValueChange?: (draft: string) => void;
   className?: string;
@@ -43,6 +45,7 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
       isError,
       validateTag,
       onValidationError,
+      isTagInvalid,
       inputValue,
       onInputValueChange,
       className,
@@ -162,22 +165,33 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
             data-scrollable-start={scrollEdges.start}
             data-scrollable-end={scrollEdges.end}
           >
-            {tags.map((tag) => (
-              <ComboboxPrimitive.Chip key={tag} className={COMBOBOX_CHIP_CLASS}>
-                <span className={COMBOBOX_CHIP_LABEL_CLASS}>{tag}</span>
-                {!isDisabled && (
-                  <ComboboxPrimitive.ChipRemove
-                    aria-label={`Remove ${tag}`}
-                    // Removal is Base UI's, through the controlled Root. Doing it here too would fire the
-                    // caller's handler twice. Adding is ours, in `commit`, since there is no options list.
-                    onClick={() => onValidationError?.(null)}
-                    className={COMBOBOX_CHIP_REMOVE_CLASS}
-                  >
-                    <XIcon className="size-3" />
-                  </ComboboxPrimitive.ChipRemove>
-                )}
-              </ComboboxPrimitive.Chip>
-            ))}
+            {tags.map((tag) => {
+              const isInvalid = isTagInvalid?.(tag) ?? false;
+              return (
+                <ComboboxPrimitive.Chip
+                  key={tag}
+                  data-invalid={isInvalid || undefined}
+                  className={cn(
+                    COMBOBOX_CHIP_CLASS,
+                    isInvalid && "bg-danger/15 text-danger ring-1 ring-danger/40 ring-inset"
+                  )}
+                >
+                  <span className={COMBOBOX_CHIP_LABEL_CLASS}>{tag}</span>
+                  {isInvalid && <span className="sr-only">(invalid)</span>}
+                  {!isDisabled && (
+                    <ComboboxPrimitive.ChipRemove
+                      aria-label={`Remove ${tag}`}
+                      // Removal is Base UI's, through the controlled Root. Doing it here too would fire the
+                      // caller's handler twice. Adding is ours, in `commit`, since there is no options list.
+                      onClick={() => onValidationError?.(null)}
+                      className={COMBOBOX_CHIP_REMOVE_CLASS}
+                    >
+                      <XIcon className="size-3" />
+                    </ComboboxPrimitive.ChipRemove>
+                  )}
+                </ComboboxPrimitive.Chip>
+              );
+            })}
             <ComboboxPrimitive.Input
               ref={forwardedRef}
               aria-invalid={isError || undefined}

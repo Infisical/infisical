@@ -18,6 +18,7 @@ import {
   FieldLabel,
   Input
 } from "@app/components/v3";
+import { isValidEmail } from "@app/helpers/email";
 import { useDebounce } from "@app/hooks";
 import { useAdminGetUsers, useServerAdminCreateOrganization } from "@app/hooks/api";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
@@ -132,7 +133,7 @@ const Content = ({ onClose }: ContentProps) => {
         render={({ field, fieldState: { error } }) => {
           const email = searchUserFilter.trim();
           const isNewEmail =
-            z.string().email().safeParse(email).success &&
+            isValidEmail(email) &&
             ![...users, ...field.value].some(
               (user) => (user.email || user.username)?.toLowerCase() === email.toLowerCase()
             );

@@ -1,0 +1,35 @@
+import * as React from "react";
+
+import { isValidEmail, parseEmailList } from "@app/helpers/email";
+
+import { TagsInput, type TagsInputProps } from "../../generic/TagsInput";
+
+type EmailInputProps = Omit<
+  TagsInputProps,
+  "value" | "onValueChange" | "validateTag" | "onValidationError" | "isTagInvalid" | "onBlur"
+> & {
+  value?: readonly string[];
+  onValueChange: (emails: string[]) => void;
+};
+
+/**
+ * The shared multi-address email field. Addresses become chips on Enter, comma, space or blur, and a
+ * pasted list is split on commas, semicolons and whitespace. Every value is lowercased and
+ * deduplicated, and a malformed address stays as a flagged chip so it can be read and removed.
+ * Pair it with `emailListSchema` for the form error; this component only flags.
+ */
+const EmailInput = React.forwardRef<HTMLInputElement, EmailInputProps>(
+  ({ onValueChange, autoComplete = "off", ...props }, ref) => (
+    <TagsInput
+      ref={ref}
+      autoComplete={autoComplete}
+      onValueChange={(next) => onValueChange(parseEmailList(next))}
+      isTagInvalid={(email) => !isValidEmail(email)}
+      {...props}
+    />
+  )
+);
+
+EmailInput.displayName = "EmailInput";
+
+export { EmailInput, type EmailInputProps };
