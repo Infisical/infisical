@@ -76,8 +76,8 @@ type Props = {
 
 export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
   const [isTokenVisible, setIsTokenVisible] = useToggle(false);
-  const [, isTokenCopied, setTokenCopied] = useTimedReset({ initialState: false });
-  const [, isCommandCopied, setCommandCopied] = useTimedReset({ initialState: false });
+  const [, isTokenCopied, setTokenCopied] = useTimedReset<boolean>({ initialState: false });
+  const [, isCommandCopied, setCommandCopied] = useTimedReset<boolean>({ initialState: false });
 
   const { data: appConnections = [], isPending: isLoadingConnections } = useListAppConnections();
   const { data: existingConfig } = useGetHoneyTokenConfig(HoneyTokenType.AWS, {
