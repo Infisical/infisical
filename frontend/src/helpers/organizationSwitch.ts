@@ -56,6 +56,14 @@ export const getOrganizationSwitchDestination = (
     selectedTab = "relays";
   } else if (path.startsWith("app-connections")) {
     section = "integrations";
+  } else if (path === "cert-manager" || path.startsWith("cert-manager/")) {
+    // The other org may have no Certificate Manager yet, which the product landing page handles.
+    section = "projects/cert-manager";
+    selectedTab = undefined;
+  } else if (path === "secret-scanning" || path.startsWith("secret-scanning/")) {
+    // The product landing page opens the other org's Secret Scanning project, creating it if needed.
+    section = "projects/secret-scanning";
+    selectedTab = undefined;
   }
 
   if (isSubOrganization) {

@@ -156,6 +156,8 @@ export type TAddAgentVaultProductMembersDTO = TAgentVaultActorIdsDTO & {
   role: string;
 };
 
+export type TUpdateAgentVaultMemberRolesDTO = TAgentVaultActorIdsDTO & { role: string };
+
 export type TAgentVaultWrittenMember = TAgentVaultActorRef & { role: string; addedAt: string };
 
 export type TAgentVaultGrantedMember = TAgentVaultActorRef & { grantedAt: string };
@@ -398,9 +400,6 @@ export type TAgentVaultVariable = {
   id: string;
   accessBundleId: string;
   key: string;
-  isSecret: boolean;
-  /** Null for a secret variable, whose value comes only from the value route. */
-  value: string | null;
   serviceIds: string[];
   createdAt: string;
   updatedAt: string;
@@ -415,11 +414,9 @@ export type TCreateAgentVaultVariableDTO = {
   accessBundleId: string;
   key: string;
   value: string;
-  isSecret: boolean;
 };
 
 export type TUpdateAgentVaultVariableDTO = TAgentVaultVariableRef & {
   key?: string;
   value?: string;
-  isSecret?: boolean;
 };

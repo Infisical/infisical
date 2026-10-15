@@ -141,12 +141,12 @@ export const SessionLogRow = ({ record, arrivedAt, accessBundleName, onAddServic
       <TableCell>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="font-mono text-xs whitespace-nowrap">
-              {format(new Date(record.ts), "MMM d, yyyy HH:mm:ss")}
+            <span className="whitespace-nowrap tabular-nums">
+              {format(new Date(record.ts), "MMM dd, yyyy HH:mm:ss")}
             </span>
           </TooltipTrigger>
           <TooltipContent>
-            {format(new Date(record.ts), "MMM d, yyyy HH:mm:ss.SSS (zzz)")}
+            {format(new Date(record.ts), "MMM dd, yyyy HH:mm:ss.SSS (zzz)")}
           </TooltipContent>
         </Tooltip>
       </TableCell>

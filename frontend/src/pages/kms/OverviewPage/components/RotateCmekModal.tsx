@@ -1,8 +1,7 @@
 import { TriangleAlertIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
-import { Alert, AlertDescription } from "@app/components/v3";
+import { Alert, AlertDescription, DeleteConfirmDialog } from "@app/components/v3";
 import { TCmek, useRotateCmek } from "@app/hooks/api/cmeks";
 
 type Props = {
@@ -33,30 +32,32 @@ export const RotateCmekModal = ({ isOpen, onOpenChange, cmek }: Props) => {
   };
 
   return (
-    <DeleteActionModal
+    <DeleteConfirmDialog
       isOpen={isOpen}
       title={`Are you sure you want to rotate ${name}?`}
-      subTitle="This generates new key material and increments the key version."
-      onChange={onOpenChange}
-      deleteKey="confirm"
-      buttonText="Rotate"
-      onDeleteApproved={handleRotateCmek}
-      formContent={
-        <Alert variant="warning" className="mb-4">
-          <TriangleAlertIcon />
-          <AlertDescription>
-            <p>
-              <strong>Data encrypted outside Infisical may be affected</strong>
-            </p>
-            <p>
-              Data encrypted through Infisical stays decryptable. However, any system that holds
-              this key&apos;s material directly, such as a KMIP client or an exported copy of the
-              key, will receive the new material and may be unable to decrypt data it encrypted with
-              the previous version. Do not rotate a key that is in use over KMIP.
-            </p>
-          </AlertDescription>
-        </Alert>
+      description={
+        <>
+          <p>This generates new key material and increments the key version.</p>
+          <Alert variant="warning" className="mt-3">
+            <TriangleAlertIcon />
+            <AlertDescription>
+              <p>
+                <strong>Data encrypted outside Infisical may be affected</strong>
+              </p>
+              <p>
+                Data encrypted through Infisical stays decryptable. However, any system that holds
+                this key&apos;s material directly, such as a KMIP client or an exported copy of the
+                key, will receive the new material and may be unable to decrypt data it encrypted
+                with the previous version. Do not rotate a key that is in use over KMIP.
+              </p>
+            </AlertDescription>
+          </Alert>
+        </>
       }
+      onOpenChange={onOpenChange}
+      confirmKey="confirm"
+      confirmLabel="Rotate"
+      onConfirm={handleRotateCmek}
     />
   );
 };

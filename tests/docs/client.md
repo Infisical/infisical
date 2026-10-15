@@ -47,3 +47,18 @@ the spec is correct, and every Node API consumer reads it.
 - Overlays are strict: an action whose target matches nothing fails generation, so a
   renamed route shows up instead of silently undoing the patch.
 - Remove the action once an oapi-codegen release fixes the bug.
+
+## Redirects and unauthenticated routes
+
+Clients follow redirects by default. When the redirect is the outcome, such as an SSO
+start or a SAML ACS answer, opt in to receiving it:
+
+```go
+browser := tn.Anonymous(t, infisical.NoRedirects()) // no token, tenant's rate-limit bucket
+res, _ := browser.RedirectSamlByOrgSlugWithResponse(ctx, tn.OrgSlug, nil)
+res.HTTPResponse.Header.Get("Location")
+res.HTTPResponse.Cookies()
+```
+
+`tn.Client(t, token, infisical.NoRedirects())` does the same for a principal. Send a
+cookie back with a per-call request editor rather than a cookie jar.

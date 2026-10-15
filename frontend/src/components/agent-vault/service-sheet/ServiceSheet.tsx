@@ -197,8 +197,14 @@ export const ServiceSheet = ({
     formState: { errors, isDirty, isSubmitting }
   } = formMethods;
 
+  const discardActionRef = useRef<VoidFunction>(() => onOpenChange(false));
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
-    useDiscardChangesGuard({ isDirty, onDiscard: () => onOpenChange(false) });
+    useDiscardChangesGuard({ isDirty, onDiscard: () => discardActionRef.current() });
+
+  const requestDiscardAction = (action: VoidFunction) => {
+    discardActionRef.current = action;
+    requestDiscard();
+  };
 
   // A prefilled host has already been matched against the templates, and anything picked on the
   // template step would replace that host.
@@ -319,6 +325,13 @@ export const ServiceSheet = ({
     );
     setStep(1);
   };
+
+  const returnToTemplates = () =>
+    requestDiscardAction(() => {
+      setTemplate(null);
+      reset(BLANK_SERVICE_FORM);
+      setStep(0);
+    });
 
   const buildCredential = (data: TServiceForm) => {
     if (data.credentialType === AgentVaultCredentialType.Passthrough) {
@@ -488,7 +501,8 @@ export const ServiceSheet = ({
   const handleStepChange = async (target: number) => {
     if (target === step) return;
     if (target < step) {
-      setStep(target);
+      if (stepKeys[target] === ServiceStep.Template) returnToTemplates();
+      else setStep(target);
       return;
     }
     for (let i = step; i < target; i += 1) {
@@ -526,7 +540,7 @@ export const ServiceSheet = ({
           onOpenChange(true);
           return;
         }
-        requestDiscard();
+        requestDiscardAction(() => onOpenChange(false));
       }}
     >
       <SheetContent className="flex h-full max-h-full w-screen flex-col gap-y-0 sm:max-w-[90vw] xl:max-w-7xl">
@@ -628,7 +642,13 @@ export const ServiceSheet = ({
                     Step {step + 1} of {steps.length}
                   </span>
                   {step > 0 && (
-                    <Button type="button" variant="outline" onClick={goBack}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={
+                        stepKeys[step - 1] === ServiceStep.Template ? returnToTemplates : goBack
+                      }
+                    >
                       Back
                     </Button>
                   )}

@@ -17,7 +17,7 @@ import { DiscriminativePick } from "@app/types";
 import { OnePassConnectionForm } from "./1PasswordConnectionForm";
 import { AdcsConnectionForm } from "./AdcsConnectionForm";
 import { AnthropicConnectionForm } from "./AnthropicConnectionForm";
-import { AppConnectionFormProvider } from "./AppConnectionFormContext";
+import { AppConnectionFormProvider, useAppConnectionForm } from "./AppConnectionFormContext";
 import { Auth0ConnectionForm } from "./Auth0ConnectionForm";
 import { AwsConnectionForm } from "./AwsConnectionForm";
 import { AzureADCSConnectionForm } from "./AzureADCSConnectionForm";
@@ -79,6 +79,7 @@ import { OpenAIConnectionForm } from "./OpenAIConnectionForm";
 import { OpenRouterConnectionForm } from "./OpenRouterConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
 import { OVHConnectionForm } from "./OVHConnectionForm";
+import { PaloAltoNetworksConnectionForm } from "./PaloAltoNetworksConnectionForm";
 import { PostgresConnectionForm } from "./PostgresConnectionForm";
 import { PowerDnsConnectionForm } from "./PowerDnsConnectionForm";
 import { QoveryConnectionForm } from "./QoveryConnectionForm";
@@ -177,6 +178,7 @@ type UpdateFormProps = FormProps & {
 };
 
 const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps) => {
+  const { layout } = useAppConnectionForm();
   const [pendingFormData, setPendingFormData] = useState<AppConnectionFormData | null>(null);
   const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false);
   const createAppConnection = useCreateAppConnection();
@@ -350,6 +352,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <DopplerConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.PaloAltoNetworks:
+        return <PaloAltoNetworksConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Keeper:
         return <KeeperConnectionForm onSubmit={onSubmit} />;
       case AppConnection.KempLoadMaster:
@@ -407,9 +411,12 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
       )}
       <div
         className={
+          // eslint-disable-next-line no-nested-ternary
           pendingFormData
             ? "hidden"
-            : "flex flex-1 flex-col [&>form]:flex [&>form]:flex-1 [&>form]:flex-col [&>form]:px-4 [&>form]:pt-4"
+            : layout === "dialog"
+              ? undefined
+              : "flex flex-1 flex-col [&>form]:flex [&>form]:flex-1 [&>form]:flex-col [&>form]:px-4 [&>form]:pt-4"
         }
       >
         {renderForm()}
@@ -419,6 +426,7 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
 };
 
 const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
+  const { layout } = useAppConnectionForm();
   const [pendingFormData, setPendingFormData] = useState<AppConnectionFormData | null>(null);
   const [isConfirmSubmitting, setIsConfirmSubmitting] = useState(false);
   const updateAppConnection = useUpdateAppConnection();
@@ -643,6 +651,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DopplerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NetScaler:
         return <NetScalerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.PaloAltoNetworks:
+        return <PaloAltoNetworksConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Keeper:
         return <KeeperConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.KempLoadMaster:
@@ -710,9 +720,12 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       )}
       <div
         className={
+          // eslint-disable-next-line no-nested-ternary
           pendingFormData
             ? "hidden"
-            : "flex flex-1 flex-col [&>form]:flex [&>form]:flex-1 [&>form]:flex-col [&>form]:px-4 [&>form]:pt-4"
+            : layout === "dialog"
+              ? undefined
+              : "flex flex-1 flex-col [&>form]:flex [&>form]:flex-1 [&>form]:flex-col [&>form]:px-4 [&>form]:pt-4"
         }
       >
         {renderForm()}
@@ -724,6 +737,7 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
 type Props = {
   onCancel: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
+  layout?: "sheet" | "dialog";
   projectId?: string;
   projectType?: ProjectType;
 } & Pick<FormProps, "onComplete"> &
@@ -734,13 +748,17 @@ type Props = {
 export const AppConnectionForm = ({
   onCancel,
   onDirtyChange,
+  layout = "sheet",
   projectId,
   projectType,
   ...props
 }: Props) => {
   const { app, appConnection } = props;
 
-  const contextValue = useMemo(() => ({ onCancel, onDirtyChange }), [onCancel, onDirtyChange]);
+  const contextValue = useMemo(
+    () => ({ onCancel, onDirtyChange, layout }),
+    [onCancel, onDirtyChange, layout]
+  );
 
   return (
     <AppConnectionFormProvider value={contextValue}>

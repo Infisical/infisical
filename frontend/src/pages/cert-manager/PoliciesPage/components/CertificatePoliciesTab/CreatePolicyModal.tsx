@@ -36,6 +36,7 @@ import {
   SelectValue,
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   Stepper,
@@ -972,7 +973,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         await updatePolicy.mutateAsync({ policyId: policy.id, ...transformedData });
       } else {
         if (!currentProject?.id) {
-          throw new Error("Project ID is required for creating a policy");
+          throw new Error("Certificate Manager could not be loaded. Please refresh and try again.");
         }
         const createdPolicy = await createPolicy.mutateAsync({
           projectId: currentProject.id,
@@ -1960,7 +1961,7 @@ export const CreatePolicyModal = ({
             </aside>
           </div>
 
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+          <SheetFooter className="shrink-0 items-center justify-between border-t">
             <span className="text-xs text-muted" />
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted">
@@ -1988,7 +1989,7 @@ export const CreatePolicyModal = ({
                 </Button>
               )}
             </div>
-          </div>
+          </SheetFooter>
         </form>
       </SheetContent>
     </Sheet>

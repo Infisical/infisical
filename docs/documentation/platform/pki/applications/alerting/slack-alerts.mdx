@@ -4,7 +4,18 @@ sidebarTitle: "Slack"
 description: "Send certificate alert notifications to a Slack channel."
 ---
 
+import StartAlert from "/snippets/documentation/platform/pki/applications/alerting/start-alert.mdx";
+
 A Slack channel on a certificate [alert](/documentation/platform/pki/applications/alerting/overview) posts to a Slack channel through an [Incoming Webhook](https://api.slack.com/messaging/webhooks) whenever the alert fires.
+
+<Info>
+  Slack channels are available under Infisical's [Enterprise](https://infisical.com/pricing) plan. If you're self-hosting Infisical, contact sales@infisical.com to purchase an enterprise license.
+</Info>
+
+## Prerequisites
+
+- The Certificate Manager **Admin** role to create a Certificate Manager alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
+- A Slack workspace where you can create apps
 
 ## Step 1: Create a Slack incoming webhook
 
@@ -30,46 +41,34 @@ A Slack channel on a certificate [alert](/documentation/platform/pki/application
   </Step>
 </Steps>
 
-## Step 2: Add the Slack channel to an alert
+## Step 2: Start an alert
+
+<StartAlert />
+
+## Step 3: Add the Slack channel
 
 <Steps>
   <Step>
-    [Create an alert](/documentation/platform/pki/applications/alerting/overview#create-an-alert) in your application, or edit an existing one.
+    Select **Add Channel** > **Slack** and paste the URL from [step 1](#step-1-create-a-slack-incoming-webhook) into **Webhook URL**. The URL must start with `https://hooks.slack.com`.
   </Step>
   <Step>
-    Select **Add Channel** > **Slack** and paste the webhook URL. The URL must start with `https://hooks.slack.com`.
-  </Step>
-  <Step>
-    Optionally, select **Send test** to send a test notification to the channel.
+    Optionally, select **Send test** to send a test message to the Slack channel.
   </Step>
   <Step>
     Select **Continue**, check the **Review** step, and select **Create Alert**.
   </Step>
 </Steps>
 
+<Check>
+  Your alert is set up. Infisical posts to the Slack channel whenever the alert fires.
+</Check>
+
 ## Message format
 
-Each Slack message includes the alert's summary, up to two certificates, and a link to the application in Infisical. The message color shows the alert's severity:
+Each Slack message includes the alert's summary, up to two certificates, and a **View in Infisical** button. For an application alert, the button opens the application. For a Certificate Manager alert, it opens the **Inventory** page, or the **Signers** page for a signer certificate expiration alert. The message color shows the alert's severity:
 
 | Color | Severity | When |
 |-------|----------|------|
 | Red | Critical or error | A certificate expires within 14 days |
 | Amber | Warning | A certificate expires within 15 to 30 days, or a certificate was revoked |
 | Blue | Info | A certificate expires in more than 30 days, or a certificate was issued or renewed |
-
-## What's next?
-
-<CardGroup cols={2}>
-  <Card title="Webhook" icon="webhook" href="/documentation/platform/pki/applications/alerting/webhook-alerts">
-    Send alerts to your own endpoint.
-  </Card>
-  <Card title="PagerDuty" icon="radio-tower" href="/documentation/platform/pki/applications/alerting/pagerduty-alerts">
-    Create incidents in PagerDuty.
-  </Card>
-  <Card title="Certificate syncs" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
-    Push certificates to cloud destinations.
-  </Card>
-  <Card title="Certificates" icon="list" href="/documentation/platform/pki/applications/certificates">
-    View and manage certificates.
-  </Card>
-</CardGroup>

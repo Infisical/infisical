@@ -12,7 +12,8 @@ import {
   TAlert,
   TAlertChannelRecipient,
   TCertificateAlertEventType,
-  TChannelForm
+  TChannelForm,
+  toChannelForm
 } from "@app/hooks/api/alerts";
 import { CertSource } from "@app/hooks/api/certificates/enums";
 import { getCertSourceLabel } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
@@ -380,23 +381,13 @@ export const toCertificateAlertForm = (
   conditionNames: toConditionNames(alert),
   channels: alert.channels.map(
     (channel): TChannelForm => ({
-      id: channel.id,
-      name: channel.name,
-      channelType: channel.channelType,
-      enabled: channel.enabled,
+      ...toChannelForm(channel),
       recipients: channel.recipients.filter(
         (recipient) =>
           !isAvailable ||
           recipient.principalType !== AlertPrincipalType.User ||
           emailByUserId.has(recipient.principalId)
-      ),
-      url: (channel.config.url as string) ?? "",
-      webhookUrl: "",
-      signingSecret: "",
-      integrationKey: "",
-      hasSigningSecret: Boolean(channel.config.hasSigningSecret),
-      hasWebhookUrl: Boolean(channel.config.hasWebhookUrl),
-      hasIntegrationKey: Boolean(channel.config.hasIntegrationKey)
+      )
     })
   )
 });

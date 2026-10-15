@@ -211,7 +211,7 @@ For a **global** certificate, a certificate map entry maps a hostname to the cer
 
 **Preserve certificate on renewal** is enabled by default. An existing GCP certificate is updated in place and keeps its resource name, so certificate map entries and target proxies keep working with no change in GCP. This also pins the resource name against later edits to the certificate name schema. This is the recommended setting.
 
-When disabled, a renewal or a name change creates a new GCP certificate under a new resource name. Whether the old certificate is deleted depends on **Allow to remove certificates from destination**:
+When disabled, a renewal or a name change creates a new GCP certificate under a new resource name. Whether the old certificate is deleted depends on **Remove certificates from destination**:
 
 - **Removal enabled**: Infisical deletes the old certificate. If a certificate map entry references it, Infisical moves its own entry to the new certificate first. Anything else pointing at the old certificate has to be updated by hand, and GCP refuses to delete a certificate that is still referenced.
 - **Removal disabled**: the old certificate stays in your GCP project. Infisical never deletes it, and it's no longer tracked by the sync.

@@ -1,5 +1,5 @@
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
+import { DeleteConfirmDialog } from "@app/components/v3";
 import { TProjectTemplate, useDeleteProjectTemplate } from "@app/hooks/api/projectTemplates";
 
 type Props = {
@@ -29,12 +29,13 @@ export const DeleteProjectTemplateModal = ({ isOpen, onOpenChange, template }: P
   };
 
   return (
-    <DeleteActionModal
+    <DeleteConfirmDialog
       isOpen={isOpen}
-      onChange={onOpenChange}
+      description="This action is irreversible."
+      onOpenChange={onOpenChange}
       title={`Are you sure you want to delete ${name}?`}
-      deleteKey="confirm"
-      onDeleteApproved={handleDeleteProjectTemplate}
+      confirmKey="confirm"
+      onConfirm={handleDeleteProjectTemplate}
     />
   );
 };

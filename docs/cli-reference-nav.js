@@ -47,18 +47,41 @@
 
   var current = { id: null, path: null };
 
-  // The sidebar lists only root commands, so a subcommand in view lights up its root's entry.
+  // The sidebar lists root commands and a few subcommands, so a subcommand in view lights up
+  // the entry of its nearest listed parent, such as `sm secrets` for `sm secrets get`.
   function sidebarTarget(id, path) {
     var ids = {};
     document.querySelectorAll('#sidebar-content a[href*="/cli/reference#"]').forEach(function (link) {
       ids[targetOf(link)] = true;
     });
     if (ids[id]) return id;
-    var root = path ? path.split(" ")[0] : null;
-    return root && ids[root] ? root : id;
+    var words = path ? path.split(" ") : [];
+    for (var length = words.length - 1; length > 0; length--) {
+      var parent = words.slice(0, length).join("-");
+      if (ids[parent]) return parent;
+    }
+    return id;
   }
 
-  function highlight(id, path) {
+  // Mintlify doesn't render the entries of a collapsed group, such as `infisical sm`, so a
+  // command in that group has no link to light up until the group is open.
+  function expandGroupFor(path) {
+    var words = path ? path.split(" ") : [];
+    var buttons = document.querySelectorAll('#sidebar-content button[aria-expanded="false"]');
+    for (var length = words.length; length > 0; length--) {
+      var label = "infisical " + words.slice(0, length).join(" ");
+      for (var i = 0; i < buttons.length; i++) {
+        if (buttons[i].textContent.trim() === label) {
+          buttons[i].click();
+          return;
+        }
+      }
+    }
+  }
+
+  // Groups open only when the command in view changes, not on every re-render, so a reader
+  // can still collapse a group while reading one of its commands.
+  function highlight(id, path, openGroup) {
     current = { id: id, path: path || null };
     var root = document.documentElement;
     var target = id === null ? null : sidebarTarget(id, current.path);
@@ -74,12 +97,13 @@
       keepVisible(active);
     } else {
       root.removeAttribute("data-cli-nav");
+      if (openGroup && target !== null) expandGroupFor(current.path);
     }
   }
 
   window.addEventListener("cli-reference:active", function (event) {
     var detail = event.detail || {};
-    highlight(detail.id || null, detail.path);
+    highlight(detail.id || null, detail.path, true);
   });
 
   // Sidebar links that render later, such as when Mintlify re-renders the sidebar, need the
@@ -114,7 +138,7 @@
       // A sidebar click is navigation, so it lands at once like a page load would.
       section.scrollIntoView();
       window.history.replaceState(window.history.state, "", "#" + id);
-      highlight(id, section.dataset.command);
+      highlight(id, section.dataset.command, true);
     },
     true
   );

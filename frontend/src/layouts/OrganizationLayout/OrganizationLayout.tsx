@@ -8,6 +8,7 @@ import { SidebarInset, SidebarProvider } from "@app/components/v3";
 import { useServerConfig, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useFetchServerStatus } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { useImplicitProduct } from "@app/hooks/useImplicitProduct";
 import { CertManagerInstanceBanner } from "@app/layouts/PkiManagerLayout/components/CertManagerInstanceBanner";
 import { AssumePrivilegeModeBanner } from "@app/layouts/ProjectLayout/components/AssumePrivilegeModeBanner";
@@ -28,14 +29,19 @@ export const OrganizationLayout = () => {
     strict: false,
     select: (el) => el?.projectId
   });
-  const isInsideProject = Boolean(projectId);
   const implicitProduct = useImplicitProduct();
+  // Certificate Manager and Secret Scanning bring their own scroll container, so they keep the project
+  // page chrome.
+  const isInsideProject =
+    Boolean(projectId) ||
+    implicitProduct === ProjectType.CertificateManager ||
+    implicitProduct === ProjectType.SecretScanning;
   const isCertManagerOverview = useRouterState({
     select: (state) =>
       state.matches.some(
         (match) =>
           match.routeId ===
-          "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/_cert-manager-layout/overview"
+          "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/overview"
       )
   });
 
@@ -44,7 +50,7 @@ export const OrganizationLayout = () => {
       state.matches.some(
         (match) =>
           match.routeId ===
-          "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout"
+          "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout"
       )
   });
 

@@ -2,7 +2,6 @@ import { ImportIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -13,6 +12,7 @@ import {
   CardTitle,
   DocumentationLinkBadge
 } from "@app/components/v3";
+import { DeleteConfirmDialog } from "@app/components/v3/platform";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
@@ -212,15 +212,15 @@ export const CertificatesSection = ({
           handlePopUpToggle={handlePopUpToggle}
           applicationName={applicationName}
         />
-        <DeleteActionModal
+        <DeleteConfirmDialog
           isOpen={popUp.deleteCertificate.isOpen}
           title={`Are you sure you want to remove the certificate ${
             (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
           }?`}
-          subTitle="This action cannot be undone."
-          onChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
-          deleteKey="confirm"
-          onDeleteApproved={() =>
+          description="This action cannot be undone."
+          onOpenChange={(isOpen) => handlePopUpToggle("deleteCertificate", isOpen)}
+          confirmKey="confirm"
+          onConfirm={() =>
             onRemoveCertificateSubmit(
               (popUp?.deleteCertificate?.data as { certificateId: string })?.certificateId
             )

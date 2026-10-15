@@ -137,6 +137,11 @@ export const licenseServiceFactory = ({
               ? projectV2ToFeatureSet(getDefaultOnPremFeatures(), contents.license.entitlements)
               : { ...getDefaultOnPremFeatures(), ...contents.license.features };
 
+          // Keys issued before PAM alerts moved to the alert module grant them through the old Slack flag.
+          if ((contents.license.features as { pamSlackNotifications?: boolean } | undefined)?.pamSlackNotifications) {
+            features.pamEnterpriseAlerting = true;
+          }
+
           onPremFeatures = {
             ...features,
             slug: "enterprise",

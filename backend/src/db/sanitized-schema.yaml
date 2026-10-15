@@ -116,7 +116,6 @@ tables:
     columns:
       - id
       - accessBundleId
-      - isSecret
       - createdAt
       - updatedAt
 
@@ -953,20 +952,6 @@ tables:
       - showSnapshotsLegacy
       - defaultProduct
       - secretDetectionIgnoreValues
-
-  - name: rate_limit
-    source: public.rate_limit
-    columns:
-      - id
-      - readRateLimit
-      - writeRateLimit
-      - secretsRateLimit
-      - authRateLimit
-      - inviteUserRateLimit
-      - mfaRateLimit
-      - publicEndpointLimit
-      - createdAt
-      - updatedAt
 
   - name: relays
     source: public.relays
