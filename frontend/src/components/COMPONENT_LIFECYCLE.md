@@ -13,7 +13,8 @@ The [V3 migration ledger](V3_MIGRATION.md) tracks source removal, coverage, and 
 | `Accordion`, `Alert`, `CopyButton`, `Dropdown`, `HoverCardv2`, `Skeleton`, `Spinner`, `Table`, `Tabs` | Blocked                       | Composition, interaction, or state parity still needs verification.                                           |
 | `ConfirmActionModal`, `DeleteActionModal`, `Modal`                                                                             | Ready for focused deprecation | Follow the overlay recipe in the [V3 migration ledger](V3_MIGRATION.md#overlay-migration-recipe).             |
 | `ContentLoader`, `FormControl`, `GenericFieldLabel`, `Tag`                                                    | Blocked                       | The V3 replacements require consumer-specific composition or accessibility changes.                           |
-| `SecretInput`, `SecretPathInput`                                                | Blocked                       | Security-sensitive or specialist behavior needs workflow-level parity validation.                             |
+| `SecretInput`                                                | Blocked                       | Security-sensitive or specialist behavior needs workflow-level parity validation.                             |
+| `SecretPathInput` | Removed in candidate | Deleted the unused V2 implementation and family index. No incoming module or declaration references remained at `13f5e7fe562a803a9b6de1d512cb27f67868ea6d`. The independent V3 implementation and its consumers are unchanged; this does not certify workflow parity or removal on merged main. |
 | `NoticeBannerV2` | Removed | Deleted the unused implementation, empty family index, and stale root export. No external or internal consumers remained at `e05f750eb36506dac9a599709055ffb33d5b58ab`. |
 
 ### Removed unused V2 families
