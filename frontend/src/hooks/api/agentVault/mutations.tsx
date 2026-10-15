@@ -18,7 +18,7 @@ import {
   TAgentVaultProxy,
   TAgentVaultProxySettingsDTO,
   TAgentVaultService,
-  TAgentVaultSessionLogSettings,
+  TAgentVaultSessionLogSettingsState,
   TAgentVaultVariable,
   TAgentVaultVariableRef,
   TAgentVaultWrittenMember,
@@ -368,14 +368,14 @@ export const useUpdateAgentVaultSessionLogSettings = () => {
 
   return useMutation({
     mutationFn: async (params: TUpdateAgentVaultSessionLogSettingsDTO) => {
-      const { data } = await apiRequest.patch<{ settings: TAgentVaultSessionLogSettings }>(
+      const { data } = await apiRequest.patch<TAgentVaultSessionLogSettingsState>(
         "/api/v1/agent-vault/settings/session-logs",
         params
       );
-      return data.settings;
+      return data;
     },
-    onSuccess: (settings) => {
-      queryClient.setQueryData(agentVaultKeys.sessionLogSettings(currentOrg.id), settings);
+    onSuccess: (state) => {
+      queryClient.setQueryData(agentVaultKeys.sessionLogSettings(currentOrg.id), state);
       // Reset, not invalidate: the cached result may be for the previous bucket.
       queryClient.resetQueries({
         queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id)

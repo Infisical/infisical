@@ -110,6 +110,9 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   honeyTokenLimit: 0,
   secretsBrokering: true,
   agentVaultByoS3: false,
+  // On by default, like secretsBrokering, until the License Server sets it per plan.
+  agentVaultManagedStorage: true,
+  agentVaultSessionLogRetentionDays: 30,
   secretSyncLimit: null,
   maxPamAccounts: null,
   // PKI / Cert Manager

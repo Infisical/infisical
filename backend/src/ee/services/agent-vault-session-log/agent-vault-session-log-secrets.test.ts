@@ -1,4 +1,8 @@
+import { createHash } from "node:crypto";
+
 import { describe, expect, test, vi } from "vitest";
+
+import { buildWrappedKeyPayload, openWrappedKey } from "@app/services/kms/kms-fns";
 
 import {
   generateSessionLogKey,
@@ -11,10 +15,9 @@ vi.mock("@app/lib/logger", () => ({ logger: { error: vi.fn() } }));
 
 // The real KMS wrap is authenticated encryption; passing bytes through leaves only the label check under test.
 const passThroughKms = {
-  createCipherPairWithDataKey: async () => ({
-    encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: Buffer.from(plainText) }),
-    decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => Buffer.from(cipherTextBlob)
-  })
+  wrapKey: async ({ label, key }: { label: string; key: Buffer }) => buildWrappedKeyPayload(label, key),
+  unwrapKey: async ({ label, wrappedKey, keyBytes }: { label: string; wrappedKey: Buffer; keyBytes: number }) =>
+    openWrappedKey({ label, payload: wrappedKey, keyBytes })
 } as never;
 
 describe("session log keys", () => {
@@ -41,6 +44,15 @@ describe("session log keys", () => {
     await expect(
       unwrapSessionLogKey({ projectId: "proj-1", sessionId: "sess-b", encryptedSessionLogKey }, passThroughKms)
     ).rejects.toMatchObject({ name: "InternalServerError" });
+  });
+
+  // An Agent Vault session can have no expiry, so a key stored by older code must still open. The layout is built here
+  // by hand, so changing the label in the secrets module breaks this test.
+  test("a key stored in the original layout, sha256(sessionId|v1) then the key, still opens", () => {
+    const sessionId = "6f1c7a52-3f7e-4c8e-9a40-0b2d6c1e9f11";
+    const sessionLogKey = generateSessionLogKey();
+    const storedBefore = Buffer.concat([createHash("sha256").update(`${sessionId}|v1`).digest(), sessionLogKey]);
+    expect(openSessionLogKey({ sessionId, payload: storedBefore }).equals(sessionLogKey)).toBe(true);
   });
 
   test("a stored key without its session label is refused", () => {

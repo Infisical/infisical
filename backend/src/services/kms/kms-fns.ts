@@ -52,6 +52,23 @@ export const resolveInstanceEncryptionKeyBuffer = (envCfg: {
   return buffer;
 };
 
+const WRAPPED_KEY_LABEL_BYTES = 32;
+
+const hashWrappedKeyLabel = (label: string) => crypto.nativeCrypto.createHash("sha256").update(label).digest();
+
+// The data key wrap takes no context, so the label travels inside the payload: a key copied onto a row with another
+// label fails to open there instead of being handed out. The layout, sha256(label) || key, is what Agent Vault
+// session keys have always used, so existing keys keep opening.
+export const buildWrappedKeyPayload = (label: string, key: Buffer) => Buffer.concat([hashWrappedKeyLabel(label), key]);
+
+// Null when the payload wasn't wrapped for this label or isn't the expected size; the caller decides what that means.
+export const openWrappedKey = ({ label, payload, keyBytes }: { label: string; payload: Buffer; keyBytes: number }) => {
+  const belongs =
+    payload.length === WRAPPED_KEY_LABEL_BYTES + keyBytes &&
+    crypto.nativeCrypto.timingSafeEqual(payload.subarray(0, WRAPPED_KEY_LABEL_BYTES), hashWrappedKeyLabel(label));
+  return belongs ? payload.subarray(WRAPPED_KEY_LABEL_BYTES) : null;
+};
+
 const KEK_LABEL_DOMAIN = "infisical:kek-fingerprint:v1";
 
 /**

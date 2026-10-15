@@ -4,7 +4,13 @@ import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initializePqcSupport } from "@app/lib/crypto/pqc";
 import { RunMode } from "@app/lib/types";
+import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
+import {
+  isS3DirectoryBucket,
+  keyPrefixSchema,
+  s3BucketNameSchema
+} from "@app/services/object-storage/object-storage-path-fns";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { BadRequestError } from "../errors";
@@ -152,6 +158,39 @@ export const secretScanningTimeoutsSchema = z.object({
 
 export const getSecretScanningStuckScanTimeout = (data: z.infer<typeof secretScanningTimeoutsSchema>) =>
   getSecretScanningScanBudgetMs(data);
+
+// The instance's own bucket for default storage. All optional: without a bucket, the instance offers none.
+export const objectStorageEnvSchema = z.object({
+  OBJECT_STORAGE_S3_BUCKET: zpStr(
+    s3BucketNameSchema
+      .refine((bucket) => !isS3DirectoryBucket(bucket), "Must be a general purpose bucket, not a directory bucket")
+      .optional()
+  ),
+  OBJECT_STORAGE_S3_PREFIX: zpStr(keyPrefixSchema(256).optional()),
+  OBJECT_STORAGE_S3_REGION: zpStr(z.nativeEnum(AWSRegion).optional()),
+  OBJECT_STORAGE_S3_ACCESS_KEY_ID: zpStr(z.string().max(128).optional()),
+  OBJECT_STORAGE_S3_SECRET_ACCESS_KEY: zpStr(z.string().max(256).optional())
+});
+
+// A half-set group stops the backend at startup, so a typo shows at deploy time rather than as uploads that never land.
+export const checkObjectStorageEnv = (data: z.infer<typeof objectStorageEnvSchema>, ctx: z.RefinementCtx) => {
+  const requireWith = (
+    present: keyof z.infer<typeof objectStorageEnvSchema>,
+    missing: keyof z.infer<typeof objectStorageEnvSchema>
+  ) => {
+    if (data[present] && !data[missing]) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [missing],
+        message: `${missing} must be set when ${present} is set.`
+      });
+    }
+  };
+  requireWith("OBJECT_STORAGE_S3_BUCKET", "OBJECT_STORAGE_S3_REGION");
+  requireWith("OBJECT_STORAGE_S3_REGION", "OBJECT_STORAGE_S3_BUCKET");
+  requireWith("OBJECT_STORAGE_S3_ACCESS_KEY_ID", "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY");
+  requireWith("OBJECT_STORAGE_S3_SECRET_ACCESS_KEY", "OBJECT_STORAGE_S3_ACCESS_KEY_ID");
+};
 
 const databaseReadReplicaSchema = z
   .object({
@@ -462,6 +501,7 @@ const envSchema = z
     SECRET_SCANNING_ORG_WHITELIST: zpStr(z.string().optional()),
     SECRET_SCANNING_GIT_APP_SLUG: zpStr(z.string().default("infisical-radar")),
     ...secretScanningTimeoutsSchema.shape,
+    ...objectStorageEnvSchema.shape,
     SECRET_SCANNING_MEMORY_LIMIT_MB: z.coerce
       .number()
       .int()
@@ -696,6 +736,7 @@ const envSchema = z
     "Either REDIS_URL, REDIS_SENTINEL_HOSTS or REDIS_CLUSTER_HOSTS  must be defined."
   )
   .superRefine((data, ctx) => {
+    checkObjectStorageEnv(data, ctx);
     (
       [
         ["DB_POOL_MIN", "DB_POOL_MAX"],

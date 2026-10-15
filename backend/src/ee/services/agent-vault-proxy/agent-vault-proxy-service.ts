@@ -34,10 +34,10 @@ import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns
 import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
 import {
   getSessionLogEntitlement,
-  isSessionLogIngestEnabled,
   TSessionLogLicenseService
-} from "../agent-vault-session-log/agent-vault-session-log-fns";
+} from "../agent-vault-session-log/agent-vault-session-log-license-fns";
 import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
+import { getEffectiveSessionLogConfig } from "../agent-vault-session-log/agent-vault-session-log-storage-fns";
 import { RESOURCE_TYPE_AGENT_VAULT_PROXY } from "../resource-auth-method/resource-auth-method-fns";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
 import { parseRootCaCertificate } from "./agent-vault-ca-fns";
@@ -68,7 +68,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
   agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findValuesForResolve">;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findByTokenHash">;
-  agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne">;
+  agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne" | "findByProjectIdFromPrimary">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -515,10 +515,12 @@ export const agentVaultProxyServiceFactory = ({
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds)
     ]);
 
-    const sessionLogConfig = await agentVaultSessionLogConfigDAL.findOne({ projectId: session.projectId });
+    const sessionLogConfig = await getEffectiveSessionLogConfig({ agentVaultSessionLogConfigDAL }, session.projectId, {
+      fromPrimary: false
+    });
     const entitlement =
-      isSessionLogIngestEnabled(sessionLogConfig) && Boolean(session.encryptedSessionLogKey)
-        ? await getSessionLogEntitlement(licenseService, proxy.orgId)
+      sessionLogConfig?.enabled && Boolean(session.encryptedSessionLogKey)
+        ? (await getSessionLogEntitlement(licenseService, proxy.orgId, sessionLogConfig.storage.type)).entitlement
         : "unlicensed";
     // While the plan can't be confirmed, a proxy that already holds the key keeps recording, and no key goes out.
     const sessionLogsEnabled = entitlement === "licensed" || (entitlement === "unknown" && hasSessionLogKey);

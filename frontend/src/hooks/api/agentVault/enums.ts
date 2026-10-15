@@ -57,3 +57,8 @@ export enum AgentVaultVariableReferenceField {
   CustomHeader = "custom-header",
   Substitution = "substitution"
 }
+
+export enum AgentVaultSessionLogStorageType {
+  Default = "default",
+  External = "external"
+}
