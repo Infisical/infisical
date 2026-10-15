@@ -1846,6 +1846,34 @@ The permission object for the privilege.
   }
 };
 
+export const SECRET_COMMITS = {
+  CREATE: {
+    projectId: "The ID of the project to commit the changes in.",
+    environment: "The slug of the environment to commit the changes in.",
+    secretPath: "The path of the folder the changes apply to. Every change in a commit targets this one folder.",
+    message: "An optional message describing the commit. It is shown in the folder's commit history.",
+    secrets: "The secret changes to commit, grouped by operation.",
+    secretsCreate: "Secrets to create. Each secret name must not already exist in the folder.",
+    secretsUpdate:
+      "Secrets to update, identified by their current name. Only the fields you send are changed; omitted fields keep their current value.",
+    secretsDelete: "Secrets to delete, identified by name.",
+    folders: "The folder changes to commit, grouped by operation. Folder changes always apply immediately.",
+    foldersCreate: "Folders to create inside the folder at secretPath.",
+    foldersUpdate: "Folders to rename or re-describe, identified by ID.",
+    foldersDelete: "Folders to delete, identified by ID.",
+    folderId: "The ID of the folder.",
+    folderName: "The name of the folder.",
+    folderDescription: "An optional description label for the folder.",
+    commitId:
+      "The ID of the commit recorded in the folder's history for the changes that were applied. Null when nothing was applied directly, for example when every change went to an approval request.",
+    approval:
+      "The approval request that holds the secret changes when a change policy applies to the environment and path. Null when the secret changes were applied directly.",
+    appliedSecrets:
+      "The secrets that were created, updated, and deleted. Empty when the secret changes went to an approval request.",
+    appliedFolders: "The folders that were created, updated, and deleted."
+  }
+};
+
 export const FOLDER_ACCESS = {
   CREATE: {
     projectId: "The ID of the project the folder is in.",
