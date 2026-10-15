@@ -192,7 +192,11 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
                       // Removal is Base UI's, through the controlled Root. Doing it here too would fire the
                       // caller's handler twice. Adding is ours, in `commit`, since there is no options list.
                       onClick={() => onValidationError?.(null)}
-                      className={COMBOBOX_CHIP_REMOVE_CLASS}
+                      className={cn(
+                        COMBOBOX_CHIP_REMOVE_CLASS,
+                        isInvalid &&
+                          "text-danger hover:bg-danger/20 hover:text-danger focus-visible:ring-danger"
+                      )}
                     >
                       <XIcon className="size-3" />
                     </ComboboxPrimitive.ChipRemove>
