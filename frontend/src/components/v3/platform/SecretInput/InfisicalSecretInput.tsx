@@ -89,9 +89,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       const isEnclosed = rightBracketIndex !== -1;
 
       const lhsValue = value.slice(0, left);
-      const rhsValue = value.slice(
-        shouldCloseReference && isEnclosed ? rightBracketIndex + 1 : cursorPosition
-      );
+      const rhsValue = value.slice(isEnclosed ? rightBracketIndex + 1 : cursorPosition);
 
       const closingBracket = shouldCloseReference && !isEnclosed ? "}" : "";
       onChange?.(`${lhsValue}${content}${closingBracket}${rhsValue}`);
