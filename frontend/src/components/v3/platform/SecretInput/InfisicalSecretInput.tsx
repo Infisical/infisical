@@ -248,13 +248,19 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
               if (props.onBlur) props.onBlur(evt);
             }}
             onSelect={(evt) => {
-              setCursorPosition(evt.currentTarget.selectionStart);
+              const { selectionStart, value: currentValue } = evt.currentTarget;
+              setCursorPosition(selectionStart);
+              if (getIndexOfUnclosedRefToTheLeft(currentValue, selectionStart - 1) === -1)
+                setIsSuggestionActive(false);
               if (props.onSelect) props.onSelect(evt);
             }}
             onChange={(e) => {
-              onChange?.(e.target.value);
-              setCursorPosition(e.target.selectionStart);
-              setIsSuggestionActive(true);
+              const { selectionStart, value: newValue } = e.target;
+              onChange?.(newValue);
+              setCursorPosition(selectionStart);
+              setIsSuggestionActive(
+                getIndexOfUnclosedRefToTheLeft(newValue, selectionStart - 1) !== -1
+              );
             }}
             containerClassName={containerClassName}
             onClickSegment={handleClickSegment}
