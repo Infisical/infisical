@@ -95,7 +95,7 @@ export const SIGNUP_PRODUCTS: SignupProductMeta[] = [
     type: ProjectType.SecretScanning,
     name: "Secret Scanning",
     description: "Find exposed secrets in repositories, builds, and artifacts.",
-    completedDescription: "Your first project is created. Jump in and add your first resources.",
+    completedDescription: "Everything is ready. Jump in and connect your first data source.",
     icon: getProjectLucideIcon(ProjectType.SecretScanning),
     iconClassName: "text-product-ss",
     tileClassName: "border-product-ss/30 bg-gradient-to-br from-product-ss/20 to-product-ss/5",

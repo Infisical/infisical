@@ -3,8 +3,7 @@ import { ChevronLeft, Pencil, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
-import { Button } from "@app/components/v3";
+import { Button, DeleteConfirmDialog } from "@app/components/v3";
 import { PageHeader } from "@app/components/v3/platform";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { getProjectTitle } from "@app/helpers/project";
@@ -133,12 +132,13 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
             onOpenChange={(isOpen) => handlePopUpToggle("editDetails", isOpen)}
             projectTemplate={matchingProjectTemplate}
           />
-          <DeleteActionModal
+          <DeleteConfirmDialog
             isOpen={popUp.removeTemplate.isOpen}
             title={`Are you sure you want to delete ${matchingProjectTemplate.name}?`}
-            deleteKey="confirm"
-            onChange={(isOpen) => handlePopUpToggle("removeTemplate", isOpen)}
-            onDeleteApproved={handleRemoveTemplate}
+            confirmKey="confirm"
+            description="This action is irreversible."
+            onOpenChange={(isOpen) => handlePopUpToggle("removeTemplate", isOpen)}
+            onConfirm={handleRemoveTemplate}
           />
         </>
       )}

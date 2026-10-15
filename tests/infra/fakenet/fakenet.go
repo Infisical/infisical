@@ -88,6 +88,7 @@ type Server struct {
 	denied []Denied
 
 	events *eventLog
+	txt    *txtRecords
 }
 
 // Denied is one outbound call that reached no fake.
@@ -99,7 +100,7 @@ type Denied struct {
 }
 
 func New(services ...Service) *Server {
-	s := &Server{services: map[string]Service{}, scopes: map[scopeID]*scope{}, events: newEventLog()}
+	s := &Server{services: map[string]Service{}, scopes: map[scopeID]*scope{}, events: newEventLog(), txt: newTXTRecords()}
 	for _, svc := range services {
 		s.services[svc.Host()] = svc
 	}

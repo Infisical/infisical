@@ -1,7 +1,6 @@
 import { PlusIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -9,7 +8,8 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
+  CardTitle,
+  DeleteConfirmDialog
 } from "@app/components/v3";
 import { useOrganization, useUser } from "@app/context";
 import {
@@ -95,14 +95,15 @@ export const UserProjectsSection = ({ membershipId }: Props) => {
         popUp={popUp}
         handlePopUpToggle={handlePopUpToggle}
       />
-      <DeleteActionModal
+      <DeleteConfirmDialog
         isOpen={popUp.removeUserFromProject.isOpen}
-        deleteKey="remove"
+        confirmKey="remove"
         title={`Do you want to remove this user from ${
           (popUp?.removeUserFromProject?.data as { projectName: string })?.projectName || ""
         }?`}
-        onChange={(isOpen) => handlePopUpToggle("removeUserFromProject", isOpen)}
-        onDeleteApproved={() => {
+        description="This action is irreversible."
+        onOpenChange={(isOpen) => handlePopUpToggle("removeUserFromProject", isOpen)}
+        onConfirm={() => {
           const popupData = popUp?.removeUserFromProject?.data as {
             username: string;
             projectId: string;

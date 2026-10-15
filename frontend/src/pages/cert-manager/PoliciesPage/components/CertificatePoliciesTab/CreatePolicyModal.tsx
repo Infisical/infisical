@@ -36,6 +36,7 @@ import {
   SelectValue,
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   Stepper,
@@ -1960,7 +1961,7 @@ export const CreatePolicyModal = ({
             </aside>
           </div>
 
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+          <SheetFooter className="shrink-0 items-center justify-between border-t">
             <span className="text-xs text-muted" />
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted">
@@ -1988,7 +1989,7 @@ export const CreatePolicyModal = ({
                 </Button>
               )}
             </div>
-          </div>
+          </SheetFooter>
         </form>
       </SheetContent>
     </Sheet>

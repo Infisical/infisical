@@ -66,7 +66,6 @@ export const SecretScanningDataSourceRow = ({
     name,
     description,
     isAutoScanEnabled,
-    projectId,
     type,
     unresolvedFindings,
     lastScannedAt,
@@ -104,8 +103,7 @@ export const SecretScanningDataSourceRow = ({
           params: {
             orgId: currentOrg.id,
             dataSourceId: id,
-            type,
-            projectId
+            type
           }
         })
       }
@@ -152,10 +150,9 @@ export const SecretScanningDataSourceRow = ({
                 onClick={(e) => {
                   e.stopPropagation();
                   navigate({
-                    to: "/organizations/$orgId/projects/secret-scanning/$projectId/findings",
+                    to: "/organizations/$orgId/secret-scanning/findings",
                     params: {
-                      orgId: currentOrg.id,
-                      projectId
+                      orgId: currentOrg.id
                     },
                     search: {
                       search: name,

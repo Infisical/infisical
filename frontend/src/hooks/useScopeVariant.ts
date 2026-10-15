@@ -18,7 +18,12 @@ export const useScopeVariant = (): ScopeVariant => {
 
   const orgScopedProduct = getOrgScopedProductFromPath(pathname);
   if (orgScopedProduct === ProjectType.AgentVault) return "av";
-  if (projectId || orgScopedProduct === ProjectType.CertificateManager) return "project";
+  if (
+    projectId ||
+    orgScopedProduct === ProjectType.CertificateManager ||
+    orgScopedProduct === ProjectType.SecretScanning
+  )
+    return "project";
   if (isSubOrganization) return "sub-org";
   return "org";
 };

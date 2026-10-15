@@ -25,10 +25,10 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
+import { getProjectLabel, hidesProjects } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useDeleteUserFromWorkspace } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
-import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AddMemberModal } from "./AddMemberModal";
 import { MembersTable } from "./MembersTable";
@@ -36,8 +36,8 @@ import { MembersTable } from "./MembersTable";
 export const MembersSection = () => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getProjectLabel(currentProject?.type);
+  const projectsHidden = hidesProjects(currentProject?.type);
 
   const removeUserMutation = useDeleteUserFromWorkspace();
 
@@ -59,7 +59,7 @@ export const MembersSection = () => {
       orgId: currentOrg.id
     });
     createNotification({
-      text: `Successfully removed user from ${isCertManager ? productLabel : "project"}`,
+      text: `Successfully removed user from ${projectsHidden ? productLabel : "project"}`,
       type: "success"
     });
     handlePopUpClose("removeMember");
@@ -72,7 +72,7 @@ export const MembersSection = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {isCertManager ? "Users" : `${productLabel} Users`}
+            {projectsHidden ? "Users" : `${productLabel} Users`}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/user-identities" />
           </CardTitle>
           <CardDescription>
@@ -91,7 +91,7 @@ export const MembersSection = () => {
                     isDisabled={!isAllowed}
                   >
                     <UserPlusIcon />
-                    {isCertManager ? "Add Users" : `Add Users to ${productLabel}`}
+                    {projectsHidden ? "Add Users" : `Add Users to ${productLabel}`}
                   </Button>
                 );
 

@@ -67,7 +67,6 @@ type FeatureSet struct {
 	PitRecovery                  bool       `json:"pitRecovery"`
 	IPAllowlisting               bool       `json:"ipAllowlisting"`
 	RBAC                         bool       `json:"rbac"`
-	CustomRateLimits             bool       `json:"customRateLimits"`
 	CustomAlerts                 bool       `json:"customAlerts"`
 	AuditLogs                    bool       `json:"auditLogs"`
 	AuditLogsRetentionDays       IntOrBool  `json:"auditLogsRetentionDays"`

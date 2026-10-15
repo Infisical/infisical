@@ -124,7 +124,8 @@ export const createApprovalRequestWithSteps = async (
   dependencies: {
     approvalRequestDAL: Pick<TApprovalRequestDALFactory, "create" | "transaction">;
   } & TInsertApprovalRequestStepsDeps,
-  externalTx?: Knex
+  externalTx?: Knex,
+  onCreated?: (request: TApprovalRequests, tx: Knex) => Promise<void>
 ): Promise<TApprovalRequestWithSteps> => {
   const { approvalRequestDAL, approvalRequestStepsDAL, approvalRequestStepEligibleApproversDAL } = dependencies;
 
@@ -156,6 +157,7 @@ export const createApprovalRequestWithSteps = async (
       tx
     );
 
+    await onCreated?.(newRequest, tx);
     return { request: newRequest, steps: newSteps };
   };
 

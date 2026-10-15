@@ -4,50 +4,103 @@ sidebarTitle: "Webhook"
 description: "Send certificate alert notifications to a webhook URL."
 ---
 
+import StartAlert from "/snippets/documentation/platform/pki/applications/alerting/start-alert.mdx";
+
 A webhook channel on a certificate [alert](/documentation/platform/pki/applications/alerting/overview) sends an HTTP POST request to your endpoint whenever the alert fires. Use a webhook to connect certificate alerts to your own systems or to services Infisical doesn't support directly.
 
-## Add a webhook channel to an alert
+<Info>
+  Webhook channels are available under Infisical's [Enterprise](https://infisical.com/pricing) plan. If you're self-hosting Infisical, contact sales@infisical.com to purchase an enterprise license.
+</Info>
+
+## Prerequisites
+
+- The Certificate Manager **Admin** role to create a Certificate Manager alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
+- An HTTPS endpoint that accepts POST requests
+
+## Step 1: Start an alert
+
+<StartAlert />
+
+## Step 2: Add the webhook channel
 
 <Steps>
   <Step>
-    [Create an alert](/documentation/platform/pki/applications/alerting/overview#create-an-alert) in your application, or edit an existing one.
+    Select **Add Channel** > **Webhook** and enter your endpoint's **URL**. The URL must use HTTPS.
   </Step>
   <Step>
-    Select **Add Channel** > **Webhook** and enter the **URL** of your endpoint. The URL must use HTTPS.
+    If your endpoint requires authentication, under **Authentication**, select **Bearer Token**, **Basic Auth**, or **API Key**, and enter the [credentials](#authentication) it expects.
   </Step>
   <Step>
-    Optionally, enter a **Signing Secret** so your endpoint can [verify the signature](#verify-the-signature) of each request.
+    Optionally, select **Add Signing Secret** and enter a secret, so your endpoint can [verify the signature](#verify-the-signature) of each request.
   </Step>
   <Step>
-    Optionally, select **Send test** to send a test notification to the channel.
+    Optionally, select **Add Header** to send [custom headers](#custom-headers) with each request.
+  </Step>
+  <Step>
+    Optionally, select **Send test** to send a test request to your endpoint.
   </Step>
   <Step>
     Select **Continue**, check the **Review** step, and select **Create Alert**.
   </Step>
 </Steps>
 
+<Check>
+  Your alert is set up. Infisical sends a POST request to your endpoint whenever the alert fires.
+</Check>
+
+## Authentication
+
+A channel can have one authentication method, which Infisical sends as a header on each request:
+
+| Type | What you enter | Header that Infisical sends |
+|------|----------------|-----------------------------|
+| **Bearer Token** | A token | `Authorization: Bearer <token>` |
+| **Basic Auth** | A username and a password | `Authorization: Basic <base64 of username:password>` |
+| **API Key** | A header name, such as `X-API-Key`, and the key | `<header name>: <key>` |
+
+For an `Authorization` scheme other than `Bearer`, such as `GenieKey <key>`, select **API Key**, enter `Authorization` as the header name, and enter the full value, including the scheme.
+
+Infisical doesn't show saved credentials again. When you edit the channel, leave a field blank to keep its saved value. If you change the URL, enter the credentials again, because Infisical only sends them to the URL they were saved with.
+
+## Custom headers
+
+Infisical sends custom headers with each request, such as an `X-Env` header your endpoint uses to route alerts:
+
+- Anyone who can view the alert can see header values, so put credentials, including any `Authorization` header, in [authentication](#authentication)
+- A channel can have up to 20 custom headers, and header names, values, and authentication credentials can total up to 4,096 characters
+- Infisical sets `Content-Type`, `Content-Length`, `Transfer-Encoding`, `Connection`, `Host`, and `x-infisical-signature` itself, so you can't add them
+
 ## Webhook event types
 
-Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type` and `subject` fields name the event:
+Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type` field names the event, and application alerts and Certificate Manager alerts use different values:
 
-| Event | `type` | `subject` |
-|-------|--------|-----------|
-| Expiration | `com.infisical.cert-manager.application.certificate.expiry` | `cert-manager.application.certificate.expiry` |
-| Issuance | `com.infisical.cert-manager.application.certificate.issuance` | `cert-manager.application.certificate.issuance` |
-| Renewal | `com.infisical.cert-manager.application.certificate.renewal` | `cert-manager.application.certificate.renewal` |
-| Revocation | `com.infisical.cert-manager.application.certificate.revocation` | `cert-manager.application.certificate.revocation` |
+| Event | Application alert `type` | Certificate Manager alert `type` |
+|-------|--------------------------|----------------------------------|
+| Expiration | `com.infisical.cert-manager.application.certificate.expiry` | `com.infisical.cert-manager.certificate.expiry` |
+| Issuance | `com.infisical.cert-manager.application.certificate.issuance` | `com.infisical.cert-manager.certificate.issuance` |
+| Renewal | `com.infisical.cert-manager.application.certificate.renewal` | `com.infisical.cert-manager.certificate.renewal` |
+| Revocation | `com.infisical.cert-manager.application.certificate.revocation` | `com.infisical.cert-manager.certificate.revocation` |
+| Signer certificate expiration | Not available | `com.infisical.cert-manager.signer.certificate.expiry` |
+
+The `subject` field is the same value without the `com.infisical.` prefix.
 
 ## Webhook payload format
 
 `data.items` lists the certificates the alert fired for. Each item has the certificate's ID, a `title` (its common name, or its first SAN or serial number when it has none), a one-line `summary`, a `severity`, and a list of display `fields`. To act on a certificate in code, read `resource` instead of `fields`: it holds the certificate's typed values, with ISO 8601 dates and the raw revocation reason code. An expiration request can include several certificates, and `data.alert.condition` holds the alert's lead time as you entered it, such as `30d` or `2w`. Issuance, renewal, and revocation requests include the one certificate the event was about.
 
+To find out which kind of alert sent a request, read `data.alert.resourceType`:
+
+- `cert-manager.application`: an application alert, with the application's ID in `data.alert.resourceId`
+- `cert-manager`: a Certificate Manager alert
+- `cert-manager.signer`: a signer certificate expiration alert, whose items list the signers in `resource.signerIds` and `resource.signerNames`
+
 <Note>
-  Only alerts created in an application send this payload. Alerts created before certificate alerts moved to applications keep sending the older `com.infisical.pki.certificate.*` event types with a `data.certificates` list. If one endpoint receives both, check the `type` field to tell them apart.
+  Alerts created before certificate alerts moved to applications keep sending the older `com.infisical.pki.certificate.*` event types with a `data.certificates` list. If one endpoint receives both, check the `type` field to tell them apart.
 </Note>
 
 <Tabs>
   <Tab title="Expiration">
-    ```json
+    ```json expandable
     {
       "specversion": "1.0",
       "type": "com.infisical.cert-manager.application.certificate.expiry",
@@ -104,7 +157,7 @@ Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type
   <Tab title="Revocation">
     Revocation items also include a **Revocation Reason** field. Issuance and renewal requests have the same shape without that field.
 
-    ```json
+    ```json expandable
     {
       "specversion": "1.0",
       "type": "com.infisical.cert-manager.application.certificate.revocation",
@@ -157,6 +210,110 @@ Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type
     }
     ```
   </Tab>
+  <Tab title="Certificate Manager alert">
+    A Certificate Manager alert sends the same payload as an application alert, with `resourceType` set to `cert-manager`. This example shows a revocation:
+
+    ```json expandable
+    {
+      "specversion": "1.0",
+      "type": "com.infisical.cert-manager.certificate.revocation",
+      "source": "/alerts/453421e2-2e73-4700-92c8-60ccd3e7073e",
+      "id": "8360c717-097a-4592-a2b0-63c494c3b558",
+      "time": "2026-10-05T21:37:35.935Z",
+      "datacontenttype": "application/json",
+      "subject": "cert-manager.certificate.revocation",
+      "data": {
+        "alert": {
+          "id": "453421e2-2e73-4700-92c8-60ccd3e7073e",
+          "name": "prod-revocations",
+          "resourceType": "cert-manager"
+        },
+        "items": [
+          {
+            "id": "4f70e08e-ad7a-4f94-ac16-241126ab88ed",
+            "title": "api.example.com",
+            "summary": "Certificate 'api.example.com' was revoked in application 'payments-api'",
+            "severity": "warning",
+            "fields": [
+              { "label": "Serial Number", "value": "77c2b1368a7dd4a8442c61d51d20cbdb2060a1e5" },
+              { "label": "Profile", "value": "tls-server" },
+              { "label": "Application", "value": "payments-api" },
+              { "label": "Expires", "value": "November 4, 2026 at 09:37 PM UTC" },
+              { "label": "Revocation Reason", "value": "Unspecified" }
+            ],
+            "resource": {
+              "id": "4f70e08e-ad7a-4f94-ac16-241126ab88ed",
+              "serialNumber": "77c2b1368a7dd4a8442c61d51d20cbdb2060a1e5",
+              "commonName": "api.example.com",
+              "altNames": [],
+              "status": "revoked",
+              "notBefore": "2026-10-05T21:37:28.426Z",
+              "notAfter": "2026-11-04T21:37:28.426Z",
+              "revokedAt": "2026-10-05T21:37:30.299Z",
+              "revocationReason": 0,
+              "profileId": "8d04ef1b-67cd-4021-8da4-b3096d11133b",
+              "profileName": "tls-server",
+              "applicationId": "d6e7232b-ffa5-48bf-9133-4731c6d001a0",
+              "applicationName": "payments-api"
+            }
+          }
+        ],
+        "metadata": {
+          "totalItems": 1,
+          "viewUrl": "https://app.infisical.com/organizations/<org-id>/cert-manager/inventory"
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Signer certificate expiration">
+    ```json expandable
+    {
+      "specversion": "1.0",
+      "type": "com.infisical.cert-manager.signer.certificate.expiry",
+      "source": "/alerts/9b3c1d2e-5f6a-4b7c-8d9e-0f1a2b3c4d5e",
+      "id": "2c4e6a8b-1d3f-4a5c-9e7b-0d2f4a6c8e1b",
+      "time": "2026-10-05T00:05:00.000Z",
+      "datacontenttype": "application/json",
+      "subject": "cert-manager.signer.certificate.expiry",
+      "data": {
+        "alert": {
+          "id": "9b3c1d2e-5f6a-4b7c-8d9e-0f1a2b3c4d5e",
+          "name": "signer-expiry",
+          "resourceType": "cert-manager.signer"
+        },
+        "items": [
+          {
+            "id": "7e1f3a5c-9b2d-4e6f-8a0c-1d3e5f7a9b2c",
+            "title": "release signing",
+            "summary": "Certificate 'release signing' of signer 'release-signer' expires on October 25, 2026 at 12:00 AM UTC",
+            "severity": "warning",
+            "fields": [
+              { "label": "Signer", "value": "release-signer" },
+              { "label": "Serial Number", "value": "0a1b2c3d4e5f60718293a4b5c6d7e8f901234567" },
+              { "label": "Expires", "value": "October 25, 2026 at 12:00 AM UTC" }
+            ],
+            "resource": {
+              "id": "7e1f3a5c-9b2d-4e6f-8a0c-1d3e5f7a9b2c",
+              "serialNumber": "0a1b2c3d4e5f60718293a4b5c6d7e8f901234567",
+              "commonName": "release signing",
+              "altNames": [],
+              "status": "active",
+              "notBefore": "2025-10-25T00:00:00.000Z",
+              "notAfter": "2026-10-25T00:00:00.000Z",
+              "signerIds": ["3d5f7a9b-2c4e-4f6a-8b0d-1e3f5a7c9e2b"],
+              "signerNames": ["release-signer"]
+            }
+          }
+        ],
+        "metadata": {
+          "totalItems": 1,
+          "viewUrl": "https://app.infisical.com/organizations/<org-id>/cert-manager/code-signing"
+        }
+      }
+    }
+    ```
+  </Tab>
 </Tabs>
 
 ## Webhook signature verification
@@ -199,20 +356,3 @@ function verifyWebhookSignature(header, body, secret) {
   );
 }
 ```
-
-## What's next?
-
-<CardGroup cols={2}>
-  <Card title="Slack" icon="slack" iconType="brands" href="/documentation/platform/pki/applications/alerting/slack-alerts">
-    Send alerts to a Slack channel.
-  </Card>
-  <Card title="PagerDuty" icon="radio-tower" href="/documentation/platform/pki/applications/alerting/pagerduty-alerts">
-    Create incidents in PagerDuty.
-  </Card>
-  <Card title="Certificate syncs" icon="refresh-cw" href="/documentation/platform/pki/applications/certificate-syncs/overview">
-    Push certificates to cloud destinations.
-  </Card>
-  <Card title="Certificates" icon="list" href="/documentation/platform/pki/applications/certificates">
-    View and manage certificates.
-  </Card>
-</CardGroup>

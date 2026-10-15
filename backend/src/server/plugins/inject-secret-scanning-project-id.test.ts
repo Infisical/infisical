@@ -1,3 +1,4 @@
+import cookie from "@fastify/cookie";
 import Fastify, { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { z } from "zod";
@@ -11,6 +12,7 @@ const ORG_ID = "org-1";
 const ACTIVE_PROJECT_ID = "11111111-1111-4111-8111-111111111111";
 const OLDER_PROJECT_ID = "22222222-2222-4222-8222-222222222222";
 const UNKNOWN_PROJECT_ID = "33333333-3333-4333-8333-333333333333";
+const COOKIE_NAME = `infisical-ss-active-project-${ORG_ID}`;
 
 const buildServer = async ({
   activeProjectId = ACTIVE_PROJECT_ID as string | null,
@@ -32,6 +34,7 @@ const buildServer = async ({
     return reply.status(statusCode).send({ message: error.message });
   });
 
+  await app.register(cookie);
   app.decorate("services", {
     secretScanningV2ProjectResolver: { findActiveProjectId, isSecretScanningProject }
   } as never);
@@ -127,6 +130,63 @@ describe("injectSecretScanningProjectId", () => {
     });
 
     expect(res.json()).toEqual({ projectId: OLDER_PROJECT_ID });
+  });
+
+  test("uses the cookie's project when no projectId is passed", async () => {
+    const server = await buildServer();
+    app = server.app;
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v2/secret-scanning/data-sources",
+      cookies: { [COOKIE_NAME]: OLDER_PROJECT_ID }
+    });
+
+    expect(res.json()).toEqual({ projectId: OLDER_PROJECT_ID });
+    expect(server.isSecretScanningProject).toHaveBeenCalledWith(OLDER_PROJECT_ID, ORG_ID);
+    expect(server.findActiveProjectId).not.toHaveBeenCalled();
+  });
+
+  test("prefers an explicit projectId over the cookie", async () => {
+    const server = await buildServer();
+    app = server.app;
+
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/v2/secret-scanning/data-sources?projectId=${ACTIVE_PROJECT_ID}`,
+      cookies: { [COOKIE_NAME]: OLDER_PROJECT_ID }
+    });
+
+    expect(res.json()).toEqual({ projectId: ACTIVE_PROJECT_ID });
+    expect(server.isSecretScanningProject).toHaveBeenCalledTimes(1);
+  });
+
+  test("falls back to the active project when the cookie's project is not in the org", async () => {
+    const server = await buildServer();
+    app = server.app;
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v2/secret-scanning/data-sources",
+      cookies: { [COOKIE_NAME]: UNKNOWN_PROJECT_ID }
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ projectId: ACTIVE_PROJECT_ID });
+  });
+
+  test("ignores a cookie that is not a UUID or belongs to another org", async () => {
+    const server = await buildServer();
+    app = server.app;
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v2/secret-scanning/data-sources",
+      cookies: { [COOKIE_NAME]: "not-a-uuid", "infisical-ss-active-project-org-2": OLDER_PROJECT_ID }
+    });
+
+    expect(res.json()).toEqual({ projectId: ACTIVE_PROJECT_ID });
+    expect(server.isSecretScanningProject).not.toHaveBeenCalled();
   });
 
   test("rejects a projectId that is not a Secret Scanning project in the org", async () => {
