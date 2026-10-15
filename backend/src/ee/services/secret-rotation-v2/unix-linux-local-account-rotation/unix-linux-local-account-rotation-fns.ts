@@ -187,6 +187,7 @@ const runPasswordCommand = async (client: Client, command: string, appConnection
     stream,
     secrets: [appConnectionPassword],
     advance: (ctx) => {
+      output = ctx.unmatched;
       const prompt = SUDO_PROMPT.exec(ctx.unmatched);
       if (!prompt) return false;
       if (!appConnectionPassword) {
@@ -200,13 +201,12 @@ const runPasswordCommand = async (client: Client, command: string, appConnection
       return true;
     },
     resolveOnClose: (ctx) => {
-      output = ctx.transcript.read();
       return exitCode === 0
         ? { resolve: true }
         : {
             resolve: false,
             error: new Error(
-              `Password rotation command '${command}' failed. Check the SSH account's permissions. Output: ${output}`
+              `Password rotation command '${command}' failed. Check the SSH account's permissions. Output: ${ctx.transcript.read()}`
             )
           };
     },
@@ -222,35 +222,64 @@ export const changeManagedPassword = async (
   targetUsername: string,
   newPassword: string,
   useSudo: boolean = false,
-  appConnectionPassword?: string
+  appConnectionPassword?: string,
+  currentPassword?: string
 ): Promise<void> => {
   const systemName = await runPasswordCommand(client, "uname -s");
-  const command = useSudo ? `LC_ALL=C sudo passwd ${targetUsername}` : `LC_ALL=C passwd ${targetUsername}`;
-  const stream = await execCommandWithPty(client, command);
+  let updateFlagsCommand: string | undefined;
+  let restoreFlagsCommand: string | undefined;
 
-  await runManagedPasswordChange(stream, newPassword, appConnectionPassword);
+  if (systemName.trim() === "AIX") {
+    const pwdadm = useSudo ? "LC_ALL=C sudo pwdadm" : "LC_ALL=C pwdadm";
+    const user = `'${targetUsername.replaceAll("'", "'\\''")}'`;
+    const status = await runPasswordCommand(client, `${pwdadm} -q ${user}`, appConnectionPassword);
+    const flagsMatch = new RE2("^\\s*flags\\s*=[ \\t]*(.*)$", "m").exec(status);
+    if (!flagsMatch) throw new Error("Unable to read AIX password flags. Check the SSH account's pwdadm permissions.");
 
-  if (systemName.trim() !== "AIX") return;
+    const flags = flagsMatch[1]
+      .split(",")
+      .map((flag) => flag.trim())
+      .filter(Boolean);
+    if (flags.some((flag) => !["ADMCHG", "ADMIN", "NOCHECK"].includes(flag))) {
+      throw new Error("Unable to recognize AIX password flags. Existing flags have not been modified.");
+    }
 
-  const pwdadm = useSudo ? "LC_ALL=C sudo pwdadm" : "LC_ALL=C pwdadm";
-  const user = `'${targetUsername.replace(/'/g, "'\\''")}'`;
-  const status = await runPasswordCommand(client, `${pwdadm} -q ${user}`, appConnectionPassword);
-  const flagsMatch = /^\s*flags\s*=[ \t]*(.*)$/m.exec(status);
-  if (!flagsMatch) throw new Error("Unable to read AIX password flags. Check the SSH account's pwdadm permissions.");
-
-  const flags = flagsMatch[1]
-    .split(",")
-    .map((flag) => flag.trim())
-    .filter(Boolean);
-  if (flags.some((flag) => !["ADMCHG", "ADMIN", "NOCHECK"].includes(flag))) {
-    throw new Error("Unable to recognize AIX password flags. Existing flags have not been modified.");
+    // pwdadm -c clears every flag, so retain ADMIN/NOCHECK when removing ADMCHG.
+    const flagsCommand = (value: string[]) => `${pwdadm} ${value.length ? `-f ${value.join(",")}` : "-c"} ${user}`;
+    updateFlagsCommand = flagsCommand(flags.filter((flag) => flag !== "ADMCHG"));
+    restoreFlagsCommand = flagsCommand(flags);
+    // Reapply existing flags to check write permissions without changing the account's state.
+    await runPasswordCommand(client, restoreFlagsCommand, appConnectionPassword);
   }
-  if (!flags.includes("ADMCHG")) return;
 
-  // pwdadm -c clears every flag, so retain ADMIN/NOCHECK when removing ADMCHG.
-  const retainedFlags = flags.filter((flag) => flag !== "ADMCHG");
-  const option = retainedFlags.length ? `-f ${retainedFlags.join(",")}` : "-c";
-  await runPasswordCommand(client, `${pwdadm} ${option} ${user}`, appConnectionPassword);
+  const command = useSudo ? `LC_ALL=C sudo passwd ${targetUsername}` : `LC_ALL=C passwd ${targetUsername}`;
+  const changePassword = async (password: string) => {
+    const stream = await execCommandWithPty(client, command);
+    await runManagedPasswordChange(stream, password, appConnectionPassword);
+  };
+  await changePassword(newPassword);
+
+  if (!updateFlagsCommand) return;
+  try {
+    await runPasswordCommand(client, updateFlagsCommand, appConnectionPassword);
+  } catch {
+    if (currentPassword && restoreFlagsCommand) {
+      try {
+        await changePassword(currentPassword);
+        await runPasswordCommand(client, restoreFlagsCommand, appConnectionPassword);
+      } catch {
+        throw new Error(
+          "AIX password flag cleanup failed, and the previous password and flags could not be restored. Fix pwdadm permissions and reconcile the rotation."
+        );
+      }
+      throw new Error(
+        "AIX password flag cleanup failed. The previous password and flags were restored. Check the SSH account's pwdadm permissions before retrying."
+      );
+    }
+    throw new Error(
+      "AIX password flag cleanup failed after changing the password. Fix pwdadm permissions and retry or reconcile the rotation."
+    );
+  }
 };
 
 export const runSelfPasswordChange = (
@@ -573,7 +602,14 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
             conn.method === SshConnectionMethod.Password
               ? (conn.credentials as { password: string }).password
               : undefined;
-          await changeManagedPassword(client, username, newPassword, shouldUseSudo, appConnectionPassword);
+          await changeManagedPassword(
+            client,
+            username,
+            newPassword,
+            shouldUseSudo,
+            appConnectionPassword,
+            currentPassword
+          );
         }
       } finally {
         client.destroy();
