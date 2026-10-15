@@ -20,7 +20,7 @@ export const KmipServerClientsSection = () => {
       <CardHeader>
         <CardTitle>
           <h2 id="kmip-server-clients-title">Connecting KMIP Clients</h2>
-          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/kms/kmip" />
+          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/kms/kmip-clients" />
         </CardTitle>
         <CardDescription>
           KMIP clients authenticate to this server with a client certificate to run key operations.
