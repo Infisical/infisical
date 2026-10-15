@@ -180,12 +180,12 @@ const BulkReviewChangeRequestsDialogContent = ({
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <Badge variant="success">
             <CheckIcon />
-            {succeededCount} {ACTION_RESULT_LABELS[action].toLowerCase()}
+            {succeededCount} {ACTION_RESULT_LABELS[action]}
           </Badge>
           {failedResults.length > 0 && (
             <Badge variant="danger">
               <CircleXIcon />
-              {failedResults.length} failed
+              {failedResults.length} Failed
             </Badge>
           )}
           {failedResults.length > 0 && (
