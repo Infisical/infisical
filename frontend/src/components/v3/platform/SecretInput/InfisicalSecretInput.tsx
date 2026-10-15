@@ -1,4 +1,4 @@
-import { forwardRef, TextareaHTMLAttributes, useCallback, useRef } from "react";
+import { forwardRef, TextareaHTMLAttributes, useCallback, useRef, useState } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -6,7 +6,6 @@ import { createNotification } from "@app/components/notifications";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject, useProjectPermission, useSubscription } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
-import { useDebounce, useToggle } from "@app/hooks";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { SecretInput, SecretInputVariant } from "./SecretInput";
@@ -69,51 +68,48 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const canCrossProjectShare =
       subscription?.crossProjectSecretSharing && currentOrg?.allowCrossProjectSecretSharing;
 
-    const [debouncedValue] = useDebounce(value, 100);
-
     const inputRef = useRef<HTMLTextAreaElement>(null);
-    const [isFocused, setIsFocused] = useToggle(false);
-    const currentCursorPosition = inputRef.current?.selectionStart || 0;
+    const [isSuggestionActive, setIsSuggestionActive] = useState(false);
+    const [cursorPosition, setCursorPosition] = useState(0);
 
-    const openRefLeft = (() => {
-      const left = getIndexOfUnclosedRefToTheLeft(debouncedValue, currentCursorPosition - 1);
-      if (left === -1) return -1;
-      return left;
-    })();
+    const openRefLeft = getIndexOfUnclosedRefToTheLeft(value, cursorPosition - 1);
 
-    const referenceContent =
-      openRefLeft !== -1 ? debouncedValue.slice(openRefLeft + 1, currentCursorPosition) : "";
+    const referenceContent = openRefLeft !== -1 ? value.slice(openRefLeft + 1, cursorPosition) : "";
 
     // Don't open the wizard for cross-project references when cross-project
     // sharing is unavailable (e.g. after a license downgrade).
     const isCrossProjectRefWithoutAccess =
       referenceContent.startsWith("@") && !canCrossProjectShare;
 
-    const isPopupOpen = openRefLeft !== -1 && isFocused && !isCrossProjectRefWithoutAccess;
+    const isPopupOpen = openRefLeft !== -1 && isSuggestionActive && !isCrossProjectRefWithoutAccess;
 
-    const handleWizardSelect = (selectedReference: string) => {
+    const replaceReferenceContent = (content: string, shouldCloseReference: boolean) => {
       const left = openRefLeft + 1; // position right after ${
       const rightBracketIndex = getIndexOfUnclosedRefToTheRight(value, left);
       const isEnclosed = rightBracketIndex !== -1;
 
       const lhsValue = value.slice(0, left);
       const rhsValue = value.slice(
-        rightBracketIndex !== -1 ? rightBracketIndex + 1 : currentCursorPosition
+        shouldCloseReference && isEnclosed ? rightBracketIndex + 1 : cursorPosition
       );
 
-      const newValue = `${lhsValue}${selectedReference}${isEnclosed ? "" : "}"}${rhsValue}`;
-      onChange?.(newValue);
+      const closingBracket = shouldCloseReference && !isEnclosed ? "}" : "";
+      onChange?.(`${lhsValue}${content}${closingBracket}${rhsValue}`);
 
+      const nextCursorPosition = lhsValue.length + content.length + (shouldCloseReference ? 1 : 0);
+      setCursorPosition(nextCursorPosition);
       const delay = setTimeout(() => {
         clearTimeout(delay);
         if (inputRef.current) {
-          const cursorPos = lhsValue.length + selectedReference.length + 1; // +1 for }
-          inputRef.current.selectionStart = cursorPos;
-          inputRef.current.selectionEnd = cursorPos;
+          inputRef.current.selectionStart = nextCursorPosition;
+          inputRef.current.selectionEnd = nextCursorPosition;
         }
       }, 10);
+    };
 
-      setIsFocused.off();
+    const handleWizardSelect = (selectedReference: string) => {
+      replaceReferenceContent(selectedReference, true);
+      setIsSuggestionActive(false);
     };
 
     const handleRef = useCallback(
@@ -236,42 +232,50 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     );
 
     return (
-      <PopoverPrimitive.Root open={isPopupOpen}>
-        <PopoverPrimitive.Trigger asChild>
+      <PopoverPrimitive.Root
+        open={isPopupOpen}
+        onOpenChange={(open) => {
+          if (!open) setIsSuggestionActive(false);
+        }}
+      >
+        <PopoverPrimitive.Anchor asChild>
           <SecretInput
             {...props}
             canEditButNotView={canEditButNotView}
             ref={handleRef}
             value={value}
-            onFocus={(evt) => {
-              if (props.onFocus) props.onFocus(evt);
-              setIsFocused.on();
-            }}
             onBlur={(evt) => {
               if (!(evt.relatedTarget?.getAttribute("aria-label") === "suggestion-item"))
-                setIsFocused.off();
+                setIsSuggestionActive(false);
               if (props.onBlur) props.onBlur(evt);
+            }}
+            onSelect={(evt) => {
+              setCursorPosition(evt.currentTarget.selectionStart);
+              if (props.onSelect) props.onSelect(evt);
             }}
             onChange={(e) => {
               onChange?.(e.target.value);
-              setIsFocused.on();
+              setCursorPosition(e.target.selectionStart);
+              setIsSuggestionActive(true);
             }}
             containerClassName={containerClassName}
             onClickSegment={handleClickSegment}
           />
-        </PopoverPrimitive.Trigger>
+        </PopoverPrimitive.Anchor>
         <PopoverPrimitive.Portal>
           <PopoverPrimitive.Content
             align="start"
             collisionPadding={8}
             onOpenAutoFocus={(e) => e.preventDefault()}
             onMouseDown={(e) => e.preventDefault()}
-            className="relative top-2 z-[100] max-h-80 thin-scrollbar overflow-auto rounded-md border border-border bg-popover text-foreground shadow-md"
+            onWheel={(e) => e.stopPropagation()}
+            className="relative top-2 z-[100] max-h-80 thin-scrollbar overflow-auto overscroll-contain rounded-md border border-border bg-popover text-foreground shadow-md"
             style={{ width: "var(--radix-popover-trigger-width)", minWidth: "320px" }}
           >
             <SecretReferenceWizard
               isEnabled={isPopupOpen}
               onSelect={handleWizardSelect}
+              onNavigate={(content) => replaceReferenceContent(content, false)}
               onFocusItem={() => inputRef.current?.focus()}
               currentInput={referenceContent}
             />
