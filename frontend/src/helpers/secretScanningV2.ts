@@ -52,96 +52,20 @@ export const doesDataSourceSupportDiscovery = ({
     (config as { scope?: string } | undefined)?.scope !== GitLabDataSourceScope.Group
   );
 
-// a project-scoped GitLab data source scans exactly one project, so it has no include list to add to
+// a project-scoped GitLab data source scans exactly one project, so projects can't be added or removed
 export const canAddSecretScanningResources = (dataSource: TSecretScanningDataSource) =>
   !(
     dataSource.type === SecretScanningDataSource.GitLab &&
     dataSource.config.scope === GitLabDataSourceScope.Project
   );
 
-export const getConfigWithIncludedResource = (
-  dataSource: TSecretScanningDataSource,
-  resourceName: string
-): TSecretScanningDataSource["config"] | null => {
-  const append = (names: string[]) => [...names.filter((name) => name !== "*"), resourceName];
-
-  switch (dataSource.type) {
-    case SecretScanningDataSource.Bitbucket:
-    case SecretScanningDataSource.GitHub:
-      return { ...dataSource.config, includeRepos: append(dataSource.config.includeRepos) };
-    case SecretScanningDataSource.GitLab:
-      if (dataSource.config.scope === GitLabDataSourceScope.Project) return null;
-      return {
-        ...dataSource.config,
-        includeProjects: append(dataSource.config.includeProjects)
-      };
-    default:
-      return null;
-  }
-};
-
-// mirrors what the backend does with resources added to the include list
+// mirrors what the backend does with resources added to a data source
 export const getAddedResourceScanDescription = (
   dataSource: Pick<TSecretScanningDataSource, "isHistoricalScanEnabled" | "isScanNewCommitsEnabled">
 ) => {
   if (dataSource.isHistoricalScanEnabled) return "Their full history will be scanned for secrets.";
   if (dataSource.isScanNewCommitsEnabled) return "Only commits pushed from now on will be scanned.";
   return "Nothing will be scanned until Historical Scan or Scan New Commits is turned on in Settings.";
-};
-
-export const getConfigWithAllResourcesIncluded = (
-  dataSource: TSecretScanningDataSource
-): TSecretScanningDataSource["config"] | null => {
-  switch (dataSource.type) {
-    case SecretScanningDataSource.Bitbucket:
-    case SecretScanningDataSource.GitHub:
-      return { ...dataSource.config, includeRepos: ["*"] };
-    case SecretScanningDataSource.GitLab:
-      if (dataSource.config.scope === GitLabDataSourceScope.Project) return null;
-      return { ...dataSource.config, includeProjects: ["*"] };
-    default:
-      return null;
-  }
-};
-
-export const areAllSecretScanningResourcesIncluded = (dataSource: TSecretScanningDataSource) => {
-  switch (dataSource.type) {
-    case SecretScanningDataSource.Bitbucket:
-    case SecretScanningDataSource.GitHub:
-      return dataSource.config.includeRepos.includes("*");
-    case SecretScanningDataSource.GitLab:
-      return (
-        dataSource.config.scope === GitLabDataSourceScope.Project ||
-        dataSource.config.includeProjects.includes("*")
-      );
-    default:
-      return false;
-  }
-};
-
-export const isSecretScanningResourceIncluded = (
-  dataSource: TSecretScanningDataSource,
-  resourceName: string
-) => {
-  switch (dataSource.type) {
-    case SecretScanningDataSource.Bitbucket:
-    case SecretScanningDataSource.GitHub:
-      return (
-        dataSource.config.includeRepos.includes("*") ||
-        dataSource.config.includeRepos.includes(resourceName)
-      );
-    case SecretScanningDataSource.GitLab:
-      if (dataSource.config.scope === GitLabDataSourceScope.Project) return true;
-
-      return (
-        dataSource.config.includeProjects.includes("*") ||
-        dataSource.config.includeProjects.includes(resourceName)
-      );
-    default:
-      throw new Error(
-        `Unhandled Data Source Type: ${(dataSource as TSecretScanningDataSource).type}`
-      );
-  }
 };
 
 export const RESOURCE_DESCRIPTION_HELPER: Record<

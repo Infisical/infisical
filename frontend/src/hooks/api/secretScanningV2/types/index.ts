@@ -86,6 +86,29 @@ export type TTriggerSecretScanningDataSourceDTO = {
   projectId: string;
 };
 
+export type TAddSecretScanningResourceDTO = {
+  type: SecretScanningDataSource;
+  dataSourceId: string;
+  resourceName: string;
+  // required for query invalidation
+  projectId: string;
+};
+
+export type TAddAllSecretScanningResourcesDTO = {
+  type: SecretScanningDataSource;
+  dataSourceId: string;
+  // required for query invalidation
+  projectId: string;
+};
+
+export type TRemoveSecretScanningResourceDTO = {
+  type: SecretScanningDataSource;
+  dataSourceId: string;
+  resourceId: string;
+  // required for query invalidation
+  projectId: string;
+};
+
 export type TUpdateSecretScanningFinding = {
   findingId: string;
   status: SecretScanningFindingStatus;

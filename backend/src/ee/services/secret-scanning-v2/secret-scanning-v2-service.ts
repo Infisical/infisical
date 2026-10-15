@@ -17,7 +17,11 @@ import {
   writeTextToFile
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { githubSecretScanningService } from "@app/ee/services/secret-scanning-v2/github/github-secret-scanning-service";
-import { SecretScanningFindingStatus } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import { GitLabDataSourceScope } from "@app/ee/services/secret-scanning-v2/gitlab/gitlab-secret-scanning-enums";
+import {
+  SecretScanningDataSource,
+  SecretScanningFindingStatus
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { SECRET_SCANNING_FACTORY_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-factory";
 import {
   doesConfigUpdateIncludeNewResources,
@@ -29,15 +33,19 @@ import {
   listSecretScanningDataSourceOptions
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import {
+  AUTO_SYNC_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP,
   SECRET_SCANNING_DATA_SOURCE_NAME_MAP
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import {
+  TAddAllSecretScanningResourcesDTO,
+  TAddSecretScanningResourceDTO,
   TCreateSecretScanningDataSourceDTO,
   TDeleteSecretScanningDataSourceDTO,
   TFindSecretScanningDataSourceByIdDTO,
   TFindSecretScanningDataSourceByNameDTO,
   TListSecretScanningDataSourcesByProjectId,
+  TRemoveSecretScanningResourceDTO,
   TSecretScanningDataSource,
   TSecretScanningDataSourceCredentials,
   TSecretScanningDataSourceInput,
@@ -234,6 +242,48 @@ export const secretScanningV2ServiceFactory = ({
     return dataSource as TSecretScanningDataSource;
   };
 
+  // Providers that hook each resource (GitLab account scope) keep their webhooks in line with the data source's
+  // resources. Returns undefined when nothing changes.
+  const prepareResourceWebhooks = async (
+    dataSource: TSecretScanningDataSourceWithConnection,
+    encryptedCredentials: Buffer | null | undefined,
+    resourceNames: string[]
+  ) => {
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({ appConnectionDAL, kmsService });
+    if (!factory.updateWebhook || !isDataSourceWebhookRequired(dataSource)) return undefined;
+
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: dataSource.projectId
+    });
+
+    if (!encryptedCredentials) {
+      const credentials = await factory.setupWebhook({ dataSource, resourceNames });
+      if (!credentials) return undefined;
+
+      return {
+        encryptedCredentials: encryptor({ plainText: Buffer.from(JSON.stringify(credentials)) }).cipherTextBlob,
+        finalize: async () => {},
+        revert: () => factory.teardown({ dataSource, credentials })
+      };
+    }
+
+    const update = await factory.updateWebhook({
+      dataSource,
+      resourceNames,
+      credentials: JSON.parse(
+        decryptor({ cipherTextBlob: encryptedCredentials }).toString()
+      ) as TSecretScanningDataSourceCredentials
+    });
+    if (!update) return undefined;
+
+    return {
+      encryptedCredentials: encryptor({ plainText: Buffer.from(JSON.stringify(update.credentials)) }).cipherTextBlob,
+      finalize: update.finalize,
+      revert: update.revert
+    };
+  };
+
   const createSecretScanningDataSource = async (
     { isAutoScanEnabled, ...dto }: TCreateSecretScanningDataSourceDTO,
     actor: OrgServiceActor
@@ -338,23 +388,33 @@ export const secretScanningV2ServiceFactory = ({
       );
 
       // A data source created with an empty include list has nothing to scan yet; queueing would only fail.
-      if (
-        payload.isHistoricalScanEnabled &&
-        doesDataSourceIncludeResources(payload as TSecretScanningDataSourceTypeAndConfig)
-      ) {
+      if (doesDataSourceIncludeResources(payload as TSecretScanningDataSourceTypeAndConfig)) {
+        const createdDataSourceWithConnection = {
+          ...createdDataSource,
+          connection
+        } as TSecretScanningDataSourceWithConnection;
+
         try {
-          await secretScanningV2Queue.queueDataSourceFullScan(
-            {
-              ...createdDataSource,
-              connection
-            } as TSecretScanningDataSourceWithConnection,
-            { triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined }
-          );
+          // The include list is only read here: from now on the data source covers the resources it has rows for.
+          if (payload.isHistoricalScanEnabled) {
+            await secretScanningV2Queue.queueDataSourceFullScan(createdDataSourceWithConnection, {
+              triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined
+            });
+          } else {
+            const rawResources = await factory.listRawResources(createdDataSourceWithConnection);
+
+            if (rawResources.length) {
+              await secretScanningV2DAL.resources.upsert(
+                rawResources.map((resource) => ({ ...resource, dataSourceId: createdDataSource.id })),
+                ["externalId", "dataSourceId"]
+              );
+            }
+          }
         } catch (error) {
-          // Deliberately non-fatal — a scan that can't be queued shouldn't block creating the data source.
+          // Deliberately non-fatal — the data source is saved, and its resources can still be added from it.
           logger.error(
             error,
-            `secretScanningV2Service: Failed to queue initial full scan on data source creation [dataSourceId=${createdDataSource.id}] [projectId=${payload.projectId}]`
+            `secretScanningV2Service: Failed to set up resources on data source creation [dataSourceId=${createdDataSource.id}] [projectId=${payload.projectId}]`
           );
         }
       }
@@ -449,7 +509,7 @@ export const secretScanningV2ServiceFactory = ({
     }
 
     const dataSourceWithConnection = { ...dataSource, connection } as TSecretScanningDataSourceWithConnection;
-    // Hooks are placed from the include list, so creating them has to see the config this update saves.
+    // A webhook created here has to see the config this update saves.
     const nextDataSourceWithConnection = (
       payload.config ? { ...dataSourceWithConnection, config: payload.config } : dataSourceWithConnection
     ) as TSecretScanningDataSourceWithConnection;
@@ -466,10 +526,13 @@ export const secretScanningV2ServiceFactory = ({
     // Stored credentials are what tells us a webhook exists, so they are added or cleared alongside it.
     let createdCredentials: TSecretScanningDataSourceCredentials;
     let encryptedCredentials: Buffer | null | undefined;
-    let webhookUpdate: Awaited<ReturnType<NonNullable<typeof factory.updateWebhook>>>;
 
     if (isWebhookRequired && !dataSource.encryptedCredentials) {
-      createdCredentials = await factory.setupWebhook({ dataSource: nextDataSourceWithConnection });
+      const resources = await secretScanningV2DAL.resources.find({ dataSourceId });
+      createdCredentials = await factory.setupWebhook({
+        dataSource: nextDataSourceWithConnection,
+        resourceNames: resources.map((resource) => resource.name)
+      });
 
       if (createdCredentials) {
         encryptedCredentials = encryptor({ plainText: Buffer.from(JSON.stringify(createdCredentials)) }).cipherTextBlob;
@@ -482,20 +545,6 @@ export const secretScanningV2ServiceFactory = ({
         ) as TSecretScanningDataSourceCredentials
       });
       encryptedCredentials = null;
-    } else if (isWebhookRequired && dataSource.encryptedCredentials && payload.config && factory.updateWebhook) {
-      webhookUpdate = await factory.updateWebhook({
-        dataSource: dataSourceWithConnection,
-        config: nextDataSourceWithConnection.config,
-        credentials: JSON.parse(
-          decryptor({ cipherTextBlob: dataSource.encryptedCredentials }).toString()
-        ) as TSecretScanningDataSourceCredentials
-      });
-
-      if (webhookUpdate) {
-        encryptedCredentials = encryptor({
-          plainText: Buffer.from(JSON.stringify(webhookUpdate.credentials))
-        }).cipherTextBlob;
-      }
     }
 
     let updatedDataSource: TSecretScanningDataSource;
@@ -510,8 +559,6 @@ export const secretScanningV2ServiceFactory = ({
         await factory.teardown({ dataSource: nextDataSourceWithConnection, credentials: createdCredentials });
       }
 
-      await webhookUpdate?.revert();
-
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({
           message: `A Secret Scanning Data Source with the name "${payload.name}" already exists for the project with ID "${dataSource.projectId}"`
@@ -520,8 +567,6 @@ export const secretScanningV2ServiceFactory = ({
 
       throw err;
     }
-
-    await webhookUpdate?.finalize();
 
     if (
       doesConfigUpdateIncludeNewResources(
@@ -555,6 +600,26 @@ export const secretScanningV2ServiceFactory = ({
               ["externalId", "dataSourceId"]
             );
           }
+        }
+
+        const resources = await secretScanningV2DAL.resources.find({ dataSourceId });
+        const savedDataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
+        const webhook = await prepareResourceWebhooks(
+          updatedDataSourceWithConnection,
+          savedDataSource?.encryptedCredentials,
+          resources.map((resource) => resource.name)
+        );
+
+        if (webhook) {
+          try {
+            await secretScanningV2DAL.dataSources.updateById(dataSourceId, {
+              encryptedCredentials: webhook.encryptedCredentials
+            });
+          } catch (err) {
+            await webhook.revert();
+            throw err;
+          }
+          await webhook.finalize();
         }
       } catch (error) {
         // Deliberately non-fatal: the include list is saved, and the resources can still be scanned manually.
@@ -703,10 +768,251 @@ export const secretScanningV2ServiceFactory = ({
         ...dataSource,
         connection
       } as TSecretScanningDataSourceWithConnection,
-      { resourceExternalId, triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined }
+      {
+        resourceExternalId,
+        triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined,
+        existingResourcesOnly: true
+      }
     );
 
     return dataSource as TSecretScanningDataSource;
+  };
+
+  // Adds one resource by name, or every resource the connection can access when no name is given.
+  const $addSecretScanningResources = async (
+    { type, dataSourceId, resourceName }: TAddAllSecretScanningResourcesDTO & { resourceName?: string },
+    actor: OrgServiceActor
+  ) => {
+    const plan = await licenseService.getPlan(actor.orgId);
+
+    if (!plan.secretScanning)
+      throw new BadRequestError({
+        message:
+          "Failed to add Secret Scanning Resources due to plan restriction. Upgrade plan to enable Secret Scanning."
+      });
+
+    const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
+    const sourceName = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
+
+    if (!dataSource)
+      throw new NotFoundError({
+        message: `Could not find ${sourceName} Data Source with ID "${dataSourceId}"`
+      });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretScanning,
+      projectId: dataSource.projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretScanningDataSourceActions.Edit,
+      ProjectPermissionSub.SecretScanningDataSources
+    );
+
+    if (type !== dataSource.type)
+      throw new BadRequestError({
+        message: `Secret Scanning Data Source with ID "${dataSourceId}" is not configured for ${sourceName}`
+      });
+
+    if (dataSource.isDisconnected)
+      throw new BadRequestError({
+        message: `Data Source "${dataSource.name}" is disconnected from ${sourceName}, so resources can't be added to it. Delete it and connect ${sourceName} again.`
+      });
+
+    if (
+      dataSource.type === SecretScanningDataSource.GitLab &&
+      (dataSource.config as { scope?: string }).scope === GitLabDataSourceScope.Project
+    )
+      throw new BadRequestError({
+        message: `Data Source "${dataSource.name}" scans a single GitLab project, so projects can't be added to it.`
+      });
+
+    // GitLab has no account-level webhook, so adding everything would mean a webhook on every project the
+    // connection can access.
+    if (
+      resourceName === undefined &&
+      dataSource.type === SecretScanningDataSource.GitLab &&
+      (dataSource.config as { scope?: string }).scope === GitLabDataSourceScope.Account
+    )
+      throw new BadRequestError({
+        message: `Data Source "${dataSource.name}" isn't scoped to a GitLab group, so projects have to be added one at a time.`
+      });
+
+    let connection: TAppConnection | null = null;
+    if (dataSource.connectionId) {
+      connection = await appConnectionService.validateAppConnectionUsageById(
+        SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSource.type],
+        { connectionId: dataSource.connectionId, projectId: dataSource.projectId },
+        actor
+      );
+    }
+
+    const dataSourceWithConnection = { ...dataSource, connection } as TSecretScanningDataSourceWithConnection;
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type]({ appConnectionDAL, kmsService });
+    const { noun } = AUTO_SYNC_DESCRIPTION_HELPER[dataSource.type];
+
+    let availableResources: Awaited<ReturnType<typeof factory.listRawResources>>;
+    try {
+      availableResources = await factory.listRawResources(getConfigIncludingAllResources(dataSourceWithConnection));
+    } catch (error) {
+      if (error instanceof BadRequestError) throw error;
+
+      logger.error(
+        error,
+        `secretScanningV2Service: Failed to list resources to add [dataSourceId=${dataSourceId}] [projectId=${dataSource.projectId}]`
+      );
+      throw new BadRequestError({
+        message: `Could not list ${noun} from ${sourceName} for Data Source "${dataSource.name}". Check that its App Connection still has access, then try again.`
+      });
+    }
+
+    let requestedResources = availableResources;
+
+    if (resourceName !== undefined) {
+      const resource = availableResources.find((available) => available.name === resourceName);
+
+      if (!resource)
+        throw new BadRequestError({
+          message: `The App Connection for Data Source "${dataSource.name}" can't access "${resourceName}". Check the name, or give the connection access in ${sourceName}.`
+        });
+
+      requestedResources = [resource];
+    }
+
+    const existingResources = await secretScanningV2DAL.resources.find({ dataSourceId });
+    const existingExternalIds = new Set(existingResources.map((resource) => resource.externalId));
+    const newResources = requestedResources.filter((resource) => !existingExternalIds.has(resource.externalId));
+
+    if (!newResources.length) return { resources: [], projectId: dataSource.projectId };
+
+    const webhook = await prepareResourceWebhooks(dataSourceWithConnection, dataSource.encryptedCredentials, [
+      ...existingResources.map((resource) => resource.name),
+      ...newResources.map((resource) => resource.name)
+    ]);
+
+    let addedResources: Awaited<ReturnType<typeof secretScanningV2DAL.resources.upsert>>;
+    try {
+      addedResources = await secretScanningV2DAL.resources.transaction(async (tx) => {
+        if (webhook) {
+          await secretScanningV2DAL.dataSources.updateById(
+            dataSourceId,
+            { encryptedCredentials: webhook.encryptedCredentials },
+            tx
+          );
+        }
+
+        return secretScanningV2DAL.resources.upsert(
+          newResources.map((resource) => ({ ...resource, dataSourceId })),
+          ["externalId", "dataSourceId"],
+          tx
+        );
+      });
+    } catch (err) {
+      await webhook?.revert();
+      throw err;
+    }
+
+    await webhook?.finalize();
+
+    if (dataSource.isHistoricalScanEnabled) {
+      const newExternalIds = new Set(newResources.map((resource) => resource.externalId));
+
+      try {
+        await secretScanningV2Queue.queueDataSourceFullScan(dataSourceWithConnection, {
+          triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined,
+          existingResourcesOnly: true,
+          shouldScanResource: (resource) => newExternalIds.has(resource.externalId)
+        });
+      } catch (error) {
+        // Deliberately non-fatal: the resources are added, and can be scanned from the data source.
+        logger.error(
+          error,
+          `secretScanningV2Service: Failed to queue historical scan of added resources [dataSourceId=${dataSourceId}] [projectId=${dataSource.projectId}]`
+        );
+      }
+    }
+
+    return { resources: addedResources, projectId: dataSource.projectId };
+  };
+
+  const addSecretScanningResource = ({ resourceName, ...dto }: TAddSecretScanningResourceDTO, actor: OrgServiceActor) =>
+    $addSecretScanningResources({ ...dto, resourceName }, actor);
+
+  const addAllSecretScanningResources = (dto: TAddAllSecretScanningResourcesDTO, actor: OrgServiceActor) =>
+    $addSecretScanningResources(dto, actor);
+
+  // Not gated on the plan: a downgraded org must still be able to remove what it added.
+  const removeSecretScanningResource = async (
+    { type, dataSourceId, resourceId }: TRemoveSecretScanningResourceDTO,
+    actor: OrgServiceActor
+  ) => {
+    const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
+    const sourceName = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
+
+    if (!dataSource)
+      throw new NotFoundError({
+        message: `Could not find ${sourceName} Data Source with ID "${dataSourceId}"`
+      });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretScanning,
+      projectId: dataSource.projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretScanningDataSourceActions.Edit,
+      ProjectPermissionSub.SecretScanningDataSources
+    );
+
+    if (type !== dataSource.type)
+      throw new BadRequestError({
+        message: `Secret Scanning Data Source with ID "${dataSourceId}" is not configured for ${sourceName}`
+      });
+
+    const resource = await secretScanningV2DAL.resources.findOne({ id: resourceId, dataSourceId });
+
+    if (!resource)
+      throw new NotFoundError({
+        message: `Could not find Secret Scanning Resource with ID "${resourceId}" for Data Source with ID "${dataSourceId}"`
+      });
+
+    // A disconnected data source can't reach the provider, so its hook is left behind rather than blocking removal.
+    let webhook: Awaited<ReturnType<typeof prepareResourceWebhooks>>;
+    if (dataSource.connection && !dataSource.isDisconnected) {
+      const connection = await decryptAppConnection(dataSource.connection, kmsService);
+      const remainingResources = await secretScanningV2DAL.resources.find({ dataSourceId });
+
+      webhook = await prepareResourceWebhooks(
+        { ...dataSource, connection } as TSecretScanningDataSourceWithConnection,
+        dataSource.encryptedCredentials,
+        remainingResources.filter((remaining) => remaining.id !== resourceId).map((remaining) => remaining.name)
+      );
+    }
+
+    await secretScanningV2DAL.resources.transaction(async (tx) => {
+      if (webhook) {
+        await secretScanningV2DAL.dataSources.updateById(
+          dataSourceId,
+          { encryptedCredentials: webhook.encryptedCredentials },
+          tx
+        );
+      }
+
+      // Cascades to the resource's scans and findings.
+      await secretScanningV2DAL.resources.deleteById(resourceId, tx);
+    });
+
+    await webhook?.finalize();
+
+    return { resource, projectId: dataSource.projectId };
   };
 
   const listSecretScanningResourcesByDataSourceId = async (
@@ -820,10 +1126,13 @@ export const secretScanningV2ServiceFactory = ({
       });
     }
 
+    const existingResources = await secretScanningV2DAL.resources.find({ dataSourceId });
+    const existingExternalIds = new Set(existingResources.map((resource) => resource.externalId));
+
     const resources = rawResources
       .map((resource) => ({
         ...resource,
-        isIncluded: isResourceIncludedByConfig(dataSource as TSecretScanningDataSourceTypeAndConfig, resource.name)
+        isIncluded: existingExternalIds.has(resource.externalId)
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -1174,6 +1483,9 @@ export const secretScanningV2ServiceFactory = ({
     updateSecretScanningDataSource,
     deleteSecretScanningDataSource,
     triggerSecretScanningDataSourceScan,
+    addSecretScanningResource,
+    addAllSecretScanningResources,
+    removeSecretScanningResource,
     listSecretScanningResourcesByDataSourceId,
     listSecretScanningAvailableResourcesByDataSourceId,
     listSecretScanningScansByDataSourceId,

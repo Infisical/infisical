@@ -3994,6 +3994,14 @@ export const SecretScanningDataSources = {
   LIST_SCANS: (type: SecretScanningDataSource) => ({
     dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to list scans for.`
   }),
+  ADD_RESOURCE: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to add resources to.`,
+    resourceName: `The full name of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} resource to scan, as the App Connection lists it. A resource already added is ignored.`
+  }),
+  REMOVE_RESOURCE: (type: SecretScanningDataSource) => ({
+    dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to remove the resource from.`,
+    resourceId: "The ID of the resource to remove. Its scans and findings are deleted with it."
+  }),
   CONFIG: {
     GITHUB: {
       includeRepos:

@@ -138,6 +138,23 @@ export type TTriggerSecretScanningDataSourceDTO = {
   resourceId?: string;
 };
 
+export type TAddSecretScanningResourceDTO = {
+  type: SecretScanningDataSource;
+  dataSourceId: string;
+  resourceName: string;
+};
+
+export type TAddAllSecretScanningResourcesDTO = {
+  type: SecretScanningDataSource;
+  dataSourceId: string;
+};
+
+export type TRemoveSecretScanningResourceDTO = {
+  type: SecretScanningDataSource;
+  dataSourceId: string;
+  resourceId: string;
+};
+
 export type TQueueSecretScanningDataSourceFullScan = {
   dataSourceId: string;
   resourceId: string;
@@ -233,14 +250,15 @@ export type TSecretScanningFactoryTeardown<
 export type TSecretScanningFactorySetupWebhook<
   T extends TSecretScanningDataSourceWithConnection,
   C extends TSecretScanningDataSourceCredentials = undefined
-> = (params: { dataSource: T }) => Promise<C | undefined>;
+> = (params: { dataSource: T; resourceNames: string[] }) => Promise<C | undefined>;
 
-// Brings existing webhooks in line with a new config. Hooks it adds exist before the data source is saved, so
-// revert removes them if the save fails; hooks it drops are only removed by finalize, after the save.
+// Brings existing webhooks in line with the resources a data source covers, for providers that hook each resource.
+// Hooks it adds exist before the change is saved, so revert removes them if the save fails; hooks it drops are
+// only removed by finalize, after the save.
 export type TSecretScanningFactoryUpdateWebhook<
   T extends TSecretScanningDataSourceWithConnection,
   C extends TSecretScanningDataSourceCredentials = undefined
-> = (params: { dataSource: T; config: T["config"]; credentials: C }) => Promise<
+> = (params: { dataSource: T; resourceNames: string[]; credentials: C }) => Promise<
   | {
       credentials: C;
       finalize: () => Promise<void>;

@@ -27,14 +27,13 @@ import {
 } from "@app/components/v3";
 import {
   getAddedResourceScanDescription,
-  getConfigWithIncludedResource,
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
 import {
   TSecretScanningDataSource,
-  useListSecretScanningAvailableResources,
-  useUpdateSecretScanningDataSource
+  useAddSecretScanningResource,
+  useListSecretScanningAvailableResources
 } from "@app/hooks/api/secretScanningV2";
 
 type Props = {
@@ -52,7 +51,7 @@ export const AddSecretScanningResourceSheet = ({ dataSource, isOpen, onOpenChang
     { enabled: isOpen }
   );
 
-  const updateDataSource = useUpdateSecretScanningDataSource();
+  const addResource = useAddSecretScanningResource();
 
   const resourceDetails = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
   const { name: platform } = SECRET_SCANNING_DATA_SOURCE_MAP[dataSource.type];
@@ -68,16 +67,13 @@ export const AddSecretScanningResourceSheet = ({ dataSource, isOpen, onOpenChang
   const hasExcludedResources = resources.some(({ isIncluded }) => !isIncluded);
 
   const handleEnableScanning = async (resourceName: string) => {
-    const config = getConfigWithIncludedResource(dataSource, resourceName);
-    if (!config) return;
-
     setPendingName(resourceName);
     try {
-      await updateDataSource.mutateAsync({
+      await addResource.mutateAsync({
         dataSourceId: dataSource.id,
         type: dataSource.type,
         projectId: dataSource.projectId,
-        config
+        resourceName
       });
     } finally {
       setPendingName(null);

@@ -485,6 +485,149 @@ export const registerSecretScanningEndpoints = <
   });
 
   server.route({
+    method: "POST",
+    url: "/:dataSourceId/resources",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: true,
+      operationId: `add${sourceTypeId}DataSourceResource`,
+      tags: [ApiDocsTags.SecretScanning],
+      description: `Add a resource to the specified ${sourceType} Data Source so it is scanned.`,
+      params: z.object({
+        dataSourceId: z.string().uuid().describe(SecretScanningDataSources.ADD_RESOURCE(type).dataSourceId)
+      }),
+      body: z.object({
+        resourceName: z
+          .string()
+          .trim()
+          .min(1)
+          .max(255)
+          .describe(SecretScanningDataSources.ADD_RESOURCE(type).resourceName)
+      }),
+      response: {
+        200: z.object({ resources: SecretScanningResourceSchema.array() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { dataSourceId } = req.params;
+
+      const { resources, projectId } = await server.services.secretScanningV2.addSecretScanningResource(
+        { type, dataSourceId, resourceName: req.body.resourceName },
+        req.permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.SECRET_SCANNING_RESOURCE_ADD,
+          metadata: {
+            type,
+            dataSourceId,
+            resources: resources.map((resource) => ({ resourceId: resource.id, resourceName: resource.name }))
+          }
+        }
+      });
+
+      return { resources };
+    }
+  });
+
+  // not exposed, for UI only. An action rather than a create: the resources come from the provider, not the request.
+  server.route({
+    method: "POST",
+    url: "/:dataSourceId/resources/all",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: true,
+      operationId: `addAll${sourceTypeId}DataSourceResources`,
+      tags: [ApiDocsTags.SecretScanning],
+      description: `Add every resource the App Connection can access to the specified ${sourceType} Data Source.`,
+      params: z.object({
+        dataSourceId: z.string().uuid().describe(SecretScanningDataSources.ADD_RESOURCE(type).dataSourceId)
+      }),
+      response: {
+        200: z.object({ resources: SecretScanningResourceSchema.array() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { dataSourceId } = req.params;
+
+      const { resources, projectId } = await server.services.secretScanningV2.addAllSecretScanningResources(
+        { type, dataSourceId },
+        req.permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.SECRET_SCANNING_RESOURCE_ADD,
+          metadata: {
+            type,
+            dataSourceId,
+            resources: resources.map((resource) => ({ resourceId: resource.id, resourceName: resource.name }))
+          }
+        }
+      });
+
+      return { resources };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:dataSourceId/resources/:resourceId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: true,
+      operationId: `remove${sourceTypeId}DataSourceResource`,
+      tags: [ApiDocsTags.SecretScanning],
+      description: `Remove a resource from the specified ${sourceType} Data Source, deleting its scans and findings.`,
+      params: z.object({
+        dataSourceId: z.string().uuid().describe(SecretScanningDataSources.REMOVE_RESOURCE(type).dataSourceId),
+        resourceId: z.string().uuid().describe(SecretScanningDataSources.REMOVE_RESOURCE(type).resourceId)
+      }),
+      response: {
+        200: z.object({ resource: SecretScanningResourceSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { dataSourceId, resourceId } = req.params;
+
+      const { resource, projectId } = await server.services.secretScanningV2.removeSecretScanningResource(
+        { type, dataSourceId, resourceId },
+        req.permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId,
+        event: {
+          type: EventType.SECRET_SCANNING_RESOURCE_REMOVE,
+          metadata: {
+            type,
+            dataSourceId,
+            resourceId: resource.id,
+            resourceName: resource.name
+          }
+        }
+      });
+
+      return { resource };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/:dataSourceId/scans",
     config: {

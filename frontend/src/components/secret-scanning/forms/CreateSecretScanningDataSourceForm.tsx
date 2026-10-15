@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FieldPath, FormProvider, useForm, useWatch } from "react-hook-form";
+import { DefaultValues, FieldPath, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -68,7 +68,7 @@ const getDefaultValues = (type: SecretScanningDataSource) =>
     isScanNewCommitsEnabled: true,
     isDiscoveryEnabled: doesDataSourceSupportDiscovery({ type, config: getDefaultConfig(type) }),
     config: getDefaultConfig(type)
-  }) as Partial<TSecretScanningDataSourceForm>;
+  }) as DefaultValues<TSecretScanningDataSourceForm>;
 
 const CONNECTION_STEP_FIELDS: Record<SecretScanningDataSource, TFormField[]> = {
   [SecretScanningDataSource.GitHub]: ["connection"],
@@ -212,7 +212,10 @@ export const CreateSecretScanningDataSourceForm = ({
 
   const formMethods = useForm<TSecretScanningDataSourceForm>({
     resolver: zodResolver(SecretScanningDataSourceSchema),
-    defaultValues: { ...getDefaultValues(initialType), ...initialFormData },
+    defaultValues: {
+      ...getDefaultValues(initialType),
+      ...initialFormData
+    } as DefaultValues<TSecretScanningDataSourceForm>,
     // Step validation uses trigger(), which does not put the form into its submitted state.
     // Validate changes from the start so a field's error clears as soon as it is corrected.
     mode: "onChange",

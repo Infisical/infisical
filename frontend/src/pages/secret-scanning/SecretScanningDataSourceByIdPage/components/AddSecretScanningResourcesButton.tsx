@@ -24,16 +24,14 @@ import {
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import {
-  areAllSecretScanningResourcesIncluded,
   getAddedResourceScanDescription,
-  getConfigWithAllResourcesIncluded,
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
 import {
   SecretScanningDataSource,
   TSecretScanningDataSource,
-  useUpdateSecretScanningDataSource
+  useAddAllSecretScanningResources
 } from "@app/hooks/api/secretScanningV2";
 import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 
@@ -47,11 +45,10 @@ export const AddSecretScanningResourcesButton = ({ dataSource }: Props) => {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isAddAllOpen, setIsAddAllOpen] = useState(false);
 
-  const updateDataSource = useUpdateSecretScanningDataSource();
+  const addAllResources = useAddAllSecretScanningResources();
 
   const { singularTitle, singularNoun, pluralTitle, pluralNoun } =
     RESOURCE_DESCRIPTION_HELPER[dataSource.type];
-  const isEverythingIncluded = areAllSecretScanningResourcesIncluded(dataSource);
   // GitLab has no account-level webhook, so new commits are only reported for projects added one by one;
   // hooking every project the connection can access could mean thousands of them.
   const isAddAllUnsupported =
@@ -59,19 +56,17 @@ export const AddSecretScanningResourcesButton = ({ dataSource }: Props) => {
     dataSource.config.scope === GitLabDataSourceScope.Account;
 
   const handleAddAll = async () => {
-    const config = getConfigWithAllResourcesIncluded(dataSource);
-    if (!config) return;
-
-    await updateDataSource.mutateAsync({
+    const added = await addAllResources.mutateAsync({
       dataSourceId: dataSource.id,
       type: dataSource.type,
-      projectId: dataSource.projectId,
-      config
+      projectId: dataSource.projectId
     });
 
     setIsAddAllOpen(false);
     createNotification({
-      text: `Added all ${pluralNoun}. ${getAddedResourceScanDescription(dataSource)}`,
+      text: added.length
+        ? `Added ${added.length} ${added.length === 1 ? singularNoun : pluralNoun}. ${getAddedResourceScanDescription(dataSource)}`
+        : `Every ${singularNoun} the connection can access is already added.`,
       type: "success"
     });
   };
@@ -91,21 +86,14 @@ export const AddSecretScanningResourcesButton = ({ dataSource }: Props) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                isDisabled={isEverythingIncluded}
-                onClick={() => setIsSheetOpen(true)}
-              >
+              <DropdownMenuItem onClick={() => setIsSheetOpen(true)}>
                 <PlusIcon />
                 Add {singularTitle}
               </DropdownMenuItem>
-              <Tooltip
-                hoverable
-                delayDuration={50}
-                open={isAddAllUnsupported && !isEverythingIncluded ? undefined : false}
-              >
+              <Tooltip hoverable delayDuration={50} open={isAddAllUnsupported ? undefined : false}>
                 <TooltipTrigger asChild>
                   <DropdownMenuItem
-                    isDisabled={isEverythingIncluded || isAddAllUnsupported}
+                    isDisabled={isAddAllUnsupported}
                     isDisabledFocusable={isAddAllUnsupported}
                     onClick={() => setIsAddAllOpen(true)}
                   >
@@ -139,10 +127,10 @@ export const AddSecretScanningResourcesButton = ({ dataSource }: Props) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={updateDataSource.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel isDisabled={addAllResources.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="ss"
-              isPending={updateDataSource.isPending}
+              isPending={addAllResources.isPending}
               onClick={(event) => {
                 event.preventDefault();
                 handleAddAll();

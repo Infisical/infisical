@@ -274,14 +274,13 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
   const setupWebhook: TSecretScanningFactorySetupWebhook<
     TGitLabDataSourceWithConnection,
     TGitLabDataSourceCredentials
-  > = async ({ dataSource: { id, name, connection, config } }) => {
+  > = async ({ dataSource: { id, name, connection, config }, resourceNames }) => {
     if (config.scope === GitLabDataSourceScope.Account) {
-      const projectNames = getHookedProjectNames(config);
-      if (!projectNames.length) return undefined;
+      if (!resourceNames.length) return undefined;
 
       const accountClient = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
       const accountToken = alphaNumericNanoId(64);
-      const projectHooks = await addProjectHooks(accountClient, projectNames, accountToken, id);
+      const projectHooks = await addProjectHooks(accountClient, resourceNames, accountToken, id);
 
       return { token: accountToken, projectHooks };
     }
@@ -297,13 +296,12 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
   const updateWebhook: TSecretScanningFactoryUpdateWebhook<
     TGitLabDataSourceWithConnection,
     TGitLabDataSourceCredentials
-  > = async ({ dataSource: { id, connection }, config, credentials }) => {
+  > = async ({ dataSource: { id, connection, config }, resourceNames, credentials }) => {
     if (config.scope !== GitLabDataSourceScope.Account || !("projectHooks" in credentials)) return undefined;
 
-    const projectNames = getHookedProjectNames(config);
-    const kept = credentials.projectHooks.filter((hook) => projectNames.includes(hook.projectName));
-    const stale = credentials.projectHooks.filter((hook) => !projectNames.includes(hook.projectName));
-    const missing = projectNames.filter((projectName) => !kept.some((hook) => hook.projectName === projectName));
+    const kept = credentials.projectHooks.filter((hook) => resourceNames.includes(hook.projectName));
+    const stale = credentials.projectHooks.filter((hook) => !resourceNames.includes(hook.projectName));
+    const missing = resourceNames.filter((projectName) => !kept.some((hook) => hook.projectName === projectName));
 
     if (!stale.length && !missing.length) return undefined;
 

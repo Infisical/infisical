@@ -14,6 +14,7 @@ import {
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import {
   assertClonedRepositoryWithinSizeLimit,
+  getConfigIncludingAllResources,
   parseScanErrorMessage,
   planCommitBatches,
   repositoryHasCommits,
@@ -174,11 +175,15 @@ export const secretScanningV2QueueServiceFactory = ({
     {
       resourceExternalId,
       triggeredByUserId,
-      shouldScanResource
+      shouldScanResource,
+      existingResourcesOnly
     }: {
       resourceExternalId?: string;
       triggeredByUserId?: string;
       shouldScanResource?: (resource: Pick<TSecretScanningResourcesInsert, "externalId" | "name">) => boolean;
+      // The data source's resources are the ones added to it, not what its include list matches. The provider is
+      // still listed so a renamed resource is cloned under its current name and a deleted one is skipped.
+      existingResourcesOnly?: boolean;
     } = {}
   ) => {
     try {
@@ -189,9 +194,17 @@ export const secretScanningV2QueueServiceFactory = ({
         appConnectionDAL
       });
 
-      const rawResources = await factory.listRawResources(dataSource);
+      const rawResources = await factory.listRawResources(
+        existingResourcesOnly ? getConfigIncludingAllResources(dataSource) : dataSource
+      );
 
       let filteredRawResources = rawResources;
+
+      if (existingResourcesOnly) {
+        const existingResources = await secretScanningV2DAL.resources.find({ dataSourceId: dataSource.id });
+        const existingExternalIds = new Set(existingResources.map((resource) => resource.externalId));
+        filteredRawResources = filteredRawResources.filter((resource) => existingExternalIds.has(resource.externalId));
+      }
 
       // TODO: should add individual resource fetch to factory
       if (resourceExternalId) {
@@ -204,7 +217,9 @@ export const secretScanningV2QueueServiceFactory = ({
 
       if (!filteredRawResources.length) {
         throw new BadRequestError({
-          message: `${resourceExternalId ? `Resource with "ID" ${resourceExternalId} could not be found.` : "Data source has no resources to scan"}. Ensure your data source config is correct and not filtering out scanning resources.`
+          message: resourceExternalId
+            ? "This resource could not be found. It may have been deleted, or the App Connection may no longer have access to it."
+            : "This data source has no resources to scan. Add one, then try again."
         });
       }
 

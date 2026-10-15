@@ -1,17 +1,26 @@
+import { useState } from "react";
 import { formatDistanceToNowStrict } from "date-fns";
 import {
   AlertTriangleIcon,
-  BanIcon,
   CheckIcon,
   CopyIcon,
   MoreHorizontalIcon,
-  ScanSearchIcon
+  ScanSearchIcon,
+  TrashIcon
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretScanningScanStatusBadge } from "@app/components/secret-scanning";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Badge,
   DropdownMenu,
   DropdownMenuContent,
@@ -19,23 +28,21 @@ import {
   DropdownMenuTrigger,
   IconButton,
   TableCell,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TableRow
 } from "@app/components/v3";
 import {
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import {
-  isSecretScanningResourceIncluded,
+  canAddSecretScanningResources,
   RESOURCE_DESCRIPTION_HELPER
 } from "@app/helpers/secretScanningV2";
 import {
   SecretScanningScanStatus,
   TSecretScanningDataSource,
   TSecretScanningResourceWithDetails,
+  useRemoveSecretScanningResource,
   useTriggerSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
 
@@ -49,10 +56,14 @@ export const SecretScanningResourceRow = ({ resource, dataSource, onViewFindings
   const { id, name, lastScannedAt, lastScanStatus, unresolvedFindings, lastScanStatusMessage } =
     resource;
 
-  const isIncluded = isSecretScanningResourceIncluded(dataSource, name);
+  const [isRemoveOpen, setIsRemoveOpen] = useState(false);
+
   const resourceDetails = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
+  // a project-scoped GitLab data source scans exactly one project, so removing it would leave nothing
+  const canRemove = canAddSecretScanningResources(dataSource);
 
   const triggerDataSourceScan = useTriggerSecretScanningDataSource();
+  const removeResource = useRemoveSecretScanningResource();
 
   const handleTriggerScan = async () => {
     await triggerDataSourceScan.mutateAsync({
@@ -68,29 +79,27 @@ export const SecretScanningResourceRow = ({ resource, dataSource, onViewFindings
     });
   };
 
+  const handleRemove = async () => {
+    await removeResource.mutateAsync({
+      dataSourceId: dataSource.id,
+      type: dataSource.type,
+      projectId: dataSource.projectId,
+      resourceId: id
+    });
+
+    setIsRemoveOpen(false);
+    createNotification({
+      text: `Removed "${name}"`,
+      type: "success"
+    });
+  };
+
   const handleCopyId = () => {
     navigator.clipboard.writeText(id);
     createNotification({ text: "Resource ID copied to clipboard", type: "info" });
   };
 
   const renderStatus = () => {
-    if (!isIncluded) {
-      return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge variant="neutral">
-              <BanIcon />
-              Excluded
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-sm">
-            This {resourceDetails.singularNoun} is excluded in the data source configuration and
-            won&apos;t be scanned.
-          </TooltipContent>
-        </Tooltip>
-      );
-    }
-
     if (lastScanStatus && lastScanStatus !== SecretScanningScanStatus.Completed) {
       return (
         <SecretScanningScanStatusBadge
@@ -155,7 +164,7 @@ export const SecretScanningResourceRow = ({ resource, dataSource, onViewFindings
             >
               {(isAllowed: boolean) => (
                 <DropdownMenuItem
-                  isDisabled={!isAllowed || !isIncluded || dataSource.isDisconnected}
+                  isDisabled={!isAllowed || dataSource.isDisconnected}
                   onClick={handleTriggerScan}
                 >
                   <ScanSearchIcon />
@@ -163,8 +172,51 @@ export const SecretScanningResourceRow = ({ resource, dataSource, onViewFindings
                 </DropdownMenuItem>
               )}
             </ProjectPermissionCan>
+            {canRemove && (
+              <ProjectPermissionCan
+                I={ProjectPermissionSecretScanningDataSourceActions.Edit}
+                a={ProjectPermissionSub.SecretScanningDataSources}
+              >
+                {(isAllowed: boolean) => (
+                  <DropdownMenuItem
+                    variant="danger"
+                    isDisabled={!isAllowed}
+                    onClick={() => setIsRemoveOpen(true)}
+                  >
+                    <TrashIcon />
+                    Remove {resourceDetails.singularTitle}
+                  </DropdownMenuItem>
+                )}
+              </ProjectPermissionCan>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
+        <AlertDialog open={isRemoveOpen} onOpenChange={setIsRemoveOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove {name}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This {resourceDetails.singularNoun} won&apos;t be scanned anymore, and its scans and
+                findings are permanently deleted.
+                {dataSource.isDiscoveryEnabled &&
+                  ` Discovery is on, so it's added back the next time someone pushes to it.`}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel isDisabled={removeResource.isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant="danger"
+                isPending={removeResource.isPending}
+                onClick={(event) => {
+                  event.preventDefault();
+                  handleRemove();
+                }}
+              >
+                Remove {resourceDetails.singularTitle}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </TableCell>
     </TableRow>
   );

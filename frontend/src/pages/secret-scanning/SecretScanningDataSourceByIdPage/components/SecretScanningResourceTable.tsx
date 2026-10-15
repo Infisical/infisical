@@ -1,21 +1,14 @@
-import { useMemo, useState } from "react";
-import { ChevronDownIcon, FilterIcon, FolderGitIcon, LockIcon, SearchIcon } from "lucide-react";
+import { useMemo } from "react";
+import { ChevronDownIcon, FolderGitIcon, LockIcon, SearchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
-  Button,
   Card,
   CardAction,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -38,7 +31,6 @@ import { ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import {
   canAddSecretScanningResources,
-  isSecretScanningResourceIncluded,
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
@@ -59,18 +51,6 @@ enum ResourcesOrderBy {
   Findings = "findings",
   LastScanned = "last-scanned"
 }
-
-enum ResourceStatusFilter {
-  All = "all",
-  Included = "included",
-  Excluded = "excluded"
-}
-
-const RESOURCE_STATUS_FILTER_LABELS: Record<ResourceStatusFilter, string> = {
-  [ResourceStatusFilter.All]: "All",
-  [ResourceStatusFilter.Included]: "Included",
-  [ResourceStatusFilter.Excluded]: "Excluded"
-};
 
 const SKELETON_ROWS = ["first", "second", "third"];
 const SKELETON_CELLS = ["name", "status", "last-scan", "actions"];
@@ -113,8 +93,6 @@ export const SecretScanningResourcesTable = ({ dataSource, onViewFindings }: Pro
     ProjectPermissionSub.SecretScanningDataSources
   );
 
-  const [statusFilter, setStatusFilter] = useState(ResourceStatusFilter.All);
-
   const { data: resources = [], isPending } = useListSecretScanningResources(
     { dataSourceId: dataSource.id, type: dataSource.type },
     {
@@ -143,20 +121,13 @@ export const SecretScanningResourcesTable = ({ dataSource, onViewFindings }: Pro
     const searchValue = search.trim().toLowerCase();
 
     return resources
-      .filter(({ name }) => {
-        if (statusFilter !== ResourceStatusFilter.All) {
-          const isIncluded = isSecretScanningResourceIncluded(dataSource, name);
-          if (isIncluded !== (statusFilter === ResourceStatusFilter.Included)) return false;
-        }
-
-        return name.toLowerCase().includes(searchValue);
-      })
+      .filter(({ name }) => name.toLowerCase().includes(searchValue))
       .sort((a, b) =>
         orderDirection === OrderByDirection.ASC
           ? sortResources(a, b, orderBy)
           : sortResources(b, a, orderBy)
       );
-  }, [resources, orderDirection, search, orderBy, statusFilter, dataSource]);
+  }, [resources, orderDirection, search, orderBy]);
 
   useResetPageHelper({
     totalCount: filteredResources.length,
@@ -275,33 +246,6 @@ export const SecretScanningResourcesTable = ({ dataSource, onViewFindings }: Pro
               placeholder={`Search ${resourceDetails.pluralNoun}...`}
             />
           </InputGroup>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <FilterIcon />
-                Status: {RESOURCE_STATUS_FILTER_LABELS[statusFilter]}
-                <ChevronDownIcon />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuRadioGroup
-                value={statusFilter}
-                onValueChange={(value) => {
-                  setStatusFilter(value as ResourceStatusFilter);
-                  setPage(1);
-                }}
-              >
-                <DropdownMenuRadioItem value={ResourceStatusFilter.Included}>
-                  Included
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value={ResourceStatusFilter.Excluded}>
-                  Excluded
-                </DropdownMenuRadioItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioItem value={ResourceStatusFilter.All}>All</DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </CardHeader>
       <CardContent>
