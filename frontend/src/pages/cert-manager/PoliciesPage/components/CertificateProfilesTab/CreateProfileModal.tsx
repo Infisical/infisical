@@ -68,7 +68,7 @@ import {
   KEY_USAGES_OPTIONS,
   SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
-import { normalizeSlugInput, slugSchema } from "@app/lib/schemas";
+import { normalizeSlugInput } from "@app/lib/schemas";
 import { filterUsages } from "@app/pages/cert-manager/CertificatesPage/components/certificateUtils";
 import {
   CertPolicyState,
@@ -181,7 +181,12 @@ const descriptionSchema = z
   .optional();
 
 const baseProfileSchema = z.object({
-  slug: slugSchema({ min: 1, max: 255, field: "Name" }),
+  slug: z
+    .string()
+    .trim()
+    .min(1, "Name is required")
+    .max(255, "Name must be 255 characters or fewer")
+    .regex(/^[a-z0-9-]+$/, "Name can only contain lowercase letters, numbers, and hyphens"),
   description: descriptionSchema,
   issuerType: z.nativeEnum(IssuerType),
   certificateAuthorityId: z.string().nullable().optional(),
