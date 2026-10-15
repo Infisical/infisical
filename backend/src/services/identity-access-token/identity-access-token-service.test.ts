@@ -382,6 +382,27 @@ describe("identityAccessTokenServiceFactory", () => {
     );
   });
 
+  test("reseeds a lost counter for a legacy JWT with no exp to last through the legacy window", async () => {
+    // Thirty days into the legacy window, with the row's maxTTL budget long spent. The JWT still
+    // authenticates, so the counter has to outlive it rather than the spent budget.
+    const thirtyDays = 30 * 24 * 60 * 60;
+    vi.setSystemTime(new Date(ENFORCED_AT.getTime() + thirtyDays * 1000));
+    const { service, keyStore } = createService({
+      tokenRow: createLegacyTokenRow({ accessTokenNumUsesLimit: 3 })
+    });
+    const legacyClaims = verifyAccessTokenJwt(signLegacyUniversalAuthAccessToken({}, { expiresIn: undefined }));
+    expect(legacyClaims.exp).toBeUndefined();
+
+    await expect(service.fnValidateIdentityAccessTokenFast(legacyClaims, "10.0.0.1")).resolves.toMatchObject({
+      identityId: "identity-id"
+    });
+    expect(keyStore.setItemWithExpiry).toHaveBeenCalledWith(
+      "identity-token-uses-remaining:identity-id:legacy-token-id",
+      MAX_AGE - thirtyDays + MARKER_SKEW_SECONDS,
+      2
+    );
+  });
+
   test("does not reseed a lost counter for a JWT that expired after it was verified", async () => {
     const { service, keyStore } = createService();
     keyStore.getItem.mockImplementation(async (key: string) => {

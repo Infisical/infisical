@@ -502,8 +502,10 @@ export const identityAccessTokenServiceFactory = ({
           tokenId,
           numUsesLimit - 1,
           computeReseededUsesRemainingTtl({
+            exp: token.exp,
             accessTokenMaxTTL: source.accessTokenMaxTTL,
-            creationEpoch: source.creationEpoch
+            creationEpoch: source.creationEpoch,
+            legacyEnforcedAt: appCfg.LEGACY_IDENTITY_ACCESS_TOKEN_EXPIRATION_ENFORCED_AT
           })
         );
       } else {

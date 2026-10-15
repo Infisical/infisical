@@ -186,28 +186,78 @@ describe("computeUsesRemainingTtl", () => {
 });
 
 describe("computeReseededUsesRemainingTtl", () => {
-  test("lasts until the token's maxTTL budget runs out, covering any renewed JWT", () => {
+  const ENFORCED_AT_SECONDS = Math.floor(ENFORCED_AT.getTime() / 1000);
+  const THIRTY_DAYS = 30 * 24 * 60 * 60;
+
+  test("lasts until the maxTTL budget runs out when a renewed JWT can outlive the presented one", () => {
     expect(
-      computeReseededUsesRemainingTtl({ accessTokenMaxTTL: 7200, creationEpoch: NOW - 1800, nowSeconds: NOW })
+      computeReseededUsesRemainingTtl({
+        exp: NOW + 600,
+        accessTokenMaxTTL: 7200,
+        creationEpoch: NOW - 1800,
+        legacyEnforcedAt: ENFORCED_AT,
+        nowSeconds: NOW
+      })
     ).toBe(5400 + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS);
   });
 
   test("falls back to the ceiling when the token has no maxTTL", () => {
-    expect(computeReseededUsesRemainingTtl({ accessTokenMaxTTL: 0, creationEpoch: NOW, nowSeconds: NOW })).toBe(
-      MAX_AGE + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS
-    );
+    expect(
+      computeReseededUsesRemainingTtl({
+        exp: NOW + 3600,
+        accessTokenMaxTTL: 0,
+        creationEpoch: NOW,
+        legacyEnforcedAt: ENFORCED_AT,
+        nowSeconds: NOW
+      })
+    ).toBe(MAX_AGE + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS);
   });
 
   test("never exceeds the ceiling even with a larger maxTTL budget", () => {
     expect(
-      computeReseededUsesRemainingTtl({ accessTokenMaxTTL: MAX_AGE * 2, creationEpoch: NOW, nowSeconds: NOW })
+      computeReseededUsesRemainingTtl({
+        exp: NOW + 3600,
+        accessTokenMaxTTL: MAX_AGE * 2,
+        creationEpoch: NOW,
+        legacyEnforcedAt: ENFORCED_AT,
+        nowSeconds: NOW
+      })
     ).toBe(MAX_AGE + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS);
   });
 
-  test("stays positive once the maxTTL budget is spent", () => {
-    expect(computeReseededUsesRemainingTtl({ accessTokenMaxTTL: 600, creationEpoch: NOW - 900, nowSeconds: NOW })).toBe(
-      1 + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS
-    );
+  test("covers the presented JWT once the maxTTL budget is spent", () => {
+    expect(
+      computeReseededUsesRemainingTtl({
+        exp: NOW + 60,
+        accessTokenMaxTTL: 600,
+        creationEpoch: NOW - 900,
+        legacyEnforcedAt: ENFORCED_AT,
+        nowSeconds: NOW
+      })
+    ).toBe(60 + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS);
+  });
+
+  test("stays positive when every JWT for the token is past its deadline", () => {
+    expect(
+      computeReseededUsesRemainingTtl({
+        exp: NOW,
+        accessTokenMaxTTL: 600,
+        creationEpoch: NOW - 900,
+        legacyEnforcedAt: ENFORCED_AT,
+        nowSeconds: NOW
+      })
+    ).toBe(1 + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS);
+  });
+
+  test("covers the legacy window for a JWT with no exp, even after its maxTTL budget is spent", () => {
+    expect(
+      computeReseededUsesRemainingTtl({
+        accessTokenMaxTTL: 7200,
+        creationEpoch: ENFORCED_AT_SECONDS - 365 * 24 * 60 * 60,
+        legacyEnforcedAt: ENFORCED_AT,
+        nowSeconds: ENFORCED_AT_SECONDS + THIRTY_DAYS
+      })
+    ).toBe(MAX_AGE - THIRTY_DAYS + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS);
   });
 });
 

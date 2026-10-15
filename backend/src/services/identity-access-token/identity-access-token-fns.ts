@@ -171,22 +171,30 @@ export const computeUsesRemainingTtl = (jwtTtlSeconds: number): number =>
   jwtTtlSeconds + IDENTITY_REVOCATION_MARKER_SKEW_SECONDS;
 
 // A reseed rebuilds the one counter that every JWT for the token id shares (renewal keeps the id), so
-// it has to last until the latest of them could expire, not just the one being presented. No JWT
-// outlives creationEpoch + maxTTL, and none outlives now + ceiling since each is issued no later than
-// now with at most the ceiling.
+// it has to last until the latest of them could still be presented, not just the one in hand:
+//   - the presented JWT authenticates until its exp, or, for a legacy JWT with no exp, until the end of
+//     the legacy window (legacyEnforcedAt + ceiling). maxTTL does not bound that legacy window, it only
+//     bounds renewal.
+//   - a renewed JWT never outlives creationEpoch + maxTTL when there is one.
+//   - nothing outlives now + ceiling, since every JWT is issued no later than now with at most the ceiling.
 export const computeReseededUsesRemainingTtl = ({
+  exp,
   accessTokenMaxTTL,
   creationEpoch,
+  legacyEnforcedAt,
   nowSeconds = Math.floor(Date.now() / 1000)
 }: {
+  exp?: number;
   accessTokenMaxTTL: number;
   creationEpoch: number;
+  legacyEnforcedAt: Date;
   nowSeconds?: number;
 }): number => {
   const { MAX_MACHINE_IDENTITY_TOKEN_AGE: ceiling } = getConfig();
-  const latestJwtExpiry =
-    accessTokenMaxTTL > 0 ? Math.min(creationEpoch + accessTokenMaxTTL - nowSeconds, ceiling) : ceiling;
-  return computeUsesRemainingTtl(Math.max(latestJwtExpiry, 1));
+  const presentedJwtDeadline = typeof exp === "number" ? exp : Math.floor(legacyEnforcedAt.getTime() / 1000) + ceiling;
+  const renewedJwtDeadline = accessTokenMaxTTL > 0 ? creationEpoch + accessTokenMaxTTL : nowSeconds + ceiling;
+  const latest = Math.min(Math.max(presentedJwtDeadline, renewedJwtDeadline) - nowSeconds, ceiling);
+  return computeUsesRemainingTtl(Math.max(latest, 1));
 };
 
 // Longest lifetime (seconds) a single token can be handed out with the
