@@ -57,7 +57,6 @@ import {
   TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
-import { getOverviewTableColumnCount } from "../utils";
 
 type Props = {
   secretRotationName: string;
@@ -117,7 +116,7 @@ export const SecretRotationTableRow = ({
   };
 
   const isSingleEnvView = environments.length === 1;
-  const totalCols = getOverviewTableColumnCount(environments.length);
+  const totalCols = environments.length + 2; // secret key row + icon
 
   const statuses = getSecretRotationStatusesByName(secretRotationName);
 
@@ -385,7 +384,7 @@ export const SecretRotationTableRow = ({
             !isSingleEnvView && isExpanded && "border-r-0 border-b-0 bg-container-hover"
           )}
           isTruncatable
-          colSpan={isSingleEnvView ? 3 : undefined}
+          colSpan={isSingleEnvView ? 2 : undefined}
         >
           {isSingleEnvView && singleEnvRotation ? (
             <div className="relative flex w-full items-center">

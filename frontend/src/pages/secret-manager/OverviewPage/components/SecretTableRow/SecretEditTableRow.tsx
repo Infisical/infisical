@@ -107,6 +107,7 @@ import {
 } from "../tableRowActionStyles";
 import { SecretAccessInsights } from "./SecretAccessInsights";
 import { SecretCommentForm } from "./SecretCommentForm";
+import { SecretLastEditedTime } from "./SecretLastEditedTime";
 import { SecretMetadataForm } from "./SecretMetadataForm";
 import { SecretReminderForm } from "./SecretReminderForm";
 import { SecretTagForm } from "./SecretTagForm";
@@ -180,6 +181,7 @@ type Props = {
   onCopySecret?: () => void;
   onAccessInsightsUpgrade: (onGranted: () => void) => void;
   onExpandedChange?: (isExpanded: boolean) => void;
+  lastEdited?: Pick<SecretV3RawSanitized, "createdAt" | "updatedAt" | "version">;
 };
 
 export const SecretEditTableRow = ({
@@ -213,6 +215,7 @@ export const SecretEditTableRow = ({
   isBatchMode,
   isPendingCreate,
   isPendingDelete,
+  lastEdited,
   onBatchRevert,
   hasPendingChange,
   hasPendingValueChange,
@@ -961,7 +964,7 @@ export const SecretEditTableRow = ({
               {...field}
               value={field.value ?? ""}
               className={twMerge(
-                "h-auto w-full truncate rounded-none border-0 bg-transparent px-0 py-0 text-foreground shadow-none placeholder:text-danger focus-visible:border-transparent focus-visible:ring-0",
+                "[field-sizing:content] h-auto w-full truncate rounded-none border-0 bg-transparent px-0 py-0 text-foreground shadow-none placeholder:text-danger focus-visible:border-transparent focus-visible:ring-0",
                 isPendingDelete && "text-danger/75 line-through"
               )}
               onChange={(event) => {
@@ -988,6 +991,63 @@ export const SecretEditTableRow = ({
   ) : null;
 
   const secretHasReference = hasSecretReference(watchedValue as string);
+
+  const indicatorIcons = (
+    <div className="flex items-center gap-1">
+      {comment && !isImportedSecret && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="flex size-5 items-center justify-center text-muted">
+              <MessageSquareIcon className="size-3.5" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>Has comment</TooltipContent>
+        </Tooltip>
+      )}
+      {canReadTags && tags?.length && !isImportedSecret ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="flex size-5 items-center justify-center text-muted">
+              <TagsIcon className="size-3.5" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            {tags.length} tag{tags.length > 1 ? "s" : ""}
+          </TooltipContent>
+        </Tooltip>
+      ) : null}
+      {reminder && !isImportedSecret && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="flex size-5 items-center justify-center text-muted">
+              <BellIcon className="size-3.5" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>Has reminder</TooltipContent>
+        </Tooltip>
+      )}
+      {secretMetadata?.length && !isImportedSecret ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="flex size-5 items-center justify-center text-muted">
+              <CodeXmlIcon className="size-3.5" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>Has metadata</TooltipContent>
+        </Tooltip>
+      ) : null}
+      {skipMultilineEncoding && !isImportedSecret && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="flex size-5 items-center justify-center text-muted">
+              <WrapTextIcon className="size-3.5" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>Multi-line encoding disabled</TooltipContent>
+        </Tooltip>
+      )}
+    </div>
+  );
 
   const valueContent = (
     <>
@@ -1066,62 +1126,9 @@ export const SecretEditTableRow = ({
             )}
           />
         </div>
-        {!isDirtyState && !isFieldActive && (
+        {!isDirtyState && !isFieldActive && !isSingleEnvView && (
           <div className="pointer-events-none flex w-fit items-start justify-end self-start pl-2 opacity-0 transition-opacity duration-300 motion-reduce:transition-none [@media(hover:hover)]:pointer-events-auto [@media(hover:hover)]:opacity-100 [@media(hover:hover)]:group-focus-within:pointer-events-none [@media(hover:hover)]:group-focus-within:opacity-0 [@media(hover:hover)]:group-hover:pointer-events-none [@media(hover:hover)]:group-hover:opacity-0">
-            <div className="flex items-center gap-1">
-              {comment && !isImportedSecret && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="flex size-5 items-center justify-center text-muted">
-                      <MessageSquareIcon className="size-3.5" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>Has comment</TooltipContent>
-                </Tooltip>
-              )}
-              {canReadTags && tags?.length && !isImportedSecret ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="flex size-5 items-center justify-center text-muted">
-                      <TagsIcon className="size-3.5" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {tags.length} tag{tags.length > 1 ? "s" : ""}
-                  </TooltipContent>
-                </Tooltip>
-              ) : null}
-              {reminder && !isImportedSecret && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="flex size-5 items-center justify-center text-muted">
-                      <BellIcon className="size-3.5" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>Has reminder</TooltipContent>
-                </Tooltip>
-              )}
-              {secretMetadata?.length && !isImportedSecret ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="flex size-5 items-center justify-center text-muted">
-                      <CodeXmlIcon className="size-3.5" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>Has metadata</TooltipContent>
-                </Tooltip>
-              ) : null}
-              {skipMultilineEncoding && !isImportedSecret && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="flex size-5 items-center justify-center text-muted">
-                      <WrapTextIcon className="size-3.5" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>Multi-line encoding disabled</TooltipContent>
-                </Tooltip>
-              )}
-            </div>
+            {indicatorIcons}
           </div>
         )}
         {revokedProjectFolderGrant && !isDirtyState && (
@@ -1963,7 +1970,13 @@ export const SecretEditTableRow = ({
             isOverride && "border-l border-b-border/50 border-l-override"
           )}
         >
-          {nameInput}
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="flex min-w-0 items-center gap-1">
+              {nameInput}
+              {indicatorIcons}
+            </div>
+            <SecretLastEditedTime secret={lastEdited} />
+          </div>
         </TableCell>
         <TableCell
           className={twMerge("relative w-full max-w-0", isOverride && "border-b-border/50")}

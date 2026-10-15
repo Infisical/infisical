@@ -42,7 +42,6 @@ export const SecretNoAccessTableRow = ({ environments = [], count }: Props) => {
               />
             );
           })}
-          {environments.length === 1 && <TableCell />}
         </TableRow>
       ))}
     </>

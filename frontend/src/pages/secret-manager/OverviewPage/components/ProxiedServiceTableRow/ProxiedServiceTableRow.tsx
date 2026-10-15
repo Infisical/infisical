@@ -41,7 +41,6 @@ import {
   TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME,
   TABLE_ROW_RESOURCE_ICON_CLASS_NAME
 } from "../tableRowActionStyles";
-import { getOverviewTableColumnCount } from "../utils";
 
 // Returns null (renders nothing) for a never-used service rather than "Never".
 const formatLastUsed = (lastUsedAt?: string | null) => {
@@ -72,7 +71,7 @@ export const ProxiedServiceTableRow = ({
   const [isExpanded, setIsExpanded] = useToggle(false);
 
   const isSingleEnvView = environments.length === 1;
-  const totalCols = getOverviewTableColumnCount(environments.length);
+  const totalCols = environments.length + 2;
 
   const singleEnvSlug = isSingleEnvView ? environments[0].slug : "";
   const singleEnvService = isSingleEnvView
@@ -221,7 +220,7 @@ export const ProxiedServiceTableRow = ({
             !isSingleEnvView && isExpanded && "border-r-0 border-b-0 bg-container-hover"
           )}
           isTruncatable
-          colSpan={isSingleEnvView ? 3 : undefined}
+          colSpan={isSingleEnvView ? 2 : undefined}
         >
           {isSingleEnvView && singleEnvService ? (
             <div className="relative flex w-full items-center">

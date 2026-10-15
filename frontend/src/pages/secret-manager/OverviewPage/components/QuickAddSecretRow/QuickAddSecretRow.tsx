@@ -268,7 +268,7 @@ export const QuickAddSecretRow = ({
       </TableCell>
       <TableCell
         className={isMultiEnvironmentView ? "p-0" : undefined}
-        colSpan={isMultiEnvironmentView ? environments.length : 2}
+        colSpan={environments.length}
       >
         <div
           className={

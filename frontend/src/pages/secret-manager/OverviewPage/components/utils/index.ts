@@ -33,9 +33,3 @@ export const getHeaderStyle = ({
     left: 24 - (headerHeight * 0.9) / 2.985
   };
 };
-
-export const LAST_EDITED_COLUMN_WIDTH = 160;
-
-// single-environment view adds a "Last edited" column after the value column
-export const getOverviewTableColumnCount = (environmentCount: number) =>
-  environmentCount === 1 ? 4 : environmentCount + 2;
