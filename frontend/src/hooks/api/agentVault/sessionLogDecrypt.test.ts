@@ -43,6 +43,26 @@ describe("parseSessionLogRecords", () => {
   it("refuses anything that is not an array of records", () => {
     assert.equal(parseSessionLogRecords({ records: [record] }), null);
   });
+
+  it("keeps the service type and MCP calls of an MCP record", () => {
+    const mcpRecord = {
+      ...record,
+      method: "POST",
+      decision: "brokered",
+      service: "linear",
+      serviceType: "mcp",
+      mcp: { calls: [{ method: "tools/call", tool: "create_issue" }], parsed: true }
+    };
+    assert.deepEqual(parseSessionLogRecords([mcpRecord]), [mcpRecord]);
+  });
+
+  it("drops a malformed MCP detail rather than the whole chunk", () => {
+    const [parsed] = parseSessionLogRecords([
+      { ...record, serviceType: "mcp", mcp: { calls: "tools/call" } }
+    ])!;
+    assert.equal(parsed.serviceType, "mcp");
+    assert.equal(parsed.mcp, undefined);
+  });
 });
 
 describe("recordsMatchChunk", () => {
@@ -84,7 +104,7 @@ describe("decryptSessionLogPage", () => {
   // The same object Go's TestSealMatchesTheBrowserVector seals: the IV, then the ciphertext and tag.
   const sealed = Uint8Array.from(
     atob(
-      "qrvM3e7/ABEiM0RVPLRwxBbgu+W68Br1N9gY1oUy8wjJxQClAtBh0NfJS1UcWOCPn3laS615sIqwFONhPIPNWRI3CA+a5tUJ7aoim0sQkE4d9gzou2mc/AWiCdToVBJPtdumA9jIzh3yAI81YPwcoDXEVnq2+7ooNNJShGdLX95itbrna/t4nFKRKSSgNzbH23eMtSMcSo72puk/2iwh4sVbTKzC2kwvbf1U6Mgd21zkIq2jDKKwhcT6mTfjPivW4FzmmkspQVMoWwANRX+QVyXzrMipZfoq5N/UcUI6rCvRUkqg+3ST5GVMelW0mjOO"
+      "qrvM3e7/ABEiM0RVPLRwxBbgu+W68Br1N9gY1oUy8wjJxQClAtBh0NfJS1UcWOCPn3laS615sIqwFONhPIPNWRI3CA+a5tUJ7aoim0sQkE4d9gzou2mc/AWiCdToVBJPtdumA9jIzh3yAI81YPwcoDXEVnq2+7ooNNJShGdLX95itbrna/t4nFKRKSSgNzbH23eMtSMcSo72puk/2iwh4sVbTKzC2kwvbf1U6Mgd21zkIq2jDKKwhcT6mTfjPivW4FzmmkspQVMoWwANRX+QVyXzrMipZfoq5N/UcUI6/VTBSsIZvF08UTnPeIW+yM1I5hHCoi0WQT6QRe0bdx5+BvGuvJQB"
     ),
     (char) => char.charCodeAt(0)
   );
@@ -242,6 +262,7 @@ describe("decryptSessionLogPage", () => {
 
     assert.equal(result.decrypted[key].gap, null);
     assert.equal(result.decrypted[key].records[0].path, "/zen");
+    assert.equal(result.decrypted[key].records[0].serviceType, "http");
   });
 
   it("refuses a chunk whose records name a different proxy than its file", async () => {

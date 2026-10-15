@@ -1,14 +1,20 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
-import { AgentVaultSessionLogDecision } from "@app/hooks/api/agentVault/enums";
+import {
+  AgentVaultServiceType,
+  AgentVaultSessionLogDecision
+} from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultSessionLogRecord } from "@app/hooks/api/agentVault/types";
 
 import {
   chunkIdTime,
   findRowShift,
   groupSessionLogGaps,
-  matchesSessionLogSearch
+  matchesSessionLogSearch,
+  matchesSessionLogType,
+  mcpCallLabel,
+  sessionLogMcpCalls
 } from "./SessionLogsPanel.utils";
 
 const record = (seq: number): TAgentVaultSessionLogRecord => ({
@@ -104,5 +110,106 @@ describe("matchesSessionLogSearch", () => {
 
   it("does not match a path on a different host", () => {
     assert.equal(matchesSessionLogSearch(repoRequest, "gitlab.com/repos"), false);
+  });
+
+  const mcpRequest: TAgentVaultSessionLogRecord = {
+    ...record(2),
+    method: "POST",
+    host: "mcp.notion.com",
+    path: "/mcp",
+    serviceType: AgentVaultServiceType.Mcp,
+    mcp: {
+      parsed: true,
+      calls: [{ method: "tools/call", tool: "notion-get-self" }, { method: "tools/list" }]
+    }
+  };
+
+  it("matches an MCP tool name", () => {
+    assert.equal(matchesSessionLogSearch(mcpRequest, "Notion-Get"), true);
+  });
+
+  it("matches the JSON-RPC method of a tool call and of other calls", () => {
+    assert.equal(matchesSessionLogSearch(mcpRequest, "tools/call"), true);
+    assert.equal(matchesSessionLogSearch(mcpRequest, "tools/list"), true);
+    assert.equal(matchesSessionLogSearch(mcpRequest, "resources/list"), false);
+  });
+});
+
+describe("matchesSessionLogType", () => {
+  const http = { ...record(1), serviceType: AgentVaultServiceType.Http };
+  const mcp = { ...record(2), serviceType: AgentVaultServiceType.Mcp };
+  const untyped = { ...record(3), serviceType: null };
+  const legacy = record(4);
+
+  it("keeps every record for all types", () => {
+    [http, mcp, untyped, legacy].forEach((entry) =>
+      assert.equal(matchesSessionLogType(entry, "all"), true)
+    );
+  });
+
+  it("keeps only records of the chosen type", () => {
+    assert.deepEqual(
+      [http, mcp, untyped, legacy].map((entry) =>
+        matchesSessionLogType(entry, AgentVaultServiceType.Http)
+      ),
+      [true, false, false, false]
+    );
+    assert.deepEqual(
+      [http, mcp, untyped, legacy].map((entry) =>
+        matchesSessionLogType(entry, AgentVaultServiceType.Mcp)
+      ),
+      [false, true, false, false]
+    );
+  });
+});
+
+describe("sessionLogMcpCalls", () => {
+  const calls = [{ method: "tools/call", tool: "search" }, { method: "initialize" }];
+
+  it("returns the parsed calls of an MCP record", () => {
+    assert.deepEqual(
+      sessionLogMcpCalls({
+        ...record(1),
+        serviceType: AgentVaultServiceType.Mcp,
+        mcp: { parsed: true, calls }
+      }),
+      calls
+    );
+  });
+
+  it("returns nothing for an unparsed body, a missing detail or an HTTP record", () => {
+    assert.deepEqual(
+      sessionLogMcpCalls({
+        ...record(1),
+        serviceType: AgentVaultServiceType.Mcp,
+        mcp: { parsed: false, calls }
+      }),
+      []
+    );
+    assert.deepEqual(
+      sessionLogMcpCalls({ ...record(1), serviceType: AgentVaultServiceType.Mcp }),
+      []
+    );
+    assert.deepEqual(
+      sessionLogMcpCalls({
+        ...record(1),
+        serviceType: AgentVaultServiceType.Http,
+        mcp: { parsed: true, calls }
+      }),
+      []
+    );
+  });
+});
+
+describe("mcpCallLabel", () => {
+  it("leads with the tool name of a tool call", () => {
+    assert.equal(mcpCallLabel({ method: "tools/call", tool: "search" }), "search (tools/call)");
+  });
+
+  it("shows the method of any other call", () => {
+    assert.equal(
+      mcpCallLabel({ method: "notifications/initialized", tool: null }),
+      "notifications/initialized"
+    );
   });
 });

@@ -21,7 +21,8 @@ agent-vault-access-bundle/   bundles, services, variables, credential encryption
 agent-vault-member/          product membership (list, add, role, remove)
 agent-vault-session/         mint, revoke, list, get
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
-agent-vault-proxy/           login (enrollment), heartbeat, resolve
+agent-vault-proxy/           login (enrollment), heartbeat, resolve, credential refresh
+agent-vault-oauth/           OAuth for MCP services: discovery, client registration, authorizations, refresh
 agent-vault-session-log/     storage settings, chunk ingest, playback
 ```
 
@@ -232,14 +233,75 @@ path decides what a service can reach, so it stays literal.
 
 - The KMS cipher pair is project-scoped (`KmsDataKey.SecretManager`) and built once per resolve.
 - `credentialType` is a column and `credentialConfig` the plaintext half (header name, prefix), so a list page
-  renders without a decrypt and a new credential type is a config entry, not a migration. For basic, the
-  username is sealed with the password: some APIs put the whole key in the username.
+  renders without a decrypt. The column has a CHECK constraint, so a new credential type needs a migration that
+  drops and re-adds `agent_vault_services_credential_type_check`. For basic, the username is sealed with the
+  password: some APIs put the whole key in the username.
 - A service update is a patch. `AgentVaultCredentialUpdateSchema` makes every field optional and
   `mergeCredential` overlays what arrived. Never reuse `AgentVaultBearerConfigSchema` on that path: its
   `.default()`s would reset an omitted `headerName` to `Authorization`.
 - The sealed secret has three write states: a value re-seals, `null` clears it (passthrough), `undefined`
   leaves it alone. `$decryptCredential` reads NULL as passthrough, so a bearer row that lost its secret would
   silently stop attaching a credential.
+
+## OAuth credentials
+
+`agent-vault-oauth/`. MCP services only. Infisical is the OAuth client and does discovery, registration, the
+code exchange and refresh; the proxy only ever receives the access token.
+
+- **The tokens live on the service row**, like every other credential: the non-secret half (endpoints, client,
+  scopes, status, expiry, token hash) in `credentialConfig`, `{ accessToken, refreshToken, clientSecret }` sealed
+  in `encryptedCredential`. Each service has its own client, and a client is reused only with the issuer it was
+  registered at.
+- **Refresh writes the row, which no other credential does, so it races admin edits.** A refresh is a
+  compare-and-swap on `encryptedCredential` and a jsonb merge of only the token keys, so an admin who reauthorized
+  meanwhile keeps the newer tokens. An admin edit that keeps the tokens never writes `credentialConfig`, so it
+  can't write back token fields a refresh changed. A scope report changes only the config, so it
+  passes that compare; the refresh's UPDATE keeps `needs-additional-scopes` in SQL rather than in the WHERE, since
+  losing the write would drop a rotated refresh token. For the same reason two scope reports can't be told apart by
+  the compare, so the report unions `requiredScopes` in its UPDATE (`addRequiredScopes`), never from what it read.
+- **A token only goes where the service still points.** `credential-refresh` takes the host pattern the proxy
+  cached and answers 409 once the service has moved; resolve's lazy refresh is pinned to the host and server URL of
+  the snapshot it answers with, and falls back to that snapshot's own token. Both are checked on every row a token
+  comes from, since a move can land mid-refresh. A reauthorizing save re-checks the authorization's server URL
+  under the bundle lock, and a reauthorization committed since its first read wins with a 409 (a refresh doesn't
+  count: it keeps `authorizedAt`). Any other edit that keeps the tokens re-checks under the lock that the server URL
+  it writes is the one `credentialConfig.serverUrl` records (set at every authorization), so it can't restore an
+  old URL over a reauthorization for another server. `updateService` reads the service once under the lock and
+  runs every one of these checks against that row (`reconcileWithLockedRow`); add a new one there, not as another
+  read.
+- **No network call inside a transaction.** Discovery, registration, the exchange and refresh all run before any
+  write. Refresh serializes per service on a Redis lock, not a row lock.
+- **A pending authorization is Redis only** (10 minutes), with the PKCE verifier and tokens sealed by the project
+  cipher. Only its creator can read or complete it (anyone else gets a 404), so an authorize link sent to someone
+  else can't capture their account. It is single use: a save validates it, then claims it by deleting the Redis
+  record, and only the save whose delete removed it proceeds. A save that fails after the claim puts the exact
+  stored value back with its remaining TTL, so it can be retried; nothing runs after commit.
+- **Resolve sends an OAuth token in the bearer shape** with `source: "oauth"`, so a proxy that predates OAuth
+  injects it unchanged. The header is always `Authorization: Bearer` (the MCP authorization spec), so an OAuth
+  credential stores no header name or prefix and its input is only `authorizationId`. Resolve refreshes a token that expires before the next poll; the proxy calls
+  `credential-refresh` after an upstream 401. A failing provider never fails resolve for other services: it costs
+  that service a stale token and a `lastError`. `invalid_grant` moves the service to needs reauthorization.
+- **Both proxy calls answer well inside the proxy's 15 second timeout.** Resolve waits 4 seconds in total for its
+  refreshes and sends the stored token for any still running, which finish in the background. A refresh waits
+  about 3 seconds for another's lock, then answers with what is stored, and its token requests (the
+  `invalid_target` retry included) share one 7 second budget. Keep that sum under the proxy's timeout.
+- **Neither refreshes nor resolve are audited.** Connect and reauthorize are (`AGENT_VAULT_SERVICE_CREDENTIAL_AUTHORIZE`).
+- **Non-conforming servers are supported through fallbacks**, each recorded in `compatibility`. A fallback may
+  relax what a server must advertise, never a check that stops mix-up or token theft: the issuer must match (a
+  trailing slash aside), the protected resource must be the server's own origin, and `iss` is checked whenever it
+  arrives.
+- **Every scope is an RFC 6749 scope-token** (`isOauthScopeToken`): the proxy's reports are refused otherwise, and
+  scopes from metadata, challenges and token responses that aren't are dropped. A space would split the `scope`
+  parameter and a NUL fails the jsonb write. A granted `scope` splits on spaces only, since a comma is legal inside a
+  token; GitHub-style `repo,gist` splits on commas only when every part was requested (`scope-comma-separated`).
+- **Error text never contains a token.** Provider text is bounded and stripped before it reaches `lastError` or a
+  response, and outbound URLs are logged through `sanitizeUrlForLog`.
+- **Provider data never throws or fails a write.** Every provider string that can reach a message, a log,
+  `lastError` or an authorization's `error` goes through `normalizeProviderText`, and `writeStatus` normalizes
+  `lastError` again. Values stored as sent (client ID, endpoint URLs, tokens) must be printable ASCII, and
+  `expires_in` outside 1 second to 1 year counts as no expiry.
+- **Token requests are never retried by the HTTP client.** Codes are one-use and refresh tokens can rotate. Only
+  the explicit `invalid_target` fallback retries them, inside the same request deadline.
 
 ## Session logs
 

@@ -1,7 +1,8 @@
-import { sessionLogRecordKey } from "@app/hooks/api/agentVault";
+import { AgentVaultServiceType, sessionLogRecordKey } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultSessionLogGap,
   TAgentVaultSessionLogGapReason,
+  TAgentVaultSessionLogMcpCall,
   TAgentVaultSessionLogRecord
 } from "@app/hooks/api/agentVault/types";
 
@@ -114,7 +115,28 @@ export const matchesSessionLogSearch = (record: TAgentVaultSessionLogRecord, sea
     path,
     record.method.toLowerCase(),
     (record.service ?? "").toLowerCase(),
+    ...(record.mcp?.calls ?? []).flatMap((call) =>
+      [call.method, call.tool ?? ""].map((field) => field.toLowerCase())
+    ),
     `${host}${path}`,
     `${host}:${record.port}${path}`
   ].some((field) => field.includes(term));
 };
+
+export type SessionLogTypeFilter = "all" | AgentVaultServiceType;
+
+// Passthrough and blocked requests matched no service, so they have no type to filter on.
+export const matchesSessionLogType = (
+  record: TAgentVaultSessionLogRecord,
+  filter: SessionLogTypeFilter
+) => filter === "all" || record.serviceType === filter;
+
+export const sessionLogMcpCalls = (
+  record: TAgentVaultSessionLogRecord
+): TAgentVaultSessionLogMcpCall[] => {
+  if (record.serviceType !== AgentVaultServiceType.Mcp || !record.mcp?.parsed) return [];
+  return record.mcp.calls;
+};
+
+export const mcpCallLabel = (call: TAgentVaultSessionLogMcpCall) =>
+  call.tool ? `${call.tool} (${call.method})` : call.method;

@@ -21,10 +21,17 @@ import {
 } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { hostError } from "@app/helpers/agentVaultHostPattern";
-import { AgentVaultTemplate, findTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
+import {
+  AgentVaultHttpTemplate,
+  AgentVaultMcpTemplate,
+  AgentVaultTemplate,
+  findTemplateForHostPattern
+} from "@app/helpers/agentVaultTemplates";
 import { useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
 import {
   AgentVaultCredentialType,
+  AgentVaultMcpTransport,
+  AgentVaultServiceType,
   AgentVaultVariableReferenceField,
   useCreateAgentVaultService,
   useListAgentVaultVariables,
@@ -42,23 +49,30 @@ import { ServiceTemplateSelect } from "../ServiceTemplateSelect";
 import { VariableFormDialog } from "../VariableFormDialog";
 import { CredentialFields } from "./CredentialFields";
 import { DetailsFields } from "./DetailsFields";
+import { McpCredentialFields } from "./McpCredentialFields";
+import { McpDetailsFields } from "./McpDetailsFields";
 import { ReviewFields } from "./ReviewFields";
+import { buildCreateServiceRequest, buildUpdateServiceRequest } from "./serviceRequest";
 import {
   buildServiceSchema,
   displayHostPattern,
   HTTP_METHODS,
-  isAllMethods,
+  isOAuthAuthorizationMissing,
+  MCP_SERVICE_STEP_FIELDS,
   SERVICE_STEP_FIELDS,
   ServiceStep,
   TServiceForm,
   UNCHANGED_SECRET
 } from "./serviceSchema";
 import { NO_STORED_KEYS, ServiceVariablesContext } from "./ServiceVariablesContext";
-import { SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
+import { MCP_SERVICE_STEPS, SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
 import { ADVANCED_ITEM, TransformationsFields } from "./TransformationsFields";
 
 const BLANK_SERVICE_FORM: TServiceForm = {
+  serviceType: AgentVaultServiceType.Http,
   name: "",
+  serverUrl: "",
+  transport: AgentVaultMcpTransport.StreamableHttp,
   hosts: [],
   hostDraft: "",
   pathDraft: "",
@@ -67,14 +81,41 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   headerPrefix: "Bearer",
   username: "",
   secret: "",
+  oauthAuthorizationId: "",
+  oauthAuthorizedUrl: "",
+  oauthScopes: [],
+  oauthClientId: "",
+  oauthClientSecret: "",
   methods: [...HTTP_METHODS],
   pathPrefixes: [],
   customHeaders: [],
   substitutions: []
 };
 
+const BLANK_MCP_SERVICE_FORM: TServiceForm = {
+  ...BLANK_SERVICE_FORM,
+  serviceType: AgentVaultServiceType.Mcp,
+  credentialType: AgentVaultCredentialType.OAuth
+};
+
+const mcpFormFromTemplate = (picked: AgentVaultMcpTemplate | null): TServiceForm => {
+  if (!picked) return BLANK_MCP_SERVICE_FORM;
+  const cred = picked.credential;
+  return {
+    ...BLANK_MCP_SERVICE_FORM,
+    name: picked.key,
+    serverUrl: picked.serverUrl,
+    transport: picked.transport,
+    credentialType: cred.type,
+    ...(cred.type === AgentVaultCredentialType.Bearer && {
+      headerName: cred.headerName ?? "Authorization",
+      headerPrefix: cred.headerPrefix ?? "Bearer"
+    })
+  };
+};
+
 // A template placeholder like <your-tenant>.atlassian.net is not a host, so it goes into the draft.
-const formFromTemplate = (picked: AgentVaultTemplate | null, hosts: string[]): TServiceForm => {
+const formFromTemplate = (picked: AgentVaultHttpTemplate | null, hosts: string[]): TServiceForm => {
   const hostFields = {
     hosts: hosts.filter((host) => !hostError(host, [])),
     hostDraft: hosts.find((host) => Boolean(hostError(host, []))) ?? ""
@@ -102,6 +143,8 @@ type Props = {
   accessBundleId: string;
   service?: TAgentVaultService | null;
   prefillHost?: string;
+  // Only for an existing service, whose steps start at Details.
+  initialStep?: ServiceStep;
   onSaved?: () => void;
 };
 
@@ -150,6 +193,7 @@ export const ServiceSheet = ({
   accessBundleId,
   service,
   prefillHost,
+  initialStep,
   onSaved
 }: Props) => {
   const isUpdate = Boolean(service);
@@ -194,8 +238,13 @@ export const ServiceSheet = ({
     reset,
     setError,
     trigger,
+    watch,
+    setValue,
     formState: { errors, isDirty, isSubmitting }
   } = formMethods;
+
+  const isMcp = watch("serviceType") === AgentVaultServiceType.Mcp;
+  const stepFields = isMcp ? MCP_SERVICE_STEP_FIELDS : SERVICE_STEP_FIELDS;
 
   const discardActionRef = useRef<VoidFunction>(() => onOpenChange(false));
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
@@ -209,13 +258,10 @@ export const ServiceSheet = ({
   // A prefilled host has already been matched against the templates, and anything picked on the
   // template step would replace that host.
   const hasTemplateStep = !isUpdate && !prefillHost;
-  const steps = useMemo(
-    () =>
-      hasTemplateStep
-        ? SERVICE_STEPS
-        : SERVICE_STEPS.filter((meta) => meta.step !== ServiceStep.Template),
-    [hasTemplateStep]
-  );
+  const steps = useMemo(() => {
+    const all = isMcp ? MCP_SERVICE_STEPS : SERVICE_STEPS;
+    return hasTemplateStep ? all : all.filter((meta) => meta.step !== ServiceStep.Template);
+  }, [hasTemplateStep, isMcp]);
   const stepKeys = useMemo(() => steps.map((meta) => meta.step), [steps]);
 
   const panelRef = useRef<HTMLDivElement>(null);
@@ -227,7 +273,7 @@ export const ServiceSheet = ({
 
   const { step, isLastStep, goBack, goNext, onFormInvalid, setStep } = useWizardSteps<ServiceStep>({
     stepKeys,
-    stepFields: SERVICE_STEP_FIELDS,
+    stepFields,
     invalidMessage: "Fix the errors before saving.",
     validateStep: async (fields) => {
       const isValid = await trigger(fields as (keyof TServiceForm)[]);
@@ -236,7 +282,11 @@ export const ServiceSheet = ({
     }
   });
 
-  const hasAdvancedError = Boolean(errors.customHeaders || errors.substitutions);
+  const hasAdvancedError = Boolean(
+    errors.customHeaders ||
+      errors.substitutions ||
+      (isMcp && (errors.headerName || errors.headerPrefix))
+  );
 
   useEffect(() => {
     if (hasAdvancedError) setOpenItem(ADVANCED_ITEM);
@@ -257,10 +307,39 @@ export const ServiceSheet = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    setStep(0);
+    setStep(
+      service && initialStep
+        ? Math.max(
+            SERVICE_STEPS.filter((meta) => meta.step !== ServiceStep.Template).findIndex(
+              (meta) => meta.step === initialStep
+            ),
+            0
+          )
+        : 0
+    );
     setTemplate(null);
+    setOpenItem(service?.type === AgentVaultServiceType.Mcp ? "" : ADVANCED_ITEM);
 
-    if (service) {
+    if (service?.type === AgentVaultServiceType.Mcp) {
+      const { credential } = service;
+      const isBearer = credential.type === AgentVaultCredentialType.Bearer;
+      reset({
+        ...BLANK_MCP_SERVICE_FORM,
+        name: service.name,
+        serverUrl: service.config.serverUrl,
+        transport: service.config.transport,
+        credentialType: isBearer ? AgentVaultCredentialType.Bearer : AgentVaultCredentialType.OAuth,
+        headerName: isBearer ? credential.headerName : "Authorization",
+        headerPrefix: isBearer ? credential.headerPrefix : "Bearer",
+        secret: isBearer ? UNCHANGED_SECRET : "",
+        customHeaders: service.customHeaders.map((header) => ({
+          id: header.id,
+          name: header.name,
+          prefix: header.prefix,
+          value: UNCHANGED_SECRET
+        }))
+      });
+    } else if (service) {
       const { credential } = service;
       reset({
         ...BLANK_SERVICE_FORM,
@@ -311,18 +390,27 @@ export const ServiceSheet = ({
     } else {
       reset(BLANK_SERVICE_FORM);
     }
-  }, [isOpen, service, isUpdate, prefillHost, reset, setStep]);
+  }, [isOpen, service, isUpdate, prefillHost, initialStep, reset, setStep]);
 
-  const handleTemplatePicked = (picked: AgentVaultTemplate | null) => {
+  const handleTemplatePicked = (
+    picked: AgentVaultTemplate | null,
+    serviceType: AgentVaultServiceType
+  ) => {
     setTemplate(picked);
-    reset(
-      picked
-        ? formFromTemplate(
-            picked,
-            picked.hostPattern.split(",").map((host) => host.trim())
-          )
-        : BLANK_SERVICE_FORM
-    );
+    if (serviceType === AgentVaultServiceType.Mcp) {
+      setOpenItem("");
+      reset(mcpFormFromTemplate(picked?.serviceType === AgentVaultServiceType.Mcp ? picked : null));
+    } else {
+      setOpenItem(ADVANCED_ITEM);
+      reset(
+        picked?.serviceType === AgentVaultServiceType.Http
+          ? formFromTemplate(
+              picked,
+              picked.hostPattern.split(",").map((host) => host.trim())
+            )
+          : BLANK_SERVICE_FORM
+      );
+    }
     setStep(1);
   };
 
@@ -333,87 +421,14 @@ export const ServiceSheet = ({
       setStep(0);
     });
 
-  const buildCredential = (data: TServiceForm) => {
-    if (data.credentialType === AgentVaultCredentialType.Passthrough) {
-      return { type: AgentVaultCredentialType.Passthrough as const };
-    }
-    if (data.credentialType === AgentVaultCredentialType.Basic) {
-      return {
-        type: AgentVaultCredentialType.Basic as const,
-        username: data.username ?? "",
-        password: data.secret ?? ""
-      };
-    }
-    return {
-      type: AgentVaultCredentialType.Bearer as const,
-      headerName: data.headerName || undefined,
-      headerPrefix: data.headerPrefix ?? "",
-      value: data.secret ?? ""
-    };
-  };
-
-  const buildCredentialPatch = (data: TServiceForm) => {
-    if (data.credentialType === AgentVaultCredentialType.Passthrough) {
-      return { type: AgentVaultCredentialType.Passthrough as const };
-    }
-    const untouched = data.secret === UNCHANGED_SECRET;
-
-    if (data.credentialType === AgentVaultCredentialType.Basic) {
-      return {
-        type: AgentVaultCredentialType.Basic as const,
-        username: data.username === UNCHANGED_SECRET ? undefined : (data.username ?? ""),
-        password: untouched ? undefined : (data.secret ?? "")
-      };
-    }
-    return {
-      type: AgentVaultCredentialType.Bearer as const,
-      headerName: data.headerName || "Authorization",
-      headerPrefix: data.headerPrefix ?? "",
-      value: untouched || !data.secret ? undefined : data.secret
-    };
-  };
-
-  const buildPolicy = (data: TServiceForm) => ({
-    allowedMethods: isAllMethods(data.methods) ? null : data.methods,
-    allowedPathPrefixes: data.pathPrefixes.length ? data.pathPrefixes : null
-  });
-
-  const buildTransformations = (data: TServiceForm) => ({
-    customHeaders: data.customHeaders.map((header) => ({
-      ...(header.id ? { id: header.id } : {}),
-      name: header.name,
-      prefix: header.prefix,
-      ...(header.value === UNCHANGED_SECRET ? {} : { value: header.value })
-    })),
-    substitutions: data.substitutions.map((substitution) => ({
-      ...(substitution.id ? { id: substitution.id } : {}),
-      placeholder: substitution.placeholder,
-      surfaces: substitution.surfaces,
-      ...(substitution.value === UNCHANGED_SECRET ? {} : { value: substitution.value })
-    }))
-  });
-
   const onSubmit = async (data: TServiceForm) => {
     try {
       if (service) {
-        await updateService.mutateAsync({
-          accessBundleId,
-          serviceId: service.id,
-          name: data.name,
-          hostPattern: data.hosts.join(","),
-          ...buildPolicy(data),
-          credential: buildCredentialPatch(data),
-          ...buildTransformations(data)
-        });
+        await updateService.mutateAsync(
+          buildUpdateServiceRequest(accessBundleId, service.id, data)
+        );
       } else {
-        await createService.mutateAsync({
-          accessBundleId,
-          name: data.name,
-          hostPattern: data.hosts.join(","),
-          ...buildPolicy(data),
-          credential: buildCredential(data),
-          ...buildTransformations(data)
-        });
+        await createService.mutateAsync(buildCreateServiceRequest(accessBundleId, data));
       }
 
       createNotification({
@@ -432,8 +447,23 @@ export const ServiceSheet = ({
         serverResponse?.error === ApiErrorTypes.BadRequestError &&
         serverResponse.message.includes("already covers")
       ) {
-        setError("hosts", { type: "server", message: serverResponse.message });
+        setError(isMcp ? "serverUrl" : "hosts", {
+          type: "server",
+          message: serverResponse.message
+        });
         setStep(stepKeys.indexOf(ServiceStep.Details));
+        return;
+      }
+
+      // An authorization is consumed by the first save that uses it, and is tied to one server URL.
+      if (
+        serverResponse?.error === ApiErrorTypes.BadRequestError &&
+        data.credentialType === AgentVaultCredentialType.OAuth &&
+        /authoriz/i.test(serverResponse.message)
+      ) {
+        setValue("oauthAuthorizationId", "");
+        setError("oauthAuthorizationId", { type: "server", message: serverResponse.message });
+        setStep(stepKeys.indexOf(ServiceStep.Credential));
         return;
       }
 
@@ -452,6 +482,8 @@ export const ServiceSheet = ({
         const STEP_OF_FIELD: Record<string, ServiceStep> = {
           name: ServiceStep.Details,
           hostPattern: ServiceStep.Details,
+          serverUrl: ServiceStep.Details,
+          transport: ServiceStep.Details,
           allowedMethods: ServiceStep.Details,
           allowedPathPrefixes: ServiceStep.Details,
           credential: ServiceStep.Credential,
@@ -460,10 +492,13 @@ export const ServiceSheet = ({
         };
 
         const FORM_FIELD_OF: Record<string, keyof TServiceForm> = {
-          hostPattern: "hosts",
+          hostPattern: isMcp ? "serverUrl" : "hosts",
           allowedMethods: "methods",
           allowedPathPrefixes: "pathPrefixes",
-          credential: "secret"
+          credential:
+            data.credentialType === AgentVaultCredentialType.OAuth
+              ? "oauthAuthorizationId"
+              : "secret"
         };
 
         let earliestStep: number | null = null;
@@ -492,9 +527,7 @@ export const ServiceSheet = ({
         return;
       }
 
-      // The mutation suppresses the global toast for bad requests so the conflict above shows once.
-      // Every other bad request has nothing rendering it, so hand those back.
-      onRequestError(error);
+      if (serverResponse?.error === ApiErrorTypes.BadRequestError) onRequestError(error);
     }
   };
 
@@ -507,7 +540,7 @@ export const ServiceSheet = ({
     }
     for (let i = step; i < target; i += 1) {
       // eslint-disable-next-line no-await-in-loop
-      if (!(await trigger(SERVICE_STEP_FIELDS[stepKeys[i]] as (keyof TServiceForm)[]))) {
+      if (!(await trigger(stepFields[stepKeys[i]] as (keyof TServiceForm)[]))) {
         return;
       }
     }
@@ -522,13 +555,33 @@ export const ServiceSheet = ({
     await goNext();
   };
 
+  const customName = isMcp ? "Custom MCP Server" : "Custom";
+
   const stepDescription = (meta: (typeof SERVICE_STEPS)[number]) => {
-    if (meta.step === ServiceStep.Template) return template?.name ?? "Custom";
+    if (meta.step === ServiceStep.Template) return template?.name ?? customName;
     if (meta.step === ServiceStep.Review && isUpdate) return "Confirm and save";
     return meta.shortDescription;
   };
 
   const current = steps[step];
+  const [credentialType, serverUrl, oauthAuthorizationId, oauthAuthorizedUrl] = watch([
+    "credentialType",
+    "serverUrl",
+    "oauthAuthorizationId",
+    "oauthAuthorizedUrl"
+  ]);
+  const isAwaitingAuthorization =
+    current.step === ServiceStep.Credential &&
+    isOAuthAuthorizationMissing(
+      {
+        serviceType: isMcp ? AgentVaultServiceType.Mcp : AgentVaultServiceType.Http,
+        credentialType,
+        serverUrl,
+        oauthAuthorizationId,
+        oauthAuthorizedUrl
+      },
+      service
+    );
   const isTemplateStep = current.step === ServiceStep.Template;
   const saveLabel = isUpdate ? "Save" : "Add Service";
 
@@ -547,7 +600,7 @@ export const ServiceSheet = ({
         <SheetHeader>
           {isTemplateStep ? (
             <>
-              <SheetTitle>Choose a template</SheetTitle>
+              <SheetTitle>Choose a Template</SheetTitle>
               <SheetDescription>
                 Start from a template, or configure the service yourself.
               </SheetDescription>
@@ -558,7 +611,7 @@ export const ServiceSheet = ({
                 {template && (
                   <ProviderIcon icon={template.image} alt="" className="size-6 object-contain" />
                 )}
-                {template?.name ?? (isUpdate ? service?.name : "Custom")}
+                {template?.name ?? (isUpdate ? service?.name : customName)}
                 <DocumentationLinkBadge href={SERVICE_DOCS_URL} />
               </SheetTitle>
               <SheetDescription>Set up the service and its credentials.</SheetDescription>
@@ -568,7 +621,7 @@ export const ServiceSheet = ({
 
         <FormProvider {...formMethods}>
           {isTemplateStep ? (
-            <div className="min-h-0 flex-1 overflow-y-auto p-6">
+            <div className="flex min-h-0 flex-1">
               <ServiceTemplateSelect onSelect={handleTemplatePicked} />
             </div>
           ) : (
@@ -578,7 +631,7 @@ export const ServiceSheet = ({
               <div className="flex min-h-0 flex-1 overflow-hidden">
                 <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
                   <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
-                    Setup steps
+                    Setup Steps
                   </p>
                   <Stepper
                     activeStep={step}
@@ -608,8 +661,19 @@ export const ServiceSheet = ({
                     <p className="mt-1 text-sm text-muted">{current.subtitle}</p>
                   </div>
 
-                  {current.step === ServiceStep.Details && <DetailsFields />}
-                  {current.step === ServiceStep.Credential && (
+                  {current.step === ServiceStep.Details &&
+                    (isMcp ? <McpDetailsFields /> : <DetailsFields />)}
+                  {current.step === ServiceStep.Credential && isMcp && (
+                    <ServiceVariablesContext.Provider value={serviceVariables}>
+                      <McpCredentialFields
+                        accessBundleId={accessBundleId}
+                        service={service}
+                        openItem={openItem}
+                        onOpenChange={setOpenItem}
+                      />
+                    </ServiceVariablesContext.Provider>
+                  )}
+                  {current.step === ServiceStep.Credential && !isMcp && (
                     <ServiceVariablesContext.Provider value={serviceVariables}>
                       <div className="flex flex-col gap-5">
                         <CredentialFields storedType={service?.credential.type} />
@@ -617,7 +681,9 @@ export const ServiceSheet = ({
                       </div>
                     </ServiceVariablesContext.Provider>
                   )}
-                  {current.step === ServiceStep.Review && <ReviewFields isUpdate={isUpdate} />}
+                  {current.step === ServiceStep.Review && (
+                    <ReviewFields isUpdate={isUpdate} service={service} />
+                  )}
                 </div>
 
                 <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
@@ -627,7 +693,7 @@ export const ServiceSheet = ({
                     </p>
                     <DocumentationLinkBadge href={SERVICE_DOCS_URL} />
                   </div>
-                  <p className="text-sm font-semibold text-foreground">What this step does</p>
+                  <h3 className="text-sm font-normal text-foreground">What This Step Does</h3>
                   <p className="text-sm leading-relaxed text-muted">{current.rightDescription}</p>
                   {current.rightTip && (
                     <p className="text-sm leading-relaxed text-muted">{current.rightTip}</p>
@@ -656,6 +722,7 @@ export const ServiceSheet = ({
                     type="button"
                     variant="av"
                     onClick={handleNext}
+                    isDisabled={isAwaitingAuthorization}
                     isPending={isLastStep && isSubmitting}
                   >
                     {isLastStep ? saveLabel : "Continue"}

@@ -36,6 +36,7 @@ import {
 import { useOrganization, useProjectPermission, useSubscription } from "@app/context";
 import {
   AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
+  AgentVaultServiceType,
   AgentVaultSessionLogDecision,
   getSessionLogStorageError,
   sessionLogRecordKey,
@@ -55,7 +56,9 @@ import {
   chunkIdTime,
   groupSessionLogGaps,
   matchesSessionLogSearch,
-  sessionLogSearchTerm
+  matchesSessionLogType,
+  sessionLogSearchTerm,
+  SessionLogTypeFilter
 } from "./SessionLogsPanel.utils";
 import { useNewRequestsCounter } from "./useNewRequestsCounter";
 import { useSessionLogsLiveTail } from "./useSessionLogsLiveTail";
@@ -115,6 +118,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
 
   const [search, setSearch] = useState("");
   const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>("all");
+  const [typeFilter, setTypeFilter] = useState<SessionLogTypeFilter>("all");
   const { range, applyRange, isActive, canTail, isLive, isPausedForBudget, pauseForBudget } =
     useSessionLogsLiveTail(session);
   const { history, live, arrived, isLiveGapUnfilled } = useGetAgentVaultSessionLogs(session.id, {
@@ -189,12 +193,14 @@ export const SessionLogsPanel = ({ session }: Props) => {
     () =>
       records.filter((record) => {
         if (decisionFilter !== "all" && record.decision !== decisionFilter) return false;
+        if (!matchesSessionLogType(record, typeFilter)) return false;
         return matchesSessionLogSearch(record, search);
       }),
-    [records, search, decisionFilter]
+    [records, search, decisionFilter, typeFilter]
   );
 
-  const hasBrowserFilter = Boolean(sessionLogSearchTerm(search)) || decisionFilter !== "all";
+  const hasBrowserFilter =
+    Boolean(sessionLogSearchTerm(search)) || decisionFilter !== "all" || typeFilter !== "all";
   const isFiltered = hasBrowserFilter || Boolean(range);
 
   // Counted once opened: a chunk's request count isn't known until it is decrypted.
@@ -224,6 +230,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const filterKey = [
     sessionLogSearchTerm(search),
     decisionFilter,
+    typeFilter,
     range?.startDate.getTime(),
     range?.endDate.getTime()
   ].join("|");
@@ -349,7 +356,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
     )} and ${format(range.endDate, "MMM d, yyyy HH:mm")}.`;
   } else if (isFiltered) {
     noRecordsTitle = "No requests match these filters";
-    noRecordsDescription = "Try a different search term, outcome or time range.";
+    noRecordsDescription = "Try a different search term, type, outcome or time range.";
   } else if (liveState === "live") {
     noRecordsLiveState = liveState;
     noRecordsTitle = "Waiting for requests";
@@ -495,7 +502,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
             <InputGroupInput
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search host, path, method or service..."
+              placeholder="Search host, path, method, tool or service..."
             />
             {search && (
               <InputGroupAddon align="inline-end">
@@ -511,6 +518,19 @@ export const SessionLogsPanel = ({ session }: Props) => {
             )}
           </InputGroup>
         </div>
+        <Select
+          value={typeFilter}
+          onValueChange={(value) => setTypeFilter(value as SessionLogTypeFilter)}
+        >
+          <SelectTrigger aria-label="Filter by type">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent position="popper">
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value={AgentVaultServiceType.Http}>HTTP APIs</SelectItem>
+            <SelectItem value={AgentVaultServiceType.Mcp}>MCP Servers</SelectItem>
+          </SelectContent>
+        </Select>
         <Select
           value={decisionFilter}
           onValueChange={(value) => setDecisionFilter(value as DecisionFilter)}
@@ -658,7 +678,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
               <TableHead className="w-48">Time</TableHead>
               <TableHead className="w-24">Method</TableHead>
               <TableHead>Host</TableHead>
-              <TableHead>Path</TableHead>
+              <TableHead>Request</TableHead>
               <TableHead className="w-24">Upstream</TableHead>
               <TableHead className="w-36">Outcome</TableHead>
               <TableHead variant="action" className={canAddService ? "w-36" : "w-12"} />

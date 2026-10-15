@@ -2707,6 +2707,7 @@ describe("Agent Vault V1 Router", async () => {
         } as never,
         licenseService: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
         resourceAuthMethodService: {} as never,
+        agentVaultOauthService: {} as never,
         ...overrides
       });
 
@@ -2838,7 +2839,8 @@ describe("Agent Vault V1 Router", async () => {
             Promise.resolve({ decryptor: () => Buffer.from(JSON.stringify({ value: "unsealed" })) })
         } as never,
         licenseService: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
-        resourceAuthMethodService: {} as never
+        resourceAuthMethodService: {} as never,
+        agentVaultOauthService: {} as never
       });
 
       const resolved = await resolver.resolveSession({
@@ -3004,7 +3006,8 @@ describe("Agent Vault V1 Router", async () => {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
         } as never,
         licenseService: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
-        resourceAuthMethodService: {} as never
+        resourceAuthMethodService: {} as never,
+        agentVaultOauthService: {} as never
       });
       const resolve = () =>
         resolver.resolveSession({
@@ -3743,7 +3746,8 @@ describe("Agent Vault V1 Router", async () => {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
           } as never,
           licenseService: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
-          resourceAuthMethodService: {} as never
+          resourceAuthMethodService: {} as never,
+          agentVaultOauthService: {} as never
         });
         const resolve = () =>
           resolver.resolveSession({
@@ -3842,7 +3846,8 @@ describe("Agent Vault V1 Router", async () => {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
           } as never,
           licenseService: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
-          resourceAuthMethodService: {} as never
+          resourceAuthMethodService: {} as never,
+          agentVaultOauthService: {} as never
         });
         const resolve = () =>
           resolver.resolveSession({

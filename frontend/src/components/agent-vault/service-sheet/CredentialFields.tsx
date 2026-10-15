@@ -28,7 +28,12 @@ import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
 
 import { ReferenceHighlights } from "./ReferenceHighlights";
 import { SendsPreview } from "./SendsPreview";
-import { CREDENTIAL_LABELS, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+import {
+  CREDENTIAL_LABELS,
+  HTTP_CREDENTIAL_TYPES,
+  TServiceForm,
+  UNCHANGED_SECRET
+} from "./serviceSchema";
 import { useServiceVariables } from "./ServiceVariablesContext";
 import { VariableKeyChips } from "./VariableChips";
 import { useVariableAutocomplete, VariableSuggestions } from "./VariableSuggestions";
@@ -293,7 +298,7 @@ export const CredentialFields = ({ storedType }: Props) => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  {Object.values(AgentVaultCredentialType).map((value) => (
+                  {HTTP_CREDENTIAL_TYPES.map((value) => (
                     <SelectItem key={value} value={value}>
                       {CREDENTIAL_LABELS[value]}
                     </SelectItem>

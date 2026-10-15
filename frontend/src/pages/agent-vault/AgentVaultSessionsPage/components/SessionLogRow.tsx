@@ -7,6 +7,7 @@ import {
   KeyRoundIcon,
   type LucideIcon,
   PlusIcon,
+  ServerIcon,
   ShieldBanIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -21,10 +22,13 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { AgentVaultSessionLogDecision } from "@app/hooks/api/agentVault";
-import { TAgentVaultSessionLogRecord } from "@app/hooks/api/agentVault/types";
+import { AgentVaultServiceType, AgentVaultSessionLogDecision } from "@app/hooks/api/agentVault";
+import {
+  TAgentVaultSessionLogMcpCall,
+  TAgentVaultSessionLogRecord
+} from "@app/hooks/api/agentVault/types";
 
-import { httpStatusLabel } from "./SessionLogsPanel.utils";
+import { httpStatusLabel, mcpCallLabel, sessionLogMcpCalls } from "./SessionLogsPanel.utils";
 
 const ARRIVAL_HOLD_MS = 1200;
 
@@ -95,6 +99,64 @@ export const hostPatternFor = (record: TAgentVaultSessionLogRecord) => {
   return record.port === "443" ? host : `${host}:${record.port}`;
 };
 
+const PathDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => (
+  <span className="block truncate" title={record.path}>
+    {record.path}
+  </span>
+);
+
+const McpCallText = ({ call }: { call: TAgentVaultSessionLogMcpCall }) =>
+  call.tool ? (
+    <>
+      <span className="truncate font-mono text-foreground">{call.tool}</span>
+      <span className="shrink-0 font-mono text-xs text-muted">{call.method}</span>
+    </>
+  ) : (
+    <span className="truncate font-mono text-xs text-muted">{call.method}</span>
+  );
+
+const McpDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
+  const [first, ...rest] = sessionLogMcpCalls(record);
+
+  return (
+    <span className="flex min-w-0 items-center gap-1.5">
+      <Badge variant="info">
+        <ServerIcon />
+        MCP
+      </Badge>
+      {first ? (
+        <span className="flex min-w-0 items-baseline gap-1.5" title={record.path}>
+          <McpCallText call={first} />
+        </span>
+      ) : (
+        <span className="min-w-0 truncate text-muted" title={record.path}>
+          {record.path}
+        </span>
+      )}
+      {rest.length > 0 && (
+        <Tooltip>
+          <TooltipTrigger className="shrink-0 text-xs text-muted">+{rest.length}</TooltipTrigger>
+          <TooltipContent>
+            <div className="flex flex-col font-mono text-xs">
+              {rest.map((call, index) => (
+                // eslint-disable-next-line react/no-array-index-key
+                <span key={index}>{mcpCallLabel(call)}</span>
+              ))}
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      )}
+    </span>
+  );
+};
+
+const RequestDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) =>
+  record.serviceType === AgentVaultServiceType.Mcp ? (
+    <McpDetail record={record} />
+  ) : (
+    <PathDetail record={record} />
+  );
+
 type Props = {
   record: TAgentVaultSessionLogRecord;
   arrivedAt?: number;
@@ -162,9 +224,7 @@ export const SessionLogRow = ({ record, arrivedAt, accessBundleName, onAddServic
         )}
       </TableCell>
       <TableCell>
-        <span className="block truncate" title={record.path}>
-          {record.path}
-        </span>
+        <RequestDetail record={record} />
       </TableCell>
       <TableCell className="font-mono text-xs">
         {!proxyAnswered && record.status ? (

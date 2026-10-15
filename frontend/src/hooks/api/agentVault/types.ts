@@ -1,7 +1,11 @@
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
+  AgentVaultMcpTransport,
   AgentVaultMemberType,
+  AgentVaultOAuthAuthorizationStatus,
+  AgentVaultOAuthStatus,
+  AgentVaultServiceType,
   AgentVaultSessionLogDecision,
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
@@ -10,10 +14,23 @@ import {
   AgentVaultVariableReferenceField
 } from "./enums";
 
+export type TAgentVaultOAuthCredentialSummary = {
+  type: AgentVaultCredentialType.OAuth;
+  status: AgentVaultOAuthStatus;
+  issuer: string;
+  grantedScopes: string[];
+  requiredScopes: string[];
+  expiresAt: string | null;
+  authorizedBy: { userId: string; username: string } | null;
+  authorizedAt: string | null;
+  lastError: string | null;
+};
+
 export type TAgentVaultCredentialSummary =
   | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
   | { type: AgentVaultCredentialType.Basic }
-  | { type: AgentVaultCredentialType.Passthrough };
+  | { type: AgentVaultCredentialType.Passthrough }
+  | TAgentVaultOAuthCredentialSummary;
 
 export type TAgentVaultCredentialInput =
   | {
@@ -25,6 +42,11 @@ export type TAgentVaultCredentialInput =
   | { type: AgentVaultCredentialType.Basic; username: string; password: string }
   | { type: AgentVaultCredentialType.Passthrough };
 
+export type TAgentVaultOAuthCredentialInput = {
+  type: AgentVaultCredentialType.OAuth;
+  authorizationId: string;
+};
+
 export type TAgentVaultCredentialUpdate =
   | {
       type: AgentVaultCredentialType.Bearer;
@@ -33,7 +55,8 @@ export type TAgentVaultCredentialUpdate =
       value?: string;
     }
   | { type: AgentVaultCredentialType.Basic; username?: string; password?: string }
-  | { type: AgentVaultCredentialType.Passthrough };
+  | { type: AgentVaultCredentialType.Passthrough }
+  | TAgentVaultOAuthCredentialInput;
 
 export type TAgentVaultCustomHeaderSummary = { id: string; name: string; prefix: string };
 
@@ -72,7 +95,16 @@ export type TAgentVaultVariableReference = {
   | { field: AgentVaultVariableReferenceField.Substitution; substitutionId: string }
 );
 
-export type TAgentVaultService = {
+export type TAgentVaultMcpServiceConfig = {
+  serverUrl: string;
+  transport: AgentVaultMcpTransport;
+};
+
+export type TAgentVaultServiceConfig =
+  | { type: AgentVaultServiceType.Http; config: Record<string, never> }
+  | { type: AgentVaultServiceType.Mcp; config: TAgentVaultMcpServiceConfig };
+
+export type TAgentVaultService = TAgentVaultServiceConfig & {
   id: string;
   accessBundleId: string;
   name: string;
@@ -254,16 +286,29 @@ export type TUpdateAgentVaultAccessBundleDTO = {
   description?: string | null;
 };
 
-export type TCreateAgentVaultServiceDTO = {
-  accessBundleId: string;
-  name: string;
-  hostPattern: string;
-  allowedMethods?: AgentVaultHttpMethod[] | null;
-  allowedPathPrefixes?: string[] | null;
-  credential: TAgentVaultCredentialInput;
-  customHeaders?: TAgentVaultCustomHeaderInput[];
-  substitutions?: TAgentVaultSubstitutionInput[];
-};
+export type TCreateAgentVaultServiceDTO =
+  | {
+      accessBundleId: string;
+      type?: AgentVaultServiceType.Http;
+      name: string;
+      hostPattern: string;
+      allowedMethods?: AgentVaultHttpMethod[] | null;
+      allowedPathPrefixes?: string[] | null;
+      credential: TAgentVaultCredentialInput;
+      customHeaders?: TAgentVaultCustomHeaderInput[];
+      substitutions?: TAgentVaultSubstitutionInput[];
+    }
+  | {
+      accessBundleId: string;
+      type: AgentVaultServiceType.Mcp;
+      name: string;
+      serverUrl: string;
+      transport: AgentVaultMcpTransport;
+      credential:
+        | Extract<TAgentVaultCredentialInput, { type: AgentVaultCredentialType.Bearer }>
+        | TAgentVaultOAuthCredentialInput;
+      customHeaders?: TAgentVaultCustomHeaderInput[];
+    };
 
 export type TUpdateAgentVaultServiceDTO = {
   accessBundleId: string;
@@ -272,9 +317,48 @@ export type TUpdateAgentVaultServiceDTO = {
   hostPattern?: string;
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
+  serverUrl?: string;
+  transport?: AgentVaultMcpTransport;
   credential?: TAgentVaultCredentialUpdate;
   customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
+};
+
+export type TAgentVaultOAuthAuthorization = {
+  id: string;
+  status: AgentVaultOAuthAuthorizationStatus;
+  error: string | null;
+  scopes: string[];
+};
+
+export type TCreateAgentVaultOAuthAuthorizationDTO = {
+  accessBundleId: string;
+  serverUrl: string;
+  serviceId?: string;
+  clientId?: string;
+  clientSecret?: string;
+};
+
+export type TCreateAgentVaultOAuthAuthorizationResponse = {
+  registrationRequired: boolean;
+  redirectUri: string;
+  // Why the server's registration endpoint refused Infisical; null when it simply has none.
+  registrationError: string | null;
+  authorization: {
+    id: string;
+    status: AgentVaultOAuthAuthorizationStatus;
+    authorizeUrl: string;
+    scopes: string[];
+  } | null;
+};
+
+export type TCompleteAgentVaultOAuthAuthorizationDTO = {
+  authorizationId: string;
+  state: string;
+  code?: string;
+  iss?: string;
+  error?: string;
+  errorDescription?: string;
 };
 
 export type TAddAgentVaultMembersDTO = TAgentVaultActorIdsDTO & {
@@ -355,6 +439,17 @@ export type TAgentVaultSessionLogTailPage = TAgentVaultSessionLogPage & {
   nextCursor: string;
 };
 
+export type TAgentVaultSessionLogMcpCall = {
+  method: string;
+  tool?: string | null;
+};
+
+export type TAgentVaultSessionLogMcpDetail = {
+  calls: TAgentVaultSessionLogMcpCall[];
+  // False when the proxy could not read the body, as for one over its size limit.
+  parsed: boolean;
+};
+
 export type TAgentVaultSessionLogRecord = {
   ts: string;
   seq: number;
@@ -367,6 +462,9 @@ export type TAgentVaultSessionLogRecord = {
   decision: AgentVaultSessionLogDecision;
   service: string | null;
   accessBundle: string | null;
+  // Absent on records written before service types existed, and null when no service matched.
+  serviceType?: AgentVaultServiceType | null;
+  mcp?: TAgentVaultSessionLogMcpDetail;
 };
 
 export type TAgentVaultSessionLogGapReason =

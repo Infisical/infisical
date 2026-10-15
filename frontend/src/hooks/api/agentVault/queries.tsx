@@ -5,7 +5,7 @@ import axios from "axios";
 import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 
-import { AgentVaultMemberType } from "./enums";
+import { AgentVaultMemberType, AgentVaultOAuthAuthorizationStatus } from "./enums";
 import {
   createSessionLogChunkCache,
   decryptSessionLogPage,
@@ -22,6 +22,7 @@ import {
   TAgentVaultAccessBundleListItem,
   TAgentVaultDecryptedSessionLogPage,
   TAgentVaultMember,
+  TAgentVaultOAuthAuthorization,
   TAgentVaultProductActor,
   TAgentVaultProductMember,
   TAgentVaultProductMemberOf,
@@ -45,6 +46,17 @@ export const fetchAgentVaultProjectId = async () => {
   return data.projectId;
 };
 
+export const fetchAgentVaultOAuthAuthorization = async (
+  authorizationId: string,
+  signal?: AbortSignal
+) => {
+  const { data } = await apiRequest.get<{ authorization: TAgentVaultOAuthAuthorization }>(
+    `/api/v1/agent-vault/oauth/authorizations/${encodeURIComponent(authorizationId)}`,
+    { signal }
+  );
+  return data.authorization;
+};
+
 export const AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS = 15_000;
 
 const SESSION_LOG_GAP_FILL_INTERVAL_MS = 60_000;
@@ -60,6 +72,8 @@ export const getSessionLogStorageError = (error: unknown) =>
 // path parameter: without it a switch to another org would serve the previous org's data from cache.
 export const agentVaultKeys = {
   all: (orgId: string) => ["agent-vault", orgId] as const,
+  oauthAuthorization: (orgId: string, authorizationId: string) =>
+    [...agentVaultKeys.all(orgId), "oauth-authorizations", authorizationId] as const,
   accessBundles: (orgId: string) => [...agentVaultKeys.all(orgId), "access-bundles"] as const,
   accessBundle: (orgId: string, accessBundleId: string) =>
     [...agentVaultKeys.accessBundles(orgId), accessBundleId] as const,
@@ -107,6 +121,26 @@ export const agentVaultKeys = {
     [...agentVaultKeys.sessions(orgId), sessionId, "logs", range ?? {}] as const,
   sessionLogsLive: (orgId: string, sessionId: string, range?: { from?: string; to?: string }) =>
     [...agentVaultKeys.sessions(orgId), sessionId, "logs-live", range ?? {}] as const
+};
+
+export const useGetAgentVaultOAuthAuthorization = (authorizationId: string) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.oauthAuthorization(currentOrg.id, authorizationId),
+    queryFn: ({ signal }) => fetchAgentVaultOAuthAuthorization(authorizationId, signal),
+    enabled: Boolean(authorizationId),
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+    refetchInterval: (query) =>
+      query.state.error ||
+      (query.state.data && query.state.data.status !== AgentVaultOAuthAuthorizationStatus.Pending)
+        ? false
+        : 2000,
+    // The provider popup can leave the Infisical tab in the background until authorization finishes.
+    refetchIntervalInBackground: true
+  });
 };
 
 export const useListAgentVaultMembers = <T extends AgentVaultMemberType = AgentVaultMemberType>(
