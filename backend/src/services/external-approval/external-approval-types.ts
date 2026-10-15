@@ -23,10 +23,13 @@ export type TValidateExternalApprovalConnectionDTO = {
   projectId: string;
 };
 
-export type TCreateExternalApprovalPolicyDTO = {
-  policyId: string;
+export type TExternalApprovalPolicyInput = {
   type: ExternalApprovalPolicyType;
   connectionId: string;
+};
+
+export type TCreateExternalApprovalPolicyDTO = TExternalApprovalPolicyInput & {
+  policyId: string;
 };
 
 export type TUpdateExternalApprovalPolicyDTO = {

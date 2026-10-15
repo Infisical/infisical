@@ -21,6 +21,7 @@ import {
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
+import { TExternalApprovalServiceFactory } from "@app/services/external-approval/external-approval-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -50,6 +51,10 @@ export type TSecretAccessApprovalGlobalPolicyBridgeServiceFactoryDep = {
   secretAccessApprovalGlobalPolicyBridgeDAL: Pick<
     TSecretAccessApprovalGlobalPolicyBridgeDALFactory,
     "findSecretAccessPolicies"
+  >;
+  externalApprovalService: Pick<
+    TExternalApprovalServiceFactory,
+    "validateConnection" | "createPolicy" | "updatePolicy" | "deletePolicyByPolicyId"
   >;
 };
 

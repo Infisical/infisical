@@ -2650,26 +2650,6 @@ export const registerRoutes = async (
     additionalPrivilegeDAL
   });
 
-  const secretAccessApprovalGlobalPolicyBridgeService = secretAccessApprovalGlobalPolicyBridgeServiceFactory({
-    projectDAL,
-    permissionService,
-    projectEnvDAL,
-    userDAL,
-    groupDAL,
-    accessApprovalPolicyDAL,
-    approvalPolicyDAL,
-    approvalPolicyStepsDAL,
-    approvalPolicyStepApproversDAL,
-    approvalPolicyBypassersDAL,
-    approvalPolicySecretEnvironmentDAL,
-    secretAccessApprovalGlobalPolicyBridgeDAL,
-    approvalRequestDAL,
-    approvalRequestStepsDAL,
-    approvalRequestStepEligibleApproversDAL,
-    approvalRequestGrantsDAL,
-    additionalPrivilegeDAL
-  });
-
   const secretAccessApprovalGlobalRequestBridgeService = secretAccessApprovalGlobalRequestBridgeServiceFactory({
     projectDAL,
     projectEnvDAL,
@@ -2692,24 +2672,6 @@ export const registerRoutes = async (
     projectMicrosoftTeamsConfigDAL,
     queueService,
     secretAccessApprovalGlobalResource
-  });
-
-  const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
-    accessApprovalPolicyDAL,
-    accessApprovalPolicyApproverDAL,
-    accessApprovalPolicyBypasserDAL,
-    accessApprovalPolicyEnvironmentDAL,
-    groupDAL,
-    permissionService,
-    projectEnvDAL,
-    projectDAL,
-    userDAL,
-    accessApprovalRequestDAL,
-    accessApprovalRequestReviewerDAL,
-    additionalPrivilegeDAL,
-    approvalPolicyDAL,
-    approvalPolicySecretEnvironmentDAL,
-    secretAccessApprovalGlobalPolicyBridge: secretAccessApprovalGlobalPolicyBridgeService
   });
 
   const accessApprovalRequestService = accessApprovalRequestServiceFactory({
@@ -3331,6 +3293,45 @@ export const registerRoutes = async (
     approvalRequestDAL,
     appConnectionDAL,
     appConnectionService
+  });
+
+  const secretAccessApprovalGlobalPolicyBridgeService = secretAccessApprovalGlobalPolicyBridgeServiceFactory({
+    projectDAL,
+    permissionService,
+    projectEnvDAL,
+    userDAL,
+    groupDAL,
+    accessApprovalPolicyDAL,
+    approvalPolicyDAL,
+    approvalPolicyStepsDAL,
+    approvalPolicyStepApproversDAL,
+    approvalPolicyBypassersDAL,
+    approvalPolicySecretEnvironmentDAL,
+    secretAccessApprovalGlobalPolicyBridgeDAL,
+    approvalRequestDAL,
+    approvalRequestStepsDAL,
+    approvalRequestStepEligibleApproversDAL,
+    approvalRequestGrantsDAL,
+    additionalPrivilegeDAL,
+    externalApprovalService
+  });
+
+  const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
+    accessApprovalPolicyDAL,
+    accessApprovalPolicyApproverDAL,
+    accessApprovalPolicyBypasserDAL,
+    accessApprovalPolicyEnvironmentDAL,
+    groupDAL,
+    permissionService,
+    projectEnvDAL,
+    projectDAL,
+    userDAL,
+    accessApprovalRequestDAL,
+    accessApprovalRequestReviewerDAL,
+    additionalPrivilegeDAL,
+    approvalPolicyDAL,
+    approvalPolicySecretEnvironmentDAL,
+    secretAccessApprovalGlobalPolicyBridge: secretAccessApprovalGlobalPolicyBridgeService
   });
 
   const agentVaultSessionLogService = agentVaultSessionLogServiceFactory({

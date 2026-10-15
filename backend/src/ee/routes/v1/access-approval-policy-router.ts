@@ -10,6 +10,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { ExternalApprovalPolicyType } from "@app/services/external-approval/external-approval-enums";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const maxTimePeriodSchema = z
@@ -70,6 +71,17 @@ const requestExpirationTimeSchema = z
     return val;
   });
 
+const externalApprovalSchema = z.object({
+  type: z
+    .nativeEnum(ExternalApprovalPolicyType)
+    .describe("The external approval system that reviews requests made against this policy."),
+  connectionId: z.string().uuid().describe("The ID of the App Connection used to reach the external approval system.")
+});
+
+const accessApprovalPolicyPubSchema = sapPubSchema.extend({
+  externalApproval: externalApprovalSchema.nullable().optional()
+});
+
 export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
@@ -105,12 +117,13 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             ])
             .array()
             .max(100, "Cannot have more than 100 approvers")
-            .min(1, { message: "At least one approver should be provided" })
             .refine(
               // @ts-expect-error this is ok
               (el) => el.every((i) => Boolean(i?.id) || Boolean(i?.username)),
               "Must provide either username or id"
-            ),
+            )
+            .optional()
+            .describe("Required unless externalApproval is set; an external approval system reviews requests then."),
           bypassers: z
             .discriminatedUnion("type", [
               z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
@@ -134,15 +147,22 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
           allowedSelfApprovals: z.boolean().default(true),
           maxTimePeriod: maxTimePeriodSchema,
-          requestExpirationTime: requestExpirationTimeSchema
+          requestExpirationTime: requestExpirationTimeSchema,
+          externalApproval: externalApprovalSchema
+            .optional()
+            .describe("Hand requests made against this policy to an external approval system.")
         })
         .refine(
           (val) => Boolean(val.environment) || Boolean(val.environments),
           "Must provide either environment or environments"
+        )
+        .refine(
+          (val) => Boolean(val.externalApproval) || Boolean(val.approvers?.length),
+          "At least one approver should be provided"
         ),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: accessApprovalPolicyPubSchema
         })
       }
     },
@@ -153,7 +173,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
+        orgActor: req.permission,
         ...req.body,
+        approvers: req.body.approvers ?? [],
         projectSlug: req.body.projectSlug,
         name:
           req.body.name ?? `${req.body.environment || req.body.environments?.join("-").substring(0, 250)}-${nanoid(3)}`,
@@ -193,7 +215,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approvals: sapPubSchema
+          approvals: accessApprovalPolicyPubSchema
             .extend({
               approvers: z
                 .object({
@@ -292,13 +314,14 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             })
           ])
           .array()
-          .min(1, { message: "At least one approver should be provided" })
           .max(100, "Cannot have more than 100 approvers")
           .refine(
             // @ts-expect-error this is ok
             (el) => el.every((i) => Boolean(i?.id) || Boolean(i?.username)),
             "Must provide either username or id"
-          ),
+          )
+          .optional()
+          .describe("Required unless the policy is handled by an external approval system."),
         bypassers: z
           .discriminatedUnion("type", [
             z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
@@ -319,11 +342,17 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           .array()
           .optional(),
         maxTimePeriod: maxTimePeriodSchema,
-        requestExpirationTime: requestExpirationTimeSchema
+        requestExpirationTime: requestExpirationTimeSchema,
+        externalApproval: externalApprovalSchema
+          .nullable()
+          .optional()
+          .describe(
+            "Hand requests made against this policy to an external approval system. Send null to stop using one."
+          )
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: accessApprovalPolicyPubSchema
         })
       }
     },
@@ -335,7 +364,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         actorOrgId: req.permission.orgId,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
-        ...req.body
+        orgActor: req.permission,
+        ...req.body,
+        approvers: req.body.approvers ?? []
       });
 
       void server.services.telemetry
@@ -363,7 +394,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema
+          approval: accessApprovalPolicyPubSchema
         })
       }
     },
@@ -406,7 +437,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       }),
       response: {
         200: z.object({
-          approval: sapPubSchema.extend({
+          approval: accessApprovalPolicyPubSchema.extend({
             approvers: z
               .object({
                 type: z.nativeEnum(ApproverType),

@@ -1,5 +1,6 @@
-import { EnforcementLevel, TProjectPermission } from "@app/lib/types";
+import { EnforcementLevel, OrgServiceActor, TProjectPermission } from "@app/lib/types";
 import { ActorAuthMethod } from "@app/services/auth/auth-type";
+import { TExternalApprovalPolicyInput } from "@app/services/external-approval/external-approval-types";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 
@@ -23,6 +24,8 @@ export enum BypasserType {
   User = "user"
 }
 
+export type TExternalApprovalPolicyOutput = TExternalApprovalPolicyInput;
+
 export type TCreateAccessApprovalPolicy = {
   approvals: number;
   secretPath: string;
@@ -43,6 +46,8 @@ export type TCreateAccessApprovalPolicy = {
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  externalApproval?: TExternalApprovalPolicyInput;
+  orgActor: OrgServiceActor;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateAccessApprovalPolicy = {
@@ -64,6 +69,8 @@ export type TUpdateAccessApprovalPolicy = {
   environments?: string[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  externalApproval?: TExternalApprovalPolicyInput | null;
+  orgActor: OrgServiceActor;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteAccessApprovalPolicy = {
@@ -142,6 +149,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     deletedAt?: Date | null | undefined;
     maxTimePeriod?: string | null;
     requestExpirationTime?: string | null;
+    externalApproval?: TExternalApprovalPolicyOutput | null;
   }>;
   deleteAccessApprovalPolicy: ({
     policyId,
@@ -179,6 +187,7 @@ export interface TAccessApprovalPolicyServiceFactory {
       slug: string;
     }[];
     projectId: string;
+    externalApproval?: TExternalApprovalPolicyOutput | null;
   }>;
   updateAccessApprovalPolicy: ({
     policyId,
@@ -219,6 +228,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     secretPath: string;
     deletedAt?: Date | null | undefined;
     maxTimePeriod?: string | null;
+    externalApproval?: TExternalApprovalPolicyOutput | null;
   }>;
   getAccessApprovalPolicyByProjectSlug: ({
     actorId,
@@ -276,6 +286,7 @@ export interface TAccessApprovalPolicyServiceFactory {
             type: BypasserType;
           }
       )[];
+      externalApproval?: TExternalApprovalPolicyOutput | null;
     }[]
   >;
   getAccessApprovalPolicyById: ({
@@ -334,5 +345,6 @@ export interface TAccessApprovalPolicyServiceFactory {
           type: BypasserType.Group;
         }
     )[];
+    externalApproval?: TExternalApprovalPolicyOutput | null;
   }>;
 }

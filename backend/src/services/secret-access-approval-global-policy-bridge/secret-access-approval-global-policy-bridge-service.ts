@@ -9,11 +9,13 @@ import {
   TCreateAccessApprovalPolicy
 } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { insertApprovalRequestSteps } from "@app/services/approval-policy/approval-request-fns";
 import { ActorType } from "@app/services/auth/auth-type";
+import { assertExternalApprovalPolicyConstraints } from "@app/services/external-approval/external-approval-fns";
+import { TExternalApprovalPolicyInput } from "@app/services/external-approval/external-approval-types";
 
 import {
   buildSecretAccessPolicySteps,
@@ -41,6 +43,15 @@ type TPolicyStep = {
   requiredApprovals: number;
   approvers: { type: ApproverType; id: string }[];
 };
+type TPolicyReviewers = { steps: TPolicyStep[]; bypasserUserIds: string[]; groupBypassers: string[] };
+
+// defined for delegated approvals
+const NO_REVIEWERS: TPolicyReviewers = { steps: [], bypasserUserIds: [], groupBypassers: [] };
+
+const isExternalApprovalChanged = (
+  existing: TExternalApprovalPolicyInput | null,
+  incoming: TExternalApprovalPolicyInput
+) => existing?.type !== incoming.type || existing?.connectionId !== incoming.connectionId;
 
 export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
   projectDAL,
@@ -59,7 +70,8 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
   approvalRequestStepsDAL,
   approvalRequestStepEligibleApproversDAL,
   approvalRequestGrantsDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  externalApprovalService
 }: TSecretAccessApprovalGlobalPolicyBridgeServiceFactoryDep) => {
   const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });
 
@@ -250,6 +262,47 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     }
   };
 
+  // An external policy delegates review entirely, so it carries no approver steps or bypassers of its own.
+  const $resolveReviewers = async (
+    {
+      externalApproval,
+      enforcementLevel,
+      allowedSelfApprovals,
+      approvers,
+      bypassers,
+      approvalsRequired,
+      approvals
+    }: {
+      externalApproval: TExternalApprovalPolicyInput | null;
+      enforcementLevel: string;
+      allowedSelfApprovals: boolean;
+      approvers: TApproverInput;
+      bypassers: TBypasserInput | undefined;
+      approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
+      approvals?: number;
+    },
+    scope: { projectId: string; orgId: string }
+  ): Promise<TPolicyReviewers> => {
+    if (externalApproval) {
+      assertExternalApprovalPolicyConstraints({ enforcementLevel, bypassers, allowedSelfApprovals });
+      return NO_REVIEWERS;
+    }
+
+    if (!approvers.length) throw new BadRequestError({ message: "At least one approver should be provided" });
+    const { approverUserIds, groupApprovers } = await $resolveApprovers(approvers, scope);
+    const { bypasserUserIds, groupBypassers } = await $resolveBypassers(bypassers, scope);
+    const steps = $buildSteps({ approverUserIds, groupApprovers, approvalsRequired, approvals });
+    return { steps, bypasserUserIds, groupBypassers };
+  };
+
+  const $assertNoPendingRequests = async (policy: { id: string; name: string }, tx: Knex) => {
+    const pendingRequests = await approvalRequestDAL.findPendingByPolicyIdForUpdate(policy.id, tx);
+    if (!pendingRequests.length) return;
+    throw new ConflictError({
+      message: `Policy '${policy.name}' is handled by an external approval system and has ${pendingRequests.length} pending request(s). Resolve or cancel them before updating the policy.`
+    });
+  };
+
   const $getProjectPermission = async ({
     actor,
     actorId,
@@ -325,6 +378,51 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     });
   };
 
+  const $replacePolicyScope = async (
+    {
+      policyId,
+      envs,
+      secretPath,
+      steps
+    }: { policyId: string; envs: { id: string; slug: string }[]; secretPath: string; steps: TPolicyStep[] },
+    tx: Knex
+  ) => {
+    await approvalPolicySecretEnvironmentDAL.findByPolicyIdForUpdate(policyId, tx);
+    await $assertNoConflictingPolicy({ envs, secretPath, excludePolicyId: policyId }, tx);
+    await approvalPolicySecretEnvironmentDAL.delete({ policyId }, tx);
+    await approvalPolicySecretEnvironmentDAL.insertMany(
+      envs.map((env) => ({ policyId, envId: env.id, secretPath })),
+      tx
+    );
+    await $resetPendingRequestSteps({ policyId, steps }, tx);
+  };
+
+  const $applyExternalApprovalChange = async (
+    {
+      policyId,
+      existing,
+      incoming
+    }: {
+      policyId: string;
+      existing: TExternalApprovalPolicyInput | null;
+      incoming: TExternalApprovalPolicyInput | null | undefined;
+    },
+    tx: Knex
+  ) => {
+    if (incoming === undefined) return;
+    if (incoming === null) {
+      if (existing) await externalApprovalService.deletePolicyByPolicyId(policyId, tx);
+      return;
+    }
+    if (!existing) {
+      await externalApprovalService.createPolicy({ policyId, ...incoming }, tx);
+      return;
+    }
+    if (isExternalApprovalChanged(existing, incoming)) {
+      await externalApprovalService.updatePolicy({ policyId, ...incoming }, tx);
+    }
+  };
+
   const createAccessApprovalPolicy = async ({
     name,
     actor,
@@ -342,7 +440,9 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     allowedSelfApprovals,
     approvalsRequired,
     maxTimePeriod,
-    requestExpirationTime
+    requestExpirationTime,
+    externalApproval,
+    orgActor
   }: TCreateSecretAccessApprovalGlobalPolicyDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
@@ -369,10 +469,21 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       throw new NotFoundError({ message: `One or more environments not found: ${notFoundEnvs.join(", ")}` });
     }
 
-    const scope = { projectId: project.id, orgId: project.orgId };
-    const { approverUserIds, groupApprovers } = await $resolveApprovers(approvers, scope);
-    const { bypasserUserIds, groupBypassers } = await $resolveBypassers(bypassers, scope);
-    const steps = $buildSteps({ approverUserIds, groupApprovers, approvalsRequired, approvals });
+    const reviewers = await $resolveReviewers(
+      {
+        externalApproval: externalApproval ?? null,
+        enforcementLevel,
+        allowedSelfApprovals,
+        approvers,
+        bypassers,
+        approvalsRequired,
+        approvals
+      },
+      { projectId: project.id, orgId: project.orgId }
+    );
+    if (externalApproval) {
+      await externalApprovalService.validateConnection({ ...externalApproval, projectId: project.id }, orgActor);
+    }
 
     await $assertNoConflictingPolicy({ envs, secretPath });
 
@@ -405,7 +516,11 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
         tx
       );
 
-      await $insertStepsAndBypassers({ policyId: doc.id, steps, bypasserUserIds, groupBypassers }, tx);
+      if (externalApproval) {
+        await externalApprovalService.createPolicy({ policyId: doc.id, ...externalApproval }, tx);
+      } else {
+        await $insertStepsAndBypassers({ policyId: doc.id, ...reviewers }, tx);
+      }
 
       return doc;
     });
@@ -414,7 +529,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       id: policy.id,
       name: policy.name,
       secretPath,
-      approvals: steps[0]?.requiredApprovals ?? 1,
+      approvals: reviewers.steps[0]?.requiredApprovals ?? 1,
       envId: envs[0].id,
       createdAt: policy.createdAt,
       updatedAt: policy.updatedAt,
@@ -426,7 +541,8 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       requestExpirationTime: requestExpirationTime ?? null,
       environment: envs[0],
       environments: envs,
-      projectId: project.id
+      projectId: project.id,
+      externalApproval: externalApproval ?? null
     };
   };
 
@@ -446,7 +562,9 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     approvalsRequired,
     environments,
     maxTimePeriod,
-    requestExpirationTime
+    requestExpirationTime,
+    externalApproval,
+    orgActor
   }: TUpdateSecretAccessApprovalGlobalPolicyDTO) => {
     const policy = await $findPolicyById(
       policyId,
@@ -479,17 +597,29 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       (envs.length !== currentEnvSlugs.size || envs.some((env) => !currentEnvSlugs.has(env.slug)));
     const scopeChanged = nextSecretPath !== policy.secretPath || environmentsChanged;
 
-    const scope = { projectId: policy.projectId, orgId: actorOrgId };
-    const { approverUserIds, groupApprovers } = await $resolveApprovers(approvers, scope);
-    const { bypasserUserIds, groupBypassers } = await $resolveBypassers(bypassers, scope);
-    const steps = $buildSteps({
-      approverUserIds,
-      groupApprovers,
-      approvalsRequired,
-      approvals: approvals ?? policy.approvals
-    });
+    const existingExternalApproval = policy.externalApproval;
+    const externalApprovalAfterUpdate = externalApproval === undefined ? existingExternalApproval : externalApproval;
+    const involvesExternalApproval = Boolean(existingExternalApproval || externalApprovalAfterUpdate);
+
+    const reviewers = await $resolveReviewers(
+      {
+        externalApproval: externalApprovalAfterUpdate,
+        enforcementLevel: enforcementLevel ?? policy.enforcementLevel,
+        allowedSelfApprovals,
+        approvers,
+        bypassers,
+        approvalsRequired,
+        approvals: approvals ?? policy.approvals
+      },
+      { projectId: policy.projectId, orgId: actorOrgId }
+    );
+    if (externalApproval && isExternalApprovalChanged(existingExternalApproval, externalApproval)) {
+      await externalApprovalService.validateConnection({ ...externalApproval, projectId: policy.projectId }, orgActor);
+    }
 
     return approvalPolicyDAL.transaction(async (tx) => {
+      if (involvesExternalApproval) await $assertNoPendingRequests(policy, tx);
+
       await approvalPolicyDAL.updateById(
         policy.id,
         {
@@ -510,19 +640,19 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
 
       await approvalPolicyStepsDAL.delete({ policyId: policy.id }, tx);
       await approvalPolicyBypassersDAL.delete({ policyId: policy.id }, tx);
-      await $insertStepsAndBypassers({ policyId: policy.id, steps, bypasserUserIds, groupBypassers }, tx);
+      if (!externalApprovalAfterUpdate) await $insertStepsAndBypassers({ policyId: policy.id, ...reviewers }, tx);
 
       if (scopeChanged) {
-        await approvalPolicySecretEnvironmentDAL.findByPolicyIdForUpdate(policy.id, tx);
-        // make sure that the updated secret path is not conflicting with any other policy
-        await $assertNoConflictingPolicy({ envs, secretPath: nextSecretPath, excludePolicyId: policy.id }, tx);
-        await approvalPolicySecretEnvironmentDAL.delete({ policyId: policy.id }, tx);
-        await approvalPolicySecretEnvironmentDAL.insertMany(
-          envs.map((env) => ({ policyId: policy.id, envId: env.id, secretPath: nextSecretPath })),
+        await $replacePolicyScope(
+          { policyId: policy.id, envs, secretPath: nextSecretPath, steps: reviewers.steps },
           tx
         );
-        await $resetPendingRequestSteps({ policyId: policy.id, steps }, tx);
       }
+
+      await $applyExternalApprovalChange(
+        { policyId: policy.id, existing: existingExternalApproval, incoming: externalApproval },
+        tx
+      );
 
       const [updatedPolicy] = await secretAccessApprovalGlobalPolicyBridgeDAL.findSecretAccessPolicies(
         { policyId: policy.id },
