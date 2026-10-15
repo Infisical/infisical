@@ -28,7 +28,13 @@ import {
   TAgentVaultSessionLogRecord
 } from "@app/hooks/api/agentVault/types";
 
-import { httpStatusLabel, mcpCallLabel, sessionLogMcpCalls } from "./SessionLogsPanel.utils";
+import {
+  groupRepeatedMcpCalls,
+  httpStatusLabel,
+  mcpMoreCallsLabel,
+  sessionLogMcpCalls,
+  sessionLogMcpCallsTruncated
+} from "./SessionLogsPanel.utils";
 
 const ARRIVAL_HOLD_MS = 1200;
 
@@ -117,6 +123,7 @@ const McpCallText = ({ call }: { call: TAgentVaultSessionLogMcpCall }) =>
 
 const McpDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
   const [first, ...rest] = sessionLogMcpCalls(record);
+  const truncated = sessionLogMcpCallsTruncated(record);
 
   return (
     <span className="flex min-w-0 items-center gap-1.5">
@@ -133,16 +140,28 @@ const McpDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
           {record.path}
         </span>
       )}
-      {rest.length > 0 && (
+      {(rest.length > 0 || truncated) && (
         <Tooltip>
-          <TooltipTrigger className="shrink-0 text-xs text-muted">+{rest.length}</TooltipTrigger>
-          <TooltipContent>
-            <div className="flex flex-col font-mono text-xs">
-              {rest.map((call, index) => (
-                // eslint-disable-next-line react/no-array-index-key
-                <span key={index}>{mcpCallLabel(call)}</span>
-              ))}
-            </div>
+          <TooltipTrigger className="shrink-0 text-xs text-muted">
+            {mcpMoreCallsLabel(rest.length, truncated)}
+          </TooltipTrigger>
+          <TooltipContent className="max-w-sm">
+            {rest.length > 0 && (
+              <div className="flex flex-col font-mono text-xs">
+                {groupRepeatedMcpCalls(rest).map(({ label, count }, index) => (
+                  // eslint-disable-next-line react/no-array-index-key
+                  <span key={index}>
+                    {label}
+                    {count > 1 && <span className="text-muted"> ×{count}</span>}
+                  </span>
+                ))}
+              </div>
+            )}
+            {truncated && (
+              <p className={twMerge("text-xs text-muted", rest.length > 0 && "mt-1.5")}>
+                More calls in this batch weren&apos;t recorded.
+              </p>
+            )}
           </TooltipContent>
         </Tooltip>
       )}

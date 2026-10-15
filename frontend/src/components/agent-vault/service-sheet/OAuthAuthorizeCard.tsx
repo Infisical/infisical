@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { format } from "date-fns";
 import { CheckIcon, CircleAlertIcon, ShieldCheckIcon } from "lucide-react";
@@ -91,6 +91,9 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
     });
   const clientIdInputId = useId();
   const clientSecretInputId = useId();
+  // The server reuses a stored client on reauthorization, so a rotated or expired one can only be
+  // replaced by entering it here.
+  const [isReplacingClient, setIsReplacingClient] = useState(false);
 
   const trimmedUrl = serverUrl.trim();
   const host = hostOf(trimmedUrl);
@@ -116,13 +119,20 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
     });
 
   const isWaiting = state.status === "starting" || state.status === "pending";
+  const isClientEntered = isClientRequired || isReplacingClient;
+
+  const keepSavedClient = () => {
+    setIsReplacingClient(false);
+    setValue("oauthClientId", "");
+    setValue("oauthClientSecret", "");
+  };
 
   const handleAuthorize = () =>
     authorize({
       accessBundleId,
       serverUrl: trimmedUrl,
       ...(stored && service ? { serviceId: service.id } : {}),
-      ...(isClientRequired
+      ...(isClientEntered
         ? { clientId: clientId.trim(), clientSecret: clientSecret || undefined }
         : {})
     });
@@ -228,9 +238,16 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
             <div className="min-w-0 flex-1">{renderStatus()}</div>
           </div>
 
-          {isClientRequired && redirectUri && !isNewlyAuthorized && (
+          {isClientEntered && !isNewlyAuthorized && (
             <div className="flex flex-col gap-4 border-t border-border pt-4">
-              {registrationError ? (
+              {!isClientRequired && (
+                <p className="text-sm text-muted">
+                  Enter the client ID and secret of the OAuth app to use from now on. They replace
+                  the saved client when you reauthorize. Its redirect URI must point to this
+                  Infisical instance.
+                </p>
+              )}
+              {isClientRequired && registrationError && (
                 <>
                   <Alert variant="warning">
                     <CircleAlertIcon />
@@ -241,24 +258,27 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
                     then enter its client ID and secret.
                   </p>
                 </>
-              ) : (
+              )}
+              {isClientRequired && !registrationError && (
                 <p className="text-sm text-muted">
                   {host} doesn&apos;t let Infisical register itself as a client. Create an OAuth app
                   with the provider, set its redirect URI to the one below, then enter its client ID
                   and secret.
                 </p>
               )}
-              <Field>
-                <FieldLabel>Redirect URI</FieldLabel>
-                <FieldContent>
-                  <div className="flex items-center gap-2">
-                    <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-card px-2 py-1.5 font-mono text-xs">
-                      {redirectUri}
-                    </code>
-                    <CopyButton value={redirectUri} ariaLabel="Copy redirect URI" />
-                  </div>
-                </FieldContent>
-              </Field>
+              {redirectUri && (
+                <Field>
+                  <FieldLabel>Redirect URI</FieldLabel>
+                  <FieldContent>
+                    <div className="flex items-center gap-2">
+                      <code className="min-w-0 flex-1 truncate rounded-md border border-border bg-card px-2 py-1.5 font-mono text-xs">
+                        {redirectUri}
+                      </code>
+                      <CopyButton value={redirectUri} ariaLabel="Copy redirect URI" />
+                    </div>
+                  </FieldContent>
+                </Field>
+              )}
               <div className="flex flex-col gap-3 md:flex-row">
                 <Field className="flex-1">
                   <FieldLabel htmlFor={clientIdInputId}>Client ID</FieldLabel>
@@ -315,16 +335,26 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service }: Props) => {
               </Button>
             </div>
           ) : (
-            <div>
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
                 variant={hasAuthorization ? "outline" : "av"}
                 size="sm"
                 onClick={handleAuthorize}
-                isDisabled={!trimmedUrl || (isClientRequired && !clientId.trim())}
+                isDisabled={!trimmedUrl || (isClientEntered && !clientId.trim())}
               >
                 {state.status === "failed" ? "Try Again" : authorizeLabel}
               </Button>
+              {stored && !isClientRequired && !isNewlyAuthorized && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={isReplacingClient ? keepSavedClient : () => setIsReplacingClient(true)}
+                >
+                  {isReplacingClient ? "Keep Saved Client" : "Use a Different Client"}
+                </Button>
+              )}
             </div>
           )}
         </div>

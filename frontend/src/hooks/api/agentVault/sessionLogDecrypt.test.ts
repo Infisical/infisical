@@ -56,6 +56,17 @@ describe("parseSessionLogRecords", () => {
     assert.deepEqual(parseSessionLogRecords([mcpRecord]), [mcpRecord]);
   });
 
+  it("keeps the flag on a batch the proxy cut short", () => {
+    const [parsed] = parseSessionLogRecords([
+      {
+        ...record,
+        serviceType: "mcp",
+        mcp: { calls: [{ method: "ping" }], parsed: true, truncated: true }
+      }
+    ])!;
+    assert.equal(parsed.mcp?.truncated, true);
+  });
+
   it("drops a malformed MCP detail rather than the whole chunk", () => {
     const [parsed] = parseSessionLogRecords([
       { ...record, serviceType: "mcp", mcp: { calls: "tools/call" } }

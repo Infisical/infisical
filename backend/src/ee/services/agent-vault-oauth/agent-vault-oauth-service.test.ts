@@ -753,6 +753,7 @@ describe("using an authorization", () => {
 const oauthConfig = (overrides: Partial<TAgentVaultOauthConfig> = {}): TAgentVaultOauthConfig => ({
   type: AgentVaultCredentialType.OAuth,
   grantType: "authorization_code",
+  serverUrl: SERVER_URL,
   issuer: "https://mcp.linear.app",
   authorizationEndpoint: "https://mcp.linear.app/authorize",
   tokenEndpoint: "https://mcp.linear.app/token",

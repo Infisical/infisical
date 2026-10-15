@@ -7,10 +7,15 @@ import {
   CardTitle,
   InputGroup,
   InputGroupAddon,
-  InputGroupInput
+  InputGroupInput,
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemHeader,
+  ItemMedia,
+  ItemTitle
 } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
-import { cn } from "@app/components/v3/utils";
 import {
   AGENT_VAULT_MCP_TEMPLATES,
   AGENT_VAULT_TEMPLATES,
@@ -45,6 +50,33 @@ const TYPE_FILTERS: { value: TypeFilter; label: string; count: number }[] = [
 const templateTag = (template: AgentVaultTemplate) =>
   template.serviceType === AgentVaultServiceType.Mcp ? "MCP Server" : template.category;
 
+const SelectableCard = ({
+  media,
+  tag,
+  name,
+  description,
+  onSelect
+}: {
+  media: ReactNode;
+  tag?: string;
+  name: string;
+  description: string;
+  onSelect: () => void;
+}) => (
+  <Item asChild variant="outline" className="cursor-pointer hover:bg-container-hover">
+    <button type="button" onClick={onSelect}>
+      <ItemHeader>
+        <ItemMedia variant="image">{media}</ItemMedia>
+        {tag && <Badge variant="outline">{tag}</Badge>}
+      </ItemHeader>
+      <ItemContent>
+        <ItemTitle>{name}</ItemTitle>
+        <ItemDescription>{description}</ItemDescription>
+      </ItemContent>
+    </button>
+  </Item>
+);
+
 const TemplateCard = ({
   template,
   onSelect
@@ -55,32 +87,23 @@ const TemplateCard = ({
   const [hasImageError, setHasImageError] = useState(false);
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      onClick={() => onSelect(template)}
-      className="group h-auto w-full flex-col items-stretch gap-3 bg-card p-4 text-left whitespace-normal hover:bg-container-hover"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex size-9 items-center justify-center rounded-md bg-container">
-          {hasImageError ? (
-            <GlobeIcon className="size-5 text-muted" />
-          ) : (
-            <ProviderIcon
-              icon={template.image}
-              alt={`${template.name} logo`}
-              className="size-6 object-contain"
-              onError={() => setHasImageError(true)}
-            />
-          )}
-        </div>
-        <Badge variant="outline">{templateTag(template)}</Badge>
-      </div>
-      <div className="flex flex-col gap-1">
-        <CardTitle className="text-sm leading-snug">{template.name}</CardTitle>
-        <p className="text-xs leading-relaxed text-muted">{template.description}</p>
-      </div>
-    </Button>
+    <SelectableCard
+      media={
+        hasImageError ? (
+          <GlobeIcon />
+        ) : (
+          <ProviderIcon
+            icon={template.image}
+            alt={`${template.name} logo`}
+            onError={() => setHasImageError(true)}
+          />
+        )
+      }
+      tag={templateTag(template)}
+      name={template.name}
+      description={template.description}
+      onSelect={() => onSelect(template)}
+    />
   );
 };
 
@@ -93,22 +116,7 @@ const CustomCard = ({
   description: string;
   onSelect: () => void;
 }) => (
-  <Button
-    type="button"
-    variant="outline"
-    onClick={onSelect}
-    className="group h-auto w-full flex-col items-stretch gap-3 border-dashed bg-card p-4 text-left whitespace-normal hover:bg-container-hover"
-  >
-    <div className="flex items-start gap-2">
-      <div className="flex size-9 items-center justify-center rounded-md bg-container">
-        <PlusIcon className="size-5 text-muted" />
-      </div>
-    </div>
-    <div className="flex flex-col gap-1">
-      <CardTitle className="text-sm leading-snug">{name}</CardTitle>
-      <p className="text-xs leading-relaxed text-muted">{description}</p>
-    </div>
-  </Button>
+  <SelectableCard media={<PlusIcon />} name={name} description={description} onSelect={onSelect} />
 );
 
 const Grid = ({ children }: { children: ReactNode }) => (
@@ -253,15 +261,11 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
               <Button
                 key={filter.value}
                 type="button"
-                variant="ghost"
+                variant={isActive ? "outline" : "ghost"}
+                isFullWidth
                 aria-pressed={isActive}
                 onClick={() => setTypeFilter(filter.value)}
-                className={cn(
-                  "w-full justify-between text-left",
-                  isActive
-                    ? "bg-container-hover text-foreground"
-                    : "text-muted hover:bg-container-hover/50 hover:text-foreground"
-                )}
+                className="justify-between"
               >
                 {filter.label}
                 <span className="text-xs text-muted tabular-nums">{filter.count}</span>

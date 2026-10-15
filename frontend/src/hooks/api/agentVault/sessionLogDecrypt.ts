@@ -71,7 +71,8 @@ const SessionLogRecordsSchema = z.array(
     mcp: z
       .object({
         calls: z.array(z.object({ method: z.string(), tool: z.string().nullish() })),
-        parsed: z.boolean()
+        parsed: z.boolean(),
+        truncated: z.boolean().optional()
       })
       .optional()
       .catch(undefined)

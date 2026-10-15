@@ -448,6 +448,8 @@ export type TAgentVaultSessionLogMcpDetail = {
   calls: TAgentVaultSessionLogMcpCall[];
   // False when the proxy could not read the body, as for one over its size limit.
   parsed: boolean;
+  // True when the batch held more calls than the proxy keeps in one record.
+  truncated?: boolean;
 };
 
 export type TAgentVaultSessionLogRecord = {

@@ -10,11 +10,14 @@ import { TAgentVaultSessionLogRecord } from "@app/hooks/api/agentVault/types";
 import {
   chunkIdTime,
   findRowShift,
+  groupRepeatedMcpCalls,
   groupSessionLogGaps,
   matchesSessionLogSearch,
   matchesSessionLogType,
   mcpCallLabel,
-  sessionLogMcpCalls
+  mcpMoreCallsLabel,
+  sessionLogMcpCalls,
+  sessionLogMcpCallsTruncated
 } from "./SessionLogsPanel.utils";
 
 const record = (seq: number): TAgentVaultSessionLogRecord => ({
@@ -198,6 +201,85 @@ describe("sessionLogMcpCalls", () => {
       }),
       []
     );
+  });
+});
+
+describe("sessionLogMcpCallsTruncated", () => {
+  const calls = [{ method: "tools/call", tool: "search" }];
+  const mcpRecord = (mcp: TAgentVaultSessionLogRecord["mcp"]): TAgentVaultSessionLogRecord => ({
+    ...record(1),
+    serviceType: AgentVaultServiceType.Mcp,
+    mcp
+  });
+
+  it("is true for a parsed MCP batch the proxy cut short", () => {
+    assert.equal(
+      sessionLogMcpCallsTruncated(mcpRecord({ parsed: true, truncated: true, calls })),
+      true
+    );
+  });
+
+  it("is false when the batch was kept whole or the flag is absent", () => {
+    assert.equal(
+      sessionLogMcpCallsTruncated(mcpRecord({ parsed: true, truncated: false, calls })),
+      false
+    );
+    assert.equal(sessionLogMcpCallsTruncated(mcpRecord({ parsed: true, calls })), false);
+  });
+
+  it("is false when there are no calls to show it beside", () => {
+    assert.equal(
+      sessionLogMcpCallsTruncated(mcpRecord({ parsed: false, truncated: true, calls })),
+      false
+    );
+    assert.equal(
+      sessionLogMcpCallsTruncated(mcpRecord({ parsed: true, truncated: true, calls: [] })),
+      false
+    );
+    assert.equal(
+      sessionLogMcpCallsTruncated({
+        ...record(1),
+        serviceType: AgentVaultServiceType.Http,
+        mcp: { parsed: true, truncated: true, calls }
+      }),
+      false
+    );
+  });
+});
+
+describe("groupRepeatedMcpCalls", () => {
+  it("merges neighbouring repeats and keeps the order", () => {
+    assert.deepEqual(
+      groupRepeatedMcpCalls([
+        { method: "ping" },
+        { method: "ping" },
+        { method: "tools/call", tool: "search" },
+        { method: "tools/call", tool: "search" },
+        { method: "tools/call", tool: "lookup" },
+        { method: "ping" }
+      ]),
+      [
+        { label: "ping", count: 2 },
+        { label: "search (tools/call)", count: 2 },
+        { label: "lookup (tools/call)", count: 1 },
+        { label: "ping", count: 1 }
+      ]
+    );
+  });
+
+  it("returns nothing for no calls", () => {
+    assert.deepEqual(groupRepeatedMcpCalls([]), []);
+  });
+});
+
+describe("mcpMoreCallsLabel", () => {
+  it("counts the calls not shown in the row", () => {
+    assert.equal(mcpMoreCallsLabel(31, false), "+31 more");
+  });
+
+  it("gives a floor when the batch was cut short", () => {
+    assert.equal(mcpMoreCallsLabel(31, true), "32+ more");
+    assert.equal(mcpMoreCallsLabel(0, true), "1+ more");
   });
 });
 

@@ -2,10 +2,19 @@ import { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useSearch } from "@tanstack/react-router";
 import axios from "axios";
+import { CircleAlertIcon } from "lucide-react";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
-import { Button, CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@app/components/v3";
 import {
   AgentVaultOAuthAuthorizationStatus,
   useCompleteAgentVaultOAuthAuthorization
@@ -85,7 +94,7 @@ export const AgentVaultOAuthCallbackPage = () => {
       "This window closes on its own. Return to Infisical to finish adding the service.";
   } else if (outcome.status === "failed") {
     title = "Authorization Failed";
-    description = outcome.message;
+    description = "This window closes on its own. Return to Infisical and select Authorize again.";
   }
 
   return (
@@ -94,23 +103,23 @@ export const AgentVaultOAuthCallbackPage = () => {
         <title>Agent Vault Authorization</title>
       </Helmet>
       <AuthPagePanel>
-        <CardHeader className="mb-6 gap-2">
-          <CardTitle
-            className={
-              outcome.status === "failed"
-                ? "font-alliance text-2xl font-normal text-danger"
-                : "font-alliance text-2xl font-normal"
-            }
-          >
-            {title}
-          </CardTitle>
-          <CardDescription className="text-base">{description}</CardDescription>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
         </CardHeader>
         {outcome.status !== "working" && (
-          <CardContent>
-            <Button type="button" variant="outline" onClick={() => window.close()}>
-              Close Window
-            </Button>
+          <CardContent className="flex flex-col gap-4">
+            {outcome.status === "failed" && (
+              <Alert variant="danger">
+                <CircleAlertIcon />
+                <AlertDescription>{outcome.message}</AlertDescription>
+              </Alert>
+            )}
+            <div>
+              <Button type="button" variant="outline" onClick={() => window.close()}>
+                Close Window
+              </Button>
+            </div>
           </CardContent>
         )}
       </AuthPagePanel>

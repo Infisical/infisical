@@ -138,5 +138,25 @@ export const sessionLogMcpCalls = (
   return record.mcp.calls;
 };
 
+export const sessionLogMcpCallsTruncated = (record: TAgentVaultSessionLogRecord) =>
+  sessionLogMcpCalls(record).length > 0 && record.mcp?.truncated === true;
+
 export const mcpCallLabel = (call: TAgentVaultSessionLogMcpCall) =>
   call.tool ? `${call.tool} (${call.method})` : call.method;
+
+// Only neighbours are merged, so the list still reads in the order the agent sent the calls.
+export const groupRepeatedMcpCalls = (calls: TAgentVaultSessionLogMcpCall[]) =>
+  calls.reduce<{ label: string; count: number }[]>((groups, call) => {
+    const label = mcpCallLabel(call);
+    const last = groups.at(-1);
+    if (last?.label === label) {
+      last.count += 1;
+    } else {
+      groups.push({ label, count: 1 });
+    }
+    return groups;
+  }, []);
+
+// A truncated batch held at least one call past the recorded ones, so the count is a floor.
+export const mcpMoreCallsLabel = (shown: number, truncated: boolean) =>
+  truncated ? `${shown + 1}+ more` : `+${shown} more`;
