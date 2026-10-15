@@ -17,7 +17,7 @@ For a certificate that a service on the device uses, such as the management web 
 - Certificates that include a private key
 
 <Note>
-  PAN-OS can only use a certificate whose private key is on the device. If a certificate was issued from a CSR generated elsewhere, for example by an agent that keeps the key on its own host, the sync can't deploy it and skips it.
+  Each certificate the sync deploys needs its private key, because a firewall service can't use a certificate without it. The issuing CA certificates the sync imports alongside don't need theirs. If a certificate was issued from a CSR generated elsewhere, for example by an agent that keeps the key on its own host, the sync can't deploy it and skips it.
 </Note>
 
 ## Create a sync
