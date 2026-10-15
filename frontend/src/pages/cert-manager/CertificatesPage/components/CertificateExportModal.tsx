@@ -79,10 +79,17 @@ const createExportFormSchema = (pkcs12PasswordPolicy: TPasswordPolicy) => {
         });
       }
 
-      if (!data.pkcs12Alias?.trim()) {
+      const alias = data.pkcs12Alias?.trim() ?? "";
+      if (!alias) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Certificate alias is required",
+          path: ["pkcs12Alias"]
+        });
+      } else if (alias.length > 255) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Certificate alias must be at most 255 characters",
           path: ["pkcs12Alias"]
         });
       }

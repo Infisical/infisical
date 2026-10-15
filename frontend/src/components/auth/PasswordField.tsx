@@ -88,6 +88,7 @@ export const PasswordField = ({
           </InputGroupButton>
         </InputGroupAddon>
       </InputGroup>
+      {!showRequirements && error?.message && <FieldError>{error.message}</FieldError>}
       <AnimatedCollapse isOpen={showRequirements}>
         <div id={requirementsId} className="flex flex-col gap-1 pt-1" aria-live="polite">
           {visibleRequirements.map(({ code, isMet, message }) => (
