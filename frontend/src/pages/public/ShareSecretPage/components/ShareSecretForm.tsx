@@ -23,7 +23,6 @@ import {
   AccordionTrigger,
   Badge,
   Button,
-  ButtonGroup,
   CopyButton,
   Field,
   FieldDescription,
@@ -396,37 +395,30 @@ export const ShareSecretForm = ({
                   isReadOnly={isValueLocked}
                   isError={Boolean(error)}
                 />
-                {isValueLocked && secretKey && (
-                  <ButtonGroup>
-                    {[
-                      { label: `${secretKey}=value`, includeKey: true },
-                      { label: "Value only", includeKey: false }
-                    ].map((option) => {
-                      const isActive = isSharingKeyValue === option.includeKey;
-                      return (
-                        <Button
-                          key={option.label}
-                          type="button"
-                          size="xs"
-                          variant={isActive ? "project" : "outline"}
-                          aria-pressed={isActive}
-                          className="max-w-64"
-                          onClick={() => {
-                            setIsSharingKeyValue(option.includeKey);
-                            setValue("secret", formatSharedValue(option.includeKey));
-                          }}
-                        >
-                          <span className="truncate">{option.label}</span>
-                        </Button>
-                      );
-                    })}
-                  </ButtonGroup>
-                )}
                 {isValueLocked && (
-                  <FieldDescription>
-                    Locked to the stored secret, so the link shares exactly what is saved in
-                    Infisical.
-                  </FieldDescription>
+                  <div className="flex items-center justify-between gap-4">
+                    <FieldDescription>Editing locked to preserve contents</FieldDescription>
+                    {secretKey && (
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Toggle
+                          size="sm"
+                          variant="project"
+                          id="share-secret-include-key"
+                          checked={isSharingKeyValue}
+                          onCheckedChange={(isChecked) => {
+                            setIsSharingKeyValue(isChecked);
+                            setValue("secret", formatSharedValue(isChecked));
+                          }}
+                        />
+                        <FieldLabel
+                          htmlFor="share-secret-include-key"
+                          className="text-xs font-normal text-muted"
+                        >
+                          Include key
+                        </FieldLabel>
+                      </div>
+                    )}
+                  </div>
                 )}
                 {error && <FieldError>{error.message}</FieldError>}
               </Field>
