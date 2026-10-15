@@ -1,6 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { TAgentVaultSessionLogConfigs } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultSessionActions,
@@ -31,10 +30,10 @@ import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault
 import { isOwnerlessSession, isSessionOwnedBy } from "../agent-vault-session/agent-vault-session-fns";
 import { TAgentVaultSessionLogConfigDALFactory } from "./agent-vault-session-log-config-dal";
 import {
-  AGENT_VAULT_DEFAULT_STORAGE_NOT_ON_PLAN,
-  AGENT_VAULT_EXTERNAL_STORAGE_NOT_ON_PLAN,
   AGENT_VAULT_SESSION_LOG_CHUNK_ID_TIME_TOLERANCE_MS,
   AGENT_VAULT_SESSION_LOG_CLOCK_SKEW_MS,
+  AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_NOT_ON_PLAN,
+  AGENT_VAULT_SESSION_LOG_EXTERNAL_STORAGE_NOT_ON_PLAN,
   AGENT_VAULT_SESSION_LOG_FEED_MAX_ENTRIES,
   AGENT_VAULT_SESSION_LOG_FEED_TTL_SECONDS,
   AGENT_VAULT_SESSION_LOG_LATE_CHUNK_GRACE_MS,
@@ -66,9 +65,11 @@ import {
   toEffectiveSessionLogConfig,
   toRev,
   toStorageConfig,
+  TPreviousSessionLogStorage,
   TSessionLogLicenseService,
   TSessionLogStorage
 } from "./agent-vault-session-log-fns";
+import { TAgentVaultSessionLogDisabledReason } from "./agent-vault-session-log-schemas";
 import { unwrapSessionLogKey } from "./agent-vault-session-log-secrets";
 import {
   TAgentVaultSessionLogScoped,
@@ -97,8 +98,6 @@ type TAgentVaultSessionLogServiceFactoryDep = {
 
 export type TAgentVaultSessionLogServiceFactory = ReturnType<typeof agentVaultSessionLogServiceFactory>;
 
-type TSessionLogDisabledReason = "off" | "not-on-plan";
-
 const $openSessionLogLocation = async (
   objectStorage: TAgentVaultSessionLogServiceFactoryDep["objectStorage"],
   storage: TSessionLogStorage,
@@ -122,8 +121,8 @@ type TSessionLogFolder = Awaited<ReturnType<typeof $openSessionLogFolder>>["fold
 
 const notOnPlanMessage = (storageType: ObjectStorageType) =>
   storageType === ObjectStorageType.Default
-    ? AGENT_VAULT_DEFAULT_STORAGE_NOT_ON_PLAN
-    : AGENT_VAULT_EXTERNAL_STORAGE_NOT_ON_PLAN;
+    ? AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_NOT_ON_PLAN
+    : AGENT_VAULT_SESSION_LOG_EXTERNAL_STORAGE_NOT_ON_PLAN;
 
 const isSameStorage = (a: TSessionLogStorage, b?: TSessionLogStorage) => {
   if (!b || a.type !== b.type) return false;
@@ -136,13 +135,9 @@ const isSameStorage = (a: TSessionLogStorage, b?: TSessionLogStorage) => {
   );
 };
 
-const toSettingsView = (config: TEffectiveSessionLogConfig) => ({
-  enabled: config.enabled,
-  isSaved: config.isSaved,
-  storage:
-    config.storage.type === ObjectStorageType.Default
-      ? { type: ObjectStorageType.Default as const }
-      : { ...config.storage, keyPrefix: config.storage.keyPrefix ?? null }
+const toSettingsState = (settings: TEffectiveSessionLogConfig | null) => ({
+  settings,
+  defaultStorage: { configured: isDefaultStorageConfigured() }
 });
 
 const toStorageColumns = (storage: TSessionLogStorage) =>
@@ -177,12 +172,16 @@ export const agentVaultSessionLogServiceFactory = ({
     }
   };
 
-  const $settingsState = (saved: TAgentVaultSessionLogConfigs | null) => {
-    const hasDefaultStorage = isDefaultStorageConfigured();
-    const settings = saved ? toEffectiveSessionLogConfig(saved, hasDefaultStorage) : null;
+  // The storage a save replaced, named for the audit log while its connection still exists.
+  const $describePreviousStorage = async (storage: TSessionLogStorage): Promise<TPreviousSessionLogStorage> => {
+    if (storage.type === ObjectStorageType.Default) {
+      return { storageType: storage.type, appConnectionId: null, appConnectionName: null, bucket: null };
+    }
     return {
-      settings: settings ? toSettingsView(settings) : null,
-      defaultStorage: { configured: hasDefaultStorage }
+      storageType: storage.type,
+      appConnectionId: storage.appConnectionId,
+      appConnectionName: (await appConnectionDAL.findById(storage.appConnectionId))?.name ?? null,
+      bucket: storage.bucket
     };
   };
 
@@ -327,10 +326,11 @@ export const agentVaultSessionLogServiceFactory = ({
       fromPrimary: false
     });
 
-    // Turning session logs off hides what was recorded, until they're turned back on. Reads also need the plan for
-    // the storage in use: a deliberate exception to CODE_QUALITY.md "License Checks", chosen for Agent Vault session
-    // logs. An unknown plan (License Server down, no recent answer) still allows reading.
-    let disabledReason: TSessionLogDisabledReason | null = null;
+    // Reads return no logs while session logs are off, or while the plan doesn't include the storage in use. Unlike
+    // most paid features, which read from Infisical's database, each read here is a billed S3 request for whoever owns
+    // the bucket, so reading needs the same plan as recording. While the License Server can't confirm the plan,
+    // reading is still allowed, so an outage doesn't hide logs.
+    let disabledReason: TAgentVaultSessionLogDisabledReason | null = null;
     if (!config?.enabled) disabledReason = "off";
     else if (
       (await getSessionLogEntitlement(licenseService, ctx.actorOrgId, config.storage.type)).entitlement === "unlicensed"
@@ -504,18 +504,14 @@ export const agentVaultSessionLogServiceFactory = ({
   const getSessionLogSettings = async ({ projectId, ctx }: TAgentVaultSessionLogScoped) => {
     await $requireAdmin({ projectId, ctx });
 
-    const config = await getEffectiveSessionLogConfig({ agentVaultSessionLogConfigDAL }, projectId, {
-      fromPrimary: false
-    });
-    return {
-      settings: config ? toSettingsView(config) : null,
-      defaultStorage: { configured: isDefaultStorageConfigured() }
-    };
+    return toSettingsState(
+      await getEffectiveSessionLogConfig({ agentVaultSessionLogConfigDAL }, projectId, { fromPrimary: false })
+    );
   };
 
-  // While off, or while the plan doesn't include the storage, nothing is recorded or shown, so a storage problem isn't
-  // something an admin can act on. An unknown plan still counts. The instance's bucket is the operator's: its problems
-  // are logged at boot, never shown to an org admin.
+  // Health and the CORS probe only run for external storage that's on and on the plan, or whose plan can't be confirmed
+  // right now. Otherwise nothing is recorded or shown, so a storage problem isn't something an admin needs to fix.
+  // Default storage belongs to whoever runs the instance, so its problems are logged at boot and never shown to an org.
   const $isExternalStorageInUse = async (config: TEffectiveSessionLogConfig, orgId: string) =>
     config.storage.type === ObjectStorageType.External &&
     config.enabled &&
@@ -574,59 +570,39 @@ export const agentVaultSessionLogServiceFactory = ({
     }
   };
 
-  const updateSessionLogSettings = async ({
-    projectId,
-    ctx,
-    actor,
-    enabled: requestedEnabled,
-    storage: requestedStorage
-  }: TUpdateSessionLogSettingsDTO) => {
+  const updateSessionLogSettings = async ({ projectId, ctx, actor, ...body }: TUpdateSessionLogSettingsDTO) => {
     await $requireAdmin({ projectId, ctx });
 
     const current = await getEffectiveSessionLogConfig({ agentVaultSessionLogConfigDAL }, projectId, {
       fromPrimary: true
     });
 
-    let requested: TSessionLogStorage | undefined;
-    if (requestedStorage?.type === ObjectStorageType.External) {
-      requested = { ...requestedStorage, keyPrefix: requestedStorage.keyPrefix || null };
-    } else if (requestedStorage) {
-      requested = { type: ObjectStorageType.Default };
-    }
-
-    if (requestedEnabled === false && requested) {
-      throw new BadRequestError({ message: "Leave out storage when turning session logs off" });
-    }
-    if (requested?.type === ObjectStorageType.Default && !isDefaultStorageConfigured()) {
-      throw new BadRequestError({ message: "This instance doesn't offer default storage" });
-    }
-
-    // Choosing a storage turns session logs on.
-    const nextEnabled = requestedEnabled ?? (requested ? true : (current?.enabled ?? true));
-
     // Turning off forgets the storage, which frees an AWS connection to be deleted. The row stays, saying off: with
     // nothing saved, session logs are on in default storage. Turning off is never gated by the plan.
-    if (!nextEnabled) {
+    if (!body.enabled) {
       const [saved] = await agentVaultSessionLogConfigDAL.upsert(
         [{ projectId, enabled: false, ...toStorageColumns({ type: ObjectStorageType.Default }) }],
         "projectId"
       );
-      const cleared =
-        current?.storage.type === ObjectStorageType.External
-          ? {
-              appConnectionId: current.storage.appConnectionId,
-              appConnectionName: (await appConnectionDAL.findById(current.storage.appConnectionId))?.name ?? null,
-              bucket: current.storage.bucket
-            }
-          : null;
-      return { ...$settingsState(saved), appConnectionName: null, cleared };
+      const previous =
+        current?.storage.type === ObjectStorageType.External ? await $describePreviousStorage(current.storage) : null;
+      return {
+        ...toSettingsState(toEffectiveSessionLogConfig(saved, isDefaultStorageConfigured())),
+        appConnectionName: null,
+        previous
+      };
     }
 
-    const isStorageChange = requested !== undefined && !isSameStorage(requested, current?.storage);
-    const nextStorage = requested ?? current?.storage ?? null;
-    if (!nextStorage) throw new BadRequestError({ message: "Choose where to store session logs" });
+    const nextStorage: TSessionLogStorage =
+      body.storage.type === ObjectStorageType.External
+        ? { ...body.storage, keyPrefix: body.storage.keyPrefix || null }
+        : { type: ObjectStorageType.Default };
+    if (nextStorage.type === ObjectStorageType.Default && !isDefaultStorageConfigured()) {
+      throw new BadRequestError({ message: "This instance doesn't offer default storage" });
+    }
 
     // Choosing, changing or turning on a storage needs that storage on the plan.
+    const isStorageChange = !isSameStorage(nextStorage, current?.storage);
     const isTurningOn = !(current?.isSaved && current.enabled);
     if (isStorageChange || isTurningOn) {
       const { entitlement } = await getSessionLogEntitlement(licenseService, ctx.actorOrgId, nextStorage.type);
@@ -640,9 +616,9 @@ export const agentVaultSessionLogServiceFactory = ({
 
     let validatedConnection: { name: string } | null = null;
     if (nextStorage.type === ObjectStorageType.External) {
-      const previous = current?.storage.type === ObjectStorageType.External ? current.storage : null;
-      // Only on a change, so a saved directory bucket can still be turned off.
-      if (nextStorage.bucket !== previous?.bucket && isS3DirectoryBucket(nextStorage.bucket)) {
+      const currentExternal = current?.storage.type === ObjectStorageType.External ? current.storage : null;
+      // Only when the bucket changes, so settings that already hold a directory bucket can still be saved.
+      if (nextStorage.bucket !== currentExternal?.bucket && isS3DirectoryBucket(nextStorage.bucket)) {
         throw new BadRequestError({
           message:
             "Session logs need a general purpose S3 bucket. Directory buckets (names ending in --x-s3) aren't supported."
@@ -658,9 +634,7 @@ export const agentVaultSessionLogServiceFactory = ({
           { connectionId: nextStorage.appConnectionId, projectId },
           actor
         );
-      }
 
-      if (usesConnectionAnew) {
         try {
           const { namespace } = await $openSessionLogLocation(objectStorage, nextStorage, ctx.actorOrgId);
           await namespace.check();
@@ -674,6 +648,8 @@ export const agentVaultSessionLogServiceFactory = ({
         }
       }
     }
+
+    const previous = isStorageChange && current ? await $describePreviousStorage(current.storage) : null;
 
     // An upsert, not a create or update chosen from the effective settings: a saved default row on an instance that
     // lost its bucket has no effective settings but still holds the project's unique row.
@@ -689,7 +665,11 @@ export const agentVaultSessionLogServiceFactory = ({
       appConnectionName = (await appConnectionDAL.findById(saved.appConnectionId))?.name ?? null;
     }
 
-    return { ...$settingsState(saved), appConnectionName, cleared: null };
+    return {
+      ...toSettingsState(toEffectiveSessionLogConfig(saved, isDefaultStorageConfigured())),
+      appConnectionName,
+      previous
+    };
   };
 
   return {

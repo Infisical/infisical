@@ -125,4 +125,4 @@ If you set only some of the variables, such as a bucket without a region or an a
 
 In an organization on your instance, go to Agent Vault, then **Administration** > **Settings**. The **Session Logs** card shows that session logs are on in default storage.
 
-When Infisical starts, it checks that it can list the bucket and write a tagged test file under `<prefix>/orgs/`. If either fails, Infisical logs an error that names the step and the AWS error, such as a missing `s3:PutObjectTagging`. Organizations don't see this error, so check the Infisical logs after you set up the bucket.
+When Infisical starts, it checks that it can list the bucket and write a tagged test file under `<prefix>/orgs/`, and that the bucket's CORS rule allows downloads from your `SITE_URL`. If a check fails, Infisical logs an error that names the step, such as a missing `s3:PutObjectTagging` or a missing CORS rule. Organizations don't see this error, so check the Infisical logs after you set up the bucket.

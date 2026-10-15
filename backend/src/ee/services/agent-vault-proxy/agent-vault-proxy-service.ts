@@ -20,7 +20,6 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
-import { isDefaultStorageConfigured } from "@app/services/object-storage/object-storage-default-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
@@ -34,8 +33,8 @@ import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
 import {
+  getEffectiveSessionLogConfig,
   getSessionLogEntitlement,
-  toEffectiveSessionLogConfig,
   TSessionLogLicenseService
 } from "../agent-vault-session-log/agent-vault-session-log-fns";
 import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
@@ -69,7 +68,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
   agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findValuesForResolve">;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findByTokenHash">;
-  agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne">;
+  agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne" | "findByProjectIdFromPrimary">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -516,10 +515,9 @@ export const agentVaultProxyServiceFactory = ({
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds)
     ]);
 
-    const sessionLogConfig = toEffectiveSessionLogConfig(
-      await agentVaultSessionLogConfigDAL.findOne({ projectId: session.projectId }),
-      isDefaultStorageConfigured()
-    );
+    const sessionLogConfig = await getEffectiveSessionLogConfig({ agentVaultSessionLogConfigDAL }, session.projectId, {
+      fromPrimary: false
+    });
     const entitlement =
       sessionLogConfig?.enabled && Boolean(session.encryptedSessionLogKey)
         ? (await getSessionLogEntitlement(licenseService, proxy.orgId, sessionLogConfig.storage.type)).entitlement

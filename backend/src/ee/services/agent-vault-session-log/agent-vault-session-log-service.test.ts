@@ -8,8 +8,8 @@ import { ObjectStorageError, toObjectStorageError } from "@app/services/object-s
 import { ObjectStorageErrorReason, ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
 import {
-  AGENT_VAULT_DEFAULT_STORAGE_NOT_ON_PLAN,
-  AGENT_VAULT_EXTERNAL_STORAGE_NOT_ON_PLAN,
+  AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_NOT_ON_PLAN,
+  AGENT_VAULT_SESSION_LOG_EXTERNAL_STORAGE_NOT_ON_PLAN,
   AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
   AGENT_VAULT_SESSION_LOG_RANGE_MARGIN_MS,
   AGENT_VAULT_SESSION_LOG_STORAGE_NEEDS_ADMIN_MESSAGE,
@@ -22,7 +22,7 @@ import {
 import { buildSessionLogObjectName, encodeHistoryCursor, encodeTailCursor, toRev } from "./agent-vault-session-log-fns";
 import { unwrapSessionLogKey } from "./agent-vault-session-log-secrets";
 import { agentVaultSessionLogServiceFactory } from "./agent-vault-session-log-service";
-import { TCreateChunkUploadUrlDTO } from "./agent-vault-session-log-types";
+import { TCreateChunkUploadUrlDTO, TUpdateSessionLogSettingsDTO } from "./agent-vault-session-log-types";
 
 const PROJECT_ID = "c4a1e0d2-5b7f-4c1e-9a3d-2f6b8e0c7a11";
 const SESSION_ID = "5d2e9b41-0c3a-4f8e-b7d2-91a4c6e8f035";
@@ -197,8 +197,14 @@ const ctx = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMe
 const actor = { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never;
 const scope = { projectId: PROJECT_ID, ctx, sessionId: SESSION_ID };
 
+// The route's schema already shapes the body, so tests pass plain objects.
 const save = (service: ReturnType<typeof build>["service"], patch: Record<string, unknown>) =>
-  service.updateSessionLogSettings({ projectId: PROJECT_ID, ctx, actor, ...patch });
+  service.updateSessionLogSettings({
+    projectId: PROJECT_ID,
+    ctx,
+    actor,
+    ...patch
+  } as unknown as TUpdateSessionLogSettingsDTO);
 
 const s3Error = (name: string, fault: "client" | "server" = "client") =>
   new S3ServiceException({ name, $fault: fault, $metadata: {}, message: name });
@@ -451,7 +457,7 @@ describe("createChunkUploadUrl: the plan for the storage in use", () => {
     const { service } = build({ plan: { hasExternal: false } });
     await expect(record(service)).rejects.toMatchObject({
       name: AgentVaultSessionLogErrorName.Disabled,
-      message: AGENT_VAULT_EXTERNAL_STORAGE_NOT_ON_PLAN
+      message: AGENT_VAULT_SESSION_LOG_EXTERNAL_STORAGE_NOT_ON_PLAN
     });
     expect(presignPut).not.toHaveBeenCalled();
   });
@@ -461,7 +467,7 @@ describe("createChunkUploadUrl: the plan for the storage in use", () => {
     const { service } = build({ config: undefined, plan: { hasDefault: false } });
     await expect(record(service)).rejects.toMatchObject({
       name: AgentVaultSessionLogErrorName.Disabled,
-      message: AGENT_VAULT_DEFAULT_STORAGE_NOT_ON_PLAN
+      message: AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_NOT_ON_PLAN
     });
   });
 
@@ -836,21 +842,16 @@ describe("getSessionLogSettings", () => {
 describe("updateSessionLogSettings: choosing storage", () => {
   test("default storage on an instance without a bucket is refused", async () => {
     const { service, upsertConfig } = build({ config: undefined });
-    await expect(save(service, { storage: { type: "default" } })).rejects.toThrow(
+    await expect(save(service, { enabled: true, storage: { type: "default" } })).rejects.toThrow(
       "This instance doesn't offer default storage"
     );
     expect(upsertConfig).not.toHaveBeenCalled();
   });
 
-  test("turning on with nowhere to store is refused", async () => {
-    const { service } = build({ config: undefined });
-    await expect(save(service, { enabled: true })).rejects.toThrow("Choose where to store session logs");
-  });
-
   test("turning off is saved even with nothing to turn off, so a bucket added later doesn't turn it on", async () => {
     const { service, upsertConfig } = build({ config: undefined });
     const result = await save(service, { enabled: false });
-    expect(result).toMatchObject({ settings: null, cleared: null });
+    expect(result).toMatchObject({ settings: null, previous: null });
     expect(upsertConfig).toHaveBeenCalledWith(
       [expect.objectContaining({ enabled: false, storageType: "default", bucket: null })],
       "projectId"
@@ -871,7 +872,7 @@ describe("updateSessionLogSettings: choosing storage", () => {
   test("switching to default drops the bucket and frees the connection", async () => {
     defaultStorage.configured = true;
     const { service, upsertConfig, validateConnection } = build();
-    await save(service, { storage: { type: "default" } });
+    await save(service, { enabled: true, storage: { type: "default" } });
     expect(upsertConfig).toHaveBeenCalledWith(
       [
         {
@@ -892,7 +893,7 @@ describe("updateSessionLogSettings: choosing storage", () => {
   test("switching to external checks the connection and the bucket at the product folder", async () => {
     defaultStorage.configured = true;
     const { service, validateConnection } = build({ config: undefined });
-    const { settings, appConnectionName } = await save(service, { storage: externalStorage() });
+    const { settings, appConnectionName } = await save(service, { enabled: true, storage: externalStorage() });
     expect(validateConnection).toHaveBeenCalledTimes(1);
     expect(check).toHaveBeenCalledTimes(1);
     expect(settings?.storage).toEqual(externalStorage());
@@ -909,15 +910,15 @@ describe("updateSessionLogSettings: choosing storage", () => {
       })
     );
     const { service, upsertConfig } = build();
-    await expect(save(service, { storage: externalStorage({ bucket: "other-bucket" }) })).rejects.toThrow(
-      "Grant s3:PutObject"
-    );
+    await expect(
+      save(service, { enabled: true, storage: externalStorage({ bucket: "other-bucket" }) })
+    ).rejects.toThrow("Grant s3:PutObject");
     expect(upsertConfig).not.toHaveBeenCalled();
   });
 
   test("a saved default choice on an instance that lost its bucket can still be replaced", async () => {
     const { service, upsertConfig } = build({ config: defaultRow(true) });
-    await save(service, { storage: externalStorage() });
+    await save(service, { enabled: true, storage: externalStorage() });
     expect(upsertConfig).toHaveBeenCalledTimes(1);
   });
 });
@@ -930,13 +931,13 @@ describe("updateSessionLogSettings: when the connection is checked again", () =>
     { use: "a different prefix", fields: { keyPrefix: "elsewhere" } }
   ])("checks it when the save points it at $use", async ({ fields }) => {
     const { service, validateConnection } = build();
-    await save(service, { storage: externalStorage(fields) });
+    await save(service, { enabled: true, storage: externalStorage(fields) });
     expect(validateConnection).toHaveBeenCalledTimes(1);
   });
 
   test("checks it, and the bucket, when the save turns recording back on", async () => {
     const { service, validateConnection } = build({ config: { ...enabledConfig(), enabled: false } });
-    await save(service, { enabled: true });
+    await save(service, { enabled: true, storage: externalStorage() });
     expect(validateConnection).toHaveBeenCalledTimes(1);
     expect(check).toHaveBeenCalledTimes(1);
   });
@@ -956,9 +957,9 @@ describe("updateSessionLogSettings: when the connection is checked again", () =>
 
   test("refuses a directory bucket, which can't list in order", async () => {
     const { service, upsertConfig } = build();
-    await expect(save(service, { storage: externalStorage({ bucket: "logs--usw2-az1--x-s3" }) })).rejects.toThrow(
-      "Directory buckets"
-    );
+    await expect(
+      save(service, { enabled: true, storage: externalStorage({ bucket: "logs--usw2-az1--x-s3" }) })
+    ).rejects.toThrow("Directory buckets");
     expect(upsertConfig).not.toHaveBeenCalled();
   });
 
@@ -975,24 +976,26 @@ describe("updateSessionLogSettings: the plan", () => {
       plan: { hasExternal: false },
       config: { ...enabledConfig(), enabled: false }
     });
-    await expect(save(service, { enabled: true })).rejects.toThrow(AGENT_VAULT_EXTERNAL_STORAGE_NOT_ON_PLAN);
+    await expect(save(service, { enabled: true, storage: externalStorage() })).rejects.toThrow(
+      AGENT_VAULT_SESSION_LOG_EXTERNAL_STORAGE_NOT_ON_PLAN
+    );
     expect(validateConnection).not.toHaveBeenCalled();
     expect(upsertConfig).not.toHaveBeenCalled();
   });
 
   test("changing the bucket without the flag is refused", async () => {
     const { service, upsertConfig } = build({ plan: { hasExternal: false } });
-    await expect(save(service, { storage: externalStorage({ bucket: "another-bucket" }) })).rejects.toThrow(
-      AGENT_VAULT_EXTERNAL_STORAGE_NOT_ON_PLAN
-    );
+    await expect(
+      save(service, { enabled: true, storage: externalStorage({ bucket: "another-bucket" }) })
+    ).rejects.toThrow(AGENT_VAULT_SESSION_LOG_EXTERNAL_STORAGE_NOT_ON_PLAN);
     expect(upsertConfig).not.toHaveBeenCalled();
   });
 
   test("choosing default storage without its flag is refused", async () => {
     defaultStorage.configured = true;
     const { service } = build({ plan: { hasDefault: false } });
-    await expect(save(service, { storage: { type: "default" } })).rejects.toThrow(
-      AGENT_VAULT_DEFAULT_STORAGE_NOT_ON_PLAN
+    await expect(save(service, { enabled: true, storage: { type: "default" } })).rejects.toThrow(
+      AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_NOT_ON_PLAN
     );
   });
 
@@ -1014,7 +1017,7 @@ describe("updateSessionLogSettings: the plan", () => {
       planFallback: true,
       config: { ...enabledConfig(), enabled: false }
     });
-    await expect(save(service, { enabled: true })).rejects.toThrow(
+    await expect(save(service, { enabled: true, storage: externalStorage() })).rejects.toThrow(
       "Infisical couldn't confirm your plan right now. Try again in a few minutes."
     );
     expect(upsertConfig).not.toHaveBeenCalled();
@@ -1022,7 +1025,7 @@ describe("updateSessionLogSettings: the plan", () => {
 });
 
 describe("updateSessionLogSettings: turning off", () => {
-  test("forgets the bucket and connection, so the connection can be deleted, and says what it cleared", async () => {
+  test("forgets the bucket and connection, so the connection can be deleted, and says what it replaced", async () => {
     const { service, upsertConfig } = build({ plan: { hasExternal: false, hasDefault: false } });
     const result = await save(service, { enabled: false });
     expect(upsertConfig).toHaveBeenCalledWith(
@@ -1039,7 +1042,8 @@ describe("updateSessionLogSettings: turning off", () => {
       ],
       "projectId"
     );
-    expect(result.cleared).toEqual({
+    expect(result.previous).toEqual({
+      storageType: ObjectStorageType.External,
       appConnectionId: CONNECTION_ID,
       appConnectionName: "prod-logs",
       bucket: "my-bucket"
@@ -1054,19 +1058,30 @@ describe("updateSessionLogSettings: turning off", () => {
     expect(result.settings).toEqual({ enabled: false, isSaved: true, storage: { type: ObjectStorageType.Default } });
   });
 
-  test("a request that turns off and sends a storage is refused, since off clears the storage", async () => {
-    const { service, upsertConfig } = build();
-    await expect(save(service, { enabled: false, storage: externalStorage() })).rejects.toThrow(
-      "Leave out storage when turning session logs off"
-    );
-    expect(upsertConfig).not.toHaveBeenCalled();
-  });
-
-  test("choosing a storage turns session logs on", async () => {
+  test("turning a default storage that was off back on in external storage records the default it replaced", async () => {
     defaultStorage.configured = true;
     const { service } = build({ config: defaultRow(false) });
-    const { settings } = await save(service, { storage: externalStorage() });
+    const { settings, previous } = await save(service, { enabled: true, storage: externalStorage() });
     expect(settings?.enabled).toBe(true);
+    expect(previous).toEqual({
+      storageType: ObjectStorageType.Default,
+      appConnectionId: null,
+      appConnectionName: null,
+      bucket: null
+    });
+  });
+
+  test("switching from a bucket to default storage records the bucket it replaced", async () => {
+    defaultStorage.configured = true;
+    const { service } = build();
+    const { previous } = await save(service, { enabled: true, storage: { type: "default" } });
+    expect(previous).toMatchObject({ storageType: ObjectStorageType.External, bucket: "my-bucket" });
+  });
+
+  test("saving the same storage again records nothing as replaced", async () => {
+    const { service } = build();
+    const { previous } = await save(service, { enabled: true, storage: externalStorage() });
+    expect(previous).toBeNull();
   });
 });
 

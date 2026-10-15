@@ -2,8 +2,9 @@ import { S3ServiceException } from "@aws-sdk/client-s3";
 
 import { ObjectStorageErrorReason, ObjectStorageType, TObjectStorageErrorDetails } from "./object-storage-types";
 
-// Says what went wrong with the storage, never in a product's words: each product writes its own message from the
-// reason, and decides what of the details its caller may see.
+// Says what went wrong with the storage, never in a product's words. The reason tells a product whether trying again
+// can help and whether the connection is the problem; for a more specific hint, a product may read the AWS error code
+// in the details. Each product writes its own message, and decides what of the details its caller may see.
 export class ObjectStorageError extends Error {
   reason: ObjectStorageErrorReason;
 
@@ -14,15 +15,13 @@ export class ObjectStorageError extends Error {
   constructor({
     reason,
     storageType,
-    details = {},
-    message
+    details = {}
   }: {
     reason: ObjectStorageErrorReason;
     storageType: ObjectStorageType;
     details?: TObjectStorageErrorDetails;
-    message?: string;
   }) {
-    super(message ?? `Object storage failed [reason=${reason}] [storageType=${storageType}]`);
+    super(`Object storage failed [reason=${reason}] [storageType=${storageType}]`);
     this.name = "ObjectStorageError";
     this.reason = reason;
     this.storageType = storageType;
@@ -77,7 +76,7 @@ export const isTemporaryAwsError = (error: unknown) => {
 };
 
 // S3 errors, network failures and replies S3's client couldn't parse. Anything else is a bug and stays a 500.
-export const isStorageError = (error: unknown) =>
+const isStorageError = (error: unknown) =>
   error instanceof S3ServiceException ||
   (error instanceof Error && ("code" in error || "$metadata" in error || error.name === "TimeoutError"));
 

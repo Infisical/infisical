@@ -129,11 +129,21 @@ describe("the settings patch", () => {
     region: "us-east-1"
   };
   const withStorage = (storage: Record<string, unknown>) =>
-    AgentVaultSessionLogSettingsUpdateSchema.safeParse({ storage });
+    AgentVaultSessionLogSettingsUpdateSchema.safeParse({ enabled: true, storage });
   const withExternal = (fields: Record<string, unknown>) => withStorage({ ...external, ...fields });
 
-  test("every field is optional, so an empty patch is valid", () => {
-    expect(AgentVaultSessionLogSettingsUpdateSchema.parse({})).toEqual({});
+  test("is either turning off, or turning on with a storage", () => {
+    expect(AgentVaultSessionLogSettingsUpdateSchema.safeParse({ enabled: false }).success).toBe(true);
+    expect(withStorage({ type: "default" }).success).toBe(true);
+  });
+
+  test.each([
+    { body: {}, why: "an empty body" },
+    { body: { enabled: true }, why: "turning on without a storage" },
+    { body: { storage: { type: "default" } }, why: "a storage without enabled" },
+    { body: { enabled: false, storage: { type: "default" } }, why: "turning off with a storage" }
+  ])("rejects $why", ({ body }) => {
+    expect(AgentVaultSessionLogSettingsUpdateSchema.safeParse(body).success).toBe(false);
   });
 
   test("accepts each storage shape", () => {
@@ -172,7 +182,7 @@ describe("the settings patch", () => {
     { value: "/", why: "only a slash" },
     { value: "logs/\u0000", why: "a control character" },
     { value: "team*", why: "an asterisk, which is a wildcard in the suggested IAM policy" },
-    { value: "a".repeat(513), why: "longer than 512 characters" }
+    { value: "a".repeat(257), why: "longer than 256 characters" }
   ])("rejects a key prefix: $why", ({ value }) => {
     expect(withExternal({ keyPrefix: value }).success).toBe(false);
   });
@@ -184,8 +194,8 @@ describe("the settings patch", () => {
     }
   );
 
-  test("accepts a key prefix of exactly 512 characters", () => {
-    expect(withExternal({ keyPrefix: "a".repeat(512) }).success).toBe(true);
+  test("accepts a key prefix of exactly 256 characters", () => {
+    expect(withExternal({ keyPrefix: "a".repeat(256) }).success).toBe(true);
   });
 
   test("rejects a region that is not an AWS region", () => {

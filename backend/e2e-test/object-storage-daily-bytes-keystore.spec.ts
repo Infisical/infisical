@@ -5,8 +5,9 @@ import { beforeEach, describe, expect, test } from "vitest";
 
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 
-// Against the real Redis the e2e environment boots: the daily cap is a Lua script, and what it promises (the cap
-// holds under concurrent uploads, a refusal adds nothing, the expiry is fixed at the first write) only Redis keeps.
+// This runs against the real Redis the e2e environment starts, because the daily cap is a Lua script, and what it
+// promises (the cap holds under concurrent uploads, a refusal adds nothing, the expiry is fixed at the first write)
+// only Redis can show.
 declare const testRedis: Redis;
 declare const testKeyStore: TKeyStoreFactory;
 

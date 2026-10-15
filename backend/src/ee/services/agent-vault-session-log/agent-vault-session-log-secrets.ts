@@ -6,7 +6,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 const AGENT_VAULT_SESSION_LOG_KEY_BYTES = 32;
 
-// The label is the session id, so a key copied onto another session's row fails to open there instead of being
+// The label names the session, so a key copied onto another session's row fails to open there instead of being
 // handed out.
 const sessionLabel = (sessionId: string) => `${sessionId}|v1`;
 
@@ -27,7 +27,8 @@ const keyOrThrow = (sessionId: string, key: Buffer | null) => {
   return key;
 };
 
-// For a caller that already holds the project's decryptor, such as proxy resolve, so it isn't derived twice.
+// Opens a key the caller already decrypted with the project's data key. Proxy check-in uses it because it decrypts the
+// service credentials with that same key.
 export const openSessionLogKey = ({ sessionId, payload }: { sessionId: string; payload: Buffer }) =>
   keyOrThrow(
     sessionId,

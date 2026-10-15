@@ -8,6 +8,7 @@ import { ObjectStorageErrorReason, ObjectStorageType } from "@app/services/objec
 import { AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE } from "./agent-vault-session-log-constants";
 import {
   buildSessionLogObjectName,
+  buildSessionLogSettingsAuditMetadata,
   chunkIdTimeMs,
   describeStorageFailure,
   getSessionLogEntitlement,
@@ -299,11 +300,6 @@ describe("describeStorageFailure", () => {
     expect(describeStorageFailure(external(networkError("ENOTFOUND")), "read").message).toContain("(ENOTFOUND)");
   });
 
-  test("a failure that isn't from S3 isn't treated as a storage problem", () => {
-    const bug = new TypeError("undefined is not a function");
-    expect(external(bug)).toBe(bug);
-  });
-
   test.each([
     { step: "list" as const, message: "Unable to reach bucket 'my-bucket'" },
     { step: "write" as const, message: "Grant s3:PutObject on the configured key prefix" }
@@ -322,26 +318,30 @@ describe("describeStorageFailure", () => {
     {
       why: "a missing connection",
       error: connectionError({ isConnectionMissing: true }),
-      message: "The AWS connection used for session logs no longer exists. Choose another on the Settings page."
+      message: "The AWS connection used for session logs no longer exists. Choose another on the Settings page.",
+      isTemporary: false
     },
     {
       why: "a connection that isn't AWS",
       error: connectionError({ connectionName: "gh", connectionApp: "github" }),
-      message: "The connection used for session logs is a github connection. Session logs require an AWS connection"
+      message: "The connection used for session logs is a github connection. Session logs require an AWS connection",
+      isTemporary: false
     },
     {
       why: "a role AWS refused",
       error: connectionError({ connectionName: "aws-prod", cause: "Not authorized to perform sts:AssumeRole" }),
-      message: "Couldn't use the AWS connection 'aws-prod' for session logs: Not authorized to perform sts:AssumeRole"
+      message: "Couldn't use the AWS connection 'aws-prod' for session logs: Not authorized to perform sts:AssumeRole",
+      isTemporary: false
     },
     {
       why: "AWS not answering",
       error: connectionError({ connectionName: "aws-prod" }, ObjectStorageErrorReason.Temporary),
-      message: "Couldn't reach AWS to use the connection 'aws-prod' for session logs. Try again in a bit."
+      message: "Couldn't reach AWS to use the connection 'aws-prod' for session logs. Try again in a bit.",
+      isTemporary: true
     }
-  ])("names $why", ({ error, message }) => {
-    expect(describeStorageFailure(error, "read").message).toBe(message);
-    expect(describeStorageFailure(error, "check").message).toBe(message);
+  ])("names $why", ({ error, message, isTemporary }) => {
+    expect(describeStorageFailure(error, "read")).toEqual({ message, isTemporary });
+    expect(describeStorageFailure(error, "check")).toEqual({ message, isTemporary });
   });
 
   test("default storage gets the generic message, never its bucket, and is always worth a retry", () => {
@@ -357,5 +357,68 @@ describe("describeStorageFailure", () => {
         message: AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE
       });
     }
+  });
+});
+
+describe("buildSessionLogSettingsAuditMetadata", () => {
+  const externalSettings = {
+    enabled: true,
+    isSaved: true,
+    storage: {
+      type: ObjectStorageType.External as const,
+      appConnectionId: "6f1c7a52-3f7e-4c8e-9a40-0b2d6c1e9f11",
+      bucket: "globex-audit",
+      region: AWSRegion.US_EAST_1,
+      keyPrefix: "logs"
+    }
+  };
+
+  test("records the saved bucket and the storage it replaced", () => {
+    expect(
+      buildSessionLogSettingsAuditMetadata({
+        settings: externalSettings,
+        appConnectionName: "globex-aws",
+        previous: {
+          storageType: ObjectStorageType.Default,
+          appConnectionId: null,
+          appConnectionName: null,
+          bucket: null
+        }
+      })
+    ).toEqual({
+      enabled: true,
+      storageType: ObjectStorageType.External,
+      appConnectionId: "6f1c7a52-3f7e-4c8e-9a40-0b2d6c1e9f11",
+      appConnectionName: "globex-aws",
+      bucket: "globex-audit",
+      region: AWSRegion.US_EAST_1,
+      keyPrefix: "logs",
+      previousStorageType: ObjectStorageType.Default,
+      previousAppConnectionId: null,
+      previousAppConnectionName: null,
+      previousBucket: null
+    });
+  });
+
+  test("records turning off as off in default storage when the settings read back as none", () => {
+    expect(
+      buildSessionLogSettingsAuditMetadata({
+        settings: null,
+        appConnectionName: null,
+        previous: {
+          storageType: ObjectStorageType.External,
+          appConnectionId: "6f1c7a52-3f7e-4c8e-9a40-0b2d6c1e9f11",
+          appConnectionName: "globex-aws",
+          bucket: "globex-audit"
+        }
+      })
+    ).toMatchObject({
+      enabled: false,
+      storageType: ObjectStorageType.Default,
+      bucket: null,
+      previousStorageType: ObjectStorageType.External,
+      previousAppConnectionName: "globex-aws",
+      previousBucket: "globex-audit"
+    });
   });
 });

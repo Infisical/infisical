@@ -2,6 +2,8 @@ import { STSServiceException } from "@aws-sdk/client-sts";
 
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { AWS_REQUEST_TIMEOUTS, createS3Bucket, TS3Bucket } from "@app/lib/aws/s3";
+import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
 import { BadRequestError, DailyQuotaExceededError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -14,7 +16,7 @@ import { getDefaultStorage } from "@app/services/object-storage/object-storage-d
 
 import { awsErrorLabel, isTemporaryAwsError, ObjectStorageError, toObjectStorageError } from "./object-storage-errors";
 import { assertNamespacesValid } from "./object-storage-namespace-fns";
-import { buildNamespaceFolder, buildObjectKey, buildProductFolder } from "./object-storage-path-fns";
+import { buildNamespaceFolder, buildObjectKey, buildOrgsFolder, buildProductFolder } from "./object-storage-path-fns";
 import { ObjectStorageErrorReason, ObjectStorageType, TStorageConfig, TStorageNamespace } from "./object-storage-types";
 
 // An org may upload this much a UTC day, across every product and both storage types. Each upload counts as at
@@ -27,10 +29,11 @@ const DAILY_COUNTER_TTL_SECONDS = 2 * 24 * 60 * 60; // 2 days, so the counter ou
 const DAILY_CAP_CHECK_TIMEOUT_MS = 250;
 
 const DEFAULT_RETENTION_DAYS = 30;
+const CORS_CHECK_TIMEOUT_MS = 15_000;
 
 type TObjectStorageServiceFactoryDep = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey" | "decryptWithInputKey">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "incrementByIfUnderLimitWithFixedExpiry">;
 };
 
@@ -49,26 +52,27 @@ export const objectStorageServiceFactory = ({
     namespaces.forEach((namespace) => registeredNamespaces.set(namespace.id, namespace));
   };
 
-  // One client per instance bucket, so the SDK's default credential chain (a pod role, say) isn't resolved again on
-  // every request. Keyed by what the operator can change, so a config change gets a new client.
-  const defaultClients = new Map<string, TS3Bucket>();
+  // One client for the instance bucket, so the SDK's default credential chain (a pod role, say) isn't resolved again
+  // on every request. The instance's settings can't change while it runs.
+  let defaultClient: TS3Bucket | null = null;
+
+  const $findDefault = () => {
+    const defaultStorage = getDefaultStorage();
+    if (!defaultStorage) return null;
+    const { bucket, region, prefix, credentials } = defaultStorage;
+    defaultClient ??= createS3Bucket({ region, bucket, credentials });
+    return { s3: defaultClient, bucket, region, prefix };
+  };
 
   const $openDefault = () => {
-    const defaultStorage = getDefaultStorage();
-    if (!defaultStorage) {
+    const location = $findDefault();
+    if (!location) {
       throw new ObjectStorageError({
         reason: ObjectStorageErrorReason.Unconfigured,
         storageType: ObjectStorageType.Default
       });
     }
-    const { bucket, region, prefix, credentials } = defaultStorage;
-    const clientKey = `${bucket}|${region}|${credentials?.accessKeyId ?? ""}`;
-    let s3 = defaultClients.get(clientKey);
-    if (!s3) {
-      s3 = createS3Bucket({ region, bucket, credentials });
-      defaultClients.set(clientKey, s3);
-    }
-    return { s3, bucket, region, prefix };
+    return location;
   };
 
   const $openExternal = async (
@@ -98,7 +102,7 @@ export const objectStorageServiceFactory = ({
 
     let credentials: Awaited<ReturnType<typeof getAwsConnectionConfig>>["credentials"];
     try {
-      const connection = await decryptAppConnection(raw, kmsService as Parameters<typeof decryptAppConnection>[1]);
+      const connection = await decryptAppConnection(raw, kmsService);
       ({ credentials } = await getAwsConnectionConfig(
         { ...connection, projectType: config.projectType } as unknown as TAwsConnectionConfig,
         region,
@@ -176,20 +180,49 @@ export const objectStorageServiceFactory = ({
     return `retention=${days}d`;
   };
 
+  // Browsers download files straight from the bucket, which needs a CORS rule for the instance's address. A preflight
+  // is what a browser sends before downloading, and S3 answers it without credentials, so the server can send one too.
+  const $checkBrowserAccess = async (s3: TS3Bucket, key: string, describeBucket: string) => {
+    const { SITE_URL } = getConfig();
+    if (!SITE_URL) {
+      logger.info(`objectStorage: SITE_URL isn't set, so default storage's CORS rule isn't checked ${describeBucket}`);
+      return true;
+    }
+    const { origin } = new URL(SITE_URL);
+    try {
+      const url = new URL(await s3.presignGet(key, 60));
+      url.search = "";
+      const res = await request.options(url.toString(), {
+        headers: { Origin: origin, "Access-Control-Request-Method": "GET" },
+        timeout: CORS_CHECK_TIMEOUT_MS,
+        validateStatus: () => true
+      });
+      const allowedOrigin = res.headers["access-control-allow-origin"] as string | undefined;
+      if (res.status < 300 && (allowedOrigin === origin || allowedOrigin === "*")) return true;
+      logger.error(
+        `objectStorage: default storage doesn't allow browsers at ${origin} to download files; add the CORS rule from the setup guide ${describeBucket} [status=${res.status}]`
+      );
+    } catch (error) {
+      logger.error(error, `objectStorage: couldn't check default storage's CORS rule ${describeBucket}`);
+    }
+    return false;
+  };
+
   // The instance's bucket is the operator's to set up, so problems with it go to the server logs at boot rather than to
   // any org admin. A tagged write is what uploads need, and the step most often missing from an IAM policy.
   const checkDefaultStorage = async () => {
-    const defaultStorage = getDefaultStorage();
-    if (!defaultStorage) return;
-    const { s3, bucket, region, prefix } = $openDefault();
-    const folder = `${prefix ? `${prefix}/` : ""}orgs/`;
+    const location = $findDefault();
+    if (!location) return;
+    const { s3, bucket, region, prefix } = location;
+    const folder = buildOrgsFolder(prefix);
+    const describeBucket = `[bucket=${bucket}] [region=${region}] [prefix=${folder}]`;
     const describe = (error: unknown) => (error instanceof Error ? awsErrorLabel(error) : String(error));
 
     const listed = await s3.checkListAccess(folder);
     if (!listed.ok) {
       logger.error(
         listed.error,
-        `objectStorage: default storage can't be listed, so session logs can't be read [bucket=${bucket}] [region=${region}] [prefix=${folder}] [error=${describe(listed.error)}]`
+        `objectStorage: default storage can't be listed, so files can't be read ${describeBucket} [error=${describe(listed.error)}]`
       );
       return;
     }
@@ -197,11 +230,11 @@ export const objectStorageServiceFactory = ({
     if (!written.ok) {
       logger.error(
         written.error,
-        `objectStorage: default storage refused a tagged test write, so uploads will fail; grant s3:PutObject and s3:PutObjectTagging [bucket=${bucket}] [region=${region}] [key=${folder}.check] [error=${describe(written.error)}]`
+        `objectStorage: default storage refused a tagged test write, so uploads will fail; grant s3:PutObject and s3:PutObjectTagging ${describeBucket} [error=${describe(written.error)}]`
       );
-      return;
     }
-    logger.info(`objectStorage: default storage is ready [bucket=${bucket}] [region=${region}] [prefix=${folder}]`);
+    const isBrowserReadable = await $checkBrowserAccess(s3, `${folder}.cors-probe`, describeBucket);
+    if (written.ok && isBrowserReadable) logger.info(`objectStorage: default storage is ready ${describeBucket}`);
   };
 
   const at = (config: TStorageConfig) => ({
@@ -296,10 +329,10 @@ export const objectStorageServiceFactory = ({
           return { prefix: folderPrefix, presignPut, list, presignGet };
         };
 
-        return { productFolder, listAccess, check, presignCorsProbe, folder };
+        return { listAccess, check, presignCorsProbe, folder };
       };
 
-      return { storageType, bucket, namespace };
+      return { bucket, namespace };
     }
   });
 

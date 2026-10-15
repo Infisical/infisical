@@ -14,13 +14,14 @@ export type TStorageConfig =
       bucket: string;
       region: AWSRegion;
       keyPrefix?: string | null;
-      // Picks the external ID the customer's role trusts.
+      // The product using the connection. It decides the external ID Infisical sends when it assumes the customer's IAM
+      // role, which has to match the external ID in that role's trust policy.
       projectType: ProjectType;
     };
 
 export type TStorageNamespace = {
   id: string;
-  product: string;
+  product: ProjectType;
   path: string;
   // The path's pieces in order: a fixed word, or the name of an id the caller fills in.
   segments: ({ kind: "word"; value: string } | { kind: "id"; name: string })[];

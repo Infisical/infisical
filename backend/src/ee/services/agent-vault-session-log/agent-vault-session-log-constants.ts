@@ -57,11 +57,11 @@ export const AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE =
 export const AGENT_VAULT_SESSION_LOG_STORAGE_NEEDS_ADMIN_MESSAGE =
   "Session logs can't be read. Ask an Agent Vault admin to check the session log settings.";
 
-export const AGENT_VAULT_DEFAULT_STORAGE_NOT_ON_PLAN =
-  "Default storage for session logs isn't on your current plan. Upgrade, or choose external storage.";
-export const AGENT_VAULT_EXTERNAL_STORAGE_NOT_ON_PLAN =
-  "External storage for session logs isn't on your current plan. Upgrade, or choose default storage.";
+export const AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_NOT_ON_PLAN =
+  "Default storage for session logs isn't on your current plan. Upgrade your plan to use it.";
+export const AGENT_VAULT_SESSION_LOG_EXTERNAL_STORAGE_NOT_ON_PLAN =
+  "External storage for session logs isn't on your current plan. Upgrade your plan to use it.";
 
-// How long default storage keeps session logs when the plan doesn't say. The instance's lifecycle rule for each
-// retention tag is what deletes them.
+// How long default storage keeps session logs when the plan's retention is null. The instance's lifecycle rule for
+// each retention tag is what deletes them.
 export const AGENT_VAULT_SESSION_LOG_DEFAULT_RETENTION_DAYS = 30;

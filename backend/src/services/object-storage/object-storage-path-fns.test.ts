@@ -1,12 +1,14 @@
 import { describe, expect, test } from "vitest";
 
+import { ProjectType } from "@app/db/schemas";
+
 import { defineStorageNamespace } from "./object-storage-namespace-fns";
 import { assertSafePiece, buildNamespaceFolder, buildObjectKey, buildProductFolder } from "./object-storage-path-fns";
 
 const ORG_ID = "c4a1e0d2-5b7f-4c1e-9a3d-2f6b8e0c7a11";
 const logs = defineStorageNamespace({
   id: "agent-vault.session-logs",
-  product: "agent-vault",
+  product: ProjectType.AgentVault,
   path: "sessions/{sessionId}/logs/{file}"
 });
 

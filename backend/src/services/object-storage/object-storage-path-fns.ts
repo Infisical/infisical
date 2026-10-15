@@ -1,8 +1,6 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { BadRequestError } from "@app/lib/errors";
-
 import { TStorageNamespace } from "./object-storage-types";
 
 const MAX_PIECE_LENGTH = 128;
@@ -11,12 +9,13 @@ const MAX_KEY_BYTES = 1024;
 const ID_REGEX = new RE2(/^[A-Za-z0-9_-]+$/);
 const FILE_NAME_REGEX = new RE2(/^[A-Za-z0-9._-]+$/);
 
-// Every id and file name in a path comes from a caller, so it is checked here rather than trusted: a "/" or ".."
-// would move the object out of the folder the storage layer built.
+// Every id and file name in a path is checked here rather than trusted: a "/" or ".." would move the object out of the
+// folder the storage layer built. They come from Infisical's own code, never straight from a request, so a bad one is
+// a bug, not a bad request.
 export const assertSafePiece = (value: string, kind: "id" | "file") => {
   const pattern = kind === "id" ? ID_REGEX : FILE_NAME_REGEX;
   if (!value || value.length > MAX_PIECE_LENGTH || value === "." || value === ".." || !pattern.test(value)) {
-    throw new BadRequestError({ message: `Invalid object ${kind === "id" ? "id" : "name"} '${value}'` });
+    throw new Error(`Invalid object ${kind === "id" ? "id" : "name"} '${value}'`);
   }
 };
 
@@ -47,6 +46,9 @@ export const keyPrefixSchema = (max: number) =>
       "May not use '.' or '..' as a folder name"
     );
 
+// The folder that holds every org's files in a bucket.
+export const buildOrgsFolder = (prefix?: string | null) => `${prefix ? `${prefix}/` : ""}orgs/`;
+
 export const buildProductFolder = ({
   prefix,
   orgId,
@@ -57,7 +59,7 @@ export const buildProductFolder = ({
   product: string;
 }) => {
   assertSafePiece(orgId, "id");
-  return `${prefix ? `${prefix}/` : ""}orgs/${orgId}/${product}/`;
+  return `${buildOrgsFolder(prefix)}${orgId}/${product}/`;
 };
 
 export const buildNamespaceFolder = (
@@ -67,10 +69,8 @@ export const buildNamespaceFolder = (
 ) => {
   const pieces = namespace.segments.map((segment) => {
     if (segment.kind === "word") return segment.value;
-    const value = ids[segment.name];
-    if (value === undefined) {
-      throw new BadRequestError({ message: `Missing '${segment.name}' for the object path` });
-    }
+    const value = Object.hasOwn(ids, segment.name) ? ids[segment.name] : undefined;
+    if (value === undefined) throw new Error(`Missing '${segment.name}' for the object path`);
     assertSafePiece(value, "id");
     return value;
   });
@@ -80,8 +80,6 @@ export const buildNamespaceFolder = (
 export const buildObjectKey = (folder: string, name: string) => {
   assertSafePiece(name, "file");
   const key = `${folder}${name}`;
-  if (Buffer.byteLength(key) > MAX_KEY_BYTES) {
-    throw new BadRequestError({ message: `The object path is longer than ${MAX_KEY_BYTES} bytes` });
-  }
+  if (Buffer.byteLength(key) > MAX_KEY_BYTES) throw new Error(`The object path is longer than ${MAX_KEY_BYTES} bytes`);
   return key;
 };

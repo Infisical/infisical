@@ -24,7 +24,7 @@ export const createS3Bucket = ({
 }: {
   region: string;
   bucket: string;
-  // Omitted, the SDK's default chain applies: environment, shared config, or the pod's role.
+  // Without credentials, the SDK finds them itself: from the environment, the shared config file, or the pod's role.
   credentials?: TS3Credentials;
 }) => {
   const client = new S3Client({
@@ -63,7 +63,8 @@ export const createS3Bucket = ({
         ChecksumSHA256: sha256Base64,
         Tagging: tagging
       }),
-      // x-amz-tagging is left hoistable: it rides in the query, so the uploader needs no extra header.
+      // Tagging isn't in unhoistableHeaders, so the signer moves x-amz-tagging into the URL's query string. The uploader
+      // sends only the headers above, and can't change the tag without breaking the signature.
       {
         expiresIn: expiresInSeconds,
         unhoistableHeaders: new Set(["content-length", "if-none-match", "x-amz-checksum-sha256"])
@@ -94,7 +95,8 @@ export const createS3Bucket = ({
     return { objects, isTruncated: Boolean(res.IsTruncated) };
   };
 
-  // A list, not HeadBucket: an IAM policy can allow s3:ListBucket under one prefix only, and HeadBucket fails there.
+  // Lists under the prefix instead of using HeadBucket: the IAM policy allows s3:ListBucket only under the prefix, and
+  // AWS refuses HeadBucket under that condition.
   const checkListAccess = async (prefix: string): Promise<TS3Check> => {
     try {
       await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, MaxKeys: 1 }), sendOptions());

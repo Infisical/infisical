@@ -23,6 +23,8 @@ import {
 import { initLogger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
+import { up as addSessionLogStorageType } from "../../../src/db/migrations/20261014120000_agent-vault-session-log-storage-type";
+
 initLogger();
 
 const authHeader = { authorization: `Bearer ${jwtAuthToken}` };
@@ -265,29 +267,14 @@ describe("Agent Vault session logs", async () => {
       expect(new URL(probeBody.probe?.url as string).pathname).toBe(`/${productFolder()}.cors-probe`);
     });
 
-    test("each storage shape is strict, and mixing them is refused", async () => {
-      fakeDefaultStorage.set();
-      for (const storage of [
-        { type: "default", bucket: BUCKET },
-        { type: "external", bucket: BUCKET },
-        { type: "instance" }
-      ]) {
-        // eslint-disable-next-line no-await-in-loop
-        expect((await saveConfig({ storage })).statusCode).toBe(422);
-      }
-      expect((await saveConfig({ bucket: BUCKET })).statusCode).toBe(422);
-    });
-
     test("default storage on an instance without a bucket is refused", async () => {
-      const res = await saveConfig({ storage: { type: "default" } });
+      const res = await saveConfig({ enabled: true, storage: { type: "default" } });
       expect(res.statusCode).toBe(400);
       expect(JSON.parse(res.payload).message).toBe("This instance doesn't offer default storage");
     });
 
-    test("turning on with nowhere to store is refused, and turning off sticks once the instance gets a bucket", async () => {
-      const on = await saveConfig({ enabled: true });
-      expect(on.statusCode).toBe(400);
-      expect(JSON.parse(on.payload).message).toBe("Choose where to store session logs");
+    test("turning on without a storage is refused, and turning off sticks once the instance gets a bucket", async () => {
+      expect((await saveConfig({ enabled: true })).statusCode).toBe(422);
 
       const off = await saveConfig({ enabled: false });
       expect(off.statusCode).toBe(200);
@@ -306,7 +293,7 @@ describe("Agent Vault session logs", async () => {
       const off = await saveConfig({ enabled: false });
       expect(settingsOf(off).settings).toEqual({ enabled: false, isSaved: true, storage: { type: "default" } });
 
-      const on = await saveConfig({ enabled: true });
+      const on = await saveConfig({ enabled: true, storage: { type: "default" } });
       expect(settingsOf(on).settings).toEqual({ enabled: true, isSaved: true, storage: { type: "default" } });
     });
 
@@ -314,7 +301,7 @@ describe("Agent Vault session logs", async () => {
       fakeDefaultStorage.set();
       expect((await configure()).statusCode).toBe(200);
 
-      const toDefault = await saveConfig({ storage: { type: "default" } });
+      const toDefault = await saveConfig({ enabled: true, storage: { type: "default" } });
       expect(settingsOf(toDefault).settings).toEqual({ enabled: true, isSaved: true, storage: { type: "default" } });
       const row = await testDb("agent_vault_session_log_configs").where({ projectId }).first();
       expect(row).toMatchObject({ storageType: "default", appConnectionId: null, bucket: null, region: null });
@@ -326,7 +313,7 @@ describe("Agent Vault session logs", async () => {
 
     test("a saved default choice reads as nothing once the operator removes the bucket, and returns with it", async () => {
       fakeDefaultStorage.set();
-      expect((await saveConfig({ enabled: true })).statusCode).toBe(200);
+      expect((await saveConfig({ enabled: true, storage: { type: "default" } })).statusCode).toBe(200);
 
       fakeDefaultStorage.unset();
       expect(settingsOf(await inject("GET", SETTINGS_URL))).toEqual({
@@ -343,7 +330,7 @@ describe("Agent Vault session logs", async () => {
 
     test("a saved default choice on an instance without a bucket can still be replaced", async () => {
       fakeDefaultStorage.set();
-      expect((await saveConfig({ enabled: true })).statusCode).toBe(200);
+      expect((await saveConfig({ enabled: true, storage: { type: "default" } })).statusCode).toBe(200);
       fakeDefaultStorage.unset();
 
       expect((await configure()).statusCode).toBe(200);
@@ -423,41 +410,46 @@ describe("Agent Vault session logs", async () => {
       expect(settingsOf(off).settings).toEqual({ enabled: false, isSaved: true, storage: { type: "default" } });
     });
 
-    test("turning off with a storage in the request is refused, since off clears the storage", async () => {
-      await configure();
-      const res = await saveConfig({ enabled: false, storage: externalStorage() });
-      expect(res.statusCode).toBe(400);
-      expect(JSON.parse(res.payload).message).toBe("Leave out storage when turning session logs off");
-    });
-
-    test("a save that puts the connection to a new use checks it again; turning recording off does not", async () => {
+    test("turning off works while the connection can't be used, and turning back on checks it again", async () => {
       await configure();
 
       await testDb("app_connections").where({ id: connectionId }).update({ app: AppConnection.GCP });
       try {
         expect((await saveConfig({ enabled: false })).statusCode).toBe(200);
-        expect((await saveConfig({ enabled: false })).statusCode).toBe(200);
         expect((await configure()).statusCode).toBe(400);
-        expect((await configure({ bucket: "a-different-bucket" })).statusCode).toBe(400);
-        expect((await configure({ region: "us-west-2" })).statusCode).toBe(400);
-        expect((await configure({ keyPrefix: "elsewhere" })).statusCode).toBe(400);
       } finally {
         await testDb("app_connections").where({ id: connectionId }).update({ app: AppConnection.AWS });
       }
     });
 
-    test("turning off forgets the bucket, so turning on needs a storage chosen again", async () => {
-      await configure();
+    test("the storage type migration keeps saved buckets external, and turns rows without one off", async () => {
+      // The migration ran before this suite, so its updates are run again on rows shaped like the ones it meets.
+      fakeDefaultStorage.set();
+      await testDb("agent_vault_session_log_configs").insert({
+        projectId,
+        enabled: true,
+        storageType: "default",
+        appConnectionId: connectionId,
+        bucket: BUCKET,
+        region: "us-east-1",
+        keyPrefix: "logs"
+      });
+      await addSessionLogStorageType(testDb);
+      expect(settingsOf(await inject("GET", SETTINGS_URL)).settings).toEqual({
+        enabled: true,
+        isSaved: true,
+        storage: externalStorage()
+      });
 
-      expect(settingsOf(await saveConfig({ enabled: false })).settings).toBeNull();
-      const on = await saveConfig({ enabled: true });
-      expect(on.statusCode).toBe(400);
-      expect(JSON.parse(on.payload).message).toBe("Choose where to store session logs");
-    });
-
-    test("a patch with only enabled keeps the saved storage", async () => {
-      await configure();
-      expect(settingsOf(await saveConfig({ enabled: true })).settings?.storage).toEqual(externalStorage());
+      await testDb("agent_vault_session_log_configs")
+        .where({ projectId })
+        .update({ storageType: "external", appConnectionId: null });
+      await addSessionLogStorageType(testDb);
+      expect(settingsOf(await inject("GET", SETTINGS_URL)).settings).toEqual({
+        enabled: false,
+        isSaved: true,
+        storage: { type: "default" }
+      });
     });
 
     test("the key prefix is saved as typed, and one with a slash at either end is refused", async () => {
@@ -606,7 +598,7 @@ describe("Agent Vault session logs", async () => {
 
     test("a saved default choice stops recording when the operator removes the instance bucket", async () => {
       fakeDefaultStorage.set();
-      expect((await saveConfig({ enabled: true })).statusCode).toBe(200);
+      expect((await saveConfig({ enabled: true, storage: { type: "default" } })).statusCode).toBe(200);
       fakeDefaultStorage.unset();
       const bundle = await createAccessBundle(`session-logs-default-gone-${Date.now()}`);
       const session = await mintSession(bundle.name);

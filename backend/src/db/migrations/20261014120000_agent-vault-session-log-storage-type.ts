@@ -17,7 +17,8 @@ export async function up(knex: Knex): Promise<void> {
     .update({ storageType: "external" });
 
   // Turning session logs off before ever saving a bucket, or detaching the connection, left rows with no bucket.
-  // Those were always off, so they become an off default-storage row and the admin's choice survives.
+  // Those were always off, so they become an off default-storage row and stay off, rather than reading as on in
+  // default storage.
   await knex(TableName.AgentVaultSessionLogConfig)
     .where((qb) => {
       void qb.whereNull("appConnectionId").orWhereNull("bucket").orWhereNull("region");

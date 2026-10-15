@@ -39,13 +39,24 @@ const bucketClient = {
   writeTestObject: vi.fn(async (): Promise<{ ok: true } | { ok: false; error: unknown }> => ({ ok: true }))
 };
 vi.mock("@app/lib/aws/s3", () => ({
-  AWS_REQUEST_TIMEOUTS: {},
+  AWS_REQUEST_TIMEOUTS: { requestTimeout: 15_000 },
   createS3Bucket: vi.fn(() => bucketClient)
 }));
 
+const site = vi.hoisted(() => ({ url: "https://app.example.com" as string | undefined }));
+vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ SITE_URL: site.url }) }));
+
+const preflight = vi.hoisted(() => ({
+  options: vi.fn(async () => ({
+    status: 200,
+    headers: { "access-control-allow-origin": "https://app.example.com" } as Record<string, string>
+  }))
+}));
+vi.mock("@app/lib/config/request", () => ({ request: preflight }));
+
 const logs = defineStorageNamespace({
   id: "agent-vault.session-logs",
-  product: "agent-vault",
+  product: ProjectType.AgentVault,
   path: "sessions/{sessionId}/logs/{file}"
 });
 
@@ -77,6 +88,7 @@ const put = { name: "chunk.json.enc", bytes: 4096, sha256Base64: "abc=", expires
 
 beforeEach(() => {
   vi.clearAllMocks();
+  site.url = "https://app.example.com";
   instance.storage = { bucket: "instance-bucket", region: "us-east-1", prefix: "infisical" };
 });
 
@@ -150,7 +162,7 @@ describe("external storage", () => {
     expect(getAwsConnectionConfig).toHaveBeenCalledWith(
       expect.objectContaining({ projectType: ProjectType.AgentVault }),
       AWSRegion.EU_WEST_1,
-      expect.anything()
+      { stsRequestHandler: { requestTimeout: 15_000 } }
     );
   });
 
@@ -228,7 +240,7 @@ describe("folders", () => {
   test("refuses a namespace that was never registered", async () => {
     const { service } = build();
     const location = await service.at(external).forOrg(ORG_ID);
-    const stray = defineStorageNamespace({ id: "stray", product: "agent-vault", path: "stray/{file}" });
+    const stray = defineStorageNamespace({ id: "stray", product: ProjectType.AgentVault, path: "stray/{file}" });
     expect(() => location.namespace(stray)).toThrow("without being registered");
   });
 
@@ -257,7 +269,7 @@ describe("folders", () => {
       service.registerNamespaces([
         defineStorageNamespace({
           id: "agent-vault.attachments",
-          product: "agent-vault",
+          product: ProjectType.AgentVault,
           path: "sessions/{sessionId}/{file}"
         })
       ])
@@ -332,11 +344,36 @@ describe("the startup check of default storage", () => {
     expect(logger.error).not.toHaveBeenCalled();
   });
 
-  test("lists the orgs folder and writes a tagged test file there, the way uploads write", async () => {
+  test("lists the orgs folder, writes a tagged test file there and checks browsers may download", async () => {
     const { service } = build();
     await service.checkDefaultStorage();
     expect(bucketClient.checkListAccess).toHaveBeenCalledWith("infisical/orgs/");
     expect(bucketClient.writeTestObject).toHaveBeenCalledWith("infisical/orgs/.check", "retention=30d");
+    expect(preflight.options).toHaveBeenCalledWith(
+      "https://signed/infisical/orgs/.cors-probe",
+      expect.objectContaining({
+        headers: { Origin: "https://app.example.com", "Access-Control-Request-Method": "GET" }
+      })
+    );
+    expect(logger.error).not.toHaveBeenCalled();
+    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("default storage is ready"));
+  });
+
+  test("logs a missing CORS rule, which nothing else would ever report", async () => {
+    preflight.options.mockResolvedValueOnce({ status: 403, headers: {} });
+    const { service } = build();
+    await service.checkDefaultStorage();
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining("doesn't allow browsers at https://app.example.com")
+    );
+    expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining("default storage is ready"));
+  });
+
+  test("skips the CORS check without a SITE_URL to check for", async () => {
+    site.url = undefined;
+    const { service } = build();
+    await service.checkDefaultStorage();
+    expect(preflight.options).not.toHaveBeenCalled();
     expect(logger.error).not.toHaveBeenCalled();
   });
 

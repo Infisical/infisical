@@ -4,7 +4,6 @@ import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums
 import { TAgentVaultSessionLogSettings } from "@app/hooks/api/agentVault/types";
 
 import {
-  areAgentVaultSessionLogsOn,
   canTurnOnAgentVaultSessionLogs,
   getAgentVaultSessionLogRetentionDays,
   isAgentVaultSessionLogBlockedByPlan,
@@ -51,13 +50,6 @@ describe("agent vault session log helpers", () => {
     expect(getAgentVaultSessionLogRetentionDays({ agentVaultSessionLogRetentionDays: 365 })).toBe(
       365
     );
-  });
-
-  it("is on whenever the settings say enabled, for either storage", () => {
-    expect(areAgentVaultSessionLogsOn(settings(defaultStorage))).toBe(true);
-    expect(areAgentVaultSessionLogsOn(settings(externalStorage))).toBe(true);
-    expect(areAgentVaultSessionLogsOn(settings(externalStorage, { enabled: false }))).toBe(false);
-    expect(areAgentVaultSessionLogsOn(null)).toBe(false);
   });
 
   it.each([

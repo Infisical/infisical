@@ -1,3 +1,4 @@
+import { buildSessionLogSettingsAuditMetadata } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-fns";
 import {
   AgentVaultSessionLogCorsProbeResponseSchema,
   AgentVaultSessionLogHealthResponseSchema,
@@ -11,7 +12,6 @@ import { addNoCacheHeaders } from "@app/server/lib/caching";
 import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { actorContext } from "./agent-vault-router-fns";
@@ -36,8 +36,6 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
       })
   });
 
-  // A breaking change from the flat body (connection, bucket, region, prefix) to { enabled, storage }, made on purpose
-  // when default storage arrived: the old fields only described the customer's own bucket.
   server.route({
     method: "PATCH",
     url: "/session-logs",
@@ -45,15 +43,14 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       operationId: "updateAgentVaultSessionLogSettings",
-      description:
-        "Updates the session log settings. A `storage` in the body replaces the saved storage entirely; leave it out to change only `enabled`.",
+      description: "Updates the session log settings",
       tags: [ApiDocsTags.AgentVaultSettings],
       body: AgentVaultSessionLogSettingsUpdateSchema,
       response: { 200: AgentVaultSessionLogSettingsResponseSchema }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { settings, defaultStorage, appConnectionName, cleared } =
+      const { settings, defaultStorage, appConnectionName, previous } =
         await server.services.agentVaultSessionLog.updateSessionLogSettings({
           projectId: req.internalAgentVaultProjectId,
           ctx: actorContext(req),
@@ -68,34 +65,17 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
           ...req.body
         });
 
-      // Settings saved as off read back as null on an instance without default storage, and are still logged.
-      const enabled = settings?.enabled ?? false;
-      const storageType = settings?.storage.type ?? ObjectStorageType.Default;
-      const external = settings?.storage.type === ObjectStorageType.External ? settings.storage : null;
+      const metadata = buildSessionLogSettingsAuditMetadata({ settings, appConnectionName, previous });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
         projectId: req.internalAgentVaultProjectId,
-        event: {
-          type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE,
-          metadata: {
-            enabled,
-            storageType,
-            appConnectionId: external?.appConnectionId ?? null,
-            appConnectionName,
-            bucket: external?.bucket ?? null,
-            region: external?.region ?? null,
-            keyPrefix: external?.keyPrefix ?? null,
-            clearedAppConnectionId: cleared?.appConnectionId ?? null,
-            clearedAppConnectionName: cleared?.appConnectionName ?? null,
-            clearedBucket: cleared?.bucket ?? null
-          }
-        }
+        event: { type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE, metadata }
       });
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultSessionLogSettingsUpdated,
-        properties: { enabled, storageType }
+        properties: { enabled: metadata.enabled, storageType: metadata.storageType }
       });
 
       return { settings, defaultStorage };

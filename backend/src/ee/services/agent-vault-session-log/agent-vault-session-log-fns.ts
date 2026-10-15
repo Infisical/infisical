@@ -30,7 +30,7 @@ import {
 
 export const AgentVaultSessionLogsNamespace = defineStorageNamespace({
   id: "agent-vault.session-logs",
-  product: "agent-vault",
+  product: ProjectType.AgentVault,
   path: "sessions/{sessionId}/logs/{file}"
 });
 
@@ -99,8 +99,6 @@ export const toEffectiveSessionLogConfig = (
     };
   }
   if (!hasDefaultStorage) return null;
-  // An external row without its bucket can only come from a pod on the previous version during a deploy, and those
-  // were always off.
   const enabled = row ? row.storageType === ObjectStorageType.Default && row.enabled : true;
   return { enabled, isSaved: Boolean(row), storage: { type: ObjectStorageType.Default } };
 };
@@ -123,6 +121,40 @@ export const getEffectiveSessionLogConfig = async (
   return toEffectiveSessionLogConfig(row, isDefaultStorageConfigured());
 };
 
+// The storage a settings save replaced: what the audit log records as "previous".
+export type TPreviousSessionLogStorage = {
+  storageType: ObjectStorageType;
+  appConnectionId: string | null;
+  appConnectionName: string | null;
+  bucket: string | null;
+};
+
+// Turning off on an instance without default storage reads back as no settings, and is still recorded as off.
+export const buildSessionLogSettingsAuditMetadata = ({
+  settings,
+  appConnectionName,
+  previous
+}: {
+  settings: TEffectiveSessionLogConfig | null;
+  appConnectionName: string | null;
+  previous: TPreviousSessionLogStorage | null;
+}) => {
+  const external = settings?.storage.type === ObjectStorageType.External ? settings.storage : null;
+  return {
+    enabled: settings?.enabled ?? false,
+    storageType: settings?.storage.type ?? ObjectStorageType.Default,
+    appConnectionId: external?.appConnectionId ?? null,
+    appConnectionName,
+    bucket: external?.bucket ?? null,
+    region: external?.region ?? null,
+    keyPrefix: external?.keyPrefix ?? null,
+    previousStorageType: previous?.storageType ?? null,
+    previousAppConnectionId: previous?.appConnectionId ?? null,
+    previousAppConnectionName: previous?.appConnectionName ?? null,
+    previousBucket: previous?.bucket ?? null
+  };
+};
+
 export const toStorageConfig = (storage: TSessionLogStorage): TStorageConfig =>
   storage.type === ObjectStorageType.Default
     ? { storageType: ObjectStorageType.Default }
@@ -139,8 +171,8 @@ const UNREACHABLE_BUCKET_MESSAGE = (bucket: string) =>
   `Unable to reach bucket '${bucket}'. Check the bucket name, the region, and that the connection's credentials allow s3:ListBucket on it`;
 
 // The message an admin sees for a storage failure, and whether trying again later can help (a 500) or the settings
-// need fixing (a 400). Default storage gets the generic message: its bucket belongs to whoever runs the instance, who
-// finds the cause in the server logs, and a 5xx tells the proxy to keep the chunk and retry.
+// need fixing (a 400). Default storage always gets the generic message and counts as temporary: its bucket belongs to
+// whoever runs the instance, who finds the cause in the server logs, and an org admin can't fix it in settings.
 export const describeStorageFailure = (error: ObjectStorageError, use: "read" | "check") => {
   if (error.storageType === ObjectStorageType.Default) {
     return { isTemporary: true, message: AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE };
@@ -212,10 +244,12 @@ const hasStorageOnPlan = (
 const FALLBACK_LOG_INTERVAL_MS = 5 * 60_000;
 const fallbackLoggedAt = new Map<string, number>();
 
-// Whether the org's plan includes the storage, and the plan that decided it. getPlan answers with the free plan
-// while the License Server is down, which would otherwise read as a downgrade and stop recording; "unknown" is a
-// fallback with no recent real answer to go on. The free plan includes default storage, so for default storage a
-// fallback is always checked: it would otherwise hide a downgrade and tag uploads with the wrong retention.
+// Whether the org's plan includes this storage type, and the plan to take retention from. While the License Server
+// can't be reached, getPlan returns a stand-in plan that leaves out external storage and includes default storage.
+// Trusting it would stop recording for orgs that pay for external storage, and for default storage it would hide a
+// downgrade and tag uploads with the stand-in plan's retention. So in that case the last plan the License Server
+// returned decides, if it's under an hour old. Without one the answer is "unknown", and each caller decides what that
+// means.
 export const getSessionLogEntitlement = async (
   licenseService: TSessionLogLicenseService,
   orgId: string,
@@ -232,8 +266,8 @@ export const getSessionLogEntitlement = async (
   }
 
   const lastKnown = await licenseService.getLastKnownPlan(orgId);
-  // Retention comes from the last real plan for as long as it is cached, even past the hour the yes or no decision
-  // trusts it: the tag is fixed at upload, so the stand-in plan's 30 days would delete a longer plan's logs early.
+  // Retention comes from the last real plan whenever one is cached, even one too old to decide yes or no. The tag is
+  // fixed at upload, so tagging with the stand-in plan's retention would delete a longer plan's logs early.
   let decision: Awaited<ReturnType<typeof getSessionLogEntitlement>> = isOnPlan
     ? { entitlement: "licensed", plan: lastKnown?.plan ?? plan }
     : { entitlement: "unknown", plan: lastKnown?.plan ?? null };
@@ -248,14 +282,14 @@ export const getSessionLogEntitlement = async (
   if (now - (fallbackLoggedAt.get(orgId) ?? 0) >= FALLBACK_LOG_INTERVAL_MS) {
     fallbackLoggedAt.set(orgId, now);
     logger.warn(
-      `agentVaultSessionLog: the plan is a License Server fallback, deciding session logs from the last known plan [orgId=${orgId}] [storageType=${storageType}] [entitlement=${decision.entitlement}] [lastKnownAgeMs=${lastKnown ? now - lastKnown.fetchedAt : "none"}]`
+      `agentVaultSessionLog: the License Server is unreachable, so session logs are decided from the last plan it returned [orgId=${orgId}] [storageType=${storageType}] [entitlement=${decision.entitlement}] [lastKnownAgeMs=${lastKnown ? now - lastKnown.fetchedAt : "none"}]`
     );
   }
   return decision;
 };
 
-// A v2 entitlement of null would mean "no limit" elsewhere, but a lifecycle rule needs a number, so it means the
-// default here.
+// For other plan limits null means no limit, but here it still means the default number of days, so that a plan
+// never keeps logs in default storage forever by accident. Make null mean "keep forever" here if that's ever wanted.
 export const getSessionLogRetentionDays = (plan: Pick<TFeatureSet, "agentVaultSessionLogRetentionDays"> | null) =>
   plan?.agentVaultSessionLogRetentionDays ?? AGENT_VAULT_SESSION_LOG_DEFAULT_RETENTION_DAYS;
 

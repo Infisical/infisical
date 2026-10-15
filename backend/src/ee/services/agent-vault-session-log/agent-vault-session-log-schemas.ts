@@ -56,12 +56,17 @@ export const AgentVaultSessionLogChunkViewSchema = z.object({
   presignedGetUrl: z.string().describe(AGENT_VAULT.SESSION_LOGS.presignedGetUrl)
 });
 
+export const AgentVaultSessionLogDisabledReasonSchema = z.enum(["off", "not-on-plan"]);
+export type TAgentVaultSessionLogDisabledReason = z.infer<typeof AgentVaultSessionLogDisabledReasonSchema>;
+
 const AgentVaultSessionLogSchema = z
   .object({
     enabled: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.enabled),
     isRecordable: z.boolean().describe(AGENT_VAULT.SESSION_LOGS.isRecordable),
     sessionKey: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.sessionKey),
-    disabledReason: z.enum(["off", "not-on-plan"]).nullable().describe(AGENT_VAULT.SESSION_LOGS.disabledReason)
+    disabledReason: AgentVaultSessionLogDisabledReasonSchema.nullable().describe(
+      AGENT_VAULT.SESSION_LOGS.disabledReason
+    )
   })
   .describe(AGENT_VAULT.SESSION_LOGS.sessionLogs);
 
@@ -85,7 +90,7 @@ const ExternalStorageSchema = z
     appConnectionId: z.string().uuid().describe(AGENT_VAULT.SESSION_LOGS.appConnectionId),
     bucket: s3BucketNameSchema.describe(AGENT_VAULT.SESSION_LOGS.bucket),
     region: z.nativeEnum(AWSRegion).describe(AGENT_VAULT.SESSION_LOGS.region),
-    keyPrefix: keyPrefixSchema(512).optional().describe(AGENT_VAULT.SESSION_LOGS.keyPrefix)
+    keyPrefix: keyPrefixSchema(256).optional().describe(AGENT_VAULT.SESSION_LOGS.keyPrefix)
   })
   .strict();
 
@@ -134,9 +139,12 @@ export const AgentVaultSessionLogCorsProbeResponseSchema = z.object({
     .nullable()
 });
 
-export const AgentVaultSessionLogSettingsUpdateSchema = z
-  .object({
-    enabled: z.boolean().optional().describe(AGENT_VAULT.SESSION_LOGS.configEnabled),
-    storage: AgentVaultSessionLogStorageSchema.optional()
-  })
-  .strict();
+export const AgentVaultSessionLogSettingsUpdateSchema = z.discriminatedUnion("enabled", [
+  z.object({ enabled: z.literal(false).describe(AGENT_VAULT.SESSION_LOGS.configEnabled) }).strict(),
+  z
+    .object({
+      enabled: z.literal(true).describe(AGENT_VAULT.SESSION_LOGS.configEnabled),
+      storage: AgentVaultSessionLogStorageSchema
+    })
+    .strict()
+]);

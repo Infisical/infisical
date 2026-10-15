@@ -89,7 +89,8 @@ export default defineConfig({
         find: /^@app\/lib\/aws\/s3$/,
         replacement: path.resolve(__dirname, "./e2e-test/fakes/s3")
       },
-      // Every importer uses this one specifier, so a single entry covers the server and the specs.
+      // Every file under src/ imports this module by exactly this specifier, so one entry swaps it everywhere. A relative
+      // import would bypass the fake.
       {
         find: /^@app\/services\/object-storage\/object-storage-default-fns$/,
         replacement: path.resolve(__dirname, "./e2e-test/fakes/object-storage-default-fns")

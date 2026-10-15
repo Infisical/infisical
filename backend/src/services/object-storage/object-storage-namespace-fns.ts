@@ -1,10 +1,11 @@
 import RE2 from "re2";
 
+import { ProjectType } from "@app/db/schemas";
+
 import { TStorageNamespace } from "./object-storage-types";
 
 const WORD_REGEX = new RE2(/^[A-Za-z0-9_-]+$/);
 const ID_REGEX = new RE2(/^\{([A-Za-z][A-Za-z0-9]*)\}$/);
-const PRODUCT_REGEX = new RE2(/^[a-z0-9]+(-[a-z0-9]+)*$/);
 const FILE_SEGMENT = "{file}";
 
 type TParsedSegment = { kind: "word"; value: string } | { kind: "id"; name: string; value: string };
@@ -29,7 +30,7 @@ export const defineStorageNamespace = ({
   path
 }: {
   id: string;
-  product: string;
+  product: ProjectType;
   path: string;
 }): TStorageNamespace => {
   if (!path.endsWith(`/${FILE_SEGMENT}`)) {
@@ -85,11 +86,6 @@ export const assertNamespacesValid = (namespaces: TStorageNamespace[]) => {
   namespaces.forEach((namespace) => {
     if (ids.has(namespace.id)) throw new Error(`Storage namespace "${namespace.id}" is registered twice`);
     ids.add(namespace.id);
-    if (!PRODUCT_REGEX.test(namespace.product)) {
-      throw new Error(
-        `Storage namespace "${namespace.id}": product "${namespace.product}" must be lowercase words joined by dashes`
-      );
-    }
     checkTakesTurns(namespace);
   });
   checkOwnLastWord(namespaces);

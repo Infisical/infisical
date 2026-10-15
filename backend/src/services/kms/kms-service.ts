@@ -1298,7 +1298,7 @@ export const kmsServiceFactory = ({
     return encryptor({ plainText: buildWrappedKeyPayload(label, key) }).cipherTextBlob;
   };
 
-  // Null when the key was wrapped for another label.
+  // Null when the key wasn't wrapped for this label. Throws when the ciphertext doesn't decrypt.
   const unwrapKey = async ({
     projectId,
     label,

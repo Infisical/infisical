@@ -30,6 +30,7 @@ import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 import { WebhookType } from "@app/services/webhook/webhook-types";
 
 export type HubSpotSignupMethod = AuthMethod | "invite";
@@ -2527,7 +2528,7 @@ export type TAgentVaultSessionLogSettingsUpdatedEvent = {
   event: PostHogEventTypes.AgentVaultSessionLogSettingsUpdated;
   properties: TAgentVaultEventBase & {
     enabled: boolean;
-    storageType: "default" | "external";
+    storageType: ObjectStorageType;
   };
 };
 

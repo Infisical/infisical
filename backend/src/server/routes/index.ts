@@ -3312,12 +3312,14 @@ export const registerRoutes = async (
   });
 
   const objectStorageService = objectStorageServiceFactory({ appConnectionDAL, kmsService, keyStore });
-  // Throws at boot when a namespace's path could share a folder with another's.
   objectStorageService.registerNamespaces([AgentVaultSessionLogsNamespace]);
-  // Not awaited: a misconfigured instance bucket is logged, and must not hold up boot.
-  void objectStorageService
-    .checkDefaultStorage()
-    .catch((error) => logger.error(error, "objectStorage: could not check default storage"));
+  // Not awaited: a misconfigured instance bucket is logged, and must not hold up boot. Only pods that serve the API use
+  // default storage, so only they check it.
+  if (envConfig.isApiRunModeEnabled) {
+    void objectStorageService
+      .checkDefaultStorage()
+      .catch((error) => logger.error(error, "objectStorage: could not check default storage"));
+  }
 
   const agentVaultSessionLogService = agentVaultSessionLogServiceFactory({
     agentVaultSessionLogConfigDAL,

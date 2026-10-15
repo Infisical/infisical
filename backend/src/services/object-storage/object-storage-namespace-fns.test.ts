@@ -1,8 +1,11 @@
 import { describe, expect, test } from "vitest";
 
+import { ProjectType } from "@app/db/schemas";
+
 import { assertNamespacesValid, defineStorageNamespace } from "./object-storage-namespace-fns";
 
-const ns = (id: string, path: string, product = "agent-vault") => defineStorageNamespace({ id, product, path });
+const ns = (id: string, path: string, product = ProjectType.AgentVault) =>
+  defineStorageNamespace({ id, product, path });
 
 describe("defining a namespace", () => {
   test("its path must end in {file}", () => {
@@ -62,16 +65,12 @@ describe("the startup checks", () => {
     expect(() =>
       assertNamespacesValid([
         ns("agent-vault.session-logs", "sessions/{sessionId}/logs/{file}"),
-        ns("pam.recordings", "sessions/{sessionId}/{file}", "pam")
+        ns("pam.recordings", "sessions/{sessionId}/{file}", ProjectType.PAM)
       ])
     ).not.toThrow();
   });
 
   test("refuses the same id twice", () => {
     expect(() => assertNamespacesValid([ns("a", "x/{file}"), ns("a", "y/{file}")])).toThrow("registered twice");
-  });
-
-  test("refuses a product name that isn't lowercase words joined by dashes", () => {
-    expect(() => assertNamespacesValid([ns("a", "x/{file}", "Agent_Vault")])).toThrow("lowercase words");
   });
 });

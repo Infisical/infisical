@@ -47,7 +47,7 @@ describe("validateClassicalKeyMaterial", () => {
 describe("wrapped keys", () => {
   const key = Buffer.alloc(32, 7);
 
-  // Agent Vault sessions can live forever, so keys wrapped before this helper existed must keep opening.
+  // An Agent Vault session can have no expiry, so keys wrapped before this helper existed must keep opening.
   it("opens a key in the layout Agent Vault session keys were always stored in", () => {
     const sessionId = "6f1c7a52-3f7e-4c8e-9a40-0b2d6c1e9f11";
     const storedBefore = Buffer.concat([createHash("sha256").update(`${sessionId}|v1`).digest(), key]);

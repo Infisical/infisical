@@ -539,9 +539,9 @@ export const keyStoreFactory = (
     return count
   `;
 
-  // Atomic admit by an amount: refuse without adding when the total would pass the cap, otherwise INCRBY. The expiry is
-  // set once, when the key has none, so the key lives a fixed time from its first write and retries can't extend it.
-  // Returns -1 for rejection, otherwise the new total.
+  // Adds the value only if the total stays within the limit, in one atomic step, and otherwise returns -1 without
+  // adding. The expiry is set only when the key has none, so it counts from the first write and retries can't push it
+  // back.
   const INCREMENT_BY_IF_UNDER_LIMIT_WITH_FIXED_EXPIRY_SCRIPT = `
     local current = tonumber(redis.call("GET", KEYS[1]) or "0")
     local value = tonumber(ARGV[1])

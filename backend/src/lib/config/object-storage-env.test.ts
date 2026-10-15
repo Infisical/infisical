@@ -37,6 +37,14 @@ describe("default storage env", () => {
         OBJECT_STORAGE_S3_ACCESS_KEY_ID: "AKIAEXAMPLE"
       },
       "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY must be set"
+    ],
+    [
+      {
+        OBJECT_STORAGE_S3_BUCKET: "infisical-logs",
+        OBJECT_STORAGE_S3_REGION: "us-east-1",
+        OBJECT_STORAGE_S3_SECRET_ACCESS_KEY: "secret"
+      },
+      "OBJECT_STORAGE_S3_ACCESS_KEY_ID must be set"
     ]
   ])("a half-set group names what is missing", (env, expected) => {
     expect(messages(parse(env)).join(" ")).toContain(expected);

@@ -59,6 +59,7 @@ import {
   TOidcAuthDetails
 } from "@app/services/identity-access-token/identity-access-token-types";
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
+import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 import { THealthCheckCommandResult } from "@app/services/pki-sync/pki-sync-health-check-command-fns";
@@ -6431,16 +6432,17 @@ interface AgentVaultSessionLogSettingsUpdateEvent {
   type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE;
   metadata: {
     enabled: boolean;
-    storageType: "default" | "external";
+    storageType: ObjectStorageType;
     appConnectionId: string | null;
     appConnectionName: string | null;
     bucket: string | null;
     region: string | null;
     keyPrefix: string | null;
-    // Set when turning session logs off cleared an external bucket.
-    clearedAppConnectionId?: string | null;
-    clearedAppConnectionName?: string | null;
-    clearedBucket?: string | null;
+    // The storage this change replaced, when it changed the storage or turned off a customer's bucket.
+    previousStorageType?: ObjectStorageType | null;
+    previousAppConnectionId?: string | null;
+    previousAppConnectionName?: string | null;
+    previousBucket?: string | null;
   };
 }
 

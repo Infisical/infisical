@@ -312,7 +312,7 @@ export type TAgentVaultSessionLogSettings = {
   storage: TAgentVaultSessionLogStorage;
 };
 
-// settings is null when there's nothing to turn on: no saved choice and no instance bucket.
+// settings is null when the instance has no default storage and no external bucket is saved.
 export type TAgentVaultSessionLogSettingsState = {
   settings: TAgentVaultSessionLogSettings | null;
   defaultStorage: { configured: boolean };
@@ -338,12 +338,13 @@ export type TAgentVaultSessionLogReadCheck = {
   host: string;
 };
 
-export type TUpdateAgentVaultSessionLogSettingsDTO = {
-  enabled?: boolean;
-  storage?:
-    | { type: AgentVaultSessionLogStorageType.Default }
-    | (Omit<TAgentVaultSessionLogExternalStorage, "keyPrefix"> & { keyPrefix?: string });
-};
+export type TAgentVaultSessionLogStorageInput =
+  | { type: AgentVaultSessionLogStorageType.Default }
+  | (Omit<TAgentVaultSessionLogExternalStorage, "keyPrefix"> & { keyPrefix?: string });
+
+export type TUpdateAgentVaultSessionLogSettingsDTO =
+  | { enabled: false }
+  | { enabled: true; storage: TAgentVaultSessionLogStorageInput };
 
 export type TAgentVaultSessionLogChunk = {
   chunkId: string;
