@@ -78,7 +78,7 @@ export const InvalidAddresses: Story = {
   render: () => <DefaultRender initial={["alex@example.com", "not-an-email", "sam@example"]} />
 };
 
-/** A pasted list is split, lowercased and deduplicated. */
+/** A pasted list is split, lowercased and deduplicated, and a half-typed address next to it is kept. */
 export const PasteList: Story = {
   name: "Example: Paste a List",
   render: () => <DefaultRender initial={[]} />,
@@ -86,9 +86,10 @@ export const PasteList: Story = {
     const canvas = within(canvasElement);
     const input = canvas.getByRole("combobox");
 
-    await userEvent.click(input);
+    await userEvent.type(input, "jordan@acme.io");
     await userEvent.paste("Alex@Example.com, sam@example.com\nalex@example.com");
 
+    await expect(canvas.getByText("jordan@acme.io")).toBeVisible();
     await expect(canvas.getByText("alex@example.com")).toBeVisible();
     await expect(canvas.getByText("sam@example.com")).toBeVisible();
   }

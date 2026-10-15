@@ -108,8 +108,13 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
 
       event.preventDefault();
 
-      const parts = pasted
-        .split(pasteDelimiter)
+      const { selectionStart, selectionEnd } = event.currentTarget;
+      const parts = [
+        draft.slice(0, selectionStart ?? draft.length),
+        pasted,
+        draft.slice(selectionEnd ?? draft.length)
+      ]
+        .flatMap((chunk) => chunk.split(pasteDelimiter))
         .map((part) => part.trim())
         .filter(Boolean);
 
