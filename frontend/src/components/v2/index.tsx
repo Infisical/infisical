@@ -16,7 +16,6 @@ export * from "./HoverCardv2";
 export * from "./IconButton";
 export * from "./Input";
 export * from "./Modal";
-export * from "./NoticeBannerV2";
 export * from "./Pagination";
 export * from "./SecretInput";
 export * from "./Select";
