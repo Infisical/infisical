@@ -47,7 +47,8 @@ export const SecretScanningNav = ({
       label: "Findings",
       icon: Search,
       pathSuffix: "findings",
-      badgeCount: unresolvedFindings || undefined
+      badgeCount: unresolvedFindings || undefined,
+      badgeVariant: "danger" as const
     },
     { label: "App Connections", icon: Cable, pathSuffix: "app-connections" },
     {

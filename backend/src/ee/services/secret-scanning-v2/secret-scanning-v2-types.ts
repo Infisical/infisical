@@ -228,6 +228,20 @@ export type TSecretScanningFactorySetupWebhook<
   C extends TSecretScanningDataSourceCredentials = undefined
 > = (params: { dataSource: T }) => Promise<C | undefined>;
 
+// Brings existing webhooks in line with a new config. Hooks it adds exist before the data source is saved, so
+// revert removes them if the save fails; hooks it drops are only removed by finalize, after the save.
+export type TSecretScanningFactoryUpdateWebhook<
+  T extends TSecretScanningDataSourceWithConnection,
+  C extends TSecretScanningDataSourceCredentials = undefined
+> = (params: { dataSource: T; config: T["config"]; credentials: C }) => Promise<
+  | {
+      credentials: C;
+      finalize: () => Promise<void>;
+      revert: () => Promise<void>;
+    }
+  | undefined
+>;
+
 export type TSecretScanningFactoryParams = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -245,6 +259,7 @@ export type TSecretScanningFactory<
   postInitialization: TSecretScanningFactoryPostInitialization<I, T["connection"] | undefined, C>;
   teardown: TSecretScanningFactoryTeardown<T, C>;
   setupWebhook: TSecretScanningFactorySetupWebhook<T, C>;
+  updateWebhook?: TSecretScanningFactoryUpdateWebhook<T, C>;
   validateConfigUpdate: TSecretScanningFactoryValidateConfigUpdate<I["config"], T>;
   getDiffScanResourcePayload: TSecretScanningFactoryGetDiffScanResourcePayload<P>;
   getDiffScanFindingsPayload: TSecretScanningFactoryGetDiffScanFindingsPayload<T, P>;

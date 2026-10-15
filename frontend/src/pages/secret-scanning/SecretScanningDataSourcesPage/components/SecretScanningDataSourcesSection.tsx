@@ -280,7 +280,7 @@ export const SecretScanningDataSourcesSection = () => {
             >
               {(isAllowed) => (
                 <Button
-                  variant="project"
+                  variant="ss"
                   isDisabled={!isAllowed}
                   onClick={() => {
                     if (!subscription.secretScanning) {

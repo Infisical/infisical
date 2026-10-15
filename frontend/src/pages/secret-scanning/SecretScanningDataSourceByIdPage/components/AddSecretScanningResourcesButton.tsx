@@ -16,7 +16,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
@@ -28,9 +31,11 @@ import {
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
 import {
+  SecretScanningDataSource,
   TSecretScanningDataSource,
   useUpdateSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2";
+import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 
 import { AddSecretScanningResourceSheet } from "./AddSecretScanningResourceSheet";
 
@@ -47,6 +52,11 @@ export const AddSecretScanningResourcesButton = ({ dataSource }: Props) => {
   const { singularTitle, singularNoun, pluralTitle, pluralNoun } =
     RESOURCE_DESCRIPTION_HELPER[dataSource.type];
   const isEverythingIncluded = areAllSecretScanningResourcesIncluded(dataSource);
+  // GitLab has no account-level webhook, so new commits are only reported for projects added one by one;
+  // hooking every project the connection can access could mean thousands of them.
+  const isAddAllUnsupported =
+    dataSource.type === SecretScanningDataSource.GitLab &&
+    dataSource.config.scope === GitLabDataSourceScope.Account;
 
   const handleAddAll = async () => {
     const config = getConfigWithAllResourcesIncluded(dataSource);
@@ -75,7 +85,7 @@ export const AddSecretScanningResourcesButton = ({ dataSource }: Props) => {
         {(isAllowed) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="project" isDisabled={!isAllowed || dataSource.isDisconnected}>
+              <Button variant="ss" isDisabled={!isAllowed || dataSource.isDisconnected}>
                 <ChevronDownIcon />
                 Add {singularTitle}
               </Button>
@@ -88,13 +98,26 @@ export const AddSecretScanningResourcesButton = ({ dataSource }: Props) => {
                 <PlusIcon />
                 Add {singularTitle}
               </DropdownMenuItem>
-              <DropdownMenuItem
-                isDisabled={isEverythingIncluded}
-                onClick={() => setIsAddAllOpen(true)}
+              <Tooltip
+                hoverable
+                delayDuration={50}
+                open={isAddAllUnsupported && !isEverythingIncluded ? undefined : false}
               >
-                <ListPlusIcon />
-                Add All {pluralTitle}
-              </DropdownMenuItem>
+                <TooltipTrigger asChild>
+                  <DropdownMenuItem
+                    isDisabled={isEverythingIncluded || isAddAllUnsupported}
+                    isDisabledFocusable={isAddAllUnsupported}
+                    onClick={() => setIsAddAllOpen(true)}
+                  >
+                    <ListPlusIcon />
+                    Add All {pluralTitle}
+                  </DropdownMenuItem>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  Without a group, add projects individually so each one gets a webhook for new
+                  commits.
+                </TooltipContent>
+              </Tooltip>
             </DropdownMenuContent>
           </DropdownMenu>
         )}
@@ -118,7 +141,7 @@ export const AddSecretScanningResourcesButton = ({ dataSource }: Props) => {
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={updateDataSource.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              variant="project"
+              variant="ss"
               isPending={updateDataSource.isPending}
               onClick={(event) => {
                 event.preventDefault();

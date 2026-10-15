@@ -448,6 +448,10 @@ export const secretScanningV2ServiceFactory = ({
     }
 
     const dataSourceWithConnection = { ...dataSource, connection } as TSecretScanningDataSourceWithConnection;
+    // Hooks are placed from the include list, so creating them has to see the config this update saves.
+    const nextDataSourceWithConnection = (
+      payload.config ? { ...dataSourceWithConnection, config: payload.config } : dataSourceWithConnection
+    ) as TSecretScanningDataSourceWithConnection;
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId: dataSource.projectId
@@ -461,9 +465,10 @@ export const secretScanningV2ServiceFactory = ({
     // Stored credentials are what tells us a webhook exists, so they are added or cleared alongside it.
     let createdCredentials: TSecretScanningDataSourceCredentials;
     let encryptedCredentials: Buffer | null | undefined;
+    let webhookUpdate: Awaited<ReturnType<NonNullable<typeof factory.updateWebhook>>>;
 
     if (isWebhookRequired && !dataSource.encryptedCredentials) {
-      createdCredentials = await factory.setupWebhook({ dataSource: dataSourceWithConnection });
+      createdCredentials = await factory.setupWebhook({ dataSource: nextDataSourceWithConnection });
 
       if (createdCredentials) {
         encryptedCredentials = encryptor({ plainText: Buffer.from(JSON.stringify(createdCredentials)) }).cipherTextBlob;
@@ -476,6 +481,20 @@ export const secretScanningV2ServiceFactory = ({
         ) as TSecretScanningDataSourceCredentials
       });
       encryptedCredentials = null;
+    } else if (isWebhookRequired && dataSource.encryptedCredentials && payload.config && factory.updateWebhook) {
+      webhookUpdate = await factory.updateWebhook({
+        dataSource: dataSourceWithConnection,
+        config: nextDataSourceWithConnection.config,
+        credentials: JSON.parse(
+          decryptor({ cipherTextBlob: dataSource.encryptedCredentials }).toString()
+        ) as TSecretScanningDataSourceCredentials
+      });
+
+      if (webhookUpdate) {
+        encryptedCredentials = encryptor({
+          plainText: Buffer.from(JSON.stringify(webhookUpdate.credentials))
+        }).cipherTextBlob;
+      }
     }
 
     let updatedDataSource: TSecretScanningDataSource;
@@ -487,8 +506,10 @@ export const secretScanningV2ServiceFactory = ({
       })) as TSecretScanningDataSource;
     } catch (err) {
       if (createdCredentials) {
-        await factory.teardown({ dataSource: dataSourceWithConnection, credentials: createdCredentials });
+        await factory.teardown({ dataSource: nextDataSourceWithConnection, credentials: createdCredentials });
       }
+
+      await webhookUpdate?.revert();
 
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({
@@ -498,6 +519,8 @@ export const secretScanningV2ServiceFactory = ({
 
       throw err;
     }
+
+    await webhookUpdate?.finalize();
 
     if (
       doesConfigUpdateIncludeNewResources(

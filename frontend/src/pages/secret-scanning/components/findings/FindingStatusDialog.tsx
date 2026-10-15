@@ -124,7 +124,7 @@ export const FindingStatusDialog = ({ findings, status, onOpenChange, onComplete
               </Button>
             </DialogClose>
             <Button
-              variant="project"
+              variant="ss"
               type="submit"
               isPending={updateFindings.isPending}
               isDisabled={updateFindings.isPending}

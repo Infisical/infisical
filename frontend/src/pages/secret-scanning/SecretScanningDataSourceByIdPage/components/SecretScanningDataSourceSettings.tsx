@@ -225,7 +225,7 @@ export const SecretScanningDataSourceSettings = ({ dataSource, onDeleted }: Prop
             <Button
               type="submit"
               form="data-source-general-form"
-              variant="project"
+              variant="ss"
               isPending={isSubmitting}
               isDisabled={!canEdit || !isDirty || isSubmitting}
             >
@@ -254,7 +254,7 @@ export const SecretScanningDataSourceSettings = ({ dataSource, onDeleted }: Prop
                   </FieldContent>
                   <Toggle
                     id={`data-source-${name}`}
-                    variant="project"
+                    variant="ss"
                     checked={dataSource[name] && !isDisabled}
                     onCheckedChange={(checked) => handleToggle(name, label, checked)}
                     disabled={!canEdit || isDisabled || updateDataSource.isPending}

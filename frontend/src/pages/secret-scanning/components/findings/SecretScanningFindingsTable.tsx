@@ -8,6 +8,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -356,7 +357,7 @@ export const SecretScanningFindingsTable = ({
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/findings" />
           </CardTitle>
           <CardDescription>{description}</CardDescription>
-          <div className="flex flex-wrap items-center gap-2">
+          <CardAction className="flex flex-wrap items-center justify-end gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
@@ -432,7 +433,7 @@ export const SecretScanningFindingsTable = ({
                 onChange={(value) => applyFilterChange(() => setResourceFilter(value))}
               />
             )}
-          </div>
+          </CardAction>
         </CardHeader>
         <CardContent>
           {showEmpty ? (
@@ -555,7 +556,7 @@ export const SecretScanningFindingsTable = ({
           {(isAllowed) => (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="project" size="xs" isDisabled={!isAllowed || isPlaceholderData}>
+                <Button variant="ss" size="xs" isDisabled={!isAllowed || isPlaceholderData}>
                   Set Status
                   <ChevronDownIcon />
                 </Button>

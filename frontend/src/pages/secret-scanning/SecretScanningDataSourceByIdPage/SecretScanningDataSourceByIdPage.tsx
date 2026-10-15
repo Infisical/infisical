@@ -227,10 +227,10 @@ const PageContent = () => {
               handleTabChange(tab as DataSourceTab);
             }}
           >
-            <TabsList variant="project" aria-label="Data source sections">
+            <TabsList variant="ss" aria-label="Data source sections">
               <TabsTrigger value={DataSourceTab.Findings}>
                 Findings
-                {unresolvedCount > 0 && <Badge variant="neutral">{unresolvedCount}</Badge>}
+                {unresolvedCount > 0 && <Badge variant="danger">{unresolvedCount}</Badge>}
               </TabsTrigger>
               <TabsTrigger value={DataSourceTab.Resources}>
                 {resourceDetails.pluralTitle}

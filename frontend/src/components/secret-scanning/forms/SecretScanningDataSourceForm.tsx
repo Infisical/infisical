@@ -187,7 +187,7 @@ export const SecretScanningDataSourceForm = ({
           type="button"
           isPending={isSubmitting}
           isDisabled={isSubmitting}
-          variant="project"
+          variant="ss"
         >
           {isFinalStep ? `${dataSource ? "Update" : "Create"} Data Source` : "Next"}
         </Button>

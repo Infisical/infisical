@@ -119,7 +119,7 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
       </TableCell>
       <TableCell>
         {status === SecretScanningScanStatus.Completed ? (
-          <span className={unresolvedFindings ? "text-warning" : undefined}>{totalFindings}</span>
+          <span className={unresolvedFindings ? "text-danger" : undefined}>{totalFindings}</span>
         ) : (
           <span className="text-muted">-</span>
         )}

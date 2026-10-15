@@ -362,7 +362,7 @@ export const CreateSecretScanningDataSourceForm = ({
           </Button>
           {step !== FormStep.Provider && (
             <Button
-              variant="project"
+              variant="ss"
               type="submit"
               form="create-secret-scanning-data-source-form"
               isPending={isSubmitting}

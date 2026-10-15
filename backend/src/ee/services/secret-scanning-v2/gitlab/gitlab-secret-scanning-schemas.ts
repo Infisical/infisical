@@ -96,7 +96,15 @@ export const GitLabFindingSchema = BaseSecretScanningFindingSchema.extend({
   details: GitRepositoryScanFindingDetailsSchema
 });
 
-export const GitLabDataSourceCredentialsSchema = z.object({
-  token: z.string(),
-  hookId: z.number()
-});
+// A group or project data source has one hook. GitLab has no account-level hook, so an account data source
+// has one on each included project.
+export const GitLabDataSourceCredentialsSchema = z.union([
+  z.object({
+    token: z.string(),
+    hookId: z.number()
+  }),
+  z.object({
+    token: z.string(),
+    projectHooks: z.array(z.object({ projectId: z.number(), projectName: z.string(), hookId: z.number() }))
+  })
+]);
