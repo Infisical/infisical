@@ -33,11 +33,11 @@ import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
 import {
-  getEffectiveSessionLogConfig,
   getSessionLogEntitlement,
   TSessionLogLicenseService
-} from "../agent-vault-session-log/agent-vault-session-log-fns";
+} from "../agent-vault-session-log/agent-vault-session-log-license-fns";
 import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
+import { getEffectiveSessionLogConfig } from "../agent-vault-session-log/agent-vault-session-log-storage-fns";
 import { RESOURCE_TYPE_AGENT_VAULT_PROXY } from "../resource-auth-method/resource-auth-method-fns";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
 import { parseRootCaCertificate } from "./agent-vault-ca-fns";

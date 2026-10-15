@@ -32,8 +32,6 @@ import { TAgentVaultSessionLogConfigDALFactory } from "./agent-vault-session-log
 import {
   AGENT_VAULT_SESSION_LOG_CHUNK_ID_TIME_TOLERANCE_MS,
   AGENT_VAULT_SESSION_LOG_CLOCK_SKEW_MS,
-  AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_NOT_ON_PLAN,
-  AGENT_VAULT_SESSION_LOG_EXTERNAL_STORAGE_NOT_ON_PLAN,
   AGENT_VAULT_SESSION_LOG_FEED_MAX_ENTRIES,
   AGENT_VAULT_SESSION_LOG_FEED_TTL_SECONDS,
   AGENT_VAULT_SESSION_LOG_LATE_CHUNK_GRACE_MS,
@@ -45,6 +43,7 @@ import {
   AGENT_VAULT_SESSION_LOG_STORAGE_NEEDS_ADMIN_MESSAGE,
   AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE
 } from "./agent-vault-session-log-constants";
+import { encodeHistoryCursor, encodeTailCursor, SESSION_LOG_FEED_START } from "./agent-vault-session-log-cursor-fns";
 import {
   AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE,
   AgentVaultSessionLogErrorName
@@ -53,24 +52,30 @@ import {
   AgentVaultSessionLogsNamespace,
   buildSessionLogObjectName,
   chunkIdTimeMs,
-  describeStorageFailure,
-  encodeHistoryCursor,
-  encodeTailCursor,
-  getEffectiveSessionLogConfig,
-  getSessionLogEntitlement,
-  getSessionLogRetentionDays,
   parseSessionLogObjectKey,
-  SESSION_LOG_FEED_START,
-  TEffectiveSessionLogConfig,
-  toEffectiveSessionLogConfig,
-  toRev,
-  toStorageConfig,
-  TPreviousSessionLogStorage,
-  TSessionLogLicenseService,
-  TSessionLogStorage
+  toRev
 } from "./agent-vault-session-log-fns";
+import {
+  getSessionLogEntitlement,
+  getSessionLogNotOnPlanMessage,
+  getSessionLogRetentionDays,
+  TSessionLogLicenseService
+} from "./agent-vault-session-log-license-fns";
 import { TAgentVaultSessionLogDisabledReason } from "./agent-vault-session-log-schemas";
 import { unwrapSessionLogKey } from "./agent-vault-session-log-secrets";
+import {
+  describeStorageFailure,
+  getEffectiveSessionLogConfig,
+  isSameSessionLogStorage,
+  TEffectiveSessionLogConfig,
+  toEffectiveSessionLogConfig,
+  toSessionLogSettingsState,
+  toSessionLogStorageColumns,
+  toSessionLogStorageHttpError,
+  toStorageConfig,
+  TPreviousSessionLogStorage,
+  TSessionLogStorage
+} from "./agent-vault-session-log-storage-fns";
 import {
   TAgentVaultSessionLogScoped,
   TAgentVaultSessionScoped,
@@ -118,38 +123,6 @@ const $openSessionLogFolder = async (
 };
 
 type TSessionLogFolder = Awaited<ReturnType<typeof $openSessionLogFolder>>["folder"];
-
-const notOnPlanMessage = (storageType: ObjectStorageType) =>
-  storageType === ObjectStorageType.Default
-    ? AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_NOT_ON_PLAN
-    : AGENT_VAULT_SESSION_LOG_EXTERNAL_STORAGE_NOT_ON_PLAN;
-
-const isSameStorage = (a: TSessionLogStorage, b?: TSessionLogStorage) => {
-  if (!b || a.type !== b.type) return false;
-  if (a.type === ObjectStorageType.Default || b.type === ObjectStorageType.Default) return true;
-  return (
-    a.appConnectionId === b.appConnectionId &&
-    a.bucket === b.bucket &&
-    a.region === b.region &&
-    (a.keyPrefix || null) === (b.keyPrefix || null)
-  );
-};
-
-const toSettingsState = (settings: TEffectiveSessionLogConfig | null) => ({
-  settings,
-  defaultStorage: { configured: isDefaultStorageConfigured() }
-});
-
-const toStorageColumns = (storage: TSessionLogStorage) =>
-  storage.type === ObjectStorageType.Default
-    ? { storageType: storage.type, appConnectionId: null, bucket: null, region: null, keyPrefix: null }
-    : {
-        storageType: storage.type,
-        appConnectionId: storage.appConnectionId,
-        bucket: storage.bucket,
-        region: storage.region,
-        keyPrefix: storage.keyPrefix || null
-      };
 
 export const agentVaultSessionLogServiceFactory = ({
   agentVaultSessionLogConfigDAL,
@@ -231,7 +204,7 @@ export const agentVaultSessionLogServiceFactory = ({
     if (entitlement === "unlicensed") {
       throw new BadRequestError({
         name: AgentVaultSessionLogErrorName.Disabled,
-        message: notOnPlanMessage(config.storage.type)
+        message: getSessionLogNotOnPlanMessage(config.storage.type)
       });
     }
     // A 5xx, so the proxy holds the chunk and retries instead of switching session logs off.
@@ -306,7 +279,9 @@ export const agentVaultSessionLogServiceFactory = ({
     return {
       chunkId: chunk.chunkId,
       uploadUrl: upload.url,
-      expiresInSeconds: AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS
+      expiresInSeconds: AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS,
+      orgId: proxy.orgId,
+      storageType: config.storage.type
     };
   };
 
@@ -341,37 +316,30 @@ export const agentVaultSessionLogServiceFactory = ({
     const sessionLogs = {
       enabled: disabledReason === null,
       disabledReason,
+      storageType: config?.storage.type ?? null,
       isRecordable: Boolean(session.encryptedSessionLogKey),
       sessionKey: null as string | null
     };
     return { session, config: disabledReason ? null : config, isAdmin, sessionLogs };
   };
 
-  // A 500 when trying again later can help, a 400 when the settings or the storage need fixing.
-  const $storageUnavailable = ({
-    isAdmin,
-    adminMessage,
-    isTemporary = false
-  }: {
-    isAdmin: boolean;
-    adminMessage: string;
-    isTemporary?: boolean;
-  }) => {
-    let message = adminMessage;
-    if (!isAdmin) {
-      message = isTemporary
-        ? AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE
-        : AGENT_VAULT_SESSION_LOG_STORAGE_NEEDS_ADMIN_MESSAGE;
-    }
-    const error = { name: AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE, message };
-    return isTemporary ? new InternalServerError(error) : new BadRequestError(error);
-  };
-
+  // An external storage failure names the bucket and connection, so only admins see the cause. Default storage's
+  // message is the same for everyone, since no org admin can fix it.
   const $toStorageUnavailable = (error: unknown, isAdmin: boolean, sessionId: string) => {
     if (!(error instanceof ObjectStorageError)) return error;
     logger.warn(error, `agentVaultSessionLog: could not read session logs [sessionId=${sessionId}]`);
-    const failure = describeStorageFailure(error, "read");
-    return $storageUnavailable({ isAdmin, adminMessage: failure.message, isTemporary: failure.isTemporary });
+    const { isTemporary, message } = describeStorageFailure(error, "read");
+    let shownMessage = message;
+    if (!isAdmin && error.storageType === ObjectStorageType.External) {
+      shownMessage = isTemporary
+        ? AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE
+        : AGENT_VAULT_SESSION_LOG_STORAGE_NEEDS_ADMIN_MESSAGE;
+    }
+    return toSessionLogStorageHttpError({
+      isTemporary,
+      message: shownMessage,
+      name: AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE
+    });
   };
 
   const $presignChunks = async (
@@ -504,7 +472,7 @@ export const agentVaultSessionLogServiceFactory = ({
   const getSessionLogSettings = async ({ projectId, ctx }: TAgentVaultSessionLogScoped) => {
     await $requireAdmin({ projectId, ctx });
 
-    return toSettingsState(
+    return toSessionLogSettingsState(
       await getEffectiveSessionLogConfig({ agentVaultSessionLogConfigDAL }, projectId, { fromPrimary: false })
     );
   };
@@ -563,10 +531,7 @@ export const agentVaultSessionLogServiceFactory = ({
       };
     } catch (error) {
       if (!(error instanceof ObjectStorageError)) throw error;
-      const failure = describeStorageFailure(error, "check");
-      throw failure.isTemporary
-        ? new InternalServerError({ message: failure.message })
-        : new BadRequestError({ message: failure.message });
+      throw toSessionLogStorageHttpError(describeStorageFailure(error, "check"));
     }
   };
 
@@ -581,13 +546,12 @@ export const agentVaultSessionLogServiceFactory = ({
     // nothing saved, session logs are on in default storage. Turning off is never gated by the plan.
     if (!body.enabled) {
       const [saved] = await agentVaultSessionLogConfigDAL.upsert(
-        [{ projectId, enabled: false, ...toStorageColumns({ type: ObjectStorageType.Default }) }],
+        [{ projectId, enabled: false, ...toSessionLogStorageColumns({ type: ObjectStorageType.Default }) }],
         "projectId"
       );
-      const previous =
-        current?.storage.type === ObjectStorageType.External ? await $describePreviousStorage(current.storage) : null;
+      const previous = current?.enabled ? await $describePreviousStorage(current.storage) : null;
       return {
-        ...toSettingsState(toEffectiveSessionLogConfig(saved, isDefaultStorageConfigured())),
+        ...toSessionLogSettingsState(toEffectiveSessionLogConfig(saved, isDefaultStorageConfigured())),
         appConnectionName: null,
         previous
       };
@@ -602,16 +566,17 @@ export const agentVaultSessionLogServiceFactory = ({
     }
 
     // Choosing, changing or turning on a storage needs that storage on the plan.
-    const isStorageChange = !isSameStorage(nextStorage, current?.storage);
+    const isStorageChange = !isSameSessionLogStorage(nextStorage, current?.storage);
     const isTurningOn = !(current?.isSaved && current.enabled);
     if (isStorageChange || isTurningOn) {
       const { entitlement } = await getSessionLogEntitlement(licenseService, ctx.actorOrgId, nextStorage.type);
       if (entitlement === "unknown") {
-        throw new BadRequestError({
+        throw new InternalServerError({
           message: "Infisical couldn't confirm your plan right now. Try again in a few minutes."
         });
       }
-      if (entitlement === "unlicensed") throw new BadRequestError({ message: notOnPlanMessage(nextStorage.type) });
+      if (entitlement === "unlicensed")
+        throw new BadRequestError({ message: getSessionLogNotOnPlanMessage(nextStorage.type) });
     }
 
     let validatedConnection: { name: string } | null = null;
@@ -641,20 +606,18 @@ export const agentVaultSessionLogServiceFactory = ({
         } catch (error) {
           if (!(error instanceof ObjectStorageError)) throw error;
           logger.warn(error, `agentVaultSessionLog: session log bucket check failed [projectId=${projectId}]`);
-          const failure = describeStorageFailure(error, "check");
-          throw failure.isTemporary
-            ? new InternalServerError({ message: failure.message })
-            : new BadRequestError({ message: failure.message });
+          throw toSessionLogStorageHttpError(describeStorageFailure(error, "check"));
         }
       }
     }
 
-    const previous = isStorageChange && current ? await $describePreviousStorage(current.storage) : null;
+    // Only storage that was on counts as replaced: an off row holds default columns but no storage.
+    const previous = isStorageChange && current?.enabled ? await $describePreviousStorage(current.storage) : null;
 
     // An upsert, not a create or update chosen from the effective settings: a saved default row on an instance that
     // lost its bucket has no effective settings but still holds the project's unique row.
     const [saved] = await agentVaultSessionLogConfigDAL.upsert(
-      [{ projectId, enabled: true, ...toStorageColumns(nextStorage) }],
+      [{ projectId, enabled: true, ...toSessionLogStorageColumns(nextStorage) }],
       "projectId"
     );
 
@@ -666,7 +629,7 @@ export const agentVaultSessionLogServiceFactory = ({
     }
 
     return {
-      ...toSettingsState(toEffectiveSessionLogConfig(saved, isDefaultStorageConfigured())),
+      ...toSessionLogSettingsState(toEffectiveSessionLogConfig(saved, isDefaultStorageConfigured())),
       appConnectionName,
       previous
     };

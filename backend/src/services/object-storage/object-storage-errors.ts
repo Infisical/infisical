@@ -42,14 +42,9 @@ const TEMPORARY_AWS_ERRORS = new Set([
   "AbortError"
 ]);
 const NETWORK_ERROR_CODES = new Set(["ECONNREFUSED", "ECONNRESET", "ETIMEDOUT", "ENOTFOUND", "EAI_AGAIN", "EPIPE"]);
-export const AWS_CREDENTIAL_ERRORS = new Set([
-  "InvalidAccessKeyId",
-  "SignatureDoesNotMatch",
-  "ExpiredToken",
-  "InvalidToken"
-]);
-export const AWS_ACCESS_ERRORS = new Set(["AccessDenied", "AllAccessDisabled"]);
-export const AWS_LOCATION_ERRORS = new Set([
+const AWS_CREDENTIAL_ERRORS = new Set(["InvalidAccessKeyId", "SignatureDoesNotMatch", "ExpiredToken", "InvalidToken"]);
+const AWS_ACCESS_ERRORS = new Set(["AccessDenied", "AllAccessDisabled"]);
+const AWS_LOCATION_ERRORS = new Set([
   "NoSuchBucket",
   "PermanentRedirect",
   "AuthorizationHeaderMalformed",
@@ -90,9 +85,8 @@ export const awsErrorLabel = (error: Error) => {
 
 const reasonFor = (error: Error) => {
   if (isTemporaryAwsError(error)) return ObjectStorageErrorReason.Temporary;
-  if (AWS_CREDENTIAL_ERRORS.has(error.name) || AWS_ACCESS_ERRORS.has(error.name)) {
-    return ObjectStorageErrorReason.AccessDenied;
-  }
+  if (AWS_CREDENTIAL_ERRORS.has(error.name)) return ObjectStorageErrorReason.CredentialsInvalid;
+  if (AWS_ACCESS_ERRORS.has(error.name)) return ObjectStorageErrorReason.AccessDenied;
   if (AWS_LOCATION_ERRORS.has(error.name)) return ObjectStorageErrorReason.BucketNotFound;
   return ObjectStorageErrorReason.Rejected;
 };
@@ -115,7 +109,7 @@ export const toObjectStorageError = (
 
   const awsError = error as TAwsError;
   return new ObjectStorageError({
-    reason: isMissingCredentials ? ObjectStorageErrorReason.AccessDenied : reasonFor(awsError),
+    reason: isMissingCredentials ? ObjectStorageErrorReason.CredentialsInvalid : reasonFor(awsError),
     storageType,
     details: {
       bucket,

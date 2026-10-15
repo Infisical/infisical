@@ -6432,13 +6432,14 @@ interface AgentVaultSessionLogSettingsUpdateEvent {
   type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE;
   metadata: {
     enabled: boolean;
-    storageType: ObjectStorageType;
+    // Null when session logs are off.
+    storageType: ObjectStorageType | null;
     appConnectionId: string | null;
     appConnectionName: string | null;
     bucket: string | null;
     region: string | null;
     keyPrefix: string | null;
-    // The storage this change replaced, when it changed the storage or turned off a customer's bucket.
+    // The storage that was recording before this change, when it changed the storage or turned session logs off.
     previousStorageType?: ObjectStorageType | null;
     previousAppConnectionId?: string | null;
     previousAppConnectionName?: string | null;

@@ -29,6 +29,7 @@ export type TStorageNamespace = {
 
 export enum ObjectStorageErrorReason {
   Temporary = "temporary",
+  CredentialsInvalid = "credentials-invalid",
   AccessDenied = "access-denied",
   BucketNotFound = "bucket-not-found",
   Rejected = "rejected",

@@ -4569,6 +4569,7 @@ export const AGENT_VAULT = {
     ciphertextBytes: "The size of the encrypted chunk in bytes.",
     ciphertextSha256:
       "The SHA-256 digest of the encrypted chunk, including its IV, as base64 without padding. The bucket refuses an upload with a different digest.",
+    recordCount: "The number of requests recorded in the chunk.",
     legacyIv:
       "Sent only by Infisical CLI versions that can't record session logs. A request that includes it is refused.",
     uploadUrl:
@@ -4591,6 +4592,7 @@ export const AGENT_VAULT = {
     configEnabled: "Whether session logs are on. Turning them off hides recorded logs.",
     disabledReason:
       "Why no logs are returned: `off` when session logs are off, `not-on-plan` when the plan doesn't include the storage they use. Null when logs are returned.",
+    storageType: "Where this session's logs are read from: `default` or `external`. Null when session logs are off.",
     isSaved: "False when nothing has been saved, so the defaults apply: session logs on, in default storage.",
     storage:
       "Where session logs are stored: `default`, stored by Infisical, or `external`, an S3 bucket you own. Required when turning session logs on.",

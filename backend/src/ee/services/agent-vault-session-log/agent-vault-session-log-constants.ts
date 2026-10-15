@@ -4,6 +4,8 @@ import RE2 from "re2";
 // than 8 MiB, or smaller than an empty one: 30 bytes, a 12-byte IV, 2 bytes of content and a 16-byte tag.
 export const AGENT_VAULT_SESSION_LOG_MIN_CHUNK_BYTES = 30; // the 12-byte IV, an empty "[]" and the 16-byte AES-GCM tag
 export const AGENT_VAULT_SESSION_LOG_MAX_CHUNK_BYTES = 8 * 1024 * 1024; // 8 MiB
+// Proxies seal at most 1,000 records per chunk; the bound only rejects nonsense, the count is never trusted for limits.
+export const AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS = 10_000;
 
 // Lowercase because the browser rebuilds the AAD from the id in the object name. v7 because the name orders chunks
 // by the time in the id.
@@ -54,6 +56,9 @@ export const AGENT_VAULT_SESSION_LOG_FEED_TTL_SECONDS = 120; // 2 minutes
 // mention the AWS account, bucket and connection.
 export const AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE =
   "Session logs can't be read right now. Try again in a bit, or ask an Agent Vault admin if it keeps happening.";
+// Default storage belongs to whoever runs Infisical, so no org admin can fix it.
+export const AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_UNAVAILABLE_MESSAGE =
+  "Session logs can't be read right now. Try again in a bit, or contact Infisical support if it keeps happening.";
 export const AGENT_VAULT_SESSION_LOG_STORAGE_NEEDS_ADMIN_MESSAGE =
   "Session logs can't be read. Ask an Agent Vault admin to check the session log settings.";
 

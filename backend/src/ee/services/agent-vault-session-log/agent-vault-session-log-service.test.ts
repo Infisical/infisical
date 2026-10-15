@@ -9,17 +9,19 @@ import { ObjectStorageErrorReason, ObjectStorageType } from "@app/services/objec
 
 import {
   AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_NOT_ON_PLAN,
+  AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_UNAVAILABLE_MESSAGE,
   AGENT_VAULT_SESSION_LOG_EXTERNAL_STORAGE_NOT_ON_PLAN,
   AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES,
   AGENT_VAULT_SESSION_LOG_RANGE_MARGIN_MS,
   AGENT_VAULT_SESSION_LOG_STORAGE_NEEDS_ADMIN_MESSAGE,
   AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE
 } from "./agent-vault-session-log-constants";
+import { encodeHistoryCursor, encodeTailCursor } from "./agent-vault-session-log-cursor-fns";
 import {
   AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE,
   AgentVaultSessionLogErrorName
 } from "./agent-vault-session-log-enums";
-import { buildSessionLogObjectName, encodeHistoryCursor, encodeTailCursor, toRev } from "./agent-vault-session-log-fns";
+import { buildSessionLogObjectName, toRev } from "./agent-vault-session-log-fns";
 import { unwrapSessionLogKey } from "./agent-vault-session-log-secrets";
 import { agentVaultSessionLogServiceFactory } from "./agent-vault-session-log-service";
 import { TCreateChunkUploadUrlDTO, TUpdateSessionLogSettingsDTO } from "./agent-vault-session-log-types";
@@ -570,14 +572,17 @@ describe("reading logs when storage can't be used", () => {
     );
   });
 
-  test("default storage that can't be read is a 500 with the generic message, even for an admin", async () => {
-    defaultStorage.configured = true;
-    list.mockRejectedValueOnce(storageError(s3Error("AccessDenied"), ObjectStorageType.Default));
-    const { service } = build({ config: undefined });
-    const error = await service.listSessionLogs(scope).catch((err: unknown) => err);
-    expect(error).toBeInstanceOf(InternalServerError);
-    expect(error).toEqual(storageUnavailable(AGENT_VAULT_SESSION_LOG_STORAGE_UNAVAILABLE_MESSAGE));
-  });
+  test.each([true, false])(
+    "default storage that can't be read is a 500 pointing to Infisical support, for admins and others (admin: %s)",
+    async (isAdmin) => {
+      defaultStorage.configured = true;
+      list.mockRejectedValueOnce(storageError(s3Error("AccessDenied"), ObjectStorageType.Default));
+      const { service } = build({ config: undefined, isAdmin });
+      const error = await service.listSessionLogs(scope).catch((err: unknown) => err);
+      expect(error).toBeInstanceOf(InternalServerError);
+      expect(error).toEqual(storageUnavailable(AGENT_VAULT_SESSION_LOG_DEFAULT_STORAGE_UNAVAILABLE_MESSAGE));
+    }
+  );
 
   test("anything else that goes wrong while listing stays an error", async () => {
     list.mockRejectedValueOnce(new TypeError("a bug"));
@@ -1058,11 +1063,18 @@ describe("updateSessionLogSettings: turning off", () => {
     expect(result.settings).toEqual({ enabled: false, isSaved: true, storage: { type: ObjectStorageType.Default } });
   });
 
-  test("turning a default storage that was off back on in external storage records the default it replaced", async () => {
+  test("turning session logs back on from off records nothing as replaced, since off holds no storage", async () => {
     defaultStorage.configured = true;
     const { service } = build({ config: defaultRow(false) });
     const { settings, previous } = await save(service, { enabled: true, storage: externalStorage() });
     expect(settings?.enabled).toBe(true);
+    expect(previous).toBeNull();
+  });
+
+  test("switching from default storage that was recording to a bucket records the default it replaced", async () => {
+    defaultStorage.configured = true;
+    const { service } = build({ config: defaultRow(true) });
+    const { previous } = await save(service, { enabled: true, storage: externalStorage() });
     expect(previous).toEqual({
       storageType: ObjectStorageType.Default,
       appConnectionId: null,

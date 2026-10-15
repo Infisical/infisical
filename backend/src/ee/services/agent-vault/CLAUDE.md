@@ -295,8 +295,8 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   limits, `null` here still means 30, so a plan never keeps logs forever by accident. Nothing ever deletes from
   external storage.
 - **Default storage problems go to the server logs, never to an org.** The operator, not an org admin, owns that
-  bucket: at boot, API pods list it, write a tagged test file and send a CORS preflight for `SITE_URL`, and log
-  what failed; health skips default storage, and failed reads get the generic message.
+  bucket: at boot, API pods list it, write a tagged test file, read it back and send a CORS preflight for `SITE_URL`,
+  and log what failed; health skips default storage, and failed reads tell everyone, admins too, to contact support.
 - **Each storage type has its own plan flag**: `agentVaultManagedStorage` (default on) and `agentVaultByoS3`. The flag
   for the storage in use gates uploads and reads, so an org without it can't record or view session logs: unlike
   most paid features, which read from Infisical's database, each read is a billed S3 request. Keep the read check.
@@ -304,6 +304,10 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   stays, saying off: with no row, session logs are on in default storage. It's written even when nothing reads as
   saved, so a bucket the operator adds later doesn't turn logs back on. Health and the CORS probe only run while
   external storage is on and on the plan, since nothing else is recorded or shown.
+- **Usage is counted on the way out, not from the cap counter.** Each upload link sends the aggregated PostHog event
+  `Agent Vault Session Log Chunk Accepted` (`bytes`, `storageType`, and `records`, the proxy's own unchecked count), and
+  the layer counts links on `infisical.object_storage.upload.*` for operators. The cap counter floors at 16 KiB, mixes
+  storage types and stops at the cap, so it isn't a usage number.
 - **The settings body is `{ enabled: false }` or `{ enabled: true, storage }`.** Turning on always names the
   storage, so nothing guesses which one an `enabled: true` meant after an off cleared it.
 - **`/agent-vault/app-connections/aws/*` are the shared builders in `app-connection-endpoints.ts` called with

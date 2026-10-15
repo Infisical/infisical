@@ -37,7 +37,8 @@ export const POSTHOG_AGGREGATED_EVENTS = [
   PostHogEventTypes.PkiSyncExecuted,
   PostHogEventTypes.CertificateRequestCreated,
   PostHogEventTypes.CmekEncrypt,
-  PostHogEventTypes.CmekDecrypt
+  PostHogEventTypes.CmekDecrypt,
+  PostHogEventTypes.AgentVaultSessionLogChunkAccepted
 ];
 
 // Properties that should be used as additional grouping dimensions during aggregation.
@@ -47,7 +48,8 @@ export const POSTHOG_AGGREGATED_EVENTS = [
 const AGGREGATION_BREAKDOWN_DIMENSIONS: Partial<Record<PostHogEventTypes, string[]>> = {
   [PostHogEventTypes.PkiSyncExecuted]: ["projectId", "destination"],
   [PostHogEventTypes.CertificateRequestCreated]: ["projectId"],
-  [PostHogEventTypes.IssueCert]: ["projectId", "enrollmentType", "operation"]
+  [PostHogEventTypes.IssueCert]: ["projectId", "enrollmentType", "operation"],
+  [PostHogEventTypes.AgentVaultSessionLogChunkAccepted]: ["storageType"]
 };
 
 // Bucket configuration

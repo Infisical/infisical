@@ -358,6 +358,7 @@ export type TAgentVaultSessionLogDisabledReason = "off" | "not-on-plan";
 export type TAgentVaultSessionLog = {
   enabled: boolean;
   disabledReason: TAgentVaultSessionLogDisabledReason | null;
+  storageType: AgentVaultSessionLogStorageType | null;
   isRecordable: boolean;
   sessionKey: string | null;
 };

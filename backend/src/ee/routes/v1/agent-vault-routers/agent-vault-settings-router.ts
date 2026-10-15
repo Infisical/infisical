@@ -1,10 +1,10 @@
-import { buildSessionLogSettingsAuditMetadata } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-fns";
 import {
   AgentVaultSessionLogCorsProbeResponseSchema,
   AgentVaultSessionLogHealthResponseSchema,
   AgentVaultSessionLogSettingsResponseSchema,
   AgentVaultSessionLogSettingsUpdateSchema
 } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-schemas";
+import { buildSessionLogSettingsAuditMetadata } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-storage-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";

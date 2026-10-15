@@ -13,13 +13,12 @@ import {
   AGENT_VAULT_SESSION_LOG_FEED_MAX_ENTRIES,
   AGENT_VAULT_SESSION_LOG_MAX_PAGE_BYTES
 } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-constants";
-import { AgentVaultSessionLogErrorName } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-enums";
 import {
-  chunkIdTimeMs,
   encodeHistoryCursor,
-  encodeTailCursor,
-  toRev
-} from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-fns";
+  encodeTailCursor
+} from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-cursor-fns";
+import { AgentVaultSessionLogErrorName } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-enums";
+import { chunkIdTimeMs, toRev } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-fns";
 import { initLogger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 

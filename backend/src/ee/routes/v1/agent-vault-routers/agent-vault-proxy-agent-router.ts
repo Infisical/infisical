@@ -220,11 +220,27 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
     },
     onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
     handler: async (req) => {
-      return server.services.agentVaultSessionLog.createChunkUploadUrl({
+      const { orgId, storageType, ...upload } = await server.services.agentVaultSessionLog.createChunkUploadUrl({
         proxyId: req.permission.id,
         sessionId: req.params.sessionId,
         chunk: req.body
       });
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AgentVaultSessionLogChunkAccepted,
+          distinctId: `agent-vault-proxy-${req.permission.id}`,
+          organizationId: orgId,
+          properties: {
+            orgId,
+            storageType,
+            bytes: req.body.ciphertextBytes,
+            ...(req.body.recordCount !== undefined && { records: req.body.recordCount })
+          }
+        })
+        .catch(() => {});
+
+      return upload;
     }
   });
 };

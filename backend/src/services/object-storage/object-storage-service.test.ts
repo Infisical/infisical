@@ -50,7 +50,8 @@ const preflight = vi.hoisted(() => ({
   options: vi.fn(async () => ({
     status: 200,
     headers: { "access-control-allow-origin": "https://app.example.com" } as Record<string, string>
-  }))
+  })),
+  get: vi.fn(async () => ({ status: 200 }))
 }));
 vi.mock("@app/lib/config/request", () => ({ request: preflight }));
 
@@ -344,11 +345,12 @@ describe("the startup check of default storage", () => {
     expect(logger.error).not.toHaveBeenCalled();
   });
 
-  test("lists the orgs folder, writes a tagged test file there and checks browsers may download", async () => {
+  test("lists the orgs folder, writes a tagged test file there, reads it back and checks browsers may download", async () => {
     const { service } = build();
     await service.checkDefaultStorage();
     expect(bucketClient.checkListAccess).toHaveBeenCalledWith("infisical/orgs/");
     expect(bucketClient.writeTestObject).toHaveBeenCalledWith("infisical/orgs/.check", "retention=30d");
+    expect(preflight.get).toHaveBeenCalledWith("https://signed/infisical/orgs/.check", expect.anything());
     expect(preflight.options).toHaveBeenCalledWith(
       "https://signed/infisical/orgs/.cors-probe",
       expect.objectContaining({
@@ -366,6 +368,14 @@ describe("the startup check of default storage", () => {
     expect(logger.error).toHaveBeenCalledWith(
       expect.stringContaining("doesn't allow browsers at https://app.example.com")
     );
+    expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining("default storage is ready"));
+  });
+
+  test("logs a missing s3:GetObject, which would otherwise only show as refused downloads", async () => {
+    preflight.get.mockResolvedValueOnce({ status: 403 });
+    const { service } = build();
+    await service.checkDefaultStorage();
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("grant s3:GetObject"));
     expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining("default storage is ready"));
   });
 

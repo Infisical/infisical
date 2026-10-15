@@ -6,6 +6,7 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, DailyQuotaExceededError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { ObjectStorageUploadOutcome, recordObjectStorageUploadMetric } from "@app/lib/telemetry/metrics";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -208,6 +209,24 @@ export const objectStorageServiceFactory = ({
     return false;
   };
 
+  // Browsers download files through links Infisical signs, which need s3:GetObject. Nothing else would show it missing.
+  const $checkReadAccess = async (s3: TS3Bucket, key: string, describeBucket: string) => {
+    try {
+      const res = await request.get(await s3.presignGet(key, 60), {
+        timeout: CORS_CHECK_TIMEOUT_MS,
+        responseType: "arraybuffer",
+        validateStatus: () => true
+      });
+      if (res.status === 200) return true;
+      logger.error(
+        `objectStorage: default storage refused to return its test file, so files can't be downloaded; grant s3:GetObject ${describeBucket} [status=${res.status}]`
+      );
+    } catch (error) {
+      logger.error(error, `objectStorage: couldn't read back default storage's test file ${describeBucket}`);
+    }
+    return false;
+  };
+
   // The instance's bucket is the operator's to set up, so problems with it go to the server logs at boot rather than to
   // any org admin. A tagged write is what uploads need, and the step most often missing from an IAM policy.
   const checkDefaultStorage = async () => {
@@ -233,8 +252,9 @@ export const objectStorageServiceFactory = ({
         `objectStorage: default storage refused a tagged test write, so uploads will fail; grant s3:PutObject and s3:PutObjectTagging ${describeBucket} [error=${describe(written.error)}]`
       );
     }
+    const isReadable = written.ok && (await $checkReadAccess(s3, `${folder}.check`, describeBucket));
     const isBrowserReadable = await $checkBrowserAccess(s3, `${folder}.cors-probe`, describeBucket);
-    if (written.ok && isBrowserReadable) logger.info(`objectStorage: default storage is ready ${describeBucket}`);
+    if (isReadable && isBrowserReadable) logger.info(`objectStorage: default storage is ready ${describeBucket}`);
   };
 
   const at = (config: TStorageConfig) => ({
@@ -293,7 +313,15 @@ export const objectStorageServiceFactory = ({
             retentionDays?: number | null;
           }) => {
             const key = buildObjectKey(folderPrefix, name);
-            await $admitDailyBytes(orgId, bytes);
+            try {
+              await $admitDailyBytes(orgId, bytes);
+            } catch (error) {
+              if (error instanceof DailyQuotaExceededError) {
+                recordObjectStorageUploadMetric({ storageType, outcome: ObjectStorageUploadOutcome.Capped, bytes });
+              }
+              throw error;
+            }
+            recordObjectStorageUploadMetric({ storageType, outcome: ObjectStorageUploadOutcome.Admitted, bytes });
             try {
               const url = await s3.presignCreateOnlyPut({
                 key,

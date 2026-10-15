@@ -37,6 +37,7 @@ import { useOrganization, useProjectPermission } from "@app/context";
 import {
   AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
   AgentVaultSessionLogDecision,
+  AgentVaultSessionLogStorageType,
   getSessionLogStorageError,
   sessionLogRecordKey,
   useAgentVaultSessionLogTimeline,
@@ -175,6 +176,11 @@ export const SessionLogsPanel = ({ session }: Props) => {
 
   const isEnabled = pages?.[0]?.sessionLogs.enabled ?? false;
   const disabledReason = pages?.[0]?.sessionLogs.disabledReason ?? null;
+  // Default storage belongs to whoever runs Infisical, so nothing in Settings or the bucket's CORS rule is the reader's to
+  // fix. A failed read returns no page, so admins fall back to the settings they already load.
+  const isDefaultStorage =
+    (pages?.[0]?.sessionLogs.storageType ?? sessionLogState?.settings?.storage.type) ===
+    AgentVaultSessionLogStorageType.Default;
   const isRecordable = pages?.[0]?.sessionLogs.isRecordable ?? true;
   // Nothing new can arrive while session logs are off or for a session that can't be recorded, so the panel
   // doesn't go live, and an ended session doesn't promise logs that won't come.
@@ -395,7 +401,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
         </EmptyHeader>
         <div className="flex gap-2">
           {retryButton}
-          {isAdmin && (
+          {isAdmin && !isDefaultStorage && (
             <Button variant="av" asChild>
               <Link
                 to="/organizations/$orgId/agent-vault/settings"
@@ -546,19 +552,26 @@ export const SessionLogsPanel = ({ session }: Props) => {
         <Alert variant="warning">
           <TriangleAlertIcon />
           <AlertDescription>
-            <div className="flex flex-col gap-1">
+            {isDefaultStorage ? (
               <p>
-                None of this session&apos;s logs could be downloaded from the bucket. The
-                bucket&apos;s CORS rule may not allow this origin, or this network may block the
-                bucket.
+                Your browser couldn&apos;t download this session&apos;s logs. Your network may be
+                blocking them. Try again, or contact Infisical support if it keeps happening.
               </p>
-              {!isAdmin && (
-                <p>Ask an Agent Vault administrator to check the bucket&apos;s CORS rule.</p>
-              )}
-            </div>
+            ) : (
+              <div className="flex flex-col gap-1">
+                <p>
+                  None of this session&apos;s logs could be downloaded from the bucket. The
+                  bucket&apos;s CORS rule may not allow this origin, or this network may block the
+                  bucket.
+                </p>
+                {!isAdmin && (
+                  <p>Ask an Agent Vault administrator to check the bucket&apos;s CORS rule.</p>
+                )}
+              </div>
+            )}
             <AlertAction className="flex gap-2">
               {retryButton}
-              {isAdmin && (
+              {isAdmin && !isDefaultStorage && (
                 <Button variant="outline" size="sm" asChild>
                   <Link
                     to="/organizations/$orgId/agent-vault/settings"

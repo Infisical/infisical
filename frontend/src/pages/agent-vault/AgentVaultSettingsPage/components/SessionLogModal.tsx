@@ -145,13 +145,14 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
     const saved = state.settings;
     const external =
       saved?.storage.type === AgentVaultSessionLogStorageType.External ? saved.storage : null;
-    // An unsaved default isn't a choice, so a plan without default storage starts on external storage.
-    const unsavedStorageType = isDefaultUsable
+    // Only storage that's on was chosen: an unsaved default or an off row holds default storage without anyone picking
+    // it, so a plan without default storage starts on external storage.
+    const unchosenStorageType = isDefaultUsable
       ? AgentVaultSessionLogStorageType.Default
       : AgentVaultSessionLogStorageType.External;
     reset({
       enabled: saved?.enabled ?? false,
-      storageType: saved?.isSaved ? saved.storage.type : unsavedStorageType,
+      storageType: saved?.isSaved && saved.enabled ? saved.storage.type : unchosenStorageType,
       appConnectionId: external?.appConnectionId ?? "",
       bucket: external?.bucket ?? "",
       region: external?.region ?? AWS_REGIONS[0].slug,
@@ -194,7 +195,8 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
     Boolean(savedExternal) &&
     !isBucketChange &&
     keyPrefix.trim() !== (savedExternal?.keyPrefix ?? "");
-  const isSwitchingStorage = Boolean(settings?.enabled) && storageType !== settings?.storage.type;
+  const isRecording = Boolean(settings?.enabled && isOnPlan(settings.storage.type));
+  const isSwitchingStorage = isRecording && storageType !== settings?.storage.type;
 
   const saveSettings = async (request: TUpdateAgentVaultSessionLogSettingsDTO) => {
     try {
@@ -317,7 +319,8 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
                   render={({ field }) => (
                     <RadioGroup
                       value={
-                        isOnPlan(field.value) || settings?.storage.type === field.value
+                        isOnPlan(field.value) ||
+                        (settings?.enabled && settings.storage.type === field.value)
                           ? field.value
                           : ""
                       }

@@ -15,7 +15,7 @@ describe("toObjectStorageError", () => {
     { error: s3Error("SomethingNew", "server", 503), reason: ObjectStorageErrorReason.Temporary },
     { error: Object.assign(new Error("connect"), { code: "ECONNRESET" }), reason: ObjectStorageErrorReason.Temporary },
     { error: s3Error("AccessDenied", "client", 403), reason: ObjectStorageErrorReason.AccessDenied },
-    { error: s3Error("InvalidAccessKeyId"), reason: ObjectStorageErrorReason.AccessDenied },
+    { error: s3Error("InvalidAccessKeyId"), reason: ObjectStorageErrorReason.CredentialsInvalid },
     { error: s3Error("NoSuchBucket", "client", 404), reason: ObjectStorageErrorReason.BucketNotFound },
     { error: s3Error("SomethingNew", "client", 400), reason: ObjectStorageErrorReason.Rejected }
   ])("reads $error.name as $reason", ({ error, reason }) => {
@@ -31,12 +31,12 @@ describe("toObjectStorageError", () => {
     expect(wrap(bug)).toBe(bug);
   });
 
-  test("reads default storage with no usable credentials as access denied, not a bug", () => {
+  test("reads default storage with no usable credentials as invalid credentials, not a bug", () => {
     const missing = Object.assign(new Error("Could not load credentials from any providers"), {
       name: "CredentialsProviderError"
     });
     const wrapped = wrap(missing, ObjectStorageType.Default) as ObjectStorageError;
-    expect(wrapped.reason).toBe(ObjectStorageErrorReason.AccessDenied);
+    expect(wrapped.reason).toBe(ObjectStorageErrorReason.CredentialsInvalid);
     expect(wrapped.storageType).toBe(ObjectStorageType.Default);
   });
 

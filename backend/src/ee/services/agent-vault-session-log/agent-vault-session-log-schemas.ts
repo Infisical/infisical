@@ -8,9 +8,10 @@ import { ObjectStorageType } from "@app/services/object-storage/object-storage-t
 import {
   AGENT_VAULT_SESSION_LOG_CHUNK_ID_REGEX,
   AGENT_VAULT_SESSION_LOG_MAX_CHUNK_BYTES,
+  AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS,
   AGENT_VAULT_SESSION_LOG_MIN_CHUNK_BYTES
 } from "./agent-vault-session-log-constants";
-import { HistoryCursorSchema, TailCursorSchema } from "./agent-vault-session-log-fns";
+import { HistoryCursorSchema, TailCursorSchema } from "./agent-vault-session-log-cursor-fns";
 
 const CiphertextSha256Schema = z
   .string()
@@ -30,6 +31,13 @@ export const AgentVaultSessionLogChunkCreateSchema = z.object({
     .max(AGENT_VAULT_SESSION_LOG_MAX_CHUNK_BYTES)
     .describe(AGENT_VAULT.SESSION_LOGS.ciphertextBytes),
   ciphertextSha256: CiphertextSha256Schema,
+  recordCount: z
+    .number()
+    .int()
+    .min(1)
+    .max(AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS)
+    .optional()
+    .describe(AGENT_VAULT.SESSION_LOGS.recordCount),
   iv: z.string().max(64).optional().describe(AGENT_VAULT.SESSION_LOGS.legacyIv)
 });
 
@@ -56,7 +64,7 @@ export const AgentVaultSessionLogChunkViewSchema = z.object({
   presignedGetUrl: z.string().describe(AGENT_VAULT.SESSION_LOGS.presignedGetUrl)
 });
 
-export const AgentVaultSessionLogDisabledReasonSchema = z.enum(["off", "not-on-plan"]);
+const AgentVaultSessionLogDisabledReasonSchema = z.enum(["off", "not-on-plan"]);
 export type TAgentVaultSessionLogDisabledReason = z.infer<typeof AgentVaultSessionLogDisabledReasonSchema>;
 
 const AgentVaultSessionLogSchema = z
@@ -66,7 +74,8 @@ const AgentVaultSessionLogSchema = z
     sessionKey: z.string().nullable().describe(AGENT_VAULT.SESSION_LOGS.sessionKey),
     disabledReason: AgentVaultSessionLogDisabledReasonSchema.nullable().describe(
       AGENT_VAULT.SESSION_LOGS.disabledReason
-    )
+    ),
+    storageType: z.nativeEnum(ObjectStorageType).nullable().describe(AGENT_VAULT.SESSION_LOGS.storageType)
   })
   .describe(AGENT_VAULT.SESSION_LOGS.sessionLogs);
 
@@ -94,7 +103,7 @@ const ExternalStorageSchema = z
   })
   .strict();
 
-export const AgentVaultSessionLogStorageSchema = z
+const AgentVaultSessionLogStorageSchema = z
   .discriminatedUnion("type", [DefaultStorageSchema, ExternalStorageSchema])
   .describe(AGENT_VAULT.SESSION_LOGS.storage);
 

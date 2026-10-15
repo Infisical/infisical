@@ -4,7 +4,7 @@ import {
   AGENT_VAULT_SESSION_LOG_MAX_CHUNK_BYTES,
   AGENT_VAULT_SESSION_LOG_MIN_CHUNK_BYTES
 } from "./agent-vault-session-log-constants";
-import { encodeHistoryCursor, encodeTailCursor } from "./agent-vault-session-log-fns";
+import { encodeHistoryCursor, encodeTailCursor } from "./agent-vault-session-log-cursor-fns";
 import {
   AgentVaultSessionLogChunkCreateSchema,
   AgentVaultSessionLogHistoryQuerySchema,
