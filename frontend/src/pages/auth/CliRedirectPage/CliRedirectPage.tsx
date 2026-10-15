@@ -1,10 +1,19 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { Link, useSearch } from "@tanstack/react-router";
-import { CheckIcon, CopyIcon, KeyRoundIcon, TerminalIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, EyeIcon, EyeOffIcon, KeyRoundIcon, TerminalIcon } from "lucide-react";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
-import { Button, CardContent, CardHeader, CardTitle } from "@app/components/v3";
+import {
+  Button,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton
+} from "@app/components/v3";
 import { SecretInput } from "@app/components/v3/platform";
 import { SessionStorageKeys } from "@app/const";
 import { useTimedReset } from "@app/hooks";
@@ -27,6 +36,7 @@ export const CliRedirectPage = () => {
   const [isUrlCopied, , setIsUrlCopied] = useTimedReset<boolean>({
     initialState: false
   });
+  const [isTokenVisible, setIsTokenVisible] = useState(false);
   const cliToken = getTerminalCliToken();
   const { org_id: dashboardOrgId } = useSearch({ from: "/cli-redirect" });
 
@@ -62,7 +72,22 @@ export const CliRedirectPage = () => {
               Your login was successful, but Infisical couldn&apos;t automatically push your login
               token to the CLI. Please copy the token below and manually provide it to your CLI.
             </p>
-            <SecretInput value={cliToken as string} containerClassName="font-mono text-left" />
+            <InputGroup className="h-auto items-start">
+              <SecretInput
+                variant="plain"
+                value={cliToken as string}
+                isVisible={isTokenVisible}
+                containerClassName="px-2.5 py-2 font-mono text-left"
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  aria-label={isTokenVisible ? "Hide token" : "Reveal token"}
+                  onClick={() => setIsTokenVisible((current) => !current)}
+                >
+                  {isTokenVisible ? <EyeOffIcon /> : <EyeIcon />}
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
             <Button variant="project" size="lg" isFullWidth onClick={copyUrlToClipboard}>
               {isUrlCopied ? <CheckIcon /> : <CopyIcon />}
               Copy to clipboard
@@ -87,7 +112,7 @@ export const CliRedirectPage = () => {
               You&apos;ve successfully logged in to the Infisical CLI
             </p>
             {dashboardOrgId && (
-              <Button asChild variant="outline" size="lg" isFullWidth>
+              <Button asChild variant="outline" className="self-center">
                 <Link to="/organizations/$orgId/projects" params={{ orgId: dashboardOrgId }}>
                   Open Infisical Dashboard
                 </Link>
