@@ -1509,6 +1509,276 @@ func (e LoginWithUniversalAuth500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for ListEmailDomains400JSONResponseBodyStatusCode.
+const (
+	ListEmailDomains400JSONResponseBodyStatusCodeN400 ListEmailDomains400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListEmailDomains400JSONResponseBodyStatusCode enum.
+func (e ListEmailDomains400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListEmailDomains400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListEmailDomains401JSONResponseBodyStatusCode.
+const (
+	ListEmailDomains401JSONResponseBodyStatusCodeN401 ListEmailDomains401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListEmailDomains401JSONResponseBodyStatusCode enum.
+func (e ListEmailDomains401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListEmailDomains401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListEmailDomains403JSONResponseBodyStatusCode.
+const (
+	ListEmailDomains403JSONResponseBodyStatusCodeN403 ListEmailDomains403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListEmailDomains403JSONResponseBodyStatusCode enum.
+func (e ListEmailDomains403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListEmailDomains403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListEmailDomains404JSONResponseBodyStatusCode.
+const (
+	ListEmailDomains404JSONResponseBodyStatusCodeN404 ListEmailDomains404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListEmailDomains404JSONResponseBodyStatusCode enum.
+func (e ListEmailDomains404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListEmailDomains404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListEmailDomains422JSONResponseBodyStatusCode.
+const (
+	ListEmailDomains422JSONResponseBodyStatusCodeN422 ListEmailDomains422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListEmailDomains422JSONResponseBodyStatusCode enum.
+func (e ListEmailDomains422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListEmailDomains422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListEmailDomains500JSONResponseBodyStatusCode.
+const (
+	ListEmailDomains500JSONResponseBodyStatusCodeN500 ListEmailDomains500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListEmailDomains500JSONResponseBodyStatusCode enum.
+func (e ListEmailDomains500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListEmailDomains500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateEmailDomain400JSONResponseBodyStatusCode.
+const (
+	CreateEmailDomain400JSONResponseBodyStatusCodeN400 CreateEmailDomain400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateEmailDomain400JSONResponseBodyStatusCode enum.
+func (e CreateEmailDomain400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateEmailDomain400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateEmailDomain401JSONResponseBodyStatusCode.
+const (
+	CreateEmailDomain401JSONResponseBodyStatusCodeN401 CreateEmailDomain401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateEmailDomain401JSONResponseBodyStatusCode enum.
+func (e CreateEmailDomain401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateEmailDomain401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateEmailDomain403JSONResponseBodyStatusCode.
+const (
+	CreateEmailDomain403JSONResponseBodyStatusCodeN403 CreateEmailDomain403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateEmailDomain403JSONResponseBodyStatusCode enum.
+func (e CreateEmailDomain403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateEmailDomain403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateEmailDomain404JSONResponseBodyStatusCode.
+const (
+	CreateEmailDomain404JSONResponseBodyStatusCodeN404 CreateEmailDomain404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateEmailDomain404JSONResponseBodyStatusCode enum.
+func (e CreateEmailDomain404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateEmailDomain404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateEmailDomain422JSONResponseBodyStatusCode.
+const (
+	CreateEmailDomain422JSONResponseBodyStatusCodeN422 CreateEmailDomain422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateEmailDomain422JSONResponseBodyStatusCode enum.
+func (e CreateEmailDomain422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateEmailDomain422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateEmailDomain500JSONResponseBodyStatusCode.
+const (
+	CreateEmailDomain500JSONResponseBodyStatusCodeN500 CreateEmailDomain500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateEmailDomain500JSONResponseBodyStatusCode enum.
+func (e CreateEmailDomain500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateEmailDomain500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailDomain400JSONResponseBodyStatusCode.
+const (
+	VerifyEmailDomain400JSONResponseBodyStatusCodeN400 VerifyEmailDomain400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailDomain400JSONResponseBodyStatusCode enum.
+func (e VerifyEmailDomain400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyEmailDomain400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailDomain401JSONResponseBodyStatusCode.
+const (
+	VerifyEmailDomain401JSONResponseBodyStatusCodeN401 VerifyEmailDomain401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailDomain401JSONResponseBodyStatusCode enum.
+func (e VerifyEmailDomain401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyEmailDomain401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailDomain403JSONResponseBodyStatusCode.
+const (
+	VerifyEmailDomain403JSONResponseBodyStatusCodeN403 VerifyEmailDomain403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailDomain403JSONResponseBodyStatusCode enum.
+func (e VerifyEmailDomain403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyEmailDomain403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailDomain404JSONResponseBodyStatusCode.
+const (
+	VerifyEmailDomain404JSONResponseBodyStatusCodeN404 VerifyEmailDomain404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailDomain404JSONResponseBodyStatusCode enum.
+func (e VerifyEmailDomain404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyEmailDomain404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailDomain422JSONResponseBodyStatusCode.
+const (
+	VerifyEmailDomain422JSONResponseBodyStatusCodeN422 VerifyEmailDomain422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailDomain422JSONResponseBodyStatusCode enum.
+func (e VerifyEmailDomain422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyEmailDomain422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailDomain500JSONResponseBodyStatusCode.
+const (
+	VerifyEmailDomain500JSONResponseBodyStatusCodeN500 VerifyEmailDomain500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailDomain500JSONResponseBodyStatusCode enum.
+func (e VerifyEmailDomain500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case VerifyEmailDomain500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateGroup400JSONResponseBodyStatusCode.
 const (
 	CreateGroup400JSONResponseBodyStatusCodeN400 CreateGroup400JSONResponseBodyStatusCode = 400
@@ -2043,6 +2313,96 @@ const (
 func (e VerifyUserToOrganization500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case VerifyUserToOrganization500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrganizationById400JSONResponseBodyStatusCode.
+const (
+	GetOrganizationById400JSONResponseBodyStatusCodeN400 GetOrganizationById400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationById400JSONResponseBodyStatusCode enum.
+func (e GetOrganizationById400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrganizationById400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrganizationById401JSONResponseBodyStatusCode.
+const (
+	GetOrganizationById401JSONResponseBodyStatusCodeN401 GetOrganizationById401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationById401JSONResponseBodyStatusCode enum.
+func (e GetOrganizationById401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrganizationById401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrganizationById403JSONResponseBodyStatusCode.
+const (
+	GetOrganizationById403JSONResponseBodyStatusCodeN403 GetOrganizationById403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationById403JSONResponseBodyStatusCode enum.
+func (e GetOrganizationById403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrganizationById403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrganizationById404JSONResponseBodyStatusCode.
+const (
+	GetOrganizationById404JSONResponseBodyStatusCodeN404 GetOrganizationById404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationById404JSONResponseBodyStatusCode enum.
+func (e GetOrganizationById404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrganizationById404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrganizationById422JSONResponseBodyStatusCode.
+const (
+	GetOrganizationById422JSONResponseBodyStatusCodeN422 GetOrganizationById422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationById422JSONResponseBodyStatusCode enum.
+func (e GetOrganizationById422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrganizationById422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrganizationById500JSONResponseBodyStatusCode.
+const (
+	GetOrganizationById500JSONResponseBodyStatusCodeN500 GetOrganizationById500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetOrganizationById500JSONResponseBodyStatusCode enum.
+func (e GetOrganizationById500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrganizationById500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -5232,6 +5592,336 @@ func (e SyncGitHubSecretSync500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for GetSamlConfig400JSONResponseBodyStatusCode.
+const (
+	GetSamlConfig400JSONResponseBodyStatusCodeN400 GetSamlConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetSamlConfig400JSONResponseBodyStatusCode enum.
+func (e GetSamlConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSamlConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSamlConfig401JSONResponseBodyStatusCode.
+const (
+	GetSamlConfig401JSONResponseBodyStatusCodeN401 GetSamlConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetSamlConfig401JSONResponseBodyStatusCode enum.
+func (e GetSamlConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSamlConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSamlConfig403JSONResponseBodyStatusCode.
+const (
+	GetSamlConfig403JSONResponseBodyStatusCodeN403 GetSamlConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetSamlConfig403JSONResponseBodyStatusCode enum.
+func (e GetSamlConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSamlConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSamlConfig404JSONResponseBodyStatusCode.
+const (
+	GetSamlConfig404JSONResponseBodyStatusCodeN404 GetSamlConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetSamlConfig404JSONResponseBodyStatusCode enum.
+func (e GetSamlConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSamlConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSamlConfig422JSONResponseBodyStatusCode.
+const (
+	GetSamlConfig422JSONResponseBodyStatusCodeN422 GetSamlConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetSamlConfig422JSONResponseBodyStatusCode enum.
+func (e GetSamlConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSamlConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSamlConfig500JSONResponseBodyStatusCode.
+const (
+	GetSamlConfig500JSONResponseBodyStatusCodeN500 GetSamlConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetSamlConfig500JSONResponseBodyStatusCode enum.
+func (e GetSamlConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSamlConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateSamlConfigJSONBodyAuthProvider.
+const (
+	UpdateSamlConfigJSONBodyAuthProviderAuth0Saml     UpdateSamlConfigJSONBodyAuthProvider = "auth0-saml"
+	UpdateSamlConfigJSONBodyAuthProviderAzureSaml     UpdateSamlConfigJSONBodyAuthProvider = "azure-saml"
+	UpdateSamlConfigJSONBodyAuthProviderGoogleSaml    UpdateSamlConfigJSONBodyAuthProvider = "google-saml"
+	UpdateSamlConfigJSONBodyAuthProviderJumpcloudSaml UpdateSamlConfigJSONBodyAuthProvider = "jumpcloud-saml"
+	UpdateSamlConfigJSONBodyAuthProviderKeycloakSaml  UpdateSamlConfigJSONBodyAuthProvider = "keycloak-saml"
+	UpdateSamlConfigJSONBodyAuthProviderOktaSaml      UpdateSamlConfigJSONBodyAuthProvider = "okta-saml"
+)
+
+// Valid indicates whether the value is a known member of the UpdateSamlConfigJSONBodyAuthProvider enum.
+func (e UpdateSamlConfigJSONBodyAuthProvider) Valid() bool {
+	switch e {
+	case UpdateSamlConfigJSONBodyAuthProviderAuth0Saml:
+		return true
+	case UpdateSamlConfigJSONBodyAuthProviderAzureSaml:
+		return true
+	case UpdateSamlConfigJSONBodyAuthProviderGoogleSaml:
+		return true
+	case UpdateSamlConfigJSONBodyAuthProviderJumpcloudSaml:
+		return true
+	case UpdateSamlConfigJSONBodyAuthProviderKeycloakSaml:
+		return true
+	case UpdateSamlConfigJSONBodyAuthProviderOktaSaml:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateSamlConfig400JSONResponseBodyStatusCode.
+const (
+	UpdateSamlConfig400JSONResponseBodyStatusCodeN400 UpdateSamlConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdateSamlConfig400JSONResponseBodyStatusCode enum.
+func (e UpdateSamlConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateSamlConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateSamlConfig401JSONResponseBodyStatusCode.
+const (
+	UpdateSamlConfig401JSONResponseBodyStatusCodeN401 UpdateSamlConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdateSamlConfig401JSONResponseBodyStatusCode enum.
+func (e UpdateSamlConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateSamlConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateSamlConfig403JSONResponseBodyStatusCode.
+const (
+	UpdateSamlConfig403JSONResponseBodyStatusCodeN403 UpdateSamlConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdateSamlConfig403JSONResponseBodyStatusCode enum.
+func (e UpdateSamlConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateSamlConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateSamlConfig404JSONResponseBodyStatusCode.
+const (
+	UpdateSamlConfig404JSONResponseBodyStatusCodeN404 UpdateSamlConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdateSamlConfig404JSONResponseBodyStatusCode enum.
+func (e UpdateSamlConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateSamlConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateSamlConfig422JSONResponseBodyStatusCode.
+const (
+	UpdateSamlConfig422JSONResponseBodyStatusCodeN422 UpdateSamlConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdateSamlConfig422JSONResponseBodyStatusCode enum.
+func (e UpdateSamlConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateSamlConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateSamlConfig500JSONResponseBodyStatusCode.
+const (
+	UpdateSamlConfig500JSONResponseBodyStatusCodeN500 UpdateSamlConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdateSamlConfig500JSONResponseBodyStatusCode enum.
+func (e UpdateSamlConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateSamlConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSamlConfigJSONBodyAuthProvider.
+const (
+	CreateSamlConfigJSONBodyAuthProviderAuth0Saml     CreateSamlConfigJSONBodyAuthProvider = "auth0-saml"
+	CreateSamlConfigJSONBodyAuthProviderAzureSaml     CreateSamlConfigJSONBodyAuthProvider = "azure-saml"
+	CreateSamlConfigJSONBodyAuthProviderGoogleSaml    CreateSamlConfigJSONBodyAuthProvider = "google-saml"
+	CreateSamlConfigJSONBodyAuthProviderJumpcloudSaml CreateSamlConfigJSONBodyAuthProvider = "jumpcloud-saml"
+	CreateSamlConfigJSONBodyAuthProviderKeycloakSaml  CreateSamlConfigJSONBodyAuthProvider = "keycloak-saml"
+	CreateSamlConfigJSONBodyAuthProviderOktaSaml      CreateSamlConfigJSONBodyAuthProvider = "okta-saml"
+)
+
+// Valid indicates whether the value is a known member of the CreateSamlConfigJSONBodyAuthProvider enum.
+func (e CreateSamlConfigJSONBodyAuthProvider) Valid() bool {
+	switch e {
+	case CreateSamlConfigJSONBodyAuthProviderAuth0Saml:
+		return true
+	case CreateSamlConfigJSONBodyAuthProviderAzureSaml:
+		return true
+	case CreateSamlConfigJSONBodyAuthProviderGoogleSaml:
+		return true
+	case CreateSamlConfigJSONBodyAuthProviderJumpcloudSaml:
+		return true
+	case CreateSamlConfigJSONBodyAuthProviderKeycloakSaml:
+		return true
+	case CreateSamlConfigJSONBodyAuthProviderOktaSaml:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSamlConfig400JSONResponseBodyStatusCode.
+const (
+	CreateSamlConfig400JSONResponseBodyStatusCodeN400 CreateSamlConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateSamlConfig400JSONResponseBodyStatusCode enum.
+func (e CreateSamlConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSamlConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSamlConfig401JSONResponseBodyStatusCode.
+const (
+	CreateSamlConfig401JSONResponseBodyStatusCodeN401 CreateSamlConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateSamlConfig401JSONResponseBodyStatusCode enum.
+func (e CreateSamlConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSamlConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSamlConfig403JSONResponseBodyStatusCode.
+const (
+	CreateSamlConfig403JSONResponseBodyStatusCodeN403 CreateSamlConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateSamlConfig403JSONResponseBodyStatusCode enum.
+func (e CreateSamlConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSamlConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSamlConfig404JSONResponseBodyStatusCode.
+const (
+	CreateSamlConfig404JSONResponseBodyStatusCodeN404 CreateSamlConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateSamlConfig404JSONResponseBodyStatusCode enum.
+func (e CreateSamlConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSamlConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSamlConfig422JSONResponseBodyStatusCode.
+const (
+	CreateSamlConfig422JSONResponseBodyStatusCodeN422 CreateSamlConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateSamlConfig422JSONResponseBodyStatusCode enum.
+func (e CreateSamlConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSamlConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSamlConfig500JSONResponseBodyStatusCode.
+const (
+	CreateSamlConfig500JSONResponseBodyStatusCodeN500 CreateSamlConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateSamlConfig500JSONResponseBodyStatusCode enum.
+func (e CreateSamlConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSamlConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateSecretFolder400JSONResponseBodyStatusCode.
 const (
 	CreateSecretFolder400JSONResponseBodyStatusCodeN400 CreateSecretFolder400JSONResponseBodyStatusCode = 400
@@ -5496,6 +6186,276 @@ const (
 func (e DeleteOrganization500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case DeleteOrganization500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListOrgMemberships400JSONResponseBodyStatusCode.
+const (
+	ListOrgMemberships400JSONResponseBodyStatusCodeN400 ListOrgMemberships400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListOrgMemberships400JSONResponseBodyStatusCode enum.
+func (e ListOrgMemberships400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListOrgMemberships400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListOrgMemberships401JSONResponseBodyStatusCode.
+const (
+	ListOrgMemberships401JSONResponseBodyStatusCodeN401 ListOrgMemberships401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListOrgMemberships401JSONResponseBodyStatusCode enum.
+func (e ListOrgMemberships401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListOrgMemberships401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListOrgMemberships403JSONResponseBodyStatusCode.
+const (
+	ListOrgMemberships403JSONResponseBodyStatusCodeN403 ListOrgMemberships403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListOrgMemberships403JSONResponseBodyStatusCode enum.
+func (e ListOrgMemberships403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListOrgMemberships403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListOrgMemberships404JSONResponseBodyStatusCode.
+const (
+	ListOrgMemberships404JSONResponseBodyStatusCodeN404 ListOrgMemberships404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListOrgMemberships404JSONResponseBodyStatusCode enum.
+func (e ListOrgMemberships404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListOrgMemberships404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListOrgMemberships422JSONResponseBodyStatusCode.
+const (
+	ListOrgMemberships422JSONResponseBodyStatusCodeN422 ListOrgMemberships422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListOrgMemberships422JSONResponseBodyStatusCode enum.
+func (e ListOrgMemberships422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListOrgMemberships422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListOrgMemberships500JSONResponseBodyStatusCode.
+const (
+	ListOrgMemberships500JSONResponseBodyStatusCodeN500 ListOrgMemberships500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListOrgMemberships500JSONResponseBodyStatusCode enum.
+func (e ListOrgMemberships500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListOrgMemberships500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrgMembership400JSONResponseBodyStatusCode.
+const (
+	GetOrgMembership400JSONResponseBodyStatusCodeN400 GetOrgMembership400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetOrgMembership400JSONResponseBodyStatusCode enum.
+func (e GetOrgMembership400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrgMembership400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrgMembership401JSONResponseBodyStatusCode.
+const (
+	GetOrgMembership401JSONResponseBodyStatusCodeN401 GetOrgMembership401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetOrgMembership401JSONResponseBodyStatusCode enum.
+func (e GetOrgMembership401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrgMembership401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrgMembership403JSONResponseBodyStatusCode.
+const (
+	GetOrgMembership403JSONResponseBodyStatusCodeN403 GetOrgMembership403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetOrgMembership403JSONResponseBodyStatusCode enum.
+func (e GetOrgMembership403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrgMembership403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrgMembership404JSONResponseBodyStatusCode.
+const (
+	GetOrgMembership404JSONResponseBodyStatusCodeN404 GetOrgMembership404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetOrgMembership404JSONResponseBodyStatusCode enum.
+func (e GetOrgMembership404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrgMembership404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrgMembership422JSONResponseBodyStatusCode.
+const (
+	GetOrgMembership422JSONResponseBodyStatusCodeN422 GetOrgMembership422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetOrgMembership422JSONResponseBodyStatusCode enum.
+func (e GetOrgMembership422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrgMembership422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetOrgMembership500JSONResponseBodyStatusCode.
+const (
+	GetOrgMembership500JSONResponseBodyStatusCodeN500 GetOrgMembership500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetOrgMembership500JSONResponseBodyStatusCode enum.
+func (e GetOrgMembership500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetOrgMembership500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrgMembership400JSONResponseBodyStatusCode.
+const (
+	UpdateOrgMembership400JSONResponseBodyStatusCodeN400 UpdateOrgMembership400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrgMembership400JSONResponseBodyStatusCode enum.
+func (e UpdateOrgMembership400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOrgMembership400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrgMembership401JSONResponseBodyStatusCode.
+const (
+	UpdateOrgMembership401JSONResponseBodyStatusCodeN401 UpdateOrgMembership401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrgMembership401JSONResponseBodyStatusCode enum.
+func (e UpdateOrgMembership401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOrgMembership401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrgMembership403JSONResponseBodyStatusCode.
+const (
+	UpdateOrgMembership403JSONResponseBodyStatusCodeN403 UpdateOrgMembership403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrgMembership403JSONResponseBodyStatusCode enum.
+func (e UpdateOrgMembership403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOrgMembership403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrgMembership404JSONResponseBodyStatusCode.
+const (
+	UpdateOrgMembership404JSONResponseBodyStatusCodeN404 UpdateOrgMembership404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrgMembership404JSONResponseBodyStatusCode enum.
+func (e UpdateOrgMembership404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOrgMembership404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrgMembership422JSONResponseBodyStatusCode.
+const (
+	UpdateOrgMembership422JSONResponseBodyStatusCodeN422 UpdateOrgMembership422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrgMembership422JSONResponseBodyStatusCode enum.
+func (e UpdateOrgMembership422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOrgMembership422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateOrgMembership500JSONResponseBodyStatusCode.
+const (
+	UpdateOrgMembership500JSONResponseBodyStatusCodeN500 UpdateOrgMembership500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdateOrgMembership500JSONResponseBodyStatusCode enum.
+func (e UpdateOrgMembership500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateOrgMembership500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -6228,6 +7188,96 @@ const (
 func (e CreateSecretImport500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case CreateSecretImport500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCurrentUser400JSONResponseBodyStatusCode.
+const (
+	GetCurrentUser400JSONResponseBodyStatusCodeN400 GetCurrentUser400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetCurrentUser400JSONResponseBodyStatusCode enum.
+func (e GetCurrentUser400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCurrentUser400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCurrentUser401JSONResponseBodyStatusCode.
+const (
+	GetCurrentUser401JSONResponseBodyStatusCodeN401 GetCurrentUser401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetCurrentUser401JSONResponseBodyStatusCode enum.
+func (e GetCurrentUser401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCurrentUser401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCurrentUser403JSONResponseBodyStatusCode.
+const (
+	GetCurrentUser403JSONResponseBodyStatusCodeN403 GetCurrentUser403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetCurrentUser403JSONResponseBodyStatusCode enum.
+func (e GetCurrentUser403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCurrentUser403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCurrentUser404JSONResponseBodyStatusCode.
+const (
+	GetCurrentUser404JSONResponseBodyStatusCodeN404 GetCurrentUser404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetCurrentUser404JSONResponseBodyStatusCode enum.
+func (e GetCurrentUser404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCurrentUser404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCurrentUser422JSONResponseBodyStatusCode.
+const (
+	GetCurrentUser422JSONResponseBodyStatusCodeN422 GetCurrentUser422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetCurrentUser422JSONResponseBodyStatusCode enum.
+func (e GetCurrentUser422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCurrentUser422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetCurrentUser500JSONResponseBodyStatusCode.
+const (
+	GetCurrentUser500JSONResponseBodyStatusCodeN500 GetCurrentUser500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetCurrentUser500JSONResponseBodyStatusCode enum.
+func (e GetCurrentUser500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetCurrentUser500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -9066,6 +10116,66 @@ type LoginWithUniversalAuth422JSONResponseBodyStatusCode float32
 // LoginWithUniversalAuth500JSONResponseBodyStatusCode defines parameters for LoginWithUniversalAuth.
 type LoginWithUniversalAuth500JSONResponseBodyStatusCode float32
 
+// ListEmailDomains400JSONResponseBodyStatusCode defines parameters for ListEmailDomains.
+type ListEmailDomains400JSONResponseBodyStatusCode float32
+
+// ListEmailDomains401JSONResponseBodyStatusCode defines parameters for ListEmailDomains.
+type ListEmailDomains401JSONResponseBodyStatusCode float32
+
+// ListEmailDomains403JSONResponseBodyStatusCode defines parameters for ListEmailDomains.
+type ListEmailDomains403JSONResponseBodyStatusCode float32
+
+// ListEmailDomains404JSONResponseBodyStatusCode defines parameters for ListEmailDomains.
+type ListEmailDomains404JSONResponseBodyStatusCode float32
+
+// ListEmailDomains422JSONResponseBodyStatusCode defines parameters for ListEmailDomains.
+type ListEmailDomains422JSONResponseBodyStatusCode float32
+
+// ListEmailDomains500JSONResponseBodyStatusCode defines parameters for ListEmailDomains.
+type ListEmailDomains500JSONResponseBodyStatusCode float32
+
+// CreateEmailDomainJSONBody defines parameters for CreateEmailDomain.
+type CreateEmailDomainJSONBody struct {
+	// Domain The domain to verify (e.g., company.com)
+	Domain string `json:"domain"`
+}
+
+// CreateEmailDomain400JSONResponseBodyStatusCode defines parameters for CreateEmailDomain.
+type CreateEmailDomain400JSONResponseBodyStatusCode float32
+
+// CreateEmailDomain401JSONResponseBodyStatusCode defines parameters for CreateEmailDomain.
+type CreateEmailDomain401JSONResponseBodyStatusCode float32
+
+// CreateEmailDomain403JSONResponseBodyStatusCode defines parameters for CreateEmailDomain.
+type CreateEmailDomain403JSONResponseBodyStatusCode float32
+
+// CreateEmailDomain404JSONResponseBodyStatusCode defines parameters for CreateEmailDomain.
+type CreateEmailDomain404JSONResponseBodyStatusCode float32
+
+// CreateEmailDomain422JSONResponseBodyStatusCode defines parameters for CreateEmailDomain.
+type CreateEmailDomain422JSONResponseBodyStatusCode float32
+
+// CreateEmailDomain500JSONResponseBodyStatusCode defines parameters for CreateEmailDomain.
+type CreateEmailDomain500JSONResponseBodyStatusCode float32
+
+// VerifyEmailDomain400JSONResponseBodyStatusCode defines parameters for VerifyEmailDomain.
+type VerifyEmailDomain400JSONResponseBodyStatusCode float32
+
+// VerifyEmailDomain401JSONResponseBodyStatusCode defines parameters for VerifyEmailDomain.
+type VerifyEmailDomain401JSONResponseBodyStatusCode float32
+
+// VerifyEmailDomain403JSONResponseBodyStatusCode defines parameters for VerifyEmailDomain.
+type VerifyEmailDomain403JSONResponseBodyStatusCode float32
+
+// VerifyEmailDomain404JSONResponseBodyStatusCode defines parameters for VerifyEmailDomain.
+type VerifyEmailDomain404JSONResponseBodyStatusCode float32
+
+// VerifyEmailDomain422JSONResponseBodyStatusCode defines parameters for VerifyEmailDomain.
+type VerifyEmailDomain422JSONResponseBodyStatusCode float32
+
+// VerifyEmailDomain500JSONResponseBodyStatusCode defines parameters for VerifyEmailDomain.
+type VerifyEmailDomain500JSONResponseBodyStatusCode float32
+
 // CreateGroupJSONBody defines parameters for CreateGroup.
 type CreateGroupJSONBody struct {
 	// Name The name of the group to create.
@@ -9221,6 +10331,24 @@ type VerifyUserToOrganization422JSONResponseBodyStatusCode float32
 
 // VerifyUserToOrganization500JSONResponseBodyStatusCode defines parameters for VerifyUserToOrganization.
 type VerifyUserToOrganization500JSONResponseBodyStatusCode float32
+
+// GetOrganizationById400JSONResponseBodyStatusCode defines parameters for GetOrganizationById.
+type GetOrganizationById400JSONResponseBodyStatusCode float32
+
+// GetOrganizationById401JSONResponseBodyStatusCode defines parameters for GetOrganizationById.
+type GetOrganizationById401JSONResponseBodyStatusCode float32
+
+// GetOrganizationById403JSONResponseBodyStatusCode defines parameters for GetOrganizationById.
+type GetOrganizationById403JSONResponseBodyStatusCode float32
+
+// GetOrganizationById404JSONResponseBodyStatusCode defines parameters for GetOrganizationById.
+type GetOrganizationById404JSONResponseBodyStatusCode float32
+
+// GetOrganizationById422JSONResponseBodyStatusCode defines parameters for GetOrganizationById.
+type GetOrganizationById422JSONResponseBodyStatusCode float32
+
+// GetOrganizationById500JSONResponseBodyStatusCode defines parameters for GetOrganizationById.
+type GetOrganizationById500JSONResponseBodyStatusCode float32
 
 // UpdateOrganizationJSONBody defines parameters for UpdateOrganization.
 type UpdateOrganizationJSONBody struct {
@@ -10482,6 +11610,149 @@ type SyncGitHubSecretSync422JSONResponseBodyStatusCode float32
 // SyncGitHubSecretSync500JSONResponseBodyStatusCode defines parameters for SyncGitHubSecretSync.
 type SyncGitHubSecretSync500JSONResponseBodyStatusCode float32
 
+// GetSamlConfigParams defines parameters for GetSamlConfig.
+type GetSamlConfigParams struct {
+	// OrganizationId The ID of the organization to get the SAML config for.
+	OrganizationId string `form:"organizationId" json:"organizationId"`
+}
+
+// GetSamlConfig400JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
+type GetSamlConfig400JSONResponseBodyStatusCode float32
+
+// GetSamlConfig401JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
+type GetSamlConfig401JSONResponseBodyStatusCode float32
+
+// GetSamlConfig403JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
+type GetSamlConfig403JSONResponseBodyStatusCode float32
+
+// GetSamlConfig404JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
+type GetSamlConfig404JSONResponseBodyStatusCode float32
+
+// GetSamlConfig422JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
+type GetSamlConfig422JSONResponseBodyStatusCode float32
+
+// GetSamlConfig500JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
+type GetSamlConfig500JSONResponseBodyStatusCode float32
+
+// UpdateSamlConfigJSONBody defines parameters for UpdateSamlConfig.
+type UpdateSamlConfigJSONBody struct {
+	// AuthProvider Authentication provider to use for SAML authentication.
+	AuthProvider *UpdateSamlConfigJSONBodyAuthProvider `json:"authProvider,omitempty"`
+
+	// Cert The certificate to use for SAML authentication.
+	Cert *string `json:"cert,omitempty"`
+
+	// EnableGroupSync Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups.
+	EnableGroupSync *bool `json:"enableGroupSync,omitempty"`
+
+	// EntryPoint The entry point for the SAML authentication. This is the URL that the user will be redirected to after they have authenticated with the SAML provider.
+	EntryPoint *string `json:"entryPoint,omitempty"`
+
+	// IsActive Whether to enable or disable this SAML configuration.
+	IsActive *bool `json:"isActive,omitempty"`
+
+	// Issuer The SAML provider issuer URL or entity ID.
+	Issuer *string `json:"issuer,omitempty"`
+
+	// OrganizationId The ID of the organization to update the SAML config for.
+	OrganizationId string `json:"organizationId"`
+}
+
+// UpdateSamlConfigJSONBodyAuthProvider defines parameters for UpdateSamlConfig.
+type UpdateSamlConfigJSONBodyAuthProvider string
+
+// UpdateSamlConfig400JSONResponseBodyStatusCode defines parameters for UpdateSamlConfig.
+type UpdateSamlConfig400JSONResponseBodyStatusCode float32
+
+// UpdateSamlConfig401JSONResponseBodyStatusCode defines parameters for UpdateSamlConfig.
+type UpdateSamlConfig401JSONResponseBodyStatusCode float32
+
+// UpdateSamlConfig403JSONResponseBodyStatusCode defines parameters for UpdateSamlConfig.
+type UpdateSamlConfig403JSONResponseBodyStatusCode float32
+
+// UpdateSamlConfig404JSONResponseBodyStatusCode defines parameters for UpdateSamlConfig.
+type UpdateSamlConfig404JSONResponseBodyStatusCode float32
+
+// UpdateSamlConfig422JSONResponseBodyStatusCode defines parameters for UpdateSamlConfig.
+type UpdateSamlConfig422JSONResponseBodyStatusCode float32
+
+// UpdateSamlConfig500JSONResponseBodyStatusCode defines parameters for UpdateSamlConfig.
+type UpdateSamlConfig500JSONResponseBodyStatusCode float32
+
+// CreateSamlConfigJSONBody defines parameters for CreateSamlConfig.
+type CreateSamlConfigJSONBody struct {
+	// AuthProvider Authentication provider to use for SAML authentication.
+	AuthProvider CreateSamlConfigJSONBodyAuthProvider `json:"authProvider"`
+
+	// Cert The certificate to use for SAML authentication.
+	Cert string `json:"cert"`
+
+	// EnableGroupSync Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups.
+	EnableGroupSync *bool `json:"enableGroupSync,omitempty"`
+
+	// EntryPoint The entry point for the SAML authentication. This is the URL that the user will be redirected to after they have authenticated with the SAML provider.
+	EntryPoint string `json:"entryPoint"`
+
+	// IsActive Whether to enable or disable this SAML configuration.
+	IsActive bool `json:"isActive"`
+
+	// Issuer The SAML provider issuer URL or entity ID.
+	Issuer string `json:"issuer"`
+
+	// OrganizationId The ID of the organization to create the SAML config for.
+	OrganizationId string `json:"organizationId"`
+}
+
+// CreateSamlConfigJSONBodyAuthProvider defines parameters for CreateSamlConfig.
+type CreateSamlConfigJSONBodyAuthProvider string
+
+// CreateSamlConfig400JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
+type CreateSamlConfig400JSONResponseBodyStatusCode float32
+
+// CreateSamlConfig401JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
+type CreateSamlConfig401JSONResponseBodyStatusCode float32
+
+// CreateSamlConfig403JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
+type CreateSamlConfig403JSONResponseBodyStatusCode float32
+
+// CreateSamlConfig404JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
+type CreateSamlConfig404JSONResponseBodyStatusCode float32
+
+// CreateSamlConfig422JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
+type CreateSamlConfig422JSONResponseBodyStatusCode float32
+
+// CreateSamlConfig500JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
+type CreateSamlConfig500JSONResponseBodyStatusCode float32
+
+// RedirectOrgSSOParams defines parameters for RedirectOrgSSO.
+type RedirectOrgSSOParams struct {
+	CallbackPort *string `form:"callback_port,omitempty" json:"callback_port,omitempty"`
+}
+
+// RedirectSamlByDomainParams defines parameters for RedirectSamlByDomain.
+type RedirectSamlByDomainParams struct {
+	CallbackPort *string `form:"callback_port,omitempty" json:"callback_port,omitempty"`
+}
+
+// RedirectSamlByOrgSlugParams defines parameters for RedirectSamlByOrgSlug.
+type RedirectSamlByOrgSlugParams struct {
+	CallbackPort *string `form:"callback_port,omitempty" json:"callback_port,omitempty"`
+}
+
+// RedirectSamlByConfigIdParams defines parameters for RedirectSamlByConfigId.
+type RedirectSamlByConfigIdParams struct {
+	CallbackPort *string `form:"callback_port,omitempty" json:"callback_port,omitempty"`
+}
+
+// SamlAcsFormdataBody defines parameters for SamlAcs.
+type SamlAcsFormdataBody struct {
+	// RelayState The RelayState Infisical sent with the authentication request, returned unchanged by the identity provider.
+	RelayState *string `form:"RelayState,omitempty" json:"RelayState,omitempty"`
+
+	// SAMLResponse The base64-encoded SAML response the identity provider posted through the browser.
+	SAMLResponse *string `form:"SAMLResponse,omitempty" json:"SAMLResponse,omitempty"`
+}
+
 // CreateSecretFolderJSONBody defines parameters for CreateSecretFolder.
 type CreateSecretFolderJSONBody struct {
 	// Description An optional description label for the folder.
@@ -10558,6 +11829,76 @@ type DeleteOrganization422JSONResponseBodyStatusCode float32
 
 // DeleteOrganization500JSONResponseBodyStatusCode defines parameters for DeleteOrganization.
 type DeleteOrganization500JSONResponseBodyStatusCode float32
+
+// ListOrgMemberships400JSONResponseBodyStatusCode defines parameters for ListOrgMemberships.
+type ListOrgMemberships400JSONResponseBodyStatusCode float32
+
+// ListOrgMemberships401JSONResponseBodyStatusCode defines parameters for ListOrgMemberships.
+type ListOrgMemberships401JSONResponseBodyStatusCode float32
+
+// ListOrgMemberships403JSONResponseBodyStatusCode defines parameters for ListOrgMemberships.
+type ListOrgMemberships403JSONResponseBodyStatusCode float32
+
+// ListOrgMemberships404JSONResponseBodyStatusCode defines parameters for ListOrgMemberships.
+type ListOrgMemberships404JSONResponseBodyStatusCode float32
+
+// ListOrgMemberships422JSONResponseBodyStatusCode defines parameters for ListOrgMemberships.
+type ListOrgMemberships422JSONResponseBodyStatusCode float32
+
+// ListOrgMemberships500JSONResponseBodyStatusCode defines parameters for ListOrgMemberships.
+type ListOrgMemberships500JSONResponseBodyStatusCode float32
+
+// GetOrgMembership400JSONResponseBodyStatusCode defines parameters for GetOrgMembership.
+type GetOrgMembership400JSONResponseBodyStatusCode float32
+
+// GetOrgMembership401JSONResponseBodyStatusCode defines parameters for GetOrgMembership.
+type GetOrgMembership401JSONResponseBodyStatusCode float32
+
+// GetOrgMembership403JSONResponseBodyStatusCode defines parameters for GetOrgMembership.
+type GetOrgMembership403JSONResponseBodyStatusCode float32
+
+// GetOrgMembership404JSONResponseBodyStatusCode defines parameters for GetOrgMembership.
+type GetOrgMembership404JSONResponseBodyStatusCode float32
+
+// GetOrgMembership422JSONResponseBodyStatusCode defines parameters for GetOrgMembership.
+type GetOrgMembership422JSONResponseBodyStatusCode float32
+
+// GetOrgMembership500JSONResponseBodyStatusCode defines parameters for GetOrgMembership.
+type GetOrgMembership500JSONResponseBodyStatusCode float32
+
+// UpdateOrgMembershipJSONBody defines parameters for UpdateOrgMembership.
+type UpdateOrgMembershipJSONBody struct {
+	// IsActive The active status of the membership
+	IsActive *bool `json:"isActive,omitempty"`
+	Metadata *[]struct {
+		// Key The key for user metadata tag.
+		Key string `json:"key"`
+
+		// Value The value for user metadata tag.
+		Value string `json:"value"`
+	} `json:"metadata,omitempty"`
+
+	// Role The new role of the membership.
+	Role *string `json:"role,omitempty"`
+}
+
+// UpdateOrgMembership400JSONResponseBodyStatusCode defines parameters for UpdateOrgMembership.
+type UpdateOrgMembership400JSONResponseBodyStatusCode float32
+
+// UpdateOrgMembership401JSONResponseBodyStatusCode defines parameters for UpdateOrgMembership.
+type UpdateOrgMembership401JSONResponseBodyStatusCode float32
+
+// UpdateOrgMembership403JSONResponseBodyStatusCode defines parameters for UpdateOrgMembership.
+type UpdateOrgMembership403JSONResponseBodyStatusCode float32
+
+// UpdateOrgMembership404JSONResponseBodyStatusCode defines parameters for UpdateOrgMembership.
+type UpdateOrgMembership404JSONResponseBodyStatusCode float32
+
+// UpdateOrgMembership422JSONResponseBodyStatusCode defines parameters for UpdateOrgMembership.
+type UpdateOrgMembership422JSONResponseBodyStatusCode float32
+
+// UpdateOrgMembership500JSONResponseBodyStatusCode defines parameters for UpdateOrgMembership.
+type UpdateOrgMembership500JSONResponseBodyStatusCode float32
 
 // CreateSecretApprovalPolicyJSONBody defines parameters for CreateSecretApprovalPolicy.
 type CreateSecretApprovalPolicyJSONBody struct {
@@ -10834,6 +12175,24 @@ type CreateSecretImport422JSONResponseBodyStatusCode float32
 
 // CreateSecretImport500JSONResponseBodyStatusCode defines parameters for CreateSecretImport.
 type CreateSecretImport500JSONResponseBodyStatusCode float32
+
+// GetCurrentUser400JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
+type GetCurrentUser400JSONResponseBodyStatusCode float32
+
+// GetCurrentUser401JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
+type GetCurrentUser401JSONResponseBodyStatusCode float32
+
+// GetCurrentUser403JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
+type GetCurrentUser403JSONResponseBodyStatusCode float32
+
+// GetCurrentUser404JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
+type GetCurrentUser404JSONResponseBodyStatusCode float32
+
+// GetCurrentUser422JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
+type GetCurrentUser422JSONResponseBodyStatusCode float32
+
+// GetCurrentUser500JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
+type GetCurrentUser500JSONResponseBodyStatusCode float32
 
 // LoginV3JSONBody defines parameters for LoginV3.
 type LoginV3JSONBody struct {
@@ -11685,7 +13044,7 @@ type UpdateSecretV4JSONBody struct {
 	SecretReminderNote *string `json:"secretReminderNote,omitempty"`
 
 	// SecretReminderRecipients An array of user IDs that will receive the reminder email. If not specified, all project members will receive the reminder email.
-	SecretReminderRecipients *[]string `json:"secretReminderRecipients,omitempty"`
+	SecretReminderRecipients *[]openapi_types.UUID `json:"secretReminderRecipients,omitempty"`
 
 	// SecretReminderRepeatDays Interval for secret rotation notifications, measured in days.
 	SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
@@ -11972,6 +13331,9 @@ type CreateUniversalAuthClientSecretJSONRequestBody CreateUniversalAuthClientSec
 // LoginWithUniversalAuthJSONRequestBody defines body for LoginWithUniversalAuth for application/json ContentType.
 type LoginWithUniversalAuthJSONRequestBody LoginWithUniversalAuthJSONBody
 
+// CreateEmailDomainJSONRequestBody defines body for CreateEmailDomain for application/json ContentType.
+type CreateEmailDomainJSONRequestBody CreateEmailDomainJSONBody
+
 // CreateGroupJSONRequestBody defines body for CreateGroup for application/json ContentType.
 type CreateGroupJSONRequestBody CreateGroupJSONBody
 
@@ -12023,11 +13385,23 @@ type UpdateSecretApprovalRequestStatusJSONRequestBody UpdateSecretApprovalReques
 // CreateGitHubSecretSyncJSONRequestBody defines body for CreateGitHubSecretSync for application/json ContentType.
 type CreateGitHubSecretSyncJSONRequestBody CreateGitHubSecretSyncJSONBody
 
+// UpdateSamlConfigJSONRequestBody defines body for UpdateSamlConfig for application/json ContentType.
+type UpdateSamlConfigJSONRequestBody UpdateSamlConfigJSONBody
+
+// CreateSamlConfigJSONRequestBody defines body for CreateSamlConfig for application/json ContentType.
+type CreateSamlConfigJSONRequestBody CreateSamlConfigJSONBody
+
+// SamlAcsFormdataRequestBody defines body for SamlAcs for application/x-www-form-urlencoded ContentType.
+type SamlAcsFormdataRequestBody SamlAcsFormdataBody
+
 // CreateSecretFolderJSONRequestBody defines body for CreateSecretFolder for application/json ContentType.
 type CreateSecretFolderJSONRequestBody CreateSecretFolderJSONBody
 
 // CreateOrganizationJSONRequestBody defines body for CreateOrganization for application/json ContentType.
 type CreateOrganizationJSONRequestBody CreateOrganizationJSONBody
+
+// UpdateOrgMembershipJSONRequestBody defines body for UpdateOrgMembership for application/json ContentType.
+type UpdateOrgMembershipJSONRequestBody UpdateOrgMembershipJSONBody
 
 // CreateSecretApprovalPolicyJSONRequestBody defines body for CreateSecretApprovalPolicy for application/json ContentType.
 type CreateSecretApprovalPolicyJSONRequestBody CreateSecretApprovalPolicyJSONBody
@@ -15072,6 +16446,20 @@ type ClientInterface interface {
 	// Login with Universal Auth for machine identity.
 	LoginWithUniversalAuth(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListEmailDomains performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
+	ListEmailDomains(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateEmailDomainWithBody performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request,
+	// with any type of body and a specified content type.
+	CreateEmailDomainWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateEmailDomain performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateEmailDomain(ctx context.Context, body CreateEmailDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VerifyEmailDomain performs a POST /api/v1/email-domains/{emailDomainId}/verify (the `VerifyEmailDomain` operationId) request.
+	VerifyEmailDomain(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateGroupWithBody performs a POST /api/v1/groups (the `CreateGroup` operationId) request,
 	// with any type of body and a specified content type.
 	CreateGroupWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -15113,6 +16501,9 @@ type ClientInterface interface {
 	// VerifyUserToOrganization performs a POST /api/v1/invite-org/verify (the `VerifyUserToOrganization` operationId) request.
 	// Takes a body of the `application/json` content type.
 	VerifyUserToOrganization(ctx context.Context, body VerifyUserToOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetOrganizationById performs a GET /api/v1/organization/{organizationId} (the `GetOrganizationById` operationId) request.
+	GetOrganizationById(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateOrganizationWithBody performs a PATCH /api/v1/organization/{organizationId} (the `UpdateOrganization` operationId) request,
 	// with any type of body and a specified content type.
@@ -15286,6 +16677,55 @@ type ClientInterface interface {
 	// Trigger a sync for the specified GitHub Sync.
 	SyncGitHubSecretSync(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetSamlConfig performs a GET /api/v1/sso/config (the `GetSamlConfig` operationId) request.
+	//
+	// Get SAML config.
+	GetSamlConfig(ctx context.Context, params *GetSamlConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateSamlConfigWithBody performs a PATCH /api/v1/sso/config (the `UpdateSamlConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update SAML config.
+	UpdateSamlConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateSamlConfig performs a PATCH /api/v1/sso/config (the `UpdateSamlConfig` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Update SAML config.
+	UpdateSamlConfig(ctx context.Context, body UpdateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateSamlConfigWithBody performs a POST /api/v1/sso/config (the `CreateSamlConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create SAML config.
+	CreateSamlConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateSamlConfig performs a POST /api/v1/sso/config (the `CreateSamlConfig` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create SAML config.
+	CreateSamlConfig(ctx context.Context, body CreateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RedirectOrgSSO performs a GET /api/v1/sso/redirect/organizations/{orgSlug} (the `RedirectOrgSSO` operationId) request.
+	RedirectOrgSSO(ctx context.Context, orgSlug string, params *RedirectOrgSSOParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RedirectSamlByDomain performs a GET /api/v1/sso/redirect/saml2/organizations/domain/{domain} (the `RedirectSamlByDomain` operationId) request.
+	RedirectSamlByDomain(ctx context.Context, domain string, params *RedirectSamlByDomainParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RedirectSamlByOrgSlug performs a GET /api/v1/sso/redirect/saml2/organizations/{orgSlug} (the `RedirectSamlByOrgSlug` operationId) request.
+	RedirectSamlByOrgSlug(ctx context.Context, orgSlug string, params *RedirectSamlByOrgSlugParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RedirectSamlByConfigId performs a GET /api/v1/sso/redirect/saml2/{samlConfigId} (the `RedirectSamlByConfigId` operationId) request.
+	RedirectSamlByConfigId(ctx context.Context, samlConfigId string, params *RedirectSamlByConfigIdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SamlAcsWithBody performs a POST /api/v1/sso/saml2/{samlConfigId} (the `SamlAcs` operationId) request,
+	// with any type of body and a specified content type.
+	SamlAcsWithBody(ctx context.Context, samlConfigId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SamlAcsWithFormdataBody performs a POST /api/v1/sso/saml2/{samlConfigId} (the `SamlAcs` operationId) request.
+	// Takes a body of the `application/x-www-form-urlencoded` content type.
+	SamlAcsWithFormdataBody(ctx context.Context, samlConfigId string, body SamlAcsFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateSecretFolderWithBody performs a POST /api/v2/folders (the `CreateSecretFolder` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -15308,6 +16748,28 @@ type ClientInterface interface {
 
 	// DeleteOrganization performs a DELETE /api/v2/organizations/{organizationId} (the `DeleteOrganization` operationId) request.
 	DeleteOrganization(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListOrgMemberships performs a GET /api/v2/organizations/{organizationId}/memberships (the `ListOrgMemberships` operationId) request.
+	//
+	// Return organization user memberships.
+	ListOrgMemberships(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetOrgMembership performs a GET /api/v2/organizations/{organizationId}/memberships/{membershipId} (the `GetOrgMembership` operationId) request.
+	//
+	// Get organization user membership.
+	GetOrgMembership(ctx context.Context, organizationId string, membershipId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateOrgMembershipWithBody performs a PATCH /api/v2/organizations/{organizationId}/memberships/{membershipId} (the `UpdateOrgMembership` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update organization user memberships.
+	UpdateOrgMembershipWithBody(ctx context.Context, organizationId string, membershipId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateOrgMembership performs a PATCH /api/v2/organizations/{organizationId}/memberships/{membershipId} (the `UpdateOrgMembership` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Update organization user memberships.
+	UpdateOrgMembership(ctx context.Context, organizationId string, membershipId string, body UpdateOrgMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateSecretApprovalPolicyWithBody performs a POST /api/v2/secret-approvals (the `CreateSecretApprovalPolicy` operationId) request,
 	// with any type of body and a specified content type.
@@ -15345,6 +16807,11 @@ type ClientInterface interface {
 	//
 	// Create secret imports.
 	CreateSecretImport(ctx context.Context, body CreateSecretImportJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetCurrentUser performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
+	//
+	// Retrieve the current user on the request.
+	GetCurrentUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// LoginV3WithBody performs a POST /api/v3/auth/login (the `LoginV3` operationId) request,
 	// with any type of body and a specified content type.
@@ -15729,6 +17196,60 @@ func (c *Client) LoginWithUniversalAuth(ctx context.Context, body LoginWithUnive
 	return c.Client.Do(req)
 }
 
+// ListEmailDomains performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
+func (c *Client) ListEmailDomains(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListEmailDomainsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateEmailDomainWithBody performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateEmailDomainWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateEmailDomainRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateEmailDomain performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateEmailDomain(ctx context.Context, body CreateEmailDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateEmailDomainRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VerifyEmailDomain performs a POST /api/v1/email-domains/{emailDomainId}/verify (the `VerifyEmailDomain` operationId) request.
+func (c *Client) VerifyEmailDomain(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVerifyEmailDomainRequest(c.Server, emailDomainId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // CreateGroupWithBody performs a POST /api/v1/groups (the `CreateGroup` operationId) request,
 // with any type of body and a specified content type.
 func (c *Client) CreateGroupWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -15861,6 +17382,19 @@ func (c *Client) VerifyUserToOrganizationWithBody(ctx context.Context, contentTy
 // Takes a body of the `application/json` content type.
 func (c *Client) VerifyUserToOrganization(ctx context.Context, body VerifyUserToOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewVerifyUserToOrganizationRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetOrganizationById performs a GET /api/v1/organization/{organizationId} (the `GetOrganizationById` operationId) request.
+func (c *Client) GetOrganizationById(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOrganizationByIdRequest(c.Server, organizationId)
 	if err != nil {
 		return nil, err
 	}
@@ -16403,6 +17937,165 @@ func (c *Client) SyncGitHubSecretSync(ctx context.Context, syncId openapi_types.
 	return c.Client.Do(req)
 }
 
+// GetSamlConfig performs a GET /api/v1/sso/config (the `GetSamlConfig` operationId) request.
+//
+// Get SAML config.
+func (c *Client) GetSamlConfig(ctx context.Context, params *GetSamlConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSamlConfigRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateSamlConfigWithBody performs a PATCH /api/v1/sso/config (the `UpdateSamlConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update SAML config.
+func (c *Client) UpdateSamlConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateSamlConfigRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateSamlConfig performs a PATCH /api/v1/sso/config (the `UpdateSamlConfig` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Update SAML config.
+func (c *Client) UpdateSamlConfig(ctx context.Context, body UpdateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateSamlConfigRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateSamlConfigWithBody performs a POST /api/v1/sso/config (the `CreateSamlConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create SAML config.
+func (c *Client) CreateSamlConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateSamlConfigRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateSamlConfig performs a POST /api/v1/sso/config (the `CreateSamlConfig` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create SAML config.
+func (c *Client) CreateSamlConfig(ctx context.Context, body CreateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateSamlConfigRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RedirectOrgSSO performs a GET /api/v1/sso/redirect/organizations/{orgSlug} (the `RedirectOrgSSO` operationId) request.
+func (c *Client) RedirectOrgSSO(ctx context.Context, orgSlug string, params *RedirectOrgSSOParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRedirectOrgSSORequest(c.Server, orgSlug, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RedirectSamlByDomain performs a GET /api/v1/sso/redirect/saml2/organizations/domain/{domain} (the `RedirectSamlByDomain` operationId) request.
+func (c *Client) RedirectSamlByDomain(ctx context.Context, domain string, params *RedirectSamlByDomainParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRedirectSamlByDomainRequest(c.Server, domain, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RedirectSamlByOrgSlug performs a GET /api/v1/sso/redirect/saml2/organizations/{orgSlug} (the `RedirectSamlByOrgSlug` operationId) request.
+func (c *Client) RedirectSamlByOrgSlug(ctx context.Context, orgSlug string, params *RedirectSamlByOrgSlugParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRedirectSamlByOrgSlugRequest(c.Server, orgSlug, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RedirectSamlByConfigId performs a GET /api/v1/sso/redirect/saml2/{samlConfigId} (the `RedirectSamlByConfigId` operationId) request.
+func (c *Client) RedirectSamlByConfigId(ctx context.Context, samlConfigId string, params *RedirectSamlByConfigIdParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRedirectSamlByConfigIdRequest(c.Server, samlConfigId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SamlAcsWithBody performs a POST /api/v1/sso/saml2/{samlConfigId} (the `SamlAcs` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) SamlAcsWithBody(ctx context.Context, samlConfigId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSamlAcsRequestWithBody(c.Server, samlConfigId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SamlAcsWithFormdataBody performs a POST /api/v1/sso/saml2/{samlConfigId} (the `SamlAcs` operationId) request.
+// Takes a body of the `application/x-www-form-urlencoded` content type.
+func (c *Client) SamlAcsWithFormdataBody(ctx context.Context, samlConfigId string, body SamlAcsFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSamlAcsRequestWithFormdataBody(c.Server, samlConfigId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // CreateSecretFolderWithBody performs a POST /api/v2/folders (the `CreateSecretFolder` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -16466,6 +18159,68 @@ func (c *Client) CreateOrganization(ctx context.Context, body CreateOrganization
 // DeleteOrganization performs a DELETE /api/v2/organizations/{organizationId} (the `DeleteOrganization` operationId) request.
 func (c *Client) DeleteOrganization(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteOrganizationRequest(c.Server, organizationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListOrgMemberships performs a GET /api/v2/organizations/{organizationId}/memberships (the `ListOrgMemberships` operationId) request.
+//
+// Return organization user memberships.
+func (c *Client) ListOrgMemberships(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListOrgMembershipsRequest(c.Server, organizationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetOrgMembership performs a GET /api/v2/organizations/{organizationId}/memberships/{membershipId} (the `GetOrgMembership` operationId) request.
+//
+// Get organization user membership.
+func (c *Client) GetOrgMembership(ctx context.Context, organizationId string, membershipId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOrgMembershipRequest(c.Server, organizationId, membershipId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateOrgMembershipWithBody performs a PATCH /api/v2/organizations/{organizationId}/memberships/{membershipId} (the `UpdateOrgMembership` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update organization user memberships.
+func (c *Client) UpdateOrgMembershipWithBody(ctx context.Context, organizationId string, membershipId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateOrgMembershipRequestWithBody(c.Server, organizationId, membershipId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateOrgMembership performs a PATCH /api/v2/organizations/{organizationId}/memberships/{membershipId} (the `UpdateOrgMembership` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Update organization user memberships.
+func (c *Client) UpdateOrgMembership(ctx context.Context, organizationId string, membershipId string, body UpdateOrgMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateOrgMembershipRequest(c.Server, organizationId, membershipId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -16593,6 +18348,21 @@ func (c *Client) CreateSecretImportWithBody(ctx context.Context, contentType str
 // Create secret imports.
 func (c *Client) CreateSecretImport(ctx context.Context, body CreateSecretImportJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateSecretImportRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetCurrentUser performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
+//
+// Retrieve the current user on the request.
+func (c *Client) GetCurrentUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetCurrentUserRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -17410,6 +19180,107 @@ func NewLoginWithUniversalAuthRequestWithBody(server string, contentType string,
 	return req, nil
 }
 
+// NewListEmailDomainsRequest constructs an http.Request for the ListEmailDomains method
+func NewListEmailDomainsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/email-domains")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateEmailDomainRequest calls the generic CreateEmailDomain builder with application/json body
+func NewCreateEmailDomainRequest(server string, body CreateEmailDomainJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateEmailDomainRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateEmailDomainRequestWithBody constructs an http.Request for the CreateEmailDomain method, with any body, and a specified content type
+func NewCreateEmailDomainRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/email-domains")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewVerifyEmailDomainRequest constructs an http.Request for the VerifyEmailDomain method
+func NewVerifyEmailDomainRequest(server string, emailDomainId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "emailDomainId", emailDomainId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/email-domains/%s/verify", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewCreateGroupRequest calls the generic CreateGroup builder with application/json body
 func NewCreateGroupRequest(server string, body CreateGroupJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -17648,6 +19519,40 @@ func NewVerifyUserToOrganizationRequestWithBody(server string, contentType strin
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetOrganizationByIdRequest constructs an http.Request for the GetOrganizationById method
+func NewGetOrganizationByIdRequest(server string, organizationId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/organization/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -18871,6 +20776,427 @@ func NewSyncGitHubSecretSyncRequest(server string, syncId openapi_types.UUID) (*
 	return req, nil
 }
 
+// NewGetSamlConfigRequest constructs an http.Request for the GetSamlConfig method
+func NewGetSamlConfigRequest(server string, params *GetSamlConfigParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "organizationId", params.OrganizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateSamlConfigRequest calls the generic UpdateSamlConfig builder with application/json body
+func NewUpdateSamlConfigRequest(server string, body UpdateSamlConfigJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateSamlConfigRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateSamlConfigRequestWithBody constructs an http.Request for the UpdateSamlConfig method, with any body, and a specified content type
+func NewUpdateSamlConfigRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateSamlConfigRequest calls the generic CreateSamlConfig builder with application/json body
+func NewCreateSamlConfigRequest(server string, body CreateSamlConfigJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateSamlConfigRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateSamlConfigRequestWithBody constructs an http.Request for the CreateSamlConfig method, with any body, and a specified content type
+func NewCreateSamlConfigRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRedirectOrgSSORequest constructs an http.Request for the RedirectOrgSSO method
+func NewRedirectOrgSSORequest(server string, orgSlug string, params *RedirectOrgSSOParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "orgSlug", orgSlug, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/redirect/organizations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.CallbackPort != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "callback_port", *params.CallbackPort, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRedirectSamlByDomainRequest constructs an http.Request for the RedirectSamlByDomain method
+func NewRedirectSamlByDomainRequest(server string, domain string, params *RedirectSamlByDomainParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "domain", domain, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/redirect/saml2/organizations/domain/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.CallbackPort != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "callback_port", *params.CallbackPort, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRedirectSamlByOrgSlugRequest constructs an http.Request for the RedirectSamlByOrgSlug method
+func NewRedirectSamlByOrgSlugRequest(server string, orgSlug string, params *RedirectSamlByOrgSlugParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "orgSlug", orgSlug, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/redirect/saml2/organizations/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.CallbackPort != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "callback_port", *params.CallbackPort, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRedirectSamlByConfigIdRequest constructs an http.Request for the RedirectSamlByConfigId method
+func NewRedirectSamlByConfigIdRequest(server string, samlConfigId string, params *RedirectSamlByConfigIdParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "samlConfigId", samlConfigId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/redirect/saml2/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.CallbackPort != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "callback_port", *params.CallbackPort, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSamlAcsRequestWithFormdataBody calls the generic SamlAcs builder with application/x-www-form-urlencoded body
+func NewSamlAcsRequestWithFormdataBody(server string, samlConfigId string, body SamlAcsFormdataRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	bodyStr, err := runtime.MarshalForm(body, nil)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = strings.NewReader(bodyStr.Encode())
+	return NewSamlAcsRequestWithBody(server, samlConfigId, "application/x-www-form-urlencoded", bodyReader)
+}
+
+// NewSamlAcsRequestWithBody constructs an http.Request for the SamlAcs method, with any body, and a specified content type
+func NewSamlAcsRequestWithBody(server string, samlConfigId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "samlConfigId", samlConfigId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/saml2/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewCreateSecretFolderRequest calls the generic CreateSecretFolder builder with application/json body
 func NewCreateSecretFolderRequest(server string, body CreateSecretFolderJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -18981,6 +21307,135 @@ func NewDeleteOrganizationRequest(server string, organizationId string) (*http.R
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewListOrgMembershipsRequest constructs an http.Request for the ListOrgMemberships method
+func NewListOrgMembershipsRequest(server string, organizationId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v2/organizations/%s/memberships", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetOrgMembershipRequest constructs an http.Request for the GetOrgMembership method
+func NewGetOrgMembershipRequest(server string, organizationId string, membershipId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "membershipId", membershipId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v2/organizations/%s/memberships/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateOrgMembershipRequest calls the generic UpdateOrgMembership builder with application/json body
+func NewUpdateOrgMembershipRequest(server string, organizationId string, membershipId string, body UpdateOrgMembershipJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateOrgMembershipRequestWithBody(server, organizationId, membershipId, "application/json", bodyReader)
+}
+
+// NewUpdateOrgMembershipRequestWithBody constructs an http.Request for the UpdateOrgMembership method, with any body, and a specified content type
+func NewUpdateOrgMembershipRequestWithBody(server string, organizationId string, membershipId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "organizationId", organizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "membershipId", membershipId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v2/organizations/%s/memberships/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -19242,6 +21697,33 @@ func NewCreateSecretImportRequestWithBody(server string, contentType string, bod
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetCurrentUserRequest constructs an http.Request for the GetCurrentUser method
+func NewGetCurrentUserRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v2/users/me")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -20417,6 +22899,26 @@ type ClientWithResponsesInterface interface {
 	// Login with Universal Auth for machine identity.
 	LoginWithUniversalAuthWithResponse(ctx context.Context, body LoginWithUniversalAuthJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginWithUniversalAuthResponse, error)
 
+	// ListEmailDomainsWithResponse performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListEmailDomainsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListEmailDomainsResponse, error)
+
+	// CreateEmailDomainWithBodyWithResponse performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateEmailDomainWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEmailDomainResponse, error)
+
+	// CreateEmailDomainWithResponse performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateEmailDomainWithResponse(ctx context.Context, body CreateEmailDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEmailDomainResponse, error)
+
+	// VerifyEmailDomainWithResponse performs a POST /api/v1/email-domains/{emailDomainId}/verify (the `VerifyEmailDomain` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	VerifyEmailDomainWithResponse(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*VerifyEmailDomainResponse, error)
+
 	// CreateGroupWithBodyWithResponse performs a POST /api/v1/groups (the `CreateGroup` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -20470,6 +22972,11 @@ type ClientWithResponsesInterface interface {
 	// VerifyUserToOrganizationWithResponse performs a POST /api/v1/invite-org/verify (the `VerifyUserToOrganization` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	VerifyUserToOrganizationWithResponse(ctx context.Context, body VerifyUserToOrganizationJSONRequestBody, reqEditors ...RequestEditorFn) (*VerifyUserToOrganizationResponse, error)
+
+	// GetOrganizationByIdWithResponse performs a GET /api/v1/organization/{organizationId} (the `GetOrganizationById` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetOrganizationByIdWithResponse(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*GetOrganizationByIdResponse, error)
 
 	// UpdateOrganizationWithBodyWithResponse performs a PATCH /api/v1/organization/{organizationId} (the `UpdateOrganization` operationId) request,
 	// with any type of body and a specified content type.
@@ -20689,6 +23196,71 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	SyncGitHubSecretSyncWithResponse(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*SyncGitHubSecretSyncResponse, error)
 
+	// GetSamlConfigWithResponse performs a GET /api/v1/sso/config (the `GetSamlConfig` operationId) request.
+	//
+	// Get SAML config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetSamlConfigWithResponse(ctx context.Context, params *GetSamlConfigParams, reqEditors ...RequestEditorFn) (*GetSamlConfigResponse, error)
+
+	// UpdateSamlConfigWithBodyWithResponse performs a PATCH /api/v1/sso/config (the `UpdateSamlConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update SAML config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdateSamlConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSamlConfigResponse, error)
+
+	// UpdateSamlConfigWithResponse performs a PATCH /api/v1/sso/config (the `UpdateSamlConfig` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Update SAML config.
+	UpdateSamlConfigWithResponse(ctx context.Context, body UpdateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSamlConfigResponse, error)
+
+	// CreateSamlConfigWithBodyWithResponse performs a POST /api/v1/sso/config (the `CreateSamlConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create SAML config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateSamlConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSamlConfigResponse, error)
+
+	// CreateSamlConfigWithResponse performs a POST /api/v1/sso/config (the `CreateSamlConfig` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create SAML config.
+	CreateSamlConfigWithResponse(ctx context.Context, body CreateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSamlConfigResponse, error)
+
+	// RedirectOrgSSOWithResponse performs a GET /api/v1/sso/redirect/organizations/{orgSlug} (the `RedirectOrgSSO` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	RedirectOrgSSOWithResponse(ctx context.Context, orgSlug string, params *RedirectOrgSSOParams, reqEditors ...RequestEditorFn) (*RedirectOrgSSOResponse, error)
+
+	// RedirectSamlByDomainWithResponse performs a GET /api/v1/sso/redirect/saml2/organizations/domain/{domain} (the `RedirectSamlByDomain` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	RedirectSamlByDomainWithResponse(ctx context.Context, domain string, params *RedirectSamlByDomainParams, reqEditors ...RequestEditorFn) (*RedirectSamlByDomainResponse, error)
+
+	// RedirectSamlByOrgSlugWithResponse performs a GET /api/v1/sso/redirect/saml2/organizations/{orgSlug} (the `RedirectSamlByOrgSlug` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	RedirectSamlByOrgSlugWithResponse(ctx context.Context, orgSlug string, params *RedirectSamlByOrgSlugParams, reqEditors ...RequestEditorFn) (*RedirectSamlByOrgSlugResponse, error)
+
+	// RedirectSamlByConfigIdWithResponse performs a GET /api/v1/sso/redirect/saml2/{samlConfigId} (the `RedirectSamlByConfigId` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	RedirectSamlByConfigIdWithResponse(ctx context.Context, samlConfigId string, params *RedirectSamlByConfigIdParams, reqEditors ...RequestEditorFn) (*RedirectSamlByConfigIdResponse, error)
+
+	// SamlAcsWithBodyWithResponse performs a POST /api/v1/sso/saml2/{samlConfigId} (the `SamlAcs` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	SamlAcsWithBodyWithResponse(ctx context.Context, samlConfigId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SamlAcsResponse, error)
+
+	// SamlAcsWithFormdataBodyWithResponse performs a POST /api/v1/sso/saml2/{samlConfigId} (the `SamlAcs` operationId) request.
+	// Takes a body of the `application/x-www-form-urlencoded` content type, and returns a wrapper object for the known response body format(s).
+	SamlAcsWithFormdataBodyWithResponse(ctx context.Context, samlConfigId string, body SamlAcsFormdataRequestBody, reqEditors ...RequestEditorFn) (*SamlAcsResponse, error)
+
 	// CreateSecretFolderWithBodyWithResponse performs a POST /api/v2/folders (the `CreateSecretFolder` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -20717,6 +23289,34 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	DeleteOrganizationWithResponse(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*DeleteOrganizationResponse, error)
+
+	// ListOrgMembershipsWithResponse performs a GET /api/v2/organizations/{organizationId}/memberships (the `ListOrgMemberships` operationId) request.
+	//
+	// Return organization user memberships.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListOrgMembershipsWithResponse(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*ListOrgMembershipsResponse, error)
+
+	// GetOrgMembershipWithResponse performs a GET /api/v2/organizations/{organizationId}/memberships/{membershipId} (the `GetOrgMembership` operationId) request.
+	//
+	// Get organization user membership.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetOrgMembershipWithResponse(ctx context.Context, organizationId string, membershipId string, reqEditors ...RequestEditorFn) (*GetOrgMembershipResponse, error)
+
+	// UpdateOrgMembershipWithBodyWithResponse performs a PATCH /api/v2/organizations/{organizationId}/memberships/{membershipId} (the `UpdateOrgMembership` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update organization user memberships.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdateOrgMembershipWithBodyWithResponse(ctx context.Context, organizationId string, membershipId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOrgMembershipResponse, error)
+
+	// UpdateOrgMembershipWithResponse performs a PATCH /api/v2/organizations/{organizationId}/memberships/{membershipId} (the `UpdateOrgMembership` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Update organization user memberships.
+	UpdateOrgMembershipWithResponse(ctx context.Context, organizationId string, membershipId string, body UpdateOrgMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrgMembershipResponse, error)
 
 	// CreateSecretApprovalPolicyWithBodyWithResponse performs a POST /api/v2/secret-approvals (the `CreateSecretApprovalPolicy` operationId) request,
 	// with any type of body and a specified content type.
@@ -20766,6 +23366,13 @@ type ClientWithResponsesInterface interface {
 	//
 	// Create secret imports.
 	CreateSecretImportWithResponse(ctx context.Context, body CreateSecretImportJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSecretImportResponse, error)
+
+	// GetCurrentUserWithResponse performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
+	//
+	// Retrieve the current user on the request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetCurrentUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCurrentUserResponse, error)
 
 	// LoginV3WithBodyWithResponse performs a POST /api/v3/auth/login (the `LoginV3` operationId) request,
 	// with any type of body and a specified content type.
@@ -22518,6 +25125,531 @@ func (r LoginWithUniversalAuthResponse) ContentType() string {
 	return ""
 }
 
+type ListEmailDomainsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		EmailDomains []struct {
+			CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
+			CreatedAt              time.Time          `json:"createdAt"`
+			Domain                 string             `json:"domain"`
+			Id                     openapi_types.UUID `json:"id"`
+			OrgId                  openapi_types.UUID `json:"orgId"`
+			Status                 *string            `json:"status,omitempty"`
+			UpdatedAt              time.Time          `json:"updatedAt"`
+			VerificationCode       string             `json:"verificationCode"`
+			VerificationMethod     *string            `json:"verificationMethod,omitempty"`
+			VerificationRecordName string             `json:"verificationRecordName"`
+			VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+		} `json:"emailDomains"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode ListEmailDomains400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode ListEmailDomains401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode ListEmailDomains403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode ListEmailDomains404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode ListEmailDomains422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode ListEmailDomains500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListEmailDomainsResponse) GetJSON200() *struct {
+	EmailDomains []struct {
+		CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
+		CreatedAt              time.Time          `json:"createdAt"`
+		Domain                 string             `json:"domain"`
+		Id                     openapi_types.UUID `json:"id"`
+		OrgId                  openapi_types.UUID `json:"orgId"`
+		Status                 *string            `json:"status,omitempty"`
+		UpdatedAt              time.Time          `json:"updatedAt"`
+		VerificationCode       string             `json:"verificationCode"`
+		VerificationMethod     *string            `json:"verificationMethod,omitempty"`
+		VerificationRecordName string             `json:"verificationRecordName"`
+		VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+	} `json:"emailDomains"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListEmailDomainsResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode ListEmailDomains400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListEmailDomainsResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode ListEmailDomains401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListEmailDomainsResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode ListEmailDomains403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListEmailDomainsResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode ListEmailDomains404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListEmailDomainsResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode ListEmailDomains422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListEmailDomainsResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode ListEmailDomains500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListEmailDomainsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListEmailDomainsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListEmailDomainsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListEmailDomainsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateEmailDomainResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		EmailDomain struct {
+			CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
+			CreatedAt              time.Time          `json:"createdAt"`
+			Domain                 string             `json:"domain"`
+			Id                     openapi_types.UUID `json:"id"`
+			OrgId                  openapi_types.UUID `json:"orgId"`
+			Status                 *string            `json:"status,omitempty"`
+			UpdatedAt              time.Time          `json:"updatedAt"`
+			VerificationCode       string             `json:"verificationCode"`
+			VerificationMethod     *string            `json:"verificationMethod,omitempty"`
+			VerificationRecordName string             `json:"verificationRecordName"`
+			VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+		} `json:"emailDomain"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateEmailDomain400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateEmailDomain401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateEmailDomain403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateEmailDomain404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                         `json:"error"`
+		Message    interface{}                                    `json:"message,omitempty"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateEmailDomain422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode CreateEmailDomain500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateEmailDomainResponse) GetJSON200() *struct {
+	EmailDomain struct {
+		CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
+		CreatedAt              time.Time          `json:"createdAt"`
+		Domain                 string             `json:"domain"`
+		Id                     openapi_types.UUID `json:"id"`
+		OrgId                  openapi_types.UUID `json:"orgId"`
+		Status                 *string            `json:"status,omitempty"`
+		UpdatedAt              time.Time          `json:"updatedAt"`
+		VerificationCode       string             `json:"verificationCode"`
+		VerificationMethod     *string            `json:"verificationMethod,omitempty"`
+		VerificationRecordName string             `json:"verificationRecordName"`
+		VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+	} `json:"emailDomain"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateEmailDomainResponse) GetJSON400() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateEmailDomain400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateEmailDomainResponse) GetJSON401() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateEmailDomain401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateEmailDomainResponse) GetJSON403() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateEmailDomain403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateEmailDomainResponse) GetJSON404() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateEmailDomain404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateEmailDomainResponse) GetJSON422() *struct {
+	Error      string                                         `json:"error"`
+	Message    interface{}                                    `json:"message,omitempty"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateEmailDomain422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateEmailDomainResponse) GetJSON500() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode CreateEmailDomain500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateEmailDomainResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateEmailDomainResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateEmailDomainResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateEmailDomainResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type VerifyEmailDomainResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		EmailDomain struct {
+			CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
+			CreatedAt              time.Time          `json:"createdAt"`
+			Domain                 string             `json:"domain"`
+			Id                     openapi_types.UUID `json:"id"`
+			OrgId                  openapi_types.UUID `json:"orgId"`
+			Status                 *string            `json:"status,omitempty"`
+			UpdatedAt              time.Time          `json:"updatedAt"`
+			VerificationCode       string             `json:"verificationCode"`
+			VerificationMethod     *string            `json:"verificationMethod,omitempty"`
+			VerificationRecordName string             `json:"verificationRecordName"`
+			VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+		} `json:"emailDomain"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode VerifyEmailDomain400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode VerifyEmailDomain401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode VerifyEmailDomain403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode VerifyEmailDomain404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                         `json:"error"`
+		Message    interface{}                                    `json:"message,omitempty"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode VerifyEmailDomain422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode VerifyEmailDomain500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r VerifyEmailDomainResponse) GetJSON200() *struct {
+	EmailDomain struct {
+		CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
+		CreatedAt              time.Time          `json:"createdAt"`
+		Domain                 string             `json:"domain"`
+		Id                     openapi_types.UUID `json:"id"`
+		OrgId                  openapi_types.UUID `json:"orgId"`
+		Status                 *string            `json:"status,omitempty"`
+		UpdatedAt              time.Time          `json:"updatedAt"`
+		VerificationCode       string             `json:"verificationCode"`
+		VerificationMethod     *string            `json:"verificationMethod,omitempty"`
+		VerificationRecordName string             `json:"verificationRecordName"`
+		VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+	} `json:"emailDomain"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r VerifyEmailDomainResponse) GetJSON400() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode VerifyEmailDomain400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r VerifyEmailDomainResponse) GetJSON401() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode VerifyEmailDomain401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r VerifyEmailDomainResponse) GetJSON403() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode VerifyEmailDomain403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r VerifyEmailDomainResponse) GetJSON404() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode VerifyEmailDomain404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r VerifyEmailDomainResponse) GetJSON422() *struct {
+	Error      string                                         `json:"error"`
+	Message    interface{}                                    `json:"message,omitempty"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode VerifyEmailDomain422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r VerifyEmailDomainResponse) GetJSON500() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode VerifyEmailDomain500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r VerifyEmailDomainResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r VerifyEmailDomainResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r VerifyEmailDomainResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r VerifyEmailDomainResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CreateGroupResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23500,6 +26632,227 @@ func (r VerifyUserToOrganizationResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r VerifyUserToOrganizationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetOrganizationByIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Organization struct {
+			AgentVaultProjectId                   *string             `json:"agentVaultProjectId"`
+			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
+			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+			AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
+			BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
+			BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
+			CreatedAt                             time.Time           `json:"createdAt"`
+			CustomerId                            *string             `json:"customerId,omitempty"`
+			DefaultMembershipRole                 *string             `json:"defaultMembershipRole,omitempty"`
+			EnforceMfa                            *bool               `json:"enforceMfa,omitempty"`
+			GoogleSsoAuthEnforced                 *bool               `json:"googleSsoAuthEnforced,omitempty"`
+			Id                                    openapi_types.UUID  `json:"id"`
+			KmsDefaultKeyId                       *openapi_types.UUID `json:"kmsDefaultKeyId,omitempty"`
+			KmsProductEnabled                     *bool               `json:"kmsProductEnabled,omitempty"`
+			MaxSharedSecretLifetime               *float32            `json:"maxSharedSecretLifetime,omitempty"`
+			MaxSharedSecretViewLimit              *float32            `json:"maxSharedSecretViewLimit,omitempty"`
+			Name                                  string              `json:"name"`
+			PamProjectId                          *string             `json:"pamProjectId"`
+			ParentOrgId                           *openapi_types.UUID `json:"parentOrgId,omitempty"`
+			PkiProductEnabled                     *bool               `json:"pkiProductEnabled,omitempty"`
+			PrivilegeUpgradeInitiatedAt           *time.Time          `json:"privilegeUpgradeInitiatedAt,omitempty"`
+			PrivilegeUpgradeInitiatedByUsername   *string             `json:"privilegeUpgradeInitiatedByUsername,omitempty"`
+			RequireGatewayPools                   *bool               `json:"requireGatewayPools,omitempty"`
+			RootOrgId                             *openapi_types.UUID `json:"rootOrgId,omitempty"`
+			ScannerProductEnabled                 *bool               `json:"scannerProductEnabled,omitempty"`
+			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
+			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
+			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
+			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
+			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
+			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
+			Slug                                  string              `json:"slug"`
+			UpdatedAt                             time.Time           `json:"updatedAt"`
+			UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
+		} `json:"organization"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetOrganizationById400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetOrganizationById401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetOrganizationById403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetOrganizationById404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                           `json:"error"`
+		Message    interface{}                                      `json:"message,omitempty"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetOrganizationById422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetOrganizationById500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetOrganizationByIdResponse) GetJSON200() *struct {
+	Organization struct {
+		AgentVaultProjectId                   *string             `json:"agentVaultProjectId"`
+		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
+		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+		AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
+		BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
+		BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
+		CreatedAt                             time.Time           `json:"createdAt"`
+		CustomerId                            *string             `json:"customerId,omitempty"`
+		DefaultMembershipRole                 *string             `json:"defaultMembershipRole,omitempty"`
+		EnforceMfa                            *bool               `json:"enforceMfa,omitempty"`
+		GoogleSsoAuthEnforced                 *bool               `json:"googleSsoAuthEnforced,omitempty"`
+		Id                                    openapi_types.UUID  `json:"id"`
+		KmsDefaultKeyId                       *openapi_types.UUID `json:"kmsDefaultKeyId,omitempty"`
+		KmsProductEnabled                     *bool               `json:"kmsProductEnabled,omitempty"`
+		MaxSharedSecretLifetime               *float32            `json:"maxSharedSecretLifetime,omitempty"`
+		MaxSharedSecretViewLimit              *float32            `json:"maxSharedSecretViewLimit,omitempty"`
+		Name                                  string              `json:"name"`
+		PamProjectId                          *string             `json:"pamProjectId"`
+		ParentOrgId                           *openapi_types.UUID `json:"parentOrgId,omitempty"`
+		PkiProductEnabled                     *bool               `json:"pkiProductEnabled,omitempty"`
+		PrivilegeUpgradeInitiatedAt           *time.Time          `json:"privilegeUpgradeInitiatedAt,omitempty"`
+		PrivilegeUpgradeInitiatedByUsername   *string             `json:"privilegeUpgradeInitiatedByUsername,omitempty"`
+		RequireGatewayPools                   *bool               `json:"requireGatewayPools,omitempty"`
+		RootOrgId                             *openapi_types.UUID `json:"rootOrgId,omitempty"`
+		ScannerProductEnabled                 *bool               `json:"scannerProductEnabled,omitempty"`
+		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
+		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
+		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
+		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
+		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
+		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
+		Slug                                  string              `json:"slug"`
+		UpdatedAt                             time.Time           `json:"updatedAt"`
+		UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
+	} `json:"organization"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetOrganizationByIdResponse) GetJSON400() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetOrganizationById400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetOrganizationByIdResponse) GetJSON401() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetOrganizationById401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetOrganizationByIdResponse) GetJSON403() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetOrganizationById403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetOrganizationByIdResponse) GetJSON404() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetOrganizationById404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetOrganizationByIdResponse) GetJSON422() *struct {
+	Error      string                                           `json:"error"`
+	Message    interface{}                                      `json:"message,omitempty"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetOrganizationById422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetOrganizationByIdResponse) GetJSON500() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetOrganizationById500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetOrganizationByIdResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOrganizationByIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOrganizationByIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOrganizationByIdResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -25726,7 +29079,7 @@ type ListSecretApprovalRequestsResponse struct {
 				Name             string     `json:"name"`
 				SecretPath       *string    `json:"secretPath,omitempty"`
 			} `json:"policy"`
-			PolicyId  openapi_types.UUID `json:"policyId"`
+			PolicyId  *openapi_types.UUID `json:"policyId"`
 			Reviewers []struct {
 				Status string `json:"status"`
 				UserId string `json:"userId"`
@@ -25831,7 +29184,7 @@ func (r ListSecretApprovalRequestsResponse) GetJSON200() *struct {
 			Name             string     `json:"name"`
 			SecretPath       *string    `json:"secretPath,omitempty"`
 		} `json:"policy"`
-		PolicyId  openapi_types.UUID `json:"policyId"`
+		PolicyId  *openapi_types.UUID `json:"policyId"`
 		Reviewers []struct {
 			Status string `json:"status"`
 			UserId string `json:"userId"`
@@ -26207,7 +29560,7 @@ type GetSecretApprovalRequestResponse struct {
 				Name             string     `json:"name"`
 				SecretPath       *string    `json:"secretPath,omitempty"`
 			} `json:"policy"`
-			PolicyId  openapi_types.UUID `json:"policyId"`
+			PolicyId  *openapi_types.UUID `json:"policyId"`
 			Reviewers []struct {
 				Comment               *string   `json:"comment,omitempty"`
 				CreatedAt             time.Time `json:"createdAt"`
@@ -26389,7 +29742,7 @@ func (r GetSecretApprovalRequestResponse) GetJSON200() *struct {
 			Name             string     `json:"name"`
 			SecretPath       *string    `json:"secretPath,omitempty"`
 		} `json:"policy"`
-		PolicyId  openapi_types.UUID `json:"policyId"`
+		PolicyId  *openapi_types.UUID `json:"policyId"`
 		Reviewers []struct {
 			Comment               *string   `json:"comment,omitempty"`
 			CreatedAt             time.Time `json:"createdAt"`
@@ -28337,6 +31690,671 @@ func (r SyncGitHubSecretSyncResponse) ContentType() string {
 	return ""
 }
 
+type GetSamlConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AuthProvider    string     `json:"authProvider"`
+		Cert            string     `json:"cert"`
+		EnableGroupSync *bool      `json:"enableGroupSync,omitempty"`
+		EntryPoint      string     `json:"entryPoint"`
+		Id              string     `json:"id"`
+		IsActive        bool       `json:"isActive"`
+		Issuer          string     `json:"issuer"`
+		LastUsed        *time.Time `json:"lastUsed,omitempty"`
+		OrgId           string     `json:"orgId"`
+		Organization    string     `json:"organization"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                `json:"details,omitempty"`
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                `json:"details,omitempty"`
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                     `json:"error"`
+		Message    interface{}                                `json:"message,omitempty"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetSamlConfigResponse) GetJSON200() *struct {
+	AuthProvider    string     `json:"authProvider"`
+	Cert            string     `json:"cert"`
+	EnableGroupSync *bool      `json:"enableGroupSync,omitempty"`
+	EntryPoint      string     `json:"entryPoint"`
+	Id              string     `json:"id"`
+	IsActive        bool       `json:"isActive"`
+	Issuer          string     `json:"issuer"`
+	LastUsed        *time.Time `json:"lastUsed,omitempty"`
+	OrgId           string     `json:"orgId"`
+	Organization    string     `json:"organization"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetSamlConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                `json:"details,omitempty"`
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetSamlConfigResponse) GetJSON401() *struct {
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetSamlConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                `json:"details,omitempty"`
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetSamlConfigResponse) GetJSON404() *struct {
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetSamlConfigResponse) GetJSON422() *struct {
+	Error      string                                     `json:"error"`
+	Message    interface{}                                `json:"message,omitempty"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetSamlConfigResponse) GetJSON500() *struct {
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetSamlConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSamlConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSamlConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetSamlConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateSamlConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AuthProvider string             `json:"authProvider"`
+		CreatedAt    time.Time          `json:"createdAt"`
+		Id           openapi_types.UUID `json:"id"`
+		IsActive     bool               `json:"isActive"`
+		LastUsed     *time.Time         `json:"lastUsed,omitempty"`
+		OrgId        openapi_types.UUID `json:"orgId"`
+		UpdatedAt    time.Time          `json:"updatedAt"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateSamlConfigResponse) GetJSON200() *struct {
+	AuthProvider string             `json:"authProvider"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Id           openapi_types.UUID `json:"id"`
+	IsActive     bool               `json:"isActive"`
+	LastUsed     *time.Time         `json:"lastUsed,omitempty"`
+	OrgId        openapi_types.UUID `json:"orgId"`
+	UpdatedAt    time.Time          `json:"updatedAt"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateSamlConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateSamlConfigResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateSamlConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateSamlConfigResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateSamlConfigResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdateSamlConfigResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateSamlConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateSamlConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateSamlConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateSamlConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateSamlConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AuthProvider string             `json:"authProvider"`
+		CreatedAt    time.Time          `json:"createdAt"`
+		Id           openapi_types.UUID `json:"id"`
+		IsActive     bool               `json:"isActive"`
+		LastUsed     *time.Time         `json:"lastUsed,omitempty"`
+		OrgId        openapi_types.UUID `json:"orgId"`
+		UpdatedAt    time.Time          `json:"updatedAt"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateSamlConfigResponse) GetJSON200() *struct {
+	AuthProvider string             `json:"authProvider"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Id           openapi_types.UUID `json:"id"`
+	IsActive     bool               `json:"isActive"`
+	LastUsed     *time.Time         `json:"lastUsed,omitempty"`
+	OrgId        openapi_types.UUID `json:"orgId"`
+	UpdatedAt    time.Time          `json:"updatedAt"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateSamlConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateSamlConfigResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateSamlConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateSamlConfigResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateSamlConfigResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateSamlConfigResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateSamlConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateSamlConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateSamlConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateSamlConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RedirectOrgSSOResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r RedirectOrgSSOResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RedirectOrgSSOResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RedirectOrgSSOResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RedirectOrgSSOResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RedirectSamlByDomainResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r RedirectSamlByDomainResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RedirectSamlByDomainResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RedirectSamlByDomainResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RedirectSamlByDomainResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RedirectSamlByOrgSlugResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r RedirectSamlByOrgSlugResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RedirectSamlByOrgSlugResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RedirectSamlByOrgSlugResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RedirectSamlByOrgSlugResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RedirectSamlByConfigIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r RedirectSamlByConfigIdResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RedirectSamlByConfigIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RedirectSamlByConfigIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RedirectSamlByConfigIdResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SamlAcsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r SamlAcsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SamlAcsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SamlAcsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SamlAcsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CreateSecretFolderResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -28942,6 +32960,593 @@ func (r DeleteOrganizationResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r DeleteOrganizationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListOrgMembershipsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Users []struct {
+			Id                  openapi_types.UUID  `json:"id"`
+			InviteEmail         *string             `json:"inviteEmail,omitempty"`
+			IsActive            *bool               `json:"isActive,omitempty"`
+			LastInvitedAt       *time.Time          `json:"lastInvitedAt,omitempty"`
+			LastLoginAuthMethod *string             `json:"lastLoginAuthMethod,omitempty"`
+			LastLoginTime       *time.Time          `json:"lastLoginTime,omitempty"`
+			OrgId               openapi_types.UUID  `json:"orgId"`
+			ProjectFavorites    *[]string           `json:"projectFavorites,omitempty"`
+			Role                string              `json:"role"`
+			RoleId              *openapi_types.UUID `json:"roleId,omitempty"`
+			Status              *string             `json:"status,omitempty"`
+			User                struct {
+				AuthMethods     *[]string          `json:"authMethods,omitempty"`
+				Email           *string            `json:"email,omitempty"`
+				FirstName       *string            `json:"firstName,omitempty"`
+				Id              openapi_types.UUID `json:"id"`
+				IsEmailVerified *bool              `json:"isEmailVerified,omitempty"`
+				LastName        *string            `json:"lastName,omitempty"`
+				PublicKey       *string            `json:"publicKey,omitempty"`
+				Username        string             `json:"username"`
+			} `json:"user"`
+			UserId *openapi_types.UUID `json:"userId,omitempty"`
+		} `json:"users"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode ListOrgMemberships400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode ListOrgMemberships401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode ListOrgMemberships403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode ListOrgMemberships404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                          `json:"error"`
+		Message    interface{}                                     `json:"message,omitempty"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode ListOrgMemberships422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode ListOrgMemberships500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListOrgMembershipsResponse) GetJSON200() *struct {
+	Users []struct {
+		Id                  openapi_types.UUID  `json:"id"`
+		InviteEmail         *string             `json:"inviteEmail,omitempty"`
+		IsActive            *bool               `json:"isActive,omitempty"`
+		LastInvitedAt       *time.Time          `json:"lastInvitedAt,omitempty"`
+		LastLoginAuthMethod *string             `json:"lastLoginAuthMethod,omitempty"`
+		LastLoginTime       *time.Time          `json:"lastLoginTime,omitempty"`
+		OrgId               openapi_types.UUID  `json:"orgId"`
+		ProjectFavorites    *[]string           `json:"projectFavorites,omitempty"`
+		Role                string              `json:"role"`
+		RoleId              *openapi_types.UUID `json:"roleId,omitempty"`
+		Status              *string             `json:"status,omitempty"`
+		User                struct {
+			AuthMethods     *[]string          `json:"authMethods,omitempty"`
+			Email           *string            `json:"email,omitempty"`
+			FirstName       *string            `json:"firstName,omitempty"`
+			Id              openapi_types.UUID `json:"id"`
+			IsEmailVerified *bool              `json:"isEmailVerified,omitempty"`
+			LastName        *string            `json:"lastName,omitempty"`
+			PublicKey       *string            `json:"publicKey,omitempty"`
+			Username        string             `json:"username"`
+		} `json:"user"`
+		UserId *openapi_types.UUID `json:"userId,omitempty"`
+	} `json:"users"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListOrgMembershipsResponse) GetJSON400() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode ListOrgMemberships400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListOrgMembershipsResponse) GetJSON401() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode ListOrgMemberships401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListOrgMembershipsResponse) GetJSON403() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode ListOrgMemberships403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListOrgMembershipsResponse) GetJSON404() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode ListOrgMemberships404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListOrgMembershipsResponse) GetJSON422() *struct {
+	Error      string                                          `json:"error"`
+	Message    interface{}                                     `json:"message,omitempty"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode ListOrgMemberships422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListOrgMembershipsResponse) GetJSON500() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode ListOrgMemberships500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListOrgMembershipsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListOrgMembershipsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListOrgMembershipsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListOrgMembershipsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetOrgMembershipResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Membership struct {
+			CustomRoleSlug      *string            `json:"customRoleSlug,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			InviteEmail         *string            `json:"inviteEmail,omitempty"`
+			IsActive            *bool              `json:"isActive,omitempty"`
+			LastInvitedAt       *time.Time         `json:"lastInvitedAt,omitempty"`
+			LastLoginAuthMethod *string            `json:"lastLoginAuthMethod,omitempty"`
+			LastLoginTime       *time.Time         `json:"lastLoginTime,omitempty"`
+			Metadata            *[]struct {
+				Id    string `json:"id"`
+				Key   string `json:"key"`
+				Value string `json:"value"`
+			} `json:"metadata,omitempty"`
+			OrgId            openapi_types.UUID  `json:"orgId"`
+			ProjectFavorites *[]string           `json:"projectFavorites,omitempty"`
+			Role             string              `json:"role"`
+			RoleId           *openapi_types.UUID `json:"roleId,omitempty"`
+			Status           *string             `json:"status,omitempty"`
+			User             struct {
+				AuthMethods     *[]string          `json:"authMethods,omitempty"`
+				Email           *string            `json:"email,omitempty"`
+				FirstName       *string            `json:"firstName,omitempty"`
+				Id              openapi_types.UUID `json:"id"`
+				IsEmailVerified *bool              `json:"isEmailVerified,omitempty"`
+				LastName        *string            `json:"lastName,omitempty"`
+				PublicKey       *string            `json:"publicKey,omitempty"`
+				Username        string             `json:"username"`
+			} `json:"user"`
+			UserId *openapi_types.UUID `json:"userId,omitempty"`
+		} `json:"membership"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode GetOrgMembership400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode GetOrgMembership401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode GetOrgMembership403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode GetOrgMembership404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode GetOrgMembership422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode GetOrgMembership500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetOrgMembershipResponse) GetJSON200() *struct {
+	Membership struct {
+		CustomRoleSlug      *string            `json:"customRoleSlug,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		InviteEmail         *string            `json:"inviteEmail,omitempty"`
+		IsActive            *bool              `json:"isActive,omitempty"`
+		LastInvitedAt       *time.Time         `json:"lastInvitedAt,omitempty"`
+		LastLoginAuthMethod *string            `json:"lastLoginAuthMethod,omitempty"`
+		LastLoginTime       *time.Time         `json:"lastLoginTime,omitempty"`
+		Metadata            *[]struct {
+			Id    string `json:"id"`
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		} `json:"metadata,omitempty"`
+		OrgId            openapi_types.UUID  `json:"orgId"`
+		ProjectFavorites *[]string           `json:"projectFavorites,omitempty"`
+		Role             string              `json:"role"`
+		RoleId           *openapi_types.UUID `json:"roleId,omitempty"`
+		Status           *string             `json:"status,omitempty"`
+		User             struct {
+			AuthMethods     *[]string          `json:"authMethods,omitempty"`
+			Email           *string            `json:"email,omitempty"`
+			FirstName       *string            `json:"firstName,omitempty"`
+			Id              openapi_types.UUID `json:"id"`
+			IsEmailVerified *bool              `json:"isEmailVerified,omitempty"`
+			LastName        *string            `json:"lastName,omitempty"`
+			PublicKey       *string            `json:"publicKey,omitempty"`
+			Username        string             `json:"username"`
+		} `json:"user"`
+		UserId *openapi_types.UUID `json:"userId,omitempty"`
+	} `json:"membership"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetOrgMembershipResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode GetOrgMembership400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetOrgMembershipResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode GetOrgMembership401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetOrgMembershipResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode GetOrgMembership403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetOrgMembershipResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode GetOrgMembership404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetOrgMembershipResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode GetOrgMembership422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetOrgMembershipResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode GetOrgMembership500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetOrgMembershipResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOrgMembershipResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOrgMembershipResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOrgMembershipResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateOrgMembershipResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Membership struct {
+			CreatedAt           time.Time           `json:"createdAt"`
+			Id                  openapi_types.UUID  `json:"id"`
+			InviteEmail         *string             `json:"inviteEmail,omitempty"`
+			IsActive            *bool               `json:"isActive,omitempty"`
+			LastInvitedAt       *time.Time          `json:"lastInvitedAt,omitempty"`
+			LastLoginAuthMethod *string             `json:"lastLoginAuthMethod,omitempty"`
+			LastLoginTime       *time.Time          `json:"lastLoginTime,omitempty"`
+			OrgId               openapi_types.UUID  `json:"orgId"`
+			ProjectFavorites    *[]string           `json:"projectFavorites,omitempty"`
+			Role                string              `json:"role"`
+			RoleId              *openapi_types.UUID `json:"roleId,omitempty"`
+			Status              *string             `json:"status,omitempty"`
+			UpdatedAt           time.Time           `json:"updatedAt"`
+			UserId              *openapi_types.UUID `json:"userId,omitempty"`
+		} `json:"membership"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode UpdateOrgMembership400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode UpdateOrgMembership401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode UpdateOrgMembership403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode UpdateOrgMembership404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                           `json:"error"`
+		Message    interface{}                                      `json:"message,omitempty"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode UpdateOrgMembership422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode UpdateOrgMembership500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateOrgMembershipResponse) GetJSON200() *struct {
+	Membership struct {
+		CreatedAt           time.Time           `json:"createdAt"`
+		Id                  openapi_types.UUID  `json:"id"`
+		InviteEmail         *string             `json:"inviteEmail,omitempty"`
+		IsActive            *bool               `json:"isActive,omitempty"`
+		LastInvitedAt       *time.Time          `json:"lastInvitedAt,omitempty"`
+		LastLoginAuthMethod *string             `json:"lastLoginAuthMethod,omitempty"`
+		LastLoginTime       *time.Time          `json:"lastLoginTime,omitempty"`
+		OrgId               openapi_types.UUID  `json:"orgId"`
+		ProjectFavorites    *[]string           `json:"projectFavorites,omitempty"`
+		Role                string              `json:"role"`
+		RoleId              *openapi_types.UUID `json:"roleId,omitempty"`
+		Status              *string             `json:"status,omitempty"`
+		UpdatedAt           time.Time           `json:"updatedAt"`
+		UserId              *openapi_types.UUID `json:"userId,omitempty"`
+	} `json:"membership"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateOrgMembershipResponse) GetJSON400() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode UpdateOrgMembership400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateOrgMembershipResponse) GetJSON401() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode UpdateOrgMembership401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateOrgMembershipResponse) GetJSON403() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode UpdateOrgMembership403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateOrgMembershipResponse) GetJSON404() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode UpdateOrgMembership404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateOrgMembershipResponse) GetJSON422() *struct {
+	Error      string                                           `json:"error"`
+	Message    interface{}                                      `json:"message,omitempty"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode UpdateOrgMembership422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdateOrgMembershipResponse) GetJSON500() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode UpdateOrgMembership500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateOrgMembershipResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateOrgMembershipResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateOrgMembershipResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateOrgMembershipResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -30142,6 +34747,225 @@ func (r CreateSecretImportResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateSecretImportResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetCurrentUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		User struct {
+			AuthMethods                       *[]string          `json:"authMethods,omitempty"`
+			ConsecutiveFailedMfaAttempts      *float32           `json:"consecutiveFailedMfaAttempts,omitempty"`
+			ConsecutiveFailedPasswordAttempts *float32           `json:"consecutiveFailedPasswordAttempts,omitempty"`
+			CreatedAt                         time.Time          `json:"createdAt"`
+			Devices                           interface{}        `json:"devices,omitempty"`
+			Email                             *string            `json:"email,omitempty"`
+			EncryptedPrivateKey               *string            `json:"encryptedPrivateKey,omitempty"`
+			FirstName                         *string            `json:"firstName,omitempty"`
+			Id                                openapi_types.UUID `json:"id"`
+			IsAccepted                        *bool              `json:"isAccepted,omitempty"`
+			IsEmailVerified                   *bool              `json:"isEmailVerified,omitempty"`
+			IsGhost                           *bool              `json:"isGhost,omitempty"`
+			IsGitHubVerified                  *bool              `json:"isGitHubVerified,omitempty"`
+			IsGitLabVerified                  *bool              `json:"isGitLabVerified,omitempty"`
+			IsGoogleVerified                  *bool              `json:"isGoogleVerified,omitempty"`
+			IsLocked                          *bool              `json:"isLocked,omitempty"`
+			IsMfaEnabled                      *bool              `json:"isMfaEnabled,omitempty"`
+			Iv                                *string            `json:"iv,omitempty"`
+			LastName                          *string            `json:"lastName,omitempty"`
+
+			// MfaMethods Deprecated: no longer used and always null. Use selectedMfaMethod instead.
+			// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+			MfaMethods           *[]string  `json:"mfaMethods,omitempty"`
+			ProtectedKey         *string    `json:"protectedKey,omitempty"`
+			ProtectedKeyIV       *string    `json:"protectedKeyIV,omitempty"`
+			ProtectedKeyTag      *string    `json:"protectedKeyTag,omitempty"`
+			Salt                 *string    `json:"salt,omitempty"`
+			SelectedMfaMethod    *string    `json:"selectedMfaMethod,omitempty"`
+			SuperAdmin           *bool      `json:"superAdmin,omitempty"`
+			Tag                  *string    `json:"tag,omitempty"`
+			TemporaryLockDateEnd *time.Time `json:"temporaryLockDateEnd,omitempty"`
+			UpdatedAt            time.Time  `json:"updatedAt"`
+			Username             string     `json:"username"`
+		} `json:"user"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                 `json:"details,omitempty"`
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode GetCurrentUser400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode GetCurrentUser401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                 `json:"details,omitempty"`
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode GetCurrentUser403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode GetCurrentUser404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                      `json:"error"`
+		Message    interface{}                                 `json:"message,omitempty"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode GetCurrentUser422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                      `json:"error"`
+		Message    string                                      `json:"message"`
+		ReqId      string                                      `json:"reqId"`
+		StatusCode GetCurrentUser500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetCurrentUserResponse) GetJSON200() *struct {
+	User struct {
+		AuthMethods                       *[]string          `json:"authMethods,omitempty"`
+		ConsecutiveFailedMfaAttempts      *float32           `json:"consecutiveFailedMfaAttempts,omitempty"`
+		ConsecutiveFailedPasswordAttempts *float32           `json:"consecutiveFailedPasswordAttempts,omitempty"`
+		CreatedAt                         time.Time          `json:"createdAt"`
+		Devices                           interface{}        `json:"devices,omitempty"`
+		Email                             *string            `json:"email,omitempty"`
+		EncryptedPrivateKey               *string            `json:"encryptedPrivateKey,omitempty"`
+		FirstName                         *string            `json:"firstName,omitempty"`
+		Id                                openapi_types.UUID `json:"id"`
+		IsAccepted                        *bool              `json:"isAccepted,omitempty"`
+		IsEmailVerified                   *bool              `json:"isEmailVerified,omitempty"`
+		IsGhost                           *bool              `json:"isGhost,omitempty"`
+		IsGitHubVerified                  *bool              `json:"isGitHubVerified,omitempty"`
+		IsGitLabVerified                  *bool              `json:"isGitLabVerified,omitempty"`
+		IsGoogleVerified                  *bool              `json:"isGoogleVerified,omitempty"`
+		IsLocked                          *bool              `json:"isLocked,omitempty"`
+		IsMfaEnabled                      *bool              `json:"isMfaEnabled,omitempty"`
+		Iv                                *string            `json:"iv,omitempty"`
+		LastName                          *string            `json:"lastName,omitempty"`
+
+		// MfaMethods Deprecated: no longer used and always null. Use selectedMfaMethod instead.
+		// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+		MfaMethods           *[]string  `json:"mfaMethods,omitempty"`
+		ProtectedKey         *string    `json:"protectedKey,omitempty"`
+		ProtectedKeyIV       *string    `json:"protectedKeyIV,omitempty"`
+		ProtectedKeyTag      *string    `json:"protectedKeyTag,omitempty"`
+		Salt                 *string    `json:"salt,omitempty"`
+		SelectedMfaMethod    *string    `json:"selectedMfaMethod,omitempty"`
+		SuperAdmin           *bool      `json:"superAdmin,omitempty"`
+		Tag                  *string    `json:"tag,omitempty"`
+		TemporaryLockDateEnd *time.Time `json:"temporaryLockDateEnd,omitempty"`
+		UpdatedAt            time.Time  `json:"updatedAt"`
+		Username             string     `json:"username"`
+	} `json:"user"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetCurrentUserResponse) GetJSON400() *struct {
+	Details    interface{}                                 `json:"details,omitempty"`
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode GetCurrentUser400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetCurrentUserResponse) GetJSON401() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode GetCurrentUser401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetCurrentUserResponse) GetJSON403() *struct {
+	Details    interface{}                                 `json:"details,omitempty"`
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode GetCurrentUser403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetCurrentUserResponse) GetJSON404() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode GetCurrentUser404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetCurrentUserResponse) GetJSON422() *struct {
+	Error      string                                      `json:"error"`
+	Message    interface{}                                 `json:"message,omitempty"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode GetCurrentUser422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetCurrentUserResponse) GetJSON500() *struct {
+	Error      string                                      `json:"error"`
+	Message    string                                      `json:"message"`
+	ReqId      string                                      `json:"reqId"`
+	StatusCode GetCurrentUser500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetCurrentUserResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCurrentUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCurrentUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCurrentUserResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -33422,6 +38246,50 @@ func (c *ClientWithResponses) LoginWithUniversalAuthWithResponse(ctx context.Con
 	return ParseLoginWithUniversalAuthResponse(rsp)
 }
 
+// ListEmailDomainsWithResponse performs a GET /api/v1/email-domains (the `ListEmailDomains` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListEmailDomainsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListEmailDomainsResponse, error) {
+	rsp, err := c.ListEmailDomains(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListEmailDomainsResponse(rsp)
+}
+
+// CreateEmailDomainWithBodyWithResponse performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateEmailDomainWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateEmailDomainResponse, error) {
+	rsp, err := c.CreateEmailDomainWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateEmailDomainResponse(rsp)
+}
+
+// CreateEmailDomainWithResponse performs a POST /api/v1/email-domains (the `CreateEmailDomain` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateEmailDomainWithResponse(ctx context.Context, body CreateEmailDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateEmailDomainResponse, error) {
+	rsp, err := c.CreateEmailDomain(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateEmailDomainResponse(rsp)
+}
+
+// VerifyEmailDomainWithResponse performs a POST /api/v1/email-domains/{emailDomainId}/verify (the `VerifyEmailDomain` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) VerifyEmailDomainWithResponse(ctx context.Context, emailDomainId openapi_types.UUID, reqEditors ...RequestEditorFn) (*VerifyEmailDomainResponse, error) {
+	rsp, err := c.VerifyEmailDomain(ctx, emailDomainId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVerifyEmailDomainResponse(rsp)
+}
+
 // CreateGroupWithBodyWithResponse performs a POST /api/v1/groups (the `CreateGroup` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -33534,6 +38402,17 @@ func (c *ClientWithResponses) VerifyUserToOrganizationWithResponse(ctx context.C
 		return nil, err
 	}
 	return ParseVerifyUserToOrganizationResponse(rsp)
+}
+
+// GetOrganizationByIdWithResponse performs a GET /api/v1/organization/{organizationId} (the `GetOrganizationById` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetOrganizationByIdWithResponse(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*GetOrganizationByIdResponse, error) {
+	rsp, err := c.GetOrganizationById(ctx, organizationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOrganizationByIdResponse(rsp)
 }
 
 // UpdateOrganizationWithBodyWithResponse performs a PATCH /api/v1/organization/{organizationId} (the `UpdateOrganization` operationId) request,
@@ -33970,6 +38849,137 @@ func (c *ClientWithResponses) SyncGitHubSecretSyncWithResponse(ctx context.Conte
 	return ParseSyncGitHubSecretSyncResponse(rsp)
 }
 
+// GetSamlConfigWithResponse performs a GET /api/v1/sso/config (the `GetSamlConfig` operationId) request.
+//
+// Get SAML config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetSamlConfigWithResponse(ctx context.Context, params *GetSamlConfigParams, reqEditors ...RequestEditorFn) (*GetSamlConfigResponse, error) {
+	rsp, err := c.GetSamlConfig(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSamlConfigResponse(rsp)
+}
+
+// UpdateSamlConfigWithBodyWithResponse performs a PATCH /api/v1/sso/config (the `UpdateSamlConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update SAML config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateSamlConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSamlConfigResponse, error) {
+	rsp, err := c.UpdateSamlConfigWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateSamlConfigResponse(rsp)
+}
+
+// UpdateSamlConfigWithResponse performs a PATCH /api/v1/sso/config (the `UpdateSamlConfig` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Update SAML config.
+func (c *ClientWithResponses) UpdateSamlConfigWithResponse(ctx context.Context, body UpdateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSamlConfigResponse, error) {
+	rsp, err := c.UpdateSamlConfig(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateSamlConfigResponse(rsp)
+}
+
+// CreateSamlConfigWithBodyWithResponse performs a POST /api/v1/sso/config (the `CreateSamlConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create SAML config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateSamlConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSamlConfigResponse, error) {
+	rsp, err := c.CreateSamlConfigWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateSamlConfigResponse(rsp)
+}
+
+// CreateSamlConfigWithResponse performs a POST /api/v1/sso/config (the `CreateSamlConfig` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create SAML config.
+func (c *ClientWithResponses) CreateSamlConfigWithResponse(ctx context.Context, body CreateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSamlConfigResponse, error) {
+	rsp, err := c.CreateSamlConfig(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateSamlConfigResponse(rsp)
+}
+
+// RedirectOrgSSOWithResponse performs a GET /api/v1/sso/redirect/organizations/{orgSlug} (the `RedirectOrgSSO` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RedirectOrgSSOWithResponse(ctx context.Context, orgSlug string, params *RedirectOrgSSOParams, reqEditors ...RequestEditorFn) (*RedirectOrgSSOResponse, error) {
+	rsp, err := c.RedirectOrgSSO(ctx, orgSlug, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRedirectOrgSSOResponse(rsp)
+}
+
+// RedirectSamlByDomainWithResponse performs a GET /api/v1/sso/redirect/saml2/organizations/domain/{domain} (the `RedirectSamlByDomain` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RedirectSamlByDomainWithResponse(ctx context.Context, domain string, params *RedirectSamlByDomainParams, reqEditors ...RequestEditorFn) (*RedirectSamlByDomainResponse, error) {
+	rsp, err := c.RedirectSamlByDomain(ctx, domain, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRedirectSamlByDomainResponse(rsp)
+}
+
+// RedirectSamlByOrgSlugWithResponse performs a GET /api/v1/sso/redirect/saml2/organizations/{orgSlug} (the `RedirectSamlByOrgSlug` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RedirectSamlByOrgSlugWithResponse(ctx context.Context, orgSlug string, params *RedirectSamlByOrgSlugParams, reqEditors ...RequestEditorFn) (*RedirectSamlByOrgSlugResponse, error) {
+	rsp, err := c.RedirectSamlByOrgSlug(ctx, orgSlug, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRedirectSamlByOrgSlugResponse(rsp)
+}
+
+// RedirectSamlByConfigIdWithResponse performs a GET /api/v1/sso/redirect/saml2/{samlConfigId} (the `RedirectSamlByConfigId` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) RedirectSamlByConfigIdWithResponse(ctx context.Context, samlConfigId string, params *RedirectSamlByConfigIdParams, reqEditors ...RequestEditorFn) (*RedirectSamlByConfigIdResponse, error) {
+	rsp, err := c.RedirectSamlByConfigId(ctx, samlConfigId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRedirectSamlByConfigIdResponse(rsp)
+}
+
+// SamlAcsWithBodyWithResponse performs a POST /api/v1/sso/saml2/{samlConfigId} (the `SamlAcs` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) SamlAcsWithBodyWithResponse(ctx context.Context, samlConfigId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SamlAcsResponse, error) {
+	rsp, err := c.SamlAcsWithBody(ctx, samlConfigId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSamlAcsResponse(rsp)
+}
+
+// SamlAcsWithFormdataBodyWithResponse performs a POST /api/v1/sso/saml2/{samlConfigId} (the `SamlAcs` operationId) request.
+// Takes a body of the `application/x-www-form-urlencoded` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) SamlAcsWithFormdataBodyWithResponse(ctx context.Context, samlConfigId string, body SamlAcsFormdataRequestBody, reqEditors ...RequestEditorFn) (*SamlAcsResponse, error) {
+	rsp, err := c.SamlAcsWithFormdataBody(ctx, samlConfigId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSamlAcsResponse(rsp)
+}
+
 // CreateSecretFolderWithBodyWithResponse performs a POST /api/v2/folders (the `CreateSecretFolder` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -34027,6 +39037,58 @@ func (c *ClientWithResponses) DeleteOrganizationWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseDeleteOrganizationResponse(rsp)
+}
+
+// ListOrgMembershipsWithResponse performs a GET /api/v2/organizations/{organizationId}/memberships (the `ListOrgMemberships` operationId) request.
+//
+// Return organization user memberships.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListOrgMembershipsWithResponse(ctx context.Context, organizationId string, reqEditors ...RequestEditorFn) (*ListOrgMembershipsResponse, error) {
+	rsp, err := c.ListOrgMemberships(ctx, organizationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListOrgMembershipsResponse(rsp)
+}
+
+// GetOrgMembershipWithResponse performs a GET /api/v2/organizations/{organizationId}/memberships/{membershipId} (the `GetOrgMembership` operationId) request.
+//
+// Get organization user membership.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetOrgMembershipWithResponse(ctx context.Context, organizationId string, membershipId string, reqEditors ...RequestEditorFn) (*GetOrgMembershipResponse, error) {
+	rsp, err := c.GetOrgMembership(ctx, organizationId, membershipId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOrgMembershipResponse(rsp)
+}
+
+// UpdateOrgMembershipWithBodyWithResponse performs a PATCH /api/v2/organizations/{organizationId}/memberships/{membershipId} (the `UpdateOrgMembership` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update organization user memberships.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateOrgMembershipWithBodyWithResponse(ctx context.Context, organizationId string, membershipId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOrgMembershipResponse, error) {
+	rsp, err := c.UpdateOrgMembershipWithBody(ctx, organizationId, membershipId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateOrgMembershipResponse(rsp)
+}
+
+// UpdateOrgMembershipWithResponse performs a PATCH /api/v2/organizations/{organizationId}/memberships/{membershipId} (the `UpdateOrgMembership` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Update organization user memberships.
+func (c *ClientWithResponses) UpdateOrgMembershipWithResponse(ctx context.Context, organizationId string, membershipId string, body UpdateOrgMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrgMembershipResponse, error) {
+	rsp, err := c.UpdateOrgMembership(ctx, organizationId, membershipId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateOrgMembershipResponse(rsp)
 }
 
 // CreateSecretApprovalPolicyWithBodyWithResponse performs a POST /api/v2/secret-approvals (the `CreateSecretApprovalPolicy` operationId) request,
@@ -34130,6 +39192,19 @@ func (c *ClientWithResponses) CreateSecretImportWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseCreateSecretImportResponse(rsp)
+}
+
+// GetCurrentUserWithResponse performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
+//
+// Retrieve the current user on the request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetCurrentUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCurrentUserResponse, error) {
+	rsp, err := c.GetCurrentUser(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCurrentUserResponse(rsp)
 }
 
 // LoginV3WithBodyWithResponse performs a POST /api/v3/auth/login (the `LoginV3` operationId) request,
@@ -35527,6 +40602,348 @@ func ParseLoginWithUniversalAuthResponse(rsp *http.Response) (*LoginWithUniversa
 	return response, nil
 }
 
+// ParseListEmailDomainsResponse parses an HTTP response from a ListEmailDomainsWithResponse call
+func ParseListEmailDomainsResponse(rsp *http.Response) (*ListEmailDomainsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListEmailDomainsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			EmailDomains []struct {
+				CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
+				CreatedAt              time.Time          `json:"createdAt"`
+				Domain                 string             `json:"domain"`
+				Id                     openapi_types.UUID `json:"id"`
+				OrgId                  openapi_types.UUID `json:"orgId"`
+				Status                 *string            `json:"status,omitempty"`
+				UpdatedAt              time.Time          `json:"updatedAt"`
+				VerificationCode       string             `json:"verificationCode"`
+				VerificationMethod     *string            `json:"verificationMethod,omitempty"`
+				VerificationRecordName string             `json:"verificationRecordName"`
+				VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+			} `json:"emailDomains"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode ListEmailDomains400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode ListEmailDomains401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode ListEmailDomains403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode ListEmailDomains404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode ListEmailDomains422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode ListEmailDomains500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateEmailDomainResponse parses an HTTP response from a CreateEmailDomainWithResponse call
+func ParseCreateEmailDomainResponse(rsp *http.Response) (*CreateEmailDomainResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateEmailDomainResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			EmailDomain struct {
+				CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
+				CreatedAt              time.Time          `json:"createdAt"`
+				Domain                 string             `json:"domain"`
+				Id                     openapi_types.UUID `json:"id"`
+				OrgId                  openapi_types.UUID `json:"orgId"`
+				Status                 *string            `json:"status,omitempty"`
+				UpdatedAt              time.Time          `json:"updatedAt"`
+				VerificationCode       string             `json:"verificationCode"`
+				VerificationMethod     *string            `json:"verificationMethod,omitempty"`
+				VerificationRecordName string             `json:"verificationRecordName"`
+				VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+			} `json:"emailDomain"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateEmailDomain400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateEmailDomain401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateEmailDomain403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateEmailDomain404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    interface{}                                    `json:"message,omitempty"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateEmailDomain422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode CreateEmailDomain500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseVerifyEmailDomainResponse parses an HTTP response from a VerifyEmailDomainWithResponse call
+func ParseVerifyEmailDomainResponse(rsp *http.Response) (*VerifyEmailDomainResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &VerifyEmailDomainResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			EmailDomain struct {
+				CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
+				CreatedAt              time.Time          `json:"createdAt"`
+				Domain                 string             `json:"domain"`
+				Id                     openapi_types.UUID `json:"id"`
+				OrgId                  openapi_types.UUID `json:"orgId"`
+				Status                 *string            `json:"status,omitempty"`
+				UpdatedAt              time.Time          `json:"updatedAt"`
+				VerificationCode       string             `json:"verificationCode"`
+				VerificationMethod     *string            `json:"verificationMethod,omitempty"`
+				VerificationRecordName string             `json:"verificationRecordName"`
+				VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+			} `json:"emailDomain"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode VerifyEmailDomain400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode VerifyEmailDomain401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode VerifyEmailDomain403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode VerifyEmailDomain404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    interface{}                                    `json:"message,omitempty"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode VerifyEmailDomain422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode VerifyEmailDomain500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseCreateGroupResponse parses an HTTP response from a CreateGroupWithResponse call
 func ParseCreateGroupResponse(rsp *http.Response) (*CreateGroupResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -36169,6 +41586,143 @@ func ParseVerifyUserToOrganizationResponse(rsp *http.Response) (*VerifyUserToOrg
 			Message    string                                                `json:"message"`
 			ReqId      string                                                `json:"reqId"`
 			StatusCode VerifyUserToOrganization500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetOrganizationByIdResponse parses an HTTP response from a GetOrganizationByIdWithResponse call
+func ParseGetOrganizationByIdResponse(rsp *http.Response) (*GetOrganizationByIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOrganizationByIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Organization struct {
+				AgentVaultProjectId                   *string             `json:"agentVaultProjectId"`
+				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
+				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
+				AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
+				BlockDuplicateSecretSyncDestinations  *bool               `json:"blockDuplicateSecretSyncDestinations,omitempty"`
+				BypassOrgAuthEnabled                  *bool               `json:"bypassOrgAuthEnabled,omitempty"`
+				CreatedAt                             time.Time           `json:"createdAt"`
+				CustomerId                            *string             `json:"customerId,omitempty"`
+				DefaultMembershipRole                 *string             `json:"defaultMembershipRole,omitempty"`
+				EnforceMfa                            *bool               `json:"enforceMfa,omitempty"`
+				GoogleSsoAuthEnforced                 *bool               `json:"googleSsoAuthEnforced,omitempty"`
+				Id                                    openapi_types.UUID  `json:"id"`
+				KmsDefaultKeyId                       *openapi_types.UUID `json:"kmsDefaultKeyId,omitempty"`
+				KmsProductEnabled                     *bool               `json:"kmsProductEnabled,omitempty"`
+				MaxSharedSecretLifetime               *float32            `json:"maxSharedSecretLifetime,omitempty"`
+				MaxSharedSecretViewLimit              *float32            `json:"maxSharedSecretViewLimit,omitempty"`
+				Name                                  string              `json:"name"`
+				PamProjectId                          *string             `json:"pamProjectId"`
+				ParentOrgId                           *openapi_types.UUID `json:"parentOrgId,omitempty"`
+				PkiProductEnabled                     *bool               `json:"pkiProductEnabled,omitempty"`
+				PrivilegeUpgradeInitiatedAt           *time.Time          `json:"privilegeUpgradeInitiatedAt,omitempty"`
+				PrivilegeUpgradeInitiatedByUsername   *string             `json:"privilegeUpgradeInitiatedByUsername,omitempty"`
+				RequireGatewayPools                   *bool               `json:"requireGatewayPools,omitempty"`
+				RootOrgId                             *openapi_types.UUID `json:"rootOrgId,omitempty"`
+				ScannerProductEnabled                 *bool               `json:"scannerProductEnabled,omitempty"`
+				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
+				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
+				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
+				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
+				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
+				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
+				Slug                                  string              `json:"slug"`
+				UpdatedAt                             time.Time           `json:"updatedAt"`
+				UserTokenExpiration                   *string             `json:"userTokenExpiration,omitempty"`
+			} `json:"organization"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetOrganizationById400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetOrganizationById401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetOrganizationById403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetOrganizationById404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    interface{}                                      `json:"message,omitempty"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetOrganizationById422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetOrganizationById500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -37644,7 +43198,7 @@ func ParseListSecretApprovalRequestsResponse(rsp *http.Response) (*ListSecretApp
 					Name             string     `json:"name"`
 					SecretPath       *string    `json:"secretPath,omitempty"`
 				} `json:"policy"`
-				PolicyId  openapi_types.UUID `json:"policyId"`
+				PolicyId  *openapi_types.UUID `json:"policyId"`
 				Reviewers []struct {
 					Status string `json:"status"`
 					UserId string `json:"userId"`
@@ -37969,7 +43523,7 @@ func ParseGetSecretApprovalRequestResponse(rsp *http.Response) (*GetSecretApprov
 					Name             string     `json:"name"`
 					SecretPath       *string    `json:"secretPath,omitempty"`
 				} `json:"policy"`
-				PolicyId  openapi_types.UUID `json:"policyId"`
+				PolicyId  *openapi_types.UUID `json:"policyId"`
 				Reviewers []struct {
 					Comment               *string   `json:"comment,omitempty"`
 					CreatedAt             time.Time `json:"createdAt"`
@@ -39205,6 +44759,413 @@ func ParseSyncGitHubSecretSyncResponse(rsp *http.Response) (*SyncGitHubSecretSyn
 	return response, nil
 }
 
+// ParseGetSamlConfigResponse parses an HTTP response from a GetSamlConfigWithResponse call
+func ParseGetSamlConfigResponse(rsp *http.Response) (*GetSamlConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSamlConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AuthProvider    string     `json:"authProvider"`
+			Cert            string     `json:"cert"`
+			EnableGroupSync *bool      `json:"enableGroupSync,omitempty"`
+			EntryPoint      string     `json:"entryPoint"`
+			Id              string     `json:"id"`
+			IsActive        bool       `json:"isActive"`
+			Issuer          string     `json:"issuer"`
+			LastUsed        *time.Time `json:"lastUsed,omitempty"`
+			OrgId           string     `json:"orgId"`
+			Organization    string     `json:"organization"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                `json:"details,omitempty"`
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                `json:"details,omitempty"`
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    interface{}                                `json:"message,omitempty"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateSamlConfigResponse parses an HTTP response from a UpdateSamlConfigWithResponse call
+func ParseUpdateSamlConfigResponse(rsp *http.Response) (*UpdateSamlConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateSamlConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AuthProvider string             `json:"authProvider"`
+			CreatedAt    time.Time          `json:"createdAt"`
+			Id           openapi_types.UUID `json:"id"`
+			IsActive     bool               `json:"isActive"`
+			LastUsed     *time.Time         `json:"lastUsed,omitempty"`
+			OrgId        openapi_types.UUID `json:"orgId"`
+			UpdatedAt    time.Time          `json:"updatedAt"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateSamlConfigResponse parses an HTTP response from a CreateSamlConfigWithResponse call
+func ParseCreateSamlConfigResponse(rsp *http.Response) (*CreateSamlConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateSamlConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AuthProvider string             `json:"authProvider"`
+			CreatedAt    time.Time          `json:"createdAt"`
+			Id           openapi_types.UUID `json:"id"`
+			IsActive     bool               `json:"isActive"`
+			LastUsed     *time.Time         `json:"lastUsed,omitempty"`
+			OrgId        openapi_types.UUID `json:"orgId"`
+			UpdatedAt    time.Time          `json:"updatedAt"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRedirectOrgSSOResponse parses an HTTP response from a RedirectOrgSSOWithResponse call
+func ParseRedirectOrgSSOResponse(rsp *http.Response) (*RedirectOrgSSOResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RedirectOrgSSOResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseRedirectSamlByDomainResponse parses an HTTP response from a RedirectSamlByDomainWithResponse call
+func ParseRedirectSamlByDomainResponse(rsp *http.Response) (*RedirectSamlByDomainResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RedirectSamlByDomainResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseRedirectSamlByOrgSlugResponse parses an HTTP response from a RedirectSamlByOrgSlugWithResponse call
+func ParseRedirectSamlByOrgSlugResponse(rsp *http.Response) (*RedirectSamlByOrgSlugResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RedirectSamlByOrgSlugResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseRedirectSamlByConfigIdResponse parses an HTTP response from a RedirectSamlByConfigIdWithResponse call
+func ParseRedirectSamlByConfigIdResponse(rsp *http.Response) (*RedirectSamlByConfigIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RedirectSamlByConfigIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseSamlAcsResponse parses an HTTP response from a SamlAcsWithResponse call
+func ParseSamlAcsResponse(rsp *http.Response) (*SamlAcsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SamlAcsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
 // ParseCreateSecretFolderResponse parses an HTTP response from a CreateSecretFolderWithResponse call
 func ParseCreateSecretFolderResponse(rsp *http.Response) (*CreateSecretFolderResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -39579,6 +45540,379 @@ func ParseDeleteOrganizationResponse(rsp *http.Response) (*DeleteOrganizationRes
 			Message    string                                          `json:"message"`
 			ReqId      string                                          `json:"reqId"`
 			StatusCode DeleteOrganization500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListOrgMembershipsResponse parses an HTTP response from a ListOrgMembershipsWithResponse call
+func ParseListOrgMembershipsResponse(rsp *http.Response) (*ListOrgMembershipsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListOrgMembershipsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Users []struct {
+				Id                  openapi_types.UUID  `json:"id"`
+				InviteEmail         *string             `json:"inviteEmail,omitempty"`
+				IsActive            *bool               `json:"isActive,omitempty"`
+				LastInvitedAt       *time.Time          `json:"lastInvitedAt,omitempty"`
+				LastLoginAuthMethod *string             `json:"lastLoginAuthMethod,omitempty"`
+				LastLoginTime       *time.Time          `json:"lastLoginTime,omitempty"`
+				OrgId               openapi_types.UUID  `json:"orgId"`
+				ProjectFavorites    *[]string           `json:"projectFavorites,omitempty"`
+				Role                string              `json:"role"`
+				RoleId              *openapi_types.UUID `json:"roleId,omitempty"`
+				Status              *string             `json:"status,omitempty"`
+				User                struct {
+					AuthMethods     *[]string          `json:"authMethods,omitempty"`
+					Email           *string            `json:"email,omitempty"`
+					FirstName       *string            `json:"firstName,omitempty"`
+					Id              openapi_types.UUID `json:"id"`
+					IsEmailVerified *bool              `json:"isEmailVerified,omitempty"`
+					LastName        *string            `json:"lastName,omitempty"`
+					PublicKey       *string            `json:"publicKey,omitempty"`
+					Username        string             `json:"username"`
+				} `json:"user"`
+				UserId *openapi_types.UUID `json:"userId,omitempty"`
+			} `json:"users"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode ListOrgMemberships400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode ListOrgMemberships401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode ListOrgMemberships403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode ListOrgMemberships404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    interface{}                                     `json:"message,omitempty"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode ListOrgMemberships422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode ListOrgMemberships500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetOrgMembershipResponse parses an HTTP response from a GetOrgMembershipWithResponse call
+func ParseGetOrgMembershipResponse(rsp *http.Response) (*GetOrgMembershipResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOrgMembershipResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Membership struct {
+				CustomRoleSlug      *string            `json:"customRoleSlug,omitempty"`
+				Id                  openapi_types.UUID `json:"id"`
+				InviteEmail         *string            `json:"inviteEmail,omitempty"`
+				IsActive            *bool              `json:"isActive,omitempty"`
+				LastInvitedAt       *time.Time         `json:"lastInvitedAt,omitempty"`
+				LastLoginAuthMethod *string            `json:"lastLoginAuthMethod,omitempty"`
+				LastLoginTime       *time.Time         `json:"lastLoginTime,omitempty"`
+				Metadata            *[]struct {
+					Id    string `json:"id"`
+					Key   string `json:"key"`
+					Value string `json:"value"`
+				} `json:"metadata,omitempty"`
+				OrgId            openapi_types.UUID  `json:"orgId"`
+				ProjectFavorites *[]string           `json:"projectFavorites,omitempty"`
+				Role             string              `json:"role"`
+				RoleId           *openapi_types.UUID `json:"roleId,omitempty"`
+				Status           *string             `json:"status,omitempty"`
+				User             struct {
+					AuthMethods     *[]string          `json:"authMethods,omitempty"`
+					Email           *string            `json:"email,omitempty"`
+					FirstName       *string            `json:"firstName,omitempty"`
+					Id              openapi_types.UUID `json:"id"`
+					IsEmailVerified *bool              `json:"isEmailVerified,omitempty"`
+					LastName        *string            `json:"lastName,omitempty"`
+					PublicKey       *string            `json:"publicKey,omitempty"`
+					Username        string             `json:"username"`
+				} `json:"user"`
+				UserId *openapi_types.UUID `json:"userId,omitempty"`
+			} `json:"membership"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode GetOrgMembership400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode GetOrgMembership401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode GetOrgMembership403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode GetOrgMembership404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode GetOrgMembership422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode GetOrgMembership500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateOrgMembershipResponse parses an HTTP response from a UpdateOrgMembershipWithResponse call
+func ParseUpdateOrgMembershipResponse(rsp *http.Response) (*UpdateOrgMembershipResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateOrgMembershipResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Membership struct {
+				CreatedAt           time.Time           `json:"createdAt"`
+				Id                  openapi_types.UUID  `json:"id"`
+				InviteEmail         *string             `json:"inviteEmail,omitempty"`
+				IsActive            *bool               `json:"isActive,omitempty"`
+				LastInvitedAt       *time.Time          `json:"lastInvitedAt,omitempty"`
+				LastLoginAuthMethod *string             `json:"lastLoginAuthMethod,omitempty"`
+				LastLoginTime       *time.Time          `json:"lastLoginTime,omitempty"`
+				OrgId               openapi_types.UUID  `json:"orgId"`
+				ProjectFavorites    *[]string           `json:"projectFavorites,omitempty"`
+				Role                string              `json:"role"`
+				RoleId              *openapi_types.UUID `json:"roleId,omitempty"`
+				Status              *string             `json:"status,omitempty"`
+				UpdatedAt           time.Time           `json:"updatedAt"`
+				UserId              *openapi_types.UUID `json:"userId,omitempty"`
+			} `json:"membership"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode UpdateOrgMembership400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode UpdateOrgMembership401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode UpdateOrgMembership403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode UpdateOrgMembership404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    interface{}                                      `json:"message,omitempty"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode UpdateOrgMembership422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode UpdateOrgMembership500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -40338,6 +46672,142 @@ func ParseCreateSecretImportResponse(rsp *http.Response) (*CreateSecretImportRes
 			Message    string                                          `json:"message"`
 			ReqId      string                                          `json:"reqId"`
 			StatusCode CreateSecretImport500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetCurrentUserResponse parses an HTTP response from a GetCurrentUserWithResponse call
+func ParseGetCurrentUserResponse(rsp *http.Response) (*GetCurrentUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCurrentUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			User struct {
+				AuthMethods                       *[]string          `json:"authMethods,omitempty"`
+				ConsecutiveFailedMfaAttempts      *float32           `json:"consecutiveFailedMfaAttempts,omitempty"`
+				ConsecutiveFailedPasswordAttempts *float32           `json:"consecutiveFailedPasswordAttempts,omitempty"`
+				CreatedAt                         time.Time          `json:"createdAt"`
+				Devices                           interface{}        `json:"devices,omitempty"`
+				Email                             *string            `json:"email,omitempty"`
+				EncryptedPrivateKey               *string            `json:"encryptedPrivateKey,omitempty"`
+				FirstName                         *string            `json:"firstName,omitempty"`
+				Id                                openapi_types.UUID `json:"id"`
+				IsAccepted                        *bool              `json:"isAccepted,omitempty"`
+				IsEmailVerified                   *bool              `json:"isEmailVerified,omitempty"`
+				IsGhost                           *bool              `json:"isGhost,omitempty"`
+				IsGitHubVerified                  *bool              `json:"isGitHubVerified,omitempty"`
+				IsGitLabVerified                  *bool              `json:"isGitLabVerified,omitempty"`
+				IsGoogleVerified                  *bool              `json:"isGoogleVerified,omitempty"`
+				IsLocked                          *bool              `json:"isLocked,omitempty"`
+				IsMfaEnabled                      *bool              `json:"isMfaEnabled,omitempty"`
+				Iv                                *string            `json:"iv,omitempty"`
+				LastName                          *string            `json:"lastName,omitempty"`
+
+				// MfaMethods Deprecated: no longer used and always null. Use selectedMfaMethod instead.
+				// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+				MfaMethods           *[]string  `json:"mfaMethods,omitempty"`
+				ProtectedKey         *string    `json:"protectedKey,omitempty"`
+				ProtectedKeyIV       *string    `json:"protectedKeyIV,omitempty"`
+				ProtectedKeyTag      *string    `json:"protectedKeyTag,omitempty"`
+				Salt                 *string    `json:"salt,omitempty"`
+				SelectedMfaMethod    *string    `json:"selectedMfaMethod,omitempty"`
+				SuperAdmin           *bool      `json:"superAdmin,omitempty"`
+				Tag                  *string    `json:"tag,omitempty"`
+				TemporaryLockDateEnd *time.Time `json:"temporaryLockDateEnd,omitempty"`
+				UpdatedAt            time.Time  `json:"updatedAt"`
+				Username             string     `json:"username"`
+			} `json:"user"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                 `json:"details,omitempty"`
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode GetCurrentUser400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode GetCurrentUser401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                 `json:"details,omitempty"`
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode GetCurrentUser403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode GetCurrentUser404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    interface{}                                 `json:"message,omitempty"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode GetCurrentUser422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                      `json:"error"`
+			Message    string                                      `json:"message"`
+			ReqId      string                                      `json:"reqId"`
+			StatusCode GetCurrentUser500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

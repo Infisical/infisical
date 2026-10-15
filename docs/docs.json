@@ -388,29 +388,35 @@
             ]
           },
           {
-            "item": "Secrets Scanning",
+            "item": "Secret Scanning",
             "icon": "radar",
             "pages": [
               "documentation/platform/secret-scanning/overview",
+              "documentation/platform/secret-scanning/concepts/secret-scanning",
               {
-                "group": "Secrets scanning",
+                "group": "Scanning locally",
                 "pages": [
                   "documentation/platform/secret-scanning/scan-locally",
-                  {
-                    "group": "Concepts",
-                    "pages": [
-                      "documentation/platform/secret-scanning/concepts/secret-scanning"
-                    ]
-                  }
+                  "documentation/platform/secret-scanning/pre-commit-hook",
+                  "documentation/platform/secret-scanning/ignore-findings",
+                  "documentation/platform/secret-scanning/local-configuration"
                 ]
               },
               {
-                "group": "Product reference",
+                "group": "Scanning repositories",
                 "pages": [
-                  "documentation/platform/secret-scanning/usage",
-                  "documentation/platform/secret-scanning/bitbucket",
-                  "documentation/platform/secret-scanning/github",
-                  "documentation/platform/secret-scanning/gitlab"
+                  "documentation/platform/secret-scanning/scan-repositories",
+                  {
+                    "group": "Data sources",
+                    "expanded": true,
+                    "pages": [
+                      "documentation/platform/secret-scanning/github",
+                      "documentation/platform/secret-scanning/gitlab",
+                      "documentation/platform/secret-scanning/bitbucket"
+                    ]
+                  },
+                  "documentation/platform/secret-scanning/findings",
+                  "documentation/platform/secret-scanning/configuration"
                 ]
               }
             ]
@@ -4865,6 +4871,10 @@
     }
   },
   "redirects": [
+    {
+      "source": "/documentation/platform/secret-scanning/usage",
+      "destination": "/documentation/platform/secret-scanning/scan-repositories"
+    },
     {
       "source": "/cli/scanning-overview",
       "destination": "/documentation/platform/secret-scanning/scan-locally"

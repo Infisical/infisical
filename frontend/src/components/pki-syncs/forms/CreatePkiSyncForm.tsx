@@ -20,6 +20,7 @@ import {
   FieldContent,
   FieldDescription,
   Label,
+  SheetFooter,
   Stepper,
   StepperList,
   StepperStep,
@@ -486,7 +487,7 @@ export const CreatePkiSyncForm = ({
         </div>
       </FormProvider>
 
-      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+      <SheetFooter className="shrink-0 items-center justify-between border-t">
         <span className="text-xs text-muted">
           Step {selectedTabIndex + 1} of {FORM_TABS.length}
         </span>
@@ -504,7 +505,7 @@ export const CreatePkiSyncForm = ({
             {isFinalStep ? "Create Sync" : "Continue"}
           </Button>
         </div>
-      </div>
+      </SheetFooter>
 
       <AlertDialog
         open={showConfirmation}

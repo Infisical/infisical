@@ -11,8 +11,8 @@ import { AlertForm } from "./AlertForm";
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  resourceType: AlertResourceType;
   projectId?: string;
-  resourceType?: AlertResourceType;
   resourceId?: string;
   channelPaywall?: TAlertChannelPaywall;
   alert?: TAlert;
@@ -22,8 +22,8 @@ type Props = {
 export const AddAlertModal = ({
   isOpen,
   onOpenChange,
-  projectId,
   resourceType,
+  projectId,
   resourceId,
   channelPaywall,
   alert,
@@ -43,8 +43,8 @@ export const AddAlertModal = ({
         {isOpen && (
           <AlertForm
             key={alert?.id ?? "new"}
-            projectId={projectId}
             resourceType={resourceType}
+            projectId={projectId}
             resourceId={resourceId}
             channelPaywall={channelPaywall}
             alert={alert}

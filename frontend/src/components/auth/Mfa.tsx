@@ -303,7 +303,11 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
               labelClassName: "text-foreground-soft",
               onConfirm: async () => {
                 setIsLoading(true);
-                await completeLogin();
+                try {
+                  await completeLogin();
+                } finally {
+                  setIsLoading(false);
+                }
               }
             }}
           />

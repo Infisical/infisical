@@ -14,7 +14,7 @@ The [V3 migration ledger](V3_MIGRATION.md) tracks source removal, coverage, and 
 | `ConfirmActionModal`, `DeleteActionModal`, `Modal`                                                                             | Ready for focused deprecation | Follow the overlay recipe in the [V3 migration ledger](V3_MIGRATION.md#overlay-migration-recipe).             |
 | `ContentLoader`, `FormControl`, `GenericFieldLabel`, `Tag`                                                    | Blocked                       | The V3 replacements require consumer-specific composition or accessibility changes.                           |
 | `SecretInput`, `SecretPathInput`                                                | Blocked                       | Security-sensitive or specialist behavior needs workflow-level parity validation.                             |
-| `NoticeBannerV2`                                                                                                                       | Blocked                       | Verify that V3 `Alert` covers existing layout and action requirements.                                        |
+| `NoticeBannerV2` | Removed | Deleted the unused implementation, empty family index, and stale root export. No external or internal consumers remained at `e05f750eb36506dac9a599709055ffb33d5b58ab`. |
 
 ### Removed unused V2 families
 

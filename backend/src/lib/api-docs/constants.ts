@@ -4093,6 +4093,12 @@ export const SamlSso = {
     cert: "The certificate to use for SAML authentication.",
     enableGroupSync:
       "Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups."
+  },
+  ACS: {
+    samlConfigId: "The ID of the SAML configuration the response is for.",
+    SAMLResponse: "The base64-encoded SAML response the identity provider posted through the browser.",
+    RelayState:
+      "The RelayState Infisical sent with the authentication request, returned unchanged by the identity provider."
   }
 };
 

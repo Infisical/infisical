@@ -371,7 +371,11 @@ export const Navbar = () => {
         isServerAdminPanel && "from-admin/5",
         !isServerAdminPanel && isPamScope && "from-product-pam/5",
         !isServerAdminPanel && isAgentVaultScope && "from-product-av/5",
-        !isServerAdminPanel && isProjectScope && !orgScopedProduct && "from-project/5",
+        !isServerAdminPanel &&
+          isProjectScope &&
+          !isPamScope &&
+          !isAgentVaultScope &&
+          "from-project/5",
         !isServerAdminPanel && !isProjectScope && isSubOrganization && "from-sub-org/5",
         !isServerAdminPanel && !isProjectScope && !isSubOrganization && "from-org/5"
       )}
