@@ -1,4 +1,5 @@
 export {
+  useBulkActOnSecretApprovalRequests,
   usePerformSecretApprovalRequestMerge,
   useUpdateSecretApprovalRequestStatus,
   useUpdateSecretApprovalReviewStatus

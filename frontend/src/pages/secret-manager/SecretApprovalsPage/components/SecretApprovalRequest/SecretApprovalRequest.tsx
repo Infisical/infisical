@@ -6,6 +6,7 @@ import {
   BanIcon,
   CheckIcon,
   ChevronDownIcon,
+  CircleAlertIcon,
   ClipboardCheckIcon,
   EllipsisIcon,
   EyeIcon,
@@ -14,9 +15,11 @@ import {
   HourglassIcon,
   LucideIcon,
   PlusIcon,
-  SearchIcon
+  SearchIcon,
+  XIcon
 } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
@@ -25,6 +28,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Checkbox,
   Combobox,
   DocumentationLinkBadge,
   DropdownMenu,
@@ -41,6 +45,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  SelectedActionBar,
   Skeleton,
   Table,
   TableBody,
@@ -80,9 +85,15 @@ import {
 } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
-import { SecretApprovalRequestOrderBy } from "@app/hooks/api/secretApprovalRequest/types";
+import {
+  BulkChangeRequestAction,
+  SecretApprovalRequestOrderBy,
+  TBulkChangeRequestResult,
+  TSecretApprovalRequest
+} from "@app/hooks/api/secretApprovalRequest/types";
 import { ApprovalStatus } from "@app/hooks/api/types";
 
+import { BulkReviewChangeRequestsDialog } from "./components/BulkReviewChangeRequestsDialog";
 import {
   generateCommitText,
   SecretApprovalRequestChanges
@@ -94,6 +105,8 @@ enum ChangeRequestOrderBy {
   Author = SecretApprovalRequestOrderBy.Author,
   OpenedAt = SecretApprovalRequestOrderBy.CreatedAt
 }
+
+const MAX_BULK_SELECTION = 100;
 
 type Props = {
   onConfigurePolicies: () => void;
@@ -115,6 +128,11 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
     column: ChangeRequestOrderBy;
     direction: Exclude<TableSortDirection, "none">;
   } | null>(null);
+  const [selectedRequests, setSelectedRequests] = useState<Record<string, TSecretApprovalRequest>>(
+    {}
+  );
+  const [failedRequestErrors, setFailedRequestErrors] = useState<Record<string, string>>({});
+  const [bulkAction, setBulkAction] = useState<BulkChangeRequestAction | null>(null);
 
   const {
     debouncedSearch: debouncedSearchFilter,
@@ -192,6 +210,74 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   const handleCloseRequestDetail = () => {
     navigate({ search: (prev) => ({ ...prev, requestId: "" }) });
     refetch();
+  };
+
+  const isOpenTab = statusFilter === "open";
+  const selectedRequestList = Object.values(selectedRequests).map(
+    (request) => secretApprovalRequests.find(({ id }) => id === request.id) ?? request
+  );
+  const selectedCount = selectedRequestList.length;
+  const isPageSelected =
+    secretApprovalRequests.length > 0 &&
+    secretApprovalRequests.every(({ id }) => selectedRequests[id]);
+  const isPageIndeterminate =
+    !isPageSelected && secretApprovalRequests.some(({ id }) => selectedRequests[id]);
+
+  const clearSelection = () => {
+    setSelectedRequests({});
+    setFailedRequestErrors({});
+  };
+
+  const toggleRequestSelection = (request: TSecretApprovalRequest) => {
+    if (selectedRequests[request.id]) {
+      setSelectedRequests(({ [request.id]: _, ...rest }) => rest);
+      setFailedRequestErrors(({ [request.id]: _, ...rest }) => rest);
+      return;
+    }
+    if (selectedCount >= MAX_BULK_SELECTION) {
+      createNotification({
+        type: "error",
+        text: `You can select up to ${MAX_BULK_SELECTION} change requests at once`
+      });
+      return;
+    }
+    setSelectedRequests((prev) => ({ ...prev, [request.id]: request }));
+  };
+
+  const togglePageSelection = () => {
+    if (isPageSelected) {
+      const pageIds = new Set(secretApprovalRequests.map(({ id }) => id));
+      setSelectedRequests((prev) =>
+        Object.fromEntries(Object.entries(prev).filter(([id]) => !pageIds.has(id)))
+      );
+      return;
+    }
+    const unselected = secretApprovalRequests.filter(({ id }) => !selectedRequests[id]);
+    const available = MAX_BULK_SELECTION - selectedCount;
+    if (unselected.length > available) {
+      createNotification({
+        type: "error",
+        text: `You can select up to ${MAX_BULK_SELECTION} change requests at once`
+      });
+    }
+    setSelectedRequests((prev) => ({
+      ...prev,
+      ...Object.fromEntries(unselected.slice(0, available).map((request) => [request.id, request]))
+    }));
+  };
+
+  const handleBulkComplete = (results: TBulkChangeRequestResult[]) => {
+    const succeededIds = new Set(results.filter(({ isSuccess }) => isSuccess).map(({ id }) => id));
+    setSelectedRequests((prev) =>
+      Object.fromEntries(Object.entries(prev).filter(([id]) => !succeededIds.has(id)))
+    );
+    setFailedRequestErrors(
+      Object.fromEntries(
+        results
+          .filter(({ isSuccess }) => !isSuccess)
+          .map(({ id, errorMessage }) => [id, errorMessage ?? "This request could not be updated"])
+      )
+    );
   };
 
   const isRequestListEmpty = !isApprovalRequestLoading && secretApprovalRequests?.length === 0;
@@ -279,6 +365,7 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
               value={statusFilter}
               onValueChange={(value) => {
                 setStatusFilter(value as "open" | "close");
+                clearSelection();
                 // Refetch both the lists and the open/closed counts on toggle so
                 // the table rows and the tab-label counts reflect changes made
                 // elsewhere. The target list is inactive here and the count query
@@ -375,6 +462,19 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {isOpenTab && (
+                    <TableHead className="w-5">
+                      <Checkbox
+                        id="change-requests-page-select"
+                        aria-label="Select all change requests on this page"
+                        isChecked={isPageSelected || isPageIndeterminate}
+                        isIndeterminate={isPageIndeterminate}
+                        isDisabled={!secretApprovalRequests.length}
+                        variant="project"
+                        onCheckedChange={togglePageSelection}
+                      />
+                    </TableHead>
+                  )}
                   <TableHead>Change</TableHead>
                   <TableHead
                     sortDirection={getSortDirection(ChangeRequestOrderBy.Environment)}
@@ -427,6 +527,11 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
                   Array.from({ length: 3 }).map((_, idx) => (
                     // eslint-disable-next-line react/no-array-index-key
                     <TableRow key={`change-request-skeleton-${idx}`}>
+                      {isOpenTab && (
+                        <TableCell>
+                          <Skeleton className="size-4" />
+                        </TableCell>
+                      )}
                       <TableCell>
                         <Skeleton className="h-5 w-full" />
                       </TableCell>
@@ -523,11 +628,14 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
                   }
 
                   const StatusIcon = statusDisplay.icon;
+                  const isSelected = Boolean(selectedRequests[reqId]);
+                  const failedRequestError = failedRequestErrors[reqId];
 
                   return (
                     <TableRow
                       key={reqId}
                       tabIndex={0}
+                      data-state={isSelected ? "selected" : undefined}
                       onClick={() =>
                         navigate({ search: (prev) => ({ ...prev, requestId: reqId }) })
                       }
@@ -536,6 +644,20 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
                           navigate({ search: (prev) => ({ ...prev, requestId: reqId }) });
                       }}
                     >
+                      {isOpenTab && (
+                        <TableCell
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        >
+                          <Checkbox
+                            id={`select-change-request-${reqId}`}
+                            aria-label="Select change request"
+                            isChecked={isSelected}
+                            variant="project"
+                            onCheckedChange={() => toggleRequestSelection(secretApproval)}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell>{generateCommitText(commits, isReplicated, true)}</TableCell>
                       <TableCell title={environmentDisplayName}>{environmentDisplayName}</TableCell>
                       <TableCell title={policy.secretPath}>{policy.secretPath}</TableCell>
@@ -563,22 +685,40 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
                         </Tooltip>
                       </TableCell>
                       <TableCell>
-                        {statusDisplay.tooltipContent ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge variant={statusDisplay.type}>
-                                <StatusIcon />
-                                <span className="whitespace-nowrap">{statusDisplay.label}</span>
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>{statusDisplay.tooltipContent}</TooltipContent>
-                          </Tooltip>
-                        ) : (
-                          <Badge variant={statusDisplay.type}>
-                            <StatusIcon />
-                            <span className="whitespace-nowrap">{statusDisplay.label}</span>
-                          </Badge>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {statusDisplay.tooltipContent ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant={statusDisplay.type}>
+                                  <StatusIcon />
+                                  <span className="whitespace-nowrap">{statusDisplay.label}</span>
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>{statusDisplay.tooltipContent}</TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <Badge variant={statusDisplay.type}>
+                              <StatusIcon />
+                              <span className="whitespace-nowrap">{statusDisplay.label}</span>
+                            </Badge>
+                          )}
+                          {failedRequestError && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span
+                                  role="img"
+                                  aria-label="Bulk action failed"
+                                  className="inline-flex shrink-0 text-danger"
+                                >
+                                  <CircleAlertIcon className="size-4" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                {failedRequestError}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell
                         variant="action"
@@ -620,6 +760,43 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
           )}
         </CardContent>
       </Card>
+      <SelectedActionBar selectedCount={selectedCount} onClearSelection={clearSelection}>
+        <Button
+          variant="success"
+          size="xs"
+          onClick={() => setBulkAction(BulkChangeRequestAction.Approve)}
+        >
+          <CheckIcon />
+          Approve
+        </Button>
+        <Button
+          variant="danger"
+          size="xs"
+          onClick={() => setBulkAction(BulkChangeRequestAction.Reject)}
+        >
+          <XIcon />
+          Reject
+        </Button>
+        <Button
+          variant="project"
+          size="xs"
+          onClick={() => setBulkAction(BulkChangeRequestAction.Merge)}
+        >
+          <GitMergeIcon />
+          Merge
+        </Button>
+      </SelectedActionBar>
+      <BulkReviewChangeRequestsDialog
+        isOpen={Boolean(bulkAction)}
+        onOpenChange={(open) => {
+          if (!open) setBulkAction(null);
+        }}
+        projectId={projectId}
+        requests={selectedRequestList}
+        initialAction={bulkAction ?? BulkChangeRequestAction.Approve}
+        environmentNamesBySlug={environmentNamesBySlug}
+        onComplete={handleBulkComplete}
+      />
       <SecretApprovalRequestChanges
         approvalRequestId={requestId || ""}
         isOpen={Boolean(requestId)}
