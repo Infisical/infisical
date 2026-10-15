@@ -20,6 +20,7 @@ import {
   Button,
   Card,
   CardContent,
+  DocumentationLinkBadge,
   IconButton,
   Separator,
   Skeleton,
@@ -306,12 +307,7 @@ export const TabbedOverview = ({
           {billing.activeProductCount === 1 ? "product" : "products"}
         </span>
         {licenseState === "unlicensed" && (
-          <Button variant="outline" size="xs" asChild>
-            <a href={SELF_HOSTED_LICENSE_DOCS_URL} target="_blank" rel="noopener noreferrer">
-              Activate License
-              <ExternalLink />
-            </a>
-          </Button>
+          <DocumentationLinkBadge href={SELF_HOSTED_LICENSE_DOCS_URL} />
         )}
         <Button variant="outline" size="xs" asChild>
           <a href={SELF_HOSTED_CONTACT_SALES_URL} target="_blank" rel="noopener noreferrer">

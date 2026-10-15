@@ -30,35 +30,34 @@ export const SELF_HOSTED_LICENSE_COPY: Record<SelfHostedLicenseState, SelfHosted
     methodHint: "No active license",
     title: "No License Active",
     detail:
-      "This instance runs without a license, so paid features are unavailable. Contact sales for a license key, then set it as LICENSE_KEY on the server to activate it.",
-    pageDescription: "View your products and usage. This instance has no active license.",
-    inactiveProductNote: "Requires a license. Contact sales for a self-hosted license key."
+      "No license is active, so paid features stay locked until you set LICENSE_KEY on the server.",
+    pageDescription: "View products and usage for this unlicensed instance.",
+    inactiveProductNote: "Requires a self-hosted license key from sales."
   },
   online: {
     method: "License",
     methodHint: "Synced from Infisical",
     title: "Set by Your License",
     detail:
-      "Products and limits come from your Infisical license. Contact sales to change your plan; updates sync to this instance automatically.",
-    pageDescription: "View your products and usage. Your plan is set by your Infisical license.",
-    inactiveProductNote: "Not included in your license. Contact sales to add it."
+      "Products and limits sync from your Infisical license, so contact sales to change them.",
+    pageDescription: "View products and usage set by your Infisical license.",
+    inactiveProductNote: "Not in your license, so contact sales to add it."
   },
   offline: {
     method: "Offline License",
     methodHint: "Set by your license key",
     title: "Offline License",
     detail:
-      "This instance uses an offline license, so plan changes aren't available in-product. Contact sales for an updated license key, then replace LICENSE_KEY on the server and restart it.",
+      "To change your plan, get an updated key from sales and replace LICENSE_KEY on the server.",
     pageDescription: "Your plan is set by an offline license.",
-    inactiveProductNote: "Not included in your offline license. Contact sales for an updated key."
+    inactiveProductNote: "Not in your offline license, so contact sales for an updated key."
   },
   unavailable: {
     method: "License",
     methodHint: "Details unavailable",
     title: "License Details Unavailable",
-    detail:
-      "License details for this instance couldn't be read. Your products are unaffected. Self-hosted plans are set by a license key; contact sales to get or update one.",
+    detail: "License details couldn't be read, so contact sales to get or update a license key.",
     pageDescription: "View your products and usage.",
-    inactiveProductNote: "Not active on this instance. Contact sales for licensing options."
+    inactiveProductNote: "Not active on this instance, so contact sales for licensing options."
   }
 };
