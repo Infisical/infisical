@@ -1,6 +1,4 @@
-import { MultiValue } from "react-select";
-
-import { FilterableSelect } from "@app/components/v3";
+import { Combobox } from "@app/components/v3";
 import { ProxiedServiceSubstitutionSurface } from "@app/hooks/api/proxiedServices/enums";
 
 const SURFACE_LABELS: Record<ProxiedServiceSubstitutionSurface, string> = {
@@ -27,14 +25,13 @@ type Props = {
 };
 
 export const SurfaceSelect = ({ value, onChange, isDisabled, isError }: Props) => (
-  <FilterableSelect
-    isMulti
+  <Combobox
+    multiple
     value={SURFACE_OPTIONS.filter((option) => value.includes(option.value))}
     options={SURFACE_OPTIONS}
-    onChange={(newValue) =>
-      onChange((newValue as MultiValue<SurfaceOption>).map((option) => option.value))
-    }
+    onValueChange={(newValue) => onChange(newValue.map((option) => option.value))}
     placeholder="Select surfaces"
+    searchAriaLabel="Select surfaces"
     getOptionValue={(option) => option.value}
     getOptionLabel={(option) => option.label}
     isDisabled={isDisabled}
