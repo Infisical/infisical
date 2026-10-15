@@ -179,10 +179,7 @@ const TagsInput = React.forwardRef<HTMLInputElement, TagsInputProps>(
                 <ComboboxPrimitive.Chip
                   key={tag}
                   data-invalid={isInvalid || undefined}
-                  className={cn(
-                    COMBOBOX_CHIP_CLASS,
-                    isInvalid && "bg-danger/15 text-danger ring-1 ring-danger/40 ring-inset"
-                  )}
+                  className={cn(COMBOBOX_CHIP_CLASS, isInvalid && "bg-danger/15 text-danger")}
                 >
                   <span className={COMBOBOX_CHIP_LABEL_CLASS}>{tag}</span>
                   {isInvalid && <span className="sr-only">(invalid)</span>}
