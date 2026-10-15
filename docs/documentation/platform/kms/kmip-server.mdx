@@ -43,13 +43,13 @@ The server's TLS certificate is valid for one year, and the KMIP server renews i
 
 <Steps>
   <Step>
-    On the KMIP server's page, in the **Deployment** section, pick a tab:
+    On the KMIP server's page, go to the **Deployment** section. If the KMIP server uses **Token Auth**, select **Generate Deploy Command**.
+  </Step>
+  <Step>
+    Pick a tab, and copy the command:
 
     - **System Service**: Installs the KMIP server as a systemd service that starts with the machine (use this in production)
     - **CLI**: Runs the KMIP server in your terminal
-  </Step>
-  <Step>
-    Select **Generate Deploy Command**, and copy the command.
   </Step>
   <Step>
     Add `--listen-address="0.0.0.0:5696"` to the command. Without it, the KMIP server listens only on `localhost:5696`, and clients on other machines can't connect.
@@ -67,6 +67,10 @@ The server's TLS certificate is valid for one year, and the KMIP server renews i
     ```
 
     With **AWS Auth**, the command uses `--enroll-method=aws` and `--kmip-server-id=<kmip-server-id>` instead of a token.
+
+    <Note>
+      If you use EU Cloud or self-host Infisical, `--domain` is `https://eu.infisical.com` or the address of your instance. The command you copied already sets it.
+    </Note>
   </Step>
   <Step>
     Check the KMIP server's logs for a `Listening on` line and a `Next certificate renewal scheduled in` line. For a systemd install, run:

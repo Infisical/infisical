@@ -5,16 +5,17 @@ description: "Move key material in and out of Infisical KMS."
 
 You can export a key's key material to back it up, or to move the key to another project or Infisical instance. To move keys in, import them from a JSON file.
 
+You can export a key only if **Allow Export** was turned on when the key was created. Keys that you can't export show a lock icon in the key list.
+
 <Warning>
   An export contains the key material in plain text. Anyone who has the file can use the keys, so store it as carefully as the keys themselves.
 </Warning>
 
-## Prerequisites
-
-- The **Admin** role in the KMS project, or a [custom role](/documentation/platform/access-controls/role-based-access-controls) that can export keys
-- Keys created with **Allow Export** turned on (if **Allow Export** was off when a key was created, no one can export its key material, and the key shows a lock icon in the key list)
-
 ## Export one key
+
+<Note>
+  To export keys, you need the **Admin** role in the KMS project, or a [custom role](/documentation/platform/access-controls/role-based-access-controls) that can export keys.
+</Note>
 
 <Steps>
   <Step>
@@ -30,6 +31,10 @@ To get a key's private key or key material through the API, call [the private ke
 A Sign/Verify key's public key isn't secret, so any member who can see the key can get its public key, even if the key doesn't allow export. To get the public key through the API, call [the public key endpoint](/api-reference/endpoints/kms/keys/public-key).
 
 ## Export several keys
+
+<Note>
+  To export keys, you need the **Admin** role in the KMS project, or a custom role that can export keys.
+</Note>
 
 You can export up to 100 keys into one JSON file. You can't select disabled keys, or keys that don't allow export.
 
@@ -47,6 +52,10 @@ You can export up to 100 keys into one JSON file. You can't select disabled keys
 Infisical downloads a file named `kms-keys-export-<date>.json`. To export keys through the API, call [the bulk export endpoint](/api-reference/endpoints/kms/keys/bulk-export-private-keys).
 
 ## Import keys
+
+<Note>
+  To import keys, you need the **Admin** or **Member** role in the KMS project, or a custom role that can create keys.
+</Note>
 
 <Steps>
   <Step>
@@ -115,7 +124,11 @@ For an Encrypt/Decrypt or Generate/Verify MAC key, the key material, Base64 enco
 </ResponseField>
 
 <ResponseField name="privateKey" type="string">
-For a Sign/Verify key, the private key, Base64 encoded. Infisical derives the public key from it, so you don't need to include `publicKey`.
+For a Sign/Verify key, the private key in PKCS#8 format, Base64 encoded.
+
+<Note>
+Use PEM encoding for an RSA, ECC, or Ed25519 key, and DER encoding for an ML-DSA key. Infisical derives the public key from the private key, so you don't need to include `publicKey`.
+</Note>
 </ResponseField>
 
 <ResponseField name="isExportable" type="boolean" default="true">

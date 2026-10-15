@@ -85,7 +85,7 @@ A project's roles decide what each member and machine identity can do with its k
 | **Admin** | Everything, including exporting key material |
 | **Member** | Everything except exporting key material |
 | **Viewer** | See keys, but not use them |
-| **Cryptographic Operator** | Use keys for encryption, signing, and MACs, but not see, create, or change them |
+| **Cryptographic Operator** | Use keys for encryption, signing, and MACs through the API, but not see, create, or change them |
 
 Give an application's [machine identity](/documentation/platform/identities/machine-identities) the **Cryptographic Operator** role, so the application can use your keys but can't change them. To set up your own permissions, create a [custom role](/documentation/platform/access-controls/role-based-access-controls).
 
