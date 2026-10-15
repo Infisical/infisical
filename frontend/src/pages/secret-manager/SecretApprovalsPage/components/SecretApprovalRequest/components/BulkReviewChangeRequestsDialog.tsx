@@ -146,7 +146,13 @@ const BulkReviewChangeRequestsDialogContent = ({
       <span className="inline-flex items-center gap-1.5 text-danger">
         <Tooltip>
           <TooltipTrigger asChild>
-            <span role="img" aria-label={result.errorMessage} className="inline-flex">
+            <span
+              role="img"
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable so keyboard users can reveal the failure reason
+              tabIndex={0}
+              aria-label={result.errorMessage}
+              className="inline-flex rounded-sm outline-0 focus-visible:ring-2 focus-visible:ring-ring"
+            >
               <CircleXIcon className="size-4" />
             </span>
           </TooltipTrigger>
