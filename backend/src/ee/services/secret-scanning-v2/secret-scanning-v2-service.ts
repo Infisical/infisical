@@ -488,6 +488,7 @@ export const secretScanningV2ServiceFactory = ({
 
     // Stored credentials are what tells us a webhook exists, so they are added or cleared alongside it.
     let createdCredentials: TSecretScanningDataSourceCredentials;
+    let removedCredentials: TSecretScanningDataSourceCredentials;
     let encryptedCredentials: Buffer | null | undefined;
 
     if (isWebhookRequired && !dataSource.encryptedCredentials) {
@@ -501,12 +502,10 @@ export const secretScanningV2ServiceFactory = ({
         encryptedCredentials = encryptor({ plainText: Buffer.from(JSON.stringify(createdCredentials)) }).cipherTextBlob;
       }
     } else if (!isWebhookRequired && dataSource.encryptedCredentials) {
-      await factory.teardown({
-        dataSource: dataSourceWithConnection,
-        credentials: JSON.parse(
-          decryptor({ cipherTextBlob: dataSource.encryptedCredentials }).toString()
-        ) as TSecretScanningDataSourceCredentials
-      });
+      // The webhook is only removed once the update is saved, so a rejected update leaves it working.
+      removedCredentials = JSON.parse(
+        decryptor({ cipherTextBlob: dataSource.encryptedCredentials }).toString()
+      ) as TSecretScanningDataSourceCredentials;
       encryptedCredentials = null;
     }
 
@@ -529,6 +528,18 @@ export const secretScanningV2ServiceFactory = ({
       }
 
       throw err;
+    }
+
+    if (removedCredentials) {
+      try {
+        await factory.teardown({ dataSource: dataSourceWithConnection, credentials: removedCredentials });
+      } catch (error) {
+        // The update is saved and the credentials are cleared, so pushes from a leftover webhook are ignored.
+        logger.error(
+          error,
+          `secretScanningV2Service: Failed to remove webhook after update [dataSourceId=${dataSourceId}] [projectId=${dataSource.projectId}]`
+        );
+      }
     }
 
     return updatedDataSource;
