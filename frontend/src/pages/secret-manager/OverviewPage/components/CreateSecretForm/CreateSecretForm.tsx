@@ -61,6 +61,7 @@ import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { SecretType } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
+import { useBatchStoreApi } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
 import {
   overviewCountBucket,
@@ -264,6 +265,7 @@ export const CreateSecretForm = ({
 
   const { mutateAsync: createSecretV3 } = useCreateSecretV3();
   const { mutateAsync: createCommit } = useCreateCommit();
+  const batchStore = useBatchStoreApi();
   const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
   const { data: projectTags, isPending: isTagsLoading } = useGetWsTags(
     canReadTags ? projectId : ""
@@ -331,6 +333,24 @@ export const CreateSecretForm = ({
       countBucket: overviewCountBucket(secrets.length * selectedEnv.length)
     };
     const attempt = telemetry.startFlow(flow);
+    const reservedByPendingRename = new Set(
+      batchStore
+        .getState()
+        .pendingChanges.secrets.flatMap((change) =>
+          change.type === PendingAction.Update && change.newSecretName ? [change.newSecretName] : []
+        )
+    );
+    const conflictingKeys = secrets
+      .map((secret) => secret.key)
+      .filter((key) => reservedByPendingRename.has(key));
+    if (conflictingKeys.length) {
+      attempt.flow({ ...flow, phase: "failed" });
+      createNotification({
+        type: "error",
+        text: `A pending rename already uses ${conflictingKeys.map((key) => `"${key}"`).join(", ")}. Save or discard that change first.`
+      });
+      return;
+    }
     await Promise.all(
       selectedEnv.map(async (env) => {
         if (secretPath !== "/") {

@@ -2325,7 +2325,7 @@ const OverviewPageContent = () => {
 
     const recentKeys = new Set(recentQuickAddKeys);
     const result = secKeys.filter((key) => !recentKeys.has(key));
-    const searchLower = searchFilter.toLowerCase();
+    const searchLower = searchFilter.trim().toLowerCase();
     const matchesSearch = (key: string) => !searchLower || key.toLowerCase().includes(searchLower);
     const pendingCreateKeys = new Set<string>();
     pendingChanges.secrets.forEach((change) => {
@@ -2336,7 +2336,7 @@ const OverviewPageContent = () => {
       }
     });
     recentQuickAddKeys.forEach((key) => {
-      if ((secKeys.includes(key) || pendingCreateKeys.has(key)) && matchesSearch(key))
+      if (secKeys.includes(key) || (pendingCreateKeys.has(key) && matchesSearch(key)))
         result.push(key);
     });
     return result;
@@ -2349,6 +2349,16 @@ const OverviewPageContent = () => {
     isFilteredByResources,
     filter.secret
   ]);
+
+  const quickAddReservedKeys = useMemo(
+    () => [
+      ...mergedSecKeys,
+      ...pendingChanges.secrets.flatMap((change) =>
+        change.type === PendingAction.Update && change.newSecretName ? [change.newSecretName] : []
+      )
+    ],
+    [mergedSecKeys, pendingChanges.secrets]
+  );
 
   const getSecretByKeyWithPending = useCallback(
     (env: string, key: string) => {
@@ -4314,7 +4324,7 @@ const OverviewPageContent = () => {
                               autoQueueOnBlur={isSingleEnvView}
                               activityId={getTableRowActivityId("quick-add", secretPath)}
                               environments={visibleEnvs.map((env) => env.slug)}
-                              existingSecretKeys={mergedSecKeys}
+                              existingSecretKeys={quickAddReservedKeys}
                               onActivityChange={handleTableRowActivityChange}
                               saveLabel={quickAddSaveLabel}
                               onCreateSecret={(environment, key, value, comment, isDirectSave) => {

@@ -1029,7 +1029,7 @@ export const SecretEditTableRow = ({
   const handleEditShortcut = useSecretInputActionShortcuts({
     isActive: isBatchMode ? isPendingBatchChange || isDirty : isDirtyState,
     isDisabled: isSubmitting || isSavingPendingChange,
-    isSaveDisabled: isCreatable ? !canCreate : !canEditSecretValue,
+    isSaveDisabled: isCreatable || isPendingCreate ? !canCreate : !canEditSecretValue,
     onSave: isBatchMode ? savePendingRow : submitForm,
     onUndo: handleFormReset
   });
