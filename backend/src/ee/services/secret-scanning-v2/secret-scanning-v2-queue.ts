@@ -193,7 +193,7 @@ export const secretScanningV2QueueServiceFactory = ({
       // under its current name and a deleted one is skipped.
       const rawResources = await factory.listRawResources(dataSource);
 
-      await secretScanningV2DAL.resources.transaction(async (tx) => {
+      const scans = await secretScanningV2DAL.resources.transaction(async (tx) => {
         // Read on the primary, since a resource added just before this call may not have reached the replica, and
         // locked, so two requests can't both see no in-flight scan and queue the same resource twice.
         const existingResources = await secretScanningV2DAL.resources.findByDataSourceIdForUpdate(dataSource.id, tx);
@@ -247,9 +247,9 @@ export const secretScanningV2QueueServiceFactory = ({
         const scannedResourceIds = new Set(inFlightScans.map((scan) => scan.resourceId));
         const resourcesToScan = resources.filter((resource) => !scannedResourceIds.has(resource.id));
 
-        if (!resourcesToScan.length) return;
+        if (!resourcesToScan.length) return [];
 
-        const scans = await secretScanningV2DAL.scans.insertMany(
+        return secretScanningV2DAL.scans.insertMany(
           resourcesToScan.map((resource) => ({
             resourceId: resource.id,
             type: SecretScanningScanType.Historical,
@@ -257,26 +257,28 @@ export const secretScanningV2QueueServiceFactory = ({
           })),
           tx
         );
-
-        for (const scan of scans) {
-          // eslint-disable-next-line no-await-in-loop
-          await queueService.queue(
-            QueueName.SecretScanningV2FullScan,
-            QueueJobs.SecretScanningV2FullScan,
-            {
-              scanId: scan.id,
-              resourceId: scan.resourceId,
-              dataSourceId: dataSource.id
-            },
-            {
-              jobId: scan.id,
-              removeOnFail: true,
-              attempts: FULL_SCAN_ATTEMPTS,
-              backoff: { type: "fixed", delay: FULL_SCAN_RETRY_DELAY }
-            }
-          );
-        }
       });
+
+      // Queued after commit: a worker that picks the job up first would not find the scan, and would abort it as
+      // deleted, leaving it queued forever.
+      for (const scan of scans) {
+        // eslint-disable-next-line no-await-in-loop
+        await queueService.queue(
+          QueueName.SecretScanningV2FullScan,
+          QueueJobs.SecretScanningV2FullScan,
+          {
+            scanId: scan.id,
+            resourceId: scan.resourceId,
+            dataSourceId: dataSource.id
+          },
+          {
+            jobId: scan.id,
+            removeOnFail: true,
+            attempts: FULL_SCAN_ATTEMPTS,
+            backoff: { type: "fixed", delay: FULL_SCAN_RETRY_DELAY }
+          }
+        );
+      }
     } catch (error) {
       logger.error(error, `Failed to queue full-scan for data source with ID "${dataSource.id}"`);
 

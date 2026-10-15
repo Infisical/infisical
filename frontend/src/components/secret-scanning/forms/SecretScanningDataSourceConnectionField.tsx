@@ -100,7 +100,6 @@ export const SecretScanningDataSourceConnectionField = ({
                 onValueChange={(newValue) => {
                   if (newValue.id === "_create") {
                     handlePopUpOpen("addConnection");
-                    onChange(null);
                     // store for oauth callback connections
                     localStorage.setItem(
                       "secretScanningDataSourceFormData",
@@ -176,7 +175,7 @@ export const SecretScanningDataSourceConnectionField = ({
         app={app}
         onComplete={(connection) => {
           if (connection) {
-            setValue("connection", connection);
+            setValue("connection", connection, { shouldDirty: true, shouldValidate: true });
           }
         }}
       />

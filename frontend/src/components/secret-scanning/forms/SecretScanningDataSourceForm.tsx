@@ -206,6 +206,7 @@ type Props = {
   onComplete: (dataSource: TSecretScanningDataSource) => void;
   onCancel: () => void;
   onDirtyChange: (isDirty: boolean) => void;
+  onSubmittingChange?: (isSubmitting: boolean) => void;
 };
 
 export const SecretScanningDataSourceForm = ({
@@ -214,7 +215,8 @@ export const SecretScanningDataSourceForm = ({
   initialFormData,
   onComplete,
   onCancel,
-  onDirtyChange
+  onDirtyChange,
+  onSubmittingChange
 }: Props) => {
   const { currentProject } = useProject();
   const createDataSource = useCreateSecretScanningDataSource();
@@ -252,6 +254,11 @@ export const SecretScanningDataSourceForm = ({
     onDirtyChange(hasUnsavedChanges);
     return () => onDirtyChange(false);
   }, [hasUnsavedChanges, onDirtyChange]);
+
+  useEffect(() => {
+    onSubmittingChange?.(isSubmitting);
+    return () => onSubmittingChange?.(false);
+  }, [isSubmitting, onSubmittingChange]);
 
   const steps = getSteps(type, isEdit);
   const firstStep = isEdit ? FormStep.Connection : FormStep.Provider;

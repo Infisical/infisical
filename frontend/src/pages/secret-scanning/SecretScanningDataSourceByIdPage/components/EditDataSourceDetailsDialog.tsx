@@ -85,7 +85,7 @@ export const EditDataSourceDetailsDialog = ({ dataSource, isOpen, onOpenChange }
           requestDiscard();
         }}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg" isPending={isSubmitting}>
           <DialogHeader>
             <DialogTitle>Edit Details</DialogTitle>
             <DialogDescription>
@@ -136,7 +136,12 @@ export const EditDataSourceDetailsDialog = ({ dataSource, isOpen, onOpenChange }
               />
             </FieldGroup>
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={requestDiscard}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={requestDiscard}
+                isDisabled={isSubmitting}
+              >
                 Cancel
               </Button>
               <Button

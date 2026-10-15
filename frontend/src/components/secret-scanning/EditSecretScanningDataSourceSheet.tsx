@@ -19,6 +19,7 @@ type Props = {
 export const EditSecretScanningDataSourceSheet = ({ isOpen, onOpenChange, dataSource }: Props) => {
   const popupRegistry = useSecretScanningDataSourcePopupRegistry();
   const [isDirty, setIsDirty] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const closeSheet = useCallback(() => {
     setIsDirty(false);
@@ -40,7 +41,11 @@ export const EditSecretScanningDataSourceSheet = ({ isOpen, onOpenChange, dataSo
           requestDiscard();
         }}
       >
-        <SheetContent size="wide" onEscapeKeyDown={popupRegistry.onEscapeKeyDown}>
+        <SheetContent
+          size="wide"
+          isPending={isSubmitting}
+          onEscapeKeyDown={popupRegistry.onEscapeKeyDown}
+        >
           {dataSource && (
             <SecretScanningDataSourcePopupContext.Provider value={popupRegistry.onPopupOpenChange}>
               <SecretScanningDataSourceForm
@@ -49,6 +54,7 @@ export const EditSecretScanningDataSourceSheet = ({ isOpen, onOpenChange, dataSo
                 onComplete={closeSheet}
                 onCancel={requestDiscard}
                 onDirtyChange={setIsDirty}
+                onSubmittingChange={setIsSubmitting}
               />
             </SecretScanningDataSourcePopupContext.Provider>
           )}

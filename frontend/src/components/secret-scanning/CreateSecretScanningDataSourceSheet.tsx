@@ -20,6 +20,7 @@ export const CreateSecretScanningDataSourceSheet = ({ isOpen, onOpenChange }: Pr
   const popupRegistry = useSecretScanningDataSourcePopupRegistry();
   const [initialFormData, setInitialFormData] = useState<Partial<TSecretScanningDataSourceForm>>();
   const [isDirty, setIsDirty] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     location: {
@@ -79,7 +80,11 @@ export const CreateSecretScanningDataSourceSheet = ({ isOpen, onOpenChange }: Pr
           requestDiscard();
         }}
       >
-        <SheetContent size="wide" onEscapeKeyDown={popupRegistry.onEscapeKeyDown}>
+        <SheetContent
+          size="wide"
+          isPending={isSubmitting}
+          onEscapeKeyDown={popupRegistry.onEscapeKeyDown}
+        >
           <SecretScanningDataSourcePopupContext.Provider value={popupRegistry.onPopupOpenChange}>
             <SecretScanningDataSourceForm
               initialType={initialFormData?.type}
@@ -87,6 +92,7 @@ export const CreateSecretScanningDataSourceSheet = ({ isOpen, onOpenChange }: Pr
               onComplete={closeSheet}
               onCancel={requestDiscard}
               onDirtyChange={setIsDirty}
+              onSubmittingChange={setIsSubmitting}
             />
           </SecretScanningDataSourcePopupContext.Provider>
         </SheetContent>
