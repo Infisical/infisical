@@ -613,7 +613,7 @@
               "documentation/platform/kms/overview",
               "documentation/platform/kms/concepts",
               {
-                "group": "Keys",
+                "group": "Key management",
                 "pages": [
                   "documentation/platform/kms/keys",
                   "documentation/platform/kms/encrypt-decrypt",
@@ -4450,7 +4450,7 @@
                 "boost": 0.25,
                 "pages": [
                   {
-                    "group": "Key management",
+                    "group": "Keys",
                     "pages": [
                       "api-reference/endpoints/kms/keys/list",
                       "api-reference/endpoints/kms/keys/get-by-id",
