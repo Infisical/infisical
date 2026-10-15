@@ -73,6 +73,7 @@ const awsRegions = [
   { name: "Asia Pacific (Sydney)", slug: "ap-southeast-2" },
   { name: "Asia Pacific (Tokyo)", slug: "ap-northeast-1" },
   { name: "Canada (Central)", slug: "ca-central-1" },
+  { name: "Mexico (Central)", slug: "mx-central-1" },
   { name: "Europe (Frankfurt)", slug: "eu-central-1" },
   { name: "Europe (Ireland)", slug: "eu-west-1" },
   { name: "Europe (London)", slug: "eu-west-2" },
