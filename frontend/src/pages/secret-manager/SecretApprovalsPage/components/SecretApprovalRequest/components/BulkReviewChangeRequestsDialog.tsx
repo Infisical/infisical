@@ -13,11 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   Field,
-  FieldDescription,
   FieldLabel,
-  Label,
-  RadioGroup,
-  RadioGroupItem,
   Spinner,
   Table,
   TableBody,
@@ -60,11 +56,11 @@ const ACTION_OPTIONS = [
 
 const ACTION_DESCRIPTIONS: Record<BulkChangeRequestAction, string> = {
   [BulkChangeRequestAction.Approve]:
-    "Adds your approving review to each request. Requests you can't review are reported below.",
+    "Adds your approving review to each request. Each request is checked against its own policy and your permissions.",
   [BulkChangeRequestAction.Reject]:
-    "Adds your rejecting review to each request. Requests you can't review are reported below.",
+    "Adds your rejecting review to each request. Each request is checked against its own policy and your permissions.",
   [BulkChangeRequestAction.Merge]:
-    "Merges each request that has its required approvals. Requests that would need a policy bypass are reported below and must be merged individually."
+    "Merges each request that has its required approvals. Requests that would need a policy bypass are reported and must be merged individually."
 };
 
 const ACTION_RESULT_LABELS: Record<BulkChangeRequestAction, string> = {
@@ -105,7 +101,7 @@ const BulkReviewChangeRequestsDialogContent = ({
   isPending
 }: ContentProps) => {
   const [requests] = useState(selectedRequests);
-  const [action, setAction] = useState(initialAction);
+  const action = initialAction;
   const [comment, setComment] = useState("");
   const [results, setResults] = useState<Record<string, TBulkChangeRequestResult> | null>(null);
 
@@ -169,98 +165,83 @@ const BulkReviewChangeRequestsDialogContent = ({
 
   const selectedOption = ACTION_OPTIONS.find(({ value }) => value === action) ?? ACTION_OPTIONS[0];
   const failedResults = Object.values(results ?? {}).filter(({ isSuccess }) => !isSuccess);
+  const succeededCount = Object.keys(results ?? {}).length - failedResults.length;
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-6">
       <DialogHeader>
-        <DialogTitle>Review Change Requests</DialogTitle>
-        <DialogDescription>
-          Apply one action to {requests.length} selected change request
-          {requests.length === 1 ? "" : "s"}. Each request is checked against its own policy and
-          your permissions.
-        </DialogDescription>
+        <DialogTitle>
+          {selectedOption.label} {requests.length} Change Request
+          {requests.length === 1 ? "" : "s"}
+        </DialogTitle>
+        <DialogDescription>{ACTION_DESCRIPTIONS[action]}</DialogDescription>
       </DialogHeader>
-      <div className="max-h-72 min-h-0 overflow-y-auto rounded-md border border-border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Change</TableHead>
-              <TableHead>Environment</TableHead>
-              <TableHead>Secret Path</TableHead>
-              {!results && <TableHead>Approvals</TableHead>}
-              <TableHead>Result</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {requests.map((request) => {
-              const environmentName =
-                environmentNamesBySlug[request.environment] ?? request.environment;
-              return (
-                <TableRow key={request.id}>
-                  <TableCell>
-                    {generateCommitText(request.commits, request.isReplicated, true)}
-                  </TableCell>
-                  <TableCell title={environmentName}>{environmentName}</TableCell>
-                  <TableCell title={request.policy.secretPath}>
-                    {request.policy.secretPath}
-                  </TableCell>
-                  {!results && (
-                    <TableCell>
-                      {getApprovedCount(request)}/{request.policy.approvals}
-                    </TableCell>
-                  )}
-                  <TableCell isWrappable>{renderResult(request.id)}</TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
-      {failedResults.length > 0 && (
-        <p className="text-sm text-muted">
-          Failed requests stay selected so you can open them individually or try again.
-        </p>
-      )}
-      {!results && (
-        <div className="flex shrink-0 flex-col gap-4">
-          <Field>
-            <FieldLabel>Action</FieldLabel>
-            <RadioGroup
-              value={action}
-              onValueChange={(value) => setAction(value as BulkChangeRequestAction)}
-              className="grid-cols-3"
-              disabled={isPending}
-            >
-              {ACTION_OPTIONS.map(({ value, label, icon: Icon, variant }) => {
-                const id = `bulk-change-request-action-${value}`;
-                return (
-                  <Button key={value} variant={variant} asChild isFullWidth>
-                    <Label htmlFor={id} className="justify-start">
-                      <RadioGroupItem id={id} value={value} />
-                      <Icon />
-                      {label}
-                    </Label>
-                  </Button>
-                );
-              })}
-            </RadioGroup>
-            <FieldDescription>{ACTION_DESCRIPTIONS[action]}</FieldDescription>
-          </Field>
-          {action !== BulkChangeRequestAction.Merge && (
-            <Field>
-              <FieldLabel htmlFor="bulk-change-request-comment">Comment (optional)</FieldLabel>
-              <TextArea
-                id="bulk-change-request-comment"
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Leave a comment on each review..."
-                maxLength={1000}
-                rows={3}
-                disabled={isPending}
-              />
-            </Field>
+      {results && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <Badge variant="success">
+            <CheckIcon />
+            {succeededCount} {ACTION_RESULT_LABELS[action].toLowerCase()}
+          </Badge>
+          {failedResults.length > 0 && (
+            <Badge variant="danger">
+              <CircleXIcon />
+              {failedResults.length} failed
+            </Badge>
+          )}
+          {failedResults.length > 0 && (
+            <span className="text-muted">
+              Failed requests stay selected so you can open them individually or try again.
+            </span>
           )}
         </div>
+      )}
+      <Table containerClassName="max-h-72 overflow-y-auto">
+        <TableHeader sticky>
+          <TableRow>
+            <TableHead>Change</TableHead>
+            <TableHead>Environment</TableHead>
+            <TableHead>Secret Path</TableHead>
+            {!results && <TableHead>Approvals</TableHead>}
+            <TableHead>Result</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {requests.map((request) => {
+            const environmentName =
+              environmentNamesBySlug[request.environment] ?? request.environment;
+            return (
+              <TableRow key={request.id}>
+                <TableCell>
+                  {generateCommitText(request.commits, request.isReplicated, true)}
+                </TableCell>
+                <TableCell title={environmentName}>{environmentName}</TableCell>
+                <TableCell title={request.policy.secretPath}>{request.policy.secretPath}</TableCell>
+                {!results && (
+                  <TableCell>
+                    {getApprovedCount(request)}/{request.policy.approvals}
+                  </TableCell>
+                )}
+                <TableCell isWrappable className="max-w-80">
+                  {renderResult(request.id)}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+      {!results && action !== BulkChangeRequestAction.Merge && (
+        <Field>
+          <FieldLabel htmlFor="bulk-change-request-comment">Comment (optional)</FieldLabel>
+          <TextArea
+            id="bulk-change-request-comment"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Leave a comment on each review..."
+            maxLength={1000}
+            rows={3}
+            disabled={isPending}
+          />
+        </Field>
       )}
       <DialogFooter>
         {results ? (
