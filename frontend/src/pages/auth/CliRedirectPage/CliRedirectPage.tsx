@@ -72,11 +72,12 @@ export const CliRedirectPage = () => {
               Your login was successful, but Infisical couldn&apos;t automatically push your login
               token to the CLI. Please copy the token below and manually provide it to your CLI.
             </p>
-            <InputGroup className="h-auto items-start">
+            <InputGroup>
               <SecretInput
                 variant="plain"
                 value={cliToken as string}
                 isVisible={isTokenVisible}
+                data-slot="input-group-control"
                 containerClassName="px-2.5 py-2 font-mono text-left"
               />
               <InputGroupAddon align="inline-end">
