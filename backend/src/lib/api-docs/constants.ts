@@ -4594,8 +4594,7 @@ export const AGENT_VAULT = {
     isSaved: "False when nothing has been saved, so the defaults apply: session logs on, in default storage.",
     storage:
       "Where session logs are stored: `default`, stored by Infisical, or `external`, an S3 bucket you own. Required when turning session logs on.",
-    defaultStorageConfigured:
-      "Whether default storage is available. Using it also needs a plan that includes it.",
+    defaultStorageConfigured: "Whether default storage is available. Using it also needs a plan that includes it.",
     appConnectionId: "The ID of the AWS connection Infisical uses to write to and read from the bucket.",
     bucket:
       "The name of the S3 bucket. 3 to 63 characters: lowercase letters, numbers, dots and hyphens, starting and ending with a letter or number.",
