@@ -113,7 +113,7 @@ export const SecretScanningDataSourceScanFields = () => {
         description={
           supportsDiscovery
             ? `Automatically enable scanning for new ${pluralNoun} added to ${platform}.`
-            : `Select a group in the previous step to enable this. GitLab only reports new projects through group webhooks.`
+            : "Select a group in the previous step to enable this. GitLab only reports new projects through group webhooks."
         }
       />
     </FieldGroup>

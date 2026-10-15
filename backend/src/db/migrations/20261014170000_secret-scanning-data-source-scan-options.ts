@@ -18,13 +18,13 @@ export async function up(knex: Knex): Promise<void> {
 
   // isAutoScanEnabled gated both the initial full scan and push-triggered scans, so both new flags inherit it.
   // Discovery was implicit in an include list of ["*"], which also picks up repositories added later.
-  await knex(TableName.SecretScanningDataSource).update({
-    isHistoricalScanEnabled: knex.raw(`COALESCE("isAutoScanEnabled", true)`),
-    isScanNewCommitsEnabled: knex.raw(`COALESCE("isAutoScanEnabled", true)`),
-    isDiscoveryEnabled: knex.raw(
-      `COALESCE(config->'includeRepos' @> '["*"]'::jsonb OR config->'includeProjects' @> '["*"]'::jsonb, false)`
-    )
-  });
+  await knex.raw(
+    `UPDATE ?? SET
+       "isHistoricalScanEnabled" = COALESCE("isAutoScanEnabled", true),
+       "isScanNewCommitsEnabled" = COALESCE("isAutoScanEnabled", true),
+       "isDiscoveryEnabled" = COALESCE(config->'includeRepos' @> '["*"]'::jsonb OR config->'includeProjects' @> '["*"]'::jsonb, false)`,
+    [TableName.SecretScanningDataSource]
+  );
 }
 
 export async function down(knex: Knex): Promise<void> {

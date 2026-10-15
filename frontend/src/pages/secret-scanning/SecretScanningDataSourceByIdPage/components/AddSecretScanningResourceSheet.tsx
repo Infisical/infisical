@@ -160,7 +160,7 @@ export const AddSecretScanningResourceSheet = ({ dataSource, isOpen, onOpenChang
           <SheetDescription>
             Enable scanning for a {resourceDetails.singularNoun} from {dataSource.name}.
             {dataSource.isHistoricalScanEnabled &&
-              ` Its full history is scanned as soon as it's added.`}
+              " Its full history is scanned as soon as it's added."}
           </SheetDescription>
         </SheetHeader>
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">

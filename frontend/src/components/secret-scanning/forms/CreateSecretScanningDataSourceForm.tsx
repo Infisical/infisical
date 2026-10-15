@@ -68,7 +68,7 @@ const getDefaultValues = (type: SecretScanningDataSource) =>
     isScanNewCommitsEnabled: true,
     isDiscoveryEnabled: doesDataSourceSupportDiscovery({ type, config: getDefaultConfig(type) }),
     config: getDefaultConfig(type)
-  }) as TSecretScanningDataSourceForm;
+  }) as Partial<TSecretScanningDataSourceForm>;
 
 const CONNECTION_STEP_FIELDS: Record<SecretScanningDataSource, TFormField[]> = {
   [SecretScanningDataSource.GitHub]: ["connection"],
