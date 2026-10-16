@@ -371,6 +371,7 @@ export const certificateRequestServiceFactory = ({
         certificateRequest: {
           status: certificateRequest.status as CertificateRequestStatus,
           certificate: null,
+          certificateChain: null,
           certificateId: null,
           privateKey: null,
           serialNumber: null,
@@ -450,6 +451,7 @@ export const certificateRequestServiceFactory = ({
       certificateRequest: {
         status: certificateRequest.status as CertificateRequestStatus,
         certificate: certBody.certificate,
+        certificateChain: certBody.certificateChain,
         certificateId: certificateRequest.certificate.id,
         privateKey,
         serialNumber: certificateRequest.certificate.serialNumber,

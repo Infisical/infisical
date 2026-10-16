@@ -248,6 +248,7 @@ export type TUnifiedCertificateIssuanceResponse =
 export type TCertificateRequestDetails = {
   status: "pending" | "issued" | "failed" | "pending_approval" | "rejected";
   certificate: string | null;
+  certificateChain: string | null;
   certificateId: string | null;
   privateKey: string | null;
   serialNumber: string | null;
