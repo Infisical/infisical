@@ -102,15 +102,33 @@ using the Token Auth authentication method.
 
   </Step>
   <Step title="Accessing the Infisical API with the identity">
-    To access the Infisical API as the identity, you can use the generated access token from step 2
-    to authenticate with the [Infisical API](/api-reference/overview/introduction).
+    To access the Infisical API as the identity, use the generated access token from step 2
+    as a Bearer token in the `Authorization` header of your requests to the [Infisical API](/api-reference/overview/introduction).
+
+    <Tip>
+      Choose the correct base URL based on your region or hosting setup:
+
+      - For Infisical Cloud US users: `https://app.infisical.com`
+      - For Infisical Cloud EU users: `https://eu.infisical.com`
+      - For self-hosted users: your instance domain (e.g., `https://infisical.example.com`)
+    </Tip>
+
+    For example, call [the identity details endpoint](/api-reference/endpoints/identities/details) to retrieve details about the authenticated identity:
+
+    #### Sample request
+
+    ```bash Request
+    curl --location --request GET 'https://app.infisical.com/api/v1/identities/details' \
+      --header 'Authorization: Bearer <access-token>'
+    ```
 
     <Note>
-      Each identity access token has a time-to-live (TTL) which you can infer from the response of the login operation;
-      the default TTL is `7200` seconds which can be adjusted in the Token Auth configuration.
+      Unlike Universal Auth, Token Auth doesn't involve a login endpoint exchange; the token generated in Step 2 is an access token used directly in API requests.
+
+      Each identity access token has a time-to-live (TTL) configured when Token Auth is attached to the identity (the default TTL is `2592000` seconds / 30 days, which can be adjusted in the Token Auth configuration).
 
       If an identity access token expires, it can no longer authenticate with the Infisical API. In this case,
-      a new access token should be obtained.
+      a new access token should be created under the identity.
     </Note>
 
   </Step>
