@@ -35,9 +35,12 @@ const getSuggestedSyncName = ({
     }
   }
 
-  const environmentSlug = environment?.slug ? slugify(environment.slug, { lowercase: true }) : "";
+  const environmentSlug = environment?.slug
+    ? slugify(environment.slug, { lowercase: true, decamelize: false })
+    : "";
   const prefix = slugify(`${SECRET_SYNC_MAP[destination].name} ${destinationLabel}`, {
-    lowercase: true
+    lowercase: true,
+    decamelize: false
   })
     .slice(0, environmentSlug ? 63 - environmentSlug.length : 64)
     .replace(/-+$/, "");
