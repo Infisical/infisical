@@ -1,11 +1,17 @@
+import { useEffect } from "react";
 import { Outlet, useParams, useRouterState } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
+import {
+  clearSignupTrialIntent,
+  getSignupTrialBillingSearch,
+  getSignupTrialIntent
+} from "@app/components/auth/signupTrialIntent";
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import { Banner } from "@app/components/page-frames/Banner";
 import { PageBannerStack } from "@app/components/page-frames/PageBannerStack";
 import { SidebarInset, SidebarProvider } from "@app/components/v3";
-import { useServerConfig, useSubscription } from "@app/context";
+import { useOrganization, useServerConfig, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useFetchServerStatus } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -60,6 +66,22 @@ export const OrganizationLayout = () => {
 
   const { data: serverDetails, isLoading } = useFetchServerStatus();
   const { subscription } = useSubscription();
+  const { currentOrg } = useOrganization();
+  const billingOrgId = currentOrg.rootOrgId ?? currentOrg.id;
+
+  useEffect(() => {
+    const trialIntent = getSignupTrialIntent();
+    if (!trialIntent?.orgId) return;
+    clearSignupTrialIntent();
+    if (trialIntent.orgId !== billingOrgId) return;
+    const search = new URLSearchParams(
+      getSignupTrialBillingSearch(
+        trialIntent,
+        `${window.location.pathname}${window.location.search}${window.location.hash}`
+      )
+    );
+    window.location.assign(`/organizations/${billingOrgId}/billing?${search.toString()}`);
+  }, [billingOrgId]);
 
   return (
     <>

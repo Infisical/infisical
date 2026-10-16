@@ -11,6 +11,11 @@ import OrgNameStep from "@app/components/auth/OrgNameStep";
 import ProductSelectionStep from "@app/components/auth/ProductSelectionStep";
 import SignupCompleteStep from "@app/components/auth/SignupCompleteStep";
 import { getSignupProduct, SignupProductType } from "@app/components/auth/signupProducts";
+import {
+  bindSignupTrialIntent,
+  getSignupTrialIntent,
+  getSignupTrialProjectType
+} from "@app/components/auth/signupTrialIntent";
 import TeamInviteStep from "@app/components/auth/TeamInviteStep";
 import { PageLoader } from "@app/components/v3";
 import { useSelectOrganization } from "@app/hooks/api/auth/queries";
@@ -44,7 +49,9 @@ export const SignupOnboardingPage = () => {
   const [inviteEmails, setInviteEmails] = useState<string[]>([]);
   const projectCache = useRef<Partial<Record<SignupProductType, Project>>>({});
   // An empty selection means "just exploring".
-  const [selectedProducts, setSelectedProducts] = useState<SignupProductType[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<SignupProductType[]>(() =>
+    getSignupTrialProjectType(getSignupTrialIntent())
+  );
   const [createdProjects, setCreatedProjects] = useState<
     Partial<Record<SignupProductType, Project>>
   >({});
@@ -73,6 +80,7 @@ export const SignupOnboardingPage = () => {
         }
 
         const existingOrgId = orgs[0].id;
+        bindSignupTrialIntent(existingOrgId);
         if (callbackPort) {
           handOffToCli(existingOrgId);
           return;
@@ -98,6 +106,7 @@ export const SignupOnboardingPage = () => {
   }, [selectOrganization, navigate]);
 
   const handleOrgNameComplete = (newOrgId: string) => {
+    bindSignupTrialIntent(newOrgId);
     if (callbackPort) {
       handOffToCli(newOrgId);
       return;

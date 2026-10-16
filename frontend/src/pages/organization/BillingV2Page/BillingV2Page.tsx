@@ -46,7 +46,7 @@ const ORG_PAGE_SIZE = 10;
 // `view` optionally opens the product sheet straight into a sub-view (e.g. the set-commitment flow
 // from the "commit and save" nudge) instead of the default plans view.
 type BillingV2Flow =
-  | { type: "sheet"; prodId: string; view?: "commitment" }
+  | { type: "sheet"; prodId: string; view?: "commitment"; trialTier?: string }
   | { type: "breakdown"; prodId: string; dimensionKey?: string };
 
 export const BillingV2Page = () => {
@@ -89,7 +89,7 @@ export const BillingV2Page = () => {
     isError,
     refetch
   } = useGetBillingV2Overview(selectedOrgId);
-  const { data: catalog = [] } = useGetBillingV2Catalog(selectedOrgId);
+  const { data: catalog = [], isPending: isCatalogPending } = useGetBillingV2Catalog(selectedOrgId);
   const createPortalSession = useCreateBillingV2PortalSession();
   const addPaymentMethod = useAddBillingV2PaymentMethod();
   const confirmTrialPayment = useConfirmBillingV2TrialPayment();
@@ -109,23 +109,30 @@ export const BillingV2Page = () => {
   const trialApprovalUrl = trialApproval?.orgId === selectedOrgId ? trialApproval.url : null;
   const deepLinkSearch = new URLSearchParams(window.location.search);
   const upgradeProduct = deepLinkSearch.get("upgradeProduct");
+  const upgradePlan = deepLinkSearch.get("upgradePlan");
+  const upgradeCycle = deepLinkSearch.get("upgradeCycle");
   const upgradeReturnPath = getSafeUpgradeReturnPath(
     deepLinkSearch.get("upgradeReturnPath"),
     window.location.origin
   );
 
   useEffect(() => {
-    if (
-      flow ||
-      openedUpgradeProduct.current ||
-      !upgradeProduct ||
-      !catalog.some((product) => product.id === upgradeProduct)
-    ) {
+    if (flow || openedUpgradeProduct.current || !upgradeProduct) {
+      return;
+    }
+    const hasProduct = catalog.some((product) => product.id === upgradeProduct);
+    if (upgradePlan) {
+      if (isCatalogPending || (hasProduct && !overview && !isError)) return;
+      if (!hasProduct || isError) {
+        if (upgradeReturnPath) window.location.assign(upgradeReturnPath);
+        return;
+      }
+    } else if (!hasProduct) {
       return;
     }
     openedUpgradeProduct.current = true;
-    setFlow({ type: "sheet", prodId: upgradeProduct });
-  }, [catalog, flow, upgradeProduct]);
+    setFlow({ type: "sheet", prodId: upgradeProduct, trialTier: upgradePlan ?? undefined });
+  }, [catalog, flow, upgradeProduct, upgradePlan, isCatalogPending, overview, isError]);
 
   // Stripe redirects back with ?checkout=success|canceled; surface the outcome and refresh state.
   useEffect(() => {
@@ -167,10 +174,16 @@ export const BillingV2Page = () => {
 
   const close = () => {
     setFlow(null);
+    if (flow?.type === "sheet" && flow.trialTier && upgradeReturnPath) {
+      window.location.assign(upgradeReturnPath);
+      return;
+    }
     if (openedUpgradeProduct.current) {
       const url = new URL(window.location.href);
       url.searchParams.delete("upgradeProduct");
       url.searchParams.delete("upgradeReturnPath");
+      url.searchParams.delete("upgradePlan");
+      url.searchParams.delete("upgradeCycle");
       window.history.replaceState(
         window.history.state,
         "",
@@ -349,6 +362,8 @@ export const BillingV2Page = () => {
           entitlement={overview?.entitlements[flow.prodId]}
           hasActiveSubscription={hasActiveSubscription}
           initialView={flow.view}
+          initialTrialTier={flow.trialTier}
+          showAnnualTrialNote={Boolean(flow.trialTier) && upgradeCycle === "annual"}
           returnPath={upgradeReturnPath ?? window.location.pathname}
           renewsOn={overview?.entitlements[flow.prodId]?.renewsOn ?? null}
           selfServe={overview?.selfServe ?? true}
