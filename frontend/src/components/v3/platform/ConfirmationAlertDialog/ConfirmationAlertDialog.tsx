@@ -28,7 +28,7 @@ type Props = {
   children?: ReactNode;
 };
 
-export const DeleteConfirmDialog = ({
+export const ConfirmationAlertDialog = ({
   isOpen,
   onOpenChange,
   title,
@@ -115,3 +115,9 @@ export const DeleteConfirmDialog = ({
     </AlertDialog>
   );
 };
+
+/**
+ * @deprecated Renamed to `ConfirmationAlertDialog`. Kept so in-flight branches keep compiling;
+ * import `ConfirmationAlertDialog` instead.
+ */
+export const DeleteConfirmDialog = ConfirmationAlertDialog;

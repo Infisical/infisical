@@ -13,7 +13,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DocumentationLinkBadge,
   Tooltip,
   TooltipContent,
@@ -118,7 +118,7 @@ export const MembersSection = () => {
         </CardContent>
       </Card>
       <AddMemberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.removeMember.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("removeMember", isOpen);

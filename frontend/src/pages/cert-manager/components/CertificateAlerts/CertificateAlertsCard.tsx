@@ -25,7 +25,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -461,7 +461,7 @@ export const CertificateAlertsCard = ({
         isReadOnly={alertModal.isReadOnly}
         usedEventTypes={usedEventTypes}
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={deleteAlertModal.isOpen}
         confirmKey="delete"
         title={`Delete Alert "${deleteAlertModal.name ?? ""}"?`}

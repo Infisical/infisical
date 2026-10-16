@@ -4,15 +4,16 @@ import { TrashIcon } from "lucide-react";
 
 import { Alert, AlertDescription } from "../../generic/Alert";
 import { Button } from "../../generic/Button";
-import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
+import { ConfirmationAlertDialog } from "./ConfirmationAlertDialog";
 
 /**
- * DeleteConfirmDialog is the canonical typed-confirmation pattern for destructive deletion and
- * removal actions. Use a plain AlertDialog when typed confirmation is not warranted.
+ * ConfirmationAlertDialog is the canonical typed-confirmation pattern for destructive and other
+ * high-consequence actions, such as delete, revoke, or rotate. Use a plain AlertDialog when typed
+ * confirmation is not warranted.
  */
 const meta = {
-  title: "Platform/Delete Confirm Dialog",
-  component: DeleteConfirmDialog,
+  title: "Platform/Confirmation Alert Dialog",
+  component: ConfirmationAlertDialog,
   parameters: {
     layout: "centered"
   },
@@ -41,14 +42,14 @@ const meta = {
       }
     }
   }
-} satisfies Meta<typeof DeleteConfirmDialog>;
+} satisfies Meta<typeof ConfirmationAlertDialog>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 const PROJECT_NAME = "production-api";
 
-const DeleteConfirmDialogStory = () => {
+const ConfirmationAlertDialogStory = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -57,7 +58,7 @@ const DeleteConfirmDialogStory = () => {
         <TrashIcon />
         Delete Project
       </Button>
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={isOpen}
         onOpenChange={setIsOpen}
         title="Delete project?"
@@ -91,5 +92,5 @@ export const Default: Story = {
       }
     }
   },
-  render: () => <DeleteConfirmDialogStory />
+  render: () => <ConfirmationAlertDialogStory />
 };

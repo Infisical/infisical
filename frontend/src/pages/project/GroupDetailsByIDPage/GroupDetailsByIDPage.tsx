@@ -7,7 +7,7 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -201,7 +201,7 @@ const Page = () => {
           </Empty>
         </div>
       )}
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteGroup.isOpen}
         onOpenChange={(isOpen) => {
           if (!isRemovingGroup) handlePopUpToggle("deleteGroup", isOpen);

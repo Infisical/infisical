@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
-import { DeleteConfirmDialog } from "@app/components/v3";
+import { ConfirmationAlertDialog } from "@app/components/v3";
 import { LegacyPkiResource } from "@app/const/legacyPkiDeprecation";
 import {
   ProjectPermissionPkiSubscriberActions,
@@ -101,7 +101,7 @@ export const PkiSubscriberSection = () => {
         isOpen={popUp.creationBlocked.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("creationBlocked", isOpen)}
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.pkiSubscriberStatus.isOpen}
         title={`Are you sure you want to ${isEnabling ? "enable" : "disable"} the subscriber ${subscriberName}?`}
         description={
@@ -115,7 +115,7 @@ export const PkiSubscriberSection = () => {
         confirmLabel={isEnabling ? "Enable" : "Disable"}
         onConfirm={() => onUpdatePkiSubscriberStatus(subscriberStatusData)}
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePkiSubscriber.isOpen}
         description="This action is irreversible."
         title="Are you sure you want to remove the PKI subscriber?"

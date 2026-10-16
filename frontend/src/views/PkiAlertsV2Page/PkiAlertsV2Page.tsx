@@ -15,7 +15,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
-import { DeleteConfirmDialog } from "@app/components/v3";
+import { ConfirmationAlertDialog } from "@app/components/v3";
 import { useDebounce } from "@app/hooks";
 import { useDeletePkiAlertV2, useGetPkiAlertsV2 } from "@app/hooks/api/pkiAlertsV2";
 
@@ -189,7 +189,7 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
         alertId={viewModal.alertId}
       />
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={deleteModal.isOpen}
         description="This action is irreversible."
         confirmKey="delete"

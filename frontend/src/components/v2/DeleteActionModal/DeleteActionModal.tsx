@@ -24,7 +24,7 @@ type Props = {
 };
 
 /**
- * @deprecated Use the v3 `DeleteConfirmDialog` from `@app/components/v3`. See the overlay recipe in
+ * @deprecated Use the v3 `ConfirmationAlertDialog` from `@app/components/v3`. See the overlay recipe in
  * `components/V3_MIGRATION.md` for the prop mapping.
  */
 export const DeleteActionModal = ({

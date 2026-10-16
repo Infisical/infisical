@@ -46,7 +46,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
   Badge,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -1216,7 +1216,7 @@ export const SecretEditTableRow = ({
 
   const valueContent = (
     <>
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={isModalOpen}
         onOpenChange={setIsModalOpen}
         title={`Are you sure you want to delete ${secretName}?`}

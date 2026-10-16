@@ -96,7 +96,7 @@ import {
   CardContent,
   CardHeader,
   Checkbox,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   Dialog,
   DialogBody,
   DialogContent,
@@ -4818,7 +4818,7 @@ const OverviewPageContent = () => {
           environmentName={singleEnvName}
         />
       )}
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteEnv.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}
         title="Delete Environment"

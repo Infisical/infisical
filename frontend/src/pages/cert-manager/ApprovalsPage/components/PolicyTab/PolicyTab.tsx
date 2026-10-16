@@ -1,5 +1,5 @@
 import { createNotification } from "@app/components/notifications";
-import { AccessRestrictedDialog, DeleteConfirmDialog } from "@app/components/v3";
+import { AccessRestrictedDialog, ConfirmationAlertDialog } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { ApprovalPolicyType, useDeleteApprovalPolicy } from "@app/hooks/api/approvalPolicies";
@@ -61,7 +61,7 @@ export const PolicyTab = () => {
 
       <PoliciesTable handlePopUpOpen={handlePopUpOpen} />
       <PolicyModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePolicy.isOpen}
         description="This action is irreversible."
         confirmKey="delete"

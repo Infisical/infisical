@@ -7,7 +7,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog
+  ConfirmationAlertDialog
 } from "@app/components/v3";
 import { useRemoveUserFromGroup } from "@app/hooks/api";
 import { OrgUser } from "@app/hooks/api/users/types";
@@ -56,7 +56,7 @@ export const UserGroupsSection = ({ orgMembership }: Props) => {
         </CardContent>
       </Card>
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.removeUserFromGroup.isOpen}
         title="Are you sure you want to unassign user from group?"
         description="This action is irreversible."
