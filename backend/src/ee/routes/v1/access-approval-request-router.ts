@@ -9,6 +9,10 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedUserSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import {
+  DelegatedApprovalRequestSchema,
+  DelegatedApprovalSchema
+} from "@app/services/delegated-approval/delegated-approval-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const approvalRequestUser = z.object({ userId: z.string() }).merge(
@@ -188,8 +192,10 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
               deletedAt: z.date().nullish(),
               allowedSelfApprovals: z.boolean(),
               maxTimePeriod: z.string().nullable().optional(),
-              requestExpirationTime: z.string().nullable().optional()
+              requestExpirationTime: z.string().nullable().optional(),
+              delegatedApproval: DelegatedApprovalSchema.pick({ type: true }).nullable().optional()
             }),
+            delegatedApproval: DelegatedApprovalRequestSchema.nullable().optional(),
             reviewers: z
               .object({
                 isOrgMembershipActive: z.boolean().nullable().optional(),
@@ -320,6 +326,52 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
             requestId: result.request.id,
             requestedByUserId: result.request.requestedByUserId,
             policyId: result.request.policyId
+          }
+        }
+      });
+
+      return { request: result.request };
+    }
+  });
+
+  server.route({
+    url: "/:requestId/retry-delegated-dispatch",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "retryAccessApprovalRequestDelegatedDispatch",
+      params: z.object({
+        requestId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          request: AccessApprovalRequestsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.accessApprovalRequest.retryDelegatedApprovalDispatch({
+        requestId: req.params.requestId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: result.projectId,
+        event: {
+          type: EventType.ACCESS_APPROVAL_REQUEST_DELEGATED_DISPATCH_RETRY,
+          metadata: {
+            requestId: result.request.id,
+            requestedByUserId: result.request.requestedByUserId,
+            policyId: result.request.policyId,
+            delegatedApprovalType: result.delegatedApprovalType
           }
         }
       });

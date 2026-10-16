@@ -1,11 +1,15 @@
-import { subject } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { verifyRequestedPermissions } from "@app/ee/services/access-approval-request/access-approval-request-fns";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { flattenActiveRolesFromMemberships } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionApprovalRequestActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { isGlobSubsetOfGlob } from "@app/lib/casl/glob-subset";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -47,6 +51,7 @@ import {
   TCountSecretAccessApprovalGlobalRequestsDTO,
   TCreateSecretAccessApprovalGlobalRequestDTO,
   TListSecretAccessApprovalGlobalRequestsDTO,
+  TRetrySecretAccessApprovalGlobalRequestDispatchDTO,
   TReviewSecretAccessApprovalGlobalRequestDTO,
   TRevokeSecretAccessApprovalGlobalRequestDTO,
   TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep
@@ -111,10 +116,11 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     if (!requests.length) return [];
 
     const requestIds = requests.map((request) => request.id);
-    const [policies, grants, approvals] = await Promise.all([
+    const [policies, grants, approvals, delegatedRequests] = await Promise.all([
       secretAccessApprovalGlobalPolicyBridgeDAL.findSecretAccessPolicies({ projectId: filter.projectId }),
       secretAccessApprovalGlobalRequestBridgeDAL.findGrantsByRequestIds(requestIds),
-      secretAccessApprovalGlobalRequestBridgeDAL.findApprovalsByRequestIds(requestIds)
+      secretAccessApprovalGlobalRequestBridgeDAL.findApprovalsByRequestIds(requestIds),
+      delegatedApprovalService.getRequestsByRequestIds(requestIds)
     ]);
 
     const [privileges, groupMembers] = await Promise.all([
@@ -136,7 +142,8 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       approvals,
       groupMembers,
       users,
-      orgMemberships
+      orgMemberships,
+      delegatedRequests
     });
   };
 
@@ -828,12 +835,47 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     return { request: revoked, projectId: request.projectId };
   };
 
+  const retryDelegatedApprovalDispatch = async ({
+    requestId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }: TRetrySecretAccessApprovalGlobalRequestDispatchDTO) => {
+    const request = await $findRequestById(requestId);
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: request.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    if (request.requesterId !== actorId) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionApprovalRequestActions.Read,
+        ProjectPermissionSub.ApprovalRequests
+      );
+    }
+
+    const { delegatedPolicy } = await delegatedApprovalService.retryDispatch({ approvalRequest: request });
+
+    return {
+      request: { ...toLegacyAccessApprovalRequest(request), policyId: delegatedPolicy.policyId },
+      projectId: request.projectId,
+      delegatedApprovalType: delegatedPolicy.type
+    };
+  };
+
   return {
     isGlobalAccessApprovalRequest,
     listAccessApprovalRequests,
     countAccessApprovalRequests,
     createAccessApprovalRequest,
     reviewAccessApprovalRequest,
-    revokeAccessApprovalRequest
+    revokeAccessApprovalRequest,
+    retryDelegatedApprovalDispatch
   };
 };

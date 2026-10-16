@@ -16,7 +16,8 @@ import {
   PlusIcon,
   SearchIcon,
   ShieldBanIcon,
-  TimerIcon
+  TimerIcon,
+  TriangleAlertIcon
 } from "lucide-react";
 
 import {
@@ -90,6 +91,10 @@ import {
   useGetAccessRequestsCount
 } from "@app/hooks/api/accessApproval/queries";
 import { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
+import {
+  DelegatedApprovalRequestStatus,
+  useDelegatedApprovalOptions
+} from "@app/hooks/api/delegatedApprovals";
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 import { queryClient } from "@app/hooks/api/reactQuery";
 import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
@@ -235,6 +240,10 @@ export const AccessApprovalRequest = ({
     projectSlug,
     authorUserId: validRequestedByFilter,
     envSlug: validEnvFilter
+  });
+
+  const { data: delegatedApprovalOptions } = useDelegatedApprovalOptions({
+    enabled: Boolean(requests?.some((request) => request.delegatedApproval))
   });
 
   const { search, setSearch, setPage, page, perPage, setPerPage, offset } = usePagination("", {
@@ -466,7 +475,25 @@ export const AccessApprovalRequest = ({
           type: "danger",
           icon: ShieldBanIcon
         };
-      else if (userReviewStatus === ApprovalStatus.APPROVED) {
+      else if (request.delegatedApproval?.status === DelegatedApprovalRequestStatus.FailedDispatch)
+        displayData = {
+          label: "Not Submitted",
+          type: "danger",
+          icon: TriangleAlertIcon,
+          tooltipContent: request.delegatedApproval.statusReason ?? undefined
+        };
+      else if (request.delegatedApproval) {
+        const delegatedApprovalName = delegatedApprovalOptions?.find(
+          (option) => option.type === request.policy.delegatedApproval?.type
+        )?.name;
+        displayData = {
+          label: delegatedApprovalName
+            ? `Pending in ${delegatedApprovalName}`
+            : "Pending External Review",
+          type: "warning",
+          icon: HourglassIcon
+        };
+      } else if (userReviewStatus === ApprovalStatus.APPROVED) {
         displayData = {
           label: "Pending Additional Reviews",
           type: "warning",
@@ -492,7 +519,7 @@ export const AccessApprovalRequest = ({
         isSelfApproveAllowed
       };
     },
-    [user]
+    [user, delegatedApprovalOptions]
   );
 
   const handleSelectRequest = useCallback(

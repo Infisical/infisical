@@ -44,6 +44,10 @@ export type TCreateDelegatedApprovalRequestDTO = {
   statusReason?: string | null;
 };
 
+export type TRetryDelegatedApprovalRequestDispatchDTO = {
+  approvalRequest: Pick<TApprovalRequests, "id" | "policyId" | "status" | "expiresAt">;
+};
+
 export type TUpdateDelegatedApprovalRequestDTO = {
   requestId: string;
   status?: DelegatedApprovalRequestStatus;

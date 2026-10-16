@@ -2,6 +2,7 @@ export {
   useCreateAccessApprovalPolicy,
   useCreateAccessRequest,
   useDeleteAccessApprovalPolicy,
+  useRetryDelegatedApprovalDispatch,
   useReviewAccessRequest,
   useRevokeAccessRequest,
   useUpdateAccessApprovalPolicy

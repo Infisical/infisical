@@ -3242,14 +3242,6 @@ export const registerRoutes = async (
     keyStore
   });
 
-  const delegatedApprovalService = delegatedApprovalServiceFactory({
-    delegatedApprovalPolicyDAL,
-    delegatedApprovalRequestDAL,
-    approvalPolicyDAL,
-    appConnectionDAL,
-    appConnectionService
-  });
-
   const delegatedApprovalCallbackService = delegatedApprovalCallbackServiceFactory({
     delegatedApprovalRequestDAL,
     kmsService
@@ -3264,6 +3256,15 @@ export const registerRoutes = async (
     appConnectionDAL,
     kmsService,
     queueService
+  });
+
+  const delegatedApprovalService = delegatedApprovalServiceFactory({
+    delegatedApprovalPolicyDAL,
+    delegatedApprovalRequestDAL,
+    approvalPolicyDAL,
+    appConnectionDAL,
+    appConnectionService,
+    delegatedApprovalDispatchQueue
   });
 
   const secretAccessApprovalGlobalRequestBridgeService = secretAccessApprovalGlobalRequestBridgeServiceFactory({

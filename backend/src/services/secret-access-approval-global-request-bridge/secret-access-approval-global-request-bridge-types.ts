@@ -1,4 +1,5 @@
 import {
+  TRetryDelegatedApprovalDispatchDTO,
   TReviewAccessRequestDTO,
   TRevokeAccessRequestDTO
 } from "@app/ee/services/access-approval-request/access-approval-request-types";
@@ -61,7 +62,10 @@ export type TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep = {
     | "findUsersByIds"
     | "findOrgMembershipActivity"
   >;
-  delegatedApprovalService: Pick<TDelegatedApprovalServiceFactory, "getPolicyByPolicyId" | "createRequest">;
+  delegatedApprovalService: Pick<
+    TDelegatedApprovalServiceFactory,
+    "getPolicyByPolicyId" | "createRequest" | "getRequestsByRequestIds" | "retryDispatch"
+  >;
   delegatedApprovalDispatchQueue: Pick<TDelegatedApprovalDispatchQueueFactory, "queueDispatch">;
   smtpService: Pick<TSmtpService, "sendMail">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -99,3 +103,5 @@ export type TCountSecretAccessApprovalGlobalRequestsDTO = {
 };
 export type TReviewSecretAccessApprovalGlobalRequestDTO = TReviewAccessRequestDTO;
 export type TRevokeSecretAccessApprovalGlobalRequestDTO = TRevokeAccessRequestDTO;
+
+export type TRetrySecretAccessApprovalGlobalRequestDispatchDTO = TRetryDelegatedApprovalDispatchDTO;

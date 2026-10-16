@@ -1,5 +1,5 @@
 import { AppConnection } from "../appConnections/enums";
-import { DelegatedApprovalPolicyType } from "./enums";
+import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "./enums";
 
 export type TDelegatedApprovalOption = {
   name: string;
@@ -14,4 +14,9 @@ export type TListDelegatedApprovalOptions = {
 export type TDelegatedApprovalPolicyInput = {
   type: DelegatedApprovalPolicyType;
   connectionId: string;
+};
+
+export type TDelegatedApprovalRequest = {
+  status: DelegatedApprovalRequestStatus;
+  statusReason?: string | null;
 };

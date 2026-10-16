@@ -9,6 +9,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 
 import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "./delegated-approval-enums";
 import { assertPolicyTypeSupportsDelegatedApproval, listDelegatedApprovalOptions } from "./delegated-approval-fns";
@@ -20,10 +21,12 @@ import {
   TCreateDelegatedApprovalRequestDTO,
   TDelegatedApprovalPolicy,
   TDelegatedApprovalRequest,
+  TRetryDelegatedApprovalRequestDispatchDTO,
   TUpdateDelegatedApprovalPolicyDTO,
   TUpdateDelegatedApprovalRequestDTO,
   TValidateDelegatedApprovalConnectionDTO
 } from "./delegated-approval-types";
+import { TDelegatedApprovalDispatchQueueFactory } from "./dispatch/delegated-approval-dispatch-queue";
 
 type TDelegatedApprovalServiceFactoryDep = {
   delegatedApprovalPolicyDAL: TDelegatedApprovalPolicyDALFactory;
@@ -31,6 +34,7 @@ type TDelegatedApprovalServiceFactoryDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
+  delegatedApprovalDispatchQueue: Pick<TDelegatedApprovalDispatchQueueFactory, "queueDispatch">;
 };
 
 export type TDelegatedApprovalServiceFactory = ReturnType<typeof delegatedApprovalServiceFactory>;
@@ -40,7 +44,8 @@ export const delegatedApprovalServiceFactory = ({
   delegatedApprovalRequestDAL,
   approvalPolicyDAL,
   appConnectionDAL,
-  appConnectionService
+  appConnectionService,
+  delegatedApprovalDispatchQueue
 }: TDelegatedApprovalServiceFactoryDep) => {
   const $assertConnectionMatches = async (
     {
@@ -177,6 +182,46 @@ export const delegatedApprovalServiceFactory = ({
     return (request as TDelegatedApprovalRequest | undefined) ?? null;
   };
 
+  const getRequestsByRequestIds = async (requestIds: string[], tx?: Knex) => {
+    if (!requestIds.length) return [];
+    const requests = await delegatedApprovalRequestDAL.find({ $in: { requestId: requestIds } }, { tx });
+    return requests as TDelegatedApprovalRequest[];
+  };
+
+  const retryDispatch = async ({ approvalRequest }: TRetryDelegatedApprovalRequestDispatchDTO) => {
+    const delegatedRequest = await getRequestByRequestId(approvalRequest.id);
+    if (!delegatedRequest) {
+      throw new BadRequestError({
+        message: `Request with ID '${approvalRequest.id}' is not reviewed in an external approval system`
+      });
+    }
+
+    if (approvalRequest.status !== ApprovalRequestStatus.Pending) {
+      throw new BadRequestError({ message: "Only pending requests can be sent again" });
+    }
+
+    if (approvalRequest.expiresAt && new Date(approvalRequest.expiresAt) < new Date()) {
+      throw new BadRequestError({ message: "This request has expired. Create a new request instead." });
+    }
+
+    const delegatedPolicy = approvalRequest.policyId ? await getPolicyByPolicyId(approvalRequest.policyId) : null;
+    if (!delegatedPolicy) {
+      throw new BadRequestError({
+        message: "The policy for this request no longer uses an external approval system. Create a new request instead."
+      });
+    }
+
+    if (delegatedRequest.status !== DelegatedApprovalRequestStatus.FailedDispatch) {
+      throw new BadRequestError({
+        message: `Only requests that failed to reach ${DELEGATED_APPROVAL_NAME_MAP[delegatedPolicy.type]} can be sent again`
+      });
+    }
+
+    await delegatedApprovalDispatchQueue.queueDispatch({ delegatedRequestId: delegatedRequest.id });
+
+    return { delegatedRequest, delegatedPolicy };
+  };
+
   const updateRequest = async ({ requestId, status, statusReason }: TUpdateDelegatedApprovalRequestDTO, tx?: Knex) => {
     const patch = {
       ...(status !== undefined && { status }),
@@ -214,6 +259,8 @@ export const delegatedApprovalServiceFactory = ({
     deletePolicyByPolicyId,
     createRequest,
     getRequestByRequestId,
+    getRequestsByRequestIds,
+    retryDispatch,
     updateRequest,
     deleteRequestByRequestId
   };

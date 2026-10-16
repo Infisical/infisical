@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useMemo, useState } from "react";
+import { Fragment, ReactNode, useCallback, useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
   BanIcon,
@@ -6,6 +6,7 @@ import {
   FilterIcon,
   HourglassIcon,
   InfoIcon,
+  RefreshCwIcon,
   ShieldAlertIcon,
   TimerIcon,
   TriangleAlertIcon,
@@ -75,10 +76,14 @@ import {
   useProjectPermission,
   useUser
 } from "@app/context";
-import { PermissionConditionOperators } from "@app/context/ProjectPermissionContext/types";
+import {
+  PermissionConditionOperators,
+  ProjectPermissionApprovalRequestActions
+} from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import {
   useListWorkspaceGroups,
+  useRetryDelegatedApprovalDispatch,
   useReviewAccessRequest,
   useRevokeAccessRequest
 } from "@app/hooks/api";
@@ -88,6 +93,10 @@ import {
   TAccessApprovalPolicy,
   TAccessApprovalRequest
 } from "@app/hooks/api/accessApproval/types";
+import {
+  DelegatedApprovalRequestStatus,
+  useDelegatedApprovalOptions
+} from "@app/hooks/api/delegatedApprovals";
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
 import { groupBy } from "@app/lib/fn/array";
@@ -170,6 +179,53 @@ const formatConditions = (conditions: Record<string, unknown>): FormattedConditi
     }));
   });
 
+const DELEGATED_STATUS_PRESENTATION: Record<
+  DelegatedApprovalRequestStatus,
+  {
+    label: string;
+    variant: "warning" | "danger" | "success";
+    icon: ReactNode;
+    getMessage: (delegatedApprovalName: string) => string;
+  }
+> = {
+  [DelegatedApprovalRequestStatus.PendingDispatch]: {
+    label: "Sending",
+    variant: "warning",
+    icon: <HourglassIcon />,
+    getMessage: (name) => `Sending this request to ${name}.`
+  },
+  [DelegatedApprovalRequestStatus.WaitingApproval]: {
+    label: "Pending",
+    variant: "warning",
+    icon: <HourglassIcon />,
+    getMessage: (name) => `Awaiting review in ${name}.`
+  },
+  [DelegatedApprovalRequestStatus.FailedDispatch]: {
+    label: "Not Submitted",
+    variant: "danger",
+    icon: <TriangleAlertIcon />,
+    getMessage: (name) => `This request did not reach ${name}.`
+  },
+  [DelegatedApprovalRequestStatus.Approved]: {
+    label: "Approved",
+    variant: "success",
+    icon: <CheckIcon />,
+    getMessage: (name) => `Approved in ${name}.`
+  },
+  [DelegatedApprovalRequestStatus.Rejected]: {
+    label: "Rejected",
+    variant: "danger",
+    icon: <BanIcon />,
+    getMessage: (name) => `Rejected in ${name}.`
+  },
+  [DelegatedApprovalRequestStatus.Failed]: {
+    label: "Failed",
+    variant: "danger",
+    icon: <TriangleAlertIcon />,
+    getMessage: (name) => `This request could not be completed in ${name}.`
+  }
+};
+
 export const ReviewAccessRequestModal = ({
   isOpen,
   onOpenChange,
@@ -205,6 +261,18 @@ export const ReviewAccessRequestModal = ({
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["revokeConfirm"] as const);
 
   const isSoftEnforcement = request.policy.enforcementLevel === EnforcementLevel.Soft;
+
+  const isDelegatedRequest = Boolean(request.delegatedApproval);
+  const { data: delegatedApprovalOptions } = useDelegatedApprovalOptions({
+    enabled: isDelegatedRequest
+  });
+  const delegatedApprovalName =
+    delegatedApprovalOptions?.find(
+      (option) => option.type === request.policy.delegatedApproval?.type
+    )?.name ?? "the external approval system";
+  const delegatedStatus = request.delegatedApproval
+    ? DELEGATED_STATUS_PRESENTATION[request.delegatedApproval.status]
+    : undefined;
 
   const assignPrivilegesConditions = useMemo(
     () => getMemberAssignPrivilegesConditions(permission),
@@ -300,6 +368,26 @@ export const ReviewAccessRequestModal = ({
 
   const reviewAccessRequest = useReviewAccessRequest();
   const revokeAccessRequest = useRevokeAccessRequest();
+  const retryDelegatedApprovalDispatch = useRetryDelegatedApprovalDispatch();
+
+  const handleRetryDispatch = useCallback(async () => {
+    try {
+      await retryDelegatedApprovalDispatch.mutateAsync({ requestId: request.id, projectSlug });
+    } catch {
+      return;
+    }
+    createNotification({
+      text: `Request sent to ${delegatedApprovalName} again`,
+      type: "success"
+    });
+    onOpenChange(false);
+  }, [
+    retryDelegatedApprovalDispatch,
+    request.id,
+    projectSlug,
+    delegatedApprovalName,
+    onOpenChange
+  ]);
 
   const handleReview = useCallback(
     async (status: "approved" | "rejected") => {
@@ -433,8 +521,23 @@ export const ReviewAccessRequestModal = ({
     request.isApproved &&
     new Date() > new Date(request.privilege.temporaryAccessEndTime || ("" as string));
   const isReviewedByMe = request.reviewers.find((i) => i.userId === user.id);
+  const isDelegatedPending =
+    isDelegatedRequest &&
+    request.status === ApprovalStatus.PENDING &&
+    !hasExpired &&
+    !request.policy.deletedAt;
+
+  const canRetryDispatch =
+    isDelegatedPending &&
+    request.delegatedApproval?.status === DelegatedApprovalRequestStatus.FailedDispatch &&
+    (request.isRequestedByCurrentUser ||
+      permission.can(
+        ProjectPermissionApprovalRequestActions.Read,
+        ProjectPermissionSub.ApprovalRequests
+      ));
 
   const shouldBlockRequestActions =
+    isDelegatedRequest ||
     hasRejected ||
     hasApproved ||
     hasRevoked ||
@@ -746,10 +849,14 @@ export const ReviewAccessRequestModal = ({
         >
           <SheetHeader className="border-b">
             <SheetTitle>Review Request</SheetTitle>
-            <SheetDescription>Review the request and approve or deny access.</SheetDescription>
+            <SheetDescription>
+              {isDelegatedRequest
+                ? "Review the details of this access request."
+                : "Review the request and approve or deny access."}
+            </SheetDescription>
           </SheetHeader>
           <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
-            {shouldBlockRequestActions && (
+            {shouldBlockRequestActions && !isDelegatedPending && (
               <Alert variant={completedMessageVariant}>
                 {renderBannerIcon()}
                 <AlertTitle>{renderCompletedMessages()}</AlertTitle>
@@ -908,59 +1015,124 @@ export const ReviewAccessRequestModal = ({
               </Table>
             </section>
 
-            <section className="flex flex-col gap-3">
-              <h3 className="text-sm font-normal text-foreground">Approvers</h3>
-              {approvers.length === 1 ? (
-                <ItemGroup className="gap-0 rounded-lg border border-border bg-container">
-                  <Item className="flex-nowrap items-start rounded-none border-0">
-                    <ItemContent className="min-w-0 gap-1.5">
-                      {renderApproverMembers(approvers[0])}
-                    </ItemContent>
-                    <ItemActions className="shrink-0">
-                      {renderReviewerProgress(approvers[0], getStatusBadge(approvers[0]))}
-                      <span className="text-xs whitespace-nowrap text-muted">
-                        {approvers[0].approvals ?? 1} approval
-                        {(approvers[0].approvals ?? 1) === 1 ? "" : "s"} required
-                      </span>
-                    </ItemActions>
-                  </Item>
-                </ItemGroup>
-              ) : (
-                <ItemGroup className="gap-0 rounded-lg border border-border bg-container">
-                  {approvers.map((approver, index) => {
-                    const isInactive =
-                      approverSequence?.currentSequence < (approver.sequence ?? approvers.length);
-                    const badge = getStatusBadge(approver);
-
-                    return (
-                      <Fragment key={`approval-list-${index + 1}`}>
-                        {index > 0 && <ItemSeparator className="m-0" />}
-                        <Item
-                          className={twMerge(
-                            "flex-nowrap items-start rounded-none border-0",
-                            isInactive && "opacity-50"
-                          )}
-                        >
-                          <ItemMedia>
-                            <Badge variant="neutral">Step {index + 1}</Badge>
-                          </ItemMedia>
-                          <ItemContent className="min-w-0 gap-1.5">
-                            {renderApproverMembers(approver)}
-                          </ItemContent>
-                          <ItemActions className="shrink-0">
-                            {renderReviewerProgress(approver, badge)}
-                            <span className="text-xs whitespace-nowrap text-muted">
-                              {approver.approvals ?? 1} approval
-                              {(approver.approvals ?? 1) === 1 ? "" : "s"} required
+            {isDelegatedRequest ? (
+              <>
+                {isDelegatedPending && (
+                  <section className="flex flex-col gap-3">
+                    <h3 className="text-sm font-normal text-foreground">Approval</h3>
+                    <Alert variant="info">
+                      <InfoIcon />
+                      <AlertTitle>This request is reviewed in {delegatedApprovalName}.</AlertTitle>
+                      <AlertDescription>
+                        It cannot be approved or rejected in Infisical. Infisical grants access once{" "}
+                        {delegatedApprovalName} approves it.
+                      </AlertDescription>
+                    </Alert>
+                  </section>
+                )}
+                {delegatedStatus && (
+                  <section className="flex flex-col gap-3">
+                    <h3 className="text-sm font-normal text-foreground">Status</h3>
+                    <ItemGroup
+                      className={twMerge(
+                        "gap-0 rounded-lg border border-border bg-container",
+                        delegatedStatus.variant === "danger" && "border-danger/25"
+                      )}
+                    >
+                      <Item className="flex-nowrap items-start rounded-none border-0">
+                        <ItemMedia>
+                          <Badge variant={delegatedStatus.variant}>
+                            {delegatedStatus.icon}
+                            {delegatedStatus.label}
+                          </Badge>
+                        </ItemMedia>
+                        <ItemContent className="min-w-0 gap-1">
+                          <span className="text-sm text-foreground">
+                            {delegatedStatus.getMessage(delegatedApprovalName)}
+                          </span>
+                          {request.delegatedApproval?.statusReason && (
+                            <span className="text-xs break-words text-muted">
+                              {request.delegatedApproval.statusReason}
                             </span>
-                          </ItemActions>
-                        </Item>
-                      </Fragment>
-                    );
-                  })}
-                </ItemGroup>
-              )}
-            </section>
+                          )}
+                        </ItemContent>
+                        <ItemActions className="shrink-0 items-center gap-3">
+                          <span className="text-xs whitespace-nowrap text-muted">
+                            Requested {format(new Date(request.createdAt), "MMM d, yyyy h:mm aa")}
+                          </span>
+                          {canRetryDispatch && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              isPending={retryDelegatedApprovalDispatch.isPending}
+                              onClick={handleRetryDispatch}
+                            >
+                              <RefreshCwIcon />
+                              Retry
+                            </Button>
+                          )}
+                        </ItemActions>
+                      </Item>
+                    </ItemGroup>
+                  </section>
+                )}
+              </>
+            ) : (
+              <section className="flex flex-col gap-3">
+                <h3 className="text-sm font-normal text-foreground">Approvers</h3>
+                {approvers.length === 1 ? (
+                  <ItemGroup className="gap-0 rounded-lg border border-border bg-container">
+                    <Item className="flex-nowrap items-start rounded-none border-0">
+                      <ItemContent className="min-w-0 gap-1.5">
+                        {renderApproverMembers(approvers[0])}
+                      </ItemContent>
+                      <ItemActions className="shrink-0">
+                        {renderReviewerProgress(approvers[0], getStatusBadge(approvers[0]))}
+                        <span className="text-xs whitespace-nowrap text-muted">
+                          {approvers[0].approvals ?? 1} approval
+                          {(approvers[0].approvals ?? 1) === 1 ? "" : "s"} required
+                        </span>
+                      </ItemActions>
+                    </Item>
+                  </ItemGroup>
+                ) : (
+                  <ItemGroup className="gap-0 rounded-lg border border-border bg-container">
+                    {approvers.map((approver, index) => {
+                      const isInactive =
+                        approverSequence?.currentSequence < (approver.sequence ?? approvers.length);
+                      const badge = getStatusBadge(approver);
+
+                      return (
+                        <Fragment key={`approval-list-${index + 1}`}>
+                          {index > 0 && <ItemSeparator className="m-0" />}
+                          <Item
+                            className={twMerge(
+                              "flex-nowrap items-start rounded-none border-0",
+                              isInactive && "opacity-50"
+                            )}
+                          >
+                            <ItemMedia>
+                              <Badge variant="neutral">Step {index + 1}</Badge>
+                            </ItemMedia>
+                            <ItemContent className="min-w-0 gap-1.5">
+                              {renderApproverMembers(approver)}
+                            </ItemContent>
+                            <ItemActions className="shrink-0">
+                              {renderReviewerProgress(approver, badge)}
+                              <span className="text-xs whitespace-nowrap text-muted">
+                                {approver.approvals ?? 1} approval
+                                {(approver.approvals ?? 1) === 1 ? "" : "s"} required
+                              </span>
+                            </ItemActions>
+                          </Item>
+                        </Fragment>
+                      );
+                    })}
+                  </ItemGroup>
+                )}
+              </section>
+            )}
           </div>
           <SheetFooter className={twMerge("flex-col border-t", !showFooter && "hidden")}>
             {!shouldBlockRequestActions && (

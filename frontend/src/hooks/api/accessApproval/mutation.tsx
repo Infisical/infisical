@@ -193,6 +193,30 @@ export const useRevokeAccessRequest = () => {
   });
 };
 
+export const useRetryDelegatedApprovalDispatch = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    object,
+    object,
+    {
+      requestId: string;
+      projectSlug: string;
+    }
+  >({
+    mutationFn: async ({ requestId }) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/access-approvals/requests/${requestId}/retry-delegated-dispatch`
+      );
+      return data;
+    },
+    onSuccess: (_, { projectSlug }) => {
+      queryClient.invalidateQueries({
+        queryKey: accessApprovalKeys.getAccessApprovalRequestsAllForProject(projectSlug)
+      });
+    }
+  });
+};
+
 export const useReviewAccessRequest = () => {
   const queryClient = useQueryClient();
   return useMutation<

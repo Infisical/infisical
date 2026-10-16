@@ -85,6 +85,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "isGlobalAccessApprovalRequest"
     | "reviewAccessApprovalRequest"
     | "revokeAccessApprovalRequest"
+    | "retryDelegatedApprovalDispatch"
   >;
   accessApprovalRequestReviewerDAL: Pick<
     TAccessApprovalRequestReviewerDALFactory,
@@ -1165,6 +1166,23 @@ export const accessApprovalRequestServiceFactory = ({
     };
   };
 
+  const retryDelegatedApprovalDispatch: TAccessApprovalRequestServiceFactory["retryDelegatedApprovalDispatch"] =
+    async ({ requestId, actor, actorId, actorOrgId, actorAuthMethod }) => {
+      if (await secretAccessApprovalGlobalRequestBridge.isGlobalAccessApprovalRequest(requestId)) {
+        return secretAccessApprovalGlobalRequestBridge.retryDelegatedApprovalDispatch({
+          requestId,
+          actor,
+          actorId,
+          actorOrgId,
+          actorAuthMethod
+        });
+      }
+
+      throw new BadRequestError({
+        message: `Access request with ID '${requestId}' is not reviewed in an external approval system`
+      });
+    };
+
   const revokeAccessRequest: TAccessApprovalRequestServiceFactory["revokeAccessRequest"] = async ({
     requestId,
     actor,
@@ -1329,6 +1347,7 @@ export const accessApprovalRequestServiceFactory = ({
     listApprovalRequests,
     reviewAccessRequest,
     revokeAccessRequest,
+    retryDelegatedApprovalDispatch,
     getCount
   };
 };

@@ -1,4 +1,8 @@
-import { TDelegatedApprovalPolicyInput } from "../delegatedApprovals/types";
+import { DelegatedApprovalPolicyType } from "../delegatedApprovals/enums";
+import {
+  TDelegatedApprovalPolicyInput,
+  TDelegatedApprovalRequest
+} from "../delegatedApprovals/types";
 import { EnforcementLevel, PolicyType } from "../policies/enums";
 import { ProjectEnv } from "../projects/types";
 import { TProjectPermission } from "../roles/types";
@@ -129,7 +133,10 @@ export type TAccessApprovalRequest = {
     allowedSelfApprovals: boolean;
     maxTimePeriod?: string | null;
     requestExpirationTime?: string | null;
+    delegatedApproval?: { type: DelegatedApprovalPolicyType } | null;
   };
+
+  delegatedApproval?: TDelegatedApprovalRequest | null;
 
   reviewers: {
     isOrgMembershipActive: boolean;
