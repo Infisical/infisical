@@ -106,7 +106,7 @@ Check out the [Quickstart Guides](https://infisical.com/docs/documentation/getti
 
 | Use Infisical Cloud                                                                                                                                     | Deploy Infisical on premise                                                          |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| The fastest and most reliable way to <br> get started with Infisical is signing up <br> for free to [Infisical Cloud](https://app.infisical.com/login). | <br> View all [deployment options](https://infisical.com/docs/self-hosting/overview) <br><br> Already self-hosting? Plan version upgrades with the [Infisical Upgrade Tool](https://upgrade.infisical.com/). |
+| The fastest and most reliable way to <br> get started with Infisical is signing up <br> for free to [Infisical Cloud](https://app.infisical.com/login). | <br> View all [deployment options](https://infisical.com/docs/self-hosting/overview) <br><br> Already self-hosting? Plan version upgrades with the [Infisical Upgrade Tool](https://upgrade.infisical.com/). <br><br> Don't want to run the servers? Get a managed instance in one click: <br> [<img alt="Deploy with Zenith" src="https://cdn.zenith.hosting/buttons/deploy-with-zenith.svg" height="40">](https://zenith.hosting/host/infisical) |
 
 ### Run Infisical locally
 
