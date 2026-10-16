@@ -98,7 +98,7 @@ export const OrgNameChangeSection = (): JSX.Element => {
       text: "Successfully updated organization details",
       type: "success"
     });
-    reset({ name, slug, defaultMembershipRole });
+    reset({ name, slug, defaultMembershipRole }, { keepDirtyValues: true });
   };
 
   return (

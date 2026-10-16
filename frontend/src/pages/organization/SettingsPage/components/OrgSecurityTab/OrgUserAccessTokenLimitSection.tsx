@@ -93,7 +93,7 @@ export const OrgUserAccessTokenLimitSection = () => {
       text: "Successfully updated user token expiration",
       type: "success"
     });
-    reset(formData);
+    reset(formData, { keepDirtyValues: true });
   };
 
   // Units for the dropdown with readable labels
