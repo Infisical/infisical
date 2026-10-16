@@ -176,6 +176,7 @@ type Props = {
   isPendingCreate?: boolean;
   isPendingDelete?: boolean;
   onBatchRevert?: (env: string, key: string) => void;
+  onPendingSave?: (env: string, key: string, pendingChangeId?: string) => Promise<void>;
   hasPendingChange?: boolean;
   hasPendingValueChange?: boolean;
   pendingKeyName?: string;
@@ -217,6 +218,7 @@ export const SecretEditTableRow = ({
   isPendingCreate,
   isPendingDelete,
   onBatchRevert,
+  onPendingSave,
   hasPendingChange,
   hasPendingValueChange,
   pendingKeyName,
@@ -349,6 +351,7 @@ export const SecretEditTableRow = ({
   const { mutateAsync: updateSecretV3, isPending: isUpdatingMultiline } = useUpdateSecretV3();
 
   const [isDeleting, setIsDeleting] = useToggle();
+  const [isSavingPendingChange, setIsSavingPendingChange] = useToggle();
   const [isEditing, setIsEditing] = useToggle();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCommentOpen, setIsCommentOpen] = useState(false);
@@ -478,6 +481,7 @@ export const SecretEditTableRow = ({
   // Serialize metadata for effect dependency since watch() returns same array ref for nested changes
   const serializedMetadata = JSON.stringify(watchedMetadata);
   const batchAutoApplyTimer = useRef<ReturnType<typeof setTimeout>>();
+  const applyBatchEditsRef = useRef<() => void>();
   const lastAppliedRef = useRef<{
     value: unknown;
     key: unknown;
@@ -519,7 +523,7 @@ export const SecretEditTableRow = ({
 
     if (!isBatchMode) return () => {};
 
-    batchAutoApplyTimer.current = setTimeout(() => {
+    applyBatchEditsRef.current = () => {
       // Skip if values haven't changed since last apply
       // Use deep comparison for tags since reset() creates new array references
       if (
@@ -691,7 +695,8 @@ export const SecretEditTableRow = ({
             }
           : {})
       });
-    }, 500);
+    };
+    batchAutoApplyTimer.current = setTimeout(() => applyBatchEditsRef.current?.(), 500);
 
     return () => {
       if (batchAutoApplyTimer.current) {
@@ -701,9 +706,26 @@ export const SecretEditTableRow = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBatchMode, watchedValue, watchedKey, watchedComment, watchedTags, serializedMetadata]);
 
-  // Reset form when a pending change is externally discarded (e.g. CommitForm discard button
-  // or toggling batch mode off). We don't gate on isBatchMode because React batches the
-  // state updates, so isBatchMode can already be false by the time hasPendingChange flips.
+  const findPendingChangeId = () =>
+    batchStore.getState().pendingChanges.secrets.find((c) => c.secretKey === secretName)?.id;
+
+  const savePendingRow = async (knownPendingChangeId?: string) => {
+    if (!onPendingSave) return;
+    const pendingChangeId = knownPendingChangeId ?? findPendingChangeId();
+    if (batchAutoApplyTimer.current) {
+      clearTimeout(batchAutoApplyTimer.current);
+      if (!knownPendingChangeId) applyBatchEditsRef.current?.();
+    }
+    setIsSavingPendingChange.on();
+    try {
+      await onPendingSave(environment, secretName, pendingChangeId);
+    } finally {
+      setIsSavingPendingChange.off();
+    }
+  };
+
+  // Reset form when a pending change is externally discarded or saved (e.g. CommitForm discard
+  // button or this row's inline save).
   const prevHasPendingRef = useRef(hasPendingChange);
   useEffect(() => {
     if (prevHasPendingRef.current && !hasPendingChange) {
@@ -768,7 +790,12 @@ export const SecretEditTableRow = ({
 
   const handleToggleMultilineEncoding = async () => {
     if (isBatchMode) {
-      onSecretUpdate({
+      if (batchAutoApplyTimer.current) {
+        clearTimeout(batchAutoApplyTimer.current);
+        applyBatchEditsRef.current?.();
+      }
+      const pendingChangeId = findPendingChangeId() ?? secretId;
+      await onSecretUpdate({
         env: environment,
         key: secretName,
         value: undefined,
@@ -777,6 +804,7 @@ export const SecretEditTableRow = ({
         secretId,
         skipMultilineEncoding: !skipMultilineEncoding
       });
+      await savePendingRow(pendingChangeId);
       return;
     }
 
@@ -939,6 +967,7 @@ export const SecretEditTableRow = ({
     const confirmation = editConfirmation.current;
     setIsEditing.on();
     try {
+      const pendingChangeId = findPendingChangeId() ?? secretId;
       await onSecretUpdate({
         env: environment,
         key: secretName,
@@ -949,6 +978,7 @@ export const SecretEditTableRow = ({
         newSecretName: newKey,
         ...sheetChanges
       });
+      if (isBatchMode) await savePendingRow(pendingChangeId);
       if (invocation !== valueSheetFlow.current || confirmation !== editConfirmation.current)
         return;
       if (!secretValueHidden) {
@@ -1007,10 +1037,10 @@ export const SecretEditTableRow = ({
     })
   );
   const handleEditShortcut = useSecretInputActionShortcuts({
-    isActive: isDirtyState,
-    isDisabled: isSubmitting,
-    isSaveDisabled: isCreatable ? !canCreate : !canEditSecretValue,
-    onSave: submitForm,
+    isActive: isBatchMode ? isPendingBatchChange || isDirty : isDirtyState,
+    isDisabled: isSubmitting || isSavingPendingChange,
+    isSaveDisabled: isCreatable || isPendingCreate ? !canCreate : !canEditSecretValue,
+    onSave: isBatchMode ? savePendingRow : submitForm,
     onUndo: handleFormReset
   });
   // personal overrides are only visible to their owner, so describe access on the secret suffices to manage them
@@ -1083,6 +1113,7 @@ export const SecretEditTableRow = ({
     const invocation = valueSheetFlow.current;
     if (isValueSheetReadOnly || valueEditDraft?.scope !== valueEditScope) return;
     if (isBatchMode) {
+      const pendingChangeId = findPendingChangeId() ?? secretId;
       await onSecretUpdate({
         env: environment,
         key: secretName,
@@ -1095,6 +1126,7 @@ export const SecretEditTableRow = ({
       });
       if (invocation !== valueSheetFlow.current) return;
       resetSheetFields(changes);
+      await savePendingRow(pendingChangeId);
     } else {
       const completed = await handleFormSubmit({ value: changes.value, sheetChanges: changes });
       if (!completed) return;
@@ -1489,6 +1521,41 @@ export const SecretEditTableRow = ({
               />
             </PopoverContent>
           </Popover>
+          {isPendingBatchChange && onPendingSave && (
+            <ProjectPermissionCan
+              I={
+                isPendingCreate
+                  ? ProjectPermissionActions.Create
+                  : isPendingDelete
+                    ? ProjectPermissionActions.Delete
+                    : ProjectPermissionActions.Edit
+              }
+              a={subject(ProjectPermissionSub.Secrets, {
+                environment,
+                secretPath,
+                secretName,
+                secretTags: ["*"]
+              })}
+            >
+              {(isAllowed) => (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <IconButton
+                      aria-label="Save pending secret changes"
+                      variant="ghost"
+                      className="size-7 border-0 hover:text-success"
+                      size="xs"
+                      isDisabled={!isAllowed || isSavingPendingChange}
+                      onClick={() => savePendingRow()}
+                    >
+                      <SaveIcon />
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent>Save pending changes</TooltipContent>
+                </Tooltip>
+              )}
+            </ProjectPermissionCan>
+          )}
           {isPendingBatchChange && (
             <Tooltip>
               <TooltipTrigger asChild>
