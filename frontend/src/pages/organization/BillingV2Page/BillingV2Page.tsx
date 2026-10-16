@@ -120,10 +120,17 @@ export const BillingV2Page = () => {
     if (flow || openedUpgradeProduct.current || !upgradeProduct) {
       return;
     }
-    const hasProduct = catalog.some((product) => product.id === upgradeProduct);
+    const product = catalog.find((candidate) => candidate.id === upgradeProduct);
+    const hasProduct = Boolean(product);
     if (upgradePlan) {
       if (isCatalogPending || (hasProduct && !overview && !isError)) return;
-      if (!hasProduct || isError) {
+      const trialPlan = product?.plans.find((plan) => plan.tier === upgradePlan);
+      const canTrial =
+        !isError &&
+        hasManageBillingPermission &&
+        Boolean(overview?.selfServe) &&
+        Boolean(trialPlan?.selfServe && trialPlan.trialable);
+      if (!canTrial) {
         if (upgradeReturnPath) window.location.assign(upgradeReturnPath);
         return;
       }
@@ -132,7 +139,16 @@ export const BillingV2Page = () => {
     }
     openedUpgradeProduct.current = true;
     setFlow({ type: "sheet", prodId: upgradeProduct, trialTier: upgradePlan ?? undefined });
-  }, [catalog, flow, upgradeProduct, upgradePlan, isCatalogPending, overview, isError]);
+  }, [
+    catalog,
+    flow,
+    upgradeProduct,
+    upgradePlan,
+    isCatalogPending,
+    overview,
+    isError,
+    hasManageBillingPermission
+  ]);
 
   // Stripe redirects back with ?checkout=success|canceled; surface the outcome and refresh state.
   useEffect(() => {
@@ -364,6 +380,7 @@ export const BillingV2Page = () => {
           initialView={flow.view}
           initialTrialTier={flow.trialTier}
           showAnnualTrialNote={Boolean(flow.trialTier) && upgradeCycle === "annual"}
+          trialOrgName={flow.trialTier ? currentOrg?.name : undefined}
           returnPath={upgradeReturnPath ?? window.location.pathname}
           renewsOn={overview?.entitlements[flow.prodId]?.renewsOn ?? null}
           selfServe={overview?.selfServe ?? true}
