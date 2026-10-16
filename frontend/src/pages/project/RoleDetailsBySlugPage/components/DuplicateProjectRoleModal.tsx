@@ -188,7 +188,7 @@ const Content = ({ role, onClose }: ContentProps) => {
             />
           </FieldGroup>
         </div>
-        <SheetFooter className="border-t">
+        <SheetFooter className="justify-end border-t">
           <SheetClose asChild>
             <Button variant="ghost" isDisabled={isSubmitting}>
               Cancel
@@ -247,7 +247,7 @@ export const DuplicateProjectRoleModal = ({ isOpen, onOpenChange, roleSlug }: Pr
             <p className="p-4 text-sm text-danger">
               Could not find a role with the slug &quot;{roleSlug}&quot;.
             </p>
-            <SheetFooter className="border-t">
+            <SheetFooter className="justify-end border-t">
               <SheetClose asChild>
                 <Button variant="ghost">Close</Button>
               </SheetClose>

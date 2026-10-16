@@ -1,0 +1,183 @@
+/* Infisical 2.0 tokens for the v4 subtree. Do not @theme these: Tailwind theme
+   variables are global, and v3 owns the app. Overrides inherit only inside .v4. */
+
+@font-face {
+  font-family: Archivo;
+  src: url("./fonts/Archivo-Latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Archivo;
+  src: url("./fonts/Archivo-Italic-Latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("./fonts/GeistMono-Latin.woff2") format("woff2");
+  font-weight: 400 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+.v4 {
+  --corners: 0;
+  --radius-xs: calc(1px * var(--corners));
+  --radius-sm: calc(1.5px * var(--corners));
+  --radius-md: calc(2px * var(--corners));
+  --radius-lg: calc(2.5px * var(--corners));
+  --radius-xl: calc(3px * var(--corners));
+  --radius-2xl: calc(3px * var(--corners));
+  --radius-3xl: calc(3px * var(--corners));
+  --radius-4xl: calc(3px * var(--corners));
+  --color-background: #fbfbf9;
+  --color-foreground: #010101;
+  --color-card: #fbfbf9;
+  --color-card-foreground: #010101;
+  --color-popover: #fbfbf9;
+  --color-popover-foreground: #010101;
+  --color-primary: #010101;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f1f0ea;
+  --color-secondary-foreground: #010101;
+  --color-muted: #f1f0ea;
+  --color-muted-foreground: #565654;
+  --color-accent: #eeede6;
+  --color-accent-foreground: #010101;
+  --color-destructive: #c0231b;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #d8d8d4;
+  --color-input: #b0b0a9;
+  --color-ring: #010101;
+  --color-sidebar: #f1f0ea;
+  --color-sidebar-foreground: #010101;
+  --color-sidebar-primary: #010101;
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: #e6e5e0;
+  --color-sidebar-accent-foreground: #010101;
+  --color-sidebar-border: #d8d8d4;
+  --color-sidebar-ring: #010101;
+  --color-chart-1: #010101;
+  --color-chart-2: #565654;
+  --color-chart-3: #e3ef59;
+  --color-chart-4: #2b5945;
+  --color-chart-5: #c0231b;
+  --v4-accent: #e3ef59;
+  --v4-accent-2: #d3de42;
+  --v4-on-accent: #010101;
+  --v4-accent-wash: #f7facc;
+  --v4-accent-fg: #010101;
+  --v4-frame: #010101;
+  --v4-paper: #f4f3ee;
+  --v4-faint: #8e9291;
+  --v4-text2: #2f3234;
+  --v4-ok: #2b5945;
+  --v4-warn: #7a5300;
+  --v4-bad: #c0231b;
+  --v4-info: #1f4e79;
+  --v4-scrim: rgba(1, 1, 1, 0.38);
+  --v4-sidebar-current: #d9d8d3;
+  color: var(--color-foreground);
+  background: var(--color-background);
+  font-family: Archivo, "Helvetica Neue", Helvetica, sans-serif;
+}
+
+[data-theme="dark"] .v4 {
+  --corners: 0;
+  --radius-xs: calc(1px * var(--corners));
+  --radius-sm: calc(1.5px * var(--corners));
+  --radius-md: calc(2px * var(--corners));
+  --radius-lg: calc(2.5px * var(--corners));
+  --radius-xl: calc(3px * var(--corners));
+  --radius-2xl: calc(3px * var(--corners));
+  --radius-3xl: calc(3px * var(--corners));
+  --radius-4xl: calc(3px * var(--corners));
+  --color-background: #0b0b0b;
+  --color-foreground: #f1f0ea;
+  --color-card: #0b0b0b;
+  --color-card-foreground: #f1f0ea;
+  --color-popover: #0b0b0b;
+  --color-popover-foreground: #f1f0ea;
+  --color-primary: #f1f0ea;
+  --color-primary-foreground: #010101;
+  --color-secondary: #1c1c1c;
+  --color-secondary-foreground: #f1f0ea;
+  --color-muted: #1c1c1c;
+  --color-muted-foreground: #b0b0a9;
+  --color-accent: #262626;
+  --color-accent-foreground: #f1f0ea;
+  --color-destructive: #ff5a4f;
+  --color-destructive-foreground: #010101;
+  --color-border: #2f3234;
+  --color-input: #3f4245;
+  --color-ring: #f1f0ea;
+  --color-sidebar: #010101;
+  --color-sidebar-foreground: #f1f0ea;
+  --color-sidebar-primary: #f1f0ea;
+  --color-sidebar-primary-foreground: #010101;
+  --color-sidebar-accent: #1c1c1c;
+  --color-sidebar-accent-foreground: #f1f0ea;
+  --color-sidebar-border: #1e2022;
+  --color-sidebar-ring: #f1f0ea;
+  --color-chart-1: #f1f0ea;
+  --color-chart-2: #b0b0a9;
+  --color-chart-3: #e7f256;
+  --color-chart-4: #8fc7a4;
+  --color-chart-5: #ff5a4f;
+  --v4-accent: #e7f256;
+  --v4-accent-2: #d5e03a;
+  --v4-on-accent: #010101;
+  --v4-accent-wash: #1c1e10;
+  --v4-accent-fg: #e7f256;
+  --v4-frame: #010101;
+  --v4-paper: #121212;
+  --v4-faint: #8e9291;
+  --v4-text2: #d8d8d4;
+  --v4-ok: #8fc7a4;
+  --v4-warn: #e8c26a;
+  --v4-bad: #ff5a4f;
+  --v4-info: #8fb4de;
+  --v4-scrim: rgba(0, 0, 0, 0.62);
+  --v4-sidebar-current: #2c2c2b;
+  color: var(--color-foreground);
+  background: var(--color-background);
+  font-family: Archivo, "Helvetica Neue", Helvetica, sans-serif;
+}
+
+.v4[data-corners="soft"] {
+  --corners: 1;
+}
+
+.v4 :where(code, kbd, pre, .font-mono) {
+  font-family: "Geist Mono", ui-monospace, Menlo, monospace;
+}
+
+/* Infisical control sizes. Radix Nova defaults to 32px; the brand default is 36px. */
+.v4 [data-slot="button"][data-size="default"],
+.v4 [data-slot="input"],
+.v4 [data-slot="select-trigger"] {
+  height: 36px;
+}
+
+.v4 [data-slot="button"][data-size="sm"] {
+  height: 32px;
+}
+
+.v4 [data-slot="button"][data-size="lg"] {
+  height: 40px;
+}
+
+.v4 [data-slot="button"][data-variant="destructive"] {
+  background: var(--v4-bad);
+  color: var(--color-destructive-foreground);
+}
+
+.v4 [data-slot="button"][data-variant="destructive"]:hover {
+  background: var(--v4-bad);
+  filter: brightness(0.92);
+}
