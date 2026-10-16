@@ -18,6 +18,7 @@ import {
   FieldLabel
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { getProjectTitle } from "@app/helpers/project";
 import { useScopeVariant } from "@app/hooks";
 import {
   useCreateProjectIdentityMembership,
@@ -76,13 +77,21 @@ export const IdentityAddToProjectModal = ({ identityId, popUp, handlePopUpToggle
       wsWorkspaceIds.set(projectMembership.project.id, true);
     });
 
-    return (workspaces || []).filter(
-      ({ id, orgId, type }) =>
-        !wsWorkspaceIds.has(id) &&
-        orgId === currentOrg?.id &&
-        // Certificate Manager membership is managed inside Certificate Manager, not as a project.
-        type !== ProjectType.CertificateManager
-    );
+    const productOrder = Object.values(ProjectType);
+
+    return (workspaces || [])
+      .filter(
+        ({ id, orgId, type }) =>
+          !wsWorkspaceIds.has(id) &&
+          orgId === currentOrg?.id &&
+          // Certificate Manager membership is managed inside Certificate Manager, not as a project.
+          type !== ProjectType.CertificateManager
+      )
+      .sort(
+        (a, b) =>
+          productOrder.indexOf(a.type) - productOrder.indexOf(b.type) ||
+          a.name.localeCompare(b.name)
+      );
   }, [workspaces, projectMemberships]);
 
   const handleOpenChange = (isOpen: boolean) => {
@@ -134,6 +143,8 @@ export const IdentityAddToProjectModal = ({ identityId, popUp, handlePopUpToggle
                   options={filteredWorkspaces}
                   getOptionValue={(option) => option.id}
                   getOptionLabel={(option) => option.name}
+                  getOptionGroup={(option) => getProjectTitle(option.type)}
+                  getOptionKeywords={(option) => [getProjectTitle(option.type)]}
                   placeholder="Select project..."
                   searchPlaceholder="Search projects..."
                   searchAriaLabel="Search projects"
