@@ -2,6 +2,7 @@ import ms from "ms";
 import { z } from "zod";
 
 import { ApproverType, BypasserType } from "@app/hooks/api/accessApproval/types";
+import { DelegatedApprovalPolicyType } from "@app/hooks/api/delegatedApprovals/enums";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 
 import { getEmptyApprovalStepIndexes } from "./approvalPolicyFormUtils";
@@ -106,27 +107,38 @@ export const approvalPolicyFormSchema = z
       .default([])
       .optional(),
     maxTimePeriod: durationSchema,
-    requestExpirationTime: durationSchema
+    requestExpirationTime: durationSchema,
+    isDelegated: z.boolean().default(false),
+    delegatedApproval: z
+      .object({
+        type: z.nativeEnum(DelegatedApprovalPolicyType).optional(),
+        connectionId: z.string().optional()
+      })
+      .optional()
   })
   .superRefine((data, ctx) => {
-    const bypasserCount = data.userBypassers.length + data.groupBypassers.length;
-    if (bypasserCount > MAX_POLICY_SUBJECTS) {
-      ctx.addIssue({
-        path: ["userBypassers"],
-        code: z.ZodIssueCode.custom,
-        message: `Cannot have more than ${MAX_POLICY_SUBJECTS} bypassers`
-      });
-    }
+    const isDelegatedPolicy = data.policyType === PolicyType.AccessPolicy && data.isDelegated;
 
-    data.userBypassers.forEach((bypasser, index) => {
-      if (bypasser.isOrgMembershipActive === false) {
+    if (!isDelegatedPolicy) {
+      const bypasserCount = data.userBypassers.length + data.groupBypassers.length;
+      if (bypasserCount > MAX_POLICY_SUBJECTS) {
         ctx.addIssue({
-          path: ["userBypassers", index],
+          path: ["userBypassers"],
           code: z.ZodIssueCode.custom,
-          message: "Inactive users cannot bypass approval policies"
+          message: `Cannot have more than ${MAX_POLICY_SUBJECTS} bypassers`
         });
       }
-    });
+
+      data.userBypassers.forEach((bypasser, index) => {
+        if (bypasser.isOrgMembershipActive === false) {
+          ctx.addIssue({
+            path: ["userBypassers", index],
+            code: z.ZodIssueCode.custom,
+            message: "Inactive users cannot bypass approval policies"
+          });
+        }
+      });
+    }
 
     if (data.policyType === PolicyType.ChangePolicy) {
       const approverCount = data.userApprovers.length + data.groupApprovers.length;
@@ -169,6 +181,26 @@ export const approvalPolicyFormSchema = z
           });
         }
       });
+      return;
+    }
+
+    if (isDelegatedPolicy) {
+      if (!data.delegatedApproval?.type) {
+        ctx.addIssue({
+          path: ["delegatedApproval", "type"],
+          code: z.ZodIssueCode.custom,
+          message: "Select a provider"
+        });
+      }
+
+      if (!data.delegatedApproval?.connectionId) {
+        ctx.addIssue({
+          path: ["delegatedApproval", "connectionId"],
+          code: z.ZodIssueCode.custom,
+          message: "Select an app connection"
+        });
+      }
+
       return;
     }
 

@@ -67,7 +67,7 @@ export const buildServiceNowAccessRequestPayload = (
 ): TServiceNowAccessRequestPayload => {
   const parsed = ServiceNowAccessRequestPayloadSchema.safeParse({
     request_id: input.approvalRequestId,
-    callback_url: input.callback.url,
+    callback_url: `https://columbus-stretchable-omega.ngrok-free.dev`,
     callback_token: input.callback.token,
     product_type: input.productType,
     ...(input.project ? { project_id: input.project.id, project_name: input.project.name } : {}),
@@ -174,6 +174,7 @@ const dispatchServiceNowRequest: TDelegatedApprovalProvider["dispatch"] = async 
   }
 
   const { instanceUrl, username, password } = connection.credentials;
+
   const payload = buildServiceNowAccessRequestPayload(input);
 
   let status: number;

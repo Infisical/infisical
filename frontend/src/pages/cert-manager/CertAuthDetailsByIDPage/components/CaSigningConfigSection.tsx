@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { PencilIcon } from "lucide-react";
 import { z } from "zod";
 
+import { useConnectionCreation } from "@app/components/app-connections/useConnectionCreation";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -62,7 +63,6 @@ import {
 } from "@app/hooks/api/appConnections/venafi";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { usePopUp } from "@app/hooks/usePopUp";
-import { useConnectionCreation } from "@app/pages/cert-manager/CertificateAuthoritiesPage/components/CaInstallCertModal/useConnectionCreation";
 
 type Props = {
   caId: string;

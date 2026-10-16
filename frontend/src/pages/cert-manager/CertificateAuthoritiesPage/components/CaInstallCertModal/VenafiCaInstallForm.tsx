@@ -36,7 +36,7 @@ import {
 } from "@app/hooks/api/appConnections/venafi";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { useConnectionCreation } from "./useConnectionCreation";
+import { useConnectionCreation } from "@app/components/app-connections/useConnectionCreation";
 
 const schema = z.object({
   appConnectionId: z.string().min(1, "App connection is required"),
