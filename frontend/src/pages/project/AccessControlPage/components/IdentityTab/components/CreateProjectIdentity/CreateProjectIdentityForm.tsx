@@ -405,13 +405,14 @@ export const CreateProjectIdentityForm = (props: Props) => {
   const { projectId, projectType } = props;
   const isProductScoped = projectType === ProjectType.PAM || projectType === ProjectType.AgentVault;
 
-  const { data: availableData, isPending: isAvailableLoading } = useQuery(
-    projectIdentityMembershipQuery.listAvailable({ projectId, projectType })
-  );
-  const { data: membershipsData, isLoading: isMembershipsLoading } =
+  const { data: availableData, isFetchedAfterMount: isAvailableFresh } = useQuery({
+    ...projectIdentityMembershipQuery.listAvailable({ projectId, projectType }),
+    refetchOnMount: "always"
+  });
+  const { data: membershipsData, isFetchedAfterMount: isMembershipsFresh } =
     useListProjectIdentityMemberships(
       { projectId, projectType, limit: 1000 },
-      { enabled: isProductScoped }
+      { enabled: isProductScoped, refetchOnMount: "always" }
     );
 
   const assignableIdentities = useMemo(() => {
@@ -423,7 +424,7 @@ export const CreateProjectIdentityForm = (props: Props) => {
       .map((i) => ({ id: i.id, name: i.name }));
   }, [availableData, membershipsData]);
 
-  if (isAvailableLoading || isMembershipsLoading) {
+  if (!isAvailableFresh || (isProductScoped && !isMembershipsFresh)) {
     return (
       <div className="flex flex-1 flex-col gap-4 p-4">
         <Skeleton className="h-9 w-full" />
