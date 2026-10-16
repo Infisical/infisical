@@ -42,7 +42,7 @@ const getSuggestedSyncName = ({
     lowercase: true,
     decamelize: false
   })
-    .slice(0, environmentSlug ? 63 - environmentSlug.length : 64)
+    .slice(0, environmentSlug ? Math.max(0, 63 - environmentSlug.length) : 64)
     .replace(/-+$/, "");
 
   return [prefix, environmentSlug].filter(Boolean).join("-");

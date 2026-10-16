@@ -73,7 +73,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         aria-invalid={isError}
         placeholder={suggestedValue || placeholder}
         aria-describedby={
-          suggestedValue
+          suggestedValue && !props.readOnly && !props.disabled
             ? [ariaDescribedBy, suggestionHintId].filter(Boolean).join(" ")
             : ariaDescribedBy
         }
@@ -105,7 +105,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           tabIndex={-1}
           aria-label={`Use suggested value ${suggestedValue}`}
           title="Use suggested value"
-          className="absolute top-1/2 right-2 hidden -translate-y-1/2 cursor-pointer peer-placeholder-shown:flex peer-read-only:hidden peer-disabled:hidden [&>kbd]:text-muted hover:[&>kbd]:text-foreground"
+          className="absolute top-1/2 right-2 hidden -translate-y-1/2 cursor-pointer peer-placeholder-shown:flex peer-read-only:hidden peer-disabled:hidden"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
             acceptSuggestion();
@@ -115,7 +115,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           <Kbd>Tab</Kbd>
         </button>
         <span id={suggestionHintId} className="sr-only">
-          Press Tab to use the suggested value.
+          When the field is empty, press Tab to use the suggested value.
         </span>
       </div>
     );
