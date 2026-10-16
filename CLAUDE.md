@@ -158,6 +158,24 @@ rules in `assertDelegatedApprovalPolicyConstraints` when another policy type opt
 policies may opt in today: `assertPolicyTypeSupportsDelegatedApproval` refuses the rest, and secret change
 policies return it as a 400 rather than dropping the field.
 
+Delivery to the delegated system is asynchronous and lives in `delegated-approval/dispatch/`. The request
+bridge creates the `delegated_approval_requests` row inside the request's own transaction (through the
+`onCreated` hook of `createApprovalRequestWithSteps`) and enqueues the `DelegatedApprovalDispatch` job after
+commit; the worker moves the row `pending_dispatch` → `waiting_approval` (storing the provider's record id in
+`providerRequestId`) or `failed_dispatch` with a `statusReason` a user can read, and BullMQ retries put it back
+to `pending_dispatch`. Every provider implements `TDelegatedApprovalProvider` against the same
+`TDelegatedApprovalDispatchInput` and registers in `DELEGATED_APPROVAL_PROVIDER_MAP`
+(`dispatch/providers/<name>/`); a new policy type adds an arm to `TDelegatedApprovalDispatchDetails` and a
+builder in `DELEGATED_APPROVAL_DISPATCH_DETAILS_BUILDER_MAP` rather than branching in a provider. The worker
+reads from the primary, never checks the license, and throws bullmq's `UnrecoverableError` for anything a retry
+cannot fix. The callback contract (token issuance now, the inbound route and approve / reject later) is its own
+module, `backend/src/services/delegated-approval-callback/`, so the delegated approval module never grows a
+callback branch. A request gets exactly one callback token for its whole life: it is random, issued on the first
+dispatch attempt, and stored encrypted under the org KMS key in `encryptedCallbackToken` so every retry resends
+the same value; the inbound side finds the row by the provider's record id and compares the decrypted token with
+the presented one. Never send a provider a token that differs from the one stored for the request; the provider
+keeps the first token it was given and cannot be told another, so a mismatch is unrecoverable.
+
 ### API Layer (Frontend)
 
 React Query + Axios with query key factories per domain. Each API domain in `frontend/src/hooks/api/` has `queries.tsx`, `mutations.tsx`, and `types.tsx` — see `frontend/CLAUDE.md` for conventions.

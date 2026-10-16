@@ -464,6 +464,15 @@ export const appConnectionServiceFactory = ({
     return decryptAppConnection(appConnection, kmsService);
   };
 
+  // For background work that has no actor. It performs no authorization or scope check, so it must not
+  // back a route, and the caller still has to check the connection's org and app.
+  const findDecryptedAppConnectionById = async (connectionId: string) => {
+    const appConnection = await appConnectionDAL.findById(connectionId);
+    if (!appConnection) return null;
+
+    return decryptAppConnection(appConnection, kmsService);
+  };
+
   const findAppConnectionByName = async (
     app: AppConnection,
     { connectionName, projectId }: TGetAppConnectionByNameDTO,
@@ -1434,6 +1443,7 @@ export const appConnectionServiceFactory = ({
     listAppConnections,
     findAppConnectionById,
     findAppConnectionByName,
+    findDecryptedAppConnectionById,
     createAppConnection,
     updateAppConnection,
     deleteAppConnection,

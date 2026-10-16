@@ -45,6 +45,7 @@ import {
   TAppConnectionCredentialRotationSendNotificationJobPayload
 } from "@app/services/app-connection/credential-rotation/app-connection-credential-rotation-types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { TDelegatedApprovalDispatchJobPayload } from "@app/services/delegated-approval/dispatch/delegated-approval-dispatch-types";
 import {
   ExternalPlatforms,
   TVaultImportSideEffectsJobPayload
@@ -121,6 +122,7 @@ export enum QueueName {
   PamDiscoveryScan = "pam-discovery-scan",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryScan = "pki-discovery-scan",
+  DelegatedApprovalDispatch = "delegated-approval-dispatch",
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
@@ -205,6 +207,7 @@ export enum QueueJobs {
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
   PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
+  DelegatedApprovalDispatch = "delegated-approval-dispatch-job",
   AppConnectionCredentialRotationQueueRotations = "app-connection-credential-rotation-queue-rotations",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AppConnectionCredentialRotationSendNotification = "app-connection-credential-rotation-send-notification",
@@ -565,6 +568,10 @@ export type TQueueJobTypes = {
   [QueueName.PkiAcmeChallengeValidation]: {
     name: QueueJobs.PkiAcmeChallengeValidation;
     payload: { challengeId: string };
+  };
+  [QueueName.DelegatedApprovalDispatch]: {
+    name: QueueJobs.DelegatedApprovalDispatch;
+    payload: TDelegatedApprovalDispatchJobPayload;
   };
   [QueueName.PkiDiscoveryScan]:
     | {

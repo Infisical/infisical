@@ -29,7 +29,7 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("requestId").references("id").inTable(TableName.ApprovalRequests).onDelete("CASCADE");
 
       t.string("status", 50).notNullable();
-      t.binary("callbackTokenHash").nullable().unique();
+      t.binary("encryptedCallbackToken").nullable();
       t.text("statusReason").nullable();
       t.string("providerRequestId").nullable();
 

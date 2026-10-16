@@ -15,7 +15,8 @@ import {
 } from "@app/services/approval-policy/approval-request-dal";
 import { TSecretAccessApprovalGlobalResource } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
 import { TSecretAccessPolicy } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
-import { TDelegatedApprovalPolicyDALFactory } from "@app/services/delegated-approval/delegated-approval-policy-dal";
+import { TDelegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
+import { TDelegatedApprovalDispatchQueueFactory } from "@app/services/delegated-approval/dispatch/delegated-approval-dispatch-queue";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
@@ -60,7 +61,8 @@ export type TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep = {
     | "findUsersByIds"
     | "findOrgMembershipActivity"
   >;
-  delegatedApprovalPolicyDAL: Pick<TDelegatedApprovalPolicyDALFactory, "findOne">;
+  delegatedApprovalService: Pick<TDelegatedApprovalServiceFactory, "getPolicyByPolicyId" | "createRequest">;
+  delegatedApprovalDispatchQueue: Pick<TDelegatedApprovalDispatchQueueFactory, "queueDispatch">;
   smtpService: Pick<TSmtpService, "sendMail">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;

@@ -1166,6 +1166,9 @@ export const approvalPolicyServiceFactory = ({
       actorAuthMethod: actor.authMethod
     });
 
+  // For background work that has no actor. It performs no authorization, so it must not back a route.
+  const findRequestById = (requestId: string, tx?: Knex) => approvalRequestDAL.findById(requestId, tx);
+
   const getRequestById = async (requestId: string, actor: TApprovalActor) => {
     const request = await approvalRequestDAL.findById(requestId);
     if (!request) {
@@ -2459,6 +2462,7 @@ export const approvalPolicyServiceFactory = ({
     createRequest,
     createRequestFromPolicy,
     listRequests,
+    findRequestById,
     getRequestById,
     approveRequest,
     rejectRequest,

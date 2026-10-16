@@ -5,7 +5,7 @@ import { DelegatedApprovalPolicyType } from "./delegated-approval-enums";
 import {
   DELEGATED_APPROVAL_CONNECTION_MAP,
   DELEGATED_APPROVAL_NAME_MAP,
-  DELEGATED_APPROVAL_SUPPORTED_POLICY_TYPES
+  isDelegatedApprovalSupportedPolicyType
 } from "./delegated-approval-maps";
 import { TDelegatedApprovalListItem } from "./delegated-approval-types";
 
@@ -56,7 +56,7 @@ export const assertDelegatedApprovalPolicyConstraints = ({
 };
 
 export const assertPolicyTypeSupportsDelegatedApproval = (policyType: string) => {
-  if (!DELEGATED_APPROVAL_SUPPORTED_POLICY_TYPES.includes(policyType)) {
+  if (!isDelegatedApprovalSupportedPolicyType(policyType)) {
     throw new BadRequestError({
       message:
         "Only secret access policies can be handled by a delegated approval system. Remove delegatedApproval from the request."

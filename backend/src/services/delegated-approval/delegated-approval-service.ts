@@ -8,7 +8,6 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
-import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 
 import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "./delegated-approval-enums";
 import { assertPolicyTypeSupportsDelegatedApproval, listDelegatedApprovalOptions } from "./delegated-approval-fns";
@@ -29,21 +28,23 @@ type TDelegatedApprovalServiceFactoryDep = {
   delegatedApprovalPolicyDAL: TDelegatedApprovalPolicyDALFactory;
   delegatedApprovalRequestDAL: TDelegatedApprovalRequestDALFactory;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findById">;
-  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
 };
 
 export type TDelegatedApprovalServiceFactory = ReturnType<typeof delegatedApprovalServiceFactory>;
 
-const isUniqueViolation = (err: unknown) =>
-  err instanceof DatabaseError && (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation;
+const getDatabaseErrorCode = (err: unknown) =>
+  err instanceof DatabaseError ? (err.error as { code?: string })?.code : undefined;
+
+const isUniqueViolation = (err: unknown) => getDatabaseErrorCode(err) === DatabaseErrorCode.UniqueViolation;
+
+const isForeignKeyViolation = (err: unknown) => getDatabaseErrorCode(err) === DatabaseErrorCode.ForeignKeyViolation;
 
 export const delegatedApprovalServiceFactory = ({
   delegatedApprovalPolicyDAL,
   delegatedApprovalRequestDAL,
   approvalPolicyDAL,
-  approvalRequestDAL,
   appConnectionDAL,
   appConnectionService
 }: TDelegatedApprovalServiceFactoryDep) => {
@@ -150,25 +151,28 @@ export const delegatedApprovalServiceFactory = ({
 
   const createRequest = async (
     {
-      requestId,
+      approvalRequest,
       status = DelegatedApprovalRequestStatus.PendingDispatch,
       statusReason
     }: TCreateDelegatedApprovalRequestDTO,
     tx?: Knex
   ) => {
-    const approvalRequest = await approvalRequestDAL.findById(requestId, tx);
-    if (!approvalRequest) {
-      throw new NotFoundError({ message: `Approval request with ID '${requestId}' not found` });
-    }
+    assertPolicyTypeSupportsDelegatedApproval(approvalRequest.type);
 
     try {
-      const request = await delegatedApprovalRequestDAL.create({ requestId, status, statusReason }, tx);
+      const request = await delegatedApprovalRequestDAL.create(
+        { requestId: approvalRequest.id, status, statusReason },
+        tx
+      );
       return request as TDelegatedApprovalRequest;
     } catch (err) {
       if (isUniqueViolation(err)) {
         throw new BadRequestError({
-          message: `Approval request with ID '${requestId}' already has a delegated approval request`
+          message: `Approval request with ID '${approvalRequest.id}' already has a delegated approval request`
         });
+      }
+      if (isForeignKeyViolation(err)) {
+        throw new NotFoundError({ message: `Approval request with ID '${approvalRequest.id}' not found` });
       }
       throw err;
     }
