@@ -309,7 +309,7 @@ Stop and remove a gateway's systemd service. Run the command as root on Linux.
   command="init"
   usage="[flags]"
   flags={[
-    { name: "--project-id", value: "<string>", type: "string", description: "Project ID to link this directory to. When set, skips the interactive org and project pickers and writes `.infisical.yaml` directly." },
+    { name: "--project-id", value: "<string>", type: "string", description: "Project ID to link this directory to. When set, skips the interactive org and project pickers and writes `.infisical.yaml` directly. Find the ID with [infisical sm projects list](/cli/reference#sm-projects-list)." },
   ]}
   examples={[
     { title: "Link the current directory to a project", code: "infisical init" },
@@ -1137,7 +1137,7 @@ Without `--token-only`, the command prints the token's name, project, access, sc
   command="sm"
 >
 
-Manage secrets from the command line. The `sm` commands inject secrets into a process, export them to a file, read and write them, lease credentials from [dynamic secrets](/documentation/platform/dynamic-secrets/overview), and run the [Agent Proxy](/documentation/platform/agent-proxy/overview).
+Manage secrets from the command line. The `sm` commands inject secrets into a process, export them to a file, read and write them, lease credentials from [dynamic secrets](/documentation/platform/dynamic-secrets/overview), run the [Agent Proxy](/documentation/platform/agent-proxy/overview), and list and create projects.
 
 <Note>
 If `infisical --version` prints 0.43.145 or earlier, your CLI doesn't have `sm`. [Upgrade the CLI](/cli/upgrade), or run the commands without `sm`, such as `infisical run` instead of `infisical sm run`. For the Agent Proxy, use `infisical secrets agent-proxy` instead of `infisical sm agent-proxy`.
@@ -1436,6 +1436,87 @@ Print an environment's secrets in a file format such as `.env` or JSON, for tool
 `dotenv` writes each secret as `KEY='value'`, and `dotenv-export` adds `export` in front. Neither escapes quotes inside values. `dotenv-eval` also writes `export` statements, but quotes each value so the output is safe to load with `eval` or `source`. No format escapes secret names, so load output into a shell only when every name is a valid shell variable name.
 
 `--template` takes a Go template that fetches secrets with the functions the [Infisical Agent](/integrations/platforms/infisical-agent#available-secret-template-functions) provides, such as `listSecrets` and `getSecretByName`.
+
+</CLICommand>
+
+<CLICommand
+  id="sm-projects"
+  command="sm projects"
+>
+
+List, inspect, and create Secrets Management [projects](/documentation/platform/project). Use these commands to find the project ID that [infisical init](/cli/reference#init) and the `--projectId` flag take, or to create a project without opening Infisical. `project` is an alias, so `infisical sm project list` also works.
+
+<Note>
+The commands work only with Secrets Management projects. Projects of other products, such as Certificate Manager or KMS, don't appear in the list.
+</Note>
+
+</CLICommand>
+
+<CLICommand
+  id="sm-projects-create"
+  command="sm projects create"
+  usage="[flags]"
+  flags={[
+    { name: "--description", value: "<string>", type: "string", description: "A description of the project, up to 1024 characters." },
+    { name: "--name", value: "<string>", type: "string", required: true, description: "The name of the project, up to 64 characters." },
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the created project as `json` or `yaml` instead of a table." },
+    { name: "--slug", value: "<string>", type: "string", description: "The project's slug, from 5 to 64 characters. Without it, Infisical generates a slug from the name." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+  ]}
+  examples={[
+    { title: "Create a project and link this directory to it", code: "infisical sm projects create --name my-app\ninfisical init --project-id <project-id>" },
+    { title: "Create a project with a description and slug", code: "infisical sm projects create --name my-app --description \"Backend service\" --slug my-app-backend" },
+  ]}
+>
+
+Create a Secrets Management project in your organization with the Development, Staging, and Production environments.
+
+The user or machine identity that creates the project becomes the project's admin. The command prints the project and its environments, followed by the `infisical init` command that links the current directory to the project.
+
+<Note>
+Service tokens can't create projects. If your environment stores a service token in `INFISICAL_TOKEN`, the command uses your login instead.
+</Note>
+
+</CLICommand>
+
+<CLICommand
+  id="sm-projects-get"
+  command="sm projects get"
+  usage="[flags]"
+  flags={[
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the project as `json` or `yaml` instead of a table." },
+    { name: "--projectId", value: "<string>", type: "string", description: "The ID of the project to show. Defaults to `INFISICAL_PROJECT_ID`, then the project linked in `.infisical.yaml`." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+  ]}
+  examples={[
+    { title: "Show the project linked to this directory", code: "infisical sm projects get" },
+    { title: "Show a project by ID", code: "infisical sm projects get --projectId=<project-id>" },
+  ]}
+>
+
+Show a project's name, slug, and ID, and the name, slug, and ID of each of its environments. Use an environment's slug with the `--env` flag of other `sm` commands.
+
+</CLICommand>
+
+<CLICommand
+  id="sm-projects-list"
+  command="sm projects list"
+  usage="[flags]"
+  flags={[
+    { name: "--output", short: "-o", value: "<string>", type: "string", description: "Print the projects as `json` or `yaml` instead of a table." },
+    { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
+  ]}
+  examples={[
+    { title: "List your projects", code: "infisical sm projects list" },
+    { title: "List a machine identity's projects as JSON", code: "infisical sm projects list --token=<access-token> --output=json" },
+  ]}
+>
+
+List the name, slug, and ID of each Secrets Management project you're a member of in your organization. With a machine identity, the command lists the projects the identity is a member of.
+
+<Note>
+Service tokens can't create projects. If your environment stores a service token in `INFISICAL_TOKEN`, the command uses your login instead.
+</Note>
 
 </CLICommand>
 
