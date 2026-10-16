@@ -1097,7 +1097,7 @@ and the events cannot say which folders a recursive read returned. Instead it ke
   non-blocking lock), by the `SecretReadActivityFlush` cron every minute into an upsert.
 - **Partitioned by month, no foreign keys, no index on `lastReadAt`.** The table is range-partitioned on
   `readMonth` (the UTC month of `lastReadAt`, part of the primary key), so a reader has one row per month and
-  `findLastReads` folds them into the latest. The hourly `SecretReadActivityPrune` cron creates the current and
+  `findLastReads` folds them into the latest. The daily `SecretReadActivityPrune` cron creates the current and
   next three months' partitions and drops a month once all of it is older than the 30-day window, since nothing
   reads before it. Never prune with `DELETE`: at this table's size that is a full scan plus vacuum. Partition DDL
   takes an exclusive lock on the whole table, so it runs under a short `lock_timeout` and retries next hour.

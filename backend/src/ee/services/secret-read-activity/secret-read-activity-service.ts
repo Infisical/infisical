@@ -410,12 +410,12 @@ export const secretReadActivityServiceFactory = ({
       enabled: !appCfg.isSecondaryInstance,
       handler: $consumeReadStream
     });
-    // Hourly although a month's partition is needed once, so that an instance back from a long outage gets
-    // partitions for its reads within the hour.
+    // Daily although a month's partition is needed once: partitions exist months ahead, so a missed run costs
+    // nothing, and an instance back from a longer outage gets them within a day while its reads wait in the stream.
     cronJob.register({
       name: CronJobName.SecretReadActivityPrune,
-      pattern: "15 * * * *",
-      runHashTtlS: 24 * 60 * 60,
+      pattern: "15 1 * * *",
+      runHashTtlS: 3 * 24 * 60 * 60,
       enabled: !appCfg.isSecondaryInstance,
       handler: async () => {
         const created = await secretReadActivityDAL.createMonthlyPartitions(
