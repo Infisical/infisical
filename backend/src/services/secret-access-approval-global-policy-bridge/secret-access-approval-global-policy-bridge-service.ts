@@ -284,7 +284,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     scope: { projectId: string; orgId: string }
   ): Promise<TPolicyReviewers> => {
     if (externalApproval) {
-      assertExternalApprovalPolicyConstraints({ enforcementLevel, bypassers, allowedSelfApprovals });
+      assertExternalApprovalPolicyConstraints({ enforcementLevel, approvers, bypassers, allowedSelfApprovals });
       return NO_REVIEWERS;
     }
 

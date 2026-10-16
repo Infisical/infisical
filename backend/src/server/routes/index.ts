@@ -2664,6 +2664,7 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     secretAccessApprovalGlobalPolicyBridgeDAL,
     secretAccessApprovalGlobalRequestBridgeDAL,
+    externalApprovalPolicyDAL,
     smtpService,
     notificationService,
     kmsService,

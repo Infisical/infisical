@@ -37,6 +37,7 @@ output-options:
     - createProjectIdentityMembership
     - listProjectMachineIdentities
     - createGitHubAppConnection
+    - createServiceNowAppConnection
     - createGitHubSecretSync
     - getGitHubSecretSync
     - deleteGitHubSecretSync
@@ -77,6 +78,11 @@ output-options:
     - reviewSecretApprovalRequest
     - updateSecretApprovalRequestStatus
     - mergeSecretApprovalRequest
+    - createAccessApprovalPolicy
+    - listAccessApprovalPolicies
+    - updateAccessApprovalPolicy
+    - getAccessApprovalPolicy
+    - createAccessApprovalRequest
     - createGroup
     - addUserToGroup
     - removeUserFromGroup

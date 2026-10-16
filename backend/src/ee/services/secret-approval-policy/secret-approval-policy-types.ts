@@ -1,4 +1,5 @@
 import { EnforcementLevel, TProjectPermission } from "@app/lib/types";
+import { TExternalApprovalPolicyInput } from "@app/services/external-approval/external-approval-types";
 
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
 
@@ -17,6 +18,7 @@ export type TCreateSapDTO = {
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
   bypassForMachineIdentities: boolean;
+  externalApproval?: TExternalApprovalPolicyInput;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateSapDTO = {
@@ -33,6 +35,7 @@ export type TUpdateSapDTO = {
   allowedSelfApprovals?: boolean;
   bypassForMachineIdentities?: boolean;
   environments?: string[];
+  externalApproval?: TExternalApprovalPolicyInput;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteSapDTO = {

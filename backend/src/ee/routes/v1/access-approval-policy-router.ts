@@ -10,7 +10,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ExternalApprovalPolicyType } from "@app/services/external-approval/external-approval-enums";
+import { ExternalApprovalSchema } from "@app/services/external-approval/external-approval-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const maxTimePeriodSchema = z
@@ -71,15 +71,8 @@ const requestExpirationTimeSchema = z
     return val;
   });
 
-const externalApprovalSchema = z.object({
-  type: z
-    .nativeEnum(ExternalApprovalPolicyType)
-    .describe("The external approval system that reviews requests made against this policy."),
-  connectionId: z.string().uuid().describe("The ID of the App Connection used to reach the external approval system.")
-});
-
 const accessApprovalPolicyPubSchema = sapPubSchema.extend({
-  externalApproval: externalApprovalSchema.nullable().optional()
+  externalApproval: ExternalApprovalSchema.nullable().optional()
 });
 
 export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvider) => {
@@ -90,6 +83,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createAccessApprovalPolicy",
       body: z
         .object({
           projectSlug: z.string().trim(),
@@ -123,7 +117,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
               "Must provide either username or id"
             )
             .optional()
-            .describe("Required unless externalApproval is set; an external approval system reviews requests then."),
+            .describe("Required unless externalApproval is set, and must be omitted when it is."),
           bypassers: z
             .discriminatedUnion("type", [
               z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
@@ -148,9 +142,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           allowedSelfApprovals: z.boolean().default(true),
           maxTimePeriod: maxTimePeriodSchema,
           requestExpirationTime: requestExpirationTimeSchema,
-          externalApproval: externalApprovalSchema
-            .optional()
-            .describe("Hand requests made against this policy to an external approval system.")
+          externalApproval: ExternalApprovalSchema.optional().describe(
+            "Hand requests made against this policy to an external approval system."
+          )
         })
         .refine(
           (val) => Boolean(val.environment) || Boolean(val.environments),
@@ -210,6 +204,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listAccessApprovalPolicies",
       querystring: z.object({
         projectSlug: z.string().trim()
       }),
@@ -288,6 +283,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "updateAccessApprovalPolicy",
       params: z.object({
         policyId: z.string()
       }),
@@ -321,7 +317,9 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
             "Must provide either username or id"
           )
           .optional()
-          .describe("Required unless the policy is handled by an external approval system."),
+          .describe(
+            "Required unless the policy is handled by an external approval system, and must be omitted when it is."
+          ),
         bypassers: z
           .discriminatedUnion("type", [
             z.object({ type: z.literal(BypasserType.Group), id: z.string() }),
@@ -343,8 +341,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           .optional(),
         maxTimePeriod: maxTimePeriodSchema,
         requestExpirationTime: requestExpirationTimeSchema,
-        externalApproval: externalApprovalSchema
-          .nullable()
+        externalApproval: ExternalApprovalSchema.nullable()
           .optional()
           .describe(
             "Hand requests made against this policy to an external approval system. Send null to stop using one."
@@ -432,6 +429,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getAccessApprovalPolicy",
       params: z.object({
         policyId: z.string()
       }),

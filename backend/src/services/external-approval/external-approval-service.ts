@@ -11,7 +11,7 @@ import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approva
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 
 import { ExternalApprovalPolicyType, ExternalApprovalRequestStatus } from "./external-approval-enums";
-import { listExternalApprovalOptions } from "./external-approval-fns";
+import { assertPolicyTypeSupportsExternalApproval, listExternalApprovalOptions } from "./external-approval-fns";
 import { EXTERNAL_APPROVAL_CONNECTION_MAP, EXTERNAL_APPROVAL_NAME_MAP } from "./external-approval-maps";
 import { TExternalApprovalPolicyDALFactory } from "./external-approval-policy-dal";
 import { TExternalApprovalRequestDALFactory } from "./external-approval-request-dal";
@@ -87,6 +87,7 @@ export const externalApprovalServiceFactory = ({
     if (!approvalPolicy) {
       throw new NotFoundError({ message: `Approval policy with ID '${policyId}' not found` });
     }
+    assertPolicyTypeSupportsExternalApproval(approvalPolicy.type);
 
     await $assertConnectionMatches({ type, connectionId, organizationId: approvalPolicy.organizationId }, tx);
 
@@ -125,6 +126,7 @@ export const externalApprovalServiceFactory = ({
     if (!approvalPolicy) {
       throw new NotFoundError({ message: `Approval policy with ID '${policyId}' not found` });
     }
+    assertPolicyTypeSupportsExternalApproval(approvalPolicy.type);
 
     await $assertConnectionMatches(
       { type: newType, connectionId: newConnectionId, organizationId: approvalPolicy.organizationId },

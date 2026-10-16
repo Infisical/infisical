@@ -70,6 +70,7 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
   additionalPrivilegeDAL,
   secretAccessApprovalGlobalPolicyBridgeDAL,
   secretAccessApprovalGlobalRequestBridgeDAL,
+  externalApprovalPolicyDAL,
   smtpService,
   notificationService,
   kmsService,
@@ -292,7 +293,10 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     if (!requestedByUser) throw new ForbiddenRequestError({ message: "User not found" });
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
     if (!policy.steps.length) {
-      throw new BadRequestError({ message: `Policy '${policy.name}' has no approvers configured` });
+      const externalPolicy = await externalApprovalPolicyDAL.findOne({ policyId: policy.id });
+      if (!externalPolicy) {
+        throw new BadRequestError({ message: `Policy '${policy.name}' has no approvers configured` });
+      }
     }
 
     const activeGrant = await secretAccessApprovalGlobalResource.canAccess(projectId, requestedByUserId, {
@@ -342,28 +346,31 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     );
 
     const request = await $findRequestById(created.id);
-    await notifySecretAccessStepApprovers(
-      {
-        step: policy.steps[0],
-        request,
-        project,
-        requestedByUser,
-        data: requestData,
-        environment: { slug: envSlug },
-        secretPath
-      },
-      {
-        userDAL,
-        userGroupMembershipDAL,
-        projectDAL,
-        projectSlackConfigDAL,
-        kmsService,
-        microsoftTeamsService,
-        projectMicrosoftTeamsConfigDAL,
-        notificationService,
-        smtpService
-      }
-    );
+    const [firstStep] = policy.steps;
+    if (firstStep) {
+      await notifySecretAccessStepApprovers(
+        {
+          step: firstStep,
+          request,
+          project,
+          requestedByUser,
+          data: requestData,
+          environment: { slug: envSlug },
+          secretPath
+        },
+        {
+          userDAL,
+          userGroupMembershipDAL,
+          projectDAL,
+          projectSlackConfigDAL,
+          kmsService,
+          microsoftTeamsService,
+          projectMicrosoftTeamsConfigDAL,
+          notificationService,
+          smtpService
+        }
+      );
+    }
 
     const legacyRequest = toLegacyAccessApprovalRequest(request);
 

@@ -28,6 +28,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createAccessApprovalRequest",
       body: z.object({
         permissions: z.tuple([z.string(), z.string()]).rest(z.unknown()).array().min(1),
         isTemporary: z.boolean(),
