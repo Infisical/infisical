@@ -68,14 +68,18 @@ export const getSignupTrialIntent = (): SignupTrialIntent | null => {
   }
 };
 
-export const captureSignupTrialIntent = (search: string) => {
+export const parseSignupTrialSearch = (search: string) => {
   if (!isInfisicalCloud()) return null;
   const params = new URLSearchParams(search);
-  const intent = parseIntent({
+  return parseIntent({
     product: params.get("product"),
     plan: params.get("plan"),
     cycle: params.get("cycle")
   });
+};
+
+export const captureSignupTrialIntent = (search: string) => {
+  const intent = parseSignupTrialSearch(search);
   if (!intent) return getSignupTrialIntent();
   const captured = { ...intent, savedAt: Date.now() };
   try {
@@ -99,7 +103,10 @@ export const bindSignupTrialIntent = (orgId: string) => {
 export const getSignupTrialProjectType = (intent: SignupTrialIntent | null): SignupProductType[] =>
   intent ? [TRIAL_PRODUCTS[intent.product].projectType] : [];
 
-export const getSignupTrialBillingSearch = (intent: SignupTrialIntent, returnPath: string) => ({
+export const getSignupTrialBillingSearch = (
+  intent: Pick<SignupTrialIntent, "product" | "plan" | "cycle">,
+  returnPath: string
+) => ({
   upgradeProduct: TRIAL_PRODUCTS[intent.product].billingProduct,
   upgradePlan: intent.plan,
   ...(intent.cycle && { upgradeCycle: intent.cycle }),

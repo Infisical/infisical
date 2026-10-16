@@ -462,6 +462,7 @@ type ProductSheetProps = {
   // org may still trial it. Dismissing that confirmation closes the sheet.
   initialTrialTier?: string;
   showAnnualTrialNote?: boolean;
+  trialOrgName?: string;
   returnPath: string;
   renewsOn: string | null;
   // capabilities.selfServe: false for an enterprise-managed org. Self-serve CTAs render disabled and a
@@ -483,6 +484,7 @@ export const ProductSheet = ({
   initialView,
   initialTrialTier,
   showAnnualTrialNote,
+  trialOrgName,
   returnPath,
   renewsOn,
   selfServe,
@@ -800,6 +802,7 @@ export const ProductSheet = ({
             </AlertDialogMedia>
             <AlertDialogTitle>
               Start your {trialConfirmPlan?.name ?? prod.name} trial
+              {isInitialTrialConfirm && trialOrgName && ` for ${trialOrgName}`}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {trialIsUpgrade
