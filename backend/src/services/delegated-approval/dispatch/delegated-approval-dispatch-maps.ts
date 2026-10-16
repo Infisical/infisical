@@ -7,10 +7,10 @@ import {
   TDelegatedApprovalDispatchDetailsBuilder,
   TDelegatedApprovalProvider
 } from "./delegated-approval-dispatch-types";
-import { servicenowProviderFactory } from "./providers/servicenow";
+import { serviceNowProvider } from "./providers/servicenow";
 
 export const DELEGATED_APPROVAL_PROVIDER_MAP: Record<DelegatedApprovalPolicyType, TDelegatedApprovalProvider> = {
-  [DelegatedApprovalPolicyType.ServiceNow]: servicenowProviderFactory()
+  [DelegatedApprovalPolicyType.ServiceNow]: serviceNowProvider
 };
 
 export const DELEGATED_APPROVAL_DISPATCH_DETAILS_BUILDER_MAP: Record<

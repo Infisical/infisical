@@ -159,9 +159,8 @@ policies may opt in today: `assertPolicyTypeSupportsDelegatedApproval` refuses t
 policies return it as a 400 rather than dropping the field.
 
 Delivery to the delegated system is asynchronous and lives in `delegated-approval/dispatch/`. The request
-bridge creates the `delegated_approval_requests` row inside the request's own transaction (through the
-`onCreated` hook of `createApprovalRequestWithSteps`) and enqueues the `DelegatedApprovalDispatch` job after
-commit; the worker moves the row `pending_dispatch` → `waiting_approval` (storing the provider's record id in
+bridge creates the `delegated_approval_requests` row inside the request's own transaction and enqueues the
+`DelegatedApprovalDispatch` job after commit; the worker moves the row `pending_dispatch` → `waiting_approval` (storing the provider's record id in
 `providerRequestId`) or `failed_dispatch` with a `statusReason` a user can read, and BullMQ retries put it back
 to `pending_dispatch`. Every provider implements `TDelegatedApprovalProvider` against the same
 `TDelegatedApprovalDispatchInput` and registers in `DELEGATED_APPROVAL_PROVIDER_MAP`

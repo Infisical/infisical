@@ -11,7 +11,7 @@ export const DELEGATED_APPROVAL_CONNECTION_MAP: Record<DelegatedApprovalPolicyTy
   [DelegatedApprovalPolicyType.ServiceNow]: AppConnection.ServiceNow
 };
 
-export const DELEGATED_APPROVAL_SUPPORTED_POLICY_TYPES = [ApprovalPolicyType.SecretAccess] as const;
+const DELEGATED_APPROVAL_SUPPORTED_POLICY_TYPES = [ApprovalPolicyType.SecretAccess] as const;
 
 export type DelegatedApprovalSupportedPolicyType = (typeof DELEGATED_APPROVAL_SUPPORTED_POLICY_TYPES)[number];
 

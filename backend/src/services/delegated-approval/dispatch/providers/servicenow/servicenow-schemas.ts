@@ -27,20 +27,10 @@ export const ServiceNowAccessRequestPayloadSchema = z.object({
   justification: z.string().optional()
 });
 
-export const ServiceNowAccessRequestRecordSchema = z.object({
-  success: z.boolean().optional(),
-  request_number: z.string().nullish(),
-  sys_id: z.string().min(1),
-  error: z.unknown().optional()
+export const ServiceNowAccessRequestResponseSchema = z.object({
+  sys_id: z.string().min(1)
 });
 
-// Scripted REST responses may arrive bare or wrapped in the platform's `result` envelope.
-export const ServiceNowAccessRequestResponseSchema = z.union([
-  z.object({ result: ServiceNowAccessRequestRecordSchema }),
-  ServiceNowAccessRequestRecordSchema
-]);
-
-export const ServiceNowErrorResponseSchema = z.union([
-  z.object({ result: z.object({ error: z.unknown().optional() }) }),
-  z.object({ error: z.unknown().optional() })
-]);
+export const ServiceNowErrorResponseSchema = z.object({
+  error: z.unknown().optional()
+});

@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -33,13 +34,6 @@ type TDelegatedApprovalServiceFactoryDep = {
 };
 
 export type TDelegatedApprovalServiceFactory = ReturnType<typeof delegatedApprovalServiceFactory>;
-
-const getDatabaseErrorCode = (err: unknown) =>
-  err instanceof DatabaseError ? (err.error as { code?: string })?.code : undefined;
-
-const isUniqueViolation = (err: unknown) => getDatabaseErrorCode(err) === DatabaseErrorCode.UniqueViolation;
-
-const isForeignKeyViolation = (err: unknown) => getDatabaseErrorCode(err) === DatabaseErrorCode.ForeignKeyViolation;
 
 export const delegatedApprovalServiceFactory = ({
   delegatedApprovalPolicyDAL,
@@ -96,7 +90,7 @@ export const delegatedApprovalServiceFactory = ({
       const policy = await delegatedApprovalPolicyDAL.create({ policyId, type, connectionId }, tx);
       return policy as TDelegatedApprovalPolicy;
     } catch (err) {
-      if (isUniqueViolation(err)) {
+      if (hasPostgresErrorCode(err, DatabaseErrorCode.UniqueViolation)) {
         throw new BadRequestError({
           message: `Approval policy with ID '${policyId}' already has a delegated approver configured`
         });
@@ -166,12 +160,12 @@ export const delegatedApprovalServiceFactory = ({
       );
       return request as TDelegatedApprovalRequest;
     } catch (err) {
-      if (isUniqueViolation(err)) {
+      if (hasPostgresErrorCode(err, DatabaseErrorCode.UniqueViolation)) {
         throw new BadRequestError({
           message: `Approval request with ID '${approvalRequest.id}' already has a delegated approval request`
         });
       }
-      if (isForeignKeyViolation(err)) {
+      if (hasPostgresErrorCode(err, DatabaseErrorCode.ForeignKeyViolation)) {
         throw new NotFoundError({ message: `Approval request with ID '${approvalRequest.id}' not found` });
       }
       throw err;

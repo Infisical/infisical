@@ -356,7 +356,6 @@ import { delegatedApprovalPolicyDALFactory } from "@app/services/delegated-appro
 import { delegatedApprovalRequestDALFactory } from "@app/services/delegated-approval/delegated-approval-request-dal";
 import { delegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
 import { delegatedApprovalDispatchQueueFactory } from "@app/services/delegated-approval/dispatch/delegated-approval-dispatch-queue";
-import { delegatedApprovalCallbackDALFactory } from "@app/services/delegated-approval-callback/delegated-approval-callback-dal";
 import { delegatedApprovalCallbackServiceFactory } from "@app/services/delegated-approval-callback/delegated-approval-callback-service";
 import { encryptionKeyRotationServiceFactory } from "@app/services/encryption-key-rotation/encryption-key-rotation-service";
 import { acmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
@@ -865,7 +864,6 @@ export const registerRoutes = async (
   const approvalRequestDAL = approvalRequestDALFactory(db);
   const delegatedApprovalPolicyDAL = delegatedApprovalPolicyDALFactory(db);
   const delegatedApprovalRequestDAL = delegatedApprovalRequestDALFactory(db);
-  const delegatedApprovalCallbackDAL = delegatedApprovalCallbackDALFactory(db);
   const secretChangeGlobalPolicyBridgeDAL = secretChangeGlobalPolicyBridgeDALFactory(db);
   const roleDAL = roleDALFactory(db);
   const pkiAlertHistoryDAL = pkiAlertHistoryDALFactory(db);
@@ -3252,6 +3250,70 @@ export const registerRoutes = async (
     appConnectionService
   });
 
+  const delegatedApprovalCallbackService = delegatedApprovalCallbackServiceFactory({
+    delegatedApprovalRequestDAL,
+    kmsService
+  });
+
+  const delegatedApprovalDispatchQueue = delegatedApprovalDispatchQueueFactory({
+    delegatedApprovalRequestDAL,
+    delegatedApprovalPolicyDAL,
+    delegatedApprovalCallbackService,
+    approvalRequestDAL,
+    projectDAL,
+    appConnectionDAL,
+    kmsService,
+    queueService
+  });
+
+  const secretAccessApprovalGlobalRequestBridgeService = secretAccessApprovalGlobalRequestBridgeServiceFactory({
+    projectDAL,
+    projectEnvDAL,
+    permissionService,
+    userDAL,
+    userGroupMembershipDAL,
+    approvalRequestDAL,
+    approvalRequestStepsDAL,
+    approvalRequestStepEligibleApproversDAL,
+    approvalRequestApprovalsDAL,
+    approvalRequestGrantsDAL,
+    additionalPrivilegeDAL,
+    secretAccessApprovalGlobalPolicyBridgeDAL,
+    secretAccessApprovalGlobalRequestBridgeDAL,
+    delegatedApprovalService,
+    delegatedApprovalDispatchQueue,
+    smtpService,
+    notificationService,
+    kmsService,
+    projectSlackConfigDAL,
+    microsoftTeamsService,
+    projectMicrosoftTeamsConfigDAL,
+    queueService,
+    secretAccessApprovalGlobalResource
+  });
+
+  const accessApprovalRequestService = accessApprovalRequestServiceFactory({
+    projectDAL,
+    permissionService,
+    accessApprovalRequestReviewerDAL,
+    accessApprovalPolicyDAL,
+    secretAccessApprovalGlobalResource,
+    secretAccessApprovalGlobalRequestBridge: secretAccessApprovalGlobalRequestBridgeService,
+    accessApprovalRequestDAL,
+    projectEnvDAL,
+    userDAL,
+    smtpService,
+    accessApprovalPolicyApproverDAL,
+    projectSlackConfigDAL,
+    kmsService,
+    groupDAL,
+    microsoftTeamsService,
+    projectMicrosoftTeamsConfigDAL,
+    notificationService,
+    additionalPrivilegeDAL,
+    queueService
+  });
+
   const secretAccessApprovalGlobalPolicyBridgeService = secretAccessApprovalGlobalPolicyBridgeServiceFactory({
     projectDAL,
     permissionService,
@@ -3911,69 +3973,6 @@ export const registerRoutes = async (
     kmsService,
     eventEmitter: eventOutboxService,
     resources: approvalResources
-  });
-
-  const delegatedApprovalCallbackService = delegatedApprovalCallbackServiceFactory({
-    delegatedApprovalCallbackDAL,
-    kmsService
-  });
-
-  const delegatedApprovalDispatchQueue = delegatedApprovalDispatchQueueFactory({
-    delegatedApprovalRequestDAL,
-    delegatedApprovalPolicyDAL,
-    delegatedApprovalCallbackService,
-    approvalPolicyService,
-    projectService,
-    appConnectionService,
-    queueService
-  });
-
-  const secretAccessApprovalGlobalRequestBridgeService = secretAccessApprovalGlobalRequestBridgeServiceFactory({
-    projectDAL,
-    projectEnvDAL,
-    permissionService,
-    userDAL,
-    userGroupMembershipDAL,
-    approvalRequestDAL,
-    approvalRequestStepsDAL,
-    approvalRequestStepEligibleApproversDAL,
-    approvalRequestApprovalsDAL,
-    approvalRequestGrantsDAL,
-    additionalPrivilegeDAL,
-    secretAccessApprovalGlobalPolicyBridgeDAL,
-    secretAccessApprovalGlobalRequestBridgeDAL,
-    delegatedApprovalService,
-    delegatedApprovalDispatchQueue,
-    smtpService,
-    notificationService,
-    kmsService,
-    projectSlackConfigDAL,
-    microsoftTeamsService,
-    projectMicrosoftTeamsConfigDAL,
-    queueService,
-    secretAccessApprovalGlobalResource
-  });
-
-  const accessApprovalRequestService = accessApprovalRequestServiceFactory({
-    projectDAL,
-    permissionService,
-    accessApprovalRequestReviewerDAL,
-    accessApprovalPolicyDAL,
-    secretAccessApprovalGlobalResource,
-    secretAccessApprovalGlobalRequestBridge: secretAccessApprovalGlobalRequestBridgeService,
-    accessApprovalRequestDAL,
-    projectEnvDAL,
-    userDAL,
-    smtpService,
-    accessApprovalPolicyApproverDAL,
-    projectSlackConfigDAL,
-    kmsService,
-    groupDAL,
-    microsoftTeamsService,
-    projectMicrosoftTeamsConfigDAL,
-    notificationService,
-    additionalPrivilegeDAL,
-    queueService
   });
 
   const pkiApplicationEnrollmentService = pkiApplicationEnrollmentServiceFactory({

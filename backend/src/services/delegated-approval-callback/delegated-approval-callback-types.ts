@@ -1,10 +1,9 @@
 import { TDelegatedApprovalRequests } from "@app/db/schemas";
+import { TDelegatedApprovalRequestDALFactory } from "@app/services/delegated-approval/delegated-approval-request-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-import { TDelegatedApprovalCallbackDALFactory } from "./delegated-approval-callback-dal";
-
 export type TDelegatedApprovalCallbackServiceFactoryDep = {
-  delegatedApprovalCallbackDAL: Pick<TDelegatedApprovalCallbackDALFactory, "findById" | "transaction" | "update">;
+  delegatedApprovalRequestDAL: Pick<TDelegatedApprovalRequestDALFactory, "findById" | "primaryNode" | "update">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 

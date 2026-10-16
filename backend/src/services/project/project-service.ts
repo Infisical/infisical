@@ -971,9 +971,6 @@ export const projectServiceFactory = ({
     return projects.map(({ id, orgId, name, slug, type }) => ({ id, orgId, name, slug, type }));
   };
 
-  // For background work that has no actor. It performs no authorization, so it must not back a route.
-  const findProjectById = (projectId: string) => projectDAL.findById(projectId);
-
   const getAProject = async ({ actorId, actorOrgId, actorAuthMethod, filter, actor }: TGetProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
 
@@ -2379,7 +2376,6 @@ export const projectServiceFactory = ({
     getAccessibleProjectsWithSubOrgs,
     updateProject,
     getProjectUpgradeStatus,
-    findProjectById,
     getAProject,
     toggleAutoCapitalization,
     toggleDeleteProtection,

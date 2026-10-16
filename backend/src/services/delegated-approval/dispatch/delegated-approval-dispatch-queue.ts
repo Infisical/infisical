@@ -3,16 +3,17 @@ import { UnrecoverableError } from "bullmq";
 import { ProjectType } from "@app/db/schemas";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
-import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
-import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
-import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
+import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { TDelegatedApprovalCallbackServiceFactory } from "@app/services/delegated-approval-callback/delegated-approval-callback-service";
-import { TProjectServiceFactory } from "@app/services/project/project-service";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { DelegatedApprovalRequestStatus } from "../delegated-approval-enums";
-import { DELEGATED_APPROVAL_NAME_MAP } from "../delegated-approval-maps";
+import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "../delegated-approval-enums";
+import { DELEGATED_APPROVAL_CONNECTION_MAP } from "../delegated-approval-maps";
 import { TDelegatedApprovalPolicyDALFactory } from "../delegated-approval-policy-dal";
 import { TDelegatedApprovalRequestDALFactory } from "../delegated-approval-request-dal";
 import {
@@ -33,16 +34,17 @@ import {
 type TDelegatedApprovalDispatchQueueFactoryDep = {
   delegatedApprovalRequestDAL: Pick<
     TDelegatedApprovalRequestDALFactory,
-    "findById" | "transaction" | "update" | "updateById"
+    "findById" | "primaryNode" | "update" | "updateById"
   >;
   delegatedApprovalPolicyDAL: Pick<TDelegatedApprovalPolicyDALFactory, "findOne">;
   delegatedApprovalCallbackService: Pick<
     TDelegatedApprovalCallbackServiceFactory,
     "getCallbackUrl" | "getOrIssueCallbackToken"
   >;
-  approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "findRequestById">;
-  projectService: Pick<TProjectServiceFactory, "findProjectById">;
-  appConnectionService: Pick<TAppConnectionServiceFactory, "findDecryptedAppConnectionById">;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
 };
 
@@ -52,9 +54,10 @@ export const delegatedApprovalDispatchQueueFactory = ({
   delegatedApprovalRequestDAL,
   delegatedApprovalPolicyDAL,
   delegatedApprovalCallbackService,
-  approvalPolicyService,
-  projectService,
-  appConnectionService,
+  approvalRequestDAL,
+  projectDAL,
+  appConnectionDAL,
+  kmsService,
   queueService
 }: TDelegatedApprovalDispatchQueueFactoryDep) => {
   const $markDispatchFailed = async (delegatedRequestId: string, statusReason: string) => {
@@ -98,18 +101,19 @@ export const delegatedApprovalDispatchQueueFactory = ({
   };
 
   // Both rows were committed together moments before the job runs, so they are read from the primary.
-  const $loadRequests = (delegatedRequestId: string) =>
-    delegatedApprovalRequestDAL.transaction(async (tx) => {
-      const delegatedRequest = await delegatedApprovalRequestDAL.findById(delegatedRequestId, tx);
-      if (!delegatedRequest) return null;
+  const $loadRequests = async (delegatedRequestId: string) => {
+    const primary = delegatedApprovalRequestDAL.primaryNode();
 
-      const approvalRequest = await approvalPolicyService.findRequestById(delegatedRequest.requestId, tx);
-      const delegatedPolicy = approvalRequest?.policyId
-        ? await delegatedApprovalPolicyDAL.findOne({ policyId: approvalRequest.policyId }, tx)
-        : null;
+    const delegatedRequest = await delegatedApprovalRequestDAL.findById(delegatedRequestId, primary);
+    if (!delegatedRequest) return null;
 
-      return { delegatedRequest, approvalRequest, delegatedPolicy };
-    });
+    const approvalRequest = await approvalRequestDAL.findById(delegatedRequest.requestId, primary);
+    const delegatedPolicy = approvalRequest?.policyId
+      ? await delegatedApprovalPolicyDAL.findOne({ policyId: approvalRequest.policyId }, primary)
+      : null;
+
+    return { delegatedRequest, approvalRequest, delegatedPolicy };
+  };
 
   const init = () => {
     queueService.start(
@@ -147,10 +151,12 @@ export const delegatedApprovalDispatchQueueFactory = ({
           return;
         }
 
-        await delegatedApprovalRequestDAL.updateById(delegatedRequestId, {
-          status: DelegatedApprovalRequestStatus.PendingDispatch,
-          statusReason: null
-        });
+        if (delegatedRequest.status === DelegatedApprovalRequestStatus.FailedDispatch) {
+          await delegatedApprovalRequestDAL.update(
+            { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.FailedDispatch },
+            { status: DelegatedApprovalRequestStatus.PendingDispatch, statusReason: null }
+          );
+        }
 
         try {
           if (!approvalRequest) {
@@ -158,7 +164,7 @@ export const delegatedApprovalDispatchQueueFactory = ({
           }
           if (approvalRequest.status !== ApprovalRequestStatus.Pending) {
             throw new UnrecoverableError(
-              "The access request is no longer pending, so it was not sent to the delegated approval system."
+              "The approval request is no longer pending, so it was not sent to the delegated approval system."
             );
           }
           if (!delegatedPolicy) {
@@ -168,24 +174,7 @@ export const delegatedApprovalDispatchQueueFactory = ({
           }
 
           const provider = getDelegatedApprovalProvider(delegatedPolicy.type);
-          const providerName = DELEGATED_APPROVAL_NAME_MAP[provider.type];
-
-          const project = await projectService.findProjectById(approvalRequest.projectId);
-          if (!project) {
-            throw new UnrecoverableError("The project of the access request no longer exists.");
-          }
-
-          const connection = await appConnectionService.findDecryptedAppConnectionById(delegatedPolicy.connectionId);
-          if (!connection || connection.orgId !== approvalRequest.organizationId) {
-            throw new UnrecoverableError(
-              `App Connection with ID '${delegatedPolicy.connectionId}' was not found. Select a ${APP_CONNECTION_NAME_MAP[provider.app]} Connection on the policy and create the request again.`
-            );
-          }
-          if (connection.app !== provider.app) {
-            throw new UnrecoverableError(
-              `${APP_CONNECTION_NAME_MAP[connection.app as AppConnection]} Connection with ID '${connection.id}' cannot be used as a ${providerName} delegated approver. Select a ${APP_CONNECTION_NAME_MAP[provider.app]} Connection on the policy instead.`
-            );
-          }
+          const details = getDelegatedApprovalDispatchDetailsBuilder(approvalRequest.type)(approvalRequest);
 
           const callbackUrl = delegatedApprovalCallbackService.getCallbackUrl();
           if (!callbackUrl) {
@@ -193,6 +182,24 @@ export const delegatedApprovalDispatchQueueFactory = ({
               "SITE_URL must be configured so the delegated approval system can call Infisical back."
             );
           }
+
+          const primary = delegatedApprovalRequestDAL.primaryNode();
+          const [project, rawConnection] = await Promise.all([
+            projectDAL.findById(approvalRequest.projectId, primary),
+            appConnectionDAL.findById(delegatedPolicy.connectionId, primary)
+          ]);
+          if (!project) {
+            throw new UnrecoverableError("The project of the approval request no longer exists.");
+          }
+          if (!rawConnection || rawConnection.orgId !== approvalRequest.organizationId) {
+            const connectionApp =
+              DELEGATED_APPROVAL_CONNECTION_MAP[delegatedPolicy.type as DelegatedApprovalPolicyType];
+            throw new UnrecoverableError(
+              `App Connection with ID '${delegatedPolicy.connectionId}' was not found. Select a ${APP_CONNECTION_NAME_MAP[connectionApp]} Connection on the policy and create the request again.`
+            );
+          }
+
+          const connection = await decryptAppConnection(rawConnection, kmsService);
 
           const callbackToken = await delegatedApprovalCallbackService.getOrIssueCallbackToken({
             delegatedRequest,
@@ -204,8 +211,6 @@ export const delegatedApprovalDispatchQueueFactory = ({
             );
           }
 
-          const buildDetails = getDelegatedApprovalDispatchDetailsBuilder(approvalRequest.type);
-
           const input: TDelegatedApprovalDispatchInput = {
             delegatedRequestId,
             approvalRequestId: approvalRequest.id,
@@ -215,7 +220,7 @@ export const delegatedApprovalDispatchQueueFactory = ({
             requester: { name: approvalRequest.requesterName, email: approvalRequest.requesterEmail },
             justification: approvalRequest.justification ?? null,
             callback: { url: callbackUrl, token: callbackToken },
-            details: buildDetails(approvalRequest)
+            details
           };
 
           const { providerRequestId } = await provider.dispatch(input, connection);
@@ -232,7 +237,7 @@ export const delegatedApprovalDispatchQueueFactory = ({
           }
 
           logger.info(
-            `Delegated approval request delivered [delegatedRequestId=${delegatedRequestId}] [approvalRequestId=${approvalRequest.id}] [provider=${provider.type}] [providerRequestId=${providerRequestId}]`
+            `Delegated approval request delivered [delegatedRequestId=${delegatedRequestId}] [approvalRequestId=${approvalRequest.id}] [provider=${delegatedPolicy.type}] [providerRequestId=${providerRequestId}]`
           );
         } catch (error) {
           const isTerminal = isFinalAttempt || error instanceof UnrecoverableError;

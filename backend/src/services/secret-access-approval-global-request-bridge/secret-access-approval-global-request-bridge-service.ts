@@ -30,7 +30,6 @@ import {
 } from "@app/services/approval-policy/secret-access/secret-access-policy-fns";
 import { TSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TDelegatedApprovalRequest } from "@app/services/delegated-approval/delegated-approval-types";
 import { AccessRequestWebhookAction, WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import {
@@ -288,13 +287,13 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       throw new BadRequestError({ message: constraintValidation.errors?.join("; ") ?? "Policy constraints not met" });
     }
 
-    const [requestedByUser, project] = await Promise.all([
+    const [requestedByUser, project, delegatedPolicy] = await Promise.all([
       userDAL.findById(requestedByUserId),
-      projectDAL.findById(projectId)
+      projectDAL.findById(projectId),
+      policy.steps.length ? null : delegatedApprovalService.getPolicyByPolicyId(policy.id)
     ]);
     if (!requestedByUser) throw new ForbiddenRequestError({ message: "User not found" });
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-    const delegatedPolicy = policy.steps.length ? null : await delegatedApprovalService.getPolicyByPolicyId(policy.id);
     if (!policy.steps.length && !delegatedPolicy) {
       throw new BadRequestError({ message: `Policy '${policy.name}' has no approvers configured` });
     }
@@ -324,9 +323,8 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     const parsedMs = requestExpirationTime ? ms(requestExpirationTime) : null;
     const expiresAt = parsedMs && !Number.isNaN(parsedMs) ? new Date(Date.now() + parsedMs) : null;
 
-    let delegatedRequest: TDelegatedApprovalRequest | undefined;
-    const created = await approvalRequestDAL.transaction((tx) =>
-      createApprovalRequestWithSteps(
+    const { created, delegatedRequest } = await approvalRequestDAL.transaction(async (tx) => {
+      const approvalRequest = await createApprovalRequestWithSteps(
         {
           projectId,
           organizationId: actorOrgId,
@@ -342,14 +340,13 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
           requesterEmail: requestedByUser.email || requestedByUser.username
         },
         { approvalRequestDAL, approvalRequestStepsDAL, approvalRequestStepEligibleApproversDAL },
-        tx,
-        delegatedPolicy
-          ? async (approvalRequest, trx) => {
-              delegatedRequest = await delegatedApprovalService.createRequest({ approvalRequest }, trx);
-            }
-          : undefined
-      )
-    );
+        tx
+      );
+      return {
+        created: approvalRequest,
+        delegatedRequest: delegatedPolicy ? await delegatedApprovalService.createRequest({ approvalRequest }, tx) : null
+      };
+    });
 
     if (delegatedRequest) {
       await delegatedApprovalDispatchQueue.queueDispatch({ delegatedRequestId: delegatedRequest.id });

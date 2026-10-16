@@ -9,7 +9,6 @@ import { TAppConnection } from "@app/services/app-connection/app-connection-type
 import { TServiceNowConnection } from "@app/services/app-connection/servicenow";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 
-import { DelegatedApprovalPolicyType } from "../../../delegated-approval-enums";
 import {
   TDelegatedApprovalDispatchDetails,
   TDelegatedApprovalDispatchInput,
@@ -19,19 +18,15 @@ import {
   SERVICENOW_ACCESS_REQUEST_PATH,
   SERVICENOW_DISPATCH_MAX_CONTENT_LENGTH,
   SERVICENOW_DISPATCH_TIMEOUT_MS,
-  SERVICENOW_ERROR_DETAIL_MAX_CHARS,
-  SERVICENOW_EVENT_MAP
+  SERVICENOW_ERROR_DETAIL_MAX_CHARS
 } from "./servicenow-constants";
+import { ServiceNowRequestType } from "./servicenow-enums";
 import {
   ServiceNowAccessRequestPayloadSchema,
   ServiceNowAccessRequestResponseSchema,
   ServiceNowErrorResponseSchema
 } from "./servicenow-schemas";
-import {
-  TServiceNowAccessRequestOutcome,
-  TServiceNowAccessRequestPayload,
-  TServiceNowAccessRequestRecord
-} from "./servicenow-types";
+import { TServiceNowAccessRequestOutcome, TServiceNowAccessRequestPayload } from "./servicenow-types";
 
 const describeInstance = (instanceUrl: string) => {
   try {
@@ -44,10 +39,16 @@ const describeInstance = (instanceUrl: string) => {
 const isServiceNowConnection = (connection: TAppConnection): connection is TServiceNowConnection =>
   connection.app === AppConnection.ServiceNow;
 
+// Scripted REST responses may arrive bare or wrapped in the platform's `result` envelope.
+const unwrapServiceNowResult = (data: unknown) =>
+  data && typeof data === "object" && "result" in data ? (data as { result: unknown }).result : data;
+
 const buildRequestTypeFields = (details: TDelegatedApprovalDispatchDetails) => {
   switch (details.policyType) {
     case ApprovalPolicyType.SecretAccess:
       return {
+        event: "secrets_management.access_request",
+        request_type: ServiceNowRequestType.SecretAccess,
         environment: details.environment,
         secret_path: details.secretPath,
         permissions: details.permissions,
@@ -64,14 +65,10 @@ const buildRequestTypeFields = (details: TDelegatedApprovalDispatchDetails) => {
 export const buildServiceNowAccessRequestPayload = (
   input: TDelegatedApprovalDispatchInput
 ): TServiceNowAccessRequestPayload => {
-  const { event, requestType } = SERVICENOW_EVENT_MAP[input.details.policyType];
-
   const parsed = ServiceNowAccessRequestPayloadSchema.safeParse({
     request_id: input.approvalRequestId,
     callback_url: input.callback.url,
     callback_token: input.callback.token,
-    event,
-    request_type: requestType,
     product_type: input.productType,
     ...(input.project ? { project_id: input.project.id, project_name: input.project.name } : {}),
     requestor_email: input.requester.email,
@@ -94,35 +91,32 @@ export const parseServiceNowAccessRequestResponse = (
   status: number,
   data: unknown
 ): TServiceNowAccessRequestOutcome => {
-  const parsed = ServiceNowAccessRequestResponseSchema.safeParse(data);
-  let record: TServiceNowAccessRequestRecord | null = null;
-  if (parsed.success) {
-    record = "result" in parsed.data ? parsed.data.result : parsed.data;
-  }
+  const parsed = ServiceNowAccessRequestResponseSchema.safeParse(unwrapServiceNowResult(data));
+  const sysId = parsed.success ? parsed.data.sys_id : null;
 
   if (status === 409) {
-    if (!record) {
+    if (!sysId) {
       throw new UnrecoverableError(
         "ServiceNow reported that it already holds this request but did not return the record ID."
       );
     }
-    return { sysId: record.sys_id, duplicate: true };
+    return { sysId, duplicate: true };
   }
 
-  if (!record) {
+  if (!sysId) {
     throw new BadRequestError({
       message: "ServiceNow accepted the request but returned a response without the record ID."
     });
   }
 
-  return { sysId: record.sys_id, duplicate: false };
+  return { sysId, duplicate: false };
 };
 
 const extractErrorDetail = (data: unknown) => {
-  const parsed = ServiceNowErrorResponseSchema.safeParse(data);
+  const parsed = ServiceNowErrorResponseSchema.safeParse(unwrapServiceNowResult(data));
   if (!parsed.success) return null;
 
-  const error = "result" in parsed.data ? parsed.data.result.error : parsed.data.error;
+  const { error } = parsed.data;
   if (error === undefined || error === null) return null;
 
   const detail = typeof error === "string" ? error : JSON.stringify(error);
@@ -174,65 +168,59 @@ export const toServiceNowDispatchError = (err: unknown, instanceUrl: string) => 
   });
 };
 
-export const servicenowProviderFactory = (): TDelegatedApprovalProvider => {
-  const dispatch: TDelegatedApprovalProvider["dispatch"] = async (input, connection) => {
-    if (!isServiceNowConnection(connection)) {
-      throw new UnrecoverableError(`App Connection with ID '${connection.id}' is not a ServiceNow Connection.`);
-    }
+const dispatchServiceNowRequest: TDelegatedApprovalProvider["dispatch"] = async (input, connection) => {
+  if (!isServiceNowConnection(connection)) {
+    throw new UnrecoverableError(`App Connection with ID '${connection.id}' is not a ServiceNow Connection.`);
+  }
 
-    const { instanceUrl, username, password } = connection.credentials;
-    const payload = buildServiceNowAccessRequestPayload(input);
+  const { instanceUrl, username, password } = connection.credentials;
+  const payload = buildServiceNowAccessRequestPayload(input);
 
-    let status: number;
-    let data: unknown;
-    try {
-      const response = await safeRequest.post<unknown>(`${instanceUrl}${SERVICENOW_ACCESS_REQUEST_PATH}`, payload, {
-        auth: { username, password },
-        headers: { Accept: "application/json", "Content-Type": "application/json" },
-        timeout: SERVICENOW_DISPATCH_TIMEOUT_MS,
-        maxContentLength: SERVICENOW_DISPATCH_MAX_CONTENT_LENGTH,
-        validateStatus: (code) => (code >= 200 && code < 300) || code === 409,
-        "axios-retry": { retries: 0 }
-      });
-      status = response.status;
-      data = response.data;
-    } catch (error) {
-      // safeRequest's own refusals (private IP, unresolvable host, credentials in the URL) already
-      // name what is wrong.
-      if (error instanceof BadRequestError) throw error;
+  let status: number;
+  let data: unknown;
+  try {
+    const response = await safeRequest.post<unknown>(`${instanceUrl}${SERVICENOW_ACCESS_REQUEST_PATH}`, payload, {
+      auth: { username, password },
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      timeout: SERVICENOW_DISPATCH_TIMEOUT_MS,
+      maxContentLength: SERVICENOW_DISPATCH_MAX_CONTENT_LENGTH,
+      validateStatus: (code) => (code >= 200 && code < 300) || code === 409,
+      "axios-retry": { retries: 0 }
+    });
+    status = response.status;
+    data = response.data;
+  } catch (error) {
+    // safeRequest's own refusals (private IP, unresolvable host, credentials in the URL) already
+    // name what is wrong.
+    if (error instanceof BadRequestError) throw error;
 
-      const responseStatus = error instanceof AxiosError ? error.response?.status : undefined;
-      const code = error instanceof AxiosError ? error.code : undefined;
+    const responseStatus = error instanceof AxiosError ? error.response?.status : undefined;
+    const code = error instanceof AxiosError ? error.code : undefined;
 
-      // The raw error is deliberately not logged: it carries the password at config.auth.password and
-      // the callback token in config.data.
-      logger.warn(
-        {
-          status: responseStatus,
-          code,
-          message: (error as Error)?.message,
-          instanceUrl: sanitizeUrlForLog(instanceUrl)
-        },
-        `Failed to send delegated approval request to ServiceNow [delegatedRequestId=${input.delegatedRequestId}] [approvalRequestId=${input.approvalRequestId}] [connectionId=${connection.id}] [status=${responseStatus ?? "none"}]`
-      );
+    // The raw error is deliberately not logged: it carries the password at config.auth.password and
+    // the callback token in config.data.
+    logger.warn(
+      {
+        status: responseStatus,
+        code,
+        message: (error as Error)?.message,
+        instanceUrl: sanitizeUrlForLog(instanceUrl)
+      },
+      `Failed to send delegated approval request to ServiceNow [delegatedRequestId=${input.delegatedRequestId}] [approvalRequestId=${input.approvalRequestId}] [connectionId=${connection.id}] [status=${responseStatus ?? "none"}]`
+    );
 
-      throw toServiceNowDispatchError(error, instanceUrl);
-    }
+    throw toServiceNowDispatchError(error, instanceUrl);
+  }
 
-    const outcome = parseServiceNowAccessRequestResponse(status, data);
+  const outcome = parseServiceNowAccessRequestResponse(status, data);
 
-    if (outcome.duplicate) {
-      logger.warn(
-        `ServiceNow already held a record for this delegated approval request from an earlier attempt [delegatedRequestId=${input.delegatedRequestId}] [approvalRequestId=${input.approvalRequestId}] [sysId=${outcome.sysId}]`
-      );
-    }
+  if (outcome.duplicate) {
+    logger.warn(
+      `ServiceNow already held a record for this delegated approval request from an earlier attempt [delegatedRequestId=${input.delegatedRequestId}] [approvalRequestId=${input.approvalRequestId}] [sysId=${outcome.sysId}]`
+    );
+  }
 
-    return { providerRequestId: outcome.sysId, duplicate: outcome.duplicate };
-  };
-
-  return {
-    type: DelegatedApprovalPolicyType.ServiceNow,
-    app: AppConnection.ServiceNow,
-    dispatch
-  };
+  return { providerRequestId: outcome.sysId };
 };
+
+export const serviceNowProvider: TDelegatedApprovalProvider = { dispatch: dispatchServiceNowRequest };

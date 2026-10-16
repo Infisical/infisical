@@ -1,10 +1,8 @@
 import { getConfig } from "@app/lib/config/env";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import {
-  buildDelegatedApprovalCallbackUrl,
-  generateDelegatedApprovalCallbackToken
-} from "./delegated-approval-callback-fns";
+import { DELEGATED_APPROVAL_CALLBACK_PATH } from "./delegated-approval-callback-constants";
+import { generateDelegatedApprovalCallbackToken } from "./delegated-approval-callback-fns";
 import {
   TDelegatedApprovalCallbackServiceFactoryDep,
   TGetOrIssueCallbackTokenDTO
@@ -13,12 +11,12 @@ import {
 export type TDelegatedApprovalCallbackServiceFactory = ReturnType<typeof delegatedApprovalCallbackServiceFactory>;
 
 export const delegatedApprovalCallbackServiceFactory = ({
-  delegatedApprovalCallbackDAL,
+  delegatedApprovalRequestDAL,
   kmsService
 }: TDelegatedApprovalCallbackServiceFactoryDep) => {
   const getCallbackUrl = () => {
     const { SITE_URL } = getConfig();
-    return SITE_URL ? buildDelegatedApprovalCallbackUrl(SITE_URL) : null;
+    return SITE_URL ? `${SITE_URL}${DELEGATED_APPROVAL_CALLBACK_PATH}` : null;
   };
 
   const getOrIssueCallbackToken = async ({ delegatedRequest, orgId }: TGetOrIssueCallbackTokenDTO) => {
@@ -32,14 +30,15 @@ export const delegatedApprovalCallbackServiceFactory = ({
     }
 
     const token = generateDelegatedApprovalCallbackToken();
-    const [issued] = await delegatedApprovalCallbackDAL.update(
+    const [issued] = await delegatedApprovalRequestDAL.update(
       { id: delegatedRequest.id, encryptedCallbackToken: null },
       { encryptedCallbackToken: encryptor({ plainText: Buffer.from(token) }).cipherTextBlob }
     );
     if (issued) return token;
 
-    const current = await delegatedApprovalCallbackDAL.transaction((tx) =>
-      delegatedApprovalCallbackDAL.findById(delegatedRequest.id, tx)
+    const current = await delegatedApprovalRequestDAL.findById(
+      delegatedRequest.id,
+      delegatedApprovalRequestDAL.primaryNode()
     );
     if (!current?.encryptedCallbackToken) return null;
 

@@ -21,9 +21,9 @@ const makeService = ({
   stored = true,
   currentRow = null
 }: { stored?: boolean; currentRow?: { encryptedCallbackToken: Buffer | null } | null } = {}) => {
-  const delegatedApprovalCallbackDAL = {
+  const delegatedApprovalRequestDAL = {
     update: vi.fn(async () => (stored ? [{ id: "delegated-1" }] : [])),
-    transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
+    primaryNode: vi.fn(() => ({})),
     findById: vi.fn(async () => currentRow)
   };
   const kmsService = {
@@ -34,11 +34,11 @@ const makeService = ({
   };
 
   const service = delegatedApprovalCallbackServiceFactory({
-    delegatedApprovalCallbackDAL: delegatedApprovalCallbackDAL as never,
+    delegatedApprovalRequestDAL: delegatedApprovalRequestDAL as never,
     kmsService: kmsService as never
   });
 
-  return { service, delegatedApprovalCallbackDAL, kmsService };
+  return { service, delegatedApprovalRequestDAL, kmsService };
 };
 
 describe("getCallbackUrl", () => {
@@ -51,7 +51,7 @@ describe("getCallbackUrl", () => {
 
 describe("getOrIssueCallbackToken", () => {
   test("issues a token once and stores it encrypted under the org key", async () => {
-    const { service, delegatedApprovalCallbackDAL, kmsService } = makeService();
+    const { service, delegatedApprovalRequestDAL, kmsService } = makeService();
 
     const token = await service.getOrIssueCallbackToken({
       delegatedRequest: { id: "delegated-1", encryptedCallbackToken: null },
@@ -63,14 +63,14 @@ describe("getOrIssueCallbackToken", () => {
       type: KmsDataKey.Organization,
       orgId: "org-1"
     });
-    expect(delegatedApprovalCallbackDAL.update).toHaveBeenCalledWith(
+    expect(delegatedApprovalRequestDAL.update).toHaveBeenCalledWith(
       { id: "delegated-1", encryptedCallbackToken: null },
       { encryptedCallbackToken: encrypt(Buffer.from(token as string)) }
     );
   });
 
   test("resends the token the request already holds instead of issuing another", async () => {
-    const { service, delegatedApprovalCallbackDAL } = makeService();
+    const { service, delegatedApprovalRequestDAL } = makeService();
 
     const token = await service.getOrIssueCallbackToken({
       delegatedRequest: { id: "delegated-1", encryptedCallbackToken: encrypt(Buffer.from("first-token")) },
@@ -78,7 +78,7 @@ describe("getOrIssueCallbackToken", () => {
     });
 
     expect(token).toBe("first-token");
-    expect(delegatedApprovalCallbackDAL.update).not.toHaveBeenCalled();
+    expect(delegatedApprovalRequestDAL.update).not.toHaveBeenCalled();
   });
 
   test("falls back to the token a concurrent attempt stored first", async () => {
